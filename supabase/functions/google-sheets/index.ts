@@ -33,7 +33,7 @@ serve(async (req) => {
       aud: "https://sheets.googleapis.com/",
       iat: iat,
       exp: exp,
-      scope: "https://www.googleapis.com/auth/spreadsheets.readonly"
+      scope: "https://www.googleapis.com/auth/spreadsheets"  // Changed to read and write scope
     };
 
     // Sign JWT
@@ -67,25 +67,74 @@ serve(async (req) => {
 
     const token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 
-    // Get data from the request
-    const { sheetName = "Sheet1", range = "A1:Z1000" } = await req.json();
+    // Parse the request to determine the operation
+    const requestData = await req.json();
+    const { action, sheetName, range, values } = requestData;
 
-    // Fetch data from Google Sheets
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    if (action === "read") {
+      // Read data from Google Sheets (existing functionality)
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const data = await response.json();
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (action === "append") {
+      // Append data to Google Sheets
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            values: values,
+          }),
+        }
+      );
 
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (action === "update") {
+      // Update specific cells in Google Sheets
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}?valueInputOption=USER_ENTERED`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            values: values,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else {
+      return new Response(JSON.stringify({ error: "Invalid action specified" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
   } catch (error) {
     console.error("Error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {

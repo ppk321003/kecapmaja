@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 
 interface FormValues {
   namaKegiatan: string;
@@ -171,6 +171,74 @@ const DaftarHadir = () => {
     }
   };
 
+  // Function to save data to Google Sheets
+  const saveToGoogleSheets = async (data: any) => {
+    try {
+      // Format the main data for DaftarHadir sheet
+      const mainData = [
+        data.namaKegiatan,
+        data.detil,
+        data.jenis,
+        data.program,
+        data.kegiatan,
+        data.kro,
+        data.ro,
+        data.komponen,
+        data.akun,
+        data.tanggalMulai ? format(new Date(data.tanggalMulai), "yyyy-MM-dd") : "",
+        data.tanggalSelesai ? format(new Date(data.tanggalSelesai), "yyyy-MM-dd") : "",
+        new Date().toISOString() // timestamp
+      ];
+
+      // Append main data to DaftarHadir sheet
+      const mainResponse = await GoogleSheetsService.appendData({
+        sheetName: "DaftarHadir",
+        range: "A2:L2",
+        values: [mainData]
+      });
+
+      // Get the row number that was just inserted
+      const updatedRange = mainResponse.updates?.updatedRange || "";
+      const rowMatch = updatedRange.match(/(\d+)/);
+      const rowNumber = rowMatch ? parseInt(rowMatch[0]) : null;
+
+      if (rowNumber) {
+        // Save selected organik data with reference to the main row
+        if (data.organik.length > 0) {
+          const organikRows = data.organik.map((organikId: string) => {
+            const organik = organikOptions.find(org => org.id === organikId);
+            return [rowNumber.toString(), organik?.name || "", organik?.nip || ""];
+          });
+
+          await GoogleSheetsService.appendData({
+            sheetName: "Organik",
+            range: "A2:C2",
+            values: organikRows
+          });
+        }
+
+        // Save selected mitra data with reference to the main row
+        if (data.mitra.length > 0) {
+          const mitraRows = data.mitra.map((mitraId: string) => {
+            const mitra = mitraOptions.find(m => m.id === mitraId);
+            return [rowNumber.toString(), mitra?.name || ""];
+          });
+
+          await GoogleSheetsService.appendData({
+            sheetName: "Mitra",
+            range: "A2:B2",
+            values: mitraRows
+          });
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error saving to Google Sheets:", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -185,11 +253,12 @@ const DaftarHadir = () => {
       
       console.log('Form submitted:', submitData);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // First, save to Google Sheets
+      await saveToGoogleSheets(submitData);
       
       toast({
         title: "Dokumen berhasil dibuat",
-        description: "Daftar hadir telah tersimpan",
+        description: "Daftar hadir telah tersimpan ke Google Sheets",
       });
       
       navigate("/buat-dokumen");
