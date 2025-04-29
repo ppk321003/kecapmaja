@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Link, useLocation } from "react-router-dom";
-import { Sun, Moon, Menu, X, FileText, Globe, Database, FileArchive, File, Book, Settings } from "lucide-react";
+import { Sun, Moon, Menu, X, FileText, Globe, Database, FileArchive, File, Book, Settings, Table } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -25,6 +25,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       title: "Buat Dokumen", 
       path: "/buat-dokumen", 
       icon: <FileText className="h-5 w-5" /> 
+    },
+    {
+      title: "Data Google Sheets",
+      path: "/google-sheets",
+      icon: <Table className="h-5 w-5" />
     },
     { 
       title: "Bahan Revisi 3210 (Web)", 
