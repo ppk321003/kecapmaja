@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface GoogleSheetsReadOptions {
   sheetName: string;
@@ -25,6 +26,7 @@ export const GoogleSheetsService = {
       });
 
       if (error) {
+        console.error("Error from Google Sheets function:", error);
         throw new Error(error.message);
       }
 
@@ -38,6 +40,8 @@ export const GoogleSheetsService = {
   // Append data to Google Sheets
   async appendData({ sheetName, range, values }: GoogleSheetsWriteOptions) {
     try {
+      console.log(`Appending data to ${sheetName}!${range}:`, values);
+      
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           action: 'append',
@@ -48,6 +52,7 @@ export const GoogleSheetsService = {
       });
 
       if (error) {
+        console.error("Error from Google Sheets function:", error);
         throw new Error(error.message);
       }
 
@@ -61,6 +66,8 @@ export const GoogleSheetsService = {
   // Update data in Google Sheets
   async updateData({ sheetName, range, values }: GoogleSheetsWriteOptions) {
     try {
+      console.log(`Updating data in ${sheetName}!${range}:`, values);
+      
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           action: 'update',
@@ -71,6 +78,7 @@ export const GoogleSheetsService = {
       });
 
       if (error) {
+        console.error("Error from Google Sheets function:", error);
         throw new Error(error.message);
       }
 

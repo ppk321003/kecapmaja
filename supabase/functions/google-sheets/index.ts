@@ -21,8 +21,12 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const GOOGLE_SERVICE_ACCOUNT_EMAIL = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") || "";
-    const GOOGLE_PRIVATE_KEY = Deno.env.get("GOOGLE_PRIVATE_KEY")?.replace(/\\n/g, "\n") || "";
+    const GOOGLE_PRIVATE_KEY = Deno.env.get("GOOGLE_PRIVATE_KEY") || "";
     const SPREADSHEET_ID = "1HxgzEy58Z522UvHzqY4Z-azQPrAGdWDpy_-grktyqgk";
+
+    // Log for debugging
+    console.log("Service account email:", GOOGLE_SERVICE_ACCOUNT_EMAIL);
+    console.log("Private key length:", GOOGLE_PRIVATE_KEY.length);
 
     // Get JWT token for Google Sheets API
     const iat = Math.floor(Date.now() / 1000);
@@ -45,14 +49,23 @@ serve(async (req) => {
     const encodedPayload = btoa(payloadString).replace(/=+$/, "");
     const signatureInput = encoder.encode(`${encodedHeader}.${encodedPayload}`);
 
-    // Convert PEM to ArrayBuffer for signing
-    const privateKey = await crypto.subtle.importKey(
-      "pkcs8",
-      pemToDer(GOOGLE_PRIVATE_KEY),
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
+    // Convert PEM to ArrayBuffer for signing - with proper error handling
+    let privateKey;
+    try {
+      privateKey = await crypto.subtle.importKey(
+        "pkcs8",
+        pemToDer(GOOGLE_PRIVATE_KEY),
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+    } catch (error) {
+      console.error("Error importing private key:", error);
+      return new Response(JSON.stringify({ error: "Failed to import private key" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
 
     const signature = await crypto.subtle.sign(
       { name: "RSASSA-PKCS1-v1_5" },
@@ -144,21 +157,32 @@ serve(async (req) => {
   }
 });
 
-// Helper function to convert PEM to DER format
+// Helper function to convert PEM to DER format with improved error handling
 function pemToDer(pem) {
-  const lines = pem.split('\n');
-  let encoded = '';
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim().length > 0 &&
-        lines[i].indexOf('-BEGIN PRIVATE KEY-') < 0 &&
-        lines[i].indexOf('-END PRIVATE KEY-') < 0) {
-      encoded += lines[i].trim();
+  try {
+    const lines = pem.split('\n');
+    let encoded = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().length > 0 &&
+          !lines[i].includes('-----BEGIN') &&
+          !lines[i].includes('-----END')) {
+        encoded += lines[i].trim();
+      }
     }
+    
+    if (!encoded) {
+      throw new Error("Empty private key content");
+    }
+    
+    const binary = atob(encoded);
+    const buffer = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+    return buffer;
+  } catch (error) {
+    console.error("Error in pemToDer:", error);
+    throw new Error("Failed to decode private key: " + error.message);
   }
-  const binary = atob(encoded);
-  const buffer = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    buffer[i] = binary.charCodeAt(i);
-  }
-  return buffer;
 }
