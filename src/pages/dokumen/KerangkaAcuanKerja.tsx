@@ -34,7 +34,6 @@ interface FormValues {
   subKomponen: string;
   akun: string;
   paguAnggaran: string;
-  jumlahItemKegiatan: string;
   kegiatanDetails: KegiatanDetail[];
   tanggalMulaiKegiatan: Date | null;
   tanggalAkhirKegiatan: Date | null;
@@ -53,7 +52,6 @@ const defaultValues: FormValues = {
   subKomponen: "",
   akun: "",
   paguAnggaran: "",
-  jumlahItemKegiatan: "",
   kegiatanDetails: [],
   tanggalMulaiKegiatan: null,
   tanggalAkhirKegiatan: null,
@@ -392,17 +390,6 @@ const KerangkaAcuanKerja = () => {
                     placeholder="Masukkan pagu anggaran"
                     value={formValues.paguAnggaran}
                     onChange={(e) => handleChange('paguAnggaran', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="jumlahItemKegiatan">Jumlah Item Kegiatan</Label>
-                  <Input
-                    id="jumlahItemKegiatan"
-                    type="number"
-                    placeholder="Masukkan jumlah item kegiatan"
-                    value={formValues.jumlahItemKegiatan}
-                    onChange={(e) => handleChange('jumlahItemKegiatan', e.target.value)}
                   />
                 </div>
               </div>

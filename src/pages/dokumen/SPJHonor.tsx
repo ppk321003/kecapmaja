@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,15 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS } from "@/hooks/use-database";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+
+interface PersonHonor {
+  id: string;
+  personId: string; 
+  type: "organik" | "mitra";
+  jumlah: string;
+  hargaSatuan: string;
+}
 
 interface FormValues {
   namaKegiatan: string;
@@ -27,10 +35,7 @@ interface FormValues {
   komponen: string;
   akun: string;
   tanggalSpj: Date | null;
-  organik: string[];
-  mitra: string[];
-  jumlah: string;
-  hargaSatuan: string;
+  honorDetails: PersonHonor[];
   pembuatDaftar: string;
 }
 
@@ -45,10 +50,7 @@ const defaultValues: FormValues = {
   komponen: "",
   akun: "",
   tanggalSpj: null,
-  organik: [],
-  mitra: [],
-  jumlah: "",
-  hargaSatuan: "",
+  honorDetails: [],
   pembuatDaftar: ""
 };
 
@@ -61,6 +63,7 @@ const SPJHonor = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const [total, setTotal] = useState<number>(0);
   
   // Data queries
   const { data: programs = [] } = usePrograms();
@@ -70,6 +73,45 @@ const SPJHonor = () => {
   const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
+
+  // Update honor details when selected people change
+  useEffect(() => {
+    // Create honor details for organik staff
+    const organikHonors = selectedOrganik.map(id => ({
+      id: `organik-${id}`,
+      personId: id,
+      type: "organik" as const,
+      jumlah: "1",
+      hargaSatuan: ""
+    }));
+    
+    // Create honor details for mitra staff
+    const mitraHonors = selectedMitra.map(id => ({
+      id: `mitra-${id}`,
+      personId: id,
+      type: "mitra" as const,
+      jumlah: "1",
+      hargaSatuan: ""
+    }));
+    
+    // Update form values with combined honor details
+    setFormValues(prev => ({
+      ...prev,
+      honorDetails: [...organikHonors, ...mitraHonors]
+    }));
+  }, [selectedOrganik, selectedMitra]);
+  
+  // Calculate total whenever honor details change
+  useEffect(() => {
+    const calculatedTotal = formValues.honorDetails.reduce((sum, detail) => {
+      const jumlah = parseFloat(detail.jumlah) || 0;
+      const hargaSatuan = parseFloat(detail.hargaSatuan) || 0;
+      return sum + (jumlah * hargaSatuan);
+    }, 0);
+    
+    setTotal(calculatedTotal);
+  }, [formValues.honorDetails]);
 
   const handleChange = (field: keyof FormValues, value: any) => {
     setFormValues((prev) => {
@@ -111,6 +153,15 @@ const SPJHonor = () => {
       setSelectedMitra(selectedMitra.filter(item => item !== id));
     }
   };
+  
+  const handleHonorDetailChange = (id: string, field: keyof PersonHonor, value: string) => {
+    setFormValues(prev => ({
+      ...prev,
+      honorDetails: prev.honorDetails.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,8 +171,7 @@ const SPJHonor = () => {
       // Combine form values with selected staff
       const submitData = {
         ...formValues,
-        organik: selectedOrganik,
-        mitra: selectedMitra
+        totalHonor: total
       };
       
       console.log('Form submitted:', submitData);
@@ -143,6 +193,16 @@ const SPJHonor = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  const getPersonName = (personId: string, type: "organik" | "mitra") => {
+    if (type === "organik") {
+      const person = organikList.find(o => o.id === personId);
+      return person ? person.name : "";
+    } else {
+      const person = mitraList.find(m => m.id === personId);
+      return person ? `${person.name} - ${person.kecamatan || ""}` : "";
     }
   };
 
@@ -318,28 +378,6 @@ const SPJHonor = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="jumlah">Jumlah</Label>
-                  <Input
-                    id="jumlah"
-                    type="number"
-                    placeholder="Masukkan jumlah"
-                    value={formValues.jumlah}
-                    onChange={(e) => handleChange('jumlah', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="hargaSatuan">Harga Satuan</Label>
-                  <Input
-                    id="hargaSatuan"
-                    type="number"
-                    placeholder="Masukkan harga satuan"
-                    value={formValues.hargaSatuan}
-                    onChange={(e) => handleChange('hargaSatuan', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label>Tanggal (SPJ)</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -404,7 +442,7 @@ const SPJHonor = () => {
                           }
                         />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.nip || 'N/A'}
+                          {staff.name}
                         </Label>
                       </div>
                     ))}
@@ -414,12 +452,7 @@ const SPJHonor = () => {
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Replace with real data from hook when available */}
-                    {[
-                      { id: "1", name: "Mitra 1" },
-                      { id: "2", name: "Mitra 2" },
-                      { id: "3", name: "Mitra 3" },
-                    ].map((staff) => (
+                    {mitraList.map((staff) => (
                       <div key={staff.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`mitra-${staff.id}`}
@@ -429,12 +462,65 @@ const SPJHonor = () => {
                           }
                         />
                         <Label htmlFor={`mitra-${staff.id}`} className="text-sm">
-                          {staff.name}
+                          {staff.name} - {staff.kecamatan || ''}
                         </Label>
                       </div>
                     ))}
                   </div>
                 </div>
+                
+                {formValues.honorDetails.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="font-medium">Detail Honorarium</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="border px-4 py-2 text-left">Nama</th>
+                            <th className="border px-4 py-2 text-right">Jumlah</th>
+                            <th className="border px-4 py-2 text-right">Harga Satuan</th>
+                            <th className="border px-4 py-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formValues.honorDetails.map((detail) => {
+                            const personName = getPersonName(detail.personId, detail.type);
+                            const detailTotal = (parseFloat(detail.jumlah) || 0) * (parseFloat(detail.hargaSatuan) || 0);
+                            
+                            return (
+                              <tr key={detail.id}>
+                                <td className="border px-4 py-2">{personName}</td>
+                                <td className="border px-4 py-2">
+                                  <Input
+                                    type="number"
+                                    value={detail.jumlah}
+                                    onChange={(e) => handleHonorDetailChange(detail.id, 'jumlah', e.target.value)}
+                                    className="text-right"
+                                  />
+                                </td>
+                                <td className="border px-4 py-2">
+                                  <Input
+                                    type="number"
+                                    value={detail.hargaSatuan}
+                                    onChange={(e) => handleHonorDetailChange(detail.id, 'hargaSatuan', e.target.value)}
+                                    className="text-right"
+                                  />
+                                </td>
+                                <td className="border px-4 py-2 text-right">
+                                  {detailTotal.toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="font-bold bg-muted">
+                            <td colSpan={3} className="border px-4 py-2 text-right">Total</td>
+                            <td className="border px-4 py-2 text-right">{total.toLocaleString('id-ID')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-4">
