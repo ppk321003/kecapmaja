@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -15,7 +14,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
-import { useOrganikBPS } from "@/hooks/use-database";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 
 interface FormValues {
   namaKegiatan: string;
@@ -109,6 +108,7 @@ const DaftarHadir = () => {
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
   const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
 
   // Conditional options based on selections
   const filteredKegiatanOptions = formValues.program 
@@ -539,7 +539,7 @@ const DaftarHadir = () => {
                           }
                         />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.nip || 'N/A'}
+                          {staff.name} {/* Show only name without NIP */}
                         </Label>
                       </div>
                     ))}
@@ -549,17 +549,17 @@ const DaftarHadir = () => {
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {mitraOptions.map((staff) => (
-                      <div key={staff.id} className="flex items-center space-x-2">
+                    {mitraList.map((mitra) => (
+                      <div key={mitra.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`mitra-${staff.id}`}
-                          checked={selectedMitra.includes(staff.id)}
+                          id={`mitra-${mitra.id}`}
+                          checked={selectedMitra.includes(mitra.id)}
                           onCheckedChange={(checked) => 
-                            handleMitraChange(staff.id, checked === true)
+                            handleMitraChange(mitra.id, checked === true)
                           }
                         />
-                        <Label htmlFor={`mitra-${staff.id}`} className="text-sm">
-                          {staff.name}
+                        <Label htmlFor={`mitra-${mitra.id}`} className="text-sm">
+                          {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
                         </Label>
                       </div>
                     ))}

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -175,11 +174,12 @@ export const useMitraStatistik = () => {
       
       if (error) throw error;
       
-      // Make sure each mitra object has the kecamatan property
+      // Convert database fields to match our type definition
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        kecamatan: item.kecamatan || "",  // Handle the kecamatan property explicitly
+        // Make sure kecamatan exists, even if it's not in the database
+        kecamatan: item.kecamatan ?? "",
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];
