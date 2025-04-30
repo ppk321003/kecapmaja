@@ -98,16 +98,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between border-b px-6 bg-sky-800">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="ml-auto flex items-center space-x-4">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </div>
-        </header>
+        
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-100">
           <Card className="p-4 md:p-6 bg-slate-100">
