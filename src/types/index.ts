@@ -67,6 +67,7 @@ export interface Jenis {
 export interface MitraStatistik {
   id: string;
   name: string;
+  kecamatan?: string;
   created_at?: string;
   updated_at?: string;
 }
