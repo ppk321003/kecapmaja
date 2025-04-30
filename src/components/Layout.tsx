@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 bg-sky-800">
+          <div className="flex-1 overflow-y-auto p-4 bg-slate-900">
             <nav className="space-y-1">
               {menuItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${location.pathname === item.path ? "bg-sidebar-accent text-sidebar-foreground" : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"}`}>
                   {item.icon}
