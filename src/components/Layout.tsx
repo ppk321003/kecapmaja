@@ -98,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between border-b bg-white px-6 dark:bg-gray-900">
+        <header className="flex h-16 items-center justify-between border-b px-6 bg-sky-800">
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
             <Menu className="h-5 w-5" />
           </Button>
