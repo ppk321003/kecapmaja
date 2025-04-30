@@ -86,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({
                 </Link>)}
             </nav>
           </div>
-          <div className="border-t border-sidebar-border p-4">
+          <div className="border-t border-sidebar-border p-4 bg-cyan-900">
             <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">Maju Aman Jeung Amanah</div>
             <Button variant="outline" onClick={toggleTheme} className="w-full bg-sidebar-accent/50 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-foreground">
               {theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
