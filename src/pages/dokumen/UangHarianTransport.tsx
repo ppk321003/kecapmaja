@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -14,7 +13,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS } from "@/hooks/use-database";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 
 interface FormValues {
   namaKegiatan: string;
@@ -53,11 +52,6 @@ const defaultValues: FormValues = {
 };
 
 const trainingCenterOptions = ["Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
-const mitraOptions = [
-  { id: "1", name: "Mitra 1" },
-  { id: "2", name: "Mitra 2" },
-  { id: "3", name: "Mitra 3" }
-];
 
 const UangHarianTransport = () => {
   const navigate = useNavigate();
@@ -74,6 +68,7 @@ const UangHarianTransport = () => {
   const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
 
   const handleChange = (field: keyof FormValues, value: any) => {
     setFormValues((prev) => {
@@ -448,7 +443,7 @@ const UangHarianTransport = () => {
                           }
                         />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.nip || 'N/A'}
+                          {staff.name} {/* Show only name without NIP */}
                         </Label>
                       </div>
                     ))}
@@ -458,17 +453,17 @@ const UangHarianTransport = () => {
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {mitraOptions.map((staff) => (
-                      <div key={staff.id} className="flex items-center space-x-2">
+                    {mitraList.map((mitra) => (
+                      <div key={mitra.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`mitra-${staff.id}`}
-                          checked={selectedMitra.includes(staff.id)}
+                          id={`mitra-${mitra.id}`}
+                          checked={selectedMitra.includes(mitra.id)}
                           onCheckedChange={(checked) => 
-                            handleMitraChange(staff.id, checked === true)
+                            handleMitraChange(mitra.id, checked === true)
                           }
                         />
-                        <Label htmlFor={`mitra-${staff.id}`} className="text-sm">
-                          {staff.name}
+                        <Label htmlFor={`mitra-${mitra.id}`} className="text-sm">
+                          {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
                         </Label>
                       </div>
                     ))}

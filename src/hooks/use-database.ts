@@ -179,7 +179,7 @@ export const useMitraStatistik = () => {
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        kecamatan: item.kecamatan || "",
+        kecamatan: item.kecamatan || "",  // Handle the kecamatan property explicitly
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];
