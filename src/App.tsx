@@ -13,7 +13,6 @@ import BuatDokumen from "./pages/BuatDokumen";
 import KerangkaAcuanKerja from "./pages/dokumen/KerangkaAcuanKerja";
 import DaftarHadir from "./pages/dokumen/DaftarHadir";
 import SPJHonor from "./pages/dokumen/SPJHonor";
-import DaftarHadirPeserta from "./pages/dokumen/DaftarHadirPeserta";
 import TransportLokal from "./pages/dokumen/TransportLokal";
 import UangHarianTransport from "./pages/dokumen/UangHarianTransport";
 import TandaTerima from "./pages/dokumen/TandaTerima";
@@ -35,7 +34,6 @@ const App = () => (
             <Route path="/dokumen/kerangka-acuan-kerja" element={<KerangkaAcuanKerja />} />
             <Route path="/dokumen/daftar-hadir" element={<DaftarHadir />} />
             <Route path="/dokumen/spj-honor" element={<SPJHonor />} />
-            <Route path="/dokumen/daftar-hadir-peserta" element={<DaftarHadirPeserta />} />
             <Route path="/dokumen/transport-lokal" element={<TransportLokal />} />
             <Route path="/dokumen/uang-harian-transport" element={<UangHarianTransport />} />
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />

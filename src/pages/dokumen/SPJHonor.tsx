@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS } from "@/hooks/use-database";
 
 interface FormValues {
   namaKegiatan: string;
@@ -30,6 +31,7 @@ interface FormValues {
   mitra: string[];
   jumlah: string;
   hargaSatuan: string;
+  pembuatDaftar: string;
 }
 
 const defaultValues: FormValues = {
@@ -46,24 +48,12 @@ const defaultValues: FormValues = {
   organik: [],
   mitra: [],
   jumlah: "",
-  hargaSatuan: ""
+  hargaSatuan: "",
+  pembuatDaftar: ""
 };
 
-// Dummy data (same as DaftarHadir.tsx)
-const jenisOptions = ["Pendataan", "Pemeriksaan", "Instruktur"];
-const programOptions = ["Program 1", "Program 2", "Program 3"];
-
-const organikOptions = [
-  { id: "1", name: "Organik 1", nip: "198001012010011001" },
-  { id: "2", name: "Organik 2", nip: "198001012010011002" },
-  { id: "3", name: "Organik 3", nip: "198001012010011003" },
-];
-
-const mitraOptions = [
-  { id: "1", name: "Mitra 1" },
-  { id: "2", name: "Mitra 2" },
-  { id: "3", name: "Mitra 3" },
-];
+// Jenis options
+const jenisOptions = ["SPJ Honor Pendataan", "SPJ Honor Pengawasan", "SPJ Honor Instruktur"];
 
 const SPJHonor = () => {
   const navigate = useNavigate();
@@ -71,12 +61,39 @@ const SPJHonor = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  
+  // Data queries
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatan = [] } = useKegiatan(formValues.program || null);
+  const { data: kros = [] } = useKRO(formValues.kegiatan || null);
+  const { data: ros = [] } = useRO(formValues.kro || null);
+  const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
+  const { data: akuns = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
 
   const handleChange = (field: keyof FormValues, value: any) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormValues((prev) => {
+      const newValues = { ...prev, [field]: value };
+      
+      // Reset dependent fields
+      if (field === 'program') {
+        newValues.kegiatan = '';
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'kegiatan') {
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'kro') {
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'ro') {
+        newValues.komponen = '';
+      }
+      
+      return newValues;
+    });
   };
 
   const handleOrganikChange = (id: string, checked: boolean) => {
@@ -135,7 +152,7 @@ const SPJHonor = () => {
         <div>
           <h1 className="text-2xl font-bold">SPJ Honor</h1>
           <p className="text-sm text-muted-foreground">
-            SPJ Honor Pendataan / Pemeriksaan / Instruktur
+            SPJ Honor Pendataan / Pengawasan / Instruktur
           </p>
         </div>
 
@@ -192,16 +209,113 @@ const SPJHonor = () => {
                       <SelectValue placeholder="Pilih program" />
                     </SelectTrigger>
                     <SelectContent>
-                      {programOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {programs.map((program) => (
+                        <SelectItem key={program.id} value={program.id}>
+                          {program.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* More fields would be added here, similar to DaftarHadir.tsx */}
+                <div className="space-y-2">
+                  <Label htmlFor="kegiatan">Kegiatan</Label>
+                  <Select 
+                    value={formValues.kegiatan} 
+                    onValueChange={(value) => handleChange('kegiatan', value)}
+                    disabled={!formValues.program}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kegiatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kegiatan.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="kro">KRO</Label>
+                  <Select 
+                    value={formValues.kro} 
+                    onValueChange={(value) => handleChange('kro', value)}
+                    disabled={!formValues.kegiatan}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih KRO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kros.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ro">RO</Label>
+                  <Select 
+                    value={formValues.ro} 
+                    onValueChange={(value) => handleChange('ro', value)}
+                    disabled={!formValues.kro}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih RO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ros.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="komponen">Komponen</Label>
+                  <Select 
+                    value={formValues.komponen} 
+                    onValueChange={(value) => handleChange('komponen', value)}
+                    disabled={!formValues.ro}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih komponen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {komponenOptions.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="akun">Akun</Label>
+                  <Select 
+                    value={formValues.akun} 
+                    onValueChange={(value) => handleChange('akun', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih akun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {akuns.map((akun) => (
+                        <SelectItem key={akun.id} value={akun.id}>
+                          {akun.name} ({akun.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="jumlah">Jumlah</Label>
@@ -230,7 +344,7 @@ const SPJHonor = () => {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant={"outline"}
+                        variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !formValues.tanggalSpj && "text-muted-foreground"
@@ -250,9 +364,29 @@ const SPJHonor = () => {
                         selected={formValues.tanggalSpj || undefined}
                         onSelect={(date) => handleChange('tanggalSpj', date)}
                         initialFocus
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -260,7 +394,7 @@ const SPJHonor = () => {
                 <div className="space-y-2">
                   <Label>Organik BPS</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {organikOptions.map((staff) => (
+                    {organikList.map((staff) => (
                       <div key={staff.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`organik-${staff.id}`}
@@ -270,7 +404,7 @@ const SPJHonor = () => {
                           }
                         />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.nip}
+                          {staff.name} - {staff.nip || 'N/A'}
                         </Label>
                       </div>
                     ))}
@@ -280,7 +414,12 @@ const SPJHonor = () => {
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {mitraOptions.map((staff) => (
+                    {/* Replace with real data from hook when available */}
+                    {[
+                      { id: "1", name: "Mitra 1" },
+                      { id: "2", name: "Mitra 2" },
+                      { id: "3", name: "Mitra 3" },
+                    ].map((staff) => (
                       <div key={staff.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`mitra-${staff.id}`}

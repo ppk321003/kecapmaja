@@ -24,17 +24,10 @@ const documentTypes = [
   },
   {
     title: "SPJ Honor",
-    description: "SPJ Honor Pendataan / Pemeriksaan / Instruktur",
+    description: "SPJ Honor Pendataan / Pengawasan / Instruktur",
     path: "/dokumen/spj-honor",
     color: "bg-yellow-50 dark:bg-yellow-900/20",
     iconColor: "text-bps-yellow"
-  },
-  {
-    title: "Daftar Hadir Peserta",
-    description: "Daftar Hadir Peserta Pelatihan / Instruktur / Panitia / Rapat",
-    path: "/dokumen/daftar-hadir-peserta",
-    color: "bg-orange-50 dark:bg-orange-900/20",
-    iconColor: "text-bps-orange"
   },
   {
     title: "Transport Lokal",

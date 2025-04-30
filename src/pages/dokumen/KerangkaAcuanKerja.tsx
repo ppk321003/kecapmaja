@@ -8,7 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument } from "@/hooks/use-database";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument, useOrganikBPS } from "@/hooks/use-database";
+
+interface KegiatanDetail {
+  id: string;
+  namaKegiatan: string;
+  volume: string;
+  satuan: string;
+  hargaSatuan: string;
+}
 
 interface FormValues {
   jenisKak: string;
@@ -22,6 +35,11 @@ interface FormValues {
   akun: string;
   paguAnggaran: string;
   jumlahItemKegiatan: string;
+  kegiatanDetails: KegiatanDetail[];
+  tanggalMulaiKegiatan: Date | null;
+  tanggalAkhirKegiatan: Date | null;
+  tanggalPengajuanKAK: Date | null;
+  pembuatDaftar: string;
 }
 
 const defaultValues: FormValues = {
@@ -35,17 +53,26 @@ const defaultValues: FormValues = {
   subKomponen: "",
   akun: "",
   paguAnggaran: "",
-  jumlahItemKegiatan: ""
+  jumlahItemKegiatan: "",
+  kegiatanDetails: [],
+  tanggalMulaiKegiatan: null,
+  tanggalAkhirKegiatan: null,
+  tanggalPengajuanKAK: null,
+  pembuatDaftar: ""
 };
 
 // Options
 const jenisKakOptions = ["Reguler", "Tambahan", "Khusus"];
 const jenisPaketMeetingOptions = ["Full Day", "Half Day", "Coffee Break"];
 const subKomponenOptions = ["PPIS", "Dukman"];
+const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
 
 const KerangkaAcuanKerja = () => {
   const navigate = useNavigate();
-  const [formValues, setFormValues] = useState<FormValues>(defaultValues);
+  const [formValues, setFormValues] = useState<FormValues>({
+    ...defaultValues,
+    kegiatanDetails: [{ id: `kegiatan-${Date.now()}`, namaKegiatan: "", volume: "", satuan: "", hargaSatuan: "" }]
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Data queries
@@ -55,11 +82,12 @@ const KerangkaAcuanKerja = () => {
   const { data: ros = [] } = useRO(formValues.kro || null);
   const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
   const { data: akuns = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
   
   // Mutation to save document
   const saveDocument = useSaveDocument();
 
-  const handleChange = (field: keyof FormValues, value: string) => {
+  const handleChange = (field: keyof FormValues, value: any) => {
     setFormValues((prev) => {
       const newValues = { ...prev, [field]: value };
       
@@ -84,9 +112,62 @@ const KerangkaAcuanKerja = () => {
     });
   };
 
+  const handleKegiatanDetailChange = (id: string, field: keyof KegiatanDetail, value: string) => {
+    setFormValues(prev => ({
+      ...prev,
+      kegiatanDetails: prev.kegiatanDetails.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const addKegiatanDetail = () => {
+    setFormValues(prev => ({
+      ...prev,
+      kegiatanDetails: [
+        ...prev.kegiatanDetails,
+        { id: `kegiatan-${Date.now()}`, namaKegiatan: "", volume: "", satuan: "", hargaSatuan: "" }
+      ]
+    }));
+  };
+
+  const removeKegiatanDetail = (id: string) => {
+    if (formValues.kegiatanDetails.length <= 1) {
+      return; // Keep at least one kegiatan detail
+    }
+    
+    setFormValues(prev => ({
+      ...prev,
+      kegiatanDetails: prev.kegiatanDetails.filter(item => item.id !== id)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    // Validate dates
+    if (formValues.tanggalPengajuanKAK && formValues.tanggalMulaiKegiatan && 
+        formValues.tanggalPengajuanKAK > formValues.tanggalMulaiKegiatan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi tanggal gagal",
+        description: "Tanggal pengajuan KAK harus sebelum tanggal mulai kegiatan",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formValues.tanggalMulaiKegiatan && formValues.tanggalAkhirKegiatan && 
+        formValues.tanggalMulaiKegiatan > formValues.tanggalAkhirKegiatan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi tanggal gagal",
+        description: "Tanggal akhir kegiatan harus setelah atau sama dengan tanggal mulai kegiatan",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       // Save to Supabase
@@ -323,6 +404,202 @@ const KerangkaAcuanKerja = () => {
                     value={formValues.jumlahItemKegiatan}
                     onChange={(e) => handleChange('jumlahItemKegiatan', e.target.value)}
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Detail Kegiatan</h3>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addKegiatanDetail}
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Tambah Kegiatan
+                  </Button>
+                </div>
+
+                {formValues.kegiatanDetails.map((kegiatan, index) => (
+                  <Card key={kegiatan.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium">Kegiatan {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeKegiatanDetail(kegiatan.id)}
+                          disabled={formValues.kegiatanDetails.length <= 1}
+                        >
+                          <Trash className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`namaKegiatan-${kegiatan.id}`}>Nama Kegiatan</Label>
+                          <Input
+                            id={`namaKegiatan-${kegiatan.id}`}
+                            placeholder="Masukkan nama kegiatan"
+                            value={kegiatan.namaKegiatan}
+                            onChange={(e) => handleKegiatanDetailChange(kegiatan.id, 'namaKegiatan', e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`volume-${kegiatan.id}`}>Volume</Label>
+                          <Input
+                            id={`volume-${kegiatan.id}`}
+                            type="number"
+                            placeholder="Masukkan volume"
+                            value={kegiatan.volume}
+                            onChange={(e) => handleKegiatanDetailChange(kegiatan.id, 'volume', e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`satuan-${kegiatan.id}`}>Satuan</Label>
+                          <Select
+                            value={kegiatan.satuan}
+                            onValueChange={(value) => handleKegiatanDetailChange(kegiatan.id, 'satuan', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih satuan" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {satuanOptions.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`hargaSatuan-${kegiatan.id}`}>Harga Satuan</Label>
+                          <Input
+                            id={`hargaSatuan-${kegiatan.id}`}
+                            type="number"
+                            placeholder="Masukkan harga satuan"
+                            value={kegiatan.hargaSatuan}
+                            onChange={(e) => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Tanggal Pengajuan KAK</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formValues.tanggalPengajuanKAK && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalPengajuanKAK ? (
+                          format(formValues.tanggalPengajuanKAK, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formValues.tanggalPengajuanKAK || undefined}
+                        onSelect={(date) => handleChange('tanggalPengajuanKAK', date)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tanggal Mulai Kegiatan</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formValues.tanggalMulaiKegiatan && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalMulaiKegiatan ? (
+                          format(formValues.tanggalMulaiKegiatan, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formValues.tanggalMulaiKegiatan || undefined}
+                        onSelect={(date) => handleChange('tanggalMulaiKegiatan', date)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tanggal Akhir Kegiatan</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formValues.tanggalAkhirKegiatan && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalAkhirKegiatan ? (
+                          format(formValues.tanggalAkhirKegiatan, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formValues.tanggalAkhirKegiatan || undefined}
+                        onSelect={(date) => handleChange('tanggalAkhirKegiatan', date)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

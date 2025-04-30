@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
+import { useOrganikBPS } from "@/hooks/use-database";
 
 interface FormValues {
   namaKegiatan: string;
@@ -29,6 +31,7 @@ interface FormValues {
   tanggalSelesai: Date | null;
   organik: string[];
   mitra: string[];
+  pembuatDaftar: string;
 }
 
 const defaultValues: FormValues = {
@@ -44,7 +47,8 @@ const defaultValues: FormValues = {
   tanggalMulai: null,
   tanggalSelesai: null,
   organik: [],
-  mitra: []
+  mitra: [],
+  pembuatDaftar: ""
 };
 
 // Dummy data
@@ -90,14 +94,6 @@ const komponenOptions = {
 const akunOptions = ["Bahan", "Honor", "Modal", "Paket Meeting", "Perjalanan Dinas"];
 
 // Dummy staff data
-const organikOptions = [
-  { id: "1", name: "Organik 1", nip: "198001012010011001" },
-  { id: "2", name: "Organik 2", nip: "198001012010011002" },
-  { id: "3", name: "Organik 3", nip: "198001012010011003" },
-  { id: "4", name: "Organik 4", nip: "198001012010011004" },
-  { id: "5", name: "Organik 5", nip: "198001012010011005" }
-];
-
 const mitraOptions = [
   { id: "1", name: "Mitra 1" },
   { id: "2", name: "Mitra 2" },
@@ -112,6 +108,7 @@ const DaftarHadir = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const { data: organikList = [] } = useOrganikBPS();
 
   // Conditional options based on selections
   const filteredKegiatanOptions = formValues.program 
@@ -187,13 +184,14 @@ const DaftarHadir = () => {
         data.akun,
         data.tanggalMulai ? format(new Date(data.tanggalMulai), "yyyy-MM-dd") : "",
         data.tanggalSelesai ? format(new Date(data.tanggalSelesai), "yyyy-MM-dd") : "",
+        data.pembuatDaftar,
         new Date().toISOString() // timestamp
       ];
 
       // Append main data to DaftarHadir sheet
       const mainResponse = await GoogleSheetsService.appendData({
         sheetName: "DaftarHadir",
-        range: "A2:L2",
+        range: "A2:M2",
         values: [mainData]
       });
 
@@ -206,7 +204,7 @@ const DaftarHadir = () => {
         // Save selected organik data with reference to the main row
         if (data.organik.length > 0) {
           const organikRows = data.organik.map((organikId: string) => {
-            const organik = organikOptions.find(org => org.id === organikId);
+            const organik = organikList.find(org => org.id === organikId);
             return [rowNumber.toString(), organik?.name || "", organik?.nip || ""];
           });
 
@@ -450,7 +448,7 @@ const DaftarHadir = () => {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant={"outline"}
+                        variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !formValues.tanggalMulai && "text-muted-foreground"
@@ -470,6 +468,7 @@ const DaftarHadir = () => {
                         selected={formValues.tanggalMulai || undefined}
                         onSelect={(date) => handleChange('tanggalMulai', date)}
                         initialFocus
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -480,7 +479,7 @@ const DaftarHadir = () => {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant={"outline"}
+                        variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !formValues.tanggalSelesai && "text-muted-foreground"
@@ -500,9 +499,29 @@ const DaftarHadir = () => {
                         selected={formValues.tanggalSelesai || undefined}
                         onSelect={(date) => handleChange('tanggalSelesai', date)}
                         initialFocus
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -510,7 +529,7 @@ const DaftarHadir = () => {
                 <div className="space-y-2">
                   <Label>Organik BPS</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {organikOptions.map((staff) => (
+                    {organikList.map((staff) => (
                       <div key={staff.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`organik-${staff.id}`}
@@ -520,7 +539,7 @@ const DaftarHadir = () => {
                           }
                         />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.nip}
+                          {staff.name} - {staff.nip || 'N/A'}
                         </Label>
                       </div>
                     ))}
