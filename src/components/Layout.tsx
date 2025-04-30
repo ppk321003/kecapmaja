@@ -66,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Sidebar for larger screens */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 bg-cyan-800">
             <Link to="/" className="flex items-center space-x-2">
               <img alt="Logo BPS" className="h-8 w-auto" src="/lovable-uploads/d9bb2043-8636-46b0-ad6b-f8384eef5f52.jpg" />
               <div className="flex flex-col">
