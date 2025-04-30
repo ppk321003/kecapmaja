@@ -174,7 +174,15 @@ export const useMitraStatistik = () => {
         .order("name");
       
       if (error) throw error;
-      return data as MitraStatistik[];
+      
+      // Make sure each mitra object has the kecamatan property
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        kecamatan: item.kecamatan || "",
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) as MitraStatistik[];
     }
   });
 };

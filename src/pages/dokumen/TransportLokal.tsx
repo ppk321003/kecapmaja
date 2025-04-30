@@ -11,11 +11,20 @@ const TransportLokal = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Transport Lokal</h1>
-          <p className="text-sm text-muted-foreground">
-            Transport Lokal (Pendataan, Pemeriksaan, Supervisi)
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Transport Lokal</h1>
+            <p className="text-sm text-muted-foreground">
+              Transport Lokal (Pendataan, Pemeriksaan, Supervisi)
+            </p>
+          </div>
+          <div className="hidden md:block">
+            <img 
+              src="/lovable-uploads/1ef78670-6d2c-4f64-8c6e-149d6b9d2d19.png" 
+              alt="Kecap Maja Logo" 
+              className="h-16 w-auto"
+            />
+          </div>
         </div>
 
         <Card>

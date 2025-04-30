@@ -202,7 +202,8 @@ const SPJHonor = () => {
       return person ? person.name : "";
     } else {
       const person = mitraList.find(m => m.id === personId);
-      return person ? `${person.name} - ${person.kecamatan || ""}` : "";
+      // Safely access the kecamatan property if it exists
+      return person ? `${person.name}${person.kecamatan ? ` - ${person.kecamatan}` : ""}` : "";
     }
   };
 
@@ -428,7 +429,61 @@ const SPJHonor = () => {
                 </div>
               </div>
 
-              <div className="space-y-6 pt-4">
+              <div className="space-y-6">
+                {/* Honor Details Table - Moved up as requested */}
+                {formValues.honorDetails.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="font-medium">Detail Honorarium</h3>
+                    <div className="overflow-x-auto border rounded-md">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="border border-border px-3 py-1.5 text-left font-medium">Nama</th>
+                            <th className="border border-border px-3 py-1.5 text-right font-medium w-24">Jumlah</th>
+                            <th className="border border-border px-3 py-1.5 text-right font-medium w-32">Harga Satuan</th>
+                            <th className="border border-border px-3 py-1.5 text-right font-medium w-32">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formValues.honorDetails.map((detail) => {
+                            const personName = getPersonName(detail.personId, detail.type);
+                            const detailTotal = (parseFloat(detail.jumlah) || 0) * (parseFloat(detail.hargaSatuan) || 0);
+                            
+                            return (
+                              <tr key={detail.id}>
+                                <td className="border border-border px-3 py-1.5">{personName}</td>
+                                <td className="border border-border px-3 py-1.5">
+                                  <Input
+                                    type="number"
+                                    value={detail.jumlah}
+                                    onChange={(e) => handleHonorDetailChange(detail.id, 'jumlah', e.target.value)}
+                                    className="text-right h-7 px-2 text-xs"
+                                  />
+                                </td>
+                                <td className="border border-border px-3 py-1.5">
+                                  <Input
+                                    type="number"
+                                    value={detail.hargaSatuan}
+                                    onChange={(e) => handleHonorDetailChange(detail.id, 'hargaSatuan', e.target.value)}
+                                    className="text-right h-7 px-2 text-xs"
+                                  />
+                                </td>
+                                <td className="border border-border px-3 py-1.5 text-right">
+                                  {detailTotal.toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="font-bold bg-muted">
+                            <td colSpan={3} className="border border-border px-3 py-1.5 text-right">Total</td>
+                            <td className="border border-border px-3 py-1.5 text-right">{total.toLocaleString('id-ID')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Organik BPS</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -462,65 +517,12 @@ const SPJHonor = () => {
                           }
                         />
                         <Label htmlFor={`mitra-${staff.id}`} className="text-sm">
-                          {staff.name} - {staff.kecamatan || ''}
+                          {staff.name}{staff.kecamatan ? ` - ${staff.kecamatan}` : ''}
                         </Label>
                       </div>
                     ))}
                   </div>
                 </div>
-                
-                {formValues.honorDetails.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Detail Honorarium</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-muted">
-                            <th className="border px-4 py-2 text-left">Nama</th>
-                            <th className="border px-4 py-2 text-right">Jumlah</th>
-                            <th className="border px-4 py-2 text-right">Harga Satuan</th>
-                            <th className="border px-4 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formValues.honorDetails.map((detail) => {
-                            const personName = getPersonName(detail.personId, detail.type);
-                            const detailTotal = (parseFloat(detail.jumlah) || 0) * (parseFloat(detail.hargaSatuan) || 0);
-                            
-                            return (
-                              <tr key={detail.id}>
-                                <td className="border px-4 py-2">{personName}</td>
-                                <td className="border px-4 py-2">
-                                  <Input
-                                    type="number"
-                                    value={detail.jumlah}
-                                    onChange={(e) => handleHonorDetailChange(detail.id, 'jumlah', e.target.value)}
-                                    className="text-right"
-                                  />
-                                </td>
-                                <td className="border px-4 py-2">
-                                  <Input
-                                    type="number"
-                                    value={detail.hargaSatuan}
-                                    onChange={(e) => handleHonorDetailChange(detail.id, 'hargaSatuan', e.target.value)}
-                                    className="text-right"
-                                  />
-                                </td>
-                                <td className="border px-4 py-2 text-right">
-                                  {detailTotal.toLocaleString('id-ID')}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          <tr className="font-bold bg-muted">
-                            <td colSpan={3} className="border px-4 py-2 text-right">Total</td>
-                            <td className="border px-4 py-2 text-right">{total.toLocaleString('id-ID')}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex space-x-4">

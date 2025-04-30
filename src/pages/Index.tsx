@@ -93,10 +93,21 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">AdministrasiKu-3210</h1>
+        <div className="flex flex-col items-center justify-center pb-6 text-center">
+          <div className="mx-auto mb-4 flex justify-center">
+            <img 
+              src="/lovable-uploads/1ef78670-6d2c-4f64-8c6e-149d6b9d2d19.png" 
+              alt="Kecap Maja Logo" 
+              className="h-40 w-auto"
+            />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">Kecap Maja</h1>
           <p className="mt-2 text-muted-foreground">
-            Aplikasi administrasi untuk BPS Kabupaten Majalengka
+            <span className="font-bold">KECAP:</span> Keuangan Cekatan Anggaran Pengadaan<br/>
+            <span className="font-bold">MAJA:</span> Maju Aman Jeung Amanah
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka
           </p>
         </div>
 

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Link, useLocation } from "react-router-dom";
-import { Sun, Moon, Menu, X, FileText, Globe, Database, FileArchive, File, Book, Settings, Table } from "lucide-react";
+import { Sun, Moon, Menu, X, FileText, Globe, Database, FileArchive, File, Book, Table, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -79,12 +79,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex h-screen w-full overflow-hidden">
       {/* Sidebar for larger screens */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-[#1EAEDB] text-white shadow-lg transition-transform duration-300 dark:bg-[#0FA0CE] lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b border-white/20 px-4">
+          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
             <Link to="/" className="flex items-center space-x-2">
               <img 
                 src="https://bps.go.id/images/logo-bps.svg" 
@@ -92,15 +92,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 className="h-8 w-auto" 
               />
               <div className="flex flex-col">
-                <span className="font-bold text-white">Kecap Maja</span>
-                <span className="text-xs text-white/80">Keuangan Cekatan Anggaran Pengadaan</span>
+                <span className="font-bold text-sidebar-foreground">Kecap Maja</span>
+                <span className="text-xs text-sidebar-foreground/80">Keuangan Cekatan Anggaran Pengadaan</span>
               </div>
             </Link>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={toggleSidebar} 
-              className="lg:hidden text-white hover:bg-white/20"
+              className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -113,8 +113,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   to={item.path}
                   className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     location.pathname === item.path 
-                      ? "bg-white/20 text-white" 
-                      : "hover:bg-white/10 text-white/90"
+                      ? "bg-sidebar-accent text-sidebar-foreground" 
+                      : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
                   }`}
                 >
                   {item.icon}
@@ -123,12 +123,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               ))}
             </nav>
           </div>
-          <div className="border-t border-white/20 p-4">
-            <div className="text-xs text-white/80 mb-2 text-center">MAJA: Maju Aman Jeung Amanah</div>
+          <div className="border-t border-sidebar-border p-4">
+            <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">MAJA: Maju Aman Jeung Amanah</div>
             <Button 
               variant="outline" 
               onClick={toggleTheme} 
-              className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white"
+              className="w-full bg-sidebar-accent/50 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               {theme === "light" ? (
                 <Moon className="mr-2 h-4 w-4" />
