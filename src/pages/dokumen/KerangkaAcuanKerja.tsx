@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument } from "@/hooks/use-database";
 
 interface FormValues {
   jenisKak: string;
   jenisPaketMeeting: string;
   programPembebanan: string;
   kegiatan: string;
-  rincianOutput: string;
+  kro: string;
+  ro: string;
   komponenOutput: string;
   subKomponen: string;
   akun: string;
@@ -27,7 +29,8 @@ const defaultValues: FormValues = {
   jenisPaketMeeting: "",
   programPembebanan: "",
   kegiatan: "",
-  rincianOutput: "",
+  kro: "",
+  ro: "",
   komponenOutput: "",
   subKomponen: "",
   akun: "",
@@ -35,37 +38,26 @@ const defaultValues: FormValues = {
   jumlahItemKegiatan: ""
 };
 
-// Dummy options
+// Options
 const jenisKakOptions = ["Reguler", "Tambahan", "Khusus"];
 const jenisPaketMeetingOptions = ["Full Day", "Half Day", "Coffee Break"];
-const programPembebananOptions = ["Program 1", "Program 2", "Program 3"];
-const kegiatanOptions = {
-  "Program 1": ["Kegiatan 1-A", "Kegiatan 1-B"],
-  "Program 2": ["Kegiatan 2-A", "Kegiatan 2-B"],
-  "Program 3": ["Kegiatan 3-A", "Kegiatan 3-B"]
-};
-const rincianOutputOptions = ["Rincian Output 1", "Rincian Output 2", "Rincian Output 3"];
-const komponenOutputOptions = {
-  "Rincian Output 1": ["Komponen 1-A", "Komponen 1-B"],
-  "Rincian Output 2": ["Komponen 2-A", "Komponen 2-B"],
-  "Rincian Output 3": ["Komponen 3-A", "Komponen 3-B"]
-};
 const subKomponenOptions = ["PPIS", "Dukman"];
-const akunOptions = ["Bahan", "Honor", "Modal", "Paket Meeting", "Perjalanan Dinas"];
 
 const KerangkaAcuanKerja = () => {
   const navigate = useNavigate();
   const [formValues, setFormValues] = useState<FormValues>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Conditional options based on selections
-  const filteredKegiatanOptions = formValues.programPembebanan 
-    ? kegiatanOptions[formValues.programPembebanan as keyof typeof kegiatanOptions] || []
-    : [];
-
-  const filteredKomponenOptions = formValues.rincianOutput 
-    ? komponenOutputOptions[formValues.rincianOutput as keyof typeof komponenOutputOptions] || []
-    : [];
+  
+  // Data queries
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatan = [] } = useKegiatan(formValues.programPembebanan || null);
+  const { data: kros = [] } = useKRO(formValues.kegiatan || null);
+  const { data: ros = [] } = useRO(formValues.kro || null);
+  const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
+  const { data: akuns = [] } = useAkun();
+  
+  // Mutation to save document
+  const saveDocument = useSaveDocument();
 
   const handleChange = (field: keyof FormValues, value: string) => {
     setFormValues((prev) => {
@@ -74,8 +66,17 @@ const KerangkaAcuanKerja = () => {
       // Reset dependent fields
       if (field === 'programPembebanan') {
         newValues.kegiatan = '';
-      }
-      if (field === 'rincianOutput') {
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponenOutput = '';
+      } else if (field === 'kegiatan') {
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponenOutput = '';
+      } else if (field === 'kro') {
+        newValues.ro = '';
+        newValues.komponenOutput = '';
+      } else if (field === 'ro') {
         newValues.komponenOutput = '';
       }
       
@@ -88,11 +89,12 @@ const KerangkaAcuanKerja = () => {
     setIsSubmitting(true);
 
     try {
-      // Here you would integrate with Google Spreadsheet & Supabase
-      // For now, we'll just simulate a submission
-      console.log('Form submitted:', formValues);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Save to Supabase
+      await saveDocument.mutateAsync({
+        jenisId: "00000000-0000-0000-0000-000000000001", // ID for KAK in the jenis table
+        title: `KAK - ${formValues.jenisKak} - ${formValues.programPembebanan}`,
+        data: formValues,
+      });
       
       toast({
         title: "Dokumen berhasil dibuat",
@@ -174,9 +176,9 @@ const KerangkaAcuanKerja = () => {
                       <SelectValue placeholder="Pilih program pembebanan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {programPembebananOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {programs.map((program) => (
+                        <SelectItem key={program.id} value={program.id}>
+                          {program.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -194,9 +196,9 @@ const KerangkaAcuanKerja = () => {
                       <SelectValue placeholder="Pilih kegiatan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredKegiatanOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {kegiatan.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -204,18 +206,39 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="rincianOutput">Rincian Output</Label>
+                  <Label htmlFor="kro">KRO</Label>
                   <Select 
-                    value={formValues.rincianOutput} 
-                    onValueChange={(value) => handleChange('rincianOutput', value)}
+                    value={formValues.kro} 
+                    onValueChange={(value) => handleChange('kro', value)}
+                    disabled={!formValues.kegiatan}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih rincian output" />
+                      <SelectValue placeholder="Pilih KRO" />
                     </SelectTrigger>
                     <SelectContent>
-                      {rincianOutputOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {kros.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ro">RO</Label>
+                  <Select 
+                    value={formValues.ro} 
+                    onValueChange={(value) => handleChange('ro', value)}
+                    disabled={!formValues.kro}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih RO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ros.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -227,15 +250,15 @@ const KerangkaAcuanKerja = () => {
                   <Select 
                     value={formValues.komponenOutput} 
                     onValueChange={(value) => handleChange('komponenOutput', value)}
-                    disabled={!formValues.rincianOutput}
+                    disabled={!formValues.ro}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih komponen output" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredKomponenOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {komponenOptions.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -271,9 +294,9 @@ const KerangkaAcuanKerja = () => {
                       <SelectValue placeholder="Pilih akun" />
                     </SelectTrigger>
                     <SelectContent>
-                      {akunOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
+                      {akuns.map((akun) => (
+                        <SelectItem key={akun.id} value={akun.id}>
+                          {akun.name} ({akun.code})
                         </SelectItem>
                       ))}
                     </SelectContent>
