@@ -66,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Sidebar for larger screens */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 bg-cyan-800">
+          <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
             <Link to="/" className="flex items-center space-x-2">
               <img alt="Logo BPS" className="h-8 w-auto" src="/lovable-uploads/d9bb2043-8636-46b0-ad6b-f8384eef5f52.jpg" />
               <div className="flex flex-col">
@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 bg-cyan-800">
+          <div className="flex-1 overflow-y-auto p-4">
             <nav className="space-y-1">
               {menuItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${location.pathname === item.path ? "bg-sidebar-accent text-sidebar-foreground" : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"}`}>
                   {item.icon}
@@ -86,9 +86,9 @@ const Layout: React.FC<LayoutProps> = ({
                 </Link>)}
             </nav>
           </div>
-          <div className="border-t border-sidebar-border p-4 bg-cyan-800">
-            <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">Maju Aman Jeung Amanah</div>
-            <Button variant="outline" onClick={toggleTheme} className="w-full border-sidebar-border text-slate-100 bg-cyan-950 hover:bg-cyan-800">
+          <div className="border-t border-sidebar-border p-4">
+            <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">MAJA: Maju Aman Jeung Amanah</div>
+            <Button variant="outline" onClick={toggleTheme} className="w-full bg-sidebar-accent/50 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-foreground">
               {theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
               {theme === "light" ? "Dark Mode" : "Light Mode"}
             </Button>
