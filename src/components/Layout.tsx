@@ -88,7 +88,7 @@ const Layout: React.FC<LayoutProps> = ({
           </div>
           <div className="border-t border-sidebar-border p-4 bg-cyan-800">
             <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">Maju Aman Jeung Amanah</div>
-            <Button variant="outline" onClick={toggleTheme} className="w-full bg-sidebar-accent/50 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-foreground">
+            <Button variant="outline" onClick={toggleTheme} className="w-full border-sidebar-border text-slate-100 bg-cyan-950 hover:bg-cyan-800">
               {theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
               {theme === "light" ? "Dark Mode" : "Light Mode"}
             </Button>
