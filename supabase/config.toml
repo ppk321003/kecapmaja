@@ -3,3 +3,6 @@ project_id = "xvjdusugtwwxtbpxuoae"
 
 [functions.seed-data]
 verify_jwt = false
+
+[functions.google-sheets]
+verify_jwt = false

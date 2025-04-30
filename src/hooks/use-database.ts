@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -33,7 +32,15 @@ export const useKegiatan = (programId: string | null) => {
         .order("name");
       
       if (error) throw error;
-      return data as Kegiatan[];
+      
+      // Convert database field names to match our type definitions
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        programId: item.program_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) as Kegiatan[];
     },
     enabled: !!programId
   });
@@ -53,7 +60,15 @@ export const useKRO = (kegiatanId: string | null) => {
         .order("name");
       
       if (error) throw error;
-      return data as KRO[];
+      
+      // Convert database field names to match our type definitions
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        kegiatanId: item.kegiatan_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) as KRO[];
     },
     enabled: !!kegiatanId
   });
@@ -73,7 +88,15 @@ export const useRO = (kroId: string | null) => {
         .order("name");
       
       if (error) throw error;
-      return data as RO[];
+      
+      // Convert database field names to match our type definitions
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        kroId: item.kro_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) as RO[];
     },
     enabled: !!kroId
   });
@@ -93,7 +116,15 @@ export const useKomponen = (roId: string | null) => {
         .order("name");
       
       if (error) throw error;
-      return data as Komponen[];
+      
+      // Convert database field names to match our type definitions
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        roId: item.ro_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) as Komponen[];
     },
     enabled: !!roId
   });

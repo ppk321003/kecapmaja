@@ -22,7 +22,7 @@ serve(async (req) => {
 
     const GOOGLE_SERVICE_ACCOUNT_EMAIL = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") || "";
     const GOOGLE_PRIVATE_KEY = Deno.env.get("GOOGLE_PRIVATE_KEY") || "";
-    const SPREADSHEET_ID = "1HxgzEy58Z522UvHzqY4Z-azQPrAGdWDpy_-grktyqgk";
+    const SPREADSHEET_ID = "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg";
 
     // Log for debugging
     console.log("Service account email:", GOOGLE_SERVICE_ACCOUNT_EMAIL);
@@ -82,7 +82,7 @@ serve(async (req) => {
 
     // Parse the request to determine the operation
     const requestData = await req.json();
-    const { action, sheetName, range, values } = requestData;
+    const { action = "read", sheetName, range, values } = requestData;
 
     if (action === "read") {
       // Read data from Google Sheets (existing functionality)
