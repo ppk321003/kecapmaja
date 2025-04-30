@@ -26,6 +26,7 @@ serve(async (req) => {
 
     // Log for debugging
     console.log("Service account email:", GOOGLE_SERVICE_ACCOUNT_EMAIL);
+    console.log("Private key exists:", GOOGLE_PRIVATE_KEY ? "Yes" : "No");
     console.log("Private key length:", GOOGLE_PRIVATE_KEY.length);
 
     // Get JWT token for Google Sheets API
@@ -37,7 +38,7 @@ serve(async (req) => {
       aud: "https://sheets.googleapis.com/",
       iat: iat,
       exp: exp,
-      scope: "https://www.googleapis.com/auth/spreadsheets"  // Changed to read and write scope
+      scope: "https://www.googleapis.com/auth/spreadsheets"  // Read and write scope
     };
 
     // Sign JWT
@@ -49,7 +50,7 @@ serve(async (req) => {
     const encodedPayload = btoa(payloadString).replace(/=+$/, "");
     const signatureInput = encoder.encode(`${encodedHeader}.${encodedPayload}`);
 
-    // Convert PEM to ArrayBuffer for signing - with proper error handling
+    // Convert PEM to ArrayBuffer for signing - with improved error handling
     let privateKey;
     try {
       privateKey = await crypto.subtle.importKey(
@@ -61,7 +62,7 @@ serve(async (req) => {
       );
     } catch (error) {
       console.error("Error importing private key:", error);
-      return new Response(JSON.stringify({ error: "Failed to import private key" }), {
+      return new Response(JSON.stringify({ error: "Failed to import private key: " + error.message }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
@@ -85,7 +86,7 @@ serve(async (req) => {
     const { action = "read", sheetName, range, values } = requestData;
 
     if (action === "read") {
-      // Read data from Google Sheets (existing functionality)
+      // Read data from Google Sheets
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}`,
         {
@@ -94,6 +95,15 @@ serve(async (req) => {
           },
         }
       );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
 
       const data = await response.json();
       return new Response(JSON.stringify(data), {
@@ -116,6 +126,15 @@ serve(async (req) => {
         }
       );
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
+
       const data = await response.json();
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -136,6 +155,15 @@ serve(async (req) => {
           }),
         }
       );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
 
       const data = await response.json();
       return new Response(JSON.stringify(data), {
@@ -160,6 +188,13 @@ serve(async (req) => {
 // Helper function to convert PEM to DER format with improved error handling
 function pemToDer(pem) {
   try {
+    if (!pem) {
+      throw new Error("Empty private key");
+    }
+    
+    // Replace \\n with actual newlines if needed (sometimes happens when stored in env vars)
+    pem = pem.replace(/\\n/g, '\n');
+    
     const lines = pem.split('\n');
     let encoded = '';
     
@@ -172,7 +207,7 @@ function pemToDer(pem) {
     }
     
     if (!encoded) {
-      throw new Error("Empty private key content");
+      throw new Error("Could not extract base64 content from private key");
     }
     
     const binary = atob(encoded);
