@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -15,15 +14,13 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-
 interface PersonHonor {
   id: string;
-  personId: string; 
+  personId: string;
   type: "organik" | "mitra";
   jumlah: string;
   hargaSatuan: string;
 }
-
 interface FormValues {
   namaKegiatan: string;
   detil: string;
@@ -38,7 +35,6 @@ interface FormValues {
   honorDetails: PersonHonor[];
   pembuatDaftar: string;
 }
-
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -56,7 +52,6 @@ const defaultValues: FormValues = {
 
 // Jenis options
 const jenisOptions = ["SPJ Honor Pendataan", "SPJ Honor Pengawasan", "SPJ Honor Instruktur"];
-
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [formValues, setFormValues] = useState<FormValues>(defaultValues);
@@ -64,16 +59,32 @@ const SPJHonor = () => {
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
   const [total, setTotal] = useState<number>(0);
-  
+
   // Data queries
-  const { data: programs = [] } = usePrograms();
-  const { data: kegiatan = [] } = useKegiatan(formValues.program || null);
-  const { data: kros = [] } = useKRO(formValues.kegiatan || null);
-  const { data: ros = [] } = useRO(formValues.kro || null);
-  const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
-  const { data: akuns = [] } = useAkun();
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
+  const {
+    data: programs = []
+  } = usePrograms();
+  const {
+    data: kegiatan = []
+  } = useKegiatan(formValues.program || null);
+  const {
+    data: kros = []
+  } = useKRO(formValues.kegiatan || null);
+  const {
+    data: ros = []
+  } = useRO(formValues.kro || null);
+  const {
+    data: komponenOptions = []
+  } = useKomponen(formValues.ro || null);
+  const {
+    data: akuns = []
+  } = useAkun();
+  const {
+    data: organikList = []
+  } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
 
   // Update honor details when selected people change
   useEffect(() => {
@@ -85,7 +96,7 @@ const SPJHonor = () => {
       jumlah: "1",
       hargaSatuan: ""
     }));
-    
+
     // Create honor details for mitra staff
     const mitraHonors = selectedMitra.map(id => ({
       id: `mitra-${id}`,
@@ -94,29 +105,30 @@ const SPJHonor = () => {
       jumlah: "1",
       hargaSatuan: ""
     }));
-    
+
     // Update form values with combined honor details
     setFormValues(prev => ({
       ...prev,
       honorDetails: [...organikHonors, ...mitraHonors]
     }));
   }, [selectedOrganik, selectedMitra]);
-  
+
   // Calculate total whenever honor details change
   useEffect(() => {
     const calculatedTotal = formValues.honorDetails.reduce((sum, detail) => {
       const jumlah = parseFloat(detail.jumlah) || 0;
       const hargaSatuan = parseFloat(detail.hargaSatuan) || 0;
-      return sum + (jumlah * hargaSatuan);
+      return sum + jumlah * hargaSatuan;
     }, 0);
-    
     setTotal(calculatedTotal);
   }, [formValues.honorDetails]);
-
   const handleChange = (field: keyof FormValues, value: any) => {
-    setFormValues((prev) => {
-      const newValues = { ...prev, [field]: value };
-      
+    setFormValues(prev => {
+      const newValues = {
+        ...prev,
+        [field]: value
+      };
+
       // Reset dependent fields
       if (field === 'program') {
         newValues.kegiatan = '';
@@ -133,11 +145,9 @@ const SPJHonor = () => {
       } else if (field === 'ro') {
         newValues.komponen = '';
       }
-      
       return newValues;
     });
   };
-
   const handleOrganikChange = (id: string, checked: boolean) => {
     if (checked) {
       setSelectedOrganik([...selectedOrganik, id]);
@@ -145,7 +155,6 @@ const SPJHonor = () => {
       setSelectedOrganik(selectedOrganik.filter(item => item !== id));
     }
   };
-
   const handleMitraChange = (id: string, checked: boolean) => {
     if (checked) {
       setSelectedMitra([...selectedMitra, id]);
@@ -153,49 +162,42 @@ const SPJHonor = () => {
       setSelectedMitra(selectedMitra.filter(item => item !== id));
     }
   };
-  
   const handleHonorDetailChange = (id: string, field: keyof PersonHonor, value: string) => {
     setFormValues(prev => ({
       ...prev,
-      honorDetails: prev.honorDetails.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      )
+      honorDetails: prev.honorDetails.map(item => item.id === id ? {
+        ...item,
+        [field]: value
+      } : item)
     }));
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
       // Combine form values with selected staff
       const submitData = {
         ...formValues,
         totalHonor: total
       };
-      
       console.log('Form submitted:', submitData);
-      
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       toast({
         title: "Dokumen berhasil dibuat",
-        description: "SPJ Honor telah tersimpan",
+        description: "SPJ Honor telah tersimpan"
       });
-      
       navigate("/buat-dokumen");
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data",
+        description: "Terjadi kesalahan saat menyimpan data"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
   const getPersonName = (personId: string, type: "organik" | "mitra") => {
     if (type === "organik") {
       const person = organikList.find(o => o.id === personId);
@@ -206,9 +208,7 @@ const SPJHonor = () => {
       return person ? `${person.name}${person.kecamatan ? ` - ${person.kecamatan}` : ""}` : "";
     }
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">SPJ Honor</h1>
@@ -223,157 +223,108 @@ const SPJHonor = () => {
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="namaKegiatan">Nama Kegiatan</Label>
-                  <Input
-                    id="namaKegiatan"
-                    placeholder="Masukkan nama kegiatan"
-                    value={formValues.namaKegiatan}
-                    onChange={(e) => handleChange('namaKegiatan', e.target.value)}
-                  />
+                  <Input id="namaKegiatan" placeholder="Masukkan nama kegiatan" value={formValues.namaKegiatan} onChange={e => handleChange('namaKegiatan', e.target.value)} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="detil">Detil</Label>
-                  <Input
-                    id="detil"
-                    placeholder="Masukkan detil kegiatan"
-                    value={formValues.detil}
-                    onChange={(e) => handleChange('detil', e.target.value)}
-                  />
+                  <Input id="detil" placeholder="Masukkan detil kegiatan" value={formValues.detil} onChange={e => handleChange('detil', e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="jenis">Jenis</Label>
-                  <Select 
-                    value={formValues.jenis} 
-                    onValueChange={(value) => handleChange('jenis', value)}
-                  >
+                  <Select value={formValues.jenis} onValueChange={value => handleChange('jenis', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih jenis" />
                     </SelectTrigger>
                     <SelectContent>
-                      {jenisOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
+                      {jenisOptions.map(option => <SelectItem key={option} value={option}>
                           {option}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="program">Program</Label>
-                  <Select 
-                    value={formValues.program} 
-                    onValueChange={(value) => handleChange('program', value)}
-                  >
+                  <Select value={formValues.program} onValueChange={value => handleChange('program', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih program" />
                     </SelectTrigger>
                     <SelectContent>
-                      {programs.map((program) => (
-                        <SelectItem key={program.id} value={program.id}>
+                      {programs.map(program => <SelectItem key={program.id} value={program.id}>
                           {program.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kegiatan">Kegiatan</Label>
-                  <Select 
-                    value={formValues.kegiatan} 
-                    onValueChange={(value) => handleChange('kegiatan', value)}
-                    disabled={!formValues.program}
-                  >
+                  <Select value={formValues.kegiatan} onValueChange={value => handleChange('kegiatan', value)} disabled={!formValues.program}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih kegiatan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {kegiatan.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
+                      {kegiatan.map(item => <SelectItem key={item.id} value={item.id}>
                           {item.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kro">KRO</Label>
-                  <Select 
-                    value={formValues.kro} 
-                    onValueChange={(value) => handleChange('kro', value)}
-                    disabled={!formValues.kegiatan}
-                  >
+                  <Select value={formValues.kro} onValueChange={value => handleChange('kro', value)} disabled={!formValues.kegiatan}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih KRO" />
                     </SelectTrigger>
                     <SelectContent>
-                      {kros.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
+                      {kros.map(item => <SelectItem key={item.id} value={item.id}>
                           {item.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="ro">RO</Label>
-                  <Select 
-                    value={formValues.ro} 
-                    onValueChange={(value) => handleChange('ro', value)}
-                    disabled={!formValues.kro}
-                  >
+                  <Select value={formValues.ro} onValueChange={value => handleChange('ro', value)} disabled={!formValues.kro}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih RO" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ros.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
+                      {ros.map(item => <SelectItem key={item.id} value={item.id}>
                           {item.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="komponen">Komponen</Label>
-                  <Select 
-                    value={formValues.komponen} 
-                    onValueChange={(value) => handleChange('komponen', value)}
-                    disabled={!formValues.ro}
-                  >
+                  <Select value={formValues.komponen} onValueChange={value => handleChange('komponen', value)} disabled={!formValues.ro}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih komponen" />
                     </SelectTrigger>
                     <SelectContent>
-                      {komponenOptions.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
+                      {komponenOptions.map(item => <SelectItem key={item.id} value={item.id}>
                           {item.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
-                  <Select 
-                    value={formValues.akun} 
-                    onValueChange={(value) => handleChange('akun', value)}
-                  >
+                  <Select value={formValues.akun} onValueChange={value => handleChange('akun', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih akun" />
                     </SelectTrigger>
                     <SelectContent>
-                      {akuns.map((akun) => (
-                        <SelectItem key={akun.id} value={akun.id}>
+                      {akuns.map(akun => <SelectItem key={akun.id} value={akun.id}>
                           {akun.name} ({akun.code})
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -382,48 +333,27 @@ const SPJHonor = () => {
                   <Label>Tanggal (SPJ)</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formValues.tanggalSpj && "text-muted-foreground"
-                        )}
-                      >
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalSpj && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalSpj ? (
-                          format(formValues.tanggalSpj, "PPP")
-                        ) : (
-                          <span>Pilih tanggal</span>
-                        )}
+                        {formValues.tanggalSpj ? format(formValues.tanggalSpj, "PPP") : <span>Pilih tanggal</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formValues.tanggalSpj || undefined}
-                        onSelect={(date) => handleChange('tanggalSpj', date)}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={formValues.tanggalSpj || undefined} onSelect={date => handleChange('tanggalSpj', date)} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Select 
-                    value={formValues.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                  >
+                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih pembuat daftar" />
                     </SelectTrigger>
                     <SelectContent>
-                      {organikList.map((organik) => (
-                        <SelectItem key={organik.id} value={organik.id}>
+                      {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
                           {organik.name}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -431,49 +361,35 @@ const SPJHonor = () => {
 
               <div className="space-y-6">
                 {/* Honor Details Table - Moved up as requested */}
-                {formValues.honorDetails.length > 0 && (
-                  <div className="space-y-3">
+                {formValues.honorDetails.length > 0 && <div className="space-y-3">
                     <h3 className="font-medium">Detail Honorarium</h3>
                     <div className="overflow-x-auto border rounded-md">
                       <table className="w-full border-collapse text-sm">
                         <thead>
                           <tr className="bg-muted">
-                            <th className="border border-border px-3 py-1.5 text-left font-medium">Nama</th>
-                            <th className="border border-border px-3 py-1.5 text-right font-medium w-24">Jumlah</th>
-                            <th className="border border-border px-3 py-1.5 text-right font-medium w-32">Harga Satuan</th>
-                            <th className="border border-border px-3 py-1.5 text-right font-medium w-32">Total</th>
+                            <th className="border border-border px-3 py-1.5 text-center font-medium">Nama</th>
+                            <th className="border border-border px-3 py-1.5 text-center font-medium w-24">Jumlah</th>
+                            <th className="border border-border px-3 py-1.5 text-center font-medium w-32">Harga Satuan</th>
+                            <th className="border border-border px-3 py-1.5 text-center font-medium w-32">Total</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {formValues.honorDetails.map((detail) => {
-                            const personName = getPersonName(detail.personId, detail.type);
-                            const detailTotal = (parseFloat(detail.jumlah) || 0) * (parseFloat(detail.hargaSatuan) || 0);
-                            
-                            return (
-                              <tr key={detail.id}>
+                          {formValues.honorDetails.map(detail => {
+                        const personName = getPersonName(detail.personId, detail.type);
+                        const detailTotal = (parseFloat(detail.jumlah) || 0) * (parseFloat(detail.hargaSatuan) || 0);
+                        return <tr key={detail.id}>
                                 <td className="border border-border px-3 py-1.5">{personName}</td>
                                 <td className="border border-border px-3 py-1.5">
-                                  <Input
-                                    type="number"
-                                    value={detail.jumlah}
-                                    onChange={(e) => handleHonorDetailChange(detail.id, 'jumlah', e.target.value)}
-                                    className="text-right h-7 px-2 text-xs"
-                                  />
+                                  <Input type="number" value={detail.jumlah} onChange={e => handleHonorDetailChange(detail.id, 'jumlah', e.target.value)} className="text-right h-7 px-2 text-xs" />
                                 </td>
                                 <td className="border border-border px-3 py-1.5">
-                                  <Input
-                                    type="number"
-                                    value={detail.hargaSatuan}
-                                    onChange={(e) => handleHonorDetailChange(detail.id, 'hargaSatuan', e.target.value)}
-                                    className="text-right h-7 px-2 text-xs"
-                                  />
+                                  <Input type="number" value={detail.hargaSatuan} onChange={e => handleHonorDetailChange(detail.id, 'hargaSatuan', e.target.value)} className="text-right h-7 px-2 text-xs" />
                                 </td>
                                 <td className="border border-border px-3 py-1.5 text-right">
                                   {detailTotal.toLocaleString('id-ID')}
                                 </td>
-                              </tr>
-                            );
-                          })}
+                              </tr>;
+                      })}
                           <tr className="font-bold bg-muted">
                             <td colSpan={3} className="border border-border px-3 py-1.5 text-right">Total</td>
                             <td className="border border-border px-3 py-1.5 text-right">{total.toLocaleString('id-ID')}</td>
@@ -481,46 +397,29 @@ const SPJHonor = () => {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                )}
+                  </div>}
 
                 <div className="space-y-2">
                   <Label>Organik BPS</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {organikList.map((staff) => (
-                      <div key={staff.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`organik-${staff.id}`}
-                          checked={selectedOrganik.includes(staff.id)}
-                          onCheckedChange={(checked) => 
-                            handleOrganikChange(staff.id, checked === true)
-                          }
-                        />
+                    {organikList.map(staff => <div key={staff.id} className="flex items-center space-x-2">
+                        <Checkbox id={`organik-${staff.id}`} checked={selectedOrganik.includes(staff.id)} onCheckedChange={checked => handleOrganikChange(staff.id, checked === true)} />
                         <Label htmlFor={`organik-${staff.id}`} className="text-sm">
                           {staff.name}
                         </Label>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
                   <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {mitraList.map((staff) => (
-                      <div key={staff.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mitra-${staff.id}`}
-                          checked={selectedMitra.includes(staff.id)}
-                          onCheckedChange={(checked) => 
-                            handleMitraChange(staff.id, checked === true)
-                          }
-                        />
+                    {mitraList.map(staff => <div key={staff.id} className="flex items-center space-x-2">
+                        <Checkbox id={`mitra-${staff.id}`} checked={selectedMitra.includes(staff.id)} onCheckedChange={checked => handleMitraChange(staff.id, checked === true)} />
                         <Label htmlFor={`mitra-${staff.id}`} className="text-sm">
                           {staff.name}{staff.kecamatan ? ` - ${staff.kecamatan}` : ''}
                         </Label>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </div>
               </div>
@@ -537,8 +436,6 @@ const SPJHonor = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default SPJHonor;
