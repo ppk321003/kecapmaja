@@ -65,9 +65,9 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "",
-          banyaknya: 1,
-          satuan: "",
+          namaItem: "", // Non-optional empty string
+          banyaknya: 1, // Non-optional default value
+          satuan: "",   // Non-optional empty string
         },
       ],
     },
@@ -132,9 +132,9 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      namaItem: "",
-      banyaknya: 1,
-      satuan: "",
+      namaItem: "", // Non-optional empty string
+      banyaknya: 1, // Non-optional default value
+      satuan: "",   // Non-optional empty string
     });
   };
 
@@ -420,3 +420,4 @@ const TandaTerima = () => {
 };
 
 export default TandaTerima;
+
