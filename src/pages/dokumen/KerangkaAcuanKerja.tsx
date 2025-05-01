@@ -32,14 +32,13 @@ interface FormValues {
   kro: string;
   ro: string;
   komponenOutput: string;
-  subKomponen: string;
   akun: string;
   paguAnggaran: string;
   kegiatanDetails: KegiatanDetail[];
-  tanggalPengajuanKAK: Date | null;
   tanggalMulaiKegiatan: Date | null;
   tanggalAkhirKegiatan: Date | null;
   pembuatDaftar: string;
+  tanggalPengajuanKAK: Date | null;
 }
 
 const defaultValues: FormValues = {
@@ -50,20 +49,18 @@ const defaultValues: FormValues = {
   kro: "",
   ro: "",
   komponenOutput: "",
-  subKomponen: "",
   akun: "",
   paguAnggaran: "",
   kegiatanDetails: [],
-  tanggalPengajuanKAK: null,
   tanggalMulaiKegiatan: null,
   tanggalAkhirKegiatan: null,
-  pembuatDaftar: ""
+  pembuatDaftar: "",
+  tanggalPengajuanKAK: null
 };
 
 // Updated options
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Half Day", "Full Day", "Full Board"];
-const subKomponenOptions = ["PPIS", "Dukman"];
 const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
 
 const KerangkaAcuanKerja = () => {
@@ -157,7 +154,7 @@ const KerangkaAcuanKerja = () => {
         kros.find(k => k.id === formValues.kro)?.name || formValues.kro,
         ros.find(r => r.id === formValues.ro)?.name || formValues.ro,
         komponenOptions.find(k => k.id === formValues.komponenOutput)?.name || formValues.komponenOutput,
-        formValues.subKomponen,
+        "", // Empty string for removed SubKomponen field
         akuns.find(a => a.id === formValues.akun)?.name || formValues.akun,
         formValues.paguAnggaran,
         detail.namaKegiatan,
@@ -394,25 +391,6 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="subKomponen">Sub Komponen</Label>
-                  <Select 
-                    value={formValues.subKomponen} 
-                    onValueChange={(value) => handleChange('subKomponen', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih sub komponen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subKomponenOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
                   <Select 
                     value={formValues.akun} 
@@ -527,6 +505,25 @@ const KerangkaAcuanKerja = () => {
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Tanggal Pengajuan KAK</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -617,25 +614,6 @@ const KerangkaAcuanKerja = () => {
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Select 
-                    value={formValues.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pembuat daftar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map((organik) => (
-                        <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 

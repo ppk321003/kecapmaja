@@ -19,7 +19,6 @@ import TandaTerima from "./pages/dokumen/TandaTerima";
 import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
 import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import ExternalLink from "./pages/ExternalLink";
-import GoogleSheetsPage from "./pages/GoogleSheetsPage";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +40,6 @@ const App = () => (
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />
             <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
             <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
-            <Route path="/google-sheets" element={<GoogleSheetsPage />} />
             
             {/* External Links */}
             <Route path="/bahan-revisi-web" element={<ExternalLink url="https://bahanrevisi-3210.vercel.app/" />} />
