@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -49,7 +48,7 @@ const TandaTerima = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-  const { mutateAsync: saveDocument, isLoading: isSaving } = useSaveDocument();
+  const { mutateAsync: saveDocument, isPending } = useSaveDocument();
   
   // Fetching data from database
   const { data: organikBPS = [] } = useOrganikBPS();
@@ -421,8 +420,8 @@ const TandaTerima = () => {
                   >
                     Kembali
                   </Button>
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? "Menyimpan..." : "Simpan"}
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? "Menyimpan..." : "Simpan"}
                   </Button>
                 </div>
               </form>

@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSeedDatabase } from "@/hooks/use-database";
 
 const SeedDataButton = () => {
-  const { mutateAsync: seedDatabase, isLoading } = useSeedDatabase();
+  const { mutateAsync: seedDatabase, isPending } = useSeedDatabase();
 
   const handleSeedData = async () => {
     try {
@@ -25,11 +25,11 @@ const SeedDataButton = () => {
   return (
     <Button
       onClick={handleSeedData}
-      disabled={isLoading}
+      disabled={isPending}
       variant="outline"
       className="ml-2"
     >
-      {isLoading ? "Menambahkan Data..." : "Tambah Contoh Data"}
+      {isPending ? "Menambahkan Data..." : "Tambah Contoh Data"}
     </Button>
   );
 };
