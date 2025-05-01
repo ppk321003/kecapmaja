@@ -85,17 +85,17 @@ const Index = () => {
           {/* Left column - Description */}
           <div className="flex-1 text-left">
             <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
-            <p className="text-muted-foreground pl-0 px-0 text-justify">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
+            <p className="text-muted-foreground pl-0 px-0 text-justify font-normal">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
 
           </p>
             <div className="space-y-3">
-              <p className="text-blue-900 text-base">
+              <p className="text-blue-900 text-base font-medium">
                 <span className="font-bold">KECAP -</span> Keuangan Cekatan Anggaran Pengadaan
               </p>
               <p className="text-muted-foreground pl-6 px-0 text-justify">
                 Menunjukkan pengelolaan keuangan yang cepat, efisien, dan tanggap, mengacu pada pengelolaan anggaran yang ditujukan untuk pengadaan barang dan jasa
               </p>
-              <p className="text-blue-900">
+              <p className="text-blue-900 font-medium">
                 <span className="font-bold">MAJA -</span> Maju Aman Jeung Amanah
               </p>
               <p className="text-muted-foreground pl-6 px-0 text-justify">
