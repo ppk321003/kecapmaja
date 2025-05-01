@@ -49,12 +49,12 @@ const TandaTerima = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const { mutateAsync: saveDocument, isLoading: isSaving } = useSaveDocument();
   
   // Fetching data from database
   const { data: organikBPS = [] } = useOrganikBPS();
   const { data: mitraStatistik = [] } = useMitraStatistik();
   
-  // Fixed issue: Initialize defaultValues with non-optional properties
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,10 +66,10 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", // Required field, initialized with empty string
-          banyaknya: 1,  // Required field, initialized with default value
-          satuan: "",    // Required field, initialized with empty string
-        },
+          namaItem: "", 
+          banyaknya: 1,
+          satuan: "",   
+        } as TandaTerimaItem,
       ],
     },
   });
@@ -79,20 +79,32 @@ const TandaTerima = () => {
     name: "daftarItem",
   });
   
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    // Fix TypeScript error by ensuring all required fields are present
-    const formData: TandaTerimaData = {
-      namaKegiatan: values.namaKegiatan,
-      detail: values.detail,
-      tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
-      pembuatDaftar: values.pembuatDaftar,
-      organikBPS: values.organikBPS || [],
-      mitraStatistik: values.mitraStatistik || [],
-      daftarItem: values.daftarItem,
-    };
-    
-    console.log("Form Data:", formData);
-    toast.success("Data berhasil disimpan!");
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      // Fix TypeScript error by ensuring all required fields are present
+      const formData: TandaTerimaData = {
+        namaKegiatan: values.namaKegiatan,
+        detail: values.detail,
+        tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
+        pembuatDaftar: values.pembuatDaftar,
+        organikBPS: values.organikBPS || [],
+        mitraStatistik: values.mitraStatistik || [],
+        daftarItem: values.daftarItem as TandaTerimaItem[],
+      };
+      
+      // Save document to Supabase
+      await saveDocument({ 
+        jenisId: '00000000-0000-0000-0000-000000000002', // Tanda Terima jenis ID
+        title: `Tanda Terima - ${values.namaKegiatan}`,
+        data: formData
+      });
+      
+      toast.success("Tanda Terima berhasil disimpan!");
+      navigate("/buat-dokumen");
+    } catch (error) {
+      console.error("Error saving Tanda Terima:", error);
+      toast.error("Gagal menyimpan Tanda Terima. Silakan coba lagi.");
+    }
   };
   
   const toggleOrganik = (id: string) => {
@@ -136,7 +148,7 @@ const TandaTerima = () => {
       namaItem: "", 
       banyaknya: 1, 
       satuan: "",   
-    });
+    } as TandaTerimaItem);
   };
 
   return (
@@ -409,7 +421,9 @@ const TandaTerima = () => {
                   >
                     Kembali
                   </Button>
-                  <Button type="submit">Simpan</Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Menyimpan..." : "Simpan"}
+                  </Button>
                 </div>
               </form>
             </Form>

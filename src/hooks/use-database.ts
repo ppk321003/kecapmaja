@@ -104,19 +104,18 @@ export const useRO = (kroId: string | null) => {
 };
 
 // Komponen
+interface KomponenDB {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
       if (!roId) return [];
-      
-      // Fixed issue: Use explicit type for database result
-      interface KomponenDB {
-        id: string;
-        name: string;
-        created_at: string;
-        updated_at: string;
-      }
       
       const { data, error } = await supabase
         .from("komponen")
@@ -126,12 +125,12 @@ export const useKomponen = (roId: string | null) => {
       if (error) throw error;
       
       // Convert database fields to match our type definition
-      // Since there is no ro_id relation in the database schema, we're currently not filtering by roId
-      // This should be updated when the database schema is updated to include ro_id
+      // Note: We're manually associating components with the provided roId 
+      // since there's no actual ro_id column in the database yet
       return (data as KomponenDB[]).map(item => ({
         id: item.id,
         name: item.name,
-        roId: roId, // Simply use the passed roId parameter
+        roId: roId, // Using the passed roId parameter
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as Komponen[];
@@ -239,6 +238,78 @@ export const useSaveDocument = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dokumen"] });
+    }
+  });
+};
+
+// Get Documents
+export const useGetDocuments = (jenisId?: string) => {
+  return useQuery({
+    queryKey: ["dokumen", jenisId],
+    queryFn: async () => {
+      let query = supabase.from("dokumen").select(`
+        *,
+        jenis:jenis_id(name)
+      `);
+      
+      if (jenisId) {
+        query = query.eq("jenis_id", jenisId);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: true
+  });
+};
+
+// Get Document by ID
+export const useGetDocumentById = (id: string | null) => {
+  return useQuery({
+    queryKey: ["dokumen", id],
+    queryFn: async () => {
+      if (!id) return null;
+      
+      const { data, error } = await supabase
+        .from("dokumen")
+        .select(`
+          *,
+          jenis:jenis_id(name)
+        `)
+        .eq("id", id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id
+  });
+};
+
+// Seed Database with initial data (for development purposes)
+export const useSeedDatabase = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('seed-data');
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate all relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["programs"] });
+      queryClient.invalidateQueries({ queryKey: ["kegiatan"] });
+      queryClient.invalidateQueries({ queryKey: ["kro"] });
+      queryClient.invalidateQueries({ queryKey: ["ro"] });
+      queryClient.invalidateQueries({ queryKey: ["komponen"] });
+      queryClient.invalidateQueries({ queryKey: ["akun"] });
+      queryClient.invalidateQueries({ queryKey: ["jenis"] });
+      queryClient.invalidateQueries({ queryKey: ["mitra"] });
+      queryClient.invalidateQueries({ queryKey: ["organik"] });
     }
   });
 };

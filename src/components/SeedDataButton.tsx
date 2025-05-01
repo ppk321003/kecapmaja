@@ -1,34 +1,37 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSeedDatabase } from "@/hooks/use-database";
+
 const SeedDataButton = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const { mutateAsync: seedDatabase, isLoading } = useSeedDatabase();
+
   const handleSeedData = async () => {
-    setIsLoading(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('seed-data');
-      if (error) {
-        throw error;
-      }
-      toast({
-        title: "Data berhasil ditambahkan",
+      await seedDatabase();
+      toast.success("Data berhasil ditambahkan", {
         description: "Contoh data telah ditambahkan ke database"
       });
     } catch (error) {
       console.error("Error seeding data:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menambahkan data",
+      toast.error("Gagal menambahkan data", {
         description: "Terjadi kesalahan saat menambahkan contoh data"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-  return;
+
+  return (
+    <Button
+      onClick={handleSeedData}
+      disabled={isLoading}
+      variant="outline"
+      className="ml-2"
+    >
+      {isLoading ? "Menambahkan Data..." : "Tambah Contoh Data"}
+    </Button>
+  );
 };
+
 export default SeedDataButton;
