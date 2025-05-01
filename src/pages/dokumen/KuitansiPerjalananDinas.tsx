@@ -118,22 +118,41 @@ const KuitansiPerjalananDinas = () => {
     try {
       setIsSubmitting(true);
       
-      // Format dates to strings for storage
+      // Create the base formData object with required fields
       const formData: PerjalananDinas = {
-        ...values,
-        tanggalSuratTugas: values.tanggalSuratTugas ? format(values.tanggalSuratTugas, 'yyyy-MM-dd') : '',
-        tanggalPengajuan: values.tanggalPengajuan ? format(values.tanggalPengajuan, 'yyyy-MM-dd') : '',
+        jenisPerjalanan: values.jenisPerjalanan,
+        nomorSuratTugas: values.nomorSuratTugas,
+        namaPelaksana: values.namaPelaksana,
+        tujuanPelaksanaan: values.tujuanPelaksanaan,
+        program: values.program,
+        kegiatan: values.kegiatan,
+        kro: values.kro,
+        ro: values.ro,
+        komponen: values.komponen,
+        akun: values.akun,
+        tanggalSuratTugas: format(values.tanggalSuratTugas, 'yyyy-MM-dd'),
+        tanggalPengajuan: format(values.tanggalPengajuan, 'yyyy-MM-dd'),
+        tanggalBerangkat: '', // Will be set below based on jenisPerjalanan
+        tanggalKembali: ''    // Will be set below based on jenisPerjalanan
       };
       
       // Handle different date formats based on jenisPerjalanan
-      if (values.jenisPerjalanan === 'luar_kota' && values.tanggalBerangkat instanceof Date) {
-        formData.tanggalBerangkat = format(values.tanggalBerangkat, 'yyyy-MM-dd');
-      }
-      if (values.jenisPerjalanan === 'luar_kota' && values.tanggalKembali instanceof Date) {
-        formData.tanggalKembali = format(values.tanggalKembali, 'yyyy-MM-dd');
+      if (values.jenisPerjalanan === 'luar_kota') {
+        if (values.kabKotaTujuan) formData.kabKotaTujuan = values.kabKotaTujuan;
+        if (values.namaTempat) formData.namaTempat = values.namaTempat;
+        if (values.biayaTransport) formData.biayaTransport = values.biayaTransport;
+        if (values.biayaBBMTol) formData.biayaBBMTol = values.biayaBBMTol;
+        if (values.biayaPenginapan) formData.biayaPenginapan = values.biayaPenginapan;
+        
+        if (values.tanggalBerangkat instanceof Date) {
+          formData.tanggalBerangkat = format(values.tanggalBerangkat, 'yyyy-MM-dd');
+        }
+        if (values.tanggalKembali instanceof Date) {
+          formData.tanggalKembali = format(values.tanggalKembali, 'yyyy-MM-dd');
+        }
       }
       
-      // For dalam kota, we need to format the kecamatan entries
+      // For dalam kota, format the kecamatan entries
       if (values.jenisPerjalanan === 'dalam_kota') {
         formData.kecamatanTujuan = kecamatanEntries.map(e => e.kecamatan);
         formData.tanggalBerangkat = kecamatanEntries.map(e => 

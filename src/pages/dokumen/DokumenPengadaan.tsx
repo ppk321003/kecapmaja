@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { DokumenPengadaan, METODE_PENGADAAN, BENTUK_KONTRAK, JENIS_KONTRAK, CARA_PEMBAYARAN } from "@/types";
+import { DokumenPengadaanData, METODE_PENGADAAN, BENTUK_KONTRAK, JENIS_KONTRAK, CARA_PEMBAYARAN } from "@/types";
 
 const formSchema = z.object({
   kodeKegiatan: z.string().min(1, "Kode kegiatan wajib diisi"),
@@ -100,12 +100,36 @@ const DokumenPengadaan = () => {
       setIsSubmitting(true);
       
       // Format dates to strings for storage
-      const formData: DokumenPengadaan = {
-        ...values,
+      const formData: DokumenPengadaanData = {
+        kodeKegiatan: values.kodeKegiatan,
+        namaPaket: values.namaPaket,
         tanggalMulai: format(values.tanggalMulai, 'yyyy-MM-dd'),
         tanggalSelesai: format(values.tanggalSelesai, 'yyyy-MM-dd'),
+        spesifikasiTeknis: values.spesifikasiTeknis,
+        volume: values.volume,
+        satuan: values.satuan,
+        hargaSatuanAwal: values.hargaSatuanAwal,
+        hargaSatuanNego: values.hargaSatuanNego,
+        metodePengadaan: values.metodePengadaan,
+        bentukKontrak: values.bentukKontrak,
+        jenisKontrak: values.jenisKontrak,
+        caraPembayaran: values.caraPembayaran,
+        uangMuka: values.uangMuka,
+        nomorFormulirPermintaan: values.nomorFormulirPermintaan,
         tanggalFormulirPermintaan: format(values.tanggalFormulirPermintaan, 'yyyy-MM-dd'),
         tanggalKAK: format(values.tanggalKAK, 'yyyy-MM-dd'),
+        nomorKertasKerjaHPS: values.nomorKertasKerjaHPS,
+        namaPenyedia: values.namaPenyedia,
+        namaPerwakilanPenyedia: values.namaPerwakilanPenyedia,
+        jabatan: values.jabatan,
+        alamatPenyedia: values.alamatPenyedia,
+        namaBank: values.namaBank,
+        nomorRekening: values.nomorRekening,
+        atasNamaRekening: values.atasNamaRekening,
+        npwpPenyedia: values.npwpPenyedia,
+        nomorSuratPenawaran: values.nomorSuratPenawaran,
+        nomorSuratPermohonan: values.nomorSuratPermohonan,
+        nomorInvoice: values.nomorInvoice
       };
       
       const result = await saveDocument({

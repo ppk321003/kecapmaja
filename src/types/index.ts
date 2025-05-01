@@ -1,3 +1,4 @@
+
 export interface JenisDocumentOption {
   value: string;
   label: string;
@@ -109,7 +110,7 @@ export interface PerjalananDinas {
   biayaPenginapan?: number;
 }
 
-export interface DokumenPengadaan {
+export interface DokumenPengadaanData {
   id?: string;
   kodeKegiatan: string;
   namaPaket: string;
