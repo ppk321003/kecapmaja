@@ -85,7 +85,7 @@ const Index = () => {
           {/* Left column - Description */}
           <div className="flex-1 text-left">
             <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
-            <p className="mb-6 text-base text-blue-900 text-justify">
+            <p className="text-muted-foreground pl-6 px-0 text-justify">
               Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
             </p>
             <div className="space-y-3">
