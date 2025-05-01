@@ -84,27 +84,25 @@ const Index = () => {
         <div className={`flex flex-col ${!isMobile ? 'md:flex-row' : ''} gap-8 items-center`}>
           {/* Left column - Description */}
           <div className="flex-1 text-left">
-            <h1 className="text-4xl font-bold mb-4">Kecap Maja</h1>
-            <p className="mb-6 text-lg">
+            <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
+            <p className="mb-6 text-lg text-blue-950">
               Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
             </p>
             <div className="space-y-3">
-              <p>
+              <p className="text-blue-900">
                 <span className="font-bold">KECAP:</span> Keuangan Cekatan Anggaran Pengadaan
               </p>
-              <p className="text-muted-foreground pl-6">
+              <p className="text-muted-foreground pl-6 px-0">
                 Menunjukkan pengelolaan keuangan yang cepat, efisien, dan tanggap, mengacu pada pengelolaan anggaran yang ditujukan untuk pengadaan barang dan jasa
               </p>
-              <p>
+              <p className="text-blue-900">
                 <span className="font-bold">MAJA:</span> Maju Aman Jeung Amanah
               </p>
-              <p className="text-muted-foreground pl-6">
+              <p className="text-muted-foreground pl-6 px-0">
                 Bergerak maju dengan jaminan keamanan dan kehati-hatian, menunjukkan bahwa segala proses dilakukan dengan penuh tanggung jawab dan integritas
               </p>
             </div>
-            <p className="mt-6">
-              Aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka
-            </p>
+            
           </div>
 
           {/* Right column - Image */}
