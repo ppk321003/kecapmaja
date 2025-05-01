@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -15,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface FormValues {
   namaKegiatan: string;
@@ -91,15 +93,6 @@ const komponenOptions = {
 };
 
 const akunOptions = ["Bahan", "Honor", "Modal", "Paket Meeting", "Perjalanan Dinas"];
-
-// Dummy staff data
-const mitraOptions = [
-  { id: "1", name: "Mitra 1" },
-  { id: "2", name: "Mitra 2" },
-  { id: "3", name: "Mitra 3" },
-  { id: "4", name: "Mitra 4" },
-  { id: "5", name: "Mitra 5" }
-];
 
 const DaftarHadir = () => {
   const navigate = useNavigate();
@@ -218,7 +211,7 @@ const DaftarHadir = () => {
         // Save selected mitra data with reference to the main row
         if (data.mitra.length > 0) {
           const mitraRows = data.mitra.map((mitraId: string) => {
-            const mitra = mitraOptions.find(m => m.id === mitraId);
+            const mitra = mitraList.find(m => m.id === mitraId);
             return [rowNumber.toString(), mitra?.name || ""];
           });
 
@@ -270,6 +263,37 @@ const DaftarHadir = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Generate data for the recap table
+  const generateRecapData = () => {
+    const recapData = [];
+    
+    // Add selected organik
+    for (const id of selectedOrganik) {
+      const organik = organikList.find(org => org.id === id);
+      if (organik) {
+        recapData.push({
+          nama: organik.name,
+          kecamatan: "Majalengka", // Default for Organik BPS
+          jabatan: "Organik BPS"
+        });
+      }
+    }
+    
+    // Add selected mitra
+    for (const id of selectedMitra) {
+      const mitra = mitraList.find(m => m.id === id);
+      if (mitra) {
+        recapData.push({
+          nama: mitra.name,
+          kecamatan: mitra.kecamatan || "-",
+          jabatan: "Mitra Statistik"
+        });
+      }
+    }
+    
+    return recapData;
   };
 
   return (
@@ -523,6 +547,36 @@ const DaftarHadir = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Recap Table - Added as requested */}
+              <div className="space-y-4 pt-4">
+                <h3 className="text-lg font-medium">Rekap Daftar Hadir</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Kecamatan</TableHead>
+                      <TableHead>Jabatan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {generateRecapData().map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.nama}</TableCell>
+                        <TableCell>{item.kecamatan}</TableCell>
+                        <TableCell>{item.jabatan}</TableCell>
+                      </TableRow>
+                    ))}
+                    {generateRecapData().length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                          Belum ada peserta yang dipilih
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
 
               <div className="space-y-6 pt-4">

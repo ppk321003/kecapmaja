@@ -586,7 +586,7 @@ const TransportLokal = () => {
                     )}
                   />
                   
-                  {/* Pembuat Daftar - Changed to dropdown */}
+                  {/* Pembuat Daftar */}
                   <FormField
                     control={form.control}
                     name="pembuatDaftar"
@@ -616,7 +616,58 @@ const TransportLokal = () => {
                   />
                 </div>
                 
-                {/* Transport Items - Moved up as requested */}
+                {/* Summary Table - MOVED UP as requested */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Ringkasan</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nama</TableHead>
+                        <TableHead>Banyaknya</TableHead>
+                        <TableHead>Kecamatan</TableHead>
+                        <TableHead className="text-right">Jumlah (Rp)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.map((field, index) => {
+                        const item = form.watch(`daftarTransport.${index}`);
+                        const kecamatanList = item?.kecamatanTujuan || [];
+                        const rateList = item?.rateTranslok || [];
+                        const totalRate = rateList.reduce((sum, rate) => sum + rate, 0);
+                        const jumlah = (item?.banyaknya || 0) * totalRate;
+                        
+                        return (
+                          <TableRow key={field.id}>
+                            <TableCell>{item?.nama || ""}</TableCell>
+                            <TableCell>{item?.banyaknya || 0}</TableCell>
+                            <TableCell>
+                              <ul className="list-disc pl-5">
+                                {kecamatanList.map((kec, i) => (
+                                  <li key={kec}>
+                                    {kec} (Rp {rateList[i]?.toLocaleString() || "0"})
+                                  </li>
+                                ))}
+                              </ul>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              Rp {jumlah.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow>
+                        <TableCell colSpan={3} className="font-bold text-right">
+                          Total
+                        </TableCell>
+                        <TableCell className="font-bold text-right">
+                          Rp {calculateTotal().toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Transport Items */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Daftar Transport</h3>
                   
@@ -636,8 +687,6 @@ const TransportLokal = () => {
                             </FormItem>
                           )}
                         />
-                        
-                        {/* Removed jenis petugas field as requested */}
                         
                         <FormField
                           control={form.control}
@@ -763,7 +812,7 @@ const TransportLokal = () => {
                           htmlFor={`organik-${organik.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          {organik.name} {/* Removed NIP as requested */}
+                          {organik.name}
                         </label>
                       </div>
                     ))}
@@ -791,57 +840,6 @@ const TransportLokal = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-                
-                {/* Summary Table */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Ringkasan</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Banyaknya</TableHead>
-                        <TableHead>Kecamatan</TableHead>
-                        <TableHead className="text-right">Jumlah (Rp)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.map((field, index) => {
-                        const item = form.watch(`daftarTransport.${index}`);
-                        const kecamatanList = item?.kecamatanTujuan || [];
-                        const rateList = item?.rateTranslok || [];
-                        const totalRate = rateList.reduce((sum, rate) => sum + rate, 0);
-                        const jumlah = (item?.banyaknya || 0) * totalRate;
-                        
-                        return (
-                          <TableRow key={field.id}>
-                            <TableCell>{item?.nama || ""}</TableCell>
-                            <TableCell>{item?.banyaknya || 0}</TableCell>
-                            <TableCell>
-                              <ul className="list-disc pl-5">
-                                {kecamatanList.map((kec, i) => (
-                                  <li key={kec}>
-                                    {kec} (Rp {rateList[i]?.toLocaleString() || "0"})
-                                  </li>
-                                ))}
-                              </ul>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              Rp {jumlah.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      <TableRow>
-                        <TableCell colSpan={3} className="font-bold text-right">
-                          Total
-                        </TableCell>
-                        <TableCell className="font-bold text-right">
-                          Rp {calculateTotal().toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
                 </div>
                 
                 {/* Actions */}
