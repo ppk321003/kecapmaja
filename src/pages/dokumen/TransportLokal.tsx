@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,6 +76,7 @@ const TransportLokal = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const [selectedPetugas, setSelectedPetugas] = useState<{id: string, name: string, jenis: "Organik BPS" | "Mitra Statistik"}[]>([]);
   
   // Fetching data from database
   const { data: programs = [] } = usePrograms();
@@ -98,20 +99,11 @@ const TransportLokal = () => {
       pembuatDaftar: "",
       organikBPS: [],
       mitraStatistik: [],
-      daftarTransport: [
-        {
-          nama: "",
-          jenisPetugas: "Organik BPS",
-          banyaknya: 1,
-          kecamatanTujuan: [],
-          rateTranslok: [],
-          jumlah: 0,
-        },
-      ],
+      daftarTransport: [],
     },
   });
   
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "daftarTransport",
   });
@@ -131,34 +123,84 @@ const TransportLokal = () => {
   );
   const { data: akunList = [] } = useAkun();
   
+  // Update transport items when Organik or Mitra selection changes
+  useEffect(() => {
+    // Build the list of selected petugas
+    const petugasList: {id: string, name: string, jenis: "Organik BPS" | "Mitra Statistik"}[] = [];
+    
+    // Add selected organik
+    selectedOrganik.forEach(id => {
+      const organik = organikBPS.find(org => org.id === id);
+      if (organik) {
+        petugasList.push({
+          id: organik.id,
+          name: organik.name,
+          jenis: "Organik BPS"
+        });
+      }
+    });
+    
+    // Add selected mitra
+    selectedMitra.forEach(id => {
+      const mitra = mitraStatistik.find(m => m.id === id);
+      if (mitra) {
+        petugasList.push({
+          id: mitra.id,
+          name: mitra.name,
+          jenis: "Mitra Statistik"
+        });
+      }
+    });
+    
+    setSelectedPetugas(petugasList);
+    
+    // Update transport items
+    const newTransportItems = petugasList.map(petugas => ({
+      nama: petugas.name,
+      jenisPetugas: petugas.jenis,
+      banyaknya: 1,
+      kecamatanTujuan: [] as string[],
+      rateTranslok: [] as number[],
+      jumlah: 0
+    }));
+    
+    replace(newTransportItems as any);
+    
+  }, [selectedOrganik, selectedMitra, organikBPS, mitraStatistik, replace]);
+  
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     // Calculate jumlah for each item
-    const updatedDaftarTransport = values.daftarTransport?.map((item) => {
-      const totalRate = item.rateTranslok.reduce((sum, rate) => sum + rate, 0);
+    const updatedDaftarTransport = (values.daftarTransport || []).map((item) => {
+      const totalRate = (item.rateTranslok || []).reduce((sum, rate) => sum + rate, 0);
       return {
-        ...item,
+        nama: item.nama,
+        jenisPetugas: item.jenisPetugas,
+        banyaknya: item.banyaknya,
+        kecamatanTujuan: item.kecamatanTujuan,
+        rateTranslok: item.rateTranslok,
         jumlah: item.banyaknya * totalRate,
       };
     });
     
     const formData: TransportLokalData = {
-      ...values,
-      daftarTransport: updatedDaftarTransport || [],
+      namaKegiatan: values.namaKegiatan,
+      detail: values.detail,
+      jenis: values.jenis,
+      program: values.program,
+      kegiatan: values.kegiatan,
+      kro: values.kro,
+      ro: values.ro,
+      komponen: values.komponen,
+      akun: values.akun,
+      tanggalPengajuan: values.tanggalPengajuan,
+      pembuatDaftar: values.pembuatDaftar,
+      organikBPS: values.organikBPS || [],
+      mitraStatistik: values.mitraStatistik || [],
+      daftarTransport: updatedDaftarTransport,
     };
     
     console.log("Form Data:", formData);
     toast.success("Data berhasil disimpan!");
-  };
-  
-  const handleAddItem = () => {
-    append({
-      nama: "",
-      jenisPetugas: "Organik BPS",
-      banyaknya: 1,
-      kecamatanTujuan: [],
-      rateTranslok: [],
-      jumlah: 0,
-    });
   };
   
   const toggleOrganik = (id: string) => {
@@ -544,74 +586,39 @@ const TransportLokal = () => {
                     )}
                   />
                   
-                  {/* Pembuat Daftar */}
+                  {/* Pembuat Daftar - Changed to dropdown */}
                   <FormField
                     control={form.control}
                     name="pembuatDaftar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nama pembuat daftar" {...field} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih pembuat daftar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {organikBPS.map((organik) => (
+                              <SelectItem key={organik.id} value={organik.name}>
+                                {organik.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
                 
-                {/* Organik BPS Selection */}
+                {/* Transport Items - Moved up as requested */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {organikBPS.map((organik) => (
-                      <div key={organik.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`organik-${organik.id}`}
-                          checked={selectedOrganik.includes(organik.id)}
-                          onCheckedChange={() => toggleOrganik(organik.id)}
-                        />
-                        <label
-                          htmlFor={`organik-${organik.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {organik.name} ({organik.nip})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Mitra Statistik Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {mitraStatistik.map((mitra) => (
-                      <div key={mitra.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mitra-${mitra.id}`}
-                          checked={selectedMitra.includes(mitra.id)}
-                          onCheckedChange={() => toggleMitra(mitra.id)}
-                        />
-                        <label
-                          htmlFor={`mitra-${mitra.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {mitra.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Transport Items */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Daftar Transport</h3>
-                    <Button type="button" onClick={handleAddItem} size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" /> Tambah Item
-                    </Button>
-                  </div>
+                  <h3 className="text-lg font-medium">Daftar Transport</h3>
                   
                   {fields.map((field, index) => (
                     <Card key={field.id} className="p-4">
@@ -623,37 +630,14 @@ const TransportLokal = () => {
                             <FormItem>
                               <FormLabel>Nama</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nama" {...field} />
+                                <Input placeholder="Nama" {...field} disabled />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
                         
-                        <FormField
-                          control={form.control}
-                          name={`daftarTransport.${index}.jenisPetugas`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Jenis Petugas</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Pilih jenis petugas" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Organik BPS">Organik BPS</SelectItem>
-                                  <SelectItem value="Mitra Statistik">Mitra Statistik</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* Removed jenis petugas field as requested */}
                         
                         <FormField
                           control={form.control}
@@ -760,22 +744,53 @@ const TransportLokal = () => {
                           </div>
                         </div>
                       )}
-                      
-                      {/* Remove button */}
-                      {fields.length > 1 && (
-                        <div className="flex justify-end mt-4">
-                          <Button 
-                            type="button" 
-                            onClick={() => remove(index)} 
-                            variant="destructive" 
-                            size="sm"
-                          >
-                            <Trash className="h-4 w-4 mr-2" /> Hapus
-                          </Button>
-                        </div>
-                      )}
                     </Card>
                   ))}
+                </div>
+                
+                {/* Organik BPS Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {organikBPS.map((organik) => (
+                      <div key={organik.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`organik-${organik.id}`}
+                          checked={selectedOrganik.includes(organik.id)}
+                          onCheckedChange={() => toggleOrganik(organik.id)}
+                        />
+                        <label
+                          htmlFor={`organik-${organik.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {organik.name} {/* Removed NIP as requested */}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Mitra Statistik Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {mitraStatistik.map((mitra) => (
+                      <div key={mitra.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`mitra-${mitra.id}`}
+                          checked={selectedMitra.includes(mitra.id)}
+                          onCheckedChange={() => toggleMitra(mitra.id)}
+                        />
+                        <label
+                          htmlFor={`mitra-${mitra.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {mitra.name}
+                          {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 
                 {/* Summary Table */}
@@ -785,7 +800,6 @@ const TransportLokal = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nama</TableHead>
-                        <TableHead>Jenis Petugas</TableHead>
                         <TableHead>Banyaknya</TableHead>
                         <TableHead>Kecamatan</TableHead>
                         <TableHead className="text-right">Jumlah (Rp)</TableHead>
@@ -802,7 +816,6 @@ const TransportLokal = () => {
                         return (
                           <TableRow key={field.id}>
                             <TableCell>{item?.nama || ""}</TableCell>
-                            <TableCell>{item?.jenisPetugas || ""}</TableCell>
                             <TableCell>{item?.banyaknya || 0}</TableCell>
                             <TableCell>
                               <ul className="list-disc pl-5">
@@ -820,7 +833,7 @@ const TransportLokal = () => {
                         );
                       })}
                       <TableRow>
-                        <TableCell colSpan={4} className="font-bold text-right">
+                        <TableCell colSpan={3} className="font-bold text-right">
                           Total
                         </TableCell>
                         <TableCell className="font-bold text-right">

@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
@@ -78,8 +79,15 @@ const TandaTerima = () => {
   });
   
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    // Fix TypeScript error by ensuring all required fields are present
     const formData: TandaTerimaData = {
-      ...values,
+      namaKegiatan: values.namaKegiatan,
+      detail: values.detail,
+      tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
+      pembuatDaftar: values.pembuatDaftar,
+      organikBPS: values.organikBPS || [],
+      mitraStatistik: values.mitraStatistik || [],
+      daftarItem: values.daftarItem,
     };
     
     console.log("Form Data:", formData);
@@ -229,67 +237,37 @@ const TandaTerima = () => {
                     )}
                   />
                   
-                  {/* Pembuat Daftar */}
+                  {/* Pembuat Daftar - Changed to dropdown list of organik */}
                   <FormField
                     control={form.control}
                     name="pembuatDaftar"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nama pembuat daftar" {...field} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih pembuat daftar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {organikBPS.map((organik) => (
+                              <SelectItem key={organik.id} value={organik.name}>
+                                {organik.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
                 
-                {/* Organik BPS Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {organikBPS.map((organik) => (
-                      <div key={organik.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`organik-${organik.id}`}
-                          checked={selectedOrganik.includes(organik.id)}
-                          onCheckedChange={() => toggleOrganik(organik.id)}
-                        />
-                        <label
-                          htmlFor={`organik-${organik.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {organik.name} ({organik.nip})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Mitra Statistik Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {mitraStatistik.map((mitra) => (
-                      <div key={mitra.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mitra-${mitra.id}`}
-                          checked={selectedMitra.includes(mitra.id)}
-                          onCheckedChange={() => toggleMitra(mitra.id)}
-                        />
-                        <label
-                          htmlFor={`mitra-${mitra.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {mitra.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Item List */}
+                {/* Item List - Moved up as requested */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Daftar Item</h3>
@@ -374,6 +352,51 @@ const TandaTerima = () => {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+                
+                {/* Organik BPS Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {organikBPS.map((organik) => (
+                      <div key={organik.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`organik-${organik.id}`}
+                          checked={selectedOrganik.includes(organik.id)}
+                          onCheckedChange={() => toggleOrganik(organik.id)}
+                        />
+                        <label
+                          htmlFor={`organik-${organik.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {organik.name} {/* Removed NIP as requested */}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Mitra Statistik Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {mitraStatistik.map((mitra) => (
+                      <div key={mitra.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`mitra-${mitra.id}`}
+                          checked={selectedMitra.includes(mitra.id)}
+                          onCheckedChange={() => toggleMitra(mitra.id)}
+                        />
+                        <label
+                          htmlFor={`mitra-${mitra.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {mitra.name} {/* Display kecamatan if available */}
+                          {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 
                 {/* Actions */}
