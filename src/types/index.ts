@@ -1,4 +1,3 @@
-
 export interface JenisDocumentOption {
   value: string;
   label: string;
@@ -141,6 +140,50 @@ export interface DokumenPengadaanData {
   nomorSuratPenawaran: string;
   nomorSuratPermohonan: string;
   nomorInvoice: string;
+}
+
+export interface TransportLokalData {
+  id?: string;
+  namaKegiatan: string;
+  detail: string;
+  jenis: "Pendataan" | "Pemeriksaan" | "Supervisi";
+  program: string;
+  kegiatan: string;
+  kro: string;
+  ro: string;
+  komponen: string;
+  akun: string;
+  tanggalPengajuan: string;
+  pembuatDaftar: string;
+  organikBPS: string[];
+  mitraStatistik: string[];
+  daftarTransport: TransportItem[];
+}
+
+export interface TransportItem {
+  nama: string;
+  jenisPetugas: "Organik BPS" | "Mitra Statistik";
+  banyaknya: number;
+  kecamatanTujuan: string[];
+  rateTranslok: number[];
+  jumlah: number;
+}
+
+export interface TandaTerimaData {
+  id?: string;
+  namaKegiatan: string;
+  detail: string;
+  tanggalPembuatanDaftar: string;
+  pembuatDaftar: string;
+  organikBPS: string[];
+  mitraStatistik: string[];
+  daftarItem: TandaTerimaItem[];
+}
+
+export interface TandaTerimaItem {
+  namaItem: string;
+  banyaknya: number;
+  satuan: string;
 }
 
 export const KECAMATAN_MAJALENGKA = [

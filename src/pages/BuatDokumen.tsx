@@ -35,8 +35,7 @@ const documentTypes = [
     description: "Transport Lokal (Pendataan, Pemeriksaan, Supervisi)",
     path: "/dokumen/transport-lokal",
     color: "bg-blue-50 dark:bg-blue-900/20",
-    iconColor: "text-bps-blue",
-    disabled: true
+    iconColor: "text-bps-blue"
   },
   {
     title: "Uang Harian dan Transport Lokal",
@@ -64,8 +63,7 @@ const documentTypes = [
     description: "Buat dokumen tanda terima",
     path: "/dokumen/tanda-terima",
     color: "bg-yellow-50 dark:bg-yellow-900/20",
-    iconColor: "text-bps-yellow",
-    disabled: true
+    iconColor: "text-bps-yellow"
   }
 ];
 
@@ -93,9 +91,7 @@ const BuatDokumen = () => {
           {documentTypes.map((item) => (
             <Card
               key={item.path}
-              className={`h-full transition-all duration-200 hover:shadow-md ${
-                item.disabled ? "opacity-60" : ""
-              }`}
+              className="h-full transition-all duration-200 hover:shadow-md"
             >
               <CardHeader className="pb-2">
                 <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-lg ${item.color}`}>
@@ -107,15 +103,9 @@ const BuatDokumen = () => {
               </CardHeader>
               <CardContent>
                 <p className="mb-4 text-sm text-muted-foreground">{item.description}</p>
-                {item.disabled ? (
-                  <Button disabled variant="outline">
-                    Coming Soon
-                  </Button>
-                ) : (
-                  <Button asChild variant="outline">
-                    <Link to={item.path}>Buat Dokumen</Link>
-                  </Button>
-                )}
+                <Button asChild variant="outline">
+                  <Link to={item.path}>Buat Dokumen</Link>
+                </Button>
               </CardContent>
             </Card>
           ))}
