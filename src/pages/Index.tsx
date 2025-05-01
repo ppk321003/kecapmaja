@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { FileText, Globe, Database, FileArchive, File, Book } from "lucide-react";
@@ -80,8 +79,7 @@ const Index = () => {
           <div className="flex-1 text-left">
             <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
             <p className="text-muted-foreground pl-0 px-0 text-justify font-normal">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
-
-          </p>
+.</p>
             <div className="space-y-3">
               <p className="text-blue-900 text-base font-medium">
                 <span className="font-bold">KECAP -</span> Keuangan Cekatan Anggaran Pengadaan
