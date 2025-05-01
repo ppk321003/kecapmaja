@@ -61,7 +61,7 @@ const defaultValues: FormValues = {
 // Updated options
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Half Day", "Full Day", "Full Board"];
-const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
+const satuanOptions = ["BLN", "BS", "Desa", "Dok", "liter", "Lmbr", "M2", "OB", "OK", "OP", "OJP", "Paket", "Pasar", "RT", "Sls", "SET", "Stel", "Tahun"];
 
 const KerangkaAcuanKerja = () => {
   const navigate = useNavigate();
@@ -154,7 +154,6 @@ const KerangkaAcuanKerja = () => {
         kros.find(k => k.id === formValues.kro)?.name || formValues.kro,
         ros.find(r => r.id === formValues.ro)?.name || formValues.ro,
         komponenOptions.find(k => k.id === formValues.komponenOutput)?.name || formValues.komponenOutput,
-        "", // Empty string for removed SubKomponen field
         akuns.find(a => a.id === formValues.akun)?.name || formValues.akun,
         formValues.paguAnggaran,
         detail.namaKegiatan,
@@ -503,57 +502,8 @@ const KerangkaAcuanKerja = () => {
                 ))}
               </div>
 
+              {/* Reordered fields as per requirement */}
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Select 
-                    value={formValues.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pembuat daftar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map((organik) => (
-                        <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tanggal Pengajuan KAK</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formValues.tanggalPengajuanKAK && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalPengajuanKAK ? (
-                          format(formValues.tanggalPengajuanKAK, "PPP")
-                        ) : (
-                          <span>Pilih tanggal</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formValues.tanggalPengajuanKAK || undefined}
-                        onSelect={(date) => handleChange('tanggalPengajuanKAK', date)}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
                 <div className="space-y-2">
                   <Label>Tanggal Mulai Kegiatan</Label>
                   <Popover>
@@ -609,6 +559,56 @@ const KerangkaAcuanKerja = () => {
                         mode="single"
                         selected={formValues.tanggalAkhirKegiatan || undefined}
                         onSelect={(date) => handleChange('tanggalAkhirKegiatan', date)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tanggal Pengajuan KAK</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formValues.tanggalPengajuanKAK && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalPengajuanKAK ? (
+                          format(formValues.tanggalPengajuanKAK, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formValues.tanggalPengajuanKAK || undefined}
+                        onSelect={(date) => handleChange('tanggalPengajuanKAK', date)}
                         initialFocus
                         className="p-3 pointer-events-auto"
                       />
