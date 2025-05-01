@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument, useOrganikBPS } from "@/hooks/use-database";
 
 interface KegiatanDetail {
@@ -35,9 +36,9 @@ interface FormValues {
   akun: string;
   paguAnggaran: string;
   kegiatanDetails: KegiatanDetail[];
+  tanggalPengajuanKAK: Date | null;
   tanggalMulaiKegiatan: Date | null;
   tanggalAkhirKegiatan: Date | null;
-  tanggalPengajuanKAK: Date | null;
   pembuatDaftar: string;
 }
 
@@ -53,15 +54,15 @@ const defaultValues: FormValues = {
   akun: "",
   paguAnggaran: "",
   kegiatanDetails: [],
+  tanggalPengajuanKAK: null,
   tanggalMulaiKegiatan: null,
   tanggalAkhirKegiatan: null,
-  tanggalPengajuanKAK: null,
   pembuatDaftar: ""
 };
 
-// Options
-const jenisKakOptions = ["Reguler", "Tambahan", "Khusus"];
-const jenisPaketMeetingOptions = ["Full Day", "Half Day", "Coffee Break"];
+// Updated options
+const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
+const jenisPaketMeetingOptions = ["Half Day", "Full Day", "Full Board"];
 const subKomponenOptions = ["PPIS", "Dukman"];
 const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
 
@@ -104,6 +105,11 @@ const KerangkaAcuanKerja = () => {
         newValues.komponenOutput = '';
       } else if (field === 'ro') {
         newValues.komponenOutput = '';
+      } else if (field === 'jenisKak') {
+        // Reset jenisPaketMeeting when jenisKak is changed to something other than "Belanja Paket Meeting"
+        if (value !== "Belanja Paket Meeting") {
+          newValues.jenisPaketMeeting = '';
+        }
       }
       
       return newValues;
@@ -140,6 +146,44 @@ const KerangkaAcuanKerja = () => {
     }));
   };
 
+  const saveToGoogleSheets = async () => {
+    try {
+      // Format data for Google Sheets
+      const kegiatanDetailValues = formValues.kegiatanDetails.map((detail, index) => [
+        formValues.jenisKak,
+        formValues.jenisPaketMeeting,
+        programs.find(p => p.id === formValues.programPembebanan)?.name || formValues.programPembebanan,
+        kegiatan.find(k => k.id === formValues.kegiatan)?.name || formValues.kegiatan,
+        kros.find(k => k.id === formValues.kro)?.name || formValues.kro,
+        ros.find(r => r.id === formValues.ro)?.name || formValues.ro,
+        komponenOptions.find(k => k.id === formValues.komponenOutput)?.name || formValues.komponenOutput,
+        formValues.subKomponen,
+        akuns.find(a => a.id === formValues.akun)?.name || formValues.akun,
+        formValues.paguAnggaran,
+        detail.namaKegiatan,
+        detail.volume,
+        detail.satuan,
+        detail.hargaSatuan,
+        formValues.tanggalPengajuanKAK ? format(formValues.tanggalPengajuanKAK, 'yyyy-MM-dd') : '',
+        formValues.tanggalMulaiKegiatan ? format(formValues.tanggalMulaiKegiatan, 'yyyy-MM-dd') : '',
+        formValues.tanggalAkhirKegiatan ? format(formValues.tanggalAkhirKegiatan, 'yyyy-MM-dd') : '',
+        organikList.find(o => o.id === formValues.pembuatDaftar)?.name || formValues.pembuatDaftar
+      ]);
+
+      // Append data to Google Sheets
+      await GoogleSheetsService.appendData({
+        sheetName: 'KerangkaAcuanKerja',
+        range: 'A:R',
+        values: kegiatanDetailValues
+      });
+      
+      console.log("Data appended to Google Sheets successfully");
+    } catch (error) {
+      console.error("Error saving to Google Sheets:", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -168,10 +212,13 @@ const KerangkaAcuanKerja = () => {
     }
 
     try {
+      // Save to Google Sheets
+      await saveToGoogleSheets();
+      
       // Save to Supabase
       await saveDocument.mutateAsync({
         jenisId: "00000000-0000-0000-0000-000000000001", // ID for KAK in the jenis table
-        title: `KAK - ${formValues.jenisKak} - ${formValues.programPembebanan}`,
+        title: `KAK - ${formValues.jenisKak} - ${programs.find(p => p.id === formValues.programPembebanan)?.name || ''}`,
         data: formValues,
       });
       
@@ -226,24 +273,26 @@ const KerangkaAcuanKerja = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting</Label>
-                  <Select 
-                    value={formValues.jenisPaketMeeting} 
-                    onValueChange={(value) => handleChange('jenisPaketMeeting', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis paket meeting" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jenisPaketMeetingOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {formValues.jenisKak === "Belanja Paket Meeting" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting</Label>
+                    <Select 
+                      value={formValues.jenisPaketMeeting} 
+                      onValueChange={(value) => handleChange('jenisPaketMeeting', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih jenis paket meeting" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jenisPaketMeetingOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="programPembebanan">Program Pembebanan</Label>
