@@ -5,7 +5,8 @@ import { FileText } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import SeedDataButton from "@/components/SeedDataButton";
+
+// Removed SeedDataButton as it appears to not be a proper React component
 
 const documentTypes = [
   {
@@ -45,6 +46,20 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
+    title: "Kuitansi Perjalanan Dinas",
+    description: "Buat kuitansi perjalanan dinas luar atau dalam kota",
+    path: "/dokumen/kuitansi-perjalanan-dinas",
+    color: "bg-purple-50 dark:bg-purple-900/20",
+    iconColor: "text-purple-500"
+  },
+  {
+    title: "Dokumen Pengadaan",
+    description: "Buat dokumen pengadaan barang dan jasa",
+    path: "/dokumen/dokumen-pengadaan",
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    iconColor: "text-bps-blue"
+  },
+  {
     title: "Tanda Terima",
     description: "Buat dokumen tanda terima",
     path: "/dokumen/tanda-terima",
@@ -73,8 +88,6 @@ const BuatDokumen = () => {
             />
           </div>
         </div>
-
-        <SeedDataButton />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {documentTypes.map((item) => (

@@ -1,4 +1,3 @@
-
 export interface JenisDocumentOption {
   value: string;
   label: string;
@@ -85,3 +84,89 @@ export interface ExternalLinkItem {
   url: string;
   icon: string;
 }
+
+export interface PerjalananDinas {
+  id?: string;
+  jenisPerjalanan: "luar_kota" | "dalam_kota";
+  nomorSuratTugas: string;
+  tanggalSuratTugas: string;
+  namaPelaksana: string;
+  tujuanPelaksanaan: string;
+  kabKotaTujuan?: string;
+  namaTempat?: string;
+  kecamatanTujuan?: string[];
+  tanggalBerangkat: string | string[];
+  tanggalKembali: string | string[];
+  program: string;
+  kegiatan: string;
+  kro: string;
+  ro: string;
+  komponen: string;
+  akun: string;
+  tanggalPengajuan: string;
+  biayaTransport?: number;
+  biayaBBMTol?: number;
+  biayaPenginapan?: number;
+}
+
+export interface DokumenPengadaan {
+  id?: string;
+  kodeKegiatan: string;
+  namaPaket: string;
+  tanggalMulai: string;
+  tanggalSelesai: string;
+  spesifikasiTeknis: string;
+  volume: number;
+  satuan: "O-H" | "O-P" | "O-K" | "Unit" | "SET";
+  hargaSatuanAwal: number;
+  hargaSatuanNego: number;
+  metodePengadaan: string;
+  bentukKontrak: string;
+  jenisKontrak: string;
+  caraPembayaran: string;
+  uangMuka: number;
+  nomorFormulirPermintaan: string;
+  tanggalFormulirPermintaan: string;
+  tanggalKAK: string;
+  nomorKertasKerjaHPS: string;
+  namaPenyedia: string;
+  namaPerwakilanPenyedia: string;
+  jabatan: string;
+  alamatPenyedia: string;
+  namaBank: string;
+  nomorRekening: string;
+  atasNamaRekening: string;
+  npwpPenyedia: string;
+  nomorSuratPenawaran: string;
+  nomorSuratPermohonan: string;
+  nomorInvoice: string;
+}
+
+export const KECAMATAN_MAJALENGKA = [
+  "Argapura", "Banjaran", "Bantarujeg", "Cigasong", "Cikijing", 
+  "Cingambul", "Dawuan", "Jatitujuh", "Jatiwangi", "Kadipaten", 
+  "Kasokandel", "Kertajati", "Lemahsugih", "Leuwimunding", "Ligung", 
+  "Maja", "Majalengka", "Malausma", "Palasah", "Panyingkiran", 
+  "Rajagaluh", "Sindang", "Sindangwangi", "Sukahaji", "Sumberjaya", "Talaga"
+]
+
+export const METODE_PENGADAAN = [
+  "Pengadaan Langsung", "E-Purchasing", "Tender/Lelang", "Seleksi", 
+  "Penunjukan Langsung", "Sayembara/Kontes", "Swakelola"
+]
+
+export const BENTUK_KONTRAK = [
+  "Bukti Pembelian/Pembayaran", "Kuitansi", "Surat Perintah Kerja (SPK)", 
+  "Surat Perjanjian", "Surat Pesanan"
+]
+
+export const JENIS_KONTRAK = [
+  "Kontrak Lump Sum", "Kontrak Harga Satuan", "Kontrak Gabungan Lump Sum dan Harga Satuan", 
+  "Kontrak Waktu Penugasan", "Kontrak Turnkey", "Kontrak Payung (Framework Contract)", 
+  "Kontrak Pengadaan Tunggal", "Kontrak Multi Years"
+]
+
+export const CARA_PEMBAYARAN = [
+  "Termin (Bertahap)", "Bulanan", "Sekaligus", "Uang Muka (Down Payment)",
+  "Prestasi Kerja (Milestone Payment)", "Waktu Penugasan (Time-Based Payment)"
+]

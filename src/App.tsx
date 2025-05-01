@@ -16,6 +16,8 @@ import SPJHonor from "./pages/dokumen/SPJHonor";
 import TransportLokal from "./pages/dokumen/TransportLokal";
 import UangHarianTransport from "./pages/dokumen/UangHarianTransport";
 import TandaTerima from "./pages/dokumen/TandaTerima";
+import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
+import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import ExternalLink from "./pages/ExternalLink";
 import GoogleSheetsPage from "./pages/GoogleSheetsPage";
 
@@ -37,6 +39,8 @@ const App = () => (
             <Route path="/dokumen/transport-lokal" element={<TransportLokal />} />
             <Route path="/dokumen/uang-harian-transport" element={<UangHarianTransport />} />
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />
+            <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
+            <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
             <Route path="/google-sheets" element={<GoogleSheetsPage />} />
             
             {/* External Links */}
