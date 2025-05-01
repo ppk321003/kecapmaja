@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -25,7 +26,7 @@ import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
@@ -53,6 +54,7 @@ const TandaTerima = () => {
   const { data: organikBPS = [] } = useOrganikBPS();
   const { data: mitraStatistik = [] } = useMitraStatistik();
   
+  // Fixed issue: Initialize defaultValues with non-optional properties
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,11 +66,11 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", 
-          banyaknya: 1,
-          satuan: "",   
+          namaItem: "", // Required field, initialized with empty string
+          banyaknya: 1,  // Required field, initialized with default value
+          satuan: "",    // Required field, initialized with empty string
         },
-      ] as TandaTerimaItem[], // Fixed: Using type assertion to ensure compatibility
+      ],
     },
   });
   
@@ -134,7 +136,7 @@ const TandaTerima = () => {
       namaItem: "", 
       banyaknya: 1, 
       satuan: "",   
-    } as TandaTerimaItem); // Fixed: Using type assertion to ensure compatibility
+    });
   };
 
   return (
