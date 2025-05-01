@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -65,11 +64,11 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", // Non-optional empty string
-          banyaknya: 1, // Non-optional default value
-          satuan: "",   // Non-optional empty string
+          namaItem: "", 
+          banyaknya: 1,
+          satuan: "",   
         },
-      ],
+      ] as TandaTerimaItem[], // Fixed: Using type assertion to ensure compatibility
     },
   });
   
@@ -132,10 +131,10 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      namaItem: "", // Non-optional empty string
-      banyaknya: 1, // Non-optional default value
-      satuan: "",   // Non-optional empty string
-    });
+      namaItem: "", 
+      banyaknya: 1, 
+      satuan: "",   
+    } as TandaTerimaItem); // Fixed: Using type assertion to ensure compatibility
   };
 
   return (
@@ -237,7 +236,7 @@ const TandaTerima = () => {
                     )}
                   />
                   
-                  {/* Pembuat Daftar - Changed to dropdown list of organik */}
+                  {/* Pembuat Daftar */}
                   <FormField
                     control={form.control}
                     name="pembuatDaftar"
@@ -267,7 +266,7 @@ const TandaTerima = () => {
                   />
                 </div>
                 
-                {/* Item List - Moved up as requested */}
+                {/* Item List */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Daftar Item</h3>
@@ -369,7 +368,7 @@ const TandaTerima = () => {
                           htmlFor={`organik-${organik.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          {organik.name} {/* Removed NIP as requested */}
+                          {organik.name}
                         </label>
                       </div>
                     ))}
@@ -391,7 +390,7 @@ const TandaTerima = () => {
                           htmlFor={`mitra-${mitra.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          {mitra.name} {/* Display kecamatan if available */}
+                          {mitra.name}
                           {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
                         </label>
                       </div>
@@ -420,4 +419,3 @@ const TandaTerima = () => {
 };
 
 export default TandaTerima;
-

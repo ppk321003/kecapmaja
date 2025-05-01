@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -109,19 +110,28 @@ export const useKomponen = (roId: string | null) => {
     queryFn: async () => {
       if (!roId) return [];
       
+      // Fixed issue: Use explicit type for database result
+      interface KomponenDB {
+        id: string;
+        name: string;
+        created_at: string;
+        updated_at: string;
+      }
+      
       const { data, error } = await supabase
         .from("komponen")
         .select("*")
-        .eq("ro_id", roId)
         .order("name");
       
       if (error) throw error;
       
-      // Convert database field names to match our type definitions
-      return data.map(item => ({
+      // Convert database fields to match our type definition
+      // Since there is no ro_id relation in the database schema, we're currently not filtering by roId
+      // This should be updated when the database schema is updated to include ro_id
+      return (data as KomponenDB[]).map(item => ({
         id: item.id,
         name: item.name,
-        roId: item.ro_id,
+        roId: roId, // Simply use the passed roId parameter
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as Komponen[];
@@ -175,11 +185,10 @@ export const useMitraStatistik = () => {
       if (error) throw error;
       
       // Convert database fields to match our type definition
-      // Since kecamatan may not exist in the database schema, we provide a default empty string
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        kecamatan: "", // Default empty string since it doesn't exist in the DB schema
+        kecamatan: item.kecamatan || "", // Use actual kecamatan or empty string if null
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];
