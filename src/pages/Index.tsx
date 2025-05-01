@@ -90,15 +90,15 @@ const Index = () => {
             </p>
             <div className="space-y-3">
               <p className="text-blue-900 text-base">
-                <span className="font-bold">KECAP:</span> Keuangan Cekatan Anggaran Pengadaan
+                <span className="font-bold">KECAP -</span> Keuangan Cekatan Anggaran Pengadaan
               </p>
-              <p className="text-muted-foreground pl-6 px-0">
+              <p className="text-muted-foreground pl-6 px-0 text-justify">
                 Menunjukkan pengelolaan keuangan yang cepat, efisien, dan tanggap, mengacu pada pengelolaan anggaran yang ditujukan untuk pengadaan barang dan jasa
               </p>
               <p className="text-blue-900">
-                <span className="font-bold">MAJA:</span> Maju Aman Jeung Amanah
+                <span className="font-bold">MAJA -</span> Maju Aman Jeung Amanah
               </p>
-              <p className="text-muted-foreground pl-6 px-0">
+              <p className="text-muted-foreground pl-6 px-0 text-justify">
                 Bergerak maju dengan jaminan keamanan dan kehati-hatian, menunjukkan bahwa segala proses dilakukan dengan penuh tanggung jawab dan integritas
               </p>
             </div>
