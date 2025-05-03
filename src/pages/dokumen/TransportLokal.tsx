@@ -1,113 +1,86 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent } from "@/components/ui/card";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Plus, Trash } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { TransportLokalData, TransportItem, KECAMATAN_MAJALENGKA } from "@/types";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { 
-  usePrograms, 
-  useKegiatan, 
-  useKRO, 
-  useRO, 
-  useKomponen, 
-  useAkun,
-  useOrganikBPS,
-  useMitraStatistik
-} from "@/hooks/use-database";
+import { Label } from "@/components/ui/label";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useJenis, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { toast } from "@/components/ui/use-toast";
+import { KomponenSelect } from "@/components/KomponenSelect";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
-  namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
-  detail: z.string().min(1, "Detail wajib diisi"),
-  jenis: z.enum(["Pendataan", "Pemeriksaan", "Supervisi"], {
-    required_error: "Jenis wajib dipilih",
-  }),
-  program: z.string().min(1, "Program wajib dipilih"),
-  kegiatan: z.string().min(1, "Kegiatan wajib dipilih"),
-  kro: z.string().min(1, "KRO wajib dipilih"),
-  ro: z.string().min(1, "RO wajib dipilih"),
-  komponen: z.string().min(1, "Komponen wajib dipilih"),
-  akun: z.string().min(1, "Akun wajib dipilih"),
-  tanggalPengajuan: z.string().min(1, "Tanggal pengajuan wajib diisi"),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar wajib diisi"),
+  namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
+  detil: z.string().optional(),
+  jenis: z.string().min(1, "Jenis harus dipilih"),
+  program: z.string().min(1, "Program harus dipilih"),
+  kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
+  kro: z.string().min(1, "KRO harus dipilih"),
+  ro: z.string().min(1, "RO harus dipilih"),
+  komponen: z.string().min(1, "Komponen harus dipilih"),
+  akun: z.string().min(1, "Akun harus dipilih"),
+  tanggalPengajuan: z.date({ required_error: "Tanggal pengajuan harus dipilih" }),
+  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
   organikBPS: z.array(z.string()).optional(),
   mitraStatistik: z.array(z.string()).optional(),
   daftarTransport: z.array(
     z.object({
-      nama: z.string().min(1, "Nama wajib diisi"),
-      jenisPetugas: z.enum(["Organik BPS", "Mitra Statistik"]),
-      banyaknya: z.number().min(1, "Banyaknya wajib diisi"),
-      kecamatanTujuan: z.array(z.string()).min(1, "Minimal 1 kecamatan"),
-      rateTranslok: z.array(z.number()).min(1, "Rate translok wajib diisi"),
-      jumlah: z.number().optional(),
+      nama: z.string(),
+      jenisPetugas: z.string(),
+      banyaknya: z.number(),
+      kecamatanTujuan: z.array(z.string()),
+      rateTranslok: z.array(z.number()),
+      jumlah: z.number(),
     })
   ).optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+const DEFAULT_VALUES: FormValues = {
+  namaKegiatan: "",
+  detil: "",
+  jenis: "",
+  program: "",
+  kegiatan: "",
+  kro: "",
+  ro: "",
+  komponen: "",
+  akun: "",
+  tanggalPengajuan: new Date(),
+  pembuatDaftar: "",
+  organikBPS: [],
+  mitraStatistik: [],
+  daftarTransport: [],
+};
 
 const TransportLokal = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-  const [selectedPetugas, setSelectedPetugas] = useState<{id: string, name: string, jenis: "Organik BPS" | "Mitra Statistik"}[]>([]);
-  
-  // Fetching data from database
-  const { data: programs = [] } = usePrograms();
-  const { data: organikBPS = [] } = useOrganikBPS();
-  const { data: mitraStatistik = [] } = useMitraStatistik();
-  
-  const form = useForm<z.infer<typeof formSchema>>({
+  const [transportItems, setTransportItems] = useState<any[]>([]);
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      namaKegiatan: "",
-      detail: "",
-      jenis: "Pendataan",
-      program: "",
-      kegiatan: "",
-      kro: "",
-      ro: "",
-      komponen: "",
-      akun: "",
-      tanggalPengajuan: format(new Date(), "yyyy-MM-dd"),
-      pembuatDaftar: "",
-      organikBPS: [],
-      mitraStatistik: [],
-      daftarTransport: [],
-    },
+    defaultValues: DEFAULT_VALUES,
   });
-  
-  const { fields, append, remove, replace } = useFieldArray({
-    control: form.control,
-    name: "daftarTransport",
-  });
-  
-  // Dependent dropdowns
+
+  // Data fetching hooks
+  const { data: jenisList = [] } = useJenis();
+  const { data: programList = [] } = usePrograms();
   const { data: kegiatanList = [] } = useKegiatan(
     form.watch("program") || null
   );
@@ -119,201 +92,234 @@ const TransportLokal = () => {
   );
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
+  
+  // Create name-to-object mappings for display purposes
+  const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name]));
+  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
+  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
+  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
+  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
+  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
   
   // Update transport items when Organik or Mitra selection changes
   useEffect(() => {
-    // Build the list of selected petugas
-    const petugasList: {id: string, name: string, jenis: "Organik BPS" | "Mitra Statistik"}[] = [];
-    
-    // Add selected organik
-    selectedOrganik.forEach(id => {
-      const organik = organikBPS.find(org => org.id === id);
-      if (organik) {
-        petugasList.push({
-          id: organik.id,
-          name: organik.name,
-          jenis: "Organik BPS"
-        });
-      }
-    });
-    
-    // Add selected mitra
-    selectedMitra.forEach(id => {
-      const mitra = mitraStatistik.find(m => m.id === id);
-      if (mitra) {
-        petugasList.push({
-          id: mitra.id,
-          name: mitra.name,
-          jenis: "Mitra Statistik"
-        });
-      }
-    });
-    
-    setSelectedPetugas(petugasList);
-    
-    // Update transport items
-    const newTransportItems = petugasList.map(petugas => ({
-      nama: petugas.name,
-      jenisPetugas: petugas.jenis,
-      banyaknya: 1,
-      kecamatanTujuan: [] as string[],
-      rateTranslok: [] as number[],
-      jumlah: 0
-    }));
-    
-    replace(newTransportItems as any);
-    
-  }, [selectedOrganik, selectedMitra, organikBPS, mitraStatistik, replace]);
-  
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    // Calculate jumlah for each item
-    const updatedDaftarTransport = (values.daftarTransport || []).map((item) => {
-      const totalRate = (item.rateTranslok || []).reduce((sum, rate) => sum + rate, 0);
+    const allSelected = [...selectedOrganik, ...selectedMitra];
+    const newItems = allSelected.map((id) => {
+      const organik = organikList.find((o) => o.id === id);
+      const mitra = mitraList.find((m) => m.id === id);
+      const person = organik || mitra;
+      
+      if (!person) return null;
+      
       return {
-        nama: item.nama,
-        jenisPetugas: item.jenisPetugas,
-        banyaknya: item.banyaknya,
-        kecamatanTujuan: item.kecamatanTujuan,
-        rateTranslok: item.rateTranslok,
-        jumlah: item.banyaknya * totalRate,
+        personId: id,
+        nama: person.name,
+        jenisPetugas: organik ? "Organik BPS" : "Mitra Statistik",
+        banyaknya: 0,
+        kecamatanTujuan: [],
+        rateTranslok: [],
+        jumlah: 0,
       };
-    });
+    }).filter(Boolean);
     
-    const formData: TransportLokalData = {
-      namaKegiatan: values.namaKegiatan,
-      detail: values.detail,
-      jenis: values.jenis,
-      program: values.program,
-      kegiatan: values.kegiatan,
-      kro: values.kro,
-      ro: values.ro,
-      komponen: values.komponen,
-      akun: values.akun,
-      tanggalPengajuan: values.tanggalPengajuan,
-      pembuatDaftar: values.pembuatDaftar,
-      organikBPS: values.organikBPS || [],
-      mitraStatistik: values.mitraStatistik || [],
-      daftarTransport: updatedDaftarTransport,
+    setTransportItems(newItems as any[]);
+  }, [selectedOrganik, selectedMitra, organikList, mitraList]);
+  
+  const submitMutation = useSubmitToSheets({
+    documentType: "TransportLokal",
+    onSuccess: () => {
+      navigate("/buat-dokumen");
+    }
+  });
+  
+  const handleOrganikChange = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedOrganik((prev) => [...prev, id]);
+    } else {
+      setSelectedOrganik((prev) => prev.filter((item) => item !== id));
+    }
+  };
+  
+  const handleMitraChange = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedMitra((prev) => [...prev, id]);
+    } else {
+      setSelectedMitra((prev) => prev.filter((item) => item !== id));
+    }
+  };
+  
+  const handleTransportItemChange = (index: number, field: string, value: any) => {
+    const updatedItems = [...transportItems];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value,
     };
     
-    console.log("Form Data:", formData);
-    toast.success("Data berhasil disimpan!");
-  };
-  
-  const toggleOrganik = (id: string) => {
-    setSelectedOrganik((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-    
-    const organikValues = form.getValues("organikBPS") || [];
-    if (organikValues.includes(id)) {
-      form.setValue(
-        "organikBPS",
-        organikValues.filter((item) => item !== id)
-      );
-    } else {
-      form.setValue("organikBPS", [...organikValues, id]);
+    // Recalculate jumlah if needed
+    if (field === "banyaknya" || field === "rateTranslok") {
+      const item = updatedItems[index];
+      let total = 0;
+      
+      if (Array.isArray(item.rateTranslok)) {
+        for (let i = 0; i < item.rateTranslok.length; i++) {
+          total += (item.banyaknya || 0) * (item.rateTranslok[i] || 0);
+        }
+      }
+      
+      updatedItems[index].jumlah = total;
     }
-  };
-  
-  const toggleMitra = (id: string) => {
-    setSelectedMitra((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
     
-    const mitraValues = form.getValues("mitraStatistik") || [];
-    if (mitraValues.includes(id)) {
-      form.setValue(
-        "mitraStatistik",
-        mitraValues.filter((item) => item !== id)
-      );
+    setTransportItems(updatedItems);
+  };
+  
+  const handleKecamatanChange = (index: number, kecamatanValue: string, checked: boolean) => {
+    const updatedItems = [...transportItems];
+    const item = updatedItems[index];
+    
+    if (checked) {
+      // Add kecamatan and default rate
+      updatedItems[index] = {
+        ...item,
+        kecamatanTujuan: [...(item.kecamatanTujuan || []), kecamatanValue],
+        rateTranslok: [...(item.rateTranslok || []), 0],
+      };
     } else {
-      form.setValue("mitraStatistik", [...mitraValues, id]);
+      // Remove kecamatan and its rate
+      const kecIdx = item.kecamatanTujuan.indexOf(kecamatanValue);
+      if (kecIdx !== -1) {
+        const newKecamatan = [...item.kecamatanTujuan];
+        const newRates = [...item.rateTranslok];
+        newKecamatan.splice(kecIdx, 1);
+        newRates.splice(kecIdx, 1);
+        
+        updatedItems[index] = {
+          ...item,
+          kecamatanTujuan: newKecamatan,
+          rateTranslok: newRates,
+        };
+      }
     }
+    
+    setTransportItems(updatedItems);
   };
-  
-  const handleRateChange = (index: number, kecIndex: number, value: string) => {
-    const rates = form.getValues(`daftarTransport.${index}.rateTranslok`) || [];
-    const newRates = [...rates];
-    newRates[kecIndex] = parseFloat(value) || 0;
-    form.setValue(`daftarTransport.${index}.rateTranslok`, newRates);
-  };
-  
-  // Calculate total for all items
-  const calculateTotal = () => {
-    const daftar = form.getValues("daftarTransport") || [];
+
+  const handleRateChange = (itemIndex: number, rateIndex: number, value: string) => {
+    const updatedItems = [...transportItems];
+    const item = updatedItems[itemIndex];
+    const newRates = [...item.rateTranslok];
+    newRates[rateIndex] = Number(value) || 0;
+    
+    // Calculate new total
     let total = 0;
+    for (let i = 0; i < newRates.length; i++) {
+      total += (item.banyaknya || 0) * (newRates[i] || 0);
+    }
     
-    daftar.forEach((item) => {
-      const itemRates = item.rateTranslok || [];
-      const itemTotal = item.banyaknya * itemRates.reduce((sum, rate) => sum + rate, 0);
-      total += itemTotal;
-    });
+    updatedItems[itemIndex] = {
+      ...item,
+      rateTranslok: newRates,
+      jumlah: total,
+    };
     
-    return total;
+    setTransportItems(updatedItems);
   };
+  
+  const onSubmit = async (data: FormValues) => {
+    try {
+      console.log("Form Data:", data);
+      
+      // Combine form data with the transport items
+      const formData = {
+        ...data,
+        organikBPS: selectedOrganik,
+        mitraStatistik: selectedMitra,
+        daftarTransport: transportItems,
+        // Add mappings for display in Google Sheets
+        _programNameMap: programsMap,
+        _kegiatanNameMap: kegiatanMap,
+        _kroNameMap: kroMap,
+        _roNameMap: roMap,
+        _komponenNameMap: komponenMap,
+        _akunNameMap: akunMap,
+        _jenisNameMap: jenisMap,
+        _organikNameMap: organikMap,
+        _mitraNameMap: mitraMap,
+        _pembuatDaftarName: organikMap[data.pembuatDaftar]
+      };
+      
+      await submitMutation.mutateAsync(formData);
+      
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan data",
+        description: error.message || "Terjadi kesalahan saat menyimpan form",
+      });
+    }
+  };
+
+  // Kecamatan options (simplified list for demo)
+  const kecamatanOptions = [
+    "Jatiwangi",
+    "Kasokandel",
+    "Ligung",
+    "Sumberjaya",
+    "Dawuan",
+    "Panyingkiran",
+    "Leuwimunding",
+  ];
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Transport Lokal</h1>
-            <p className="text-sm text-muted-foreground">
-              Transport Lokal (Pendataan, Pemeriksaan, Supervisi)
-            </p>
-          </div>
-          <div className="hidden md:block">
-            <img 
-              src="/lovable-uploads/1ef78670-6d2c-4f64-8c6e-149d6b9d2d19.png" 
-              alt="Kecap Maja Logo" 
-              className="h-16 w-auto"
-            />
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Transport Lokal</h1>
+          <p className="text-sm text-muted-foreground">
+            Formulir Transport Lokal Kegiatan
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Form Transport Lokal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Card>
+              <CardContent className="p-6 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Nama Kegiatan */}
-                  <FormField
-                    control={form.control}
-                    name="namaKegiatan"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama Kegiatan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Masukkan nama kegiatan" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Detail */}
-                  <FormField
-                    control={form.control}
-                    name="detail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Detail</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan detail kegiatan" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
+                  <div className="col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="namaKegiatan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nama Kegiatan</FormLabel>
+                          <Input {...field} placeholder="Masukkan nama kegiatan" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Detil */}
+                  <div className="col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="detil"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detil</FormLabel>
+                          <Input {...field} placeholder="Masukkan detil kegiatan" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   {/* Jenis */}
                   <FormField
                     control={form.control}
@@ -331,16 +337,18 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Pendataan">Pendataan</SelectItem>
-                            <SelectItem value="Pemeriksaan">Pemeriksaan</SelectItem>
-                            <SelectItem value="Supervisi">Supervisi</SelectItem>
+                            {jenisList.map((jenis) => (
+                              <SelectItem key={jenis.id} value={jenis.id}>
+                                {jenis.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Program */}
                   <FormField
                     control={form.control}
@@ -351,13 +359,11 @@ const TransportLokal = () => {
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
-                            // Reset dependent fields
                             form.setValue("kegiatan", "");
                             form.setValue("kro", "");
                             form.setValue("ro", "");
-                            form.setValue("komponen", "");
                           }}
-                          value={field.value}
+                          defaultValue={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -365,7 +371,7 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programs.map((program) => (
+                            {programList.map((program) => (
                               <SelectItem key={program.id} value={program.id}>
                                 {program.name}
                               </SelectItem>
@@ -376,7 +382,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Kegiatan */}
                   <FormField
                     control={form.control}
@@ -387,12 +393,10 @@ const TransportLokal = () => {
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
-                            // Reset dependent fields
                             form.setValue("kro", "");
                             form.setValue("ro", "");
-                            form.setValue("komponen", "");
                           }}
-                          value={field.value}
+                          defaultValue={field.value}
                           disabled={!form.watch("program")}
                         >
                           <FormControl>
@@ -401,9 +405,9 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kegiatanList.map((kegiatan) => (
-                              <SelectItem key={kegiatan.id} value={kegiatan.id}>
-                                {kegiatan.name}
+                            {kegiatanList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -412,7 +416,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* KRO */}
                   <FormField
                     control={form.control}
@@ -423,11 +427,9 @@ const TransportLokal = () => {
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
-                            // Reset dependent fields
                             form.setValue("ro", "");
-                            form.setValue("komponen", "");
                           }}
-                          value={field.value}
+                          defaultValue={field.value}
                           disabled={!form.watch("kegiatan")}
                         >
                           <FormControl>
@@ -436,9 +438,9 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kroList.map((kro) => (
-                              <SelectItem key={kro.id} value={kro.id}>
-                                {kro.name}
+                            {kroList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -447,7 +449,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* RO */}
                   <FormField
                     control={form.control}
@@ -456,12 +458,8 @@ const TransportLokal = () => {
                       <FormItem>
                         <FormLabel>RO</FormLabel>
                         <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            // Reset dependent field
-                            form.setValue("komponen", "");
-                          }}
-                          value={field.value}
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
                           disabled={!form.watch("kro")}
                         >
                           <FormControl>
@@ -470,9 +468,9 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {roList.map((ro) => (
-                              <SelectItem key={ro.id} value={ro.id}>
-                                {ro.name}
+                            {roList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -481,7 +479,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Komponen */}
                   <FormField
                     control={form.control}
@@ -489,29 +487,16 @@ const TransportLokal = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
+                        <KomponenSelect
                           value={field.value}
-                          disabled={!form.watch("ro")}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih komponen" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {komponenList.map((komponen) => (
-                              <SelectItem key={komponen.id} value={komponen.id}>
-                                {komponen.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={field.onChange}
+                          placeholder="Pilih komponen"
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Akun */}
                   <FormField
                     control={form.control}
@@ -521,7 +506,7 @@ const TransportLokal = () => {
                         <FormLabel>Akun</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value}
+                          defaultValue={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -531,7 +516,7 @@ const TransportLokal = () => {
                           <SelectContent>
                             {akunList.map((akun) => (
                               <SelectItem key={akun.id} value={akun.id}>
-                                {akun.code} - {akun.name}
+                                {akun.name} ({akun.code})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -540,7 +525,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Tanggal Pengajuan */}
                   <FormField
                     control={form.control}
@@ -552,29 +537,28 @@ const TransportLokal = () => {
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
-                                variant={"outline"}
+                                variant="outline"
                                 className={cn(
                                   "w-full pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
                                 {field.value ? (
-                                  format(new Date(field.value), "dd MMMM yyyy")
+                                  format(field.value, "PPP")
                                 ) : (
                                   <span>Pilih tanggal</span>
                                 )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) =>
-                                field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                              }
+                              selected={field.value}
+                              onSelect={field.onChange}
                               initialFocus
+                              className="p-3 pointer-events-auto"
                             />
                           </PopoverContent>
                         </Popover>
@@ -582,7 +566,7 @@ const TransportLokal = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   {/* Pembuat Daftar */}
                   <FormField
                     control={form.control}
@@ -592,7 +576,7 @@ const TransportLokal = () => {
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value}
+                          defaultValue={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -600,8 +584,8 @@ const TransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikBPS.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.name}>
+                            {organikList.map((organik) => (
+                              <SelectItem key={organik.id} value={organik.id}>
                                 {organik.name}
                               </SelectItem>
                             ))}
@@ -612,248 +596,175 @@ const TransportLokal = () => {
                     )}
                   />
                 </div>
-                
-                {/* Summary Table - MOVED UP as requested */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Ringkasan</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Banyaknya</TableHead>
-                        <TableHead>Kecamatan</TableHead>
-                        <TableHead className="text-right">Jumlah (Rp)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.map((field, index) => {
-                        const item = form.watch(`daftarTransport.${index}`);
-                        const kecamatanList = item?.kecamatanTujuan || [];
-                        const rateList = item?.rateTranslok || [];
-                        const totalRate = rateList.reduce((sum, rate) => sum + rate, 0);
-                        const jumlah = (item?.banyaknya || 0) * totalRate;
-                        
-                        return (
-                          <TableRow key={field.id}>
-                            <TableCell>{item?.nama || ""}</TableCell>
-                            <TableCell>{item?.banyaknya || 0}</TableCell>
-                            <TableCell>
-                              <ul className="list-disc pl-5">
-                                {kecamatanList.map((kec, i) => (
-                                  <li key={kec}>
-                                    {kec} (Rp {rateList[i]?.toLocaleString() || "0"})
-                                  </li>
-                                ))}
-                              </ul>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              Rp {jumlah.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      <TableRow>
-                        <TableCell colSpan={3} className="font-bold text-right">
-                          Total
-                        </TableCell>
-                        <TableCell className="font-bold text-right">
-                          Rp {calculateTotal().toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
 
-                {/* Transport Items */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Daftar Transport</h3>
-                  
-                  {fields.map((field, index) => (
-                    <Card key={field.id} className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name={`daftarTransport.${index}.nama`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nama</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nama" {...field} disabled />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name={`daftarTransport.${index}.banyaknya`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Banyaknya</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  placeholder="Banyaknya" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name={`daftarTransport.${index}.kecamatanTujuan`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Kecamatan Tujuan</FormLabel>
-                              <Select
-                                onValueChange={(value) => {
-                                  const currentValues = field.value || [];
-                                  // Add if not exists
-                                  if (!currentValues.includes(value)) {
-                                    const newValues = [...currentValues, value];
-                                    field.onChange(newValues);
-                                    
-                                    // Add rate for new kecamatan
-                                    const currentRates = form.getValues(`daftarTransport.${index}.rateTranslok`) || [];
-                                    form.setValue(`daftarTransport.${index}.rateTranslok`, [...currentRates, 0]);
-                                  }
-                                }}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Pilih kecamatan" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {KECAMATAN_MAJALENGKA.map((kecamatan) => (
-                                    <SelectItem 
-                                      key={kecamatan} 
-                                      value={kecamatan}
-                                      disabled={(field.value || []).includes(kecamatan)}
-                                    >
-                                      {kecamatan}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      
-                      {/* Selected Kecamatan with Rate */}
-                      {(form.watch(`daftarTransport.${index}.kecamatanTujuan`) || []).length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="text-sm font-medium mb-2">Rate Translok per Kecamatan</h4>
+                {/* Organik dan Mitra section */}
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Organik BPS</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {organikList.map((organik) => (
+                        <div key={organik.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`organik-${organik.id}`}
+                            checked={selectedOrganik.includes(organik.id)}
+                            onCheckedChange={(checked) =>
+                              handleOrganikChange(organik.id, !!checked)
+                            }
+                          />
+                          <Label
+                            htmlFor={`organik-${organik.id}`}
+                            className="text-sm"
+                          >
+                            {organik.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Mitra Statistik</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {mitraList.map((mitra) => (
+                        <div key={mitra.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`mitra-${mitra.id}`}
+                            checked={selectedMitra.includes(mitra.id)}
+                            onCheckedChange={(checked) =>
+                              handleMitraChange(mitra.id, !!checked)
+                            }
+                          />
+                          <Label
+                            htmlFor={`mitra-${mitra.id}`}
+                            className="text-sm"
+                          >
+                            {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Transport Items */}
+                  {transportItems.length > 0 && (
+                    <div className="space-y-6">
+                      <h3 className="text-lg font-medium">Daftar Transport</h3>
+                      {transportItems.map((item, index) => (
+                        <div key={index} className="border p-4 rounded-lg space-y-4">
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Nama</Label>
+                              <Input value={item.nama} disabled />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Jenis Petugas</Label>
+                              <Input value={item.jenisPetugas} disabled />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Banyaknya</Label>
+                              <Input
+                                type="number"
+                                value={item.banyaknya}
+                                onChange={(e) =>
+                                  handleTransportItemChange(
+                                    index,
+                                    "banyaknya",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                }
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+
                           <div className="space-y-2">
-                            {(form.watch(`daftarTransport.${index}.kecamatanTujuan`) || []).map((kecamatan, kecIndex) => (
-                              <div key={kecamatan} className="flex items-center space-x-2">
-                                <div className="flex-grow">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm">{kecamatan}</span>
-                                    <Button 
-                                      type="button" 
-                                      variant="ghost" 
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => {
-                                        // Remove kecamatan
-                                        const currentKec = form.getValues(`daftarTransport.${index}.kecamatanTujuan`) || [];
-                                        const currentRates = form.getValues(`daftarTransport.${index}.rateTranslok`) || [];
-                                        
-                                        const newKec = currentKec.filter((_, i) => i !== kecIndex);
-                                        const newRates = currentRates.filter((_, i) => i !== kecIndex);
-                                        
-                                        form.setValue(`daftarTransport.${index}.kecamatanTujuan`, newKec);
-                                        form.setValue(`daftarTransport.${index}.rateTranslok`, newRates);
-                                      }}
-                                    >
-                                      <Trash className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </div>
-                                  <Input 
-                                    type="number" 
-                                    placeholder="Rate" 
-                                    value={(form.watch(`daftarTransport.${index}.rateTranslok`) || [])[kecIndex] || 0}
-                                    onChange={(e) => handleRateChange(index, kecIndex, e.target.value)}
-                                    className="mt-1"
+                            <Label>Kecamatan Tujuan</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                              {kecamatanOptions.map((kec) => (
+                                <div
+                                  key={kec}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={`kec-${index}-${kec}`}
+                                    checked={item.kecamatanTujuan.includes(kec)}
+                                    onCheckedChange={(checked) =>
+                                      handleKecamatanChange(index, kec, !!checked)
+                                    }
                                   />
+                                  <Label
+                                    htmlFor={`kec-${index}-${kec}`}
+                                    className="text-sm"
+                                  >
+                                    {kec}
+                                  </Label>
                                 </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Rate Transport per Kecamatan */}
+                          {item.kecamatanTujuan.length > 0 && (
+                            <div className="space-y-2">
+                              <Label>Rate Transport per Kecamatan (Rp)</Label>
+                              <div className="space-y-2">
+                                {item.kecamatanTujuan.map((kec, kecIndex) => (
+                                  <div
+                                    key={kecIndex}
+                                    className="grid grid-cols-2 gap-2 items-center"
+                                  >
+                                    <Label className="text-sm">{kec}</Label>
+                                    <Input
+                                      type="number"
+                                      value={item.rateTranslok[kecIndex] || 0}
+                                      onChange={(e) =>
+                                        handleRateChange(
+                                          index,
+                                          kecIndex,
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label>Jumlah (Rp)</Label>
+                            <Input
+                              value={item.jumlah.toLocaleString()}
+                              disabled
+                              className="font-bold"
+                            />
                           </div>
                         </div>
-                      )}
-                    </Card>
-                  ))}
-                </div>
-                
-                {/* Organik BPS Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {organikBPS.map((organik) => (
-                      <div key={organik.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`organik-${organik.id}`}
-                          checked={selectedOrganik.includes(organik.id)}
-                          onCheckedChange={() => toggleOrganik(organik.id)}
-                        />
-                        <label
-                          htmlFor={`organik-${organik.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {organik.name}
-                        </label>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Submit Buttons */}
+                  <div className="flex space-x-4 pt-4">
+                    <Button type="submit" disabled={submitMutation.isPending || transportItems.length === 0}>
+                      {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate("/buat-dokumen")}
+                    >
+                      Batal
+                    </Button>
                   </div>
                 </div>
-                
-                {/* Mitra Statistik Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {mitraStatistik.map((mitra) => (
-                      <div key={mitra.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mitra-${mitra.id}`}
-                          checked={selectedMitra.includes(mitra.id)}
-                          onCheckedChange={() => toggleMitra(mitra.id)}
-                        />
-                        <label
-                          htmlFor={`mitra-${mitra.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {mitra.name}
-                          {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Actions */}
-                <div className="flex justify-end space-x-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate("/buat-dokumen")}
-                  >
-                    Kembali
-                  </Button>
-                  <Button type="submit">Simpan</Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
       </div>
     </Layout>
   );

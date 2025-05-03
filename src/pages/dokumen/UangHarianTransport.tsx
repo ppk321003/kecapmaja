@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,14 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
+import { KomponenSelect } from "@/components/KomponenSelect";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 interface FormValues {
   namaKegiatan: string;
   detil: string;
+  jenis: string;
   program: string;
   kegiatan: string;
   kro: string;
@@ -37,6 +40,7 @@ interface FormValues {
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
+  jenis: "",
   program: "",
   kegiatan: "",
   kro: "",
@@ -71,6 +75,25 @@ const UangHarianTransport = () => {
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
+  const { data: jenisList = [] } = useJenis();
+
+  // Create name-to-object mappings for display purposes
+  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
+  const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
+  const kroMap = Object.fromEntries((kros || []).map(item => [item.id, item.name]));
+  const roMap = Object.fromEntries((ros || []).map(item => [item.id, item.name]));
+  const komponenMap = Object.fromEntries((komponenOptions || []).map(item => [item.id, item.name]));
+  const akunMap = Object.fromEntries((akuns || []).map(item => [item.id, item.name]));
+  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
+  const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+
+  const submitMutation = useSubmitToSheets({
+    documentType: "UangHarianTransport",
+    onSuccess: () => {
+      navigate("/buat-dokumen");
+    }
+  });
 
   const handleChange = (field: keyof FormValues, value: any) => {
     setFormValues((prev) => {
@@ -81,16 +104,11 @@ const UangHarianTransport = () => {
         newValues.kegiatan = '';
         newValues.kro = '';
         newValues.ro = '';
-        newValues.komponen = '';
       } else if (field === 'kegiatan') {
         newValues.kro = '';
         newValues.ro = '';
-        newValues.komponen = '';
       } else if (field === 'kro') {
         newValues.ro = '';
-        newValues.komponen = '';
-      } else if (field === 'ro') {
-        newValues.komponen = '';
       }
       
       return newValues;
@@ -122,19 +140,23 @@ const UangHarianTransport = () => {
       const submitData = {
         ...formValues,
         organik: selectedOrganik,
-        mitra: selectedMitra
+        mitra: selectedMitra,
+        // Add name mappings for proper display in Google Sheets
+        _programNameMap: programsMap,
+        _kegiatanNameMap: kegiatanMap,
+        _kroNameMap: kroMap,
+        _roNameMap: roMap,
+        _komponenNameMap: komponenMap,
+        _akunNameMap: akunMap,
+        _organikNameMap: organikMap,
+        _mitraNameMap: mitraMap,
+        _pembuatDaftarName: pembuatDaftarMap[formValues.pembuatDaftar]
       };
       
       console.log('Form submitted:', submitData);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast({
-        title: "Dokumen berhasil dibuat",
-        description: "Uang Harian dan Transport Lokal telah tersimpan",
-      });
-      
-      navigate("/buat-dokumen");
+      // Submit to Google Sheets
+      await submitMutation.mutateAsync(submitData);
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -168,6 +190,7 @@ const UangHarianTransport = () => {
                     placeholder="Masukkan nama kegiatan"
                     value={formValues.namaKegiatan}
                     onChange={(e) => handleChange('namaKegiatan', e.target.value)}
+                    required
                   />
                 </div>
 
@@ -179,6 +202,25 @@ const UangHarianTransport = () => {
                     value={formValues.detil}
                     onChange={(e) => handleChange('detil', e.target.value)}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="jenis">Jenis</Label>
+                  <Select 
+                    value={formValues.jenis} 
+                    onValueChange={(value) => handleChange('jenis', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih jenis" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jenisList.map((jenis) => (
+                        <SelectItem key={jenis.id} value={jenis.id}>
+                          {jenis.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -262,22 +304,11 @@ const UangHarianTransport = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="komponen">Komponen</Label>
-                  <Select 
-                    value={formValues.komponen} 
-                    onValueChange={(value) => handleChange('komponen', value)}
-                    disabled={!formValues.ro}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih komponen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {komponenOptions.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <KomponenSelect
+                    value={formValues.komponen}
+                    onChange={(value) => handleChange('komponen', value)}
+                    placeholder="Pilih komponen"
+                  />
                 </div>
 
                 <div className="space-y-2">

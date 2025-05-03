@@ -93,14 +93,13 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
     data.namaKegiatan || "",       // Nama Kegiatan
     data.detail || "",             // Detail Kegiatan
     formatDate(data.tanggalPembuatanDaftar),  // Tanggal Pembuatan Daftar
-    data.pembuatDaftar || "",      // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",      // Pembuat Daftar
   ];
 
   // Get display names for Organik BPS (instead of IDs)
   const organikIds = data.organikBPS || [];
   const organikNames = organikIds.map((id: string) => {
-    const item = data._organikNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._organikNameMap?.[id] || id;
   });
   row.push(organikNames.join(", ")); // Organik BPS
 
@@ -110,8 +109,7 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
   // Get display names for Mitra Statistik (instead of IDs)
   const mitraIds = data.mitraStatistik || [];
   const mitraNames = mitraIds.map((id: string) => {
-    const item = data._mitraNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._mitraNameMap?.[id] || id;
   });
   row.push(mitraNames.join(", ")); // Mitra Statistik
 
@@ -154,7 +152,7 @@ function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
     formatDate(data.tanggalPengajuanKAK),        // Tanggal Pengajuan KAK
     formatDate(data.tanggalMulaiKegiatan),       // Tanggal Mulai Kegiatan
     formatDate(data.tanggalAkhirKegiatan),       // Tanggal Akhir Kegiatan
-    data.pembuatDaftar || "",                    // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",    // Pembuat Daftar
   ];
 
   // Add kegiatan details (up to 15)
@@ -189,23 +187,22 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
   const roName = data._roNameMap?.[data.ro] || data.ro || "";
   const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+  const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
 
   // Get display names for Organik and Mitra
   const organikNames = (data.organik || []).map((id: string) => {
-    const item = data._organikNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._organikNameMap?.[id] || id;
   });
 
   const mitraNames = (data.mitra || []).map((id: string) => {
-    const item = data._mitraNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._mitraNameMap?.[id] || id;
   });
   
   const row: any[] = [
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
     data.detil || "",                // Detil
-    data.jenis || "",                // Jenis
+    jenisName,                       // Jenis
     programName,                     // Program
     kegiatanName,                    // Kegiatan
     kroName,                         // KRO
@@ -214,7 +211,7 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
     akunName,                        // Akun
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
-    data.pembuatDaftar || "",        // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
     organikNames.join(", "),         // Organik
     "",                              // NIP BPS (placeholder)
     mitraNames.join(", "),           // Mitra Statistik
@@ -232,12 +229,13 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
   const roName = data._roNameMap?.[data.ro] || data.ro || "";
   const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+  const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
 
   const row: any[] = [
     documentId,                    // ID
     data.namaKegiatan || "",       // Nama Kegiatan
     data.detil || "",              // Detil
-    data.jenis || "",              // Jenis
+    jenisName,                     // Jenis
     programName,                   // Program
     kegiatanName,                  // Kegiatan
     kroName,                       // KRO
@@ -245,7 +243,7 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
     komponenName,                  // Komponen
     akunName,                      // Akun
     formatDate(data.tanggalSpj),   // Tanggal (SPJ)
-    data.pembuatDaftar || "",      // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",      // Pembuat Daftar
   ];
 
   // Extract organik and mitra names from honorDetails
@@ -254,14 +252,12 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
 
   (data.honorDetails || []).forEach((detail: any) => {
     if (detail.type === 'organik' && detail.personId) {
-      const person = data._organikNameMap?.[detail.personId];
-      const name = typeof person === 'string' ? person : person?.name || detail.personId;
+      const name = data._organikNameMap?.[detail.personId] || detail.personId;
       if (!organikNames.includes(name)) {
         organikNames.push(name);
       }
     } else if (detail.type === 'mitra' && detail.personId) {
-      const person = data._mitraNameMap?.[detail.personId];
-      const name = typeof person === 'string' ? person : person?.name || detail.personId;
+      const name = data._mitraNameMap?.[detail.personId] || detail.personId;
       if (!mitraNames.includes(name)) {
         mitraNames.push(name);
       }
@@ -284,23 +280,22 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
   const roName = data._roNameMap?.[data.ro] || data.ro || "";
   const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+  const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
 
   // Get display names for Organik and Mitra
-  const organikNames = (data.organik || []).map((id: string) => {
-    const item = data._organikNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+  const organikNames = (data.organikBPS || []).map((id: string) => {
+    return data._organikNameMap?.[id] || id;
   });
 
-  const mitraNames = (data.mitra || []).map((id: string) => {
-    const item = data._mitraNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+  const mitraNames = (data.mitraStatistik || []).map((id: string) => {
+    return data._mitraNameMap?.[id] || id;
   });
 
   const row: any[] = [
     documentId,                       // ID
     data.namaKegiatan || "",          // Nama Kegiatan
     data.detil || "",                 // Detil
-    data.jenis || "",                 // Jenis
+    jenisName,                        // Jenis
     programName,                      // Program
     kegiatanName,                     // Kegiatan
     kroName,                          // KRO
@@ -308,7 +303,7 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     komponenName,                     // Komponen
     akunName,                         // Akun
     formatDate(data.tanggalPengajuan),// Tanggal Pengajuan
-    data.pembuatDaftar || "",         // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",         // Pembuat Daftar
     organikNames.join(", "),          // Organik
     "",                               // NIP BPS (placeholder)
     mitraNames.join(", "),            // Mitra Statistik
@@ -329,13 +324,11 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
 
   // Get display names for Organik and Mitra
   const organikNames = (data.organik || []).map((id: string) => {
-    const item = data._organikNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._organikNameMap?.[id] || id;
   });
 
   const mitraNames = (data.mitra || []).map((id: string) => {
-    const item = data._mitraNameMap?.[id] || id;
-    return typeof item === 'string' ? item : item.name || id;
+    return data._mitraNameMap?.[id] || id;
   });
 
   const row: any[] = [
@@ -353,7 +346,7 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
     formatDate(data.tanggalSpj),     // Tanggal (SPJ)
-    data.pembuatDaftar || "",        // Pembuat Daftar
+    data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
     organikNames.join(", "),         // Organik
     "",                              // NIP BPS (placeholder)
     mitraNames.join(", "),           // Mitra Statistik
