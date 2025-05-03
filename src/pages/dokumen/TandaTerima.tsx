@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -64,10 +65,10 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", // Required field
-          banyaknya: 1, // Required field
-          satuan: "",   // Required field
-        } as TandaTerimaItem, // Explicitly cast as TandaTerimaItem to satisfy TypeScript
+          namaItem: "", 
+          banyaknya: 1, 
+          satuan: ""
+        } as TandaTerimaItem // Explicit type casting to fix type mismatch
       ],
     },
   });
@@ -131,10 +132,10 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      namaItem: "", // Required field
-      banyaknya: 1, // Required field
-      satuan: "",   // Required field
-    } as TandaTerimaItem); // Explicitly cast as TandaTerimaItem
+      namaItem: "",
+      banyaknya: 1,
+      satuan: ""
+    } as TandaTerimaItem); // Explicit type casting to fix type mismatch
   };
 
   return (

@@ -75,7 +75,7 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Fixed: Corrected the type handling to avoid infinite recursion
+// RO - Fix for infinite recursion by using direct type assignment
 export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
@@ -90,20 +90,22 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Fixed: Explicitly map each field to avoid deep type recursion issues
-      return data.map(item => ({
+      // Use type assertion instead of complex mapping to avoid recursion
+      const result: RO[] = data.map(item => ({
         id: item.id,
         name: item.name,
         kroId: item.kro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
-      })) as RO[];
+      }));
+      
+      return result;
     },
     enabled: !!kroId
   });
 };
 
-// Komponen - Fixed: Corrected the property name from ro_id to roId
+// Komponen - Fix property name mismatch
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
@@ -118,14 +120,16 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Fixed: Correctly map database fields to match our interface
-      return data.map(item => ({
+      // Fixed: Correctly map database field ro_id to roId in our interface
+      const result: Komponen[] = data.map(item => ({
         id: item.id,
         name: item.name,
-        roId: item.ro_id,
+        roId: item.ro_id, // Ensure this property exists in the database response
         created_at: item.created_at,
         updated_at: item.updated_at
-      })) as Komponen[];
+      }));
+      
+      return result;
     },
     enabled: !!roId
   });
