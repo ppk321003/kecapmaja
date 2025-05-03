@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { PerjalananDinas, KECAMATAN_MAJALENGKA } from "@/types";
+import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 
 const formSchema = z.object({
   jenisPerjalanan: z.enum(["luar_kota", "dalam_kota"], {
@@ -60,18 +61,17 @@ const formSchema = z.object({
 });
 
 const KuitansiPerjalananDinas = () => {
-  const { data: programs } = usePrograms();
+  const { data: programs = [] } = usePrograms();
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
-  const { data: kegiatans } = useKegiatan(selectedProgram);
+  const { data: kegiatans = [] } = useKegiatan(selectedProgram);
   const [selectedKegiatan, setSelectedKegiatan] = useState<string | null>(null);
-  const { data: kros } = useKRO(selectedKegiatan);
+  const { data: kros = [] } = useKRO(selectedKegiatan);
   const [selectedKRO, setSelectedKRO] = useState<string | null>(null);
-  const { data: ros } = useRO(selectedKRO);
+  const { data: ros = [] } = useRO(selectedKRO);
   const [selectedRO, setSelectedRO] = useState<string | null>(null);
-  // Fix: Call useKomponen without arguments
-  const { data: komponens } = useKomponen();
-  const { data: akuns } = useAkun();
-  const { data: organiks } = useOrganikBPS();
+  const { data: komponens = [] } = useKomponen();
+  const { data: akuns = [] } = useAkun();
+  const { data: organiks = [] } = useOrganikBPS();
   
   const [selectedKecamatans, setSelectedKecamatans] = useState<string[]>([]);
   const [kecamatanEntries, setKecamatanEntries] = useState<{kecamatan: string, tanggalBerangkat: Date | null, tanggalKembali: Date | null}[]>([
@@ -164,18 +164,108 @@ const KuitansiPerjalananDinas = () => {
         );
       }
       
-      const result = await saveDocument({
-        jenisId: "kuitansi_perjalanan_dinas", 
-        title: `Kuitansi Perjalanan Dinas ${values.jenisPerjalanan === 'luar_kota' ? 'Luar Kota' : 'Dalam Kota'} - ${values.namaPelaksana}`,
-        data: formData
-      });
+      // Map IDs to actual names for Google Sheets
+      const programName = programs.find(p => p.id === values.program)?.name || '';
+      const kegiatanName = kegiatans.find(k => k.id === values.kegiatan)?.name || '';
+      const kroName = kros.find(k => k.id === values.kro)?.name || '';
+      const roName = ros.find(r => r.id === values.ro)?.name || '';
+      const komponenName = komponens.find(k => k.id === values.komponen)?.name || '';
+      const akunInfo = akuns.find(a => a.id === values.akun);
+      const akunName = akunInfo ? `${akunInfo.code} - ${akunInfo.name}` : '';
       
-      toast({
-        title: "Berhasil!",
-        description: "Dokumen Kuitansi Perjalanan Dinas berhasil disimpan.",
-      });
+      // Generate document ID for KuitansiPerjalananDinas
+      try {
+        const docId = await GoogleSheetsService.generateDocumentId("KuitansiPerjalananDinas");
+        
+        // Prepare data for Google Sheets
+        let sheetData: any[] = [];
+        
+        if (values.jenisPerjalanan === 'luar_kota') {
+          sheetData = [
+            docId,
+            values.nomorSuratTugas,
+            values.namaPelaksana,
+            values.tujuanPelaksanaan,
+            values.kabKotaTujuan || '',
+            values.namaTempat || '',
+            formData.tanggalSuratTugas,
+            formData.tanggalBerangkat,
+            formData.tanggalKembali,
+            programName,
+            kegiatanName,
+            kroName,
+            roName,
+            komponenName,
+            akunName,
+            formData.tanggalPengajuan,
+            values.biayaTransport?.toString() || '0',
+            values.biayaBBMTol?.toString() || '0',
+            values.biayaPenginapan?.toString() || '0',
+            'luar_kota',
+            '', // No kecamatans for luar_kota
+          ];
+        } else {
+          // For dalam kota, we'll need to create one row per kecamatan
+          // But we'll limit it to just one row for now and include all kecamatans in a single cell
+          const kecamatanList = kecamatanEntries.map(e => e.kecamatan).join(", ");
+          
+          sheetData = [
+            docId,
+            values.nomorSuratTugas,
+            values.namaPelaksana,
+            values.tujuanPelaksanaan,
+            '', // No kabKotaTujuan
+            '', // No namaTempat
+            formData.tanggalSuratTugas,
+            kecamatanEntries.length > 0 && kecamatanEntries[0].tanggalBerangkat 
+              ? format(kecamatanEntries[0].tanggalBerangkat, 'yyyy-MM-dd') : '',
+            kecamatanEntries.length > 0 && kecamatanEntries[0].tanggalKembali 
+              ? format(kecamatanEntries[0].tanggalKembali, 'yyyy-MM-dd') : '',
+            programName,
+            kegiatanName,
+            kroName,
+            roName,
+            komponenName,
+            akunName,
+            formData.tanggalPengajuan,
+            '0', // No biayaTransport
+            '0', // No biayaBBMTol
+            '0', // No biayaPenginapan
+            'dalam_kota',
+            kecamatanList,
+          ];
+        }
+
+        // Save to Google Sheets
+        await GoogleSheetsService.appendData({
+          sheetName: "KuitansiPerjalananDinas",
+          range: "A1",
+          values: [sheetData]
+        });
+        
+        toast({
+          title: "Berhasil!",
+          description: "Dokumen Kuitansi Perjalanan Dinas berhasil disimpan.",
+        });
+        
+        form.reset();
+        
+      } catch (error) {
+        console.error("Error saving to Google Sheets:", error);
+        throw error;
+      }
       
-      form.reset();
+      // Save document to database
+      try {
+        const result = await saveDocument({
+          jenisId: "KuitansiPerjalananDinas", 
+          title: `Kuitansi Perjalanan Dinas ${values.jenisPerjalanan === 'luar_kota' ? 'Luar Kota' : 'Dalam Kota'} - ${values.namaPelaksana}`,
+          data: formData
+        });
+      } catch (dbError) {
+        console.log("Database save failed but Google Sheets succeeded:", dbError);
+        // We don't rethrow this error as we already saved to Google Sheets successfully
+      }
       
     } catch (error) {
       console.error("Error saving document:", error);

@@ -14,7 +14,7 @@ export const KomponenSelect: React.FC<KomponenSelectProps> = ({
   onChange,
   placeholder = "Pilih Komponen..."
 }) => {
-  // Use the hook without passing any roId parameter to get all komponen items
+  // Use the hook to get all komponen items
   const { data: komponenList = [], isLoading } = useKomponen();
   const [selectedValue, setSelectedValue] = useState<string | null>(value);
   
