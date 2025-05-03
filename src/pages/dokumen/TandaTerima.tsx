@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,43 @@ const TandaTerima = () => {
     },
   });
 
+  // For name mapping
+  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
+  const [organikNameMap, setOrganikNameMap] = useState<Record<string, string>>({});
+  const [mitraNameMap, setMitraNameMap] = useState<Record<string, string>>({});
+
+  // Effect to update name mappings when selections change
+  useEffect(() => {
+    // Update pembuat daftar name
+    const pembuatId = watch('pembuatDaftar');
+    if (pembuatId) {
+      const pembuat = organikBPSList.find(item => item.id === pembuatId);
+      setPembuatDaftarName(pembuat?.name || "");
+    }
+
+    // Update organik name mapping
+    const organikIds = watch('organikBPS') || [];
+    const newOrganikNameMap: Record<string, string> = {};
+    organikIds.forEach(id => {
+      const organik = organikBPSList.find(item => item.id === id);
+      if (organik) {
+        newOrganikNameMap[id] = organik.name;
+      }
+    });
+    setOrganikNameMap(newOrganikNameMap);
+
+    // Update mitra name mapping
+    const mitraIds = watch('mitraStatistik') || [];
+    const newMitraNameMap: Record<string, string> = {};
+    mitraIds.forEach(id => {
+      const mitra = mitraStatistikList.find(item => item.id === id);
+      if (mitra) {
+        newMitraNameMap[id] = mitra.name;
+      }
+    });
+    setMitraNameMap(newMitraNameMap);
+  }, [watch('pembuatDaftar'), watch('organikBPS'), watch('mitraStatistik'), organikBPSList, mitraStatistikList]);
+
   // Add field array for daftarItem
   const { fields, append, remove } = useFieldArray({
     control,
@@ -64,8 +101,16 @@ const TandaTerima = () => {
   const onSubmit = async (data: TandaTerimaData) => {
     setIsSubmitting(true);
     try {
+      // Add name mappings to data for Google Sheets
+      const submissionData = {
+        ...data,
+        _pembuatDaftarName: pembuatDaftarName,
+        _organikNameMap: organikNameMap,
+        _mitraNameMap: mitraNameMap
+      };
+
       // Save to Google Sheets first
-      await submitToSheets.mutateAsync(data);
+      await submitToSheets.mutateAsync(submissionData);
       
       // Then, save to Supabase
       await saveDocument.mutateAsync({

@@ -90,6 +90,68 @@ const KerangkaAcuanKerja = () => {
   const { data: komponenOptions = [] } = useKomponen();
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
+
+  // Name mapping states
+  const [programNameMap, setProgramNameMap] = useState<Record<string, string>>({});
+  const [kegiatanNameMap, setKegiatanNameMap] = useState<Record<string, string>>({});
+  const [kroNameMap, setKroNameMap] = useState<Record<string, string>>({});
+  const [roNameMap, setRoNameMap] = useState<Record<string, string>>({});
+  const [komponenNameMap, setKomponenNameMap] = useState<Record<string, string>>({});
+  const [akunNameMap, setAkunNameMap] = useState<Record<string, string>>({});
+  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
+  
+  // Update name mappings
+  useEffect(() => {
+    // Update program name map
+    const progMap: Record<string, string> = {};
+    programs.forEach(prog => {
+      progMap[prog.id] = prog.name;
+    });
+    setProgramNameMap(progMap);
+
+    // Update kegiatan name map
+    const kegMap: Record<string, string> = {};
+    kegiatan.forEach(keg => {
+      kegMap[keg.id] = keg.name;
+    });
+    setKegiatanNameMap(kegMap);
+
+    // Update KRO name map
+    const kroMap: Record<string, string> = {};
+    kros.forEach(k => {
+      kroMap[k.id] = k.name;
+    });
+    setKroNameMap(kroMap);
+
+    // Update RO name map
+    const roMap: Record<string, string> = {};
+    ros.forEach(r => {
+      roMap[r.id] = r.name;
+    });
+    setRoNameMap(roMap);
+
+    // Update komponen name map
+    const kompMap: Record<string, string> = {};
+    komponenOptions.forEach(komp => {
+      kompMap[komp.id] = komp.name;
+    });
+    setKomponenNameMap(kompMap);
+
+    // Update akun name map
+    const akMap: Record<string, string> = {};
+    akuns.forEach(akun => {
+      akMap[akun.id] = akun.name;
+    });
+    setAkunNameMap(akMap);
+
+    // Update pembuat daftar name
+    if (formValues.pembuatDaftar) {
+      const pembuat = organikList.find(org => org.id === formValues.pembuatDaftar);
+      if (pembuat) {
+        setPembuatDaftarName(pembuat.name);
+      }
+    }
+  }, [programs, kegiatan, kros, ros, komponenOptions, akuns, formValues.pembuatDaftar, organikList]);
   
   // Mutation to save document
   const saveDocument = useSaveDocument();
@@ -222,13 +284,25 @@ const KerangkaAcuanKerja = () => {
     }
 
     try {
+      // Add name mappings to data for Google Sheets
+      const submissionData = {
+        ...formValues,
+        _programNameMap: programNameMap,
+        _kegiatanNameMap: kegiatanNameMap,
+        _kroNameMap: kroNameMap,
+        _roNameMap: roNameMap,
+        _komponenNameMap: komponenNameMap,
+        _akunNameMap: akunNameMap,
+        _pembuatDaftarName: pembuatDaftarName
+      };
+
       // First, submit to Google Sheets
-      await submitToSheets.mutateAsync(formValues);
+      await submitToSheets.mutateAsync(submissionData);
       
       // Then, save to Supabase
       await saveDocument.mutateAsync({
         jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262", // Make sure this is a valid UUID in your jenis table
-        title: `KAK - ${formValues.jenisKak} - ${formValues.programPembebanan}`,
+        title: `KAK - ${formValues.jenisKak} - ${programNameMap[formValues.programPembebanan] || formValues.programPembebanan}`,
         data: formValues,
       });
       

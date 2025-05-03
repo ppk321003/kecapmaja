@@ -13,6 +13,8 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
   return useMutation({
     mutationFn: async (data: any) => {
       try {
+        console.log("Submitting data to Google Sheets:", data);
+        
         // Generate a document ID
         const documentId = await GoogleSheetsService.generateDocumentId(documentType);
         
@@ -88,6 +90,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
 
 // Helper function to format Tanda Terima data
 function formatTandaTerimaData(documentId: string, data: any): any[] {
+  console.log("Formatting Tanda Terima data:", data);
   const row: any[] = [
     documentId,                    // ID
     data.namaKegiatan || "",       // Nama Kegiatan
@@ -130,6 +133,8 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
 
 // Helper function to format Kerangka Acuan Kerja data
 function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
+  console.log("Formatting Kerangka Acuan Kerja data:", data);
+  
   // Map selected IDs to their display names
   const programName = data._programNameMap?.[data.programPembebanan] || data.programPembebanan || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
@@ -181,6 +186,8 @@ function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
 
 // Helper function to format Daftar Hadir data
 function formatDaftarHadirData(documentId: string, data: any): any[] {
+  console.log("Formatting Daftar Hadir data:", data);
+  
   const programName = data._programNameMap?.[data.program] || data.program || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
   const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
@@ -223,6 +230,8 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
 
 // Helper function to format SPJ Honor data
 function formatSPJHonorData(documentId: string, data: any): any[] {
+  console.log("Formatting SPJ Honor data:", data);
+  
   const programName = data._programNameMap?.[data.program] || data.program || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
   const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
@@ -274,6 +283,8 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
 
 // Helper function to format Transport Lokal data
 function formatTransportLokalData(documentId: string, data: any): any[] {
+  console.log("Formatting Transport Lokal data:", data);
+  
   const programName = data._programNameMap?.[data.program] || data.program || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
   const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
@@ -307,7 +318,8 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     organikNames.join(", "),          // Organik
     "",                               // NIP BPS (placeholder)
     mitraNames.join(", "),            // Mitra Statistik
-    ""                                // NIK Mitra Statistik (placeholder)
+    "",                                // NIK Mitra Statistik (placeholder)
+    data.kecamatan || ""               // Nama Kecamatan (added as requested)
   ];
 
   return row;
@@ -315,6 +327,8 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
 
 // Helper function to format Uang Harian dan Transport Lokal data
 function formatUangHarianTransportData(documentId: string, data: any): any[] {
+  console.log("Formatting Uang Harian Transport data:", data);
+  
   const programName = data._programNameMap?.[data.program] || data.program || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
   const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
@@ -358,6 +372,8 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
 
 // Helper function to format Kuitansi Perjalanan Dinas data
 function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[] {
+  console.log("Formatting Kuitansi Perjalanan Dinas data:", data);
+  
   const programName = data._programNameMap?.[data.program] || data.program || "";
   const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
   const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
@@ -403,6 +419,8 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
 
 // Helper function to format Dokumen Pengadaan data
 function formatDokumenPengadaanData(documentId: string, data: any): any[] {
+  console.log("Formatting Dokumen Pengadaan data:", data);
+  
   const row: any[] = [
     documentId,                                // ID
     data.kodeKegiatan || "",                   // Kode Kegiatan
