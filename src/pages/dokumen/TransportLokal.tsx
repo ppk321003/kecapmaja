@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -118,9 +117,7 @@ const TransportLokal = () => {
   const { data: roList = [] } = useRO(
     form.watch("kro") || null
   );
-  const { data: komponenList = [] } = useKomponen(
-    form.watch("ro") || null
-  );
+  const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
   
   // Update transport items when Organik or Mitra selection changes

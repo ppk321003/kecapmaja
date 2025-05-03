@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -65,7 +66,8 @@ const UangHarianTransport = () => {
   const { data: kegiatan = [] } = useKegiatan(formValues.program || null);
   const { data: kros = [] } = useKRO(formValues.kegiatan || null);
   const { data: ros = [] } = useRO(formValues.kro || null);
-  const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
+  // Fix: Call useKomponen without arguments
+  const { data: komponenOptions = [] } = useKomponen();
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();

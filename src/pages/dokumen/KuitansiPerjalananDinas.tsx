@@ -68,7 +68,8 @@ const KuitansiPerjalananDinas = () => {
   const [selectedKRO, setSelectedKRO] = useState<string | null>(null);
   const { data: ros } = useRO(selectedKRO);
   const [selectedRO, setSelectedRO] = useState<string | null>(null);
-  const { data: komponens } = useKomponen(selectedRO);
+  // Fix: Call useKomponen without arguments
+  const { data: komponens } = useKomponen();
   const { data: akuns } = useAkun();
   const { data: organiks } = useOrganikBPS();
   
