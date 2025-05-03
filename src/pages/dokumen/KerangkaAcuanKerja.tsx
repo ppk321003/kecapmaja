@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument, useOrganikBPS } from "@/hooks/use-database";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 interface KegiatanDetail {
   id: string;
@@ -91,6 +92,14 @@ const KerangkaAcuanKerja = () => {
   
   // Mutation to save document
   const saveDocument = useSaveDocument();
+  
+  // Google Sheets submission hook
+  const submitToSheets = useSubmitToSheets({
+    documentType: "KerangkaAcuanKerja",
+    onSuccess: () => {
+      navigate("/buat-dokumen");
+    }
+  });
 
   // Effect to update wave dates when jumlahGelombang changes
   useEffect(() => {
@@ -184,7 +193,7 @@ const KerangkaAcuanKerja = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.Event) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -212,9 +221,12 @@ const KerangkaAcuanKerja = () => {
     }
 
     try {
-      // Save to Supabase
+      // First, submit to Google Sheets
+      await submitToSheets.mutateAsync(formValues);
+      
+      // Then, save to Supabase
       await saveDocument.mutateAsync({
-        jenisId: "00000000-0000-0000-0000-000000000001", // ID for KAK in the jenis table
+        jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262", // Make sure this is a valid UUID in your jenis table
         title: `KAK - ${formValues.jenisKak} - ${formValues.programPembebanan}`,
         data: formValues,
       });
@@ -224,7 +236,7 @@ const KerangkaAcuanKerja = () => {
         description: "Kerangka acuan kerja telah tersimpan",
       });
       
-      navigate("/buat-dokumen");
+      // No need to navigate here as it's handled in the onSuccess of submitToSheets
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -232,7 +244,6 @@ const KerangkaAcuanKerja = () => {
         title: "Gagal menyimpan dokumen",
         description: "Terjadi kesalahan saat menyimpan data",
       });
-    } finally {
       setIsSubmitting(false);
     }
   };

@@ -21,6 +21,37 @@ export const GoogleSheetsService = {
       const yy = today.getFullYear().toString().slice(-2);
       const mm = (today.getMonth() + 1).toString().padStart(2, '0');
       
+      // Set prefix based on document type
+      let prefix: string;
+      switch (documentType) {
+        case "KerangkaAcuanKerja":
+          prefix = "kak"; 
+          break;
+        case "DaftarHadir":
+          prefix = "dh"; 
+          break;
+        case "SPJHonor":
+          prefix = "spj"; 
+          break;
+        case "TransportLokal":
+          prefix = "trl"; 
+          break;
+        case "UangHarianTransport":
+          prefix = "uh";
+          break;
+        case "KuitansiPerjalananDinas":
+          prefix = "kui";
+          break;
+        case "DokumenPengadaan":
+          prefix = "pbj";
+          break;
+        case "TandaTerima":
+          prefix = "tt";
+          break;
+        default:
+          prefix = documentType.toLowerCase().slice(0, 2);
+      }
+
       // Check the last ID from the database to increment
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
@@ -40,7 +71,7 @@ export const GoogleSheetsService = {
       
       // Find the highest counter
       let maxCounter = 0;
-      const idPrefix = `${documentType.toLowerCase()}-${yy}${mm}`;
+      const idPrefix = `${prefix}-${yy}${mm}`;
       
       existingIds.forEach(id => {
         if (id && id.startsWith(idPrefix)) {
@@ -62,7 +93,39 @@ export const GoogleSheetsService = {
       const yy = today.getFullYear().toString().slice(-2);
       const mm = (today.getMonth() + 1).toString().padStart(2, '0');
       const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      return `${documentType.toLowerCase()}-${yy}${mm}${randomPart}`;
+      
+      // Set prefix based on document type for fallback
+      let prefix: string;
+      switch (documentType) {
+        case "KerangkaAcuanKerja":
+          prefix = "kak"; 
+          break;
+        case "DaftarHadir":
+          prefix = "dh"; 
+          break;
+        case "SPJHonor":
+          prefix = "spj"; 
+          break;
+        case "TransportLokal":
+          prefix = "trl"; 
+          break;
+        case "UangHarianTransport":
+          prefix = "uh";
+          break;
+        case "KuitansiPerjalananDinas":
+          prefix = "kui";
+          break;
+        case "DokumenPengadaan":
+          prefix = "pbj";
+          break;
+        case "TandaTerima":
+          prefix = "tt";
+          break;
+        default:
+          prefix = documentType.toLowerCase().slice(0, 2);
+      }
+
+      return `${prefix}-${yy}${mm}${randomPart}`;
     }
   },
 

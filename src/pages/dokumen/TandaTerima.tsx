@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -65,22 +64,22 @@ const TandaTerima = () => {
   const onSubmit = async (data: TandaTerimaData) => {
     setIsSubmitting(true);
     try {
-      // First, save to Supabase
+      // Save to Google Sheets first
+      await submitToSheets.mutateAsync(data);
+      
+      // Then, save to Supabase
       await saveDocument.mutateAsync({
-        jenisId: "00000000-0000-0000-0000-000000000008", // ID for Tanda Terima in the jenis table
+        jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262", // Make sure this is a valid UUID in your jenis table
         title: `Tanda Terima - ${data.namaKegiatan}`,
         data,
       });
-      
-      // Then, submit to Google Sheets
-      await submitToSheets.mutateAsync(data);
       
       toast({
         title: "Dokumen berhasil dibuat",
         description: "Tanda terima telah tersimpan",
       });
       
-      navigate("/buat-dokumen");
+      // No need to navigate here as it's handled in the onSuccess of submitToSheets
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -88,7 +87,6 @@ const TandaTerima = () => {
         title: "Gagal menyimpan dokumen",
         description: "Terjadi kesalahan saat menyimpan data",
       });
-    } finally {
       setIsSubmitting(false);
     }
   };

@@ -123,32 +123,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          ro_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          ro_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          ro_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "komponen_ro_id_fkey"
-            columns: ["ro_id"]
-            isOneToOne: false
-            referencedRelation: "ro"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       kro: {
         Row: {
@@ -184,27 +173,39 @@ export type Database = {
       }
       mitra_statistik: {
         Row: {
+          alamat: string | null
           created_at: string
           id: string
           kecamatan: string | null
+          nama_bank: string | null
           name: string
           nik: string | null
+          no_rekening: string | null
+          pekerjaan: string | null
           updated_at: string
         }
         Insert: {
+          alamat?: string | null
           created_at?: string
           id?: string
           kecamatan?: string | null
+          nama_bank?: string | null
           name: string
           nik?: string | null
+          no_rekening?: string | null
+          pekerjaan?: string | null
           updated_at?: string
         }
         Update: {
+          alamat?: string | null
           created_at?: string
           id?: string
           kecamatan?: string | null
+          nama_bank?: string | null
           name?: string
           nik?: string | null
+          no_rekening?: string | null
+          pekerjaan?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -213,45 +214,45 @@ export type Database = {
         Row: {
           bank: string | null
           created_at: string
-          golongan_akhir: string | null
+          gol_akhir: string | null
           id: string
           jabatan: string | null
           name: string
           nip: string | null
           nip_bps: string | null
+          no_hp: string | null
           nomor_rekening: string | null
           pangkat: string | null
-          status: string | null
           updated_at: string
           wilayah: string | null
         }
         Insert: {
           bank?: string | null
           created_at?: string
-          golongan_akhir?: string | null
+          gol_akhir?: string | null
           id?: string
           jabatan?: string | null
           name: string
           nip?: string | null
           nip_bps?: string | null
+          no_hp?: string | null
           nomor_rekening?: string | null
           pangkat?: string | null
-          status?: string | null
           updated_at?: string
           wilayah?: string | null
         }
         Update: {
           bank?: string | null
           created_at?: string
-          golongan_akhir?: string | null
+          gol_akhir?: string | null
           id?: string
           jabatan?: string | null
           name?: string
           nip?: string | null
           nip_bps?: string | null
+          no_hp?: string | null
           nomor_rekening?: string | null
           pangkat?: string | null
-          status?: string | null
           updated_at?: string
           wilayah?: string | null
         }
