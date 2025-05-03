@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -79,7 +80,7 @@ export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
     queryFn: async () => {
-      if (!kroId) return [];
+      if (!kroId) return [] as RO[];
       
       const { data, error } = await supabase
         .from("ro")
@@ -107,7 +108,7 @@ export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [];
+      if (!roId) return [] as Komponen[];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -119,14 +120,15 @@ export const useKomponen = (roId: string | null) => {
       
       // Map to our concrete type with explicit type checking for ro_id
       return data.map(item => {
-        return {
+        const komponen: Komponen = {
           id: item.id,
           name: item.name,
-          roId: item.ro_id || roId, // Safely handle missing ro_id
+          roId: roId, // Using the roId parameter since ro_id may not exist on the item
           created_at: item.created_at,
           updated_at: item.updated_at
         };
-      }) as Komponen[];
+        return komponen;
+      });
     },
     enabled: !!roId
   });
