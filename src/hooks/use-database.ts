@@ -74,8 +74,17 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO
+// RO - Use type aliases to prevent excessive type depth
 export const useRO = (kroId: string | null) => {
+  // Define the return type explicitly to prevent recursive type issues
+  type ROResult = {
+    id: string;
+    name: string;
+    kroId: string;
+    created_at: string;
+    updated_at: string;
+  };
+
   return useQuery({
     queryKey: ["ro", kroId],
     queryFn: async () => {
@@ -89,14 +98,14 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Convert database field names to match our type definitions
-      return data.map(item => ({
+      // Use explicit type annotation for each item to break deep type nesting
+      return data.map((item): ROResult => ({
         id: item.id,
         name: item.name,
         kroId: item.kro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
-      })) as RO[];
+      }));
     },
     enabled: !!kroId
   });
@@ -104,10 +113,18 @@ export const useRO = (kroId: string | null) => {
 
 // Komponen
 export const useKomponen = (roId: string | null) => {
+  type KomponenItem = {
+    id: string;
+    name: string;
+    roId: string;
+    created_at: string;
+    updated_at: string;
+  };
+
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [];
+      if (!roId) return [] as KomponenItem[];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -117,14 +134,16 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Convert database field names to match our type definitions
-      return data.map(item => ({
-        id: item.id,
-        name: item.name,
-        roId: item.ro_id,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      })) as Komponen[];
+      // Use a simple, direct mapping approach without nested type references
+      return data.map(item => {
+        return {
+          id: item.id,
+          name: item.name,
+          roId: item.ro_id || roId,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        } as KomponenItem;
+      });
     },
     enabled: !!roId
   });
