@@ -18,7 +18,7 @@ import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useJenis, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 

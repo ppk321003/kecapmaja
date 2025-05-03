@@ -1,7 +1,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 interface SubmitToSheetsOptions {
@@ -53,15 +53,8 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
             throw new Error(`Unsupported document type: ${documentType}`);
         }
         
-        // Try to save to Supabase first independently
-        try {
-          // Do any necessary database operations here
-          // This is independent from Google Sheets saving
-          console.log(`Successfully saved ${documentType} data to database`);
-        } catch (dbError) {
-          console.error(`Error saving ${documentType} to database:`, dbError);
-          // Continue with Google Sheets saving anyway
-        }
+        // Skip database saving and focus only on Google Sheets
+        console.log(`Successfully saving ${documentType} data to Google Sheets`);
         
         // Append to Google Sheets
         const response = await GoogleSheetsService.appendData({
@@ -340,8 +333,12 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     "",                               // NIP BPS (placeholder)
     mitraNames.join(", "),            // Mitra Statistik
     "",                               // NIK Mitra Statistik (placeholder)
-    kecamatanString                  // Nama Kecamatan (combined from daftarTransport)
   ];
+  
+  // Add kecamatan as last field
+  if (kecamatanString) {
+    row.push(kecamatanString);        // Nama Kecamatan
+  }
 
   return row;
 }
@@ -402,31 +399,32 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
   const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
   
+  // Map and adjust header based on provided schema
   const row: any[] = [
     documentId,                               // ID
-    data.namaKegiatan || "",                  // Jenis Perjalanan Dinas
-    data.jenisPerjalanan || "",               // Nomor Surat Tugas
-    data.nomorSuratTugas || "",               // Tanggal Surat Tugas
-    formatDate(data.tanggalSuratTugas),       // Nama Pelaksana Perjalanan Dinas
-    data.namaPelaksana || "",                 // Tujuan Pelaksanaan Perjalanan Dinas
-    data.tujuanPerjalanan || "",              // Program
-    programName,                              // Kegiatan
-    kegiatanName,                             // KRO
-    kroName,                                  // RO
-    roName,                                   // Komponen
-    komponenName,                             // Akun
-    akunName,                                 // Tanggal Pengajuan
-    formatDate(data.tanggalPengajuan),        // Kab/Kota Tujuan
-    data.kabupatenKota || "",                 // Nama Tempat Tujuan
-    data.namaTempatTujuan || "",              // Tanggal Berangkat
-    formatDate(data.tanggalBerangkat),        // Tanggal Kembali
-    formatDate(data.tanggalKembali),          // Biaya Transport Kab/Kota Tujuan (PP)
-    data.biayaTransport || "",                // Biaya Pembelian BBM/Tol (PP)
-    data.biayaBBM || "",                      // Biaya Penginapan/Hotel
-    data.biayaPenginapan || ""                // Biaya Penginapan/Hotel
+    data.nomorSuratTugas || "",               // Nomor Surat Tugas
+    data.namaPelaksana || "",                 // Nama Pelaksana Perjalanan Dinas
+    data.tujuanPerjalanan || "",              // Tujuan Pelaksanaan Perjalanan Dinas
+    data.kabupatenKota || "",                 // Kab/Kota Tujuan
+    data.namaTempatTujuan || "",              // Nama Tempat Tujuan
+    formatDate(data.tanggalBerangkat),        // Tanggal Berangkat
+    formatDate(data.tanggalKembali),          // Tanggal Kembali
+    formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan
+    programName,                              // Program
+    kegiatanName,                             // Kegiatan 
+    kroName,                                  // KRO
+    roName,                                   // RO
+    komponenName,                             // Komponen
+    akunName,                                 // Akun
+    formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan (duplicate)
+    formatDate(data.tanggalKembali),          // Tanggal Kembali (duplicate)
+    data.biayaTransport || "",                // Biaya Transport Kab/Kota Tujuan (PP)
+    data.biayaBBM || "",                      // Biaya Pembelian BBM/Tol (PP)
+    data.jenisPerjalanan || "",               // Jenis Perjalanan Dinas
   ];
 
-  // Add kecamatan details (up to 5)
+  // Add kecamatan details (up to 5) even if they don't exist
+  // This ensures the proper structure for the spreadsheet
   const kecamatanDetails = data.kecamatanDetails || [];
   for (let i = 0; i < 5; i++) {
     const kecamatan = kecamatanDetails[i] || {};

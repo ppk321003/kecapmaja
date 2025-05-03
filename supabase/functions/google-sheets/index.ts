@@ -12,7 +12,7 @@ const SPREADSHEET_IDS: Record<string, string> = {
   "KerangkaAcuanKerja": "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
   "DaftarHadir": "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
   "SPJHonor": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
-  "TransportLokal": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
+  "TransportLokal": "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc",
   "UangHarianTransport": "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg",
   "KuitansiPerjalananDinas": "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
   "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
@@ -105,56 +105,54 @@ serve(async (req) => {
     
     console.log(`Using spreadsheet ID for ${sheetName}: ${SPREADSHEET_ID}`);
 
-    // Added this part to create sheet if it doesn't exist
-    // We'll try to create the sheet before performing any operations
-    if (sheetName === "TransportLokal" || sheetName === "KuitansiPerjalananDinas") {
-      try {
-        const checkResponse = await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!A1`,
+    // Always check if the sheet exists and create it if needed
+    // This is important for all sheet operations to prevent errors
+    try {
+      const checkResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!A1`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      // If the sheet doesn't exist, try to create it
+      if (!checkResponse.ok && checkResponse.status === 400) {
+        console.log(`Sheet ${sheetName} might not exist, attempting to create it`);
+        
+        // Create the sheet
+        const createSheetResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
           {
+            method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              requests: [
+                {
+                  addSheet: {
+                    properties: {
+                      title: sheetName
+                    }
+                  }
+                }
+              ]
+            }),
           }
         );
         
-        // If the sheet doesn't exist, try to create it
-        if (!checkResponse.ok && checkResponse.status === 400) {
-          console.log(`Sheet ${sheetName} might not exist, attempting to create it`);
-          
-          // Create the sheet
-          const createSheetResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                requests: [
-                  {
-                    addSheet: {
-                      properties: {
-                        title: sheetName
-                      }
-                    }
-                  }
-                ]
-              }),
-            }
-          );
-          
-          if (!createSheetResponse.ok) {
-            const errorText = await createSheetResponse.text();
-            console.log(`Error creating sheet: ${errorText}`);
-          } else {
-            console.log(`Successfully created sheet: ${sheetName}`);
-          }
+        if (!createSheetResponse.ok) {
+          const errorText = await createSheetResponse.text();
+          console.log(`Error creating sheet: ${errorText}`);
+        } else {
+          console.log(`Successfully created sheet: ${sheetName}`);
         }
-      } catch (error) {
-        console.error(`Error checking/creating sheet ${sheetName}:`, error);
       }
+    } catch (error) {
+      console.error(`Error checking/creating sheet ${sheetName}:`, error);
     }
 
     if (action === "read") {
