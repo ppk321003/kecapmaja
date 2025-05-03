@@ -113,7 +113,7 @@ export const useRO = (kroId: string | null) => {
 
 // Komponen - Fixed property access issue
 export const useKomponen = (roId: string | null) => {
-  // Define a specific type to avoid deep nesting
+  // Define an explicit return type to break the infinite type recursion
   type KomponenResult = {
     id: string;
     name: string;
@@ -124,7 +124,7 @@ export const useKomponen = (roId: string | null) => {
 
   return useQuery<KomponenResult[], Error>({
     queryKey: ["komponen", roId],
-    queryFn: async () => {
+    queryFn: async (): Promise<KomponenResult[]> => {
       if (!roId) return [] as KomponenResult[];
       
       const { data, error } = await supabase
@@ -135,18 +135,12 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Fix: First check the actual structure of the data from the database
-      console.log("Komponen data structure:", data[0]);
-      
-      // Then map the data with the correct property names
+      // Create a strongly-typed explicit mapping to avoid type recursion
       return data.map((item): KomponenResult => {
-        // Check if ro_id exists, if not use a fallback approach
-        const roIdValue = "ro_id" in item ? (item as any).ro_id : roId;
-        
         return {
           id: item.id,
           name: item.name,
-          roId: roIdValue, 
+          roId: item.ro_id || roId, // Fallback to provided roId if not in data
           created_at: item.created_at,
           updated_at: item.updated_at
         };
