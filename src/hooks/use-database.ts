@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -123,10 +122,10 @@ export const useKomponen = (roId: string | null) => {
     updated_at: string;
   };
 
-  return useQuery({
+  return useQuery<KomponenResult[], Error>({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [];
+      if (!roId) return [] as KomponenResult[];
       
       const { data, error } = await supabase
         .from("komponen")
