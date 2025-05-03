@@ -112,21 +112,21 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Fix the infinite type instantiation by using explicit types
+// Komponen - Fix the infinite type instantiation by using a completely concrete type
 export const useKomponen = (roId: string | null) => {
-  // Define a concrete return type instead of using the imported Komponen type
-  interface KomponenItem {
+  // Define a completely concrete return type to avoid recursive type issues
+  type KomponenResult = {
     id: string;
     name: string;
     roId: string;
     created_at: string;
     updated_at: string;
-  }
+  };
 
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [] as KomponenItem[];
+      if (!roId) return [] as KomponenResult[];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -136,10 +136,10 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Map directly to our concrete type with explicit casting 
-      return data.map((item): KomponenItem => {
-        // Check if the ro_id property exists and use it, or fall back to the passed roId
-        const itemRoId = 'ro_id' in item ? item.ro_id : roId;
+      // Map directly to our concrete type with explicit property access
+      return data.map((item): KomponenResult => {
+        // Handle the case where ro_id might not exist on the item
+        const itemRoId: string = typeof item.ro_id === 'string' ? item.ro_id : roId;
         
         return {
           id: item.id,
