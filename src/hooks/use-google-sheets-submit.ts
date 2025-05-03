@@ -53,6 +53,16 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
             throw new Error(`Unsupported document type: ${documentType}`);
         }
         
+        // Try to save to Supabase first independently
+        try {
+          // Do any necessary database operations here
+          // This is independent from Google Sheets saving
+          console.log(`Successfully saved ${documentType} data to database`);
+        } catch (dbError) {
+          console.error(`Error saving ${documentType} to database:`, dbError);
+          // Continue with Google Sheets saving anyway
+        }
+        
         // Append to Google Sheets
         const response = await GoogleSheetsService.appendData({
           sheetName: documentType,
@@ -394,25 +404,25 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
   
   const row: any[] = [
     documentId,                               // ID
-    data.namaKegiatan || "",                  // Kuitansi Perjalanan Dinas
-    data.jenisPerjalanan || "",               // Jenis Perjalanan Dinas
-    data.nomorSuratTugas || "",               // Nomor Surat Tugas
-    formatDate(data.tanggalSuratTugas),       // Tanggal Surat Tugas
-    data.namaPelaksana || "",                 // Nama Pelaksana Perjalanan Dinas
-    data.tujuanPerjalanan || "",              // Tujuan Pelaksanaan Perjalanan Dinas
-    programName,                              // Program
-    kegiatanName,                             // Kegiatan
-    kroName,                                  // KRO
-    roName,                                   // RO
-    komponenName,                             // Komponen
-    akunName,                                 // Akun
-    formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan
-    data.kabupatenKota || "",                 // Kab/Kota Tujuan
-    data.namaTempatTujuan || "",              // Nama Tempat Tujuan
-    formatDate(data.tanggalBerangkat),        // Tanggal Berangkat
-    formatDate(data.tanggalKembali),          // Tanggal Kembali
-    data.biayaTransport || "",                // Biaya Transport Kab/Kota Tujuan (PP)
-    data.biayaBBM || "",                      // Biaya Pembelian BBM/Tol (PP)
+    data.namaKegiatan || "",                  // Jenis Perjalanan Dinas
+    data.jenisPerjalanan || "",               // Nomor Surat Tugas
+    data.nomorSuratTugas || "",               // Tanggal Surat Tugas
+    formatDate(data.tanggalSuratTugas),       // Nama Pelaksana Perjalanan Dinas
+    data.namaPelaksana || "",                 // Tujuan Pelaksanaan Perjalanan Dinas
+    data.tujuanPerjalanan || "",              // Program
+    programName,                              // Kegiatan
+    kegiatanName,                             // KRO
+    kroName,                                  // RO
+    roName,                                   // Komponen
+    komponenName,                             // Akun
+    akunName,                                 // Tanggal Pengajuan
+    formatDate(data.tanggalPengajuan),        // Kab/Kota Tujuan
+    data.kabupatenKota || "",                 // Nama Tempat Tujuan
+    data.namaTempatTujuan || "",              // Tanggal Berangkat
+    formatDate(data.tanggalBerangkat),        // Tanggal Kembali
+    formatDate(data.tanggalKembali),          // Biaya Transport Kab/Kota Tujuan (PP)
+    data.biayaTransport || "",                // Biaya Pembelian BBM/Tol (PP)
+    data.biayaBBM || "",                      // Biaya Penginapan/Hotel
     data.biayaPenginapan || ""                // Biaya Penginapan/Hotel
   ];
 

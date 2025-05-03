@@ -53,39 +53,48 @@ export const GoogleSheetsService = {
       }
 
       // Check the last ID from the database to increment
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          action: 'read',
-          sheetName: documentType,
-          range: 'A2:A1000' // Read the ID column to find the latest
-        }
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            action: 'read',
+            sheetName: documentType,
+            range: 'A2:A1000' // Read the ID column to find the latest
+          }
+        });
 
-      if (error) {
-        console.error("Error reading document IDs:", error);
-        throw new Error(error.message);
+        if (error) {
+          console.warn("Warning reading document IDs:", error);
+          // Continue with fallback ID generation
+        }
+        
+        // Extract existing IDs
+        const existingIds = data?.values?.map(row => row[0]) || [];
+        
+        // Find the highest counter
+        let maxCounter = 0;
+        const idPrefix = `${prefix}-${yy}${mm}`;
+        
+        existingIds.forEach(id => {
+          if (id && id.startsWith(idPrefix)) {
+            const counterPart = id.substring(idPrefix.length);
+            const counter = parseInt(counterPart, 10);
+            if (!isNaN(counter) && counter > maxCounter) {
+              maxCounter = counter;
+            }
+          }
+        });
+        
+        // Generate new ID with incremented counter
+        const newCounter = maxCounter + 1;
+        return `${idPrefix}${newCounter.toString().padStart(3, '0')}`;
+      } catch (error) {
+        console.warn('Warning generating document ID from existing ids:', error);
+        // Continue with fallback ID generation
       }
       
-      // Extract existing IDs
-      const existingIds = data?.values?.map(row => row[0]) || [];
-      
-      // Find the highest counter
-      let maxCounter = 0;
-      const idPrefix = `${prefix}-${yy}${mm}`;
-      
-      existingIds.forEach(id => {
-        if (id && id.startsWith(idPrefix)) {
-          const counterPart = id.substring(idPrefix.length);
-          const counter = parseInt(counterPart, 10);
-          if (!isNaN(counter) && counter > maxCounter) {
-            maxCounter = counter;
-          }
-        }
-      });
-      
-      // Generate new ID with incremented counter
-      const newCounter = maxCounter + 1;
-      return `${idPrefix}${newCounter.toString().padStart(3, '0')}`;
+      // Fallback ID generation
+      const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `${prefix}-${yy}${mm}${randomPart}`;
     } catch (error: any) {
       console.error('Error generating document ID:', error);
       // Fallback ID generation if an error occurs
@@ -156,6 +165,9 @@ export const GoogleSheetsService = {
   async appendData({ sheetName, range, values }: GoogleSheetsWriteOptions) {
     try {
       console.log(`Appending data to ${sheetName}!${range}:`, values);
+      
+      // Add a delay to ensure any sheet creation has time to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {

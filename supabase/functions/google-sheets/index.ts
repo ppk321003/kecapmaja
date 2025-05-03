@@ -105,6 +105,58 @@ serve(async (req) => {
     
     console.log(`Using spreadsheet ID for ${sheetName}: ${SPREADSHEET_ID}`);
 
+    // Added this part to create sheet if it doesn't exist
+    // We'll try to create the sheet before performing any operations
+    if (sheetName === "TransportLokal" || sheetName === "KuitansiPerjalananDinas") {
+      try {
+        const checkResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!A1`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        
+        // If the sheet doesn't exist, try to create it
+        if (!checkResponse.ok && checkResponse.status === 400) {
+          console.log(`Sheet ${sheetName} might not exist, attempting to create it`);
+          
+          // Create the sheet
+          const createSheetResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                requests: [
+                  {
+                    addSheet: {
+                      properties: {
+                        title: sheetName
+                      }
+                    }
+                  }
+                ]
+              }),
+            }
+          );
+          
+          if (!createSheetResponse.ok) {
+            const errorText = await createSheetResponse.text();
+            console.log(`Error creating sheet: ${errorText}`);
+          } else {
+            console.log(`Successfully created sheet: ${sheetName}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking/creating sheet ${sheetName}:`, error);
+      }
+    }
+
     if (action === "read") {
       // Read data from Google Sheets
       const response = await fetch(
