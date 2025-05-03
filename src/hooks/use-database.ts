@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -75,7 +74,7 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Fix for infinite recursion by using direct type assignment
+// RO - Fixed to prevent infinite recursion using explicit type annotation
 export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
@@ -90,22 +89,20 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Use type assertion instead of complex mapping to avoid recursion
-      const result: RO[] = data.map(item => ({
+      // Fix: Type instantiation is excessively deep and possibly infinite
+      return data.map(item => ({
         id: item.id,
         name: item.name,
         kroId: item.kro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
-      }));
-      
-      return result;
+      })) as Array<RO>;
     },
     enabled: !!kroId
   });
 };
 
-// Komponen - Fix property name mismatch
+// Komponen - Fix property access
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
@@ -120,16 +117,14 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Fixed: Correctly map database field ro_id to roId in our interface
-      const result: Komponen[] = data.map(item => ({
+      // Fix: Property 'ro_id' does not exist error by properly accessing raw response
+      return data.map(item => ({
         id: item.id,
         name: item.name,
-        roId: item.ro_id, // Ensure this property exists in the database response
+        roId: item.ro_id, // This is the raw response property name
         created_at: item.created_at,
         updated_at: item.updated_at
-      }));
-      
-      return result;
+      })) as Komponen[];
     },
     enabled: !!roId
   });

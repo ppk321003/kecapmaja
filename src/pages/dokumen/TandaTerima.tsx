@@ -1,61 +1,32 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
-import { z } from "zod";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Plus, Trash } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { TandaTerimaData, TandaTerimaItem } from "@/types";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const formSchema = z.object({
-  namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
-  detail: z.string().min(1, "Detail wajib diisi"),
-  tanggalPembuatanDaftar: z.string().min(1, "Tanggal pembuatan daftar wajib diisi"),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar wajib diisi"),
-  organikBPS: z.array(z.string()).optional(),
-  mitraStatistik: z.array(z.string()).optional(),
-  daftarItem: z.array(
-    z.object({
-      namaItem: z.string().min(1, "Nama item wajib diisi"),
-      banyaknya: z.number().min(1, "Banyaknya wajib diisi"),
-      satuan: z.string().min(1, "Satuan wajib diisi"),
-    })
-  ),
-});
+import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { toast } from "@/components/ui/use-toast";
+import { TandaTerimaData, TandaTerimaItem } from "@/types";
+import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
+import { FormSelect } from "@/components/FormSelect";
 
 const TandaTerima = () => {
   const navigate = useNavigate();
-  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-  
-  // Fetching data from database
-  const { data: organikBPS = [] } = useOrganikBPS();
-  const { data: mitraStatistik = [] } = useMitraStatistik();
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get data from hooks
+  const { data: organikBPSList = [] } = useOrganikBPS();
+  const { data: mitraStatistikList = [] } = useMitraStatistik();
+  const saveDocument = useSaveDocument();
+
+  // Define react-hook-form
+  const { control, register, handleSubmit, formState: { errors }, watch, setValue } = useForm<TandaTerimaData>({
     defaultValues: {
       namaKegiatan: "",
       detail: "",
@@ -64,354 +35,286 @@ const TandaTerima = () => {
       organikBPS: [],
       mitraStatistik: [],
       daftarItem: [
+        // Fix: Explicitly define all required fields with non-optional values
         {
-          namaItem: "", 
-          banyaknya: 1, 
+          namaItem: "",
+          banyaknya: 1,
           satuan: ""
-        } as TandaTerimaItem // Explicit type casting to fix type mismatch
+        }
       ],
     },
   });
-  
+
+  // Add field array for daftarItem
   const { fields, append, remove } = useFieldArray({
-    control: form.control,
+    control,
     name: "daftarItem",
   });
-  
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    // Fix TypeScript error by ensuring all required fields are present
-    const formData: TandaTerimaData = {
-      namaKegiatan: values.namaKegiatan,
-      detail: values.detail,
-      tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
-      pembuatDaftar: values.pembuatDaftar,
-      organikBPS: values.organikBPS || [],
-      mitraStatistik: values.mitraStatistik || [],
-      daftarItem: values.daftarItem,
-    };
-    
-    console.log("Form Data:", formData);
-    toast.success("Data berhasil disimpan!");
-  };
-  
-  const toggleOrganik = (id: string) => {
-    setSelectedOrganik((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-    
-    const organikValues = form.getValues("organikBPS") || [];
-    if (organikValues.includes(id)) {
-      form.setValue(
-        "organikBPS",
-        organikValues.filter((item) => item !== id)
-      );
-    } else {
-      form.setValue("organikBPS", [...organikValues, id]);
-    }
-  };
-  
-  const toggleMitra = (id: string) => {
-    setSelectedMitra((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
-    
-    const mitraValues = form.getValues("mitraStatistik") || [];
-    if (mitraValues.includes(id)) {
-      form.setValue(
-        "mitraStatistik",
-        mitraValues.filter((item) => item !== id)
-      );
-    } else {
-      form.setValue("mitraStatistik", [...mitraValues, id]);
+
+  const onSubmit = async (data: TandaTerimaData) => {
+    setIsSubmitting(true);
+    try {
+      // Save to Supabase
+      await saveDocument.mutateAsync({
+        jenisId: "00000000-0000-0000-0000-000000000008", // ID for Tanda Terima in the jenis table
+        title: `Tanda Terima - ${data.namaKegiatan}`,
+        data,
+      });
+      
+      toast({
+        title: "Dokumen berhasil dibuat",
+        description: "Tanda terima telah tersimpan",
+      });
+      
+      navigate("/buat-dokumen");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan dokumen",
+        description: "Terjadi kesalahan saat menyimpan data",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
   const handleAddItem = () => {
+    // Fix: Ensure all required fields are defined when adding new items
     append({
       namaItem: "",
       banyaknya: 1,
       satuan: ""
-    } as TandaTerimaItem); // Explicit type casting to fix type mismatch
+    });
   };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Tanda Terima</h1>
-            <p className="text-sm text-muted-foreground">
-              Dokumen tanda terima barang/dokumen
-            </p>
-          </div>
-          <div className="hidden md:block">
-            <img 
-              src="/lovable-uploads/1ef78670-6d2c-4f64-8c6e-149d6b9d2d19.png" 
-              alt="Kecap Maja Logo" 
-              className="h-16 w-auto"
-            />
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Tanda Terima</h1>
+          <p className="text-sm text-muted-foreground">
+            Buat dokumen tanda terima
+          </p>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Form Tanda Terima</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Nama Kegiatan */}
-                  <FormField
-                    control={form.control}
-                    name="namaKegiatan"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama Kegiatan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Masukkan nama kegiatan" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="namaKegiatan">Nama Kegiatan</Label>
+                  <Input
+                    id="namaKegiatan"
+                    placeholder="Masukkan nama kegiatan"
+                    {...register("namaKegiatan", { required: "Nama kegiatan harus diisi" })}
                   />
-                  
-                  {/* Detail */}
-                  <FormField
-                    control={form.control}
-                    name="detail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Detail</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan detail kegiatan" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                  {errors.namaKegiatan && (
+                    <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="detail">Detail Kegiatan</Label>
+                  <Input
+                    id="detail"
+                    placeholder="Masukkan detail kegiatan"
+                    {...register("detail")}
                   />
-                  
-                  {/* Tanggal Pembuatan Daftar */}
-                  <FormField
-                    control={form.control}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tanggal Pembuatan Daftar</Label>
+                  <Controller
+                    control={control}
                     name="tanggalPembuatanDaftar"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Tanggal Pembuatan Daftar</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(new Date(field.value), "dd MMMM yyyy")
-                                ) : (
-                                  <span>Pilih tanggal</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) =>
-                                field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Pembuat Daftar - Changed to dropdown list of organik */}
-                  <FormField
-                    control={form.control}
-                    name="pembuatDaftar"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pembuat Daftar</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih pembuat daftar" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {organikBPS.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.name}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {/* Item List - Moved up as requested */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Daftar Item</h3>
-                    <Button type="button" onClick={handleAddItem} size="sm" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" /> Tambah Item
-                    </Button>
-                  </div>
-                  
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nama Item</TableHead>
-                        <TableHead>Banyaknya</TableHead>
-                        <TableHead>Satuan</TableHead>
-                        <TableHead className="w-24">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.map((field, index) => (
-                        <TableRow key={field.id}>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`daftarItem.${index}.namaItem`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input placeholder="Nama item" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`daftarItem.${index}.banyaknya`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      placeholder="Banyaknya" 
-                                      {...field}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`daftarItem.${index}.satuan`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input placeholder="Satuan" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {fields.length > 1 && (
-                              <Button 
-                                type="button" 
-                                onClick={() => remove(index)} 
-                                variant="ghost" 
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                              >
-                                <Trash className="h-4 w-4 text-destructive" />
-                              </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
                             )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(new Date(field.value), "PPP")
+                            ) : (
+                              <span>Pilih tanggal</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ? new Date(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
                 </div>
-                
-                {/* Organik BPS Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Organik BPS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {organikBPS.map((organik) => (
-                      <div key={organik.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`organik-${organik.id}`}
-                          checked={selectedOrganik.includes(organik.id)}
-                          onCheckedChange={() => toggleOrganik(organik.id)}
-                        />
-                        <label
-                          htmlFor={`organik-${organik.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {organik.name} {/* Removed NIP as requested */}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
+                  <Controller
+                    control={control}
+                    name="pembuatDaftar"
+                    rules={{ required: "Pembuat daftar harus dipilih" }}
+                    render={({ field }) => (
+                      <FormSelect
+                        placeholder="Pilih pembuat daftar"
+                        options={organikBPSList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  {errors.pembuatDaftar && (
+                    <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>
+                  )}
                 </div>
-                
-                {/* Mitra Statistik Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pilih Mitra Statistik</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {mitraStatistik.map((mitra) => (
-                      <div key={mitra.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mitra-${mitra.id}`}
-                          checked={selectedMitra.includes(mitra.id)}
-                          onCheckedChange={() => toggleMitra(mitra.id)}
-                        />
-                        <label
-                          htmlFor={`mitra-${mitra.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {mitra.name} {/* Display kecamatan if available */}
-                          {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="organikBPS">Organik BPS</Label>
+                  <Controller
+                    control={control}
+                    name="organikBPS"
+                    render={({ field }) => (
+                      <FormSelect
+                        placeholder="Pilih organik BPS"
+                        options={organikBPSList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isMulti
+                      />
+                    )}
+                  />
                 </div>
-                
-                {/* Actions */}
-                <div className="flex justify-end space-x-2">
+
+                <div className="space-y-2">
+                  <Label htmlFor="mitraStatistik">Mitra Statistik</Label>
+                  <Controller
+                    control={control}
+                    name="mitraStatistik"
+                    render={({ field }) => (
+                      <FormSelect
+                        placeholder="Pilih mitra statistik"
+                        options={mitraStatistikList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isMulti
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Daftar Item</h3>
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => navigate("/buat-dokumen")}
+                    size="sm" 
+                    onClick={handleAddItem}
                   >
-                    Kembali
+                    <Plus className="mr-1 h-4 w-4" /> Tambah Item
                   </Button>
-                  <Button type="submit">Simpan</Button>
                 </div>
-              </form>
-            </Form>
+
+                {fields.map((field, index) => (
+                  <Card key={field.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium">Item {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => remove(index)}
+                          disabled={fields.length <= 1}
+                        >
+                          <Trash className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`daftarItem.${index}.namaItem`}>Nama Item</Label>
+                          <Input
+                            id={`daftarItem.${index}.namaItem`}
+                            placeholder="Masukkan nama item"
+                            {...register(`daftarItem.${index}.namaItem` as const, { 
+                              required: "Nama item harus diisi" 
+                            })}
+                          />
+                          {errors.daftarItem?.[index]?.namaItem && (
+                            <p className="text-sm text-destructive">
+                              {errors.daftarItem[index]?.namaItem?.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`daftarItem.${index}.banyaknya`}>Banyaknya</Label>
+                          <Input
+                            id={`daftarItem.${index}.banyaknya`}
+                            type="number"
+                            placeholder="Masukkan jumlah"
+                            {...register(`daftarItem.${index}.banyaknya` as const, { 
+                              required: "Jumlah harus diisi",
+                              valueAsNumber: true,
+                              min: { value: 1, message: "Minimal 1" }
+                            })}
+                          />
+                          {errors.daftarItem?.[index]?.banyaknya && (
+                            <p className="text-sm text-destructive">
+                              {errors.daftarItem[index]?.banyaknya?.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`daftarItem.${index}.satuan`}>Satuan</Label>
+                          <Input
+                            id={`daftarItem.${index}.satuan`}
+                            placeholder="Masukkan satuan"
+                            {...register(`daftarItem.${index}.satuan` as const, { 
+                              required: "Satuan harus diisi" 
+                            })}
+                          />
+                          {errors.daftarItem?.[index]?.satuan && (
+                            <p className="text-sm text-destructive">
+                              {errors.daftarItem[index]?.satuan?.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex space-x-4">
+                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
+                  Batal
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>

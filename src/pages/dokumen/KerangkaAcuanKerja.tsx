@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -585,107 +584,6 @@ const KerangkaAcuanKerja = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* Conditional Field for Jumlah Gelombang */}
-                {formValues.jenisKak === "Belanja Paket Meeting" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="jumlahGelombang">Jumlah Gelombang</Label>
-                    <Input
-                      id="jumlahGelombang"
-                      type="number"
-                      min="0"
-                      placeholder="Masukkan jumlah gelombang"
-                      value={formValues.jumlahGelombang}
-                      onChange={(e) => handleChange('jumlahGelombang', e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {/* Dynamic Wave Date Fields */}
-                {formValues.jenisKak === "Belanja Paket Meeting" && formValues.waveDates.map((wave, index) => (
-                  <React.Fragment key={wave.id}>
-                    <div className="space-y-2">
-                      <Label>{`Tanggal Mulai Gelombang-${index + 1}`}</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !wave.startDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {wave.startDate ? (
-                              format(wave.startDate, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={wave.startDate || undefined}
-                            onSelect={(date) => handleWaveDateChange(wave.id, 'startDate', date)}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>{`Tanggal Akhir Gelombang-${index + 1}`}</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !wave.endDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {wave.endDate ? (
-                              format(wave.endDate, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={wave.endDate || undefined}
-                            onSelect={(date) => handleWaveDateChange(wave.id, 'endDate', date)}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </React.Fragment>
-                ))}
-
-                <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Penanggung Jawab Kegiatan</Label>
-                  <Select 
-                    value={formValues.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih penanggung jawab" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map((organik) => (
-                        <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 
                 <div className="space-y-2">
                   <Label>Tanggal Pengajuan KAK</Label>
@@ -716,6 +614,117 @@ const KerangkaAcuanKerja = () => {
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+
+                {/* Moved Jumlah Gelombang field to its own row after Tanggal Pengajuan KAK */}
+              </div>
+
+              {/* Jumlah Gelombang in its own row */}
+              {formValues.jenisKak === "Belanja Paket Meeting" && (
+                <div className="grid grid-cols-1">
+                  <div className="space-y-2">
+                    <Label htmlFor="jumlahGelombang">Jumlah Gelombang</Label>
+                    <Input
+                      id="jumlahGelombang"
+                      type="number"
+                      min="0"
+                      placeholder="Masukkan jumlah gelombang"
+                      value={formValues.jumlahGelombang}
+                      onChange={(e) => handleChange('jumlahGelombang', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Wave Date Fields */}
+              {formValues.jenisKak === "Belanja Paket Meeting" && formValues.waveDates.length > 0 && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {formValues.waveDates.map((wave, index) => (
+                    <React.Fragment key={wave.id}>
+                      <div className="space-y-2">
+                        <Label>{`Tanggal Mulai Gelombang-${index + 1}`}</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !wave.startDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {wave.startDate ? (
+                                format(wave.startDate, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={wave.startDate || undefined}
+                              onSelect={(date) => handleWaveDateChange(wave.id, 'startDate', date)}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>{`Tanggal Akhir Gelombang-${index + 1}`}</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !wave.endDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {wave.endDate ? (
+                                format(wave.endDate, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={wave.endDate || undefined}
+                              onSelect={(date) => handleWaveDateChange(wave.id, 'endDate', date)}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+              
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Penanggung Jawab Kegiatan</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih penanggung jawab" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
