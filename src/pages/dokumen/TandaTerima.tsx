@@ -35,7 +35,7 @@ const TandaTerima = () => {
       organikBPS: [],
       mitraStatistik: [],
       daftarItem: [
-        // Fix: Explicitly define all required fields with non-optional values
+        // Explicitly define each required field with non-null initial values
         {
           namaItem: "",
           banyaknya: 1,
@@ -80,7 +80,7 @@ const TandaTerima = () => {
   };
   
   const handleAddItem = () => {
-    // Fix: Ensure all required fields are defined when adding new items
+    // Make sure all required fields are defined when adding new items
     append({
       namaItem: "",
       banyaknya: 1,
@@ -152,6 +152,7 @@ const TandaTerima = () => {
                             selected={field.value ? new Date(field.value) : undefined}
                             onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                             initialFocus
+                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>

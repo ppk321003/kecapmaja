@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -96,7 +97,13 @@ export const useRO = (kroId: string | null) => {
         kroId: item.kro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
-      })) as Array<RO>;
+      })) as Array<{
+        id: string;
+        name: string;
+        kroId: string;
+        created_at: string;
+        updated_at: string;
+      }>;
     },
     enabled: !!kroId
   });
@@ -117,11 +124,12 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Fix: Property 'ro_id' does not exist error by properly accessing raw response
+      // Explicitly access the raw data structure 
+      // to prevent "Property 'ro_id' does not exist" error
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        roId: item.ro_id, // This is the raw response property name
+        roId: item.ro_id as string, // Type assertion to ensure it matches expected type
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as Komponen[];
