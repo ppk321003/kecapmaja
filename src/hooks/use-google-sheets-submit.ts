@@ -302,6 +302,17 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     return data._mitraNameMap?.[id] || id;
   });
 
+  // Collect kecamatan names from daftarTransport
+  let kecamatanNames: string[] = [];
+  (data.daftarTransport || []).forEach((item: any) => {
+    if (item.kecamatanTujuan && Array.isArray(item.kecamatanTujuan)) {
+      kecamatanNames = [...kecamatanNames, ...item.kecamatanTujuan];
+    }
+  });
+  // Remove duplicates and join with commas
+  const uniqueKecamatanNames = [...new Set(kecamatanNames)];
+  const kecamatanString = uniqueKecamatanNames.join(", ");
+
   const row: any[] = [
     documentId,                       // ID
     data.namaKegiatan || "",          // Nama Kegiatan
@@ -318,8 +329,8 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     organikNames.join(", "),          // Organik
     "",                               // NIP BPS (placeholder)
     mitraNames.join(", "),            // Mitra Statistik
-    "",                                // NIK Mitra Statistik (placeholder)
-    data.kecamatan || ""               // Nama Kecamatan (added as requested)
+    "",                               // NIK Mitra Statistik (placeholder)
+    kecamatanString                  // Nama Kecamatan (combined from daftarTransport)
   ];
 
   return row;

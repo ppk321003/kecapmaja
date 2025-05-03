@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useJenis, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
@@ -33,19 +33,7 @@ const formSchema = z.object({
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
   tanggalPengajuan: z.date({ required_error: "Tanggal pengajuan harus dipilih" }),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
-  organikBPS: z.array(z.string()).optional(),
-  mitraStatistik: z.array(z.string()).optional(),
-  daftarTransport: z.array(
-    z.object({
-      nama: z.string(),
-      jenisPetugas: z.string(),
-      banyaknya: z.number(),
-      kecamatanTujuan: z.array(z.string()),
-      rateTranslok: z.array(z.number()),
-      jumlah: z.number(),
-    })
-  ).optional(),
+  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -62,16 +50,25 @@ const DEFAULT_VALUES: FormValues = {
   akun: "",
   tanggalPengajuan: new Date(),
   pembuatDaftar: "",
-  organikBPS: [],
-  mitraStatistik: [],
-  daftarTransport: [],
 };
+
+// Interface for transport detail items
+interface TransportDetail {
+  id: string;
+  type: 'organik' | 'mitra';
+  personId: string;
+  name: string;
+  banyaknya: number;
+  kecamatanTujuan: string[];
+  rateTranslok: number[];
+  jumlah: number;
+}
 
 const TransportLokal = () => {
   const navigate = useNavigate();
-  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-  const [transportItems, setTransportItems] = useState<any[]>([]);
+  const [transportDetails, setTransportDetails] = useState<TransportDetail[]>([]);
+  const [availableOrganik, setAvailableOrganik] = useState<any[]>([]);
+  const [availableMitra, setAvailableMitra] = useState<any[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -92,8 +89,8 @@ const TransportLokal = () => {
   );
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
+  const { data: organikList = [], isLoading: organikLoading } = useOrganikBPS();
+  const { data: mitraList = [], isLoading: mitraLoading } = useMitraStatistik();
   
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name]));
@@ -106,29 +103,27 @@ const TransportLokal = () => {
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
   
-  // Update transport items when Organik or Mitra selection changes
+  // Update available organik and mitra lists when they are loaded
   useEffect(() => {
-    const allSelected = [...selectedOrganik, ...selectedMitra];
-    const newItems = allSelected.map((id) => {
-      const organik = organikList.find((o) => o.id === id);
-      const mitra = mitraList.find((m) => m.id === id);
-      const person = organik || mitra;
-      
-      if (!person) return null;
-      
-      return {
-        personId: id,
-        nama: person.name,
-        jenisPetugas: organik ? "Organik BPS" : "Mitra Statistik",
-        banyaknya: 0,
-        kecamatanTujuan: [],
-        rateTranslok: [],
-        jumlah: 0,
-      };
-    }).filter(Boolean);
-    
-    setTransportItems(newItems as any[]);
-  }, [selectedOrganik, selectedMitra, organikList, mitraList]);
+    if (!organikLoading) {
+      setAvailableOrganik(organikList.map(org => ({
+        id: org.id,
+        name: org.name,
+        type: 'organik'
+      })));
+    }
+  }, [organikList, organikLoading]);
+  
+  useEffect(() => {
+    if (!mitraLoading) {
+      setAvailableMitra(mitraList.map(mitra => ({
+        id: mitra.id,
+        name: mitra.name,
+        kecamatan: mitra.kecamatan,
+        type: 'mitra'
+      })));
+    }
+  }, [mitraList, mitraLoading]);
   
   const submitMutation = useSubmitToSheets({
     documentType: "TransportLokal",
@@ -137,108 +132,163 @@ const TransportLokal = () => {
     }
   });
   
-  const handleOrganikChange = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedOrganik((prev) => [...prev, id]);
-    } else {
-      setSelectedOrganik((prev) => prev.filter((item) => item !== id));
+  // Kecamatan options
+  const kecamatanOptions = [
+    "Jatiwangi",
+    "Kasokandel",
+    "Ligung",
+    "Sumberjaya",
+    "Dawuan",
+    "Panyingkiran",
+    "Leuwimunding",
+  ];
+
+  const addTransportDetail = (type: 'organik' | 'mitra', personId: string) => {
+    const personList = type === 'organik' ? organikList : mitraList;
+    const person = personList.find(p => p.id === personId);
+    
+    if (!person) return;
+    
+    // Check if person is already in details
+    const existing = transportDetails.find(
+      detail => detail.personId === personId && detail.type === type
+    );
+    
+    if (existing) {
+      toast({
+        title: "Info",
+        description: `${person.name} sudah ada dalam daftar`
+      });
+      return;
     }
-  };
-  
-  const handleMitraChange = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedMitra((prev) => [...prev, id]);
-    } else {
-      setSelectedMitra((prev) => prev.filter((item) => item !== id));
-    }
-  };
-  
-  const handleTransportItemChange = (index: number, field: string, value: any) => {
-    const updatedItems = [...transportItems];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value,
+    
+    const newDetail: TransportDetail = {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      personId,
+      name: person.name,
+      banyaknya: 0,
+      kecamatanTujuan: [],
+      rateTranslok: [],
+      jumlah: 0
     };
     
-    // Recalculate jumlah if needed
-    if (field === "banyaknya" || field === "rateTranslok") {
-      const item = updatedItems[index];
-      let total = 0;
-      
-      if (Array.isArray(item.rateTranslok)) {
-        for (let i = 0; i < item.rateTranslok.length; i++) {
-          total += (item.banyaknya || 0) * (item.rateTranslok[i] || 0);
-        }
-      }
-      
-      updatedItems[index].jumlah = total;
-    }
-    
-    setTransportItems(updatedItems);
+    setTransportDetails(prev => [...prev, newDetail]);
   };
   
-  const handleKecamatanChange = (index: number, kecamatanValue: string, checked: boolean) => {
-    const updatedItems = [...transportItems];
-    const item = updatedItems[index];
-    
-    if (checked) {
-      // Add kecamatan and default rate
-      updatedItems[index] = {
-        ...item,
-        kecamatanTujuan: [...(item.kecamatanTujuan || []), kecamatanValue],
-        rateTranslok: [...(item.rateTranslok || []), 0],
-      };
-    } else {
-      // Remove kecamatan and its rate
-      const kecIdx = item.kecamatanTujuan.indexOf(kecamatanValue);
-      if (kecIdx !== -1) {
-        const newKecamatan = [...item.kecamatanTujuan];
-        const newRates = [...item.rateTranslok];
-        newKecamatan.splice(kecIdx, 1);
-        newRates.splice(kecIdx, 1);
+  const removeTransportDetail = (id: string) => {
+    setTransportDetails(prev => prev.filter(detail => detail.id !== id));
+  };
+  
+  const handleTransportItemChange = (id: string, field: string, value: any) => {
+    setTransportDetails(prev => prev.map(detail => {
+      if (detail.id === id) {
+        const updated = { ...detail, [field]: value };
         
-        updatedItems[index] = {
-          ...item,
-          kecamatanTujuan: newKecamatan,
-          rateTranslok: newRates,
+        // Recalculate jumlah if banyaknya or rateTranslok changed
+        if (field === "banyaknya" || field === "rateTranslok") {
+          let total = 0;
+          for (let i = 0; i < updated.rateTranslok.length; i++) {
+            total += (updated.banyaknya || 0) * (updated.rateTranslok[i] || 0);
+          }
+          updated.jumlah = total;
+        }
+        
+        return updated;
+      }
+      return detail;
+    }));
+  };
+  
+  const handleKecamatanChange = (detailId: string, kecamatan: string, checked: boolean) => {
+    setTransportDetails(prev => prev.map(detail => {
+      if (detail.id === detailId) {
+        let newKecamatanTujuan = [...detail.kecamatanTujuan];
+        let newRateTranslok = [...detail.rateTranslok];
+        
+        if (checked) {
+          // Add kecamatan and default rate
+          newKecamatanTujuan = [...newKecamatanTujuan, kecamatan];
+          newRateTranslok = [...newRateTranslok, 0];
+        } else {
+          // Remove kecamatan and its rate
+          const index = newKecamatanTujuan.indexOf(kecamatan);
+          if (index !== -1) {
+            newKecamatanTujuan.splice(index, 1);
+            newRateTranslok.splice(index, 1);
+          }
+        }
+        
+        // Recalculate total
+        let total = 0;
+        for (let i = 0; i < newRateTranslok.length; i++) {
+          total += (detail.banyaknya || 0) * (newRateTranslok[i] || 0);
+        }
+        
+        return {
+          ...detail,
+          kecamatanTujuan: newKecamatanTujuan,
+          rateTranslok: newRateTranslok,
+          jumlah: total
         };
       }
-    }
-    
-    setTransportItems(updatedItems);
-  };
-
-  const handleRateChange = (itemIndex: number, rateIndex: number, value: string) => {
-    const updatedItems = [...transportItems];
-    const item = updatedItems[itemIndex];
-    const newRates = [...item.rateTranslok];
-    newRates[rateIndex] = Number(value) || 0;
-    
-    // Calculate new total
-    let total = 0;
-    for (let i = 0; i < newRates.length; i++) {
-      total += (item.banyaknya || 0) * (newRates[i] || 0);
-    }
-    
-    updatedItems[itemIndex] = {
-      ...item,
-      rateTranslok: newRates,
-      jumlah: total,
-    };
-    
-    setTransportItems(updatedItems);
+      return detail;
+    }));
   };
   
-  const onSubmit = async (data: FormValues) => {
+  const handleRateChange = (detailId: string, kecamatanIndex: number, value: string) => {
+    const rateValue = Number(value) || 0;
+    
+    setTransportDetails(prev => prev.map(detail => {
+      if (detail.id === detailId) {
+        const newRateTranslok = [...detail.rateTranslok];
+        newRateTranslok[kecamatanIndex] = rateValue;
+        
+        // Recalculate total
+        let total = 0;
+        for (let i = 0; i < newRateTranslok.length; i++) {
+          total += (detail.banyaknya || 0) * (newRateTranslok[i] || 0);
+        }
+        
+        return {
+          ...detail,
+          rateTranslok: newRateTranslok,
+          jumlah: total
+        };
+      }
+      return detail;
+    }));
+  };
+  
+  const onSubmit = async (values: FormValues) => {
     try {
-      console.log("Form Data:", data);
+      if (transportDetails.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Daftar transport kosong",
+          description: "Tambahkan minimal satu petugas"
+        });
+        return;
+      }
       
-      // Combine form data with the transport items
+      // Collect organik and mitra IDs for submission
+      const organikBPS: string[] = [];
+      const mitraStatistik: string[] = [];
+      
+      transportDetails.forEach(detail => {
+        if (detail.type === 'organik') {
+          organikBPS.push(detail.personId);
+        } else {
+          mitraStatistik.push(detail.personId);
+        }
+      });
+      
+      // Combine form data with the transport details
       const formData = {
-        ...data,
-        organikBPS: selectedOrganik,
-        mitraStatistik: selectedMitra,
-        daftarTransport: transportItems,
+        ...values,
+        organikBPS,
+        mitraStatistik,
+        daftarTransport: transportDetails,
         // Add mappings for display in Google Sheets
         _programNameMap: programsMap,
         _kegiatanNameMap: kegiatanMap,
@@ -249,9 +299,10 @@ const TransportLokal = () => {
         _jenisNameMap: jenisMap,
         _organikNameMap: organikMap,
         _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[data.pembuatDaftar]
+        _pembuatDaftarName: organikMap[values.pembuatDaftar]
       };
       
+      console.log("Submitting form data:", formData);
       await submitMutation.mutateAsync(formData);
       
     } catch (error: any) {
@@ -264,16 +315,8 @@ const TransportLokal = () => {
     }
   };
 
-  // Kecamatan options (simplified list for demo)
-  const kecamatanOptions = [
-    "Jatiwangi",
-    "Kasokandel",
-    "Ligung",
-    "Sumberjaya",
-    "Dawuan",
-    "Panyingkiran",
-    "Leuwimunding",
-  ];
+  // Calculate total amount for all transport items
+  const totalAmount = transportDetails.reduce((sum, detail) => sum + detail.jumlah, 0);
 
   return (
     <Layout>
@@ -298,7 +341,9 @@ const TransportLokal = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nama Kegiatan</FormLabel>
-                          <Input {...field} placeholder="Masukkan nama kegiatan" />
+                          <FormControl>
+                            <Input {...field} placeholder="Masukkan nama kegiatan" />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -313,7 +358,9 @@ const TransportLokal = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Detil</FormLabel>
-                          <Input {...field} placeholder="Masukkan detil kegiatan" />
+                          <FormControl>
+                            <Input {...field} placeholder="Masukkan detil kegiatan" />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -597,169 +644,192 @@ const TransportLokal = () => {
                   />
                 </div>
 
-                {/* Organik dan Mitra section */}
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Organik BPS</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {organikList.map((organik) => (
-                        <div key={organik.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`organik-${organik.id}`}
-                            checked={selectedOrganik.includes(organik.id)}
-                            onCheckedChange={(checked) =>
-                              handleOrganikChange(organik.id, !!checked)
-                            }
-                          />
-                          <Label
-                            htmlFor={`organik-${organik.id}`}
-                            className="text-sm"
-                          >
-                            {organik.name}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Mitra Statistik</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {mitraList.map((mitra) => (
-                        <div key={mitra.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`mitra-${mitra.id}`}
-                            checked={selectedMitra.includes(mitra.id)}
-                            onCheckedChange={(checked) =>
-                              handleMitraChange(mitra.id, !!checked)
-                            }
-                          />
-                          <Label
-                            htmlFor={`mitra-${mitra.id}`}
-                            className="text-sm"
-                          >
-                            {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Transport Items */}
-                  {transportItems.length > 0 && (
-                    <div className="space-y-6">
-                      <h3 className="text-lg font-medium">Daftar Transport</h3>
-                      {transportItems.map((item, index) => (
-                        <div key={index} className="border p-4 rounded-lg space-y-4">
-                          <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                              <Label>Nama</Label>
-                              <Input value={item.nama} disabled />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Jenis Petugas</Label>
-                              <Input value={item.jenisPetugas} disabled />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Banyaknya</Label>
-                              <Input
-                                type="number"
-                                value={item.banyaknya}
-                                onChange={(e) =>
-                                  handleTransportItemChange(
-                                    index,
-                                    "banyaknya",
-                                    parseInt(e.target.value, 10) || 0
-                                  )
-                                }
-                                placeholder="0"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Kecamatan Tujuan</Label>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                              {kecamatanOptions.map((kec) => (
-                                <div
-                                  key={kec}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={`kec-${index}-${kec}`}
-                                    checked={item.kecamatanTujuan.includes(kec)}
-                                    onCheckedChange={(checked) =>
-                                      handleKecamatanChange(index, kec, !!checked)
-                                    }
-                                  />
-                                  <Label
-                                    htmlFor={`kec-${index}-${kec}`}
-                                    className="text-sm"
-                                  >
-                                    {kec}
-                                  </Label>
-                                </div>
+                {/* Transport Details Section */}
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Daftar Transport</h3>
+                    <div className="flex space-x-2">
+                      <Select
+                        onValueChange={(value) => {
+                          const [type, id] = value.split('|');
+                          addTransportDetail(type as 'organik' | 'mitra', id);
+                        }}
+                      >
+                        <SelectTrigger className="w-[250px]">
+                          <SelectValue placeholder="Tambah petugas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="placeholder" disabled>
+                            -- Pilih Petugas --
+                          </SelectItem>
+                          {availableOrganik.length > 0 && (
+                            <>
+                              <SelectItem value="header-organik" disabled className="font-bold">
+                                Organik BPS
+                              </SelectItem>
+                              {availableOrganik.map(org => (
+                                <SelectItem key={org.id} value={`organik|${org.id}`}>
+                                  {org.name}
+                                </SelectItem>
                               ))}
-                            </div>
-                          </div>
+                            </>
+                          )}
+                          {availableMitra.length > 0 && (
+                            <>
+                              <SelectItem value="header-mitra" disabled className="font-bold">
+                                Mitra Statistik
+                              </SelectItem>
+                              {availableMitra.map(mitra => (
+                                <SelectItem key={mitra.id} value={`mitra|${mitra.id}`}>
+                                  {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                          {/* Rate Transport per Kecamatan */}
-                          {item.kecamatanTujuan.length > 0 && (
-                            <div className="space-y-2">
-                              <Label>Rate Transport per Kecamatan (Rp)</Label>
+                  {/* Transport Detail Items */}
+                  {transportDetails.length > 0 ? (
+                    <div className="space-y-4">
+                      {transportDetails.map((detail, index) => (
+                        <Card key={detail.id} className="overflow-hidden">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-center mb-4">
+                              <div>
+                                <h4 className="font-medium">{detail.name}</h4>
+                                <p className="text-sm text-muted-foreground">
+                                  {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
+                                </p>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => removeTransportDetail(detail.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                               <div className="space-y-2">
-                                {item.kecamatanTujuan.map((kec, kecIndex) => (
+                                <Label>Banyaknya</Label>
+                                <Input
+                                  type="number"
+                                  value={detail.banyaknya}
+                                  onChange={(e) => 
+                                    handleTransportItemChange(
+                                      detail.id,
+                                      "banyaknya",
+                                      parseInt(e.target.value, 10) || 0
+                                    )
+                                  }
+                                  placeholder="0"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2 mb-4">
+                              <Label>Kecamatan Tujuan</Label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {kecamatanOptions.map((kec) => (
                                   <div
-                                    key={kecIndex}
-                                    className="grid grid-cols-2 gap-2 items-center"
+                                    key={kec}
+                                    className="flex items-center space-x-2"
                                   >
-                                    <Label className="text-sm">{kec}</Label>
-                                    <Input
-                                      type="number"
-                                      value={item.rateTranslok[kecIndex] || 0}
-                                      onChange={(e) =>
-                                        handleRateChange(
-                                          index,
-                                          kecIndex,
-                                          e.target.value
-                                        )
+                                    <Checkbox
+                                      id={`kec-${detail.id}-${kec}`}
+                                      checked={detail.kecamatanTujuan.includes(kec)}
+                                      onCheckedChange={(checked) =>
+                                        handleKecamatanChange(detail.id, kec, !!checked)
                                       }
-                                      placeholder="0"
                                     />
+                                    <Label
+                                      htmlFor={`kec-${detail.id}-${kec}`}
+                                      className="text-sm"
+                                    >
+                                      {kec}
+                                    </Label>
                                   </div>
                                 ))}
                               </div>
                             </div>
-                          )}
-
-                          <div className="space-y-2">
-                            <Label>Jumlah (Rp)</Label>
-                            <Input
-                              value={item.jumlah.toLocaleString()}
-                              disabled
-                              className="font-bold"
-                            />
-                          </div>
-                        </div>
+                            
+                            {/* Rate Transport per Kecamatan */}
+                            {detail.kecamatanTujuan.length > 0 && (
+                              <div className="space-y-3 mb-4">
+                                <Label>Rate Transport per Kecamatan (Rp)</Label>
+                                <div className="space-y-2">
+                                  {detail.kecamatanTujuan.map((kec, kecIndex) => (
+                                    <div
+                                      key={kecIndex}
+                                      className="grid grid-cols-2 gap-2 items-center"
+                                    >
+                                      <Label className="text-sm">{kec}</Label>
+                                      <Input
+                                        type="number"
+                                        value={detail.rateTranslok[kecIndex] || 0}
+                                        onChange={(e) =>
+                                          handleRateChange(
+                                            detail.id,
+                                            kecIndex,
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div>
+                              <Label>Jumlah (Rp)</Label>
+                              <Input
+                                value={detail.jumlah.toLocaleString()}
+                                disabled
+                                className="font-bold"
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
+                      
+                      {/* Total amount for all transport items */}
+                      <div className="flex justify-end">
+                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-2">
+                          <Label className="text-lg">Total (Rp)</Label>
+                          <Input
+                            value={totalAmount.toLocaleString()}
+                            disabled
+                            className="text-lg font-bold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center text-muted-foreground">
+                      <p>Belum ada data transport</p>
+                      <p className="text-sm">Pilih petugas untuk menambahkan data transport</p>
                     </div>
                   )}
+                </div>
 
-                  {/* Submit Buttons */}
-                  <div className="flex space-x-4 pt-4">
-                    <Button type="submit" disabled={submitMutation.isPending || transportItems.length === 0}>
-                      {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate("/buat-dokumen")}
-                    >
-                      Batal
-                    </Button>
-                  </div>
+                {/* Submit Buttons */}
+                <div className="flex space-x-4 pt-4">
+                  <Button type="submit" disabled={submitMutation.isPending}>
+                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/buat-dokumen")}
+                  >
+                    Batal
+                  </Button>
                 </div>
               </CardContent>
             </Card>
