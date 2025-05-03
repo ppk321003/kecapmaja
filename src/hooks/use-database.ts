@@ -199,7 +199,6 @@ export const useMitraStatistik = () => {
       if (error) throw error;
       
       // Convert database fields to match our type definition
-      // Since kecamatan may not exist in the database schema, we provide a default empty string
       return data.map(item => ({
         id: item.id,
         name: item.name,

@@ -9,7 +9,354 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      akun: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dokumen: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          jenis_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          jenis_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          jenis_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dokumen_jenis_id_fkey"
+            columns: ["jenis_id"]
+            isOneToOne: false
+            referencedRelation: "jenis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jenis: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kegiatan: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kegiatan_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      komponen: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          ro_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          ro_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          ro_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "komponen_ro_id_fkey"
+            columns: ["ro_id"]
+            isOneToOne: false
+            referencedRelation: "ro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kro: {
+        Row: {
+          created_at: string
+          id: string
+          kegiatan_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kegiatan_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kegiatan_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kro_kegiatan_id_fkey"
+            columns: ["kegiatan_id"]
+            isOneToOne: false
+            referencedRelation: "kegiatan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mitra_statistik: {
+        Row: {
+          created_at: string
+          id: string
+          kecamatan: string | null
+          name: string
+          nik: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kecamatan?: string | null
+          name: string
+          nik?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kecamatan?: string | null
+          name?: string
+          nik?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      organik_bps: {
+        Row: {
+          bank: string | null
+          created_at: string
+          golongan_akhir: string | null
+          id: string
+          jabatan: string | null
+          name: string
+          nip: string | null
+          nip_bps: string | null
+          nomor_rekening: string | null
+          pangkat: string | null
+          status: string | null
+          updated_at: string
+          wilayah: string | null
+        }
+        Insert: {
+          bank?: string | null
+          created_at?: string
+          golongan_akhir?: string | null
+          id?: string
+          jabatan?: string | null
+          name: string
+          nip?: string | null
+          nip_bps?: string | null
+          nomor_rekening?: string | null
+          pangkat?: string | null
+          status?: string | null
+          updated_at?: string
+          wilayah?: string | null
+        }
+        Update: {
+          bank?: string | null
+          created_at?: string
+          golongan_akhir?: string | null
+          id?: string
+          jabatan?: string | null
+          name?: string
+          nip?: string | null
+          nip_bps?: string | null
+          nomor_rekening?: string | null
+          pangkat?: string | null
+          status?: string | null
+          updated_at?: string
+          wilayah?: string | null
+        }
+        Relationships: []
+      }
+      programs: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ro: {
+        Row: {
+          created_at: string
+          id: string
+          kro_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kro_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kro_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ro_kro_id_fkey"
+            columns: ["kro_id"]
+            isOneToOne: false
+            referencedRelation: "kro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sidebar: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          order_index: number | null
+          parent_id: string | null
+          path: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          parent_id?: string | null
+          path: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          parent_id?: string | null
+          path?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sidebar_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "sidebar"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -51,7 +51,7 @@ export interface Komponen {
 export interface Akun {
   id: string;
   name: string;
-  code: string;
+  code?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -67,6 +67,7 @@ export interface MitraStatistik {
   id: string;
   name: string;
   kecamatan?: string;
+  nik?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -74,7 +75,28 @@ export interface MitraStatistik {
 export interface OrganikBPS {
   id: string;
   name: string;
-  nip: string;
+  nip?: string;
+  nip_bps?: string;
+  jabatan?: string;
+  wilayah?: string;
+  golongan_akhir?: string;
+  pangkat?: string;
+  status?: string;
+  nomor_rekening?: string;
+  bank?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SidebarItem {
+  id: string;
+  title: string;
+  path: string;
+  icon: string;
+  description?: string;
+  parent_id?: string;
+  is_active?: boolean;
+  order_index?: number;
   created_at?: string;
   updated_at?: string;
 }
