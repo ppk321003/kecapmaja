@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -111,7 +112,7 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Fixed property access issue
+// Komponen - Fix the property access issue
 export const useKomponen = (roId: string | null) => {
   // Define an explicit return type to break the infinite type recursion
   type KomponenResult = {
@@ -122,10 +123,19 @@ export const useKomponen = (roId: string | null) => {
     updated_at: string;
   };
 
+  // Define a type for the raw database result to properly access its fields
+  interface KomponenDatabaseResult {
+    id: string;
+    name: string;
+    ro_id?: string;  // Make this optional since it might not be present
+    created_at: string;
+    updated_at: string;
+  }
+
   return useQuery<KomponenResult[], Error>({
     queryKey: ["komponen", roId],
     queryFn: async (): Promise<KomponenResult[]> => {
-      if (!roId) return [] as KomponenResult[];
+      if (!roId) return [];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -135,12 +145,13 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Create a strongly-typed explicit mapping to avoid type recursion
-      return data.map((item): KomponenResult => {
+      // Cast the database result to the expected type with optional ro_id
+      // and explicitly map to KomponenResult to break type recursion
+      return (data as KomponenDatabaseResult[]).map((item): KomponenResult => {
         return {
           id: item.id,
           name: item.name,
-          roId: item.ro_id || roId, // Fallback to provided roId if not in data
+          roId: item.ro_id || roId, // Use ro_id if available, otherwise use the provided roId
           created_at: item.created_at,
           updated_at: item.updated_at
         };
