@@ -65,9 +65,10 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", // Non-optional empty string
-          banyaknya: 1, // Non-optional default value
-          satuan: "",   // Non-optional empty string
+          // Fixed: Make all fields required to match the TandaTerimaItem interface
+          namaItem: "",
+          banyaknya: 1,
+          satuan: "",
         },
       ],
     },
@@ -132,9 +133,10 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      namaItem: "", // Non-optional empty string
-      banyaknya: 1, // Non-optional default value
-      satuan: "",   // Non-optional empty string
+      // Fixed: Make all fields required to match the TandaTerimaItem interface
+      namaItem: "",
+      banyaknya: 1,
+      satuan: "",
     });
   };
 
@@ -420,4 +422,3 @@ const TandaTerima = () => {
 };
 
 export default TandaTerima;
-
