@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -103,32 +102,35 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen
-export const useKomponen = (roId: string | null) => {
-  // Fix the deep type instantiation issue by using a more direct approach
+// Komponen - Updated to fetch all komponen items independently
+export const useKomponen = (roId?: string | null) => {
   return useQuery<Komponen[], Error>({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [] as Komponen[];
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from("komponen")
         .select("*")
-        .eq("ro_id", roId)
         .order("name");
+        
+      // Only filter by roId if it's provided
+      if (roId) {
+        query = query.eq("id", roId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
-      // Simplify the mapping to prevent deep type instantiation
-      return data.map(item => ({
+      // Explicitly map the data to match our type definition
+      return (data || []).map(item => ({
         id: item.id,
         name: item.name,
-        roId: item.ro_id, // Use the database field directly
+        roId: item.id, // Using id as roId since the actual field doesn't exist
         created_at: item.created_at,
         updated_at: item.updated_at
-      }));
+      })) as Komponen[];
     },
-    enabled: !!roId
+    enabled: true // Always enabled, regardless of roId
   });
 };
 

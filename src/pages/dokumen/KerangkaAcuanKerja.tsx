@@ -14,6 +14,7 @@ import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument, useOrganikBPS } from "@/hooks/use-database";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { KomponenSelect } from "@/components/KomponenSelect";
 
 interface KegiatanDetail {
   id: string;
@@ -86,7 +87,7 @@ const KerangkaAcuanKerja = () => {
   const { data: kegiatan = [] } = useKegiatan(formValues.programPembebanan || null);
   const { data: kros = [] } = useKRO(formValues.kegiatan || null);
   const { data: ros = [] } = useRO(formValues.kro || null);
-  const { data: komponenOptions = [] } = useKomponen(formValues.ro || null);
+  const { data: komponenOptions = [] } = useKomponen();
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   
@@ -381,22 +382,10 @@ const KerangkaAcuanKerja = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="komponenOutput">Komponen Output</Label>
-                  <Select 
+                  <KomponenSelect 
                     value={formValues.komponenOutput} 
-                    onValueChange={(value) => handleChange('komponenOutput', value)}
-                    disabled={!formValues.ro}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih komponen output" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {komponenOptions.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => handleChange('komponenOutput', value)}
+                  />
                 </div>
 
                 <div className="space-y-2">

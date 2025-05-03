@@ -4,17 +4,17 @@ import { useKomponen } from '@/hooks/use-database';
 import { FormSelect } from '@/components/FormSelect';
 
 interface KomponenSelectProps {
-  roId: string | null;
   value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
+  roId?: string | null;
 }
 
 export const KomponenSelect: React.FC<KomponenSelectProps> = ({
-  roId,
   value,
   onChange,
-  placeholder = "Pilih Komponen..."
+  placeholder = "Pilih Komponen...",
+  roId
 }) => {
   const { data: komponenList = [], isLoading } = useKomponen(roId);
   
