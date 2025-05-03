@@ -75,7 +75,7 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Fixed: Corrected the type handling
+// RO - Fixed: Corrected the type handling to avoid infinite recursion
 export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
@@ -90,7 +90,7 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Fixed: Explicitly handle database structure with appropriate type casting
+      // Fixed: Explicitly map each field to avoid deep type recursion issues
       return data.map(item => ({
         id: item.id,
         name: item.name,
@@ -103,7 +103,7 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Fixed the reference to roId
+// Komponen - Fixed: Corrected the property name from ro_id to roId
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
@@ -118,7 +118,7 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Convert database field names to match our type definitions
+      // Fixed: Correctly map database fields to match our interface
       return data.map(item => ({
         id: item.id,
         name: item.name,

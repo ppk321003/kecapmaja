@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -65,11 +64,10 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          // Fixed: Make all fields required to match the TandaTerimaItem interface
-          namaItem: "",
-          banyaknya: 1,
-          satuan: "",
-        },
+          namaItem: "", // Required field
+          banyaknya: 1, // Required field
+          satuan: "",   // Required field
+        } as TandaTerimaItem, // Explicitly cast as TandaTerimaItem to satisfy TypeScript
       ],
     },
   });
@@ -133,11 +131,10 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      // Fixed: Make all fields required to match the TandaTerimaItem interface
-      namaItem: "",
-      banyaknya: 1,
-      satuan: "",
-    });
+      namaItem: "", // Required field
+      banyaknya: 1, // Required field
+      satuan: "",   // Required field
+    } as TandaTerimaItem); // Explicitly cast as TandaTerimaItem
   };
 
   return (
