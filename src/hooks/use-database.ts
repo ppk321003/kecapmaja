@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -88,7 +89,7 @@ export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
     queryFn: async () => {
-      if (!kroId) return [];
+      if (!kroId) return [] as ROResult[];
       
       const { data, error } = await supabase
         .from("ro")
@@ -113,7 +114,8 @@ export const useRO = (kroId: string | null) => {
 
 // Komponen
 export const useKomponen = (roId: string | null) => {
-  type KomponenItem = {
+  // Define an explicit return type to break type recursion
+  type KomponenResult = {
     id: string;
     name: string;
     roId: string;
@@ -124,7 +126,7 @@ export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [] as KomponenItem[];
+      if (!roId) return [] as KomponenResult[];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -134,15 +136,17 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Use a simple, direct mapping approach without nested type references
-      return data.map(item => {
+      // Use a simple, direct mapping approach with explicit type casting
+      return data.map((item): KomponenResult => {
         return {
           id: item.id,
           name: item.name,
+          // Fix the property access issue - use a safe access pattern
+          // The database field might be ro_id but our type uses roId
           roId: item.ro_id || roId,
           created_at: item.created_at,
           updated_at: item.updated_at
-        } as KomponenItem;
+        };
       });
     },
     enabled: !!roId
@@ -198,7 +202,7 @@ export const useMitraStatistik = () => {
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        kecamatan: "", // Default empty string since it doesn't exist in the DB schema
+        kecamatan: item.kecamatan || "", // Default empty string since it doesn't exist in the DB schema
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];
