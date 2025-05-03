@@ -11,18 +11,21 @@ export type Database = {
     Tables: {
       akun: {
         Row: {
+          code: string
           created_at: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
+          code: string
           created_at?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
+          code?: string
           created_at?: string
           id?: string
           name?: string
@@ -118,83 +121,37 @@ export type Database = {
           },
         ]
       }
-      kerangka_acuan_kerja: {
-        Row: {
-          akun: string | null
-          created_at: string
-          detil: string | null
-          id: string
-          jenis: string | null
-          kegiatan: string | null
-          komponen: string | null
-          kro: string | null
-          latar_belakang: string | null
-          nama_kegiatan: string
-          program: string | null
-          ro: string | null
-          tanggal_mulai: string | null
-          tanggal_selesai: string | null
-          tujuan: string | null
-          updated_at: string
-        }
-        Insert: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          id?: string
-          jenis?: string | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          latar_belakang?: string | null
-          nama_kegiatan: string
-          program?: string | null
-          ro?: string | null
-          tanggal_mulai?: string | null
-          tanggal_selesai?: string | null
-          tujuan?: string | null
-          updated_at?: string
-        }
-        Update: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          id?: string
-          jenis?: string | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          latar_belakang?: string | null
-          nama_kegiatan?: string
-          program?: string | null
-          ro?: string | null
-          tanggal_mulai?: string | null
-          tanggal_selesai?: string | null
-          tujuan?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       komponen: {
         Row: {
           created_at: string
           id: string
           name: string
+          ro_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          ro_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          ro_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "komponen_ro_id_fkey"
+            columns: ["ro_id"]
+            isOneToOne: false
+            referencedRelation: "ro"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kro: {
         Row: {
@@ -230,88 +187,46 @@ export type Database = {
       }
       mitra_statistik: {
         Row: {
-          alamat: string | null
           created_at: string
           id: string
-          kecamatan: string | null
-          nama_bank: string | null
           name: string
-          nik: string | null
-          no_rekening: string | null
-          pekerjaan: string | null
           updated_at: string
         }
         Insert: {
-          alamat?: string | null
           created_at?: string
           id?: string
-          kecamatan?: string | null
-          nama_bank?: string | null
           name: string
-          nik?: string | null
-          no_rekening?: string | null
-          pekerjaan?: string | null
           updated_at?: string
         }
         Update: {
-          alamat?: string | null
           created_at?: string
           id?: string
-          kecamatan?: string | null
-          nama_bank?: string | null
           name?: string
-          nik?: string | null
-          no_rekening?: string | null
-          pekerjaan?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       organik_bps: {
         Row: {
-          bank: string | null
           created_at: string
-          gol_akhir: string | null
           id: string
-          jabatan: string | null
           name: string
           nip: string
-          nip_bps: string | null
-          no_hp: string | null
-          nomor_rekening: string | null
-          pangkat: string | null
           updated_at: string
-          wilayah: string | null
         }
         Insert: {
-          bank?: string | null
           created_at?: string
-          gol_akhir?: string | null
           id?: string
-          jabatan?: string | null
           name: string
           nip: string
-          nip_bps?: string | null
-          no_hp?: string | null
-          nomor_rekening?: string | null
-          pangkat?: string | null
           updated_at?: string
-          wilayah?: string | null
         }
         Update: {
-          bank?: string | null
           created_at?: string
-          gol_akhir?: string | null
           id?: string
-          jabatan?: string | null
           name?: string
           nip?: string
-          nip_bps?: string | null
-          no_hp?: string | null
-          nomor_rekening?: string | null
-          pangkat?: string | null
           updated_at?: string
-          wilayah?: string | null
         }
         Relationships: []
       }
@@ -367,261 +282,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      spj_honor: {
-        Row: {
-          akun: string | null
-          created_at: string
-          detil: string | null
-          harga_satuan: number | null
-          id: string
-          jenis: string | null
-          jumlah: number | null
-          kegiatan: string | null
-          komponen: string | null
-          kro: string | null
-          nama_kegiatan: string
-          program: string | null
-          ro: string | null
-          tanggal_spj: string | null
-          updated_at: string
-        }
-        Insert: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          harga_satuan?: number | null
-          id?: string
-          jenis?: string | null
-          jumlah?: number | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          nama_kegiatan: string
-          program?: string | null
-          ro?: string | null
-          tanggal_spj?: string | null
-          updated_at?: string
-        }
-        Update: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          harga_satuan?: number | null
-          id?: string
-          jenis?: string | null
-          jumlah?: number | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          nama_kegiatan?: string
-          program?: string | null
-          ro?: string | null
-          tanggal_spj?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      spj_honor_mitra: {
-        Row: {
-          created_at: string
-          id: string
-          mitra_id: string | null
-          spj_honor_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          mitra_id?: string | null
-          spj_honor_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          mitra_id?: string | null
-          spj_honor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "spj_honor_mitra_mitra_id_fkey"
-            columns: ["mitra_id"]
-            isOneToOne: false
-            referencedRelation: "mitra_statistik"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "spj_honor_mitra_spj_honor_id_fkey"
-            columns: ["spj_honor_id"]
-            isOneToOne: false
-            referencedRelation: "spj_honor"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      spj_honor_organik: {
-        Row: {
-          created_at: string
-          id: string
-          organik_id: string | null
-          spj_honor_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          organik_id?: string | null
-          spj_honor_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          organik_id?: string | null
-          spj_honor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "spj_honor_organik_organik_id_fkey"
-            columns: ["organik_id"]
-            isOneToOne: false
-            referencedRelation: "organik_bps"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "spj_honor_organik_spj_honor_id_fkey"
-            columns: ["spj_honor_id"]
-            isOneToOne: false
-            referencedRelation: "spj_honor"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      uang_harian_mitra: {
-        Row: {
-          created_at: string
-          id: string
-          mitra_id: string | null
-          uang_harian_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          mitra_id?: string | null
-          uang_harian_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          mitra_id?: string | null
-          uang_harian_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "uang_harian_mitra_mitra_id_fkey"
-            columns: ["mitra_id"]
-            isOneToOne: false
-            referencedRelation: "mitra_statistik"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "uang_harian_mitra_uang_harian_id_fkey"
-            columns: ["uang_harian_id"]
-            isOneToOne: false
-            referencedRelation: "uang_harian_transport"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      uang_harian_organik: {
-        Row: {
-          created_at: string
-          id: string
-          organik_id: string | null
-          uang_harian_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          organik_id?: string | null
-          uang_harian_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          organik_id?: string | null
-          uang_harian_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "uang_harian_organik_organik_id_fkey"
-            columns: ["organik_id"]
-            isOneToOne: false
-            referencedRelation: "organik_bps"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "uang_harian_organik_uang_harian_id_fkey"
-            columns: ["uang_harian_id"]
-            isOneToOne: false
-            referencedRelation: "uang_harian_transport"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      uang_harian_transport: {
-        Row: {
-          akun: string | null
-          created_at: string
-          detil: string | null
-          id: string
-          jenis: string | null
-          kegiatan: string | null
-          komponen: string | null
-          kro: string | null
-          nama_kegiatan: string
-          program: string | null
-          ro: string | null
-          tanggal_mulai: string | null
-          tanggal_selesai: string | null
-          tc: boolean | null
-          uang_harian: number | null
-          updated_at: string
-        }
-        Insert: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          id?: string
-          jenis?: string | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          nama_kegiatan: string
-          program?: string | null
-          ro?: string | null
-          tanggal_mulai?: string | null
-          tanggal_selesai?: string | null
-          tc?: boolean | null
-          uang_harian?: number | null
-          updated_at?: string
-        }
-        Update: {
-          akun?: string | null
-          created_at?: string
-          detil?: string | null
-          id?: string
-          jenis?: string | null
-          kegiatan?: string | null
-          komponen?: string | null
-          kro?: string | null
-          nama_kegiatan?: string
-          program?: string | null
-          ro?: string | null
-          tanggal_mulai?: string | null
-          tanggal_selesai?: string | null
-          tc?: boolean | null
-          uang_harian?: number | null
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

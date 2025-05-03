@@ -181,9 +181,9 @@ export interface TandaTerimaData {
 }
 
 export interface TandaTerimaItem {
-  namaItem: string;  // Required field
-  banyaknya: number; // Required field
-  satuan: string;    // Required field
+  namaItem: string;
+  banyaknya: number;
+  satuan: string;
 }
 
 export const KECAMATAN_MAJALENGKA = [
