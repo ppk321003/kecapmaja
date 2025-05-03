@@ -74,7 +74,7 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Fix the infinite type instantiation by using specific return type
+// RO 
 export const useRO = (kroId: string | null) => {
   return useQuery<RO[], Error>({
     queryKey: ["ro", kroId],
@@ -102,10 +102,10 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Fully fix the type instantiation issue
+// Komponen
 export const useKomponen = (roId: string | null) => {
-  // Explicitly type the return value of useQuery to prevent infinite type instantiation
-  const result = useQuery<Komponen[], Error>({
+  // Fix the deep type instantiation issue by using a more direct approach
+  return useQuery<Komponen[], Error>({
     queryKey: ["komponen", roId],
     queryFn: async () => {
       if (!roId) return [] as Komponen[];
@@ -118,21 +118,17 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Create properly structured Komponen objects
-      const komponenList: Komponen[] = data.map(item => ({
+      // Simplify the mapping to prevent deep type instantiation
+      return data.map(item => ({
         id: item.id,
         name: item.name,
-        roId: roId, // Using the roId parameter directly
+        roId: item.ro_id, // Use the database field directly
         created_at: item.created_at,
         updated_at: item.updated_at
       }));
-      
-      return komponenList;
     },
     enabled: !!roId
   });
-  
-  return result;
 };
 
 // Akun

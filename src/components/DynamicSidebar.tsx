@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import useSidebar from "@/hooks/use-sidebar";
 import { SidebarItem } from "@/types";
 import { FileText, Globe, Database, FileArchive, File, Book, Table } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface DynamicSidebarProps {
   sidebarOpen: boolean;
@@ -14,6 +15,7 @@ interface DynamicSidebarProps {
 const DynamicSidebar: React.FC<DynamicSidebarProps> = ({ sidebarOpen, toggleSidebar }) => {
   const location = useLocation();
   const { data: menuItems = [], isLoading } = useSidebar();
+  const { theme, toggleTheme } = useTheme();
 
   // Helper function to get the icon component dynamically
   const getIcon = (iconName: string) => {
@@ -89,13 +91,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({ sidebarOpen, toggleSide
           <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">Maju Aman Jeung Amanah</div>
           <Button 
             variant="outline" 
-            onClick={() => {
-              const htmlEl = document.documentElement;
-              const currentTheme = htmlEl.getAttribute('data-theme') || 'light';
-              const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-              htmlEl.setAttribute('data-theme', newTheme);
-              localStorage.setItem('theme', newTheme);
-            }} 
+            onClick={toggleTheme} 
             className="w-full bg-sidebar-accent/50 text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4 dark:hidden"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
