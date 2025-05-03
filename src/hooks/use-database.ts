@@ -82,8 +82,8 @@ export const useRO = (kroId: string | null) => {
     id: string;
     name: string;
     kroId: string;
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
   };
 
   return useQuery({
@@ -119,8 +119,8 @@ export const useKomponen = (roId: string | null) => {
     id: string;
     name: string;
     roId: string;
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
   };
 
   return useQuery({
@@ -203,6 +203,7 @@ export const useMitraStatistik = () => {
         id: item.id,
         name: item.name,
         kecamatan: item.kecamatan || "", // Default empty string since it doesn't exist in the DB schema
+        nik: item.nik,
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];

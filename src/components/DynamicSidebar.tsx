@@ -1,19 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-
-interface SidebarItem {
-  id: string;
-  title: string;
-  path: string;
-  icon: string;
-  description?: string;
-  parent_id?: string;
-  is_active?: boolean;
-  order_index?: number;
-}
+import useSidebar from "@/hooks/use-sidebar";
+import { SidebarItem } from "@/types";
+import { FileText, Globe, Database, FileArchive, File, Book, Table } from "lucide-react";
 
 interface DynamicSidebarProps {
   sidebarOpen: boolean;
@@ -21,40 +12,12 @@ interface DynamicSidebarProps {
 }
 
 const DynamicSidebar: React.FC<DynamicSidebarProps> = ({ sidebarOpen, toggleSidebar }) => {
-  const [menuItems, setMenuItems] = useState<SidebarItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
-
-  useEffect(() => {
-    const fetchSidebarItems = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('sidebar')
-          .select('*')
-          .eq('is_active', true)
-          .order('order_index');
-        
-        if (error) {
-          console.error('Error fetching sidebar items:', error);
-          return;
-        }
-
-        setMenuItems(data || []);
-      } catch (err) {
-        console.error('Error in sidebar fetch:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSidebarItems();
-  }, []);
+  const { data: menuItems = [], isLoading } = useSidebar();
 
   // Helper function to get the icon component dynamically
   const getIcon = (iconName: string) => {
-    // Import all icons at once to avoid dynamic imports which can cause issues
-    const { FileText, Globe, Database, FileArchive, File, Book, Table } = require("lucide-react");
-    
+    // Map of icon names to components
     const iconMap: Record<string, React.ReactNode> = {
       FileText: <FileText className="h-5 w-5" />,
       Globe: <Globe className="h-5 w-5" />,
@@ -105,7 +68,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({ sidebarOpen, toggleSide
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           <nav className="space-y-1">
-            {menuItems.map(item => (
+            {menuItems.map((item: SidebarItem) => (
               <Link 
                 key={item.id} 
                 to={item.path} 
