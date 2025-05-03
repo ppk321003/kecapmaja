@@ -99,16 +99,14 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Map directly to the defined type
-      const result: ROResult[] = data.map(item => ({
+      // Use explicit type annotation for each item to break deep type nesting
+      return data.map((item): ROResult => ({
         id: item.id,
         name: item.name,
         kroId: item.kro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
       }));
-      
-      return result;
     },
     enabled: !!kroId
   });
@@ -116,6 +114,15 @@ export const useRO = (kroId: string | null) => {
 
 // Komponen - Fixed property access issue
 export const useKomponen = (roId: string | null) => {
+  // Define a specific type to avoid deep nesting
+  type KomponenResult = {
+    id: string;
+    name: string;
+    roId: string;
+    created_at: string;
+    updated_at: string;
+  };
+
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
@@ -133,7 +140,7 @@ export const useKomponen = (roId: string | null) => {
       console.log("Komponen data structure:", data[0]);
       
       // Then map the data with the correct property names
-      return data.map(item => {
+      return data.map((item): KomponenResult => {
         // Check if ro_id exists, if not use a fallback approach
         const roIdValue = "ro_id" in item ? (item as any).ro_id : roId;
         
@@ -144,7 +151,7 @@ export const useKomponen = (roId: string | null) => {
           created_at: item.created_at,
           updated_at: item.updated_at
         };
-      }) as Komponen[];
+      });
     },
     enabled: !!roId
   });
