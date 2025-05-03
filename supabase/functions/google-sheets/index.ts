@@ -7,6 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Spreadsheet IDs mapping
+const SPREADSHEET_IDS: Record<string, string> = {
+  "KerangkaAcuanKerja": "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+  "DaftarHadir": "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+  "SPJHonor": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
+  "TransportLokal": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
+  "UangHarianTransport": "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg",
+  "KuitansiPerjalananDinas": "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
+  "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
+  "TandaTerima": "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8",
+  // Default fallback spreadsheet for testing/misc operations
+  "Sheet1": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
+  "Organik": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
+  "Mitra": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg"
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -16,14 +32,13 @@ serve(async (req) => {
   }
 
   try {
-    const SUPABASE_URL = "https://ltloelzcnnbxlreropql.supabase.co";
+    const SUPABASE_URL = "https://jbmgujpkyyqqphlzflfj.supabase.co";
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const GOOGLE_SERVICE_ACCOUNT_EMAIL = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") || "";
     const GOOGLE_PRIVATE_KEY = Deno.env.get("GOOGLE_PRIVATE_KEY") || "";
-    const SPREADSHEET_ID = "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg";
-
+    
     // Log for debugging
     console.log("Service account email:", GOOGLE_SERVICE_ACCOUNT_EMAIL);
     console.log("Private key exists:", GOOGLE_PRIVATE_KEY ? "Yes" : "No");
@@ -84,6 +99,11 @@ serve(async (req) => {
     // Parse the request to determine the operation
     const requestData = await req.json();
     const { action = "read", sheetName, range, values } = requestData;
+    
+    // Get the spreadsheet ID for the requested sheet
+    const SPREADSHEET_ID = SPREADSHEET_IDS[sheetName] || SPREADSHEET_IDS["Sheet1"];
+    
+    console.log(`Using spreadsheet ID for ${sheetName}: ${SPREADSHEET_ID}`);
 
     if (action === "read") {
       // Read data from Google Sheets

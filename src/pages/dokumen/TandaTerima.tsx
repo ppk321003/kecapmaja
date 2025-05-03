@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -15,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const TandaTerima = () => {
   const navigate = useNavigate();
@@ -24,6 +26,15 @@ const TandaTerima = () => {
   const { data: organikBPSList = [] } = useOrganikBPS();
   const { data: mitraStatistikList = [] } = useMitraStatistik();
   const saveDocument = useSaveDocument();
+  
+  // Google Sheets submission hook
+  const submitToSheets = useSubmitToSheets({ 
+    documentType: "TandaTerima",
+    onSuccess: () => {
+      // Navigate after successful submission
+      navigate("/buat-dokumen");
+    }
+  });
 
   // Define react-hook-form
   const { control, register, handleSubmit, formState: { errors }, watch, setValue } = useForm<TandaTerimaData>({
@@ -54,12 +65,15 @@ const TandaTerima = () => {
   const onSubmit = async (data: TandaTerimaData) => {
     setIsSubmitting(true);
     try {
-      // Save to Supabase
+      // First, save to Supabase
       await saveDocument.mutateAsync({
         jenisId: "00000000-0000-0000-0000-000000000008", // ID for Tanda Terima in the jenis table
         title: `Tanda Terima - ${data.namaKegiatan}`,
         data,
       });
+      
+      // Then, submit to Google Sheets
+      await submitToSheets.mutateAsync(data);
       
       toast({
         title: "Dokumen berhasil dibuat",
