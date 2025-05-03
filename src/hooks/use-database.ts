@@ -75,8 +75,17 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Using explicit type annotation to prevent excessive type depth
+// RO - Use type aliases to prevent excessive type depth
 export const useRO = (kroId: string | null) => {
+  // Define the return type explicitly to prevent recursive type issues
+  type ROResult = {
+    id: string;
+    name: string;
+    kroId: string;
+    created_at: string;
+    updated_at: string;
+  };
+
   return useQuery({
     queryKey: ["ro", kroId],
     queryFn: async () => {
@@ -90,14 +99,8 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Fix: Use explicit type annotation to prevent infinite recursion
-      const result: Array<{
-        id: string;
-        name: string;
-        kroId: string;
-        created_at: string;
-        updated_at: string;
-      }> = data.map(item => ({
+      // Map directly to the defined type
+      const result: ROResult[] = data.map(item => ({
         id: item.id,
         name: item.name,
         kroId: item.kro_id,
