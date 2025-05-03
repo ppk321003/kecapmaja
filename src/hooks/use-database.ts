@@ -75,7 +75,7 @@ export const useKRO = (kegiatanId: string | null) => {
   });
 };
 
-// RO - Fixed to prevent infinite recursion using explicit type annotation
+// RO - Using explicit type annotation to prevent excessive type depth
 export const useRO = (kroId: string | null) => {
   return useQuery({
     queryKey: ["ro", kroId],
@@ -90,26 +90,28 @@ export const useRO = (kroId: string | null) => {
       
       if (error) throw error;
       
-      // Fix: Type instantiation is excessively deep and possibly infinite
-      return data.map(item => ({
-        id: item.id,
-        name: item.name,
-        kroId: item.kro_id,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      })) as Array<{
+      // Fix: Use explicit type annotation to prevent infinite recursion
+      const result: Array<{
         id: string;
         name: string;
         kroId: string;
         created_at: string;
         updated_at: string;
-      }>;
+      }> = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        kroId: item.kro_id,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
+      
+      return result;
     },
     enabled: !!kroId
   });
 };
 
-// Komponen - Fix property access
+// Komponen - Fixed property access issue
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
@@ -124,15 +126,22 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Explicitly access the raw data structure 
-      // to prevent "Property 'ro_id' does not exist" error
-      return data.map(item => ({
-        id: item.id,
-        name: item.name,
-        roId: item.ro_id as string, // Type assertion to ensure it matches expected type
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      })) as Komponen[];
+      // Fix: First check the actual structure of the data from the database
+      console.log("Komponen data structure:", data[0]);
+      
+      // Then map the data with the correct property names
+      return data.map(item => {
+        // Check if ro_id exists, if not use a fallback approach
+        const roIdValue = "ro_id" in item ? (item as any).ro_id : roId;
+        
+        return {
+          id: item.id,
+          name: item.name,
+          roId: roIdValue, 
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        };
+      }) as Komponen[];
     },
     enabled: !!roId
   });
