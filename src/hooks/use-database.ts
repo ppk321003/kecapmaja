@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -103,22 +102,15 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Always fetch all komponen items independently
-export const useKomponen = (roId?: string | null) => {
+// Komponen - Always fetch all komponen items independently, ignoring roId parameter
+export const useKomponen = () => {
   return useQuery<Komponen[], Error>({
-    queryKey: ["komponen", roId],
+    queryKey: ["komponen"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("komponen")
         .select("*")
         .order("name");
-        
-      // Only filter by roId if it's provided
-      if (roId) {
-        query = query.eq("id", roId);
-      }
-      
-      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -130,8 +122,7 @@ export const useKomponen = (roId?: string | null) => {
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as Komponen[];
-    },
-    enabled: true // Always enabled, regardless of roId
+    }
   });
 };
 

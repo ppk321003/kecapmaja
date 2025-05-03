@@ -7,16 +7,15 @@ interface KomponenSelectProps {
   value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
-  roId?: string | null;
 }
 
 export const KomponenSelect: React.FC<KomponenSelectProps> = ({
   value,
   onChange,
-  placeholder = "Pilih Komponen...",
-  roId
+  placeholder = "Pilih Komponen..."
 }) => {
-  const { data: komponenList = [], isLoading } = useKomponen(roId);
+  // Use the hook without passing any roId parameter to get all komponen items
+  const { data: komponenList = [], isLoading } = useKomponen();
   
   const options = komponenList.map(komponen => ({
     value: komponen.id,
