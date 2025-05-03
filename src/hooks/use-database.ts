@@ -103,9 +103,9 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Fix the issue with ro_id access
+// Komponen - Fix the issue with type inference and explicitly return correct type
 export const useKomponen = (roId: string | null) => {
-  return useQuery({
+  return useQuery<Komponen[], Error>({
     queryKey: ["komponen", roId],
     queryFn: async () => {
       if (!roId) return [] as Komponen[];
