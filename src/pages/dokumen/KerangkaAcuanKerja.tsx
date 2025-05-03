@@ -36,7 +36,6 @@ interface FormValues {
   kro: string;
   ro: string;
   komponenOutput: string;
-  subKomponen: string;
   akun: string;
   paguAnggaran: string;
   kegiatanDetails: KegiatanDetail[];
@@ -56,7 +55,6 @@ const defaultValues: FormValues = {
   kro: "",
   ro: "",
   komponenOutput: "",
-  subKomponen: "",
   akun: "",
   paguAnggaran: "",
   kegiatanDetails: [],
@@ -391,25 +389,6 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="subKomponen">Sub Komponen</Label>
-                  <Select 
-                    value={formValues.subKomponen} 
-                    onValueChange={(value) => handleChange('subKomponen', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih sub komponen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subKomponenOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
                   <Select 
                     value={formValues.akun} 
@@ -616,10 +595,26 @@ const KerangkaAcuanKerja = () => {
                   </Popover>
                 </div>
 
-                {/* Moved Jumlah Gelombang field to its own row after Tanggal Pengajuan KAK */}
+                <div className="space-y-2">
+                  <Label htmlFor="pembuatDaftar">Penanggung Jawab Kegiatan</Label>
+                  <Select 
+                    value={formValues.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih penanggung jawab" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map((organik) => (
+                        <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Jumlah Gelombang in its own row */}
               {formValues.jenisKak === "Belanja Paket Meeting" && (
                 <div className="grid grid-cols-1">
                   <div className="space-y-2">
@@ -636,7 +631,6 @@ const KerangkaAcuanKerja = () => {
                 </div>
               )}
 
-              {/* Dynamic Wave Date Fields */}
               {formValues.jenisKak === "Belanja Paket Meeting" && formValues.waveDates.length > 0 && (
                 <div className="grid gap-6 md:grid-cols-2">
                   {formValues.waveDates.map((wave, index) => (
@@ -706,27 +700,6 @@ const KerangkaAcuanKerja = () => {
                   ))}
                 </div>
               )}
-              
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Penanggung Jawab Kegiatan</Label>
-                  <Select 
-                    value={formValues.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih penanggung jawab" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map((organik) => (
-                        <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
               <div className="flex space-x-4">
                 <Button type="submit" className="flex-1" disabled={isSubmitting}>

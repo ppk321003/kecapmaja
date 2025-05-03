@@ -112,21 +112,21 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen
+// Komponen - Fix the infinite type instantiation by using explicit types
 export const useKomponen = (roId: string | null) => {
-  // Define an explicit return type to break type recursion
-  type KomponenResult = {
+  // Define a concrete return type instead of using the imported Komponen type
+  interface KomponenItem {
     id: string;
     name: string;
     roId: string;
     created_at: string;
     updated_at: string;
-  };
+  }
 
   return useQuery({
     queryKey: ["komponen", roId],
     queryFn: async () => {
-      if (!roId) return [] as KomponenResult[];
+      if (!roId) return [] as KomponenItem[];
       
       const { data, error } = await supabase
         .from("komponen")
@@ -136,14 +136,15 @@ export const useKomponen = (roId: string | null) => {
       
       if (error) throw error;
       
-      // Use a simple, direct mapping approach with explicit type casting
-      return data.map((item): KomponenResult => {
+      // Map directly to our concrete type with explicit casting 
+      return data.map((item): KomponenItem => {
+        // Check if the ro_id property exists and use it, or fall back to the passed roId
+        const itemRoId = 'ro_id' in item ? item.ro_id : roId;
+        
         return {
           id: item.id,
           name: item.name,
-          // Fix the property access issue - use a safe access pattern
-          // The database field might be ro_id but our type uses roId
-          roId: item.ro_id || roId,
+          roId: itemRoId,
           created_at: item.created_at,
           updated_at: item.updated_at
         };
