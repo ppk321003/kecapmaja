@@ -96,16 +96,24 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
     data.pembuatDaftar || "",      // Pembuat Daftar
   ];
 
-  // Add Organik BPS data
+  // Get display names for Organik BPS (instead of IDs)
   const organikIds = data.organikBPS || [];
-  row.push(organikIds.join(", ")); // Organik BPS
+  const organikNames = organikIds.map((id: string) => {
+    const item = data._organikNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+  row.push(organikNames.join(", ")); // Organik BPS
 
   // Add NIP BPS (empty for now, would need to fetch from database)
   row.push(""); // NIP BPS
 
-  // Add Mitra Statistik data
+  // Get display names for Mitra Statistik (instead of IDs)
   const mitraIds = data.mitraStatistik || [];
-  row.push(mitraIds.join(", ")); // Mitra Statistik
+  const mitraNames = mitraIds.map((id: string) => {
+    const item = data._mitraNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+  row.push(mitraNames.join(", ")); // Mitra Statistik
 
   // Add NIK Mitra Statistik (empty for now, would need to fetch from database)
   row.push(""); // NIK Mitra Statistik
@@ -124,16 +132,24 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
 
 // Helper function to format Kerangka Acuan Kerja data
 function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
+  // Map selected IDs to their display names
+  const programName = data._programNameMap?.[data.programPembebanan] || data.programPembebanan || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponenOutput] || data.komponenOutput || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
   const row: any[] = [
     documentId,                                  // ID
     data.jenisKak || "",                         // Jenis Kerangka Acuan Kerja
     data.jenisPaketMeeting || "",                // Jenis Paket Meeting
-    data.programPembebanan || "",                // Program Pembebanan
-    data.kegiatan || "",                         // Kegiatan
-    data.kro || "",                              // KRO
-    data.ro || "",                               // RO
-    data.komponenOutput || "",                   // Komponen Output
-    data.akun || "",                             // Akun
+    programName,                                 // Program Pembebanan
+    kegiatanName,                                // Kegiatan
+    kroName,                                     // KRO
+    roName,                                      // RO
+    komponenName,                                // Komponen Output
+    akunName,                                    // Akun
     data.paguAnggaran || "",                     // Pagu Anggaran
     formatDate(data.tanggalPengajuanKAK),        // Tanggal Pengajuan KAK
     formatDate(data.tanggalMulaiKegiatan),       // Tanggal Mulai Kegiatan
@@ -167,23 +183,41 @@ function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
 
 // Helper function to format Daftar Hadir data
 function formatDaftarHadirData(documentId: string, data: any): any[] {
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
+  // Get display names for Organik and Mitra
+  const organikNames = (data.organik || []).map((id: string) => {
+    const item = data._organikNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+
+  const mitraNames = (data.mitra || []).map((id: string) => {
+    const item = data._mitraNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+  
   const row: any[] = [
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
     data.detil || "",                // Detil
     data.jenis || "",                // Jenis
-    data.program || "",              // Program
-    data.kegiatan || "",             // Kegiatan
-    data.kro || "",                  // KRO
-    data.ro || "",                   // RO
-    data.komponen || "",             // Komponen
-    data.akun || "",                 // Akun
+    programName,                     // Program
+    kegiatanName,                    // Kegiatan
+    kroName,                         // KRO
+    roName,                          // RO
+    komponenName,                    // Komponen
+    akunName,                        // Akun
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
     data.pembuatDaftar || "",        // Pembuat Daftar
-    (data.organik || []).join(", "), // Organik
+    organikNames.join(", "),         // Organik
     "",                              // NIP BPS (placeholder)
-    (data.mitra || []).join(", "),   // Mitra Statistik
+    mitraNames.join(", "),           // Mitra Statistik
     ""                               // NIK Mitra Statistik (placeholder)
   ];
 
@@ -192,59 +226,92 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
 
 // Helper function to format SPJ Honor data
 function formatSPJHonorData(documentId: string, data: any): any[] {
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
   const row: any[] = [
     documentId,                    // ID
     data.namaKegiatan || "",       // Nama Kegiatan
     data.detil || "",              // Detil
     data.jenis || "",              // Jenis
-    data.program || "",            // Program
-    data.kegiatan || "",           // Kegiatan
-    data.kro || "",                // KRO
-    data.ro || "",                 // RO
-    data.komponen || "",           // Komponen
-    data.akun || "",               // Akun
+    programName,                   // Program
+    kegiatanName,                  // Kegiatan
+    kroName,                       // KRO
+    roName,                        // RO
+    komponenName,                  // Komponen
+    akunName,                      // Akun
     formatDate(data.tanggalSpj),   // Tanggal (SPJ)
     data.pembuatDaftar || "",      // Pembuat Daftar
   ];
 
-  // Extract organik and mitra IDs from honorDetails
-  const organikIds: string[] = [];
-  const mitraIds: string[] = [];
+  // Extract organik and mitra names from honorDetails
+  const organikNames: string[] = [];
+  const mitraNames: string[] = [];
 
   (data.honorDetails || []).forEach((detail: any) => {
     if (detail.type === 'organik' && detail.personId) {
-      organikIds.push(detail.personId);
+      const person = data._organikNameMap?.[detail.personId];
+      const name = typeof person === 'string' ? person : person?.name || detail.personId;
+      if (!organikNames.includes(name)) {
+        organikNames.push(name);
+      }
     } else if (detail.type === 'mitra' && detail.personId) {
-      mitraIds.push(detail.personId);
+      const person = data._mitraNameMap?.[detail.personId];
+      const name = typeof person === 'string' ? person : person?.name || detail.personId;
+      if (!mitraNames.includes(name)) {
+        mitraNames.push(name);
+      }
     }
   });
 
-  row.push(organikIds.join(", "));  // Organik
-  row.push("");                     // NIP BPS (placeholder)
-  row.push(mitraIds.join(", "));    // Mitra Statistik
-  row.push("");                     // NIK Mitra Statistik (placeholder)
+  row.push(organikNames.join(", "));  // Organik
+  row.push("");                       // NIP BPS (placeholder)
+  row.push(mitraNames.join(", "));    // Mitra Statistik
+  row.push("");                       // NIK Mitra Statistik (placeholder)
 
   return row;
 }
 
 // Helper function to format Transport Lokal data
 function formatTransportLokalData(documentId: string, data: any): any[] {
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
+  // Get display names for Organik and Mitra
+  const organikNames = (data.organik || []).map((id: string) => {
+    const item = data._organikNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+
+  const mitraNames = (data.mitra || []).map((id: string) => {
+    const item = data._mitraNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+
   const row: any[] = [
     documentId,                       // ID
     data.namaKegiatan || "",          // Nama Kegiatan
     data.detil || "",                 // Detil
     data.jenis || "",                 // Jenis
-    data.program || "",               // Program
-    data.kegiatan || "",              // Kegiatan
-    data.kro || "",                   // KRO
-    data.ro || "",                    // RO
-    data.komponen || "",              // Komponen
-    data.akun || "",                  // Akun
+    programName,                      // Program
+    kegiatanName,                     // Kegiatan
+    kroName,                          // KRO
+    roName,                          // RO
+    komponenName,                     // Komponen
+    akunName,                         // Akun
     formatDate(data.tanggalPengajuan),// Tanggal Pengajuan
     data.pembuatDaftar || "",         // Pembuat Daftar
-    (data.organik || []).join(", "),  // Organik
+    organikNames.join(", "),          // Organik
     "",                               // NIP BPS (placeholder)
-    (data.mitra || []).join(", "),    // Mitra Statistik
+    mitraNames.join(", "),            // Mitra Statistik
     ""                                // NIK Mitra Statistik (placeholder)
   ];
 
@@ -253,25 +320,43 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
 
 // Helper function to format Uang Harian dan Transport Lokal data
 function formatUangHarianTransportData(documentId: string, data: any): any[] {
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
+  // Get display names for Organik and Mitra
+  const organikNames = (data.organik || []).map((id: string) => {
+    const item = data._organikNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+
+  const mitraNames = (data.mitra || []).map((id: string) => {
+    const item = data._mitraNameMap?.[id] || id;
+    return typeof item === 'string' ? item : item.name || id;
+  });
+
   const row: any[] = [
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
     data.detil || "",                // Detil
     data.jenis || "",                // Jenis
-    data.program || "",              // Program
-    data.kegiatan || "",             // Kegiatan
-    data.kro || "",                  // KRO
-    data.ro || "",                   // RO
-    data.komponen || "",             // Komponen
-    data.akun || "",                 // Akun
+    programName,                     // Program
+    kegiatanName,                    // Kegiatan
+    kroName,                         // KRO
+    roName,                          // RO
+    komponenName,                    // Komponen
+    akunName,                        // Akun
     data.trainingCenter || "",       // Training Center
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
     formatDate(data.tanggalSpj),     // Tanggal (SPJ)
     data.pembuatDaftar || "",        // Pembuat Daftar
-    (data.organik || []).join(", "), // Organik
+    organikNames.join(", "),         // Organik
     "",                              // NIP BPS (placeholder)
-    (data.mitra || []).join(", "),   // Mitra Statistik
+    mitraNames.join(", "),           // Mitra Statistik
     ""                               // NIK Mitra Statistik (placeholder)
   ];
 
@@ -280,6 +365,13 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
 
 // Helper function to format Kuitansi Perjalanan Dinas data
 function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[] {
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+  
   const row: any[] = [
     documentId,                               // ID
     data.namaKegiatan || "",                  // Kuitansi Perjalanan Dinas
@@ -288,12 +380,12 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
     formatDate(data.tanggalSuratTugas),       // Tanggal Surat Tugas
     data.namaPelaksana || "",                 // Nama Pelaksana Perjalanan Dinas
     data.tujuanPerjalanan || "",              // Tujuan Pelaksanaan Perjalanan Dinas
-    data.program || "",                       // Program
-    data.kegiatan || "",                      // Kegiatan
-    data.kro || "",                           // KRO
-    data.ro || "",                            // RO
-    data.komponen || "",                      // Komponen
-    data.akun || "",                          // Akun
+    programName,                              // Program
+    kegiatanName,                             // Kegiatan
+    kroName,                                  // KRO
+    roName,                                   // RO
+    komponenName,                             // Komponen
+    akunName,                                 // Akun
     formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan
     data.kabupatenKota || "",                 // Kab/Kota Tujuan
     data.namaTempatTujuan || "",              // Nama Tempat Tujuan

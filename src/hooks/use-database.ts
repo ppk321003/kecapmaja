@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -102,7 +103,7 @@ export const useRO = (kroId: string | null) => {
   });
 };
 
-// Komponen - Updated to fetch all komponen items independently
+// Komponen - Always fetch all komponen items independently
 export const useKomponen = (roId?: string | null) => {
   return useQuery<Komponen[], Error>({
     queryKey: ["komponen", roId],
