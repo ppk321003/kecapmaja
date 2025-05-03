@@ -193,7 +193,7 @@ const KerangkaAcuanKerja = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.Event) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
