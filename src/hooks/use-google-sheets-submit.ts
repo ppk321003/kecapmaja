@@ -7,9 +7,10 @@ import { format } from "date-fns";
 interface SubmitToSheetsOptions {
   documentType: string;
   onSuccess?: () => void;
+  skipSaveToSupabase?: boolean;
 }
 
-export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOptions) => {
+export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase = false }: SubmitToSheetsOptions) => {
   return useMutation({
     mutationFn: async (data: any) => {
       try {
@@ -54,7 +55,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
         }
         
         // Skip database saving and focus only on Google Sheets
-        console.log(`Successfully saving ${documentType} data to Google Sheets`);
+        console.log(`Successfully preparing ${documentType} data for Google Sheets`);
         
         // Append to Google Sheets
         const response = await GoogleSheetsService.appendData({
@@ -65,7 +66,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess }: SubmitToSheetsOpt
         
         console.log(`Data successfully saved to ${documentType} sheet:`, response);
         
-        return { success: true, documentId };
+        return { success: true, documentId, skipSaveToSupabase };
       } catch (error: any) {
         console.error(`Error submitting ${documentType} to Google Sheets:`, error);
         throw error;

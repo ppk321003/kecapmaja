@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -6,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -161,7 +162,8 @@ const KerangkaAcuanKerja = () => {
     documentType: "KerangkaAcuanKerja",
     onSuccess: () => {
       navigate("/buat-dokumen");
-    }
+    },
+    skipSaveToSupabase: true
   });
 
   // Effect to update wave dates when jumlahGelombang changes
@@ -296,21 +298,10 @@ const KerangkaAcuanKerja = () => {
         _pembuatDaftarName: pembuatDaftarName
       };
 
-      // First, submit to Google Sheets
+      // Submit directly to Google Sheets
       await submitToSheets.mutateAsync(submissionData);
       
-      // Then, save to Supabase
-      await saveDocument.mutateAsync({
-        jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262", // Make sure this is a valid UUID in your jenis table
-        title: `KAK - ${formValues.jenisKak} - ${programNameMap[formValues.programPembebanan] || formValues.programPembebanan}`,
-        data: formValues,
-      });
-      
-      toast({
-        title: "Dokumen berhasil dibuat",
-        description: "Kerangka acuan kerja telah tersimpan",
-      });
-      
+      // No need to save to Supabase
       // No need to navigate here as it's handled in the onSuccess of submitToSheets
     } catch (error) {
       console.error("Error submitting form:", error);

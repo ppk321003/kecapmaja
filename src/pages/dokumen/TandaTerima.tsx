@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -11,7 +12,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
@@ -32,7 +33,8 @@ const TandaTerima = () => {
     onSuccess: () => {
       // Navigate after successful submission
       navigate("/buat-dokumen");
-    }
+    },
+    skipSaveToSupabase: true
   });
 
   // Define react-hook-form
@@ -109,20 +111,10 @@ const TandaTerima = () => {
         _mitraNameMap: mitraNameMap
       };
 
-      // Save to Google Sheets first
+      // Save to Google Sheets only
       await submitToSheets.mutateAsync(submissionData);
       
-      // Then, save to Supabase
-      await saveDocument.mutateAsync({
-        jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262", // Make sure this is a valid UUID in your jenis table
-        title: `Tanda Terima - ${data.namaKegiatan}`,
-        data,
-      });
-      
-      toast({
-        title: "Dokumen berhasil dibuat",
-        description: "Tanda terima telah tersimpan",
-      });
+      // No need to save to Supabase
       
       // No need to navigate here as it's handled in the onSuccess of submitToSheets
     } catch (error) {
