@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FileText, Globe, Database, FileArchive, File, Book } from "lucide-react";
+import { FileText, Globe, Database, FileArchive, File, Book, Table } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ const menuItems = [{
   icon: <FileText className="h-10 w-10" />,
   color: "bg-blue-50 dark:bg-blue-900/20",
   iconColor: "text-bps-blue"
+}, {
+  title: "Data Google Spreadsheet",
+  description: "Lihat data dari Google Spreadsheet",
+  path: "/google-sheets",
+  icon: <Table className="h-10 w-10" />,
+  color: "bg-purple-50 dark:bg-purple-900/20",
+  iconColor: "text-purple-500"
 }, {
   title: "Bahan Revisi 3210 (Web)",
   description: "Akses bahan revisi via web",
@@ -78,9 +85,11 @@ const Index = () => {
           {/* Left column - Description */}
           <div className="flex-1 text-left">
             <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
-            <p className="text-muted-foreground pl-0 px-0 text-justify font-normal">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:</p>
+            <p className="text-muted-foreground pl-0 px-0 text-justify font-normal">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
+
+          </p>
             <div className="space-y-3">
-              <p className="text-blue-900 text-base font-medium my-[10px]">
+              <p className="text-blue-900 text-base font-medium">
                 <span className="font-bold">KECAP -</span> Keuangan Cekatan Anggaran Pengadaan
               </p>
               <p className="text-muted-foreground pl-6 px-0 text-justify">

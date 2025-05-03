@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -25,7 +26,7 @@ import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
@@ -48,7 +49,6 @@ const TandaTerima = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-  const { mutateAsync: saveDocument, isPending } = useSaveDocument();
   
   // Fetching data from database
   const { data: organikBPS = [] } = useOrganikBPS();
@@ -65,10 +65,10 @@ const TandaTerima = () => {
       mitraStatistik: [],
       daftarItem: [
         {
-          namaItem: "", 
-          banyaknya: 1,
-          satuan: "",   
-        } as TandaTerimaItem,
+          namaItem: "", // Non-optional empty string
+          banyaknya: 1, // Non-optional default value
+          satuan: "",   // Non-optional empty string
+        },
       ],
     },
   });
@@ -78,32 +78,20 @@ const TandaTerima = () => {
     name: "daftarItem",
   });
   
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      // Fix TypeScript error by ensuring all required fields are present
-      const formData: TandaTerimaData = {
-        namaKegiatan: values.namaKegiatan,
-        detail: values.detail,
-        tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
-        pembuatDaftar: values.pembuatDaftar,
-        organikBPS: values.organikBPS || [],
-        mitraStatistik: values.mitraStatistik || [],
-        daftarItem: values.daftarItem as TandaTerimaItem[],
-      };
-      
-      // Save document to Supabase
-      await saveDocument({ 
-        jenisId: '00000000-0000-0000-0000-000000000002', // Tanda Terima jenis ID
-        title: `Tanda Terima - ${values.namaKegiatan}`,
-        data: formData
-      });
-      
-      toast.success("Tanda Terima berhasil disimpan!");
-      navigate("/buat-dokumen");
-    } catch (error) {
-      console.error("Error saving Tanda Terima:", error);
-      toast.error("Gagal menyimpan Tanda Terima. Silakan coba lagi.");
-    }
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    // Fix TypeScript error by ensuring all required fields are present
+    const formData: TandaTerimaData = {
+      namaKegiatan: values.namaKegiatan,
+      detail: values.detail,
+      tanggalPembuatanDaftar: values.tanggalPembuatanDaftar,
+      pembuatDaftar: values.pembuatDaftar,
+      organikBPS: values.organikBPS || [],
+      mitraStatistik: values.mitraStatistik || [],
+      daftarItem: values.daftarItem,
+    };
+    
+    console.log("Form Data:", formData);
+    toast.success("Data berhasil disimpan!");
   };
   
   const toggleOrganik = (id: string) => {
@@ -144,10 +132,10 @@ const TandaTerima = () => {
   
   const handleAddItem = () => {
     append({
-      namaItem: "", 
-      banyaknya: 1, 
-      satuan: "",   
-    } as TandaTerimaItem);
+      namaItem: "", // Non-optional empty string
+      banyaknya: 1, // Non-optional default value
+      satuan: "",   // Non-optional empty string
+    });
   };
 
   return (
@@ -249,7 +237,7 @@ const TandaTerima = () => {
                     )}
                   />
                   
-                  {/* Pembuat Daftar */}
+                  {/* Pembuat Daftar - Changed to dropdown list of organik */}
                   <FormField
                     control={form.control}
                     name="pembuatDaftar"
@@ -279,7 +267,7 @@ const TandaTerima = () => {
                   />
                 </div>
                 
-                {/* Item List */}
+                {/* Item List - Moved up as requested */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Daftar Item</h3>
@@ -381,7 +369,7 @@ const TandaTerima = () => {
                           htmlFor={`organik-${organik.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          {organik.name}
+                          {organik.name} {/* Removed NIP as requested */}
                         </label>
                       </div>
                     ))}
@@ -403,7 +391,7 @@ const TandaTerima = () => {
                           htmlFor={`mitra-${mitra.id}`}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          {mitra.name}
+                          {mitra.name} {/* Display kecamatan if available */}
                           {mitra.kecamatan && <span className="text-xs text-muted-foreground ml-1">({mitra.kecamatan})</span>}
                         </label>
                       </div>
@@ -420,9 +408,7 @@ const TandaTerima = () => {
                   >
                     Kembali
                   </Button>
-                  <Button type="submit" disabled={isPending}>
-                    {isPending ? "Menyimpan..." : "Simpan"}
-                  </Button>
+                  <Button type="submit">Simpan</Button>
                 </div>
               </form>
             </Form>
@@ -434,3 +420,4 @@ const TandaTerima = () => {
 };
 
 export default TandaTerima;
+

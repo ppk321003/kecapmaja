@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Program, Kegiatan, KRO, RO, Komponen, Akun, Jenis, MitraStatistik, OrganikBPS } from "@/types";
@@ -104,13 +103,6 @@ export const useRO = (kroId: string | null) => {
 };
 
 // Komponen
-interface KomponenDB {
-  id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export const useKomponen = (roId: string | null) => {
   return useQuery({
     queryKey: ["komponen", roId],
@@ -120,17 +112,16 @@ export const useKomponen = (roId: string | null) => {
       const { data, error } = await supabase
         .from("komponen")
         .select("*")
+        .eq("ro_id", roId)
         .order("name");
       
       if (error) throw error;
       
-      // Convert database fields to match our type definition
-      // Note: We're manually associating components with the provided roId 
-      // since there's no actual ro_id column in the database yet
-      return (data as KomponenDB[]).map(item => ({
+      // Convert database field names to match our type definitions
+      return data.map(item => ({
         id: item.id,
         name: item.name,
-        roId: roId, // Using the passed roId parameter
+        roId: item.ro_id,
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as Komponen[];
@@ -184,10 +175,11 @@ export const useMitraStatistik = () => {
       if (error) throw error;
       
       // Convert database fields to match our type definition
+      // Since kecamatan may not exist in the database schema, we provide a default empty string
       return data.map(item => ({
         id: item.id,
         name: item.name,
-        kecamatan: item.kecamatan || "", // Use actual kecamatan or empty string if null
+        kecamatan: "", // Default empty string since it doesn't exist in the DB schema
         created_at: item.created_at,
         updated_at: item.updated_at
       })) as MitraStatistik[];
@@ -238,78 +230,6 @@ export const useSaveDocument = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dokumen"] });
-    }
-  });
-};
-
-// Get Documents
-export const useGetDocuments = (jenisId?: string) => {
-  return useQuery({
-    queryKey: ["dokumen", jenisId],
-    queryFn: async () => {
-      let query = supabase.from("dokumen").select(`
-        *,
-        jenis:jenis_id(name)
-      `);
-      
-      if (jenisId) {
-        query = query.eq("jenis_id", jenisId);
-      }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: true
-  });
-};
-
-// Get Document by ID
-export const useGetDocumentById = (id: string | null) => {
-  return useQuery({
-    queryKey: ["dokumen", id],
-    queryFn: async () => {
-      if (!id) return null;
-      
-      const { data, error } = await supabase
-        .from("dokumen")
-        .select(`
-          *,
-          jenis:jenis_id(name)
-        `)
-        .eq("id", id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id
-  });
-};
-
-// Seed Database with initial data (for development purposes)
-export const useSeedDatabase = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('seed-data');
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      // Invalidate all relevant queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["programs"] });
-      queryClient.invalidateQueries({ queryKey: ["kegiatan"] });
-      queryClient.invalidateQueries({ queryKey: ["kro"] });
-      queryClient.invalidateQueries({ queryKey: ["ro"] });
-      queryClient.invalidateQueries({ queryKey: ["komponen"] });
-      queryClient.invalidateQueries({ queryKey: ["akun"] });
-      queryClient.invalidateQueries({ queryKey: ["jenis"] });
-      queryClient.invalidateQueries({ queryKey: ["mitra"] });
-      queryClient.invalidateQueries({ queryKey: ["organik"] });
     }
   });
 };
