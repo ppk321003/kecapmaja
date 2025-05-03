@@ -93,7 +93,20 @@ const KuitansiPerjalananDinas = () => {
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
   const [isLuarKota, setIsLuarKota] = useState(false);
 
-  // Data fetching hooks
+  // Initialize form first before using it
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
+  
+  // Watch for changes in jenisPerjalanan
+  const jenisPerjalanan = form.watch("jenisPerjalanan");
+  
+  useEffect(() => {
+    setIsLuarKota(jenisPerjalanan === "Luar Kota");
+  }, [jenisPerjalanan]);
+
+  // Data fetching hooks - now moved after form is initialized
   const { data: programList = [] } = usePrograms();
   const { data: kegiatanList = [] } = useKegiatan(
     form.watch("program") || null
@@ -115,18 +128,6 @@ const KuitansiPerjalananDinas = () => {
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: DEFAULT_VALUES,
-  });
-  
-  // Watch for changes in jenisPerjalanan
-  const jenisPerjalanan = form.watch("jenisPerjalanan");
-  
-  useEffect(() => {
-    setIsLuarKota(jenisPerjalanan === "Luar Kota");
-  }, [jenisPerjalanan]);
   
   const submitMutation = useSubmitToSheets({
     documentType: "KuitansiPerjalananDinas",
