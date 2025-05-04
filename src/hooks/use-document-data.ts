@@ -14,7 +14,7 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
       try {
         console.log(`Fetching data from sheet: ${sheetId}, tab: ${sheetName}`);
         
-        // Fetch the Google Sheets data
+        // Fetch the Google Sheets data with proper URL encoding
         const response = await fetch(
           `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`
         );

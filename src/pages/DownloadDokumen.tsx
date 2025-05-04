@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link as LucideLink } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -18,9 +19,9 @@ const DownloadDokumen = () => {
       title: "Rekap Kerangka Acuan Kerja",
       sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
       columns: [
-        { key: "Id", header: "ID", isSortable: true },
+        { key: "ID", header: "ID", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
-        { key: "Nama Kegiatan-1", header: "Nama Kegiatan", isSortable: true },
+        { key: "Nama Kegiatan", header: "Nama Kegiatan", isSortable: true },
         { key: "Nama Pembuat Daftar", header: "Nama Pembuat Daftar", isSortable: true },
         { 
           key: "Link", 
@@ -56,7 +57,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -67,6 +68,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -84,7 +87,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -95,6 +98,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -112,7 +117,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -123,6 +128,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -142,7 +149,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -153,6 +160,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -170,7 +179,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -181,6 +190,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -198,7 +209,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -209,6 +220,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -226,7 +239,7 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => (
+          render: (value) => value ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -237,6 +250,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
