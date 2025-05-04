@@ -9,10 +9,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 // Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import DownloadDokumen from "./pages/DownloadDokumen";
-import RekapHonor from "./pages/RekapHonor";
-import RekapHonorKegiatan from "./pages/RekapHonorKegiatan";
-import StockOpname from "./pages/StockOpname";
+import BuatDokumen from "./pages/BuatDokumen";
 import KerangkaAcuanKerja from "./pages/dokumen/KerangkaAcuanKerja";
 import DaftarHadir from "./pages/dokumen/DaftarHadir";
 import SPJHonor from "./pages/dokumen/SPJHonor";
@@ -22,6 +19,9 @@ import TandaTerima from "./pages/dokumen/TandaTerima";
 import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
 import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import ExternalLink from "./pages/ExternalLink";
+import DownloadDokumen from "./pages/DownloadDokumen";
+import RekapHonor from "./pages/RekapHonor";
+import StockOpname from "./pages/StockOpname";
 
 const queryClient = new QueryClient();
 
@@ -34,9 +34,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/buat-dokumen" element={<BuatDokumen />} />
             <Route path="/download-dokumen" element={<DownloadDokumen />} />
             <Route path="/rekap-honor" element={<RekapHonor />} />
-            <Route path="/rekap-honor-kegiatan" element={<RekapHonorKegiatan />} />
             <Route path="/stock-opname" element={<StockOpname />} />
             
             <Route path="/dokumen/kerangka-acuan-kerja" element={<KerangkaAcuanKerja />} />

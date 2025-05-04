@@ -1,13 +1,12 @@
 
-import React, { useState, useEffect } from "react";
-import { Link as LucideLink } from "lucide-react";
+import React, { useState } from "react";
+import { Link } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/use-toast";
 
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
@@ -19,26 +18,24 @@ const DownloadDokumen = () => {
       title: "Rekap Kerangka Acuan Kerja",
       sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
       columns: [
-        { key: "ID", header: "ID", isSortable: true },
+        { key: "Id", header: "ID", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
-        { key: "Nama Kegiatan", header: "Nama Kegiatan", isSortable: true },
+        { key: "Nama Kegiatan-1", header: "Nama Kegiatan", isSortable: true },
         { key: "Nama Pembuat Daftar", header: "Nama Pembuat Daftar", isSortable: true },
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -57,19 +54,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -87,19 +82,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -117,19 +110,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -149,19 +140,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -179,19 +168,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -209,19 +196,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -239,19 +224,17 @@ const DownloadDokumen = () => {
         { 
           key: "Link", 
           header: "Link", 
-          render: (value) => value ? (
+          render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LucideLink className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-          ) : (
-            <span className="text-muted-foreground text-sm">-</span>
           )
         },
       ],
@@ -266,13 +249,6 @@ const DownloadDokumen = () => {
     sheetId: activeDocument.sheetId
   });
 
-  // Log data for debugging
-  useEffect(() => {
-    console.log("Active tab:", activeTab);
-    console.log("Active document:", activeDocument);
-    console.log("Fetched data:", data);
-  }, [activeTab, activeDocument, data]);
-  
   return (
     <Layout>
       <div className="space-y-6">
@@ -306,15 +282,11 @@ const DownloadDokumen = () => {
                 <div className="text-center p-8">
                   <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
                 </div>
-              ) : !data || data.length === 0 ? (
-                <div className="text-center p-8">
-                  <p className="text-muted-foreground">Tidak ada data yang tersedia.</p>
-                </div>
               ) : (
                 <DataTable 
                   title={doc.title}
                   columns={doc.columns}
-                  data={data}
+                  data={data || []}
                 />
               )}
             </TabsContent>
