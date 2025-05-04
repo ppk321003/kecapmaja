@@ -13,7 +13,7 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
       try {
         // Fetch the Google Sheets data
         const response = await fetch(
-          `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}`
+          `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`
         );
         
         const text = await response.text();
@@ -47,9 +47,10 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
         return rows;
       } catch (error) {
         console.error("Error fetching document data:", error);
-        return [];
+        throw error; // Let the error bubble up so React Query can handle it
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3, // Retry failed requests 3 times
   });
 }
