@@ -106,7 +106,7 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
   // Get display names for Organik BPS (instead of IDs)
   const organikIds = data.organikBPS || [];
   const organikNames = organikIds.map((id: string) => {
-    return data._organikNameMap?.[id] || id;
+    return `"${data._organikNameMap?.[id] || id}"`;
   });
   row.push(organikNames.join(", ")); // Organik BPS
 
@@ -116,7 +116,7 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
   // Get display names for Mitra Statistik (instead of IDs)
   const mitraIds = data.mitraStatistik || [];
   const mitraNames = mitraIds.map((id: string) => {
-    return data._mitraNameMap?.[id] || id;
+    return `"${data._mitraNameMap?.[id] || id}"`;
   });
   row.push(mitraNames.join(", ")); // Mitra Statistik
 
@@ -202,11 +202,11 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
 
   // Get display names for Organik and Mitra
   const organikNames = (data.organik || []).map((id: string) => {
-    return data._organikNameMap?.[id] || id;
+    return `"${data._organikNameMap?.[id] || id}"`;
   });
 
   const mitraNames = (data.mitra || []).map((id: string) => {
-    return data._mitraNameMap?.[id] || id;
+    return `"${data._mitraNameMap?.[id] || id}"`;
   });
   
   const row: any[] = [
@@ -266,13 +266,13 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
   (data.honorDetails || []).forEach((detail: any) => {
     if (detail.type === 'organik' && detail.personId) {
       const name = data._organikNameMap?.[detail.personId] || detail.personId;
-      if (!organikNames.includes(name)) {
-        organikNames.push(name);
+      if (!organikNames.includes(`"${name}"`)) {
+        organikNames.push(`"${name}"`);
       }
     } else if (detail.type === 'mitra' && detail.personId) {
       const name = data._mitraNameMap?.[detail.personId] || detail.personId;
-      if (!mitraNames.includes(name)) {
-        mitraNames.push(name);
+      if (!mitraNames.includes(`"${name}"`)) {
+        mitraNames.push(`"${name}"`);
       }
     }
   });
@@ -299,11 +299,11 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
 
   // Get display names for Organik and Mitra
   const organikNames = (data.organikBPS || []).map((id: string) => {
-    return data._organikNameMap?.[id] || id;
+    return `"${data._organikNameMap?.[id] || id}"`;
   });
 
   const mitraNames = (data.mitraStatistik || []).map((id: string) => {
-    return data._mitraNameMap?.[id] || id;
+    return `"${data._mitraNameMap?.[id] || id}"`;
   });
 
   // Collect kecamatan names from daftarTransport
@@ -357,11 +357,11 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
 
   // Get display names for Organik and Mitra
   const organikNames = (data.organik || []).map((id: string) => {
-    return data._organikNameMap?.[id] || id;
+    return `"${data._organikNameMap?.[id] || id}"`;
   });
 
   const mitraNames = (data.mitra || []).map((id: string) => {
-    return data._mitraNameMap?.[id] || id;
+    return `"${data._mitraNameMap?.[id] || id}"`;
   });
 
   const row: any[] = [
