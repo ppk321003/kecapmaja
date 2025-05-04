@@ -19,7 +19,9 @@ import TandaTerima from "./pages/dokumen/TandaTerima";
 import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
 import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import ExternalLink from "./pages/ExternalLink";
-import GoogleSheetsPage from "./pages/GoogleSheetsPage";
+import DownloadDokumen from "./pages/DownloadDokumen";
+import RekapHonor from "./pages/RekapHonor";
+import StockOpname from "./pages/StockOpname";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +35,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/buat-dokumen" element={<BuatDokumen />} />
+            <Route path="/download-dokumen" element={<DownloadDokumen />} />
+            <Route path="/rekap-honor" element={<RekapHonor />} />
+            <Route path="/stock-opname" element={<StockOpname />} />
+            
             <Route path="/dokumen/kerangka-acuan-kerja" element={<KerangkaAcuanKerja />} />
             <Route path="/dokumen/daftar-hadir" element={<DaftarHadir />} />
             <Route path="/dokumen/spj-honor" element={<SPJHonor />} />
@@ -41,7 +47,6 @@ const App = () => (
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />
             <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
             <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
-            <Route path="/google-sheets" element={<GoogleSheetsPage />} />
             
             {/* External Links */}
             <Route path="/bahan-revisi-web" element={<ExternalLink url="https://bahanrevisi-3210.vercel.app/" />} />

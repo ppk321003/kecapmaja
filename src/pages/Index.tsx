@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { FileText, Globe, Database, FileArchive, File, Book, Table } from "lucide-react";
@@ -5,6 +6,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+
 const menuItems = [{
   title: "Buat Dokumen Administrasi",
   description: "Buat berbagai jenis dokumen administrasi",
@@ -13,10 +15,10 @@ const menuItems = [{
   color: "bg-blue-50 dark:bg-blue-900/20",
   iconColor: "text-bps-blue"
 }, {
-  title: "Data Google Spreadsheet",
-  description: "Lihat data dari Google Spreadsheet",
-  path: "/google-sheets",
-  icon: <Table className="h-10 w-10" />,
+  title: "Download Dokumen",
+  description: "Download dokumen yang tersedia",
+  path: "/download-dokumen",
+  icon: <FileArchive className="h-10 w-10" />,
   color: "bg-purple-50 dark:bg-purple-900/20",
   iconColor: "text-purple-500"
 }, {
@@ -76,6 +78,7 @@ const menuItems = [{
   color: "bg-blue-50 dark:bg-blue-900/20",
   iconColor: "text-bps-blue"
 }];
+
 const Index = () => {
   const isMobile = useIsMobile();
   return <Layout>
