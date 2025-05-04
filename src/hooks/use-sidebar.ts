@@ -19,12 +19,21 @@ export const useSidebar = () => {
           is_active: true
         },
         {
+          id: "2",
+          title: "Buat Dokumen",
+          path: "/buat-dokumen",
+          icon: "FileText",
+          description: "Formulir untuk membuat dokumen",
+          order_index: 2,
+          is_active: true
+        },
+        {
           id: "3",
           title: "Download Dokumen",
           path: "/download-dokumen",
           icon: "FileArchive",
           description: "Download dokumen yang tersedia",
-          order_index: 2,
+          order_index: 3,
           is_active: true
         },
         {
@@ -33,7 +42,7 @@ export const useSidebar = () => {
           path: "/rekap-honor",
           icon: "Table",
           description: "Rekap honor mitra per kegiatan",
-          order_index: 3,
+          order_index: 4,
           is_active: true
         },
         {
@@ -42,7 +51,7 @@ export const useSidebar = () => {
           path: "/rekap-honor-kegiatan",
           icon: "Table",
           description: "Rekap honor mitra menurut kegiatan",
-          order_index: 4,
+          order_index: 5,
           is_active: true
         },
         {
@@ -51,7 +60,7 @@ export const useSidebar = () => {
           path: "/stock-opname",
           icon: "Database",
           description: "Stock opname inventaris",
-          order_index: 5,
+          order_index: 6,
           is_active: true
         },
         {
@@ -60,7 +69,7 @@ export const useSidebar = () => {
           path: "/bahan-revisi-web",
           icon: "Globe",
           description: "Akses bahan revisi via web",
-          order_index: 6,
+          order_index: 7,
           is_active: true
         },
         {
@@ -69,7 +78,7 @@ export const useSidebar = () => {
           path: "/bahan-revisi-spreadsheet",
           icon: "Database",
           description: "Akses bahan revisi via Google Spreadsheet",
-          order_index: 7,
+          order_index: 8,
           is_active: true
         },
         {
@@ -78,7 +87,7 @@ export const useSidebar = () => {
           path: "/riwayat-kertas-kerja",
           icon: "FileArchive",
           description: "Lihat riwayat kertas kerja dalam format PDF",
-          order_index: 8,
+          order_index: 9,
           is_active: true
         },
         {
@@ -87,7 +96,7 @@ export const useSidebar = () => {
           path: "/rekap-spk-bast",
           icon: "File",
           description: "Lihat rekap SPK dan BAST mitra statistik",
-          order_index: 9,
+          order_index: 10,
           is_active: true
         },
         {
@@ -96,7 +105,7 @@ export const useSidebar = () => {
           path: "/surat-pernyataan",
           icon: "File",
           description: "Akses surat pernyataan",
-          order_index: 10,
+          order_index: 11,
           is_active: true
         },
         {
@@ -105,7 +114,7 @@ export const useSidebar = () => {
           path: "/blanko-visum",
           icon: "File",
           description: "Akses blanko visum",
-          order_index: 11,
+          order_index: 12,
           is_active: true
         },
         {
@@ -114,7 +123,7 @@ export const useSidebar = () => {
           path: "/perka-bps",
           icon: "Book",
           description: "Lihat peraturan tentang standar biaya kegiatan statistik",
-          order_index: 12,
+          order_index: 13,
           is_active: true
         },
         {
@@ -123,7 +132,7 @@ export const useSidebar = () => {
           path: "/sbm-2025",
           icon: "Book",
           description: "Standar Biaya Masukan Tahun 2025",
-          order_index: 13,
+          order_index: 14,
           is_active: true
         }
       ];
