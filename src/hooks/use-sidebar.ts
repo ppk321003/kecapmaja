@@ -19,21 +19,12 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "2",
-          title: "Buat Dokumen",
-          path: "/buat-dokumen",
-          icon: "FileText",
-          description: "Buat berbagai jenis dokumen",
-          order_index: 2,
-          is_active: true
-        },
-        {
           id: "3",
           title: "Download Dokumen",
           path: "/download-dokumen",
           icon: "FileArchive",
           description: "Download dokumen yang tersedia",
-          order_index: 3,
+          order_index: 2,
           is_active: true
         },
         {
@@ -42,6 +33,15 @@ export const useSidebar = () => {
           path: "/rekap-honor",
           icon: "Table",
           description: "Rekap honor mitra per kegiatan",
+          order_index: 3,
+          is_active: true
+        },
+        {
+          id: "14",
+          title: "Rekap Honor Mitra (Kegiatan)",
+          path: "/rekap-honor-kegiatan",
+          icon: "Table",
+          description: "Rekap honor mitra menurut kegiatan",
           order_index: 4,
           is_active: true
         },

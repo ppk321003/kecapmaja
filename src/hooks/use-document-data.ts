@@ -20,15 +20,16 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
         
         // Extract the JSON from the response
         // Google returns a strange format that needs to be cleaned
-        const jsonText = text.substring(47).slice(0, -2);
+        const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
         const data = JSON.parse(jsonText);
         
         if (!data.table || !data.table.rows) {
+          console.error("No table or rows in response", data);
           return [];
         }
         
         // Get column headers from the first row
-        const headers = data.table.cols.map((col: any) => col.label);
+        const headers = data.table.cols.map((col: any) => col.label || "");
         
         // Map the data to objects
         const rows = data.table.rows.map((row: any) => {
@@ -36,12 +37,13 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
           
           row.c.forEach((cell: any, index: number) => {
             const header = headers[index] || `column_${index}`;
-            obj[header] = cell ? (cell.v || "") : "";
+            obj[header] = cell ? (cell.v !== null ? cell.v : "") : "";
           });
           
           return obj;
         });
         
+        console.log("Processed data:", rows);
         return rows;
       } catch (error) {
         console.error("Error fetching document data:", error);
