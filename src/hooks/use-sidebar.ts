@@ -10,7 +10,7 @@ export const useSidebar = () => {
       // Define default sidebar items in case we can't fetch from Supabase
       const defaultSidebarItems: SidebarItem[] = [
         {
-          id: 1,
+          id: "1",
           title: "Dashboard",
           path: "/",
           icon: "FileText",
@@ -19,7 +19,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 2,
+          id: "2",
           title: "Buat Dokumen",
           path: "/buat-dokumen",
           icon: "FileText",
@@ -28,7 +28,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 3,
+          id: "3",
           title: "Download Dokumen",
           path: "/download-dokumen",
           icon: "FileArchive",
@@ -37,7 +37,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 4,
+          id: "4",
           title: "Rekap Honor Mitra",
           path: "/rekap-honor",
           icon: "Table",
@@ -46,7 +46,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 5,
+          id: "5",
           title: "Stock Opname",
           path: "/stock-opname",
           icon: "Database",
@@ -55,7 +55,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 6,
+          id: "6",
           title: "Bahan Revisi Web",
           path: "/bahan-revisi-web",
           icon: "Globe",
@@ -64,7 +64,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 7,
+          id: "7",
           title: "Bahan Revisi Spreadsheet",
           path: "/bahan-revisi-spreadsheet",
           icon: "Database",
@@ -73,7 +73,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 8,
+          id: "8",
           title: "Riwayat Kertas Kerja",
           path: "/riwayat-kertas-kerja",
           icon: "FileArchive",
@@ -82,7 +82,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 9, 
+          id: "9", 
           title: "Rekap SPK dan BAST",
           path: "/rekap-spk-bast",
           icon: "File",
@@ -91,7 +91,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 10,
+          id: "10",
           title: "Surat Pernyataan",
           path: "/surat-pernyataan",
           icon: "File",
@@ -100,7 +100,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 11,
+          id: "11",
           title: "Blanko Visum",
           path: "/blanko-visum",
           icon: "File",
@@ -109,7 +109,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 12,
+          id: "12",
           title: "Perka BPS",
           path: "/perka-bps",
           icon: "Book",
@@ -118,7 +118,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: 13,
+          id: "13",
           title: "SBM 2025",
           path: "/sbm-2025",
           icon: "Book",
