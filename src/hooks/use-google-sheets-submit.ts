@@ -262,18 +262,39 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
   // Extract organik and mitra names from honorDetails
   const organikNames: string[] = [];
   const mitraNames: string[] = [];
+  const honorDetails: string[] = [];
 
   (data.honorDetails || []).forEach((detail: any) => {
+    // Format honor details to save to spreadsheet
+    const formattedDetail = {
+      personName: "",
+      honorPerOrang: detail.honorPerOrang || 0,
+      kehadiran: detail.kehadiran || 0,
+      pph21: detail.pph21 || 0,
+      totalHonor: detail.totalHonor || 0
+    };
+    
     if (detail.type === 'organik' && detail.personId) {
       const name = data._organikNameMap?.[detail.personId] || detail.personId;
+      formattedDetail.personName = name;
+      
       if (!organikNames.includes(`"${name}"`)) {
         organikNames.push(`"${name}"`);
       }
+      
+      // Add formatted detail to honorDetails array
+      honorDetails.push(`"${name}": ${formattedDetail.honorPerOrang}, ${formattedDetail.kehadiran}, ${formattedDetail.pph21}%, ${formattedDetail.totalHonor}`);
+      
     } else if (detail.type === 'mitra' && detail.personId) {
       const name = data._mitraNameMap?.[detail.personId] || detail.personId;
+      formattedDetail.personName = name;
+      
       if (!mitraNames.includes(`"${name}"`)) {
         mitraNames.push(`"${name}"`);
       }
+      
+      // Add formatted detail to honorDetails array
+      honorDetails.push(`"${name}": ${formattedDetail.honorPerOrang}, ${formattedDetail.kehadiran}, ${formattedDetail.pph21}%, ${formattedDetail.totalHonor}`);
     }
   });
 
@@ -281,6 +302,7 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
   row.push("");                       // NIP BPS (placeholder)
   row.push(mitraNames.join(", "));    // Mitra Statistik
   row.push("");                       // NIK Mitra Statistik (placeholder)
+  row.push(honorDetails.join(" | ")); // Honor details (format: "name": honorPerOrang, kehadiran, pph21%, totalHonor)
 
   return row;
 }

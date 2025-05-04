@@ -69,9 +69,9 @@ const defaultValues: FormValues = {
   waveDates: []
 };
 
-// Options
-const jenisKakOptions = ["Reguler", "Tambahan", "Khusus", "Belanja Paket Meeting"];
-const jenisPaketMeetingOptions = ["Full Day", "Half Day", "Coffee Break"];
+// Updated options
+const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
+const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
 const subKomponenOptions = ["PPIS", "Dukman"];
 const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
 
@@ -213,6 +213,9 @@ const KerangkaAcuanKerja = () => {
         newValues.komponenOutput = '';
       } else if (field === 'ro') {
         newValues.komponenOutput = '';
+      } else if (field === 'jenisKak' && value !== 'Belanja Paket Meeting') {
+        // Reset jenisPaketMeeting if jenisKak is not "Belanja Paket Meeting"
+        newValues.jenisPaketMeeting = '';
       }
       
       return newValues;
@@ -314,6 +317,9 @@ const KerangkaAcuanKerja = () => {
     }
   };
 
+  // Check if jenisPaketMeeting should be displayed
+  const shouldShowJenisPaketMeeting = formValues.jenisKak === "Belanja Paket Meeting";
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -347,24 +353,26 @@ const KerangkaAcuanKerja = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting</Label>
-                  <Select 
-                    value={formValues.jenisPaketMeeting} 
-                    onValueChange={(value) => handleChange('jenisPaketMeeting', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis paket meeting" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jenisPaketMeetingOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {shouldShowJenisPaketMeeting && (
+                  <div className="space-y-2">
+                    <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting</Label>
+                    <Select 
+                      value={formValues.jenisPaketMeeting} 
+                      onValueChange={(value) => handleChange('jenisPaketMeeting', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih jenis paket meeting" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jenisPaketMeetingOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="programPembebanan">Program Pembebanan</Label>
