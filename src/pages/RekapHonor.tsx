@@ -55,6 +55,8 @@ const RekapHonor = () => {
     }));
 
   };
+  
+  console.log(data);
 
   return (
     <Layout>
