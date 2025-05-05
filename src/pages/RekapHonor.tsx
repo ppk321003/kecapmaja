@@ -47,12 +47,6 @@ const RekapHonor = () => {
     
     // Get all keys from the first item
     const keys = Object.keys(data[0]);
-
-    console.log(keys.map(key => ({
-      key,
-      header: key,
-      isSortable: true
-    })));
     
     return keys.map(key => ({
       key,
@@ -66,7 +60,7 @@ const RekapHonor = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rekap Honor Mitra (Kegiatans)</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Rekap Honor Mitra (Kegiatan)</h1>
           <p className="text-muted-foreground">
             Lihat rekap honor mitra per kegiatan berdasarkan tahun anggaran.
           </p>

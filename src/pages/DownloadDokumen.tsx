@@ -297,7 +297,7 @@ const DownloadDokumen = () => {
                   <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
                 </div>
               ) : (
-                <DataTable title={doc.title} columns={doc.columns} data={data || []} />
+                <DataTable title={doc.title} columns={doc.columns} data={data} />
               )}
             </TabsContent>
           ))}
