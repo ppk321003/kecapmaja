@@ -10,32 +10,25 @@ const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
 
   // Data for each table with sheet IDs
-  const documents = [{
-    id: "kerangka-acuan-kerja",
-    title: "Rekap Kerangka Acuan Kerja",
-    sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
-    sheetName: "IMP.KAK",
-    // ← tambahkan ini
-    columns: [{
-      key: "Id",
-      header: "ID",
-      isSortable: true
-    }, {
-      key: "Jenis Kerangka Acuan Kerja",
-      header: "Jenis Kerangka Acuan Kerja",
-      isSortable: true
-    }, {
-      key: "Nama Kegiatan-1",
-      header: "Nama Kegiatan",
-      isSortable: true
-    }, {
-      key: "Nama Pembuat Daftar",
-      header: "Nama Pembuat Daftar",
-      isSortable: true
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
+<<<<<<< HEAD
+  const documents = [
+    {
+      id: "kerangka-acuan-kerja",
+      title: "Rekap Kerangka Acuan Kerja",
+      sheetId: "1X5rRbRni_Bi5rhMa8XkPMWAvpMkvkIrXNdyuYiYMzBY",
+      sheetName: "IMP.KAK", // ← tambahkan ini
+      columns: [
+        { key: "Id", header: "ID", isSortable: true },
+        { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
+        { key: "Nama Kegiatan-1", header: "Nama Kegiatan", isSortable: true },
+        { key: "Nama Pembuat Daftar", header: "Nama Pembuat Daftar", isSortable: true },
+        { 
+          key: "Link", 
+          header: "Link", 
+          render: (value) => (
+            <Tooltip>
+=======
+>>>>>>> a2c66413e4a6f1c3997d4410dcccd7205182ad01
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
                   <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
