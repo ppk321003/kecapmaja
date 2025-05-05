@@ -548,7 +548,7 @@ const KerangkaAcuanKerja = () => {
                   <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
                   <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih penanggung jawab" />
+                      <SelectValue placeholder="Pilih pembuat daftar" />
                     </SelectTrigger>
                     <SelectContent>
                       {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
