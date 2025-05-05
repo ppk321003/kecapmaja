@@ -68,7 +68,7 @@ const defaultValues: FormValues = {
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
 const subKomponenOptions = ["PPIS", "Dukman"];
-const satuanOptions = ["OK", "OR", "OB", "OH", "OJ", "Paket", "Laporan", "Dokumen"];
+const satuanOptions = ["BLN","BS",,"Desa","Dok","Liter","Lmbr","M2","OB","OH","OJP","OK", "OR", "OP","Paket", "Pasar", "RT","SET","SLS","Stel","Tahun","Segmen"];
 const KerangkaAcuanKerja = () => {
   const navigate = useNavigate();
   const [formValues, setFormValues] = useState<FormValues>({
