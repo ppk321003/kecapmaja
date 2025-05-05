@@ -21,7 +21,7 @@ const DownloadDokumen = () => {
       columns: [
         { key: "Id", header: "Id", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
-        { key: "Nama Kegiatan", header: "Nama Kegiatan", isSortable: true },
+        { key: "Nama Kegiatan-1", header: "Nama Kegiatan", isSortable: true },
         { key: "Nama Pembuat Daftar", header: "Nama Pembuat Daftar", isSortable: true },
         { 
           key: "Link", 
