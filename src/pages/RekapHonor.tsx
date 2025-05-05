@@ -1,12 +1,13 @@
 
 import React, { useState } from "react";
-import { Link } from "lucide-react";
+import { FileSpreadsheet, ExternalLink } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 const RekapHonor = () => {
   const [activeTab, setActiveTab] = useState("2025");
@@ -15,17 +16,20 @@ const RekapHonor = () => {
     {
       id: "2025",
       title: "Rekap Honor 2025",
-      sheetId: "1b51_2anraWMF47DYGCGGCfXMwfopX68HSs3z2dwcDng"
+      sheetId: "1b51_2anraWMF47DYGCGGCfXMwfopX68HSs3z2dwcDng",
+      url: "https://docs.google.com/spreadsheets/d/1b51_2anraWMF47DYGCGGCfXMwfopX68HSs3z2dwcDng/edit?usp=sharing"
     },
     {
       id: "2024",
       title: "Rekap Honor 2024",
-      sheetId: "1lDq7-8rspR8qt424P5gwRmbpUTCcndSTKlV9eR0QD3I"
+      sheetId: "1lDq7-8rspR8qt424P5gwRmbpUTCcndSTKlV9eR0QD3I",
+      url: "https://docs.google.com/spreadsheets/d/1lDq7-8rspR8qt424P5gwRmbpUTCcndSTKlV9eR0QD3I/edit?usp=sharing"
     },
     {
       id: "2023",
       title: "Rekap Honor 2023",
-      sheetId: "1f2eIDvVuF8N5X_UnrxmI99Y6vz4zY5TPDe6jq7X70Vw"
+      sheetId: "1f2eIDvVuF8N5X_UnrxmI99Y6vz4zY5TPDe6jq7X70Vw",
+      url: "https://docs.google.com/spreadsheets/d/1f2eIDvVuF8N5X_UnrxmI99Y6vz4zY5TPDe6jq7X70Vw/edit?gid=1877950026#gid=1877950026"
     }
   ];
 
@@ -73,8 +77,17 @@ const RekapHonor = () => {
           {honorData.map((item) => (
             <TabsContent key={item.id} value={item.id}>
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>{item.title}</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => window.open(item.url, '_blank')}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Buka Spreadsheet
+                    <ExternalLink className="ml-2 h-3 w-3" />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {isLoading ? (
