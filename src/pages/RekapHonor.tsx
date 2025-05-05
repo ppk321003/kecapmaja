@@ -47,6 +47,8 @@ const RekapHonor = () => {
     
     // Get all keys from the first item
     const keys = Object.keys(data[0]);
+  
+    console.log(data);
     
     return keys.map(key => ({
       key,
@@ -55,8 +57,6 @@ const RekapHonor = () => {
     }));
 
   };
-  
-  console.log(data);
 
   return (
     <Layout>
