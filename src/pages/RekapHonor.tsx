@@ -53,6 +53,8 @@ const RekapHonor = () => {
       header: key,
       isSortable: true
     }));
+
+    console.log(generateColumns)
   };
 
   return (
