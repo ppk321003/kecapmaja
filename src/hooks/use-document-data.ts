@@ -20,7 +20,7 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
         
         // Extract the JSON from the response
         // Google returns a strange format that needs to be cleaned
-        const jsonText = text.substring(47).slice(0, -2);
+        const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
         const data = JSON.parse(jsonText);
         
         if (!data.table || !data.table.rows) {
@@ -45,7 +45,7 @@ export function useDocumentData({ sheetId, sheetName = "Sheet1" }: DocumentDataO
         return rows;
       } catch (error) {
         console.error("Error fetching document data:", error);
-        return [];
+        throw new Error("Failed to fetch document data");
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
