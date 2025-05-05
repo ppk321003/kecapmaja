@@ -48,7 +48,7 @@ const RekapHonor = () => {
     // Get all keys from the first item
     const keys = Object.keys(data[0]);
 
-    console.log(keys)
+    console.log(keys);
     
     return keys.map(key => ({
       key,
