@@ -19,13 +19,14 @@ const DownloadDokumen = () => {
       sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
       sheetName: "Sheet1", 
       columns: [
-        { key: "Id", header: "ID", isSortable: true },
+        { key: "Id", header: "Id", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
         { key: "Nama Kegiatan", header: "Nama Kegiatan", isSortable: true },
         { key: "Nama Pembuat Daftar", header: "Nama Pembuat Daftar", isSortable: true },
         { 
           key: "Link", 
           header: "Link", 
+          isSortable: false,
           render: (value) => (
             <Tooltip>
               <TooltipTrigger asChild>
