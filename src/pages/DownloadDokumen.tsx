@@ -16,7 +16,8 @@ const DownloadDokumen = () => {
       id: "kerangka-acuan-kerja",
       title: "Rekap Kerangka Acuan Kerja",
       sheetId: "1X5rRbRni_Bi5rhMa8XkPMWAvpMkvkIrXNdyuYiYMzBY",
-      sheetName: "IMP.KAK", 
+      sheetName: "IMP.KAK",
+      url: "https://docs.google.com/spreadsheets/d/1X5rRbRni_Bi5rhMa8XkPMWAvpMkvkIrXNdyuYiYMzBY/edit?usp=sharing",
       columns: [
         { key: "Id", header: "ID", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
@@ -82,7 +83,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "spj-honor",
       title: "Rekap SPJ Honor",
       sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
@@ -120,7 +122,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "transport-lokal",
       title: "Rekap Transport Lokal",
       sheetId: "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
@@ -158,7 +161,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "uang-harian-transport",
       title: "Rekap Uang Harian dan Transport Lokal",
       sheetId: "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys",
@@ -204,7 +208,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "kuitansi-perjalanan-dinas",
       title: "Rekap Kuitansi Perjalanan Dinas",
       sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
@@ -242,7 +247,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "dokumen-pengadaan",
       title: "Rekap Dokumen Pengadaan",
       sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
@@ -280,7 +286,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }, {
+    }, 
+    {
       id: "tanda-terima",
       title: "Rekap Tanda Terima",
       sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
@@ -318,7 +325,8 @@ const DownloadDokumen = () => {
                 </TooltipContent>
               </Tooltip>
       }]
-    }];
+    }
+  ];
 
   // Get the active document
   const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];
