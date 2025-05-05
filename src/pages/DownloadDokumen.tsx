@@ -259,8 +259,7 @@ const DownloadDokumen = () => {
     isLoading,
     isError
   } = useDocumentData({
-    sheetId: activeDocument.sheetId,
-    sheetName: activeDocument.sheetName
+    sheetId: activeDocument.sheetId
   });
 
   console.log(data);
