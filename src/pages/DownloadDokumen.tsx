@@ -16,9 +16,9 @@ const DownloadDokumen = () => {
     {
       id: "kerangka-acuan-kerja",
       title: "Rekap Kerangka Acuan Kerja",
-      sheetId: "1X5rRbRni_Bi5rhMa8XkPMWAvpMkvkIrXNdyuYiYMzBY",
-      sheetName: "IMP.KAK",
-      url: "https://docs.google.com/spreadsheets/d/1X5rRbRni_Bi5rhMa8XkPMWAvpMkvkIrXNdyuYiYMzBY/edit?usp=sharing",
+<<<<<<< HEAD
+      sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
+      sheetName: "IMP.KAK", 
       columns: [
         { key: "Id", header: "ID", isSortable: true },
         { key: "Jenis Kerangka Acuan Kerja", header: "Jenis Kerangka Acuan Kerja", isSortable: true },
