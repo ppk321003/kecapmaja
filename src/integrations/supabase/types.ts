@@ -279,6 +279,276 @@ export type Database = {
         }
         Relationships: []
       }
+      rekap_daftar_hadir: {
+        Row: {
+          created_at: string
+          detil: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_mulai: string | null
+          tanggal_selesai: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detil?: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detil?: string | null
+          id?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_dokumen_pengadaan: {
+        Row: {
+          created_at: string
+          id: string
+          link: string
+          nama_paket_pengadaan: string
+          nama_penyedia: string
+          tanggal_mulai_pelaksanaan: string | null
+          tanggal_selesai_pelaksanaan: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          link: string
+          nama_paket_pengadaan: string
+          nama_penyedia: string
+          tanggal_mulai_pelaksanaan?: string | null
+          tanggal_selesai_pelaksanaan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string
+          nama_paket_pengadaan?: string
+          nama_penyedia?: string
+          tanggal_mulai_pelaksanaan?: string | null
+          tanggal_selesai_pelaksanaan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_kerangka_acuan_kerja: {
+        Row: {
+          created_at: string
+          id: string
+          jenis_kerangka_acuan_kerja: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          jenis_kerangka_acuan_kerja: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jenis_kerangka_acuan_kerja?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_kuitansi_perjalanan: {
+        Row: {
+          created_at: string
+          id: string
+          link: string
+          nama_pelaksana: string
+          nama_tempat_tujuan: string | null
+          nomor_surat_tugas: string | null
+          tujuan_pelaksanaan: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          link: string
+          nama_pelaksana: string
+          nama_tempat_tujuan?: string | null
+          nomor_surat_tugas?: string | null
+          tujuan_pelaksanaan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string
+          nama_pelaksana?: string
+          nama_tempat_tujuan?: string | null
+          nomor_surat_tugas?: string | null
+          tujuan_pelaksanaan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_spj_honor: {
+        Row: {
+          created_at: string
+          detil: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_spj: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detil?: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detil?: string | null
+          id?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_tanda_terima: {
+        Row: {
+          created_at: string
+          detil: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_pembuatan_daftar: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detil?: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_pembuatan_daftar?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detil?: string | null
+          id?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          tanggal_pembuatan_daftar?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_transport_lokal: {
+        Row: {
+          created_at: string
+          detil: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_spj: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detil?: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detil?: string | null
+          id?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rekap_uang_harian_transport: {
+        Row: {
+          created_at: string
+          detil: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_mulai: string | null
+          tanggal_selesai: string | null
+          tanggal_spj: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detil?: string | null
+          id: string
+          link: string
+          nama_kegiatan: string
+          nama_pembuat_daftar: string
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detil?: string | null
+          id?: string
+          link?: string
+          nama_kegiatan?: string
+          nama_pembuat_daftar?: string
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
+          tanggal_spj?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ro: {
         Row: {
           created_at: string
