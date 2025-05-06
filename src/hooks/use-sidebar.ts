@@ -125,6 +125,24 @@ export const useSidebar = () => {
           description: "Standar Biaya Masukan Tahun 2025",
           order_index: 13,
           is_active: true
+        },
+        {
+          id: "14",
+          title: "Kecap Maja (OLD)",
+          path: "/kecap-maja-old",
+          icon: "FileArchive",
+          description: "Akses Kecap Maja versi lama",
+          order_index: 14,
+          is_active: true
+        },
+        {
+          id: "15",
+          title: "SK Translok",
+          path: "/sk-translok",
+          icon: "FileText",
+          description: "Akses SK Translok",
+          order_index: 15,
+          is_active: true
         }
       ];
       

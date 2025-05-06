@@ -58,6 +58,10 @@ const App = () => (
             <Route path="/perka-bps" element={<ExternalLink url="https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view" />} />
             <Route path="/sbm-2025" element={<ExternalLink url="https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view" />} />
             
+            {/* New External Links */}
+            <Route path="/kecap-maja-old" element={<ExternalLink url="https://s.bps.go.id/kecap-maja" />} />
+            <Route path="/sk-translok" element={<ExternalLink url="https://drive.google.com/file/d/1LCuubDY1R0gSDLoW9ihu3GN93hwuW-Sq/view?usp=sharing" />} />
+            
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>

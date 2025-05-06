@@ -1,13 +1,32 @@
+
 import React, { useState } from "react";
-import { Link } from "lucide-react";
+import { Link as LinkIcon, Edit } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import EditKerangkaDialog from "@/components/EditKerangkaDialog";
+
+// Set Indonesian Timezone
+const indonesianOptions = {
+  timeZone: 'Asia/Jakarta',
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+};
+
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
+  const [editingData, setEditingData] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Data for each table with sheet IDs
   const documents = [{
@@ -38,13 +57,36 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
+    }, {
+      key: "actions",
+      header: "Actions",
+      isSortable: false,
+      render: (_, rowData) => (
+        <div className="flex items-center justify-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => handleEdit(rowData)}
+                className="h-8 w-8 p-0"
+              >
+                <Edit className="h-4 w-4 text-blue-600 hover:text-blue-800" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Edit data</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )
     }]
   }, {
     id: "daftar-hadir",
@@ -81,7 +123,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -120,7 +162,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -159,7 +201,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -206,7 +248,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -245,7 +287,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -284,7 +326,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -323,7 +365,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <Link className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -332,6 +374,23 @@ const DownloadDokumen = () => {
             </Tooltip>
     }]
   }];
+
+  // Handler for editing a record
+  const handleEdit = (rowData: any) => {
+    setEditingData(rowData);
+    setIsEditDialogOpen(true);
+  };
+
+  // Handler for saving the edited record
+  const handleSave = (updatedData: any) => {
+    console.log("Saving updated data:", updatedData);
+    // Here you would typically send the data to your backend
+    // For now, we'll just show a success toast
+    toast({
+      title: "Data updated",
+      description: `Document ID ${updatedData.Id} has been updated.`,
+    });
+  };
 
   // Get the active document
   const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];
@@ -342,38 +401,71 @@ const DownloadDokumen = () => {
     isLoading,
     isError
   } = useDocumentData({
-    sheetId: activeDocument.sheetId
+    sheetId: activeDocument.sheetId,
+    sheetName: activeDocument.sheetName
   });
-  console.log(data);
-  return <Layout>
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Download Dokumen</h1>
           <p className="text-muted-foreground">
             Lihat dan download dokumen yang tersedia dalam format tabel.
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
+          </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
-            {documents.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap">
+            {documents.map(doc => (
+              <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap">
                 {doc.title}
-              </TabsTrigger>)}
+              </TabsTrigger>
+            ))}
           </TabsList>
           
-          {documents.map(doc => <TabsContent key={doc.id} value={doc.id} className="mt-0">
-              {isLoading ? <div className="space-y-2">
+          {documents.map(doc => (
+            <TabsContent key={doc.id} value={doc.id} className="mt-0">
+              {isLoading ? (
+                <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
-                </div> : isError ? <div className="text-center p-8">
+                </div>
+              ) : isError ? (
+                <div className="text-center p-8">
                   <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
-                </div> : <DataTable title={doc.title} columns={doc.columns} data={data || []} />}
-            </TabsContent>)}
+                </div>
+              ) : (
+                <DataTable 
+                  title={doc.title} 
+                  columns={doc.id === "kerangka-acuan-kerja" 
+                    ? doc.columns 
+                    : doc.columns.filter(col => col.key !== "actions")} 
+                  data={data || []} 
+                />
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
+
+        {/* Edit Dialog */}
+        {editingData && (
+          <EditKerangkaDialog 
+            isOpen={isEditDialogOpen} 
+            onClose={() => setIsEditDialogOpen(false)} 
+            data={editingData}
+            onSave={handleSave}
+          />
+        )}
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default DownloadDokumen;
