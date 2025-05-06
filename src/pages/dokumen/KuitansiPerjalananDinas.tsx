@@ -31,7 +31,7 @@ interface KecamatanDetail {
 
 const formSchema = z.object({
   jenisPerjalanan: z.string().min(1, "Jenis perjalanan harus dipilih"),
-  namaKegiatan: z.string().min(1, "Jenis perjalanan dinas harus diisi"),
+  //namaKegiatan: z.string().min(1, "Jenis perjalanan dinas harus diisi"),
   nomorSuratTugas: z.string().min(1, "Nomor surat tugas harus diisi"),
   tanggalSuratTugas: z.date({ required_error: "Tanggal surat tugas harus dipilih" }),
   namaPelaksana: z.string().min(1, "Nama pelaksana harus dipilih"),
@@ -56,7 +56,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_VALUES: Partial<FormValues> = {
   jenisPerjalanan: "Dalam Kota",
-  namaKegiatan: "",
+  //namaKegiatan: "",
   nomorSuratTugas: "",
   tanggalSuratTugas: undefined,
   namaPelaksana: "",
@@ -229,21 +229,6 @@ const KuitansiPerjalananDinas = () => {
                             <SelectItem value="Luar Kota">Luar Kota</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Jenis Perjalanan Dinas (Nama Kegiatan) */}
-                  <FormField
-                    control={form.control}
-                    name="namaKegiatan"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Jenis Perjalanan Dinas</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan jenis perjalanan dinas" />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
