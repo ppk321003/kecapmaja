@@ -14,13 +14,13 @@ import EditKerangkaDialog from "@/components/EditKerangkaDialog";
 // Set Indonesian Timezone
 const indonesianOptions = {
   timeZone: 'Asia/Jakarta',
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit'
+  weekday: 'long' as const,
+  year: 'numeric' as const,
+  month: 'long' as const,
+  day: 'numeric' as const,
+  hour: '2-digit' as const,
+  minute: '2-digit' as const,
+  second: '2-digit' as const
 };
 
 const DownloadDokumen = () => {
