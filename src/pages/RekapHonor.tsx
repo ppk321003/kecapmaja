@@ -71,7 +71,7 @@ const RekapHonor = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>{item.title}</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => window.open(item.url, '_blank')} className="bg-orange-600 hover:bg-orange-500">
+                  <Button variant="outline" size="sm" onClick={() => window.open(item.url, '_blank')} className="bg-orange-500 hover:bg-orange-400">
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Buka Spreadsheet
                     <ExternalLink className="ml-2 h-3 w-3" />
