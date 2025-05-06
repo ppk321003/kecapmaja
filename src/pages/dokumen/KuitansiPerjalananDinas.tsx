@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -27,13 +28,12 @@ interface KecamatanDetail {
   tanggalBerangkat: Date | undefined;
   tanggalKembali: Date | undefined;
 }
+
 const formSchema = z.object({
   jenisPerjalanan: z.string().min(1, "Jenis perjalanan harus dipilih"),
   namaKegiatan: z.string().min(1, "Jenis perjalanan dinas harus diisi"),
   nomorSuratTugas: z.string().min(1, "Nomor surat tugas harus diisi"),
-  tanggalSuratTugas: z.date({
-    required_error: "Tanggal surat tugas harus dipilih"
-  }),
+  tanggalSuratTugas: z.date({ required_error: "Tanggal surat tugas harus dipilih" }),
   namaPelaksana: z.string().min(1, "Nama pelaksana harus dipilih"),
   tujuanPerjalanan: z.string().min(1, "Tujuan perjalanan harus diisi"),
   program: z.string().min(1, "Program harus dipilih"),
@@ -42,18 +42,18 @@ const formSchema = z.object({
   ro: z.string().min(1, "RO harus dipilih"),
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
-  tanggalPengajuan: z.date({
-    required_error: "Tanggal pengajuan harus dipilih"
-  }),
+  tanggalPengajuan: z.date({ required_error: "Tanggal pengajuan harus dipilih" }),
   kabupatenKota: z.string().min(1, "Kabupaten/Kota tujuan harus diisi"),
   namaTempatTujuan: z.string().optional(),
   tanggalBerangkat: z.date().optional(),
   tanggalKembali: z.date().optional(),
   biayaTransport: z.string().optional(),
   biayaBBM: z.string().optional(),
-  biayaPenginapan: z.string().optional()
+  biayaPenginapan: z.string().optional(),
 });
+
 type FormValues = z.infer<typeof formSchema>;
+
 const DEFAULT_VALUES: Partial<FormValues> = {
   jenisPerjalanan: "Dalam Kota",
   namaKegiatan: "",
@@ -74,11 +74,20 @@ const DEFAULT_VALUES: Partial<FormValues> = {
   tanggalKembali: undefined,
   biayaTransport: "",
   biayaBBM: "",
-  biayaPenginapan: ""
+  biayaPenginapan: "",
 };
 
 // Kecamatan options
-const kecamatanOptions = ["Jatiwangi", "Kasokandel", "Ligung", "Sumberjaya", "Dawuan", "Panyingkiran", "Leuwimunding"];
+const kecamatanOptions = [
+  "Jatiwangi",
+  "Kasokandel",
+  "Ligung",
+  "Sumberjaya",
+  "Dawuan",
+  "Panyingkiran",
+  "Leuwimunding",
+];
+
 const KuitansiPerjalananDinas = () => {
   const navigate = useNavigate();
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
@@ -87,38 +96,31 @@ const KuitansiPerjalananDinas = () => {
   // Initialize form first before using it
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: DEFAULT_VALUES
+    defaultValues: DEFAULT_VALUES,
   });
-
+  
   // Watch for changes in jenisPerjalanan
   const jenisPerjalanan = form.watch("jenisPerjalanan");
+  
   useEffect(() => {
     setIsLuarKota(jenisPerjalanan === "Luar Kota");
   }, [jenisPerjalanan]);
 
   // Data fetching hooks - now moved after form is initialized
-  const {
-    data: programList = []
-  } = usePrograms();
-  const {
-    data: kegiatanList = []
-  } = useKegiatan(form.watch("program") || null);
-  const {
-    data: kroList = []
-  } = useKRO(form.watch("kegiatan") || null);
-  const {
-    data: roList = []
-  } = useRO(form.watch("kro") || null);
-  const {
-    data: komponenList = []
-  } = useKomponen();
-  const {
-    data: akunList = []
-  } = useAkun();
-  const {
-    data: organikList = []
-  } = useOrganikBPS();
-
+  const { data: programList = [] } = usePrograms();
+  const { data: kegiatanList = [] } = useKegiatan(
+    form.watch("program") || null
+  );
+  const { data: kroList = [] } = useKRO(
+    form.watch("kegiatan") || null
+  );
+  const { data: roList = [] } = useRO(
+    form.watch("kro") || null
+  );
+  const { data: komponenList = [] } = useKomponen();
+  const { data: akunList = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name]));
   const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
@@ -126,6 +128,7 @@ const KuitansiPerjalananDinas = () => {
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  
   const submitMutation = useSubmitToSheets({
     documentType: "KuitansiPerjalananDinas",
     onSuccess: () => {
@@ -135,12 +138,15 @@ const KuitansiPerjalananDinas = () => {
 
   // Function to add a new kecamatan detail
   const addKecamatanDetail = () => {
-    setKecamatanDetails(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      nama: "",
-      tanggalBerangkat: undefined,
-      tanggalKembali: undefined
-    }]);
+    setKecamatanDetails(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        nama: "",
+        tanggalBerangkat: undefined,
+        tanggalKembali: undefined
+      }
+    ]);
   };
 
   // Function to remove a kecamatan detail
@@ -150,12 +156,13 @@ const KuitansiPerjalananDinas = () => {
 
   // Function to update a kecamatan detail
   const updateKecamatanDetail = (id: string, field: string, value: any) => {
-    setKecamatanDetails(prev => prev.map(detail => detail.id === id ? {
-      ...detail,
-      [field]: value
-    } : detail));
+    setKecamatanDetails(prev => 
+      prev.map(detail => 
+        detail.id === id ? { ...detail, [field]: value } : detail
+      )
+    );
   };
-
+  
   // Form submission handler
   const onSubmit = async (values: FormValues) => {
     try {
@@ -169,22 +176,25 @@ const KuitansiPerjalananDinas = () => {
         _kroNameMap: kroMap,
         _roNameMap: roMap,
         _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap
+        _akunNameMap: akunMap,
       };
-
+      
       // All forms for any jenis perjalanan are valid for submission
       console.log("Submitting form data:", formData);
       await submitMutation.mutateAsync(formData);
+      
     } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
-        description: error.message || "Terjadi kesalahan saat menyimpan form"
+        description: error.message || "Terjadi kesalahan saat menyimpan form",
       });
     }
   };
-  return <Layout>
+  
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Kuitansi Perjalanan Dinas</h1>
@@ -199,11 +209,16 @@ const KuitansiPerjalananDinas = () => {
               <CardContent className="p-6 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Jenis Perjalanan Dinas */}
-                  <FormField control={form.control} name="jenisPerjalanan" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="jenisPerjalanan"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Jenis Perjalanan Dinas</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih jenis perjalanan dinas" />
@@ -215,334 +230,533 @@ const KuitansiPerjalananDinas = () => {
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Jenis Perjalanan Dinas (Nama Kegiatan) */}
-                  <FormField control={form.control} name="namaKegiatan" render={({
-                  field
-                }) => {}} />
+                  <FormField
+                    control={form.control}
+                    name="namaKegiatan"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jenis Perjalanan Dinas</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Masukkan jenis perjalanan dinas" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Nomor Surat Tugas */}
-                  <FormField control={form.control} name="nomorSuratTugas" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="nomorSuratTugas"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Nomor Surat Tugas</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan nomor surat tugas" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Tanggal Surat Tugas */}
-                  <FormField control={form.control} name="tanggalSuratTugas" render={({
-                  field
-                }) => <FormItem className="flex flex-col">
+                  <FormField
+                    control={form.control}
+                    name="tanggalSuratTugas"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
                         <FormLabel>Tanggal Surat Tugas</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pilih tanggal</span>
+                                )}
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Nama Pelaksana Perjalanan Dinas */}
-                  <FormField control={form.control} name="namaPelaksana" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="namaPelaksana"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Nama Pelaksana</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih pelaksana" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.name}>
+                            {organikList.map((organik) => (
+                              <SelectItem key={organik.id} value={organik.name}>
                                 {organik.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Tujuan Pelaksanaan Perjalanan Dinas */}
-                  <FormField control={form.control} name="tujuanPerjalanan" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="tujuanPerjalanan"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Tujuan Pelaksanaan</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan tujuan pelaksanaan" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Program */}
-                  <FormField control={form.control} name="program" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="program"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Program</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("kegiatan", "");
-                    form.setValue("kro", "");
-                    form.setValue("ro", "");
-                  }} value={field.value}>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("kegiatan", "");
+                            form.setValue("kro", "");
+                            form.setValue("ro", "");
+                          }}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih program" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programList.map(program => <SelectItem key={program.id} value={program.id}>
+                            {programList.map((program) => (
+                              <SelectItem key={program.id} value={program.id}>
                                 {program.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Kegiatan */}
-                  <FormField control={form.control} name="kegiatan" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="kegiatan"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("kro", "");
-                    form.setValue("ro", "");
-                  }} value={field.value} disabled={!form.watch("program")}>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("kro", "");
+                            form.setValue("ro", "");
+                          }}
+                          value={field.value}
+                          disabled={!form.watch("program")}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih kegiatan" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
+                            {kegiatanList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* KRO */}
-                  <FormField control={form.control} name="kro" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="kro"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("ro", "");
-                  }} value={field.value} disabled={!form.watch("kegiatan")}>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("ro", "");
+                          }}
+                          value={field.value}
+                          disabled={!form.watch("kegiatan")}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih KRO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kroList.map(item => <SelectItem key={item.id} value={item.id}>
+                            {kroList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* RO */}
-                  <FormField control={form.control} name="ro" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="ro"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!form.watch("kro")}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={!form.watch("kro")}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih RO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {roList.map(item => <SelectItem key={item.id} value={item.id}>
+                            {roList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Komponen */}
-                  <FormField control={form.control} name="komponen" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="komponen"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
+                        <KomponenSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Pilih komponen"
+                        />
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Akun */}
-                  <FormField control={form.control} name="akun" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="akun"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih akun" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {akunList.map(akun => <SelectItem key={akun.id} value={akun.id}>
+                            {akunList.map((akun) => (
+                              <SelectItem key={akun.id} value={akun.id}>
                                 {akun.name} ({akun.code})
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Tanggal Pengajuan */}
-                  <FormField control={form.control} name="tanggalPengajuan" render={({
-                  field
-                }) => <FormItem className="flex flex-col">
+                  <FormField
+                    control={form.control}
+                    name="tanggalPengajuan"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
                         <FormLabel>Tanggal Pengajuan</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pilih tanggal</span>
+                                )}
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Kabupaten/Kota Tujuan */}
-                  <FormField control={form.control} name="kabupatenKota" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="kabupatenKota"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Kabupaten/Kota Tujuan</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan kabupaten/kota tujuan" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Nama Tempat Tujuan */}
-                  <FormField control={form.control} name="namaTempatTujuan" render={({
-                  field
-                }) => <FormItem>
+                  <FormField
+                    control={form.control}
+                    name="namaTempatTujuan"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Nama Tempat Tujuan</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan nama tempat tujuan" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Fields specific to Luar Kota */}
-                  {isLuarKota && <>
+                  {isLuarKota && (
+                    <>
                       {/* Tanggal Berangkat */}
-                      <FormField control={form.control} name="tanggalBerangkat" render={({
-                    field
-                  }) => <FormItem className="flex flex-col">
+                      <FormField
+                        control={form.control}
+                        name="tanggalBerangkat"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
                             <FormLabel>Tanggal Berangkat</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
-                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pilih tanggal</span>
+                                    )}
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                  className="p-3 pointer-events-auto"
+                                />
                               </PopoverContent>
                             </Popover>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Tanggal Kembali */}
-                      <FormField control={form.control} name="tanggalKembali" render={({
-                    field
-                  }) => <FormItem className="flex flex-col">
+                      <FormField
+                        control={form.control}
+                        name="tanggalKembali"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
                             <FormLabel>Tanggal Kembali</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
-                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pilih tanggal</span>
+                                    )}
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                  className="p-3 pointer-events-auto"
+                                />
                               </PopoverContent>
                             </Popover>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Biaya Transport */}
-                      <FormField control={form.control} name="biayaTransport" render={({
-                    field
-                  }) => <FormItem>
+                      <FormField
+                        control={form.control}
+                        name="biayaTransport"
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>Biaya Transport Kab/Kota Tujuan (PP)</FormLabel>
                             <FormControl>
                               <Input {...field} type="text" placeholder="Rp 0" />
                             </FormControl>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Biaya BBM/Tol */}
-                      <FormField control={form.control} name="biayaBBM" render={({
-                    field
-                  }) => <FormItem>
+                      <FormField
+                        control={form.control}
+                        name="biayaBBM"
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>Biaya Pembelian BBM/Tol (PP)</FormLabel>
                             <FormControl>
                               <Input {...field} type="text" placeholder="Rp 0" />
                             </FormControl>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Biaya Penginapan/Hotel */}
-                      <FormField control={form.control} name="biayaPenginapan" render={({
-                    field
-                  }) => <FormItem>
+                      <FormField
+                        control={form.control}
+                        name="biayaPenginapan"
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>Biaya Penginapan/Hotel</FormLabel>
                             <FormControl>
                               <Input {...field} type="text" placeholder="Rp 0" />
                             </FormControl>
                             <FormMessage />
-                          </FormItem>} />
-                    </>}
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </div>
 
                 {/* Kecamatan Details Section (for "Dalam Kota") */}
-                {!isLuarKota && <div className="space-y-6">
+                {!isLuarKota && (
+                  <div className="space-y-6">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-medium">Detail Kecamatan</h3>
-                      <Button type="button" variant="outline" size="sm" onClick={addKecamatanDetail}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addKecamatanDetail}
+                      >
                         <Plus className="h-4 w-4 mr-2" /> Tambah Kecamatan
                       </Button>
                     </div>
 
-                    {kecamatanDetails.length > 0 ? <div className="space-y-4">
-                        {kecamatanDetails.map((detail, index) => <Card key={detail.id} className="overflow-hidden">
+                    {kecamatanDetails.length > 0 ? (
+                      <div className="space-y-4">
+                        {kecamatanDetails.map((detail, index) => (
+                          <Card key={detail.id} className="overflow-hidden">
                             <CardContent className="p-4 space-y-4">
                               <div className="flex justify-between items-center">
                                 <h4 className="font-medium">Kecamatan {index + 1}</h4>
-                                <Button variant="ghost" size="icon" onClick={() => removeKecamatanDetail(detail.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => removeKecamatanDetail(detail.id)}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -550,14 +764,19 @@ const KuitansiPerjalananDinas = () => {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                   <Label>Nama Kecamatan</Label>
-                                  <Select value={detail.nama} onValueChange={value => updateKecamatanDetail(detail.id, 'nama', value)}>
+                                  <Select
+                                    value={detail.nama}
+                                    onValueChange={(value) => updateKecamatanDetail(detail.id, 'nama', value)}
+                                  >
                                     <SelectTrigger>
                                       <SelectValue placeholder="Pilih kecamatan" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {kecamatanOptions.map(kec => <SelectItem key={kec} value={kec}>
+                                      {kecamatanOptions.map((kec) => (
+                                        <SelectItem key={kec} value={kec}>
                                           {kec}
-                                        </SelectItem>)}
+                                        </SelectItem>
+                                      ))}
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -566,13 +785,29 @@ const KuitansiPerjalananDinas = () => {
                                   <Label>Tanggal Berangkat</Label>
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !detail.tanggalBerangkat && "text-muted-foreground")}>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !detail.tanggalBerangkat && "text-muted-foreground"
+                                        )}
+                                      >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {detail.tanggalBerangkat ? format(detail.tanggalBerangkat, "PPP") : <span>Pilih tanggal</span>}
+                                        {detail.tanggalBerangkat ? (
+                                          format(detail.tanggalBerangkat, "PPP")
+                                        ) : (
+                                          <span>Pilih tanggal</span>
+                                        )}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar mode="single" selected={detail.tanggalBerangkat} onSelect={date => updateKecamatanDetail(detail.id, 'tanggalBerangkat', date)} initialFocus className="p-3 pointer-events-auto" />
+                                      <Calendar
+                                        mode="single"
+                                        selected={detail.tanggalBerangkat}
+                                        onSelect={(date) => updateKecamatanDetail(detail.id, 'tanggalBerangkat', date)}
+                                        initialFocus
+                                        className="p-3 pointer-events-auto"
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 </div>
@@ -581,31 +816,56 @@ const KuitansiPerjalananDinas = () => {
                                   <Label>Tanggal Kembali</Label>
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !detail.tanggalKembali && "text-muted-foreground")}>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !detail.tanggalKembali && "text-muted-foreground"
+                                        )}
+                                      >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {detail.tanggalKembali ? format(detail.tanggalKembali, "PPP") : <span>Pilih tanggal</span>}
+                                        {detail.tanggalKembali ? (
+                                          format(detail.tanggalKembali, "PPP")
+                                        ) : (
+                                          <span>Pilih tanggal</span>
+                                        )}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar mode="single" selected={detail.tanggalKembali} onSelect={date => updateKecamatanDetail(detail.id, 'tanggalKembali', date)} initialFocus className="p-3 pointer-events-auto" />
+                                      <Calendar
+                                        mode="single"
+                                        selected={detail.tanggalKembali}
+                                        onSelect={(date) => updateKecamatanDetail(detail.id, 'tanggalKembali', date)}
+                                        initialFocus
+                                        className="p-3 pointer-events-auto"
+                                      />
                                     </PopoverContent>
                                   </Popover>
                                 </div>
                               </div>
                             </CardContent>
-                          </Card>)}
-                      </div> : <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center text-muted-foreground">
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center text-muted-foreground">
                         <p>Belum ada data kecamatan</p>
                         <p className="text-sm">Klik tombol di atas untuk menambahkan data kecamatan</p>
-                      </div>}
-                  </div>}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Submit Buttons */}
                 <div className="flex space-x-4 pt-4">
                   <Button type="submit" disabled={submitMutation.isPending}>
                     {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/buat-dokumen")}
+                  >
                     Batal
                   </Button>
                 </div>
@@ -614,6 +874,8 @@ const KuitansiPerjalananDinas = () => {
           </form>
         </Form>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default KuitansiPerjalananDinas;
