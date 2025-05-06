@@ -426,6 +426,7 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
   const row: any[] = [
     documentId,                               // ID
     data.nomorSuratTugas || "",               // Nomor Surat Tugas
+    formatDate(data.tanggalSuratTugas),       // Tanggal Surat Tugas - Added this field
     data.namaPelaksana || "",                 // Nama Pelaksana Perjalanan Dinas
     data.tujuanPerjalanan || "",              // Tujuan Pelaksanaan Perjalanan Dinas
     data.kabupatenKota || "",                 // Kab/Kota Tujuan
@@ -443,6 +444,7 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
     formatDate(data.tanggalKembali),          // Tanggal Kembali (duplicate)
     data.biayaTransport || "",                // Biaya Transport Kab/Kota Tujuan (PP)
     data.biayaBBM || "",                      // Biaya Pembelian BBM/Tol (PP)
+    data.biayaPenginapan || "",               // Biaya Penginapan/Hotel - Added this field
     data.jenisPerjalanan || "",               // Jenis Perjalanan Dinas
   ];
 
