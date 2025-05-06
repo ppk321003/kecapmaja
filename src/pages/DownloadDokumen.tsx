@@ -1,15 +1,11 @@
-
 import React, { useState } from "react";
-import { Link as LinkIcon, Edit } from "lucide-react";
+import { Link as LinkIcon } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
-import EditKerangkaDialog from "@/components/EditKerangkaDialog";
 
 // Set Indonesian Timezone
 const indonesianOptions = {
@@ -25,8 +21,6 @@ const indonesianOptions = {
 
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
-  const [editingData, setEditingData] = useState<any>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Data for each table with sheet IDs
   const documents = [{
@@ -64,29 +58,6 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }, {
-      key: "actions",
-      header: "Actions",
-      isSortable: false,
-      render: (_, rowData) => (
-        <div className="flex items-center justify-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => handleEdit(rowData)}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-4 w-4 text-blue-600 hover:text-blue-800" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Edit data</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )
     }]
   }, {
     id: "daftar-hadir",
@@ -375,23 +346,6 @@ const DownloadDokumen = () => {
     }]
   }];
 
-  // Handler for editing a record
-  const handleEdit = (rowData: any) => {
-    setEditingData(rowData);
-    setIsEditDialogOpen(true);
-  };
-
-  // Handler for saving the edited record
-  const handleSave = (updatedData: any) => {
-    console.log("Saving updated data:", updatedData);
-    // Here you would typically send the data to your backend
-    // For now, we'll just show a success toast
-    toast({
-      title: "Data updated",
-      description: `Document ID ${updatedData.Id} has been updated.`,
-    });
-  };
-
   // Get the active document
   const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];
 
@@ -444,25 +398,13 @@ const DownloadDokumen = () => {
               ) : (
                 <DataTable 
                   title={doc.title} 
-                  columns={doc.id === "kerangka-acuan-kerja" 
-                    ? doc.columns 
-                    : doc.columns.filter(col => col.key !== "actions")} 
+                  columns={doc.columns} 
                   data={data || []} 
                 />
               )}
             </TabsContent>
           ))}
         </Tabs>
-
-        {/* Edit Dialog */}
-        {editingData && (
-          <EditKerangkaDialog 
-            isOpen={isEditDialogOpen} 
-            onClose={() => setIsEditDialogOpen(false)} 
-            data={editingData}
-            onSave={handleSave}
-          />
-        )}
       </div>
     </Layout>
   );

@@ -31,7 +31,6 @@ interface KecamatanDetail {
 
 const formSchema = z.object({
   jenisPerjalanan: z.string().min(1, "Jenis perjalanan harus dipilih"),
-  //namaKegiatan: z.string().min(1, "Jenis perjalanan dinas harus diisi"),
   nomorSuratTugas: z.string().min(1, "Nomor surat tugas harus diisi"),
   tanggalSuratTugas: z.date({ required_error: "Tanggal surat tugas harus dipilih" }),
   namaPelaksana: z.string().min(1, "Nama pelaksana harus dipilih"),
@@ -43,7 +42,7 @@ const formSchema = z.object({
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
   tanggalPengajuan: z.date({ required_error: "Tanggal pengajuan harus dipilih" }),
-  kabupatenKota: z.string().min(1, "Kabupaten/Kota tujuan harus diisi"),
+  kabupatenKota: z.string().optional(),
   namaTempatTujuan: z.string().optional(),
   tanggalBerangkat: z.date().optional(),
   tanggalKembali: z.date().optional(),
@@ -56,7 +55,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_VALUES: Partial<FormValues> = {
   jenisPerjalanan: "Dalam Kota",
-  //namaKegiatan: "",
   nomorSuratTugas: "",
   tanggalSuratTugas: undefined,
   namaPelaksana: "",
@@ -77,15 +75,34 @@ const DEFAULT_VALUES: Partial<FormValues> = {
   biayaPenginapan: "",
 };
 
-// Kecamatan options
+// Updated kecamatan options based on the requirements
 const kecamatanOptions = [
-  "Jatiwangi",
-  "Kasokandel",
-  "Ligung",
-  "Sumberjaya",
-  "Dawuan",
-  "Panyingkiran",
+  "Lemahsugih",
+  "Bantarujeg",
+  "Malausma",
+  "Cikijing",
+  "Cingambul",
+  "Talaga",
+  "Banjaran",
+  "Argapura",
+  "Maja",
+  "Majalengka",
+  "Cigasong",
+  "Sukahaji",
+  "Sindang",
+  "Rajagaluh",
+  "Sindangwangi",
   "Leuwimunding",
+  "Palasah",
+  "Jatiwangi",
+  "Dawuan",
+  "Kasokandel",
+  "Panyingkiran",
+  "Kadipaten",
+  "Kertajati",
+  "Jatitujuh",
+  "Ligung",
+  "Sumberjaya"
 ];
 
 const KuitansiPerjalananDinas = () => {
@@ -106,7 +123,7 @@ const KuitansiPerjalananDinas = () => {
     setIsLuarKota(jenisPerjalanan === "Luar Kota");
   }, [jenisPerjalanan]);
 
-  // Data fetching hooks - now moved after form is initialized
+  // Data fetching hooks
   const { data: programList = [] } = usePrograms();
   const { data: kegiatanList = [] } = useKegiatan(
     form.watch("program") || null
@@ -552,35 +569,40 @@ const KuitansiPerjalananDinas = () => {
                     )}
                   />
 
-                  {/* Kabupaten/Kota Tujuan */}
-                  <FormField
-                    control={form.control}
-                    name="kabupatenKota"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kabupaten/Kota Tujuan</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan kabupaten/kota tujuan" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Only show these fields for Luar Kota */}
+                  {isLuarKota && (
+                    <>
+                      {/* Kabupaten/Kota Tujuan */}
+                      <FormField
+                        control={form.control}
+                        name="kabupatenKota"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Kabupaten/Kota Tujuan</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Masukkan kabupaten/kota tujuan" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                  {/* Nama Tempat Tujuan */}
-                  <FormField
-                    control={form.control}
-                    name="namaTempatTujuan"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama Tempat Tujuan</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan nama tempat tujuan" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      {/* Nama Tempat Tujuan */}
+                      <FormField
+                        control={form.control}
+                        name="namaTempatTujuan"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nama Tempat Tujuan</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Masukkan nama tempat tujuan" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
 
                   {/* Fields specific to Luar Kota */}
                   {isLuarKota && (
