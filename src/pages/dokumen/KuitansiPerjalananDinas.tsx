@@ -220,13 +220,7 @@ const KuitansiPerjalananDinas = () => {
                   {/* Jenis Perjalanan Dinas (Nama Kegiatan) */}
                   <FormField control={form.control} name="namaKegiatan" render={({
                   field
-                }) => <FormItem>
-                        <FormLabel>Tujuan Pelaksanaan Perjalanan Dinas</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan jenis perjalanan dinas" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                }) => {}} />
 
                   {/* Nomor Surat Tugas */}
                   <FormField control={form.control} name="nomorSuratTugas" render={({
