@@ -56,8 +56,8 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items }) => {
   };
 
   if (isLoading) {
-    return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {[...Array(6)].map((_, i) => (
+    return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {[...Array(8)].map((_, i) => (
         <Card key={i} className="h-full animate-pulse">
           <CardHeader className="pb-2">
             <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800"></div>
@@ -73,7 +73,7 @@ const MenuGrid: React.FC<MenuGridProps> = ({ items }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {menuItems.filter(item => item.is_active).map((item, index) => (
         <Link key={item.id} to={item.path} className="block">
           <Card className="h-full transition-all duration-200 hover:shadow-md">
