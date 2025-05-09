@@ -249,8 +249,8 @@ const DownloadDokumen = () => {
       header: "Tujuan Pelaksanaan Perjalanan Dinas",
       isSortable: true
     }, {
-      key: "Nama Tempat Tujuan",
-      header: "Nama Tempat Tujuan",
+      key: "Jenis Perjalanan Dinas",
+      header: "Jenis Perjalanan Dinas",
       isSortable: true
     }, {
       key: "Link",
