@@ -647,48 +647,6 @@ const KuitansiPerjalananDinas = () => {
                           </FormItem>
                         )}
                       />
-
-                      {/* Tanggal Kembali */}
-                      <FormField
-                        control={form.control}
-                        name="tanggalKembali"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Tanggal Kembali</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? (
-                                      format(field.value, "PPP")
-                                    ) : (
-                                      <span>Pilih tanggal</span>
-                                    )}
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                  className="p-3 pointer-events-auto"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
                       {/* Biaya Transport */}
                       <FormField
                         control={form.control}
@@ -817,38 +775,7 @@ const KuitansiPerjalananDinas = () => {
                                       />
                                     </PopoverContent>
                                   </Popover>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <Label>Tanggal Kembali</Label>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        className={cn(
-                                          "w-full pl-3 text-left font-normal",
-                                          !detail.tanggalKembali && "text-muted-foreground"
-                                        )}
-                                      >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {detail.tanggalKembali ? (
-                                          format(detail.tanggalKembali, "PPP")
-                                        ) : (
-                                          <span>Pilih tanggal</span>
-                                        )}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={detail.tanggalKembali}
-                                        onSelect={(date) => updateKecamatanDetail(detail.id, 'tanggalKembali', date)}
-                                        initialFocus
-                                        className="p-3 pointer-events-auto"
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
-                                </div>
+                                </div>                   
                               </div>
                             </CardContent>
                           </Card>
