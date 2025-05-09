@@ -238,7 +238,7 @@ const DownloadDokumen = () => {
       isSortable: true
     }, {
       key: "Nama Pelaksana",
-      header: "Nama Pelaksana",
+      header: "Pelaksana Perjalanan Dinas",
       isSortable: true
     }, {
       key: "Nomor Surat Tugas",
@@ -246,7 +246,7 @@ const DownloadDokumen = () => {
       isSortable: true
     }, {
       key: "Tujuan Pelaksanaan",
-      header: "Tujuan Pelaksanaan",
+      header: "Tujuan Pelaksanaan Perjalanan Dinas",
       isSortable: true
     }, {
       key: "Nama Tempat Tujuan",
