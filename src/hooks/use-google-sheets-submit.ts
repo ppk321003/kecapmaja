@@ -432,7 +432,7 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
     data.kabupatenKota || "",                 // Kab/Kota Tujuan
     data.namaTempatTujuan || "",              // Nama Tempat Tujuan
     formatDate(data.tanggalBerangkat),        // Tanggal Berangkat
-    //formatDate(data.tanggalKembali),        Tanggal Kembali
+    formatDate(data.tanggalKembali),          // Tanggal Kembali
     formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan
     programName,                              // Program
     kegiatanName,                             // Kegiatan 
@@ -455,7 +455,7 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
     const kecamatan = kecamatanDetails[i] || {};
     row.push(kecamatan.nama || "");                  // Kecamatan Tujuan
     row.push(formatDate(kecamatan.tanggalBerangkat)); // Tanggal Berangkat
-    //row.push(formatDate(kecamatan.tanggalKembali));   // Tanggal Kembali
+    row.push(formatDate(kecamatan.tanggalKembali));   // Tanggal Kembali
   }
 
   return row;
