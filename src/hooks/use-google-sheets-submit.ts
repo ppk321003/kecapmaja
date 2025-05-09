@@ -440,11 +440,11 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
     roName,                                   // RO
     komponenName,                             // Komponen
     akunName,                                 // Akun
-    formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan (duplicate)
-    formatDate(data.tanggalKembali),          // Tanggal Kembali (duplicate)
+    //formatDate(data.tanggalPengajuan),        // Tanggal Pengajuan (duplicate)
+    //formatDate(data.tanggalKembali),          // Tanggal Kembali (duplicate)
     data.biayaTransport || "",                // Biaya Transport Kab/Kota Tujuan (PP)
     data.biayaBBM || "",                      // Biaya Pembelian BBM/Tol (PP)
-    data.biayaHotel || "",                    // Biaya Penginapan/Hotel (NEW)
+    data.biayaPenginapan || "",                    // Biaya Penginapan/Hotel (NEW)
     data.jenisPerjalanan || "",               // Jenis Perjalanan Dinas
   ];
 
