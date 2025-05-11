@@ -489,7 +489,7 @@ const SPJHonor = () => {
                         <Input type="number" value={honor.honorPerOrang} onChange={e => updateHonorDetail("organik", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} placeholder="0" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Banyaknya (Dok/BS/EA/SLS/Hari/dll)</Label>
+                        <Label>Banyaknya</Label>
                         <Input type="number" value={honor.kehadiran} onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} placeholder="0" min="0" max="31" />
                       </div>
                       <div className="space-y-2">
