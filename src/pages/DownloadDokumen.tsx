@@ -280,16 +280,12 @@ const DownloadDokumen = () => {
       header: "Nama Paket Pengadaan",
       isSortable: true
     }, {
-      key: "Tanggal Mulai Pelaksanaan",
-      header: "Tanggal Mulai Pelaksanaan",
+      key: "Kode Kegiatan",
+      header: "Kode Kegiatan",
       isSortable: true
     }, {
-      key: "Tanggal Selesai Pelaksanaan",
-      header: "Tanggal Selesai Pelaksanaan",
-      isSortable: true
-    }, {
-      key: "Nama Penyedia Barang/Jasa",
-      header: "Nama Penyedia Barang/Jasa",
+      key: "Penyedia Barang/Jasa",
+      header: "Penyedia Barang/Jasa",
       isSortable: true
     }, {
       key: "Link",
