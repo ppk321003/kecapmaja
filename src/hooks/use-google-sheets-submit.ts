@@ -224,9 +224,9 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
     formatDate(data.tanggalSelesai), // Tanggal Selesai
     data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
     organikNames.join(", "),         // Organik
-    "",                              // NIP BPS (placeholder)
+    //"",                              // NIP BPS (placeholder)
     mitraNames.join(", "),           // Mitra Statistik
-    ""                               // NIK Mitra Statistik (placeholder)
+    //""                               // NIK Mitra Statistik (placeholder)
   ];
 
   return row;
@@ -299,9 +299,9 @@ function formatSPJHonorData(documentId: string, data: any): any[] {
   });
 
   row.push(organikNames.join(", "));  // Organik
-  row.push("");                       // NIP BPS (placeholder)
+  //row.push("");                       // NIP BPS (placeholder)
   row.push(mitraNames.join(", "));    // Mitra Statistik
-  row.push("");                       // NIK Mitra Statistik (placeholder)
+  //row.push("");                       // NIK Mitra Statistik (placeholder)
   row.push(honorDetails.join(" | ")); // Honor details (format: "name": honorPerOrang, kehadiran, pph21%, totalHonor)
 
   return row;
@@ -353,9 +353,9 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     formatDate(data.tanggalPengajuan),// Tanggal Pengajuan
     data._pembuatDaftarName || data.pembuatDaftar || "",         // Pembuat Daftar
     organikNames.join(", "),          // Organik
-    "",                               // NIP BPS (placeholder)
+    //"",                               // NIP BPS (placeholder)
     mitraNames.join(", "),            // Mitra Statistik
-    "",                               // NIK Mitra Statistik (placeholder)
+    //"",                               // NIK Mitra Statistik (placeholder)
   ];
   
   // Add kecamatan as last field
@@ -403,9 +403,9 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
     formatDate(data.tanggalSpj),     // Tanggal (SPJ)
     data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
     organikNames.join(", "),         // Organik
-    "",                              // NIP BPS (placeholder)
+    //"",                              // NIP BPS (placeholder)
     mitraNames.join(", "),           // Mitra Statistik
-    ""                               // NIK Mitra Statistik (placeholder)
+    //""                               // NIK Mitra Statistik (placeholder)
   ];
 
   return row;
