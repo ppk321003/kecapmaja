@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -20,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
-
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
@@ -31,22 +29,20 @@ const formSchema = z.object({
   ro: z.string().min(1, "RO harus dipilih"),
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
-  tanggalSpj: z.date({ required_error: "Tanggal harus dipilih" }),
+  tanggalSpj: z.date({
+    required_error: "Tanggal harus dipilih"
+  }),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus diisi"),
-  honorDetails: z.array(
-    z.object({
-      type: z.enum(["organik", "mitra"]),
-      personId: z.string(),
-      honorPerOrang: z.number().min(0),
-      kehadiran: z.number().min(0).max(31),
-      pph21: z.number().min(0).max(100),
-      totalHonor: z.number().min(0),
-    })
-  ).optional()
+  honorDetails: z.array(z.object({
+    type: z.enum(["organik", "mitra"]),
+    personId: z.string(),
+    honorPerOrang: z.number().min(0),
+    kehadiran: z.number().min(0).max(31),
+    pph21: z.number().min(0).max(100),
+    totalHonor: z.number().min(0)
+  })).optional()
 });
-
 type FormValues = z.infer<typeof formSchema>;
-
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -59,28 +55,45 @@ const defaultValues: FormValues = {
   akun: "",
   tanggalSpj: new Date(),
   pembuatDaftar: "",
-  honorDetails: [],
+  honorDetails: []
 };
-
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<any[]>([]);
   const [honorMitra, setHonorMitra] = useState<any[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues,
+    defaultValues
   });
 
   // Data queries
-  const { data: jenisList = [] } = useJenis();
-  const { data: programs = [] } = usePrograms();
-  const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
-  const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
-  const { data: roList = [] } = useRO(form.watch("kro") || null);
-  const { data: komponenList = [] } = useKomponen();
-  const { data: akunList = [] } = useAkun();
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
+  const {
+    data: jenisList = []
+  } = useJenis();
+  const {
+    data: programs = []
+  } = usePrograms();
+  const {
+    data: kegiatanList = []
+  } = useKegiatan(form.watch("program") || null);
+  const {
+    data: kroList = []
+  } = useKRO(form.watch("kegiatan") || null);
+  const {
+    data: roList = []
+  } = useRO(form.watch("kro") || null);
+  const {
+    data: komponenList = []
+  } = useKomponen();
+  const {
+    data: akunList = []
+  } = useAkun();
+  const {
+    data: organikList = []
+  } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
 
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
@@ -110,75 +123,66 @@ const SPJHonor = () => {
   // Add organik handler
   const addOrganik = () => {
     if (organikList.length > 0) {
-      setHonorOrganik([
-        ...honorOrganik,
-        {
-          type: "organik",
-          personId: "",
-          honorPerOrang: 0,
-          kehadiran: 0,
-          pph21: 5,
-          totalHonor: 0,
-        },
-      ]);
+      setHonorOrganik([...honorOrganik, {
+        type: "organik",
+        personId: "",
+        honorPerOrang: 0,
+        kehadiran: 0,
+        pph21: 5,
+        totalHonor: 0
+      }]);
     }
   };
 
   // Add mitra handler
   const addMitra = () => {
     if (mitraList.length > 0) {
-      setHonorMitra([
-        ...honorMitra,
-        {
-          type: "mitra",
-          personId: "",
-          honorPerOrang: 0,
-          kehadiran: 0,
-          pph21: 5,
-          totalHonor: 0,
-        },
-      ]);
+      setHonorMitra([...honorMitra, {
+        type: "mitra",
+        personId: "",
+        honorPerOrang: 0,
+        kehadiran: 0,
+        pph21: 5,
+        totalHonor: 0
+      }]);
     }
   };
 
   // Update honor detail value
-  const updateHonorDetail = (
-    type: "organik" | "mitra",
-    index: number,
-    field: string,
-    value: any
-  ) => {
+  const updateHonorDetail = (type: "organik" | "mitra", index: number, field: string, value: any) => {
     if (type === "organik") {
       const updated = [...honorOrganik];
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
 
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
         const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
         const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
         const pph21 = field === "pph21" ? value : updated[index].pph21;
-        
         const subtotal = honorPerOrang * kehadiran;
         const pajak = subtotal * (pph21 / 100);
         updated[index].totalHonor = subtotal - pajak;
       }
-      
       setHonorOrganik(updated);
     } else {
       const updated = [...honorMitra];
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
 
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
         const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
         const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
         const pph21 = field === "pph21" ? value : updated[index].pph21;
-        
         const subtotal = honorPerOrang * kehadiran;
         const pajak = subtotal * (pph21 / 100);
         updated[index].totalHonor = subtotal - pajak;
       }
-      
       setHonorMitra(updated);
     }
   };
@@ -213,15 +217,13 @@ const SPJHonor = () => {
         _mitraNameMap: mitraMap,
         _pembuatDaftarName: organikMap[data.pembuatDaftar]
       };
-      
       await submitMutation.mutateAsync(submitData);
-      
     } catch (error: any) {
       console.error("Error saving SPJ Honor:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
-        description: error.message || "Terjadi kesalahan saat menyimpan data",
+        description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
     }
   };
@@ -232,9 +234,7 @@ const SPJHonor = () => {
     const mitraTotal = honorMitra.reduce((sum, item) => sum + item.totalHonor, 0);
     return organikTotal + mitraTotal;
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">SPJ Honor</h1>
@@ -249,310 +249,208 @@ const SPJHonor = () => {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Nama Kegiatan */}
-                  <FormField
-                    control={form.control}
-                    name="namaKegiatan"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
+                  <FormField control={form.control} name="namaKegiatan" render={({
+                  field
+                }) => <FormItem className="col-span-2">
                         <FormLabel>Nama Kegiatan</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan nama kegiatan" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
                   {/* Detil */}
-                  <FormField
-                    control={form.control}
-                    name="detil"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
+                  <FormField control={form.control} name="detil" render={({
+                  field
+                }) => <FormItem className="col-span-2">
                         <FormLabel>Detil</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan detil kegiatan" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Jenis */}
-                  <FormField
-                    control={form.control}
-                    name="jenis"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="jenis" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Jenis</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih jenis" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {jenisList.map((jenis) => (
-                              <SelectItem key={jenis.id} value={jenis.id}>
+                            {jenisList.map(jenis => <SelectItem key={jenis.id} value={jenis.id}>
                                 {jenis.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Program */}
-                  <FormField
-                    control={form.control}
-                    name="program"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="program" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Program</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue("kegiatan", "");
-                            form.setValue("kro", "");
-                            form.setValue("ro", "");
-                          }}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={value => {
+                    field.onChange(value);
+                    form.setValue("kegiatan", "");
+                    form.setValue("kro", "");
+                    form.setValue("ro", "");
+                  }} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih program" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programs.map((program) => (
-                              <SelectItem key={program.id} value={program.id}>
+                            {programs.map(program => <SelectItem key={program.id} value={program.id}>
                                 {program.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Kegiatan */}
-                  <FormField
-                    control={form.control}
-                    name="kegiatan"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="kegiatan" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue("kro", "");
-                            form.setValue("ro", "");
-                          }}
-                          defaultValue={field.value}
-                          disabled={!form.watch("program")}
-                        >
+                        <Select onValueChange={value => {
+                    field.onChange(value);
+                    form.setValue("kro", "");
+                    form.setValue("ro", "");
+                  }} defaultValue={field.value} disabled={!form.watch("program")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih kegiatan" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kegiatanList.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* KRO */}
-                  <FormField
-                    control={form.control}
-                    name="kro"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="kro" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue("ro", "");
-                          }}
-                          defaultValue={field.value}
-                          disabled={!form.watch("kegiatan")}
-                        >
+                        <Select onValueChange={value => {
+                    field.onChange(value);
+                    form.setValue("ro", "");
+                  }} defaultValue={field.value} disabled={!form.watch("kegiatan")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih KRO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kroList.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {kroList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* RO */}
-                  <FormField
-                    control={form.control}
-                    name="ro"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="ro" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={!form.watch("kro")}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("kro")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih RO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {roList.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {roList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Komponen */}
-                  <FormField
-                    control={form.control}
-                    name="komponen"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="komponen" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Pilih komponen"
-                        />
+                        <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Akun */}
-                  <FormField
-                    control={form.control}
-                    name="akun"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="akun" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih akun" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {akunList.map((akun) => (
-                              <SelectItem key={akun.id} value={akun.id}>
+                            {akunList.map(akun => <SelectItem key={akun.id} value={akun.id}>
                                 {akun.name} ({akun.code})
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Tanggal SPJ */}
-                  <FormField
-                    control={form.control}
-                    name="tanggalSpj"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="tanggalSpj" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Tanggal (SPJ)</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
+                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pilih tanggal</span>
-                                )}
+                                {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              className="p-3 pointer-events-auto"
-                            />
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   {/* Pembuat Daftar */}
-                  <FormField
-                    control={form.control}
-                    name="pembuatDaftar"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="pembuatDaftar" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih pembuat daftar" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id}>
+                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
                                 {organik.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
               </CardContent>
             </Card>
@@ -567,107 +465,49 @@ const SPJHonor = () => {
                   </Button>
                 </div>
 
-                {honorOrganik.map((honor, index) => (
-                  <div key={index} className="border p-4 rounded-md space-y-4">
+                {honorOrganik.map((honor, index) => <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="font-medium">Staf {index + 1}</h3>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeHonorDetail("organik", index)}
-                      >
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("organik", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select
-                          value={honor.personId}
-                          onValueChange={(value) =>
-                            updateHonorDetail("organik", index, "personId", value)
-                          }
-                        >
+                        <Select value={honor.personId} onValueChange={value => updateHonorDetail("organik", index, "personId", value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih staf" />
                           </SelectTrigger>
                           <SelectContent>
-                            {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id}>
+                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
                                 {organik.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Honor per Orang (Rp)</Label>
-                        <Input
-                          type="number"
-                          value={honor.honorPerOrang}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "organik",
-                              index,
-                              "honorPerOrang",
-                              parseInt(e.target.value, 10) || 0
-                            )
-                          }
-                          placeholder="0"
-                        />
+                        <Input type="number" value={honor.honorPerOrang} onChange={e => updateHonorDetail("organik", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} placeholder="0" />
                       </div>
                       <div className="space-y-2">
-                        <Label>Kehadiran (Hari)</Label>
-                        <Input
-                          type="number"
-                          value={honor.kehadiran}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "organik",
-                              index,
-                              "kehadiran",
-                              parseInt(e.target.value, 10) || 0
-                            )
-                          }
-                          placeholder="0"
-                          min="0"
-                          max="31"
-                        />
+                        <Label>Banyaknya (Dok/BS/EA/SLS/Hari/dll)</Label>
+                        <Input type="number" value={honor.kehadiran} onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} placeholder="0" min="0" max="31" />
                       </div>
                       <div className="space-y-2">
                         <Label>PPh 21 (%)</Label>
-                        <Input
-                          type="number"
-                          value={honor.pph21}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "organik",
-                              index,
-                              "pph21",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          placeholder="5"
-                        />
+                        <Input type="number" value={honor.pph21} onChange={e => updateHonorDetail("organik", index, "pph21", parseFloat(e.target.value) || 0)} placeholder="5" />
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>Total Honor (Rp)</Label>
-                        <Input
-                          value={honor.totalHonor.toLocaleString()}
-                          readOnly
-                          className="font-bold"
-                        />
+                        <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
                       </div>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
 
-                {honorOrganik.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">
+                {honorOrganik.length === 0 && <p className="text-muted-foreground text-center py-4">
                     Belum ada data honor organik. Klik tombol "Tambah Organik" untuk menambahkan.
-                  </p>
-                )}
+                  </p>}
               </CardContent>
             </Card>
 
@@ -681,107 +521,49 @@ const SPJHonor = () => {
                   </Button>
                 </div>
 
-                {honorMitra.map((honor, index) => (
-                  <div key={index} className="border p-4 rounded-md space-y-4">
+                {honorMitra.map((honor, index) => <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="font-medium">Mitra {index + 1}</h3>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeHonorDetail("mitra", index)}
-                      >
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select
-                          value={honor.personId}
-                          onValueChange={(value) =>
-                            updateHonorDetail("mitra", index, "personId", value)
-                          }
-                        >
+                        <Select value={honor.personId} onValueChange={value => updateHonorDetail("mitra", index, "personId", value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih mitra" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mitraList.map((mitra) => (
-                              <SelectItem key={mitra.id} value={mitra.id}>
+                            {mitraList.map(mitra => <SelectItem key={mitra.id} value={mitra.id}>
                                 {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Honor per Orang (Rp)</Label>
-                        <Input
-                          type="number"
-                          value={honor.honorPerOrang}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "mitra",
-                              index,
-                              "honorPerOrang",
-                              parseInt(e.target.value, 10) || 0
-                            )
-                          }
-                          placeholder="0"
-                        />
+                        <Input type="number" value={honor.honorPerOrang} onChange={e => updateHonorDetail("mitra", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} placeholder="0" />
                       </div>
                       <div className="space-y-2">
                         <Label>Kehadiran (Hari)</Label>
-                        <Input
-                          type="number"
-                          value={honor.kehadiran}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "mitra",
-                              index,
-                              "kehadiran",
-                              parseInt(e.target.value, 10) || 0
-                            )
-                          }
-                          placeholder="0"
-                          min="0"
-                          max="31"
-                        />
+                        <Input type="number" value={honor.kehadiran} onChange={e => updateHonorDetail("mitra", index, "kehadiran", parseInt(e.target.value, 10) || 0)} placeholder="0" min="0" max="31" />
                       </div>
                       <div className="space-y-2">
                         <Label>PPh 21 (%)</Label>
-                        <Input
-                          type="number"
-                          value={honor.pph21}
-                          onChange={(e) =>
-                            updateHonorDetail(
-                              "mitra",
-                              index,
-                              "pph21",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          placeholder="5"
-                        />
+                        <Input type="number" value={honor.pph21} onChange={e => updateHonorDetail("mitra", index, "pph21", parseFloat(e.target.value) || 0)} placeholder="5" />
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>Total Honor (Rp)</Label>
-                        <Input
-                          value={honor.totalHonor.toLocaleString()}
-                          readOnly
-                          className="font-bold"
-                        />
+                        <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
                       </div>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
 
-                {honorMitra.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">
+                {honorMitra.length === 0 && <p className="text-muted-foreground text-center py-4">
                     Belum ada data honor mitra. Klik tombol "Tambah Mitra" untuk menambahkan.
-                  </p>
-                )}
+                  </p>}
               </CardContent>
             </Card>
 
@@ -791,21 +573,12 @@ const SPJHonor = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <div className="space-y-2 md:col-span-2">
                     <Label>Total Keseluruhan (Rp)</Label>
-                    <Input
-                      value={calculateGrandTotal().toLocaleString()}
-                      readOnly
-                      className="font-bold text-lg"
-                    />
+                    <Input value={calculateGrandTotal().toLocaleString()} readOnly className="font-bold text-lg" />
                   </div>
                   <Button type="submit" className="w-full" disabled={submitMutation.isPending}>
                     {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/buat-dokumen")}
-                  >
+                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/buat-dokumen")}>
                     Batal
                   </Button>
                 </div>
@@ -814,8 +587,6 @@ const SPJHonor = () => {
           </form>
         </Form>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default SPJHonor;
