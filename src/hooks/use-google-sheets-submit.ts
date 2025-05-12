@@ -103,22 +103,24 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
     data._pembuatDaftarName || data.pembuatDaftar || "",      // Pembuat Daftar
   ];
 
-  // Get display names for Organik BPS (instead of IDs)
+  // Format Organik BPS dengan tanda "" dan dipisahkan oleh |
   const organikIds = data.organikBPS || [];
   const organikNames = organikIds.map((id: string) => {
-    return `"${data._organikNameMap?.[id] || id}"`;
+    const name = data._organikNameMap?.[id] || id;
+    return `"${name}"`;
   });
-  row.push(organikNames.join(", ")); // Organik BPS
+  row.push(organikNames.join(" | ")); // Organik BPS
 
   // Add NIP BPS (empty for now, would need to fetch from database)
   row.push(""); // NIP BPS
 
-  // Get display names for Mitra Statistik (instead of IDs)
+  // Format Mitra Statistik dengan tanda "" dan dipisahkan oleh |
   const mitraIds = data.mitraStatistik || [];
   const mitraNames = mitraIds.map((id: string) => {
-    return `"${data._mitraNameMap?.[id] || id}"`;
+    const name = data._mitraNameMap?.[id] || id;
+    return `"${name}"`;
   });
-  row.push(mitraNames.join(", ")); // Mitra Statistik
+  row.push(mitraNames.join(" | ")); // Mitra Statistik
 
   // Add NIK Mitra Statistik (empty for now, would need to fetch from database)
   row.push(""); // NIK Mitra Statistik
