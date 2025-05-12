@@ -374,11 +374,12 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
   const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
   
-  // Get display names for Organik and Mitra
+  // Format Organik dengan tanda "" dan dipisahkan oleh |
   const organikNames = (data.organik || []).map((id: string) => {
     return `"${data._organikNameMap?.[id] || id}"`;
   });
 
+  // Format Mitra dengan tanda "" dan dipisahkan oleh |
   const mitraNames = (data.mitra || []).map((id: string) => {
     return `"${data._mitraNameMap?.[id] || id}"`;
   });
@@ -387,7 +388,7 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
     data.detil || "",                // Detil
-    jenisName,                       // JENIS (SUDAH DIMAPPING) <- Perubahan di sini
+    jenisName,                       // JENIS
     programName,                     // Program
     kegiatanName,                    // Kegiatan
     kroName,                         // KRO
@@ -398,16 +399,13 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
     formatDate(data.tanggalSpj),     // Tanggal (SPJ)
-    data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
-    organikNames.join(", "),         // Organik
-    //"",                              // NIP BPS (placeholder)
-    mitraNames.join(", "),           // Mitra Statistik
-    //""                               // NIK Mitra Statistik (placeholder)
+    data._pembuatDaftarName || data.pembuatDaftar || "",  // Pembuat Daftar
+    organikNames.join(" | "),        // Organik (format: "Nama1" | "Nama2")
+    mitraNames.join(" | ")           // Mitra Statistik (format: "Nama1" | "Nama2")
   ];
 
   return row;
 }
-
 // Helper function to format Kuitansi Perjalanan Dinas data
 function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[] {
   console.log("Formatting Kuitansi Perjalanan Dinas data:", data);
