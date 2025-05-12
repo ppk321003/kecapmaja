@@ -372,7 +372,8 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
   const roName = data._roNameMap?.[data.ro] || data.ro || "";
   const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
-
+  const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
+  
   // Get display names for Organik and Mitra
   const organikNames = (data.organik || []).map((id: string) => {
     return `"${data._organikNameMap?.[id] || id}"`;
@@ -386,7 +387,7 @@ function formatUangHarianTransportData(documentId: string, data: any): any[] {
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
     data.detil || "",                // Detil
-    data.jenis || "",                // Jenis
+    jenisName,                       // JENIS (SUDAH DIMAPPING) <- Perubahan di sini
     programName,                     // Program
     kegiatanName,                    // Kegiatan
     kroName,                         // KRO
