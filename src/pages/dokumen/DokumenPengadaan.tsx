@@ -99,7 +99,7 @@ const DokumenPengadaan = () => {
             {/* Data Umum */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4 text-pink-700">Data Umum</h2>
+                <h2 className="text-xl font-semibold mb-4 text-inherit">Data Umum</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="namaPaket">Nama Paket Pengadaan</Label>
