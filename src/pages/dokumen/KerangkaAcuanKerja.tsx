@@ -601,7 +601,7 @@ const KerangkaAcuanKerja = () => {
                 </div>}
 
               <div className="flex space-x-4">
-                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-800 hover:bg-teal-700">
                   {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
