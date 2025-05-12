@@ -458,7 +458,7 @@ const SPJHonor = () => {
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium">Honor Organik BPS</h2>
-                  <Button type="button" onClick={addOrganik}>
+                  <Button type="button" onClick={addOrganik} className="bg-teal-800 hover:bg-teal-700">
                     Tambah Organik
                   </Button>
                 </div>
@@ -514,7 +514,7 @@ const SPJHonor = () => {
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium">Honor Mitra Statistik</h2>
-                  <Button type="button" onClick={addMitra}>
+                  <Button type="button" onClick={addMitra} className="bg-teal-800 hover:bg-teal-700">
                     Tambah Mitra
                   </Button>
                 </div>
