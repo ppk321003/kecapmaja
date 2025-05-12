@@ -193,12 +193,12 @@ const UangHarianTransport = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="namaKegiatan">Nama Kegiatan</Label>
+                  <Label htmlFor="namaKegiatan">Nama Kegiatan (cth: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025) </Label>
                   <Input id="namaKegiatan" placeholder="Masukkan nama kegiatan" value={formValues.namaKegiatan} onChange={e => handleChange('namaKegiatan', e.target.value)} required />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="detil">Detil</Label>
+                  <Label htmlFor="detil">Detil (cth: Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
                   <Input id="detil" placeholder="Masukkan detil kegiatan" value={formValues.detil} onChange={e => handleChange('detil', e.target.value)} />
                 </div>
 
