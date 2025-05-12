@@ -162,8 +162,8 @@ const TandaTerima = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="namaKegiatan">Nama Kegiatan
-(cth:Perlengkapan Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
+                  <Label htmlFor="namaKegiatan">Nama Kegiatan<br /><small>
+                  (cth:Perlengkapan Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025)</small></Label>
                   <Input id="namaKegiatan" placeholder="Masukkan nama kegiatan" {...register("namaKegiatan", {
                   required: "Nama kegiatan harus diisi"
                 })} />
@@ -171,8 +171,8 @@ const TandaTerima = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="detail">Detail Kegiatan
-(cth: Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
+                  <Label htmlFor="detail">Detail Kegiatan<br /><small>
+                  (cth:Pemutakhiran Perkembangan Desa Tahun 2025)</small></Label>
                   <Input id="detail" placeholder="Masukkan detail kegiatan" {...register("detail")} />
                 </div>
 
