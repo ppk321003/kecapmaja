@@ -184,27 +184,51 @@ function formatKerangkaAcuanKerjaData(documentId: string, data: any): any[] {
   return row;
 }
 
-// Helper function to format Daftar Hadir data
+// Helper function to format Daftar Hadir data dengan perbaikan untuk menampilkan nama
 function formatDaftarHadirData(documentId: string, data: any): any[] {
-  console.log("Formatting Daftar Hadir data:", data);
+  console.log("Formatting Daftar Hadir data:", JSON.stringify(data, null, 2));
   
-  const programName = data._programNameMap?.[data.program] || data.program || "";
-  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
-  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
-  const roName = data._roNameMap?.[data.ro] || data.ro || "";
-  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
-  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
-  const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
+  // Debugging: Log mapping data untuk pemeriksaan
+  console.log("Program Name Map:", data._programNameMap);
+  console.log("Organik Name Map:", data._organikNameMap);
+  console.log("Mitra Name Map:", data._mitraNameMap);
 
-  // Get display names for Organik and Mitra
-  const organikNames = (data.organik || []).map((id: string) => {
-    return `"${data._organikNameMap?.[id] || id}"`;
+  // Fungsi helper untuk mendapatkan nama dengan fallback
+  const getName = (map: any, id: string, defaultField?: string) => {
+    if (!id) return "";
+    if (map && map[id]) return map[id];
+    if (defaultField && data[defaultField]) return data[defaultField];
+    return id; // Fallback ke ID jika tidak ada mapping
+  };
+
+  // Format nama-nama referensi
+  const programName = getName(data._programNameMap, data.program, "programName");
+  const kegiatanName = getName(data._kegiatanNameMap, data.kegiatan, "kegiatanName");
+  const kroName = getName(data._kroNameMap, data.kro, "kroName");
+  const roName = getName(data._roNameMap, data.ro, "roName");
+  const komponenName = getName(data._komponenNameMap, data.komponen, "komponenName");
+  const akunName = getName(data._akunNameMap, data.akun, "akunName");
+  const jenisName = getName(data._jenisNameMap, data.jenis, "jenisName");
+
+  // Format daftar Organik dengan nama
+  const organikNames = (data.organik || data.organikBPS || []).map((id: string) => {
+    const name = getName(data._organikNameMap, id);
+    return `"${name}"`;
   });
 
-  const mitraNames = (data.mitra || []).map((id: string) => {
-    return `"${data._mitraNameMap?.[id] || id}"`;
+  // Format daftar Mitra dengan nama
+  const mitraNames = (data.mitra || data.mitraStatistik || []).map((id: string) => {
+    const name = getName(data._mitraNameMap || data._mitraNameMap, id);
+    return `"${name}"`;
   });
-  
+
+  // Format pembuat daftar
+  const pembuatDaftarName = getName(
+    data._pembuatDaftarNameMap, 
+    data.pembuatDaftar, 
+    "pembuatDaftarName"
+  );
+
   const row: any[] = [
     documentId,                      // ID
     data.namaKegiatan || "",         // Nama Kegiatan
@@ -218,14 +242,23 @@ function formatDaftarHadirData(documentId: string, data: any): any[] {
     akunName,                        // Akun
     formatDate(data.tanggalMulai),   // Tanggal Mulai
     formatDate(data.tanggalSelesai), // Tanggal Selesai
-    data._pembuatDaftarName || data.pembuatDaftar || "",        // Pembuat Daftar
+    pembuatDaftarName,               // Pembuat Daftar
     organikNames.join(", "),         // Organik
-    //"",                              // NIP BPS (placeholder)
     mitraNames.join(", "),           // Mitra Statistik
-    //""                               // NIK Mitra Statistik (placeholder)
   ];
 
   return row;
+}
+
+// Fungsi bantuan untuk format tanggal (pastikan ini ada)
+function formatDate(dateString: string | undefined): string {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
+  } catch {
+    return "";
+  }
 }
 
 // Helper function to format SPJ Honor data
