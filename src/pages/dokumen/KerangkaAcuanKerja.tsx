@@ -68,7 +68,7 @@ const defaultValues: FormValues = {
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
 const subKomponenOptions = ["PPIS", "Dukman"];
-const satuanOptions = ["BLN","BS","Desa","Dok","Liter","Lmbr","M2","OB","OH","OJP","OK", "OP","Paket", "Pasar", "RT","SET","SLS","Stel","Tahun","Segmen"];
+const satuanOptions = ["BLN", "BS", "Desa", "Dok", "Liter", "Lmbr", "M2", "OB", "OH", "OJP", "OK", "OP", "Paket", "Pasar", "RT", "SET", "SLS", "Stel", "Tahun", "Segmen"];
 const KerangkaAcuanKerja = () => {
   const navigate = useNavigate();
   const [formValues, setFormValues] = useState<FormValues>({
@@ -332,7 +332,7 @@ const KerangkaAcuanKerja = () => {
   return <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Kerangka Acuan Kerja</h1>
+          <h1 className="text-2xl font-bold text-orange-700">Kerangka Acuan Kerja</h1>
           <p className="text-sm text-muted-foreground">
             Buat dokumen kerangka acuan kerja (KAK)
           </p>
