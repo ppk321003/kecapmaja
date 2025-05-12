@@ -99,7 +99,7 @@ const DokumenPengadaan = () => {
             {/* Data Umum */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Data Umum</h2>
+                <h2 className="text-xl font-semibold mb-4 text-pink-700">Data Umum</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="namaPaket">Nama Paket Pengadaan</Label>
@@ -152,7 +152,7 @@ const DokumenPengadaan = () => {
             {/* Data Penawaran */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Data Penawaran</h2>
+                <h2 className="text-xl font-semibold mb-4 text-lime-700">Data Penawaran</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="volume">Volume</Label>
@@ -241,7 +241,7 @@ const DokumenPengadaan = () => {
             {/* Data Dokumen */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Data Dokumen</h2>
+                <h2 className="text-xl font-semibold mb-4 text-sky-700">Data Dokumen</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="nomorFormulirPermintaan">Nomor Formulir Permintaan</Label>
@@ -304,7 +304,7 @@ const DokumenPengadaan = () => {
             {/* Data Penyedia */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Data Penyedia</h2>
+                <h2 className="text-xl font-semibold mb-4 text-orange-800">Data Penyedia</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="namaPenyedia">Nama Penyedia Barang/Jasa</Label>
