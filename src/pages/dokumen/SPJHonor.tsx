@@ -250,7 +250,7 @@ const SPJHonor = () => {
                   <FormField control={form.control} name="namaKegiatan" render={({
                   field
                 }) => <FormItem className="col-span-2">
-                        <FormLabel>Nama Kegiatan (cth: Pelatihan Petugas Potensi Desa Tahun 2025)</FormLabel>
+                        <FormLabel>Nama Kegiatan (cth: Honor Pendataan Petugas Potensi Desa Tahun 2025)</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan nama kegiatan" />
                         </FormControl>
