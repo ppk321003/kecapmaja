@@ -198,16 +198,8 @@ const DownloadDokumen = () => {
       header: "Detil",
       isSortable: true
     }, {
-      key: "Tanggal Mulai",
-      header: "Tanggal Mulai",
-      isSortable: true
-    }, {
-      key: "Tanggal Selesai",
-      header: "Tanggal Selesai",
-      isSortable: true
-    }, {
-      key: "Tanggal (SPJ)",
-      header: "Tanggal (SPJ)",
+      key: "Jenis",
+      header: "Jenis",
       isSortable: true
     }, {
       key: "Nama Pembuat Daftar",
