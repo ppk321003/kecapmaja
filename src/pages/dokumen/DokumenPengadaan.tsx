@@ -107,7 +107,7 @@ const DokumenPengadaan = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="kodeKegiatan">Kode Kegiatan (cth: 054.01.GG.2910.QMA.010.051.A.524114)</Label>
+                    <Label htmlFor="kodeKegiatan">Kode Kegiatan (cth: 054.01.GG.2910.QMA.010.051.A.524114)</Label>
                     <Input id="kodeKegiatan" value={formValues.kodeKegiatan} onChange={e => handleChange("kodeKegiatan", e.target.value)} placeholder="Masukkan kode kegiatan" />
                   </div>
                   
@@ -279,7 +279,8 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS (cth:001/PPK/3210/PL.300/SSN03/01/2025)
+                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS
+                      <br />(cth:001/PPK/3210/PL.300/SSN03/01/2025)
                     </Label>
                     <Input id="nomorKertasKerjaHPS" value={formValues.nomorKertasKerjaHPS} onChange={e => handleChange("nomorKertasKerjaHPS", e.target.value)} placeholder="Masukkan nomor kertas kerja" />
                   </div>
