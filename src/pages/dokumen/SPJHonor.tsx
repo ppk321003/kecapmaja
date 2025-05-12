@@ -237,7 +237,7 @@ const SPJHonor = () => {
   return <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">SPJ Honor dan Daftar Hadir</h1>
+          <h1 className="text-2xl font-bold text-orange-700">SPJ Honor dan Daftar Hadir</h1>
           <p className="text-sm text-muted-foreground">Formulir Surat Pertanggungjawaban Honor Kegiatan dan Daftar Hadir</p>
         </div>
 
