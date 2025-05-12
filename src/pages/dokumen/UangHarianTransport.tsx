@@ -75,8 +75,10 @@ const UangHarianTransport = () => {
   const { data: akuns = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
-  const { data: jenisList = [] } = useJenis();
-
+  const jenisList = [
+    { id: "Fullboard", name: "Fullboard" },
+    { id: "Fullday", name: "Fullday" },
+  ];
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
   const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
