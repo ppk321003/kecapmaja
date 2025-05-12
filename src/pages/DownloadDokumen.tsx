@@ -116,12 +116,12 @@ const DownloadDokumen = () => {
       header: "Nama Kegiatan",
       isSortable: true
     }, {
-      key: "Detil",
-      header: "Detil",
-      isSortable: true
-    }, {
       key: "Jenis",
       header: "Jenis",
+      isSortable: true
+    }, {
+      key: "Detil",
+      header: "Detil",
       isSortable: true
     }, {
       key: "Pembuat Daftar",
