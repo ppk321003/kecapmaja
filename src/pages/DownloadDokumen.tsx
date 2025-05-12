@@ -25,7 +25,7 @@ const DownloadDokumen = () => {
   // Data for each table with sheet IDs
   const documents = [{
     id: "kerangka-acuan-kerja",
-    title: "Rekap Kerangka Acuan Kerja",
+    title: "Kerangka Acuan Kerja",
     sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
     sheetName: "Sheet1",
     columns: [{
@@ -61,7 +61,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "daftar-hadir",
-    title: "Rekap Daftar Hadir",
+    title: "Daftar Hadir",
     sheetId: "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
     sheetName: "Sheet1",
     columns: [{
@@ -104,7 +104,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "spj-honor",
-    title: "Rekap SPJ Honor",
+    title: "SPJ Honor",
     sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
     sheetName: "Sheet1",
     columns: [{
@@ -143,7 +143,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "transport-lokal",
-    title: "Rekap Transport Lokal",
+    title: "Transport Lokal",
     sheetId: "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
     sheetName: "Sheet1",
     columns: [{
@@ -182,7 +182,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "uang-harian-transport",
-    title: "Rekap Uang Harian dan Transport Lokal",
+    title: "Uang Harian dan Transport Lokal",
     sheetId: "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys",
     sheetName: "Sheet1",
     columns: [{
@@ -229,7 +229,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "kuitansi-perjalanan-dinas",
-    title: "Rekap Kuitansi Perjalanan Dinas",
+    title: "Kuitansi Perjalanan Dinas",
     sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
     sheetName: "Sheet1",
     columns: [{
@@ -268,7 +268,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "dokumen-pengadaan",
-    title: "Rekap Dokumen Pengadaan",
+    title: "Dokumen Pengadaan",
     sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
     sheetName: "Sheet1",
     columns: [{
@@ -303,7 +303,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "tanda-terima",
-    title: "Rekap Tanda Terima",
+    title: "Tanda Terima",
     sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
     sheetName: "Sheet1",
     columns: [{
