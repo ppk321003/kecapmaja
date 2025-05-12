@@ -279,7 +279,9 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS (cth: 001/PPK/3210/PL.300/SSN03/01/2025) </Label>
+                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS
+                      <br />(cth:001/PPK/3210/PL.300/SSN03/01/2025)
+                    </Label>
                     <Input id="nomorKertasKerjaHPS" value={formValues.nomorKertasKerjaHPS} onChange={e => handleChange("nomorKertasKerjaHPS", e.target.value)} placeholder="Masukkan nomor kertas kerja" />
                   </div>
 
@@ -289,12 +291,12 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorSuratPermintaanPembayaran">Nomor Surat Permohonan Pembayaran (Penyedia)</Label>
+                    <Label htmlFor="nomorSuratPermintaanPembayaran">Nomor Surat Permohonan Pembayaran (Penyedia)</Label>
                     <Input id="nomorSuratPermintaanPembayaran" value={formValues.nomorSuratPermintaanPembayaran} onChange={e => handleChange("nomorSuratPermintaanPembayaran", e.target.value)} placeholder="Masukkan nomor surat" />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorInvoice">Nomor Invoice Pembayaran (Penyedia)</Label>
+                    <Label htmlFor="nomorInvoice">Nomor Invoice Pembayaran (Penyedia)</Label>
                     <Input id="nomorInvoice" value={formValues.nomorInvoice} onChange={e => handleChange("nomorInvoice", e.target.value)} placeholder="Masukkan nomor invoice" />
                   </div>
                 </div>
