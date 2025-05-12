@@ -111,9 +111,6 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
   });
   row.push(organikNames.join(" | ")); // Organik BPS
 
-  // Add NIP BPS (empty for now, would need to fetch from database)
-  row.push(""); // NIP BPS
-
   // Format Mitra Statistik dengan tanda "" dan dipisahkan oleh |
   const mitraIds = data.mitraStatistik || [];
   const mitraNames = mitraIds.map((id: string) => {
@@ -121,9 +118,6 @@ function formatTandaTerimaData(documentId: string, data: any): any[] {
     return `"${name}"`;
   });
   row.push(mitraNames.join(" | ")); // Mitra Statistik
-
-  // Add NIK Mitra Statistik (empty for now, would need to fetch from database)
-  row.push(""); // NIK Mitra Statistik
 
   // Add items (up to 15)
   const items = data.daftarItem || [];
