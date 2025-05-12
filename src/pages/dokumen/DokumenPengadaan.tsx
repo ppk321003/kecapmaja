@@ -352,7 +352,7 @@ const DokumenPengadaan = () => {
 
             {/* Submit Buttons */}
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-800 hover:bg-teal-700">
                 {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
               </Button>
               <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/buat-dokumen")}>
