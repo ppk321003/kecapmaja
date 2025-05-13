@@ -56,7 +56,7 @@ const defaultValues: FormValues = {
   pembuatDaftar: ""
 };
 
-const trainingCenterOptions = ["Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
+const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka","Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
 
 const DaftarHadir = () => {
   const navigate = useNavigate();
@@ -400,14 +400,14 @@ const DaftarHadir = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="trainingCenter">Training Center</Label>
+                  <Label htmlFor="trainingCenter">Tempat Kegiatan</Label>
                   <Controller
                     name="trainingCenter"
                     control={control}
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih training center" />
+                          <SelectValue placeholder="Pilih tempat kegiatan" />
                         </SelectTrigger>
                         <SelectContent>
                           {trainingCenterOptions.map(option => (
@@ -480,7 +480,7 @@ const DaftarHadir = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal (SPJ)</Label>
+                  <Label>Tanggal membuat daftar</Label>
                   <Controller
                     name="tanggalSpj"
                     control={control}
