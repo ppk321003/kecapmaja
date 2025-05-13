@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { useForm, Controller } from "react-hook-form";
-import { toast } from "@/hooks/use-toast";
-import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { FormSelect } from "@/components/FormSelect";
+import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
-
 interface FormValues {
   namaKegiatan: string;
   detil: string;
@@ -26,11 +26,28 @@ interface FormValues {
   ro: string;
   komponen: string;
   akun: string;
-  tanggalPelaksanaan: string;
-  organikBPS: string[];
-  mitraStatistik: string[];
+  tanggalMulai: Date | null;
+  tanggalSelesai: Date | null;
+  organik: string[];
+  mitra: string[];
   pembuatDaftar: string;
 }
+const defaultValues: FormValues = {
+  namaKegiatan: "",
+  detil: "",
+  jenis: "",
+  program: "",
+  kegiatan: "",
+  kro: "",
+  ro: "",
+  komponen: "",
+  akun: "",
+  tanggalMulai: null,
+  tanggalSelesai: null,
+  organik: [],
+  mitra: [],
+  pembuatDaftar: ""
+};
 
 // Dummy data
 const jenisOptions = ["Pertemuan", "Pelatihan", "Rapat", "Sosialisasi"];
@@ -65,132 +82,106 @@ const roOptions = {
 const komponenOptions = {
   "RO 1-A1-1": ["Komponen 1-A1-1-1", "Komponen 1-A1-1-2"],
   "RO 1-A1-2": ["Komponen 1-A1-2-1", "Komponen 1-A1-2-2"]
+  // ... continued for each RO
 };
 const akunOptions = ["Bahan", "Honor", "Modal", "Paket Meeting", "Perjalanan Dinas"];
-
 const DaftarHadir = () => {
   const navigate = useNavigate();
+  const [formValues, setFormValues] = useState<FormValues>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Get data from hooks
-  const { data: organikBPSList = [] } = useOrganikBPS();
-  const { data: mitraStatistikList = [] } = useMitraStatistik();
+  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
+  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const {
+    data: organikList = []
+  } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
+  const saveDocument = useSaveDocument();
 
   // Google Sheets submission hook
   const submitToSheets = useSubmitToSheets({
     documentType: "DaftarHadir",
-    sheetUrl: "https://docs.google.com/spreadsheets/d/11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0/edit?gid=0#gid=0",
     onSuccess: () => {
+      // Navigate after successful submission
       navigate("/buat-dokumen");
-    },
-    skipSaveToSupabase: true
-  });
-
-  // Define react-hook-form
-  const {
-    control,
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-    setValue,
-    resetField
-  } = useForm<FormValues>({
-    defaultValues: {
-      namaKegiatan: "",
-      detil: "",
-      jenis: "",
-      program: "",
-      kegiatan: "",
-      kro: "",
-      ro: "",
-      komponen: "",
-      akun: "",
-      tanggalPelaksanaan: "",
-      organikBPS: [],
-      mitraStatistik: [],
-      pembuatDaftar: ""
     }
   });
 
-  // Watch for program changes to reset dependent fields
-  const selectedProgram = watch("program");
-  const selectedKegiatan = watch("kegiatan");
-  const selectedKro = watch("kro");
-  const selectedRo = watch("ro");
+  // Conditional options based on selections
+  const filteredKegiatanOptions = formValues.program ? kegiatanOptions[formValues.program as keyof typeof kegiatanOptions] || [] : [];
+  const filteredKroOptions = formValues.kegiatan ? kroOptions[formValues.kegiatan as keyof typeof kroOptions] || [] : [];
+  const filteredRoOptions = formValues.kro ? roOptions[formValues.kro as keyof typeof roOptions] || [] : [];
+  const filteredKomponenOptions = formValues.ro ? komponenOptions[formValues.ro as keyof typeof komponenOptions] || [] : ["Komponen 1", "Komponen 2"]; // Fallback
 
-  // Reset dependent fields when program changes
-  useEffect(() => {
-    if (selectedProgram) {
-      resetField("kegiatan");
-      resetField("kro");
-      resetField("ro");
-      resetField("komponen");
-    }
-  }, [selectedProgram, resetField]);
-
-  // Reset dependent fields when kegiatan changes
-  useEffect(() => {
-    if (selectedKegiatan) {
-      resetField("kro");
-      resetField("ro");
-      resetField("komponen");
-    }
-  }, [selectedKegiatan, resetField]);
-
-  // Reset dependent fields when kro changes
-  useEffect(() => {
-    if (selectedKro) {
-      resetField("ro");
-      resetField("komponen");
-    }
-  }, [selectedKro, resetField]);
-
-  // Reset dependent fields when ro changes
-  useEffect(() => {
-    if (selectedRo) {
-      resetField("komponen");
-    }
-  }, [selectedRo, resetField]);
-
-  const onSubmit = async (data: FormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Get names for all selected organik BPS
-      const organikNames = data.organikBPS.map(id => {
-        const organik = organikBPSList.find(item => item.id === id);
-        return organik?.name || "";
-      }).filter(name => name !== "");
-
-      // Get names for all selected mitra statistik
-      const mitraNames = data.mitraStatistik.map(id => {
-        const mitra = mitraStatistikList.find(item => item.id === id);
-        return mitra?.name || "";
-      }).filter(name => name !== "");
-
-      // Get pembuat daftar name
-      const pembuatDaftar = organikBPSList.find(item => item.id === data.pembuatDaftar)?.name || "";
-
-      // Prepare data for submission
-      const submissionData = {
-        id: `dh-${Date.now()}`,
-        namaKegiatan: data.namaKegiatan,
-        detil: data.detil,
-        jenis: data.jenis,
-        program: data.program,
-        kegiatan: data.kegiatan,
-        kro: data.kro,
-        ro: data.ro,
-        komponen: data.komponen,
-        akun: data.akun,
-        tanggalPelaksanaan: data.tanggalPelaksanaan ? format(new Date(data.tanggalPelaksanaan), "dd MMMM yyyy") : "",
-        organikBPS: organikNames.join(", "),
-        mitraStatistik: mitraNames.join(", "),
-        pembuatDaftar: pembuatDaftar
+  const handleChange = (field: keyof FormValues, value: any) => {
+    setFormValues(prev => {
+      const newValues = {
+        ...prev,
+        [field]: value
       };
 
-      // Save to Google Sheets only
-      await submitToSheets.mutateAsync(submissionData);
+      // Reset dependent fields
+      if (field === 'program') {
+        newValues.kegiatan = '';
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'kegiatan') {
+        newValues.kro = '';
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'kro') {
+        newValues.ro = '';
+        newValues.komponen = '';
+      } else if (field === 'ro') {
+        newValues.komponen = '';
+      }
+      return newValues;
+    });
+  };
+  const handleOrganikChange = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedOrganik([...selectedOrganik, id]);
+    } else {
+      setSelectedOrganik(selectedOrganik.filter(item => item !== id));
+    }
+  };
+  const handleMitraChange = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedMitra([...selectedMitra, id]);
+    } else {
+      setSelectedMitra(selectedMitra.filter(item => item !== id));
+    }
+  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // Combine form values with selected staff
+      const submitData = {
+        ...formValues,
+        organik: selectedOrganik,
+        mitra: selectedMitra
+      };
+      console.log('Form submitted:', submitData);
+
+      // First, save to Google Sheets
+      await submitToSheets.mutateAsync(submitData);
+
+      // Then, save to Supabase
+      await saveDocument.mutateAsync({
+        jenisId: "6dfd154e-827b-41ad-988c-5c6c78a9b262",
+        // Make sure this is a valid UUID in your jenis table
+        title: `Daftar Hadir - ${submitData.namaKegiatan}`,
+        data: submitData
+      });
+      toast({
+        title: "Dokumen berhasil dibuat",
+        description: "Daftar hadir telah tersimpan"
+      });
+
+      // No need to navigate here as it's handled in the onSuccess of submitToSheets
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -202,22 +193,37 @@ const DaftarHadir = () => {
     }
   };
 
-  // Get filtered options based on selections
-  const filteredKegiatanOptions = selectedProgram 
-    ? kegiatanOptions[selectedProgram as keyof typeof kegiatanOptions] || [] 
-    : [];
-  const filteredKroOptions = selectedKegiatan 
-    ? kroOptions[selectedKegiatan as keyof typeof kroOptions] || [] 
-    : [];
-  const filteredRoOptions = selectedKro 
-    ? roOptions[selectedKro as keyof typeof roOptions] || [] 
-    : [];
-  const filteredKomponenOptions = selectedRo 
-    ? komponenOptions[selectedRo as keyof typeof komponenOptions] || ["Komponen 1", "Komponen 2"] 
-    : ["Komponen 1", "Komponen 2"];
+  // Generate data for the recap table
+  const generateRecapData = () => {
+    const recapData = [];
 
-  return (
-    <Layout>
+    // Add selected organik
+    for (const id of selectedOrganik) {
+      const organik = organikList.find(org => org.id === id);
+      if (organik) {
+        recapData.push({
+          nama: organik.name,
+          kecamatan: "Majalengka",
+          // Default for Organik BPS
+          jabatan: "Organik BPS"
+        });
+      }
+    }
+
+    // Add selected mitra
+    for (const id of selectedMitra) {
+      const mitra = mitraList.find(m => m.id === id);
+      if (mitra) {
+        recapData.push({
+          nama: mitra.name,
+          kecamatan: mitra.kecamatan || "-",
+          jabatan: "Mitra Statistik"
+        });
+      }
+    }
+    return recapData;
+  };
+  return <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Daftar Hadir</h1>
@@ -228,287 +234,218 @@ const DaftarHadir = () => {
 
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="namaKegiatan">Nama Kegiatan</Label>
-                  <Input 
-                    id="namaKegiatan" 
-                    placeholder="Masukkan nama kegiatan" 
-                    {...register("namaKegiatan", {
-                      required: "Nama kegiatan harus diisi"
-                    })} 
-                  />
-                  {errors.namaKegiatan && (
-                    <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>
-                  )}
+                  <Input id="namaKegiatan" placeholder="Masukkan nama kegiatan" value={formValues.namaKegiatan} onChange={e => handleChange('namaKegiatan', e.target.value)} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="detil">Detil Kegiatan</Label>
-                  <Input 
-                    id="detil" 
-                    placeholder="Masukkan detil kegiatan" 
-                    {...register("detil")} 
-                  />
+                  <Label htmlFor="detil">Detil</Label>
+                  <Input id="detil" placeholder="Masukkan detil kegiatan" value={formValues.detil} onChange={e => handleChange('detil', e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="jenis">Jenis Kegiatan</Label>
-                  <Controller
-                    control={control}
-                    name="jenis"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih jenis kegiatan"
-                        options={jenisOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
+                  <Label htmlFor="jenis">Jenis</Label>
+                  <Select value={formValues.jenis} onValueChange={value => handleChange('jenis', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih jenis kegiatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jenisOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="program">Program</Label>
-                  <Controller
-                    control={control}
-                    name="program"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih program"
-                        options={programOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.program} onValueChange={value => handleChange('program', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {programOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kegiatan">Kegiatan</Label>
-                  <Controller
-                    control={control}
-                    name="kegiatan"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih kegiatan"
-                        options={filteredKegiatanOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isDisabled={!selectedProgram}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.kegiatan} onValueChange={value => handleChange('kegiatan', value)} disabled={!formValues.program}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kegiatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredKegiatanOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kro">KRO</Label>
-                  <Controller
-                    control={control}
-                    name="kro"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih KRO"
-                        options={filteredKroOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isDisabled={!selectedKegiatan}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.kro} onValueChange={value => handleChange('kro', value)} disabled={!formValues.kegiatan}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih KRO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredKroOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="ro">RO</Label>
-                  <Controller
-                    control={control}
-                    name="ro"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih RO"
-                        options={filteredRoOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isDisabled={!selectedKro}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.ro} onValueChange={value => handleChange('ro', value)} disabled={!formValues.kro}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih RO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredRoOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="komponen">Komponen</Label>
-                  <Controller
-                    control={control}
-                    name="komponen"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih komponen"
-                        options={filteredKomponenOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isDisabled={!selectedRo}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.komponen} onValueChange={value => handleChange('komponen', value)} disabled={!formValues.ro}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih komponen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredKomponenOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
-                  <Controller
-                    control={control}
-                    name="akun"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih akun"
-                        options={akunOptions.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
+                  <Select value={formValues.akun} onValueChange={value => handleChange('akun', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih akun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {akunOptions.map(option => <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal Pelaksanaan</Label>
-                  <Controller
-                    control={control}
-                    name="tanggalPelaksanaan"
-                    rules={{ required: "Tanggal pelaksanaan harus diisi" }}
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(new Date(field.value), "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) =>
-                              field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  />
-                  {errors.tanggalPelaksanaan && (
-                    <p className="text-sm text-destructive">{errors.tanggalPelaksanaan.message}</p>
-                  )}
+                  <Label>Tanggal Mulai</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalMulai && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalMulai ? format(formValues.tanggalMulai, "PPP") : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formValues.tanggalMulai || undefined} onSelect={date => handleChange('tanggalMulai', date)} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tanggal Selesai</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalSelesai && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formValues.tanggalSelesai ? format(formValues.tanggalSelesai, "PPP") : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formValues.tanggalSelesai || undefined} onSelect={date => handleChange('tanggalSelesai', date)} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Controller
-                    control={control}
-                    name="pembuatDaftar"
-                    rules={{ required: "Pembuat daftar harus dipilih" }}
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih pembuat daftar"
-                        options={organikBPSList.map(item => ({
-                          value: item.id,
-                          label: item.name
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                  {errors.pembuatDaftar && (
-                    <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>
-                  )}
+                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih pembuat daftar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
+                          {organik.name}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Recap Table - Added as requested */}
+              <div className="space-y-4 pt-4">
+                <h3 className="text-lg font-medium">Rekap Daftar Hadir</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Kecamatan</TableHead>
+                      <TableHead>Jabatan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {generateRecapData().map((item, index) => <TableRow key={index}>
+                        <TableCell>{item.nama}</TableCell>
+                        <TableCell>{item.kecamatan}</TableCell>
+                        <TableCell>{item.jabatan}</TableCell>
+                      </TableRow>)}
+                    {generateRecapData().length === 0 && <TableRow>
+                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                          Belum ada peserta yang dipilih
+                        </TableCell>
+                      </TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="space-y-6 pt-4">
+                <div className="space-y-2">
+                  <Label>Organik BPS</Label>
+                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {organikList.map(staff => <div key={staff.id} className="flex items-center space-x-2">
+                        <Checkbox id={`organik-${staff.id}`} checked={selectedOrganik.includes(staff.id)} onCheckedChange={checked => handleOrganikChange(staff.id, checked === true)} className="text-teal-700" />
+                        <Label htmlFor={`organik-${staff.id}`} className="text-sm">
+                          {staff.name} {/* Show only name without NIP */}
+                        </Label>
+                      </div>)}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="organikBPS">Organik BPS</Label>
-                  <Controller
-                    control={control}
-                    name="organikBPS"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih organik BPS"
-                        options={organikBPSList.map(item => ({
-                          value: item.id,
-                          label: item.name
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isMulti
-                      />
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mitraStatistik">Mitra Statistik</Label>
-                  <Controller
-                    control={control}
-                    name="mitraStatistik"
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih mitra statistik"
-                        options={mitraStatistikList.map(item => ({
-                          value: item.id,
-                          label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isMulti
-                      />
-                    )}
-                  />
+                  <Label>Mitra Statistik</Label>
+                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                    {mitraList.map(mitra => <div key={mitra.id} className="flex items-center space-x-2">
+                        <Checkbox id={`mitra-${mitra.id}`} checked={selectedMitra.includes(mitra.id)} onCheckedChange={checked => handleMitraChange(mitra.id, checked === true)} />
+                        <Label htmlFor={`mitra-${mitra.id}`} className="text-sm">
+                          {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
+                        </Label>
+                      </div>)}
+                  </div>
                 </div>
               </div>
 
               <div className="flex space-x-4">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting} 
-                  className="flex-1 bg-teal-700 hover:bg-teal-600"
-                >
+                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
                   {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate("/buat-dokumen")}
-                >
+                <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
                   Batal
                 </Button>
               </div>
@@ -516,8 +453,6 @@ const DaftarHadir = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default DaftarHadir;
