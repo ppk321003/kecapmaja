@@ -17,6 +17,8 @@ import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrgan
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { FormSelect } from "@/components/FormSelect";
+const SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0";
+const SHEET_NAME      = "DaftarHadir"; // <-- must exactly match the tab name in your spreadsheet
 
 interface FormValues {
   namaKegiatan: string;
