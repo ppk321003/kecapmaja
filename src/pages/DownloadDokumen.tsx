@@ -339,7 +339,7 @@ const DownloadDokumen = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Download Dokumen</h1>
+          <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
           <p className="text-muted-foreground">
             Lihat dan download dokumen yang tersedia dalam format tabel.
           </p>
