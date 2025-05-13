@@ -529,47 +529,53 @@ const UangHarianTransport = () => {
               </div>
 
               <div className="space-y-6 pt-4">
-                <div className="space-y-2">
-                  <Label>Organik BPS</Label>
-                  <Controller
-                    name="organik"
-                    control={control}
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih organik BPS"
-                        options={organikList.map(item => ({
-                          value: item.id,
-                          label: item.name
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isMulti
-                      />
-                    )}
-                  />
-                </div>
+                {/* Organik BPS dan Mitra Statistik dalam 1 baris */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Organik BPS</Label>
+                    <Controller
+                      name="organik"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="w-full">
+                          <FormSelect
+                            placeholder="Pilih organik BPS"
+                            options={organikList.map(item => ({
+                              value: item.id,
+                              label: item.name
+                            }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            isMulti
+                          />
+                        </div>
+                      )}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Mitra Statistik</Label>
-                  <Controller
-                    name="mitra"
-                    control={control}
-                    render={({ field }) => (
-                      <FormSelect
-                        placeholder="Pilih mitra statistik"
-                        options={mitraList.map(item => ({
-                          value: item.id,
-                          label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
-                        }))}
-                        value={field.value}
-                        onChange={field.onChange}
-                        isMulti
-                      />
-                    )}
-                  />
+                  <div className="space-y-2">
+                    <Label>Mitra Statistik</Label>
+                    <Controller
+                      name="mitra"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="w-full">
+                          <FormSelect
+                            placeholder="Pilih mitra statistik"
+                            options={mitraList.map(item => ({
+                              value: item.id,
+                              label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
+                            }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            isMulti
+                          />
+                        </div>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
-
               <div className="flex space-x-4">
                 <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
                   {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
