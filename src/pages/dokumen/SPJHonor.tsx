@@ -466,7 +466,7 @@ const SPJHonor = () => {
                 {honorOrganik.map((honor, index) => (
                   <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Staf {index + 1}</h3>
+                      <h3 className="font-medium">Organik BPS -{index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("organik", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -476,7 +476,7 @@ const SPJHonor = () => {
                         <Label>Nama</Label>
                         <Select value={honor.personId} onValueChange={value => updateHonorDetail("organik", index, "personId", value)}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Pilih staf" />
+                            <SelectValue placeholder="Pilih Organik BPS" />
                           </SelectTrigger>
                           <SelectContent>
                             {organikList.map(organik => (
@@ -545,7 +545,7 @@ const SPJHonor = () => {
                 {honorMitra.map((honor, index) => (
                   <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Mitra {index + 1}</h3>
+                      <h3 className="font-medium">Mitra Statistik -{index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
