@@ -88,7 +88,7 @@ const DokumenPengadaan = () => {
   return <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-orange-700">Dokumen Pengadaan</h1>
+          <h1 className="text-2xl font-bold text-orange-600">Dokumen Pengadaan</h1>
           <p className="text-sm text-muted-foreground">
             Formulir Dokumen Pengadaan Barang dan Jasa
           </p>

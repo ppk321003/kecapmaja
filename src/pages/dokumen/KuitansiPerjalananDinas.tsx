@@ -185,7 +185,7 @@ const KuitansiPerjalananDinas = () => {
   return <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-orange-700">Kuitansi Perjalanan Dinas</h1>
+          <h1 className="text-2xl font-bold text-orange-600">Kuitansi Perjalanan Dinas</h1>
           <p className="text-sm text-muted-foreground">
             Formulir Kuitansi Perjalanan Dinas
           </p>
