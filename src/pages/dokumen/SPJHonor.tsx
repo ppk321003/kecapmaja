@@ -488,7 +488,7 @@ const SPJHonor = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Honor per Orang (Rp)</Label>
+                        <Label>Harga Satuan (Rp)</Label>
                         <Input 
                           type="number" 
                           value={honor.honorPerOrang} 
@@ -567,7 +567,7 @@ const SPJHonor = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Honor per Orang (Rp)</Label>
+                        <Label>Harga Satuan (Rp)</Label>
                         <Input 
                           type="number" 
                           value={honor.honorPerOrang} 
