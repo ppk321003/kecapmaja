@@ -26,8 +26,7 @@ interface FormValues {
   ro: string;
   komponen: string;
   akun: string;
-  tanggalMulai: string;
-  tanggalSelesai: string;
+  tanggalPelaksanaan: string;
   organikBPS: string[];
   mitraStatistik: string[];
   pembuatDaftar: string;
@@ -107,8 +106,7 @@ const DaftarHadir = () => {
       ro: "",
       komponen: "",
       akun: "",
-      tanggalMulai: "",
-      tanggalSelesai: "",
+      tanggalPelaksanaan: "",
       organikBPS: [],
       mitraStatistik: [],
       pembuatDaftar: ""
@@ -155,93 +153,54 @@ const DaftarHadir = () => {
     }
   }, [selectedRo, resetField]);
 
-  // For name mapping
-  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
-  const [organikNameMap, setOrganikNameMap] = useState<Record<string, string>>({});
-  const [mitraNameMap, setMitraNameMap] = useState<Record<string, string>>({});
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Get names for all selected organik BPS
+      const organikNames = data.organikBPS.map(id => {
+        const organik = organikBPSList.find(item => item.id === id);
+        return organik?.name || "";
+      }).filter(name => name !== "");
 
-  // Effect to update name mappings when selections change
-  useEffect(() => {
-    // Update pembuat daftar name
-    const pembuatId = watch('pembuatDaftar');
-    if (pembuatId) {
-      const pembuat = organikBPSList.find(item => item.id === pembuatId);
-      setPembuatDaftarName(pembuat?.name || "");
+      // Get names for all selected mitra statistik
+      const mitraNames = data.mitraStatistik.map(id => {
+        const mitra = mitraStatistikList.find(item => item.id === id);
+        return mitra?.name || "";
+      }).filter(name => name !== "");
+
+      // Get pembuat daftar name
+      const pembuatDaftar = organikBPSList.find(item => item.id === data.pembuatDaftar)?.name || "";
+
+      // Prepare data for submission
+      const submissionData = {
+        id: `dh-${Date.now()}`,
+        namaKegiatan: data.namaKegiatan,
+        detil: data.detil,
+        jenis: data.jenis,
+        program: data.program,
+        kegiatan: data.kegiatan,
+        kro: data.kro,
+        ro: data.ro,
+        komponen: data.komponen,
+        akun: data.akun,
+        tanggalPelaksanaan: data.tanggalPelaksanaan ? format(new Date(data.tanggalPelaksanaan), "dd MMMM yyyy") : "",
+        organikBPS: organikNames.join(", "),
+        mitraStatistik: mitraNames.join(", "),
+        pembuatDaftar: pembuatDaftar
+      };
+
+      // Save to Google Sheets only
+      await submitToSheets.mutateAsync(submissionData);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan dokumen",
+        description: "Terjadi kesalahan saat menyimpan data"
+      });
+      setIsSubmitting(false);
     }
-
-    // Update organik name mapping
-    const organikIds = watch('organikBPS') || [];
-    const newOrganikNameMap: Record<string, string> = {};
-    organikIds.forEach(id => {
-      const organik = organikBPSList.find(item => item.id === id);
-      if (organik) {
-        newOrganikNameMap[id] = organik.name;
-      }
-    });
-    setOrganikNameMap(newOrganikNameMap);
-
-    // Update mitra name mapping
-    const mitraIds = watch('mitraStatistik') || [];
-    const newMitraNameMap: Record<string, string> = {};
-    mitraIds.forEach(id => {
-      const mitra = mitraStatistikList.find(item => item.id === id);
-      if (mitra) {
-        newMitraNameMap[id] = mitra.name;
-      }
-    });
-    setMitraNameMap(newMitraNameMap);
-  }, [watch('pembuatDaftar'), watch('organikBPS'), watch('mitraStatistik'), organikBPSList, mitraStatistikList]);
-
-const onSubmit = async (data: FormValues) => {
-  setIsSubmitting(true);
-  try {
-    // Format organik names with quotes and pipe separator
-    const formattedOrganikNames = data.organikBPS && data.organikBPS.length > 0 
-      ? data.organikBPS
-        .map(id => `"${organikNameMap[id]}"`)
-        .join(" | ")
-      : ""; // Return empty string if no organik selected
-    
-    // Format mitra names with quotes and pipe separator
-    const formattedMitraNames = data.mitraStatistik && data.mitraStatistik.length > 0
-      ? data.mitraStatistik
-        .map(id => `"${mitraNameMap[id]}"`)
-        .join(" | ")
-      : ""; // Return empty string if no mitra selected
-
-    // Prepare data for submission
-    const submissionData = {
-      ...data,
-      organikBPS: formattedOrganikNames,
-      mitraStatistik: formattedMitraNames,
-      pembuatDaftar: `"${pembuatDaftarName}"`, // Format pembuatDaftar name
-      // Explicitly map all fields to ensure correct order
-      id: `dh-${Date.now()}`,
-      namaKegiatan: data.namaKegiatan,
-      detil: data.detil,
-      jenis: data.jenis,
-      program: data.program,
-      kegiatan: data.kegiatan,
-      kro: data.kro,
-      ro: data.ro,
-      komponen: data.komponen,
-      akun: data.akun,
-      tanggalMulai: data.tanggalMulai ? format(new Date(data.tanggalMulai), "dd MMMM yyyy") : "",
-      tanggalSelesai: data.tanggalSelesai ? format(new Date(data.tanggalSelesai), "dd MMMM yyyy") : "",
-    };
-
-    // Save to Google Sheets only
-    await submitToSheets.mutateAsync(submissionData);
-  } catch (error) {
-    console.error("Error submitting form:", error);
-    toast({
-      variant: "destructive",
-      title: "Gagal menyimpan dokumen",
-      description: "Terjadi kesalahan saat menyimpan data"
-    });
-    setIsSubmitting(false);
-  }
-};
+  };
 
   // Get filtered options based on selections
   const filteredKegiatanOptions = selectedProgram 
@@ -432,10 +391,11 @@ const onSubmit = async (data: FormValues) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal Mulai</Label>
+                  <Label>Tanggal Pelaksanaan</Label>
                   <Controller
                     control={control}
-                    name="tanggalMulai"
+                    name="tanggalPelaksanaan"
+                    rules={{ required: "Tanggal pelaksanaan harus diisi" }}
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
@@ -467,44 +427,9 @@ const onSubmit = async (data: FormValues) => {
                       </Popover>
                     )}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tanggal Selesai</Label>
-                  <Controller
-                    control={control}
-                    name="tanggalSelesai"
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(new Date(field.value), "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value ? new Date(field.value) : undefined}
-                            onSelect={(date) =>
-                              field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  />
+                  {errors.tanggalPelaksanaan && (
+                    <p className="text-sm text-destructive">{errors.tanggalPelaksanaan.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
