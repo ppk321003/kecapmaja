@@ -11,11 +11,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { FormSelect } from "@/components/FormSelect";
+
 interface FormValues {
   namaKegiatan: string;
   detil: string;
@@ -34,6 +36,7 @@ interface FormValues {
   mitra: string[];
   pembuatDaftar: string;
 }
+
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -52,47 +55,39 @@ const defaultValues: FormValues = {
   mitra: [],
   pembuatDaftar: ""
 };
+
 const trainingCenterOptions = ["Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
+
 const UangHarianTransport = () => {
   const navigate = useNavigate();
-  const [formValues, setFormValues] = useState<FormValues>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  
+  // Use react-hook-form
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues
+  });
 
   // Data queries
-  const {
-    data: programs = []
-  } = usePrograms();
-  const {
-    data: kegiatan = []
-  } = useKegiatan(formValues.program || null);
-  const {
-    data: kros = []
-  } = useKRO(formValues.kegiatan || null);
-  const {
-    data: ros = []
-  } = useRO(formValues.kro || null);
-  // Fix: Call useKomponen without arguments
-  const {
-    data: komponenOptions = []
-  } = useKomponen();
-  const {
-    data: akuns = []
-  } = useAkun();
-  const {
-    data: organikList = []
-  } = useOrganikBPS();
-  const {
-    data: mitraList = []
-  } = useMitraStatistik();
-  const jenisList = [{
-    id: "Fullboard",
-    name: "Fullboard"
-  }, {
-    id: "Fullday",
-    name: "Fullday"
-  }];
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatan = [] } = useKegiatan(watch('program') || null);
+  const { data: kros = [] } = useKRO(watch('kegiatan') || null);
+  const { data: ros = [] } = useRO(watch('kro') || null);
+  const { data: komponenOptions = [] } = useKomponen();
+  const { data: akuns = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
+  
+  const jenisList = [
+    { id: "Fullboard", name: "Fullboard" },
+    { id: "Fullday", name: "Fullday" }
+  ];
+
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
   const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
@@ -103,56 +98,57 @@ const UangHarianTransport = () => {
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
   const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+
   const submitMutation = useSubmitToSheets({
     documentType: "UangHarianTransport",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }
   });
-  const handleChange = (field: keyof FormValues, value: any) => {
-    setFormValues(prev => {
-      const newValues = {
-        ...prev,
-        [field]: value
-      };
 
-      // Reset dependent fields
-      if (field === 'program') {
-        newValues.kegiatan = '';
-        newValues.kro = '';
-        newValues.ro = '';
-      } else if (field === 'kegiatan') {
-        newValues.kro = '';
-        newValues.ro = '';
-      } else if (field === 'kro') {
-        newValues.ro = '';
+  // For name mapping
+  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
+  const [organikNameMap, setOrganikNameMap] = useState<Record<string, string>>({});
+  const [mitraNameMap, setMitraNameMap] = useState<Record<string, string>>({});
+
+  // Effect to update name mappings when selections change
+  useEffect(() => {
+    // Update pembuat daftar name
+    const pembuatId = watch('pembuatDaftar');
+    if (pembuatId) {
+      const pembuat = organikList.find(item => item.id === pembuatId);
+      setPembuatDaftarName(pembuat?.name || "");
+    }
+
+    // Update organik name mapping
+    const organikIds = watch('organik') || [];
+    const newOrganikNameMap: Record<string, string> = {};
+    organikIds.forEach(id => {
+      const organik = organikList.find(item => item.id === id);
+      if (organik) {
+        newOrganikNameMap[id] = organik.name;
       }
-      return newValues;
     });
-  };
-  const handleOrganikChange = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedOrganik([...selectedOrganik, id]);
-    } else {
-      setSelectedOrganik(selectedOrganik.filter(item => item !== id));
-    }
-  };
-  const handleMitraChange = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedMitra([...selectedMitra, id]);
-    } else {
-      setSelectedMitra(selectedMitra.filter(item => item !== id));
-    }
-  };
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    setOrganikNameMap(newOrganikNameMap);
+
+    // Update mitra name mapping
+    const mitraIds = watch('mitra') || [];
+    const newMitraNameMap: Record<string, string> = {};
+    mitraIds.forEach(id => {
+      const mitra = mitraList.find(item => item.id === id);
+      if (mitra) {
+        newMitraNameMap[id] = mitra.name;
+      }
+    });
+    setMitraNameMap(newMitraNameMap);
+  }, [watch('pembuatDaftar'), watch('organik'), watch('mitra'), organikList, mitraList]);
+
+  const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
       // Combine form values with selected staff
       const submitData = {
-        ...formValues,
-        organik: selectedOrganik,
-        mitra: selectedMitra,
+        ...data,
         // Add name mappings for proper display in Google Sheets
         _programNameMap: programsMap,
         _kegiatanNameMap: kegiatanMap,
@@ -160,9 +156,9 @@ const UangHarianTransport = () => {
         _roNameMap: roMap,
         _komponenNameMap: komponenMap,
         _akunNameMap: akunMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: pembuatDaftarMap[formValues.pembuatDaftar]
+        _organikNameMap: organikNameMap,
+        _mitraNameMap: mitraNameMap,
+        _pembuatDaftarName: pembuatDaftarName
       };
       console.log('Form submitted:', submitData);
 
@@ -179,7 +175,9 @@ const UangHarianTransport = () => {
       setIsSubmitting(false);
     }
   };
-  return <Layout>
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-800">Uang Harian dan Transport Lokal</h1>
@@ -190,204 +188,385 @@ const UangHarianTransport = () => {
 
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(handleSubmitForm)} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="namaKegiatan">Nama Kegiatan (cth: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025) </Label>
-                  <Input id="namaKegiatan" placeholder="Masukkan nama kegiatan" value={formValues.namaKegiatan} onChange={e => handleChange('namaKegiatan', e.target.value)} required />
+                  <Label htmlFor="namaKegiatan">Nama Kegiatan (cth: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
+                  <Controller
+                    name="namaKegiatan"
+                    control={control}
+                    rules={{ required: "Nama kegiatan harus diisi" }}
+                    render={({ field }) => (
+                      <Input
+                        id="namaKegiatan"
+                        placeholder="Masukkan nama kegiatan"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  {errors.namaKegiatan && <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="detil">Detil (cth: Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
-                  <Input id="detil" placeholder="Masukkan detil kegiatan" value={formValues.detil} onChange={e => handleChange('detil', e.target.value)} />
+                  <Label htmlFor="detil">Detil (cth: Pemutakhiran Perkembangan Desa Tahun 2025)</Label>
+                  <Controller
+                    name="detil"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="detil"
+                        placeholder="Masukkan detil kegiatan"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="jenis">Jenis</Label>
-                  <Select value={formValues.jenis} onValueChange={value => handleChange('jenis', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jenisList.map(jenis => <SelectItem key={jenis.id} value={jenis.id}>
-                          {jenis.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="jenis"
+                    control={control}
+                    rules={{ required: "Jenis harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih jenis" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {jenisList.map(jenis => (
+                            <SelectItem key={jenis.id} value={jenis.id}>
+                              {jenis.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="program">Program</Label>
-                  <Select value={formValues.program} onValueChange={value => handleChange('program', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih program" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {programs.map(program => <SelectItem key={program.id} value={program.id}>
-                          {program.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="program"
+                    control={control}
+                    rules={{ required: "Program harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {programs.map(program => (
+                            <SelectItem key={program.id} value={program.id}>
+                              {program.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kegiatan">Kegiatan</Label>
-                  <Select value={formValues.kegiatan} onValueChange={value => handleChange('kegiatan', value)} disabled={!formValues.program}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih kegiatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kegiatan.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="kegiatan"
+                    control={control}
+                    rules={{ required: "Kegiatan harus dipilih" }}
+                    render={({ field }) => (
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange} 
+                        disabled={!watch('program')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kegiatan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {kegiatan.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kro">KRO</Label>
-                  <Select value={formValues.kro} onValueChange={value => handleChange('kro', value)} disabled={!formValues.kegiatan}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih KRO" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kros.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="kro"
+                    control={control}
+                    rules={{ required: "KRO harus dipilih" }}
+                    render={({ field }) => (
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange} 
+                        disabled={!watch('kegiatan')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih KRO" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {kros.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="ro">RO</Label>
-                  <Select value={formValues.ro} onValueChange={value => handleChange('ro', value)} disabled={!formValues.kro}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih RO" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ros.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="ro"
+                    control={control}
+                    rules={{ required: "RO harus dipilih" }}
+                    render={({ field }) => (
+                      <Select 
+                        value={field.value} 
+                        onValueChange={field.onChange} 
+                        disabled={!watch('kro')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih RO" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ros.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="komponen">Komponen</Label>
-                  <KomponenSelect value={formValues.komponen} onChange={value => handleChange('komponen', value)} placeholder="Pilih komponen" />
+                  <Controller
+                    name="komponen"
+                    control={control}
+                    rules={{ required: "Komponen harus dipilih" }}
+                    render={({ field }) => (
+                      <KomponenSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih komponen" 
+                      />
+                    )}
+                  />
+                  {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
-                  <Select value={formValues.akun} onValueChange={value => handleChange('akun', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih akun" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {akuns.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                          {akun.name} ({akun.code})
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="akun"
+                    control={control}
+                    rules={{ required: "Akun harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih akun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {akuns.map(akun => (
+                            <SelectItem key={akun.id} value={akun.id}>
+                              {akun.name} ({akun.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="trainingCenter">Training Center</Label>
-                  <Select value={formValues.trainingCenter} onValueChange={value => handleChange('trainingCenter', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih training center" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trainingCenterOptions.map(option => <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="trainingCenter"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih training center" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {trainingCenterOptions.map(option => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Tanggal Mulai</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalMulai && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalMulai ? format(formValues.tanggalMulai, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formValues.tanggalMulai || undefined} onSelect={date => handleChange('tanggalMulai', date)} initialFocus className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
+                  <Controller
+                    name="tanggalMulai"
+                    control={control}
+                    rules={{ required: "Tanggal mulai harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  {errors.tanggalMulai && <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Tanggal Selesai</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalSelesai && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalSelesai ? format(formValues.tanggalSelesai, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formValues.tanggalSelesai || undefined} onSelect={date => handleChange('tanggalSelesai', date)} initialFocus className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
+                  <Controller
+                    name="tanggalSelesai"
+                    control={control}
+                    rules={{ required: "Tanggal selesai harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  {errors.tanggalSelesai && <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Tanggal (SPJ)</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalSpj && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalSpj ? format(formValues.tanggalSpj, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formValues.tanggalSpj || undefined} onSelect={date => handleChange('tanggalSpj', date)} initialFocus className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
+                  <Controller
+                    name="tanggalSpj"
+                    control={control}
+                    rules={{ required: "Tanggal SPJ harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  {errors.tanggalSpj && <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pembuat daftar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="pembuatDaftar"
+                    control={control}
+                    rules={{ required: "Pembuat daftar harus dipilih" }}
+                    render={({ field }) => (
+                      <FormSelect 
+                        placeholder="Pilih pembuat daftar" 
+                        options={organikList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))} 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                      />
+                    )}
+                  />
+                  {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
                 </div>
               </div>
 
               <div className="space-y-6 pt-4">
                 <div className="space-y-2">
                   <Label>Organik BPS</Label>
-                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {organikList.map(staff => <div key={staff.id} className="flex items-center space-x-2">
-                        <Checkbox id={`organik-${staff.id}`} checked={selectedOrganik.includes(staff.id)} onCheckedChange={checked => handleOrganikChange(staff.id, checked === true)} />
-                        <Label htmlFor={`organik-${staff.id}`} className="text-sm">
-                          {staff.name} {/* Show only name without NIP */}
-                        </Label>
-                      </div>)}
-                  </div>
+                  <Controller
+                    name="organik"
+                    control={control}
+                    render={({ field }) => (
+                      <FormSelect
+                        placeholder="Pilih organik BPS"
+                        options={organikList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isMulti
+                      />
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Mitra Statistik</Label>
-                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {mitraList.map(mitra => <div key={mitra.id} className="flex items-center space-x-2">
-                        <Checkbox id={`mitra-${mitra.id}`} checked={selectedMitra.includes(mitra.id)} onCheckedChange={checked => handleMitraChange(mitra.id, checked === true)} />
-                        <Label htmlFor={`mitra-${mitra.id}`} className="text-sm">
-                          {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                        </Label>
-                      </div>)}
-                  </div>
+                  <Controller
+                    name="mitra"
+                    control={control}
+                    render={({ field }) => (
+                      <FormSelect
+                        placeholder="Pilih mitra statistik"
+                        options={mitraList.map(item => ({
+                          value: item.id,
+                          label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
+                        }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isMulti
+                      />
+                    )}
+                  />
                 </div>
               </div>
 
@@ -403,6 +582,8 @@ const UangHarianTransport = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default UangHarianTransport;
