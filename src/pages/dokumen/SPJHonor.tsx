@@ -453,7 +453,7 @@ const SPJHonor = () => {
               </CardContent>
             </Card>
 
-            {/* Organik Section */}
+            {/* Organik Section - Modified Layout */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -463,14 +463,15 @@ const SPJHonor = () => {
                   </Button>
                 </div>
 
-                {honorOrganik.map((honor, index) => <div key={index} className="border p-4 rounded-md space-y-4">
+                {honorOrganik.map((honor, index) => (
+                  <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="font-medium">Staf {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("organik", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
                         <Select value={honor.personId} onValueChange={value => updateHonorDetail("organik", index, "personId", value)}>
@@ -478,38 +479,60 @@ const SPJHonor = () => {
                             <SelectValue placeholder="Pilih staf" />
                           </SelectTrigger>
                           <SelectContent>
-                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
+                            {organikList.map(organik => (
+                              <SelectItem key={organik.id} value={organik.id}>
                                 {organik.name}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Honor per Orang (Rp)</Label>
-                        <Input type="number" value={honor.honorPerOrang} onChange={e => updateHonorDetail("organik", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} placeholder="0" />
+                        <Input 
+                          type="number" 
+                          value={honor.honorPerOrang} 
+                          onChange={e => updateHonorDetail("organik", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} 
+                          placeholder="0" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
-                        <Input type="number" value={honor.kehadiran} onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} placeholder="0" min="0" max="31" />
+                        <Input 
+                          type="number" 
+                          value={honor.kehadiran} 
+                          onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} 
+                          placeholder="0" 
+                          min="0" 
+                          max="31" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>PPh 21 (%)</Label>
-                        <Input type="number" value={honor.pph21} onChange={e => updateHonorDetail("organik", index, "pph21", parseFloat(e.target.value) || 0)} placeholder="5" />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Total Honor (Rp)</Label>
-                        <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                        <Input 
+                          type="number" 
+                          value={honor.pph21} 
+                          onChange={e => updateHonorDetail("organik", index, "pph21", parseFloat(e.target.value) || 0)} 
+                          placeholder="5" 
+                        />
                       </div>
                     </div>
-                  </div>)}
+                    <div className="space-y-2">
+                      <Label>Total Honor (Rp)</Label>
+                      <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                    </div>
+                  </div>
+                ))}
 
-                {honorOrganik.length === 0 && <p className="text-muted-foreground text-center py-4">
+                {honorOrganik.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">
                     Belum ada data honor organik. Klik tombol "Tambah Organik" untuk menambahkan.
-                  </p>}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
-            {/* Mitra Section */}
+            {/* Mitra Section - Modified Layout */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -519,14 +542,15 @@ const SPJHonor = () => {
                   </Button>
                 </div>
 
-                {honorMitra.map((honor, index) => <div key={index} className="border p-4 rounded-md space-y-4">
+                {honorMitra.map((honor, index) => (
+                  <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="font-medium">Mitra {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
                         <Select value={honor.personId} onValueChange={value => updateHonorDetail("mitra", index, "personId", value)}>
@@ -534,34 +558,56 @@ const SPJHonor = () => {
                             <SelectValue placeholder="Pilih mitra" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mitraList.map(mitra => <SelectItem key={mitra.id} value={mitra.id}>
+                            {mitraList.map(mitra => (
+                              <SelectItem key={mitra.id} value={mitra.id}>
                                 {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Honor per Orang (Rp)</Label>
-                        <Input type="number" value={honor.honorPerOrang} onChange={e => updateHonorDetail("mitra", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} placeholder="0" />
+                        <Input 
+                          type="number" 
+                          value={honor.honorPerOrang} 
+                          onChange={e => updateHonorDetail("mitra", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} 
+                          placeholder="0" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
-                        <Input type="number" value={honor.kehadiran} onChange={e => updateHonorDetail("mitra", index, "kehadiran", parseInt(e.target.value, 10) || 0)} placeholder="0" min="0" max="31" />
+                        <Input 
+                          type="number" 
+                          value={honor.kehadiran} 
+                          onChange={e => updateHonorDetail("mitra", index, "kehadiran", parseInt(e.target.value, 10) || 0)} 
+                          placeholder="0" 
+                          min="0" 
+                          max="31" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>PPh 21 (%)</Label>
-                        <Input type="number" value={honor.pph21} onChange={e => updateHonorDetail("mitra", index, "pph21", parseFloat(e.target.value) || 0)} placeholder="5" />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Total Honor (Rp)</Label>
-                        <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                        <Input 
+                          type="number" 
+                          value={honor.pph21} 
+                          onChange={e => updateHonorDetail("mitra", index, "pph21", parseFloat(e.target.value) || 0)} 
+                          placeholder="5" 
+                        />
                       </div>
                     </div>
-                  </div>)}
+                    <div className="space-y-2">
+                      <Label>Total Honor (Rp)</Label>
+                      <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                    </div>
+                  </div>
+                ))}
 
-                {honorMitra.length === 0 && <p className="text-muted-foreground text-center py-4">
+                {honorMitra.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">
                     Belum ada data honor mitra. Klik tombol "Tambah Mitra" untuk menambahkan.
-                  </p>}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
