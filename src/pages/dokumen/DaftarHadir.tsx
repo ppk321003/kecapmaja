@@ -133,58 +133,59 @@ const DaftarHadir = () => {
     setMitraNameMap(newMitraNameMap);
   }, [watch('pembuatDaftar'), watch('organik'), watch('mitra'), organikList, mitraList]);
 
-    const handleSubmitForm = async (data: FormValues) => {
-      setIsSubmitting(true);
-      try {
-        // Buat pemetaan saat submit untuk memastikan data terbaru
-        const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
-        const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
-        const kroMap = Object.fromEntries((kros || []).map(item => [item.id, item.name]));
-        const roMap = Object.fromEntries((ros || []).map(item => [item.id, item.name]));
-        const komponenMap = Object.fromEntries((komponenOptions || []).map(item => [item.id, item.name]));
-        const akunMap = Object.fromEntries((akuns || []).map(item => [item.id, item.name]));
-        const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
-        const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
-        const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+const handleSubmitForm = async (data: FormValues) => {
+  setIsSubmitting(true);
+  try {
+    // Create mappings for the latest data
+    const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
+    const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
+    const kroMap = Object.fromEntries((kros || []).map(item => [item.id, item.name]));
+    const roMap = Object.fromEntries((ros || []).map(item => [item.id, item.name]));
+    const komponenMap = Object.fromEntries((komponenOptions || []).map(item => [item.id, item.name]));
+    const akunMap = Object.fromEntries((akuns || []).map(item => [item.id, item.name]));
+    const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+    const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
+    const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
 
-        // Format data untuk spreadsheet
-        const submitData = {
-          "Nama Kegiatan": data.namaKegiatan,
-          "Detil Kegiatan": data.detil,
-          "Jenis Kegiatan": data.jenis,
-          "Program": programsMap[data.program] || data.program, // Fallback ke ID jika mapping tidak ada
-          "Kegiatan": kegiatanMap[data.kegiatan] || data.kegiatan,
-          "KRO": kroMap[data.kro] || data.kro,
-          "RO": roMap[data.ro] || data.ro,
-          "Komponen": komponenMap[data.komponen] || data.komponen,
-          "Akun": akunMap[data.akun] || data.akun,
-          "Tanggal Pelaksanaan": data.tanggalPelaksanaan ? format(data.tanggalPelaksanaan, "yyyy-MM-dd") : "",
-          "Peserta Organik": data.organik.map(id => organikMap[id] || id).filter(Boolean).join("|"),
-          "Peserta Mitra": data.mitra.map(id => mitraMap[id] || id).filter(Boolean).join("|"),
-          "Pembuat Daftar": pembuatDaftarMap[data.pembuatDaftar] || data.pembuatDaftar,
-          "Timestamp": new Date().toISOString()
-        };
-
-        console.log('Data yang dikirim ke spreadsheet:', submitData);
-
-        // Submit ke Google Sheets
-        await submitMutation.mutateAsync(submitData);
-        
-        toast({
-          title: "Dokumen berhasil disimpan",
-          description: "Data daftar hadir telah tersimpan di spreadsheet"
-        });
-      } catch (error) {
-        console.error("Error submitting form:", error);
-        toast({
-          variant: "destructive",
-          title: "Gagal menyimpan dokumen",
-          description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data"
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
+    // Format data for spreadsheet
+    const submitData = {
+      "Nama Kegiatan": data.namaKegiatan || "",
+      "Detil Kegiatan": data.detil || "",
+      "Jenis Kegiatan": data.jenis || "",
+      "Program": programsMap[data.program] || data.program || "",
+      "Kegiatan": kegiatanMap[data.kegiatan] || data.kegiatan || "",
+      "KRO": kroMap[data.kro] || data.kro || "",
+      "RO": roMap[data.ro] || data.ro || "",
+      "Komponen": komponenMap[data.komponen] || data.komponen || "",
+      "Akun": akunMap[data.akun] || data.akun || "",
+      "Tanggal Pelaksanaan": data.tanggalPelaksanaan ? format(data.tanggalPelaksanaan, "yyyy-MM-dd") : "",
+      "Peserta Organik": data.organik.map(id => organikMap[id] || id).filter(Boolean).join("|") || "",
+      "Peserta Mitra": data.mitra.map(id => mitraMap[id] || id).filter(Boolean).join("|") || "",
+      "Pembuat Daftar": pembuatDaftarMap[data.pembuatDaftar] || data.pembuatDaftar || "",
+      "Timestamp": new Date().toISOString()
     };
+
+    console.log('Data yang dikirim ke spreadsheet:', submitData);
+
+    // Submit to Google Sheets
+    await submitMutation.mutateAsync(submitData);
+    
+    toast({
+      title: "Dokumen berhasil disimpan",
+      description: "Data daftar hadir telah tersimpan di spreadsheet"
+    });
+  } catch (error) {
+    console.error("Error submitting form:", error);
+    toast({
+      variant: "destructive",
+      title: "Gagal menyimpan dokumen",
+      description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data"
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   return (
     <Layout>
       <div className="space-y-6">
