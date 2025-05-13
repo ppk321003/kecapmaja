@@ -133,41 +133,47 @@ const DaftarHadir = () => {
     setMitraNameMap(newMitraNameMap);
   }, [watch('pembuatDaftar'), watch('organik'), watch('mitra'), organikList, mitraList]);
 
-  const handleSubmitForm = async (data: FormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Combine form values with selected staff
-      const submitData = {
-        ...data,
-        // Add name mappings for proper display in Google Sheets
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _organikNameMap: organikNameMap,
-        _mitraNameMap: mitraNameMap,
-        _pembuatDaftarName: pembuatDaftarName,
-        // Format for spreadsheet
-        organik: data.organik.join("|"),
-        mitra: data.mitra.join("|")
-      };
-      console.log('Form submitted:', submitData);
+    const handleSubmitForm = async (data: FormValues) => {
+        setIsSubmitting(true);
+        try {
+          // Format data untuk spreadsheet
+          const submitData = {
+            "Nama Kegiatan": data.namaKegiatan,
+            "Detil Kegiatan": data.detil,
+            "Jenis Kegiatan": data.jenis,
+            "Program": programsMap[data.program] || "",
+            "Kegiatan": kegiatanMap[data.kegiatan] || "",
+            "KRO": kroMap[data.kro] || "",
+            "RO": roMap[data.ro] || "",
+            "Komponen": komponenMap[data.komponen] || "",
+            "Akun": akunMap[data.akun] || "",
+            "Tanggal Pelaksanaan": data.tanggalPelaksanaan ? format(data.tanggalPelaksanaan, "yyyy-MM-dd") : "",
+            "Peserta Organik": data.organik.map(id => organikMap[id]).filter(Boolean).join("|"),
+            "Peserta Mitra": data.mitra.map(id => mitraMap[id]).filter(Boolean).join("|"),
+            "Pembuat Daftar": pembuatDaftarMap[data.pembuatDaftar] || "",
+            "Timestamp": new Date().toISOString()
+          };
 
-      // Submit to Google Sheets
-      await submitMutation.mutateAsync(submitData);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+          console.log('Data yang dikirim ke spreadsheet:', submitData);
+
+          // Submit ke Google Sheets
+          await submitMutation.mutateAsync(submitData);
+          
+          toast({
+            title: "Dokumen berhasil disimpan",
+            description: "Data daftar hadir telah tersimpan di spreadsheet"
+          });
+        } catch (error) {
+          console.error("Error submitting form:", error);
+          toast({
+            variant: "destructive",
+            title: "Gagal menyimpan dokumen",
+            description: error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan data"
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
 
   return (
     <Layout>
