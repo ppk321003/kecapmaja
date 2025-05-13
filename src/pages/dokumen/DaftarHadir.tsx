@@ -192,29 +192,39 @@ const DaftarHadir = () => {
     setMitraNameMap(newMitraNameMap);
   }, [watch('pembuatDaftar'), watch('organikBPS'), watch('mitraStatistik'), organikBPSList, mitraStatistikList]);
 
-  const onSubmit = async (data: FormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Add name mappings to data for Google Sheets
-      const submissionData = {
-        ...data,
-        _pembuatDaftarName: pembuatDaftarName,
-        _organikNameMap: organikNameMap,
-        _mitraNameMap: mitraNameMap
-      };
+const onSubmit = async (data: FormValues) => {
+  setIsSubmitting(true);
+  try {
+    // Format organik names with quotes and pipe separator
+    const formattedOrganikNames = data.organikBPS
+      .map(id => `"${organikNameMap[id]}"`)
+      .join(" | ");
+    
+    // Format mitra names with quotes and pipe separator
+    const formattedMitraNames = data.mitraStatistik
+      .map(id => `"${mitraNameMap[id]}"`)
+      .join(" | ");
 
-      // Save to Google Sheets only
-      await submitToSheets.mutateAsync(submissionData);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
-      });
-      setIsSubmitting(false);
-    }
-  };
+    // Add formatted names to data for Google Sheets
+    const submissionData = {
+      ...data,
+      organikBPS: formattedOrganikNames,
+      mitraStatistik: formattedMitraNames,
+      pembuatDaftar: `"${pembuatDaftarName}"` // Also format pembuatDaftar name
+    };
+
+    // Save to Google Sheets only
+    await submitToSheets.mutateAsync(submissionData);
+  } catch (error) {
+    console.error("Error submitting form:", error);
+    toast({
+      variant: "destructive",
+      title: "Gagal menyimpan dokumen",
+      description: "Terjadi kesalahan saat menyimpan data"
+    });
+    setIsSubmitting(false);
+  }
+};
 
   // Get filtered options based on selections
   const filteredKegiatanOptions = selectedProgram 
