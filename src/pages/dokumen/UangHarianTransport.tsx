@@ -537,7 +537,7 @@ const UangHarianTransport = () => {
                       name="organik"
                       control={control}
                       render={({ field }) => (
-                        <div className="w-full">
+                        <div className="w-full h-48">
                           <FormSelect
                             placeholder="Pilih organik BPS"
                             options={organikList.map(item => ({
@@ -559,7 +559,7 @@ const UangHarianTransport = () => {
                       name="mitra"
                       control={control}
                       render={({ field }) => (
-                        <div className="w-full">
+                        <div className="w-full h-full">
                           <FormSelect
                             placeholder="Pilih mitra statistik"
                             options={mitraList.map(item => ({
