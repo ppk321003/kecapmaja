@@ -84,8 +84,10 @@ const DaftarHadir = () => {
   const { data: mitraList = [] } = useMitraStatistik();
   
   const jenisList = [
-    { id: "Fullboard", name: "Fullboard" },
-    { id: "Fullday", name: "Fullday" }
+    { id: "Pelatihan", name: "Pelatihan" },
+    { id: "Briefing", name: "Briefing"},
+    { id: "Rapat Persiapan", name: "Rapat Persiapan"},
+    { id: "Rapat Evaluasi", name: "Rapat Evaluasi"}
   ];
 
   // Create name-to-object mappings for display purposes
