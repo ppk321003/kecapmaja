@@ -196,21 +196,38 @@ const onSubmit = async (data: FormValues) => {
   setIsSubmitting(true);
   try {
     // Format organik names with quotes and pipe separator
-    const formattedOrganikNames = data.organikBPS
-      .map(id => `"${organikNameMap[id]}"`)
-      .join(" | ");
+    const formattedOrganikNames = data.organikBPS && data.organikBPS.length > 0 
+      ? data.organikBPS
+        .map(id => `"${organikNameMap[id]}"`)
+        .join(" | ")
+      : ""; // Return empty string if no organik selected
     
     // Format mitra names with quotes and pipe separator
-    const formattedMitraNames = data.mitraStatistik
-      .map(id => `"${mitraNameMap[id]}"`)
-      .join(" | ");
+    const formattedMitraNames = data.mitraStatistik && data.mitraStatistik.length > 0
+      ? data.mitraStatistik
+        .map(id => `"${mitraNameMap[id]}"`)
+        .join(" | ")
+      : ""; // Return empty string if no mitra selected
 
-    // Add formatted names to data for Google Sheets
+    // Prepare data for submission
     const submissionData = {
       ...data,
       organikBPS: formattedOrganikNames,
       mitraStatistik: formattedMitraNames,
-      pembuatDaftar: `"${pembuatDaftarName}"` // Also format pembuatDaftar name
+      pembuatDaftar: `"${pembuatDaftarName}"`, // Format pembuatDaftar name
+      // Explicitly map all fields to ensure correct order
+      id: `dh-${Date.now()}`,
+      namaKegiatan: data.namaKegiatan,
+      detil: data.detil,
+      jenis: data.jenis,
+      program: data.program,
+      kegiatan: data.kegiatan,
+      kro: data.kro,
+      ro: data.ro,
+      komponen: data.komponen,
+      akun: data.akun,
+      tanggalMulai: data.tanggalMulai ? format(new Date(data.tanggalMulai), "dd MMMM yyyy") : "",
+      tanggalSelesai: data.tanggalSelesai ? format(new Date(data.tanggalSelesai), "dd MMMM yyyy") : "",
     };
 
     // Save to Google Sheets only
