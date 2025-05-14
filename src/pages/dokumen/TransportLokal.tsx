@@ -180,60 +180,60 @@ const TransportLokal = () => {
     }));
   };
 
-  const onSubmit = async (values: FormValues) => {
-    try {
-      if (transportDetails.length === 0) {
-        toast({
-          variant: "destructive",
-          title: "Daftar transport kosong",
-          description: "Tambahkan minimal satu petugas"
-        });
-        return;
-      }
-
-      // Format data untuk spreadsheet
-      const rows = transportDetails.map(detail => ({
-        // Data utama dari form
-        id: `trl-${format(new Date(), 'yyMMddHHmmss')}`,
-        namaKegiatan: values.namaKegiatan,
-        detil: values.detil || '',
-        program: programsMap[values.program] || '',
-        kegiatan: kegiatanMap[values.kegiatan] || '',
-        kro: kroMap[values.kro] || '',
-        ro: roMap[values.ro] || '',
-        komponen: komponenMap[values.komponen] || '',
-        akun: akunMap[values.akun] || '',
-        tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
-        pembuatDaftar: organikMap[values.pembuatDaftar] || '',
-        
-        // Data dari transport detail
-        namaPetugas: detail.name,
-        jenisPetugas: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
-        kecamatanTujuan: detail.kecamatanTujuan,
-        tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
-        
-        // Data tambahan
-        _timestamp: new Date().toISOString()
-      }));
-
-      const formData = {
-        action: "append",
-        sheetName: "TransportLokal",
-        range: "A1",
-        values: rows.map(row => Object.values(row)) // Convert object to array of values
-      };
-
-      console.log("Payload yang dikirim:", formData); // Untuk debugging
-      await submitMutation.mutateAsync(formData);
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
+const onSubmit = async (values: FormValues) => {
+  try {
+    if (transportDetails.length === 0) {
       toast({
         variant: "destructive",
-        title: "Gagal menyimpan data",
-        description: error.message || "Terjadi kesalahan saat menyimpan form"
+        title: "Daftar transport kosong",
+        description: "Tambahkan minimal satu petugas"
       });
+      return;
     }
-  };
+
+    // Format data untuk spreadsheet
+    const rows = transportDetails.map(detail => ({
+      // Data utama dari form
+      id: `trl-${format(new Date(), 'yyMMddHHmmss')}`,
+      namaKegiatan: values.namaKegiatan,
+      detil: values.detil || '',
+      program: programsMap[values.program] || '',
+      kegiatan: kegiatanMap[values.kegiatan] || '',
+      kro: kroMap[values.kro] || '',
+      ro: roMap[values.ro] || '',
+      komponen: komponenMap[values.komponen] || '',
+      akun: akunMap[values.akun] || '',
+      tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
+      pembuatDaftar: organikMap[values.pembuatDaftar] || '',
+      
+      // Data dari transport detail
+      namaPetugas: detail.name,
+      jenisPetugas: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
+      kecamatanTujuan: detail.kecamatanTujuan,
+      tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
+      
+      // Data tambahan
+      _timestamp: new Date().toISOString()
+    }));
+
+    const formData = {
+      action: "append",
+      sheetName: "TransportLokal",
+      range: "A1",
+      values: rows.map(row => Object.values(row)) // Convert object to array of values
+    };
+
+    console.log("Payload yang dikirim:", formData); // Untuk debugging
+    await submitMutation.mutateAsync(formData);
+  } catch (error: any) {
+    console.error("Error submitting form:", error);
+    toast({
+      variant: "destructive",
+      title: "Gagal menyimpan data",
+      description: error.message || "Terjadi kesalahan saat menyimpan form"
+    });
+  }
+};
 
   // Transport Detail Card Component
   const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => (
