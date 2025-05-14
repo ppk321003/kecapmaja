@@ -53,7 +53,7 @@ const defaultValues: FormValues = {
   ro: "",
   komponen: "",
   akun: "",
-  tanggalSpj: new Date(),
+  tanggalSpj: null,
   pembuatDaftar: "",
   honorDetails: []
 };
