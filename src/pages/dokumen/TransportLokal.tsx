@@ -241,7 +241,7 @@ const TransportLokal = () => {
       const formData = {
         action: "append",
         sheetName: "TransportLokal",
-        range: "A2",
+        range: "A2:P",
         values: rows.map(row => [
           row.id,
           row.namaKegiatan,
