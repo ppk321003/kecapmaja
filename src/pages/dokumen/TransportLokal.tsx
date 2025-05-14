@@ -108,7 +108,7 @@ const TransportLokal = () => {
   const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, `${item.name} (${item.code})`]));
   const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
@@ -191,54 +191,58 @@ const TransportLokal = () => {
   };
 
   const onSubmit = async (values: FormValues) => {
-  try {
-    if (transportDetails.length === 0) {
+    try {
+      if (transportDetails.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Daftar transport kosong",
+          description: "Tambahkan minimal satu petugas"
+        });
+        return;
+      }
+
+      // Format data untuk spreadsheet
+      const rows = transportDetails.map(detail => [
+        `trl-${format(new Date(), 'yyMMddHHmmss')}`, // ID dokumen
+        values.namaKegiatan,
+        values.detil || '',
+        jenisMap[values.jenis] || '',
+        programsMap[values.program] || '',
+        kegiatanMap[values.kegiatan] || '',
+        kroMap[values.kro] || '',
+        roMap[values.ro] || '',
+        komponenMap[values.komponen] || '',
+        akunMap[values.akun] || '',
+        format(values.tanggalPengajuan, 'dd/MM/yyyy'),
+        organikMap[values.pembuatDaftar] || '',
+        detail.name,
+        detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
+        detail.banyaknya,
+        detail.kecamatanTujuan,
+        format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
+        detail.rateTranslok,
+        detail.jumlah,
+        totalAmount
+      ]);
+
+      const formData = {
+        action: "append",
+        sheetName: "TransportLokal",
+        range: "A1",
+        values: rows
+      };
+
+      console.log("Payload yang dikirim:", formData); // Untuk debugging
+      await submitMutation.mutateAsync(formData);
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
-        title: "Daftar transport kosong",
-        description: "Tambahkan minimal satu petugas"
+        title: "Gagal menyimpan data",
+        description: error.message || "Terjadi kesalahan saat menyimpan form"
       });
-      return;
     }
-
-    // Format transport details untuk spreadsheet
-    const formattedTransportDetails = transportDetails.map(detail => ({
-      nama: detail.name,
-      jenis: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
-      banyaknya: detail.banyaknya,
-      kecamatanTujuan: detail.kecamatanTujuan,
-      tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
-      rateTranslok: detail.rateTranslok,
-      jumlah: detail.jumlah
-    }));
-
-    const formData = {
-      ...values,
-      tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
-      transportDetails: formattedTransportDetails,
-      totalAmount,
-      _programNameMap: programsMap,
-      _kegiatanNameMap: kegiatanMap,
-      _kroNameMap: kroMap,
-      _roNameMap: roMap,
-      _komponenNameMap: komponenMap,
-      _akunNameMap: akunMap,
-      _jenisNameMap: jenisMap,
-      _organikNameMap: organikMap,
-      _mitraNameMap: mitraMap,
-      _pembuatDaftarName: organikMap[values.pembuatDaftar]
-    };
-
-    await submitMutation.mutateAsync(formData);
-  } catch (error: any) {
-    console.error("Error submitting form:", error);
-    toast({
-      variant: "destructive",
-      title: "Gagal menyimpan data",
-      description: error.message || "Terjadi kesalahan saat menyimpan form"
-    });
-  }
-};
+  };
 
   // Calculate total amount
   const totalAmount = transportDetails.reduce((sum, detail) => sum + detail.jumlah, 0);
