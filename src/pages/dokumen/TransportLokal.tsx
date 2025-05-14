@@ -32,7 +32,6 @@ interface TransportDetail {
   name: string;
   kecamatanTujuan: string;
   tanggalPelaksanaan: Date;
-  rateTranslok: number;
 }
 
 // Form Schema
@@ -118,7 +117,7 @@ const TransportLokal = () => {
         id: org.id,
         name: org.name,
         type: 'organik'
-      })));
+      }));
     }
   }, [organikList, organikLoading]);
 
@@ -156,8 +155,7 @@ const TransportLokal = () => {
       personId,
       name: person.name,
       kecamatanTujuan: "",
-      tanggalPelaksanaan: new Date(),
-      rateTranslok: 0
+      tanggalPelaksanaan: new Date()
     };
     setTransportDetails(prev => [...prev, newDetail]);
   };
@@ -195,10 +193,8 @@ const TransportLokal = () => {
           personId: detail.personId,
           name: detail.name,
           kecamatanTujuan: detail.kecamatanTujuan,
-          tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'yyyy-MM-dd'),
-          rateTranslok: detail.rateTranslok
+          tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'yyyy-MM-dd')
         })),
-        totalAmount: transportDetails.reduce((sum, detail) => sum + (detail.rateTranslok || 0), 0),
         _programName: programsMap[values.program] || '',
         _kegiatanName: kegiatanMap[values.kegiatan] || '',
         _kroName: kroMap[values.kro] || '',
@@ -220,30 +216,8 @@ const TransportLokal = () => {
     }
   };
 
-  // Calculate total amount
-  const totalAmount = transportDetails.reduce((sum, detail) => sum + (detail.rateTranslok || 0), 0);
-
   // Transport Detail Card Component
   const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    const handleRateChange = (value: string) => {
-      if (value === '' || /^\d+$/.test(value)) {
-        handleTransportItemChange(
-          detail.id,
-          "rateTranslok",
-          value === '' ? 0 : parseInt(value, 10)
-        );
-      }
-    };
-
-    // Fokuskan input setelah render jika nilai berubah
-    useEffect(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, [detail.rateTranslok]);
-
     return (
       <Card className="mb-4">
         <CardContent className="p-4">
@@ -267,7 +241,7 @@ const TransportLokal = () => {
             </div>
             
             {/* Form Input dalam 1 Baris */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* Kecamatan Tujuan */}
               <div className="space-y-1">
                 <Label className="text-xs">Kecamatan Tujuan</Label>
@@ -290,28 +264,6 @@ const TransportLokal = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Rate Transport - Diperbaiki input number */}
-              <div className="space-y-1">
-                <Label className="text-xs">Rate (Rp)</Label>
-                <Input
-                  ref={inputRef}
-                  type="number"
-                  value={detail.rateTranslok || ''}
-                  onChange={(e) => handleRateChange(e.target.value)}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      handleTransportItemChange(
-                        detail.id,
-                        "rateTranslok",
-                        0
-                      );
-                    }
-                  }}
-                  className="h-8"
-                  placeholder="0"
-                />
               </div>
 
               {/* Tanggal Pelaksanaan */}
@@ -360,8 +312,7 @@ const TransportLokal = () => {
                   ...detail,
                   id: Math.random().toString(36).substr(2, 9),
                   kecamatanTujuan: "",
-                  tanggalPelaksanaan: new Date(),
-                  rateTranslok: 0
+                  tanggalPelaksanaan: new Date()
                 };
                 setTransportDetails(prev => [...prev, newDetail]);
               }}
@@ -747,18 +698,6 @@ const TransportLokal = () => {
                       {transportDetails.map((detail) => (
                         <TransportDetailCard key={detail.id} detail={detail} />
                       ))}
-
-                      {/* Total amount */}
-                      <div className="flex justify-end mt-6">
-                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-2">
-                          <Label className="text-lg font-semibold">Total (Rp)</Label>
-                          <Input 
-                            value={totalAmount.toLocaleString('id-ID')} 
-                            disabled 
-                            className="text-lg font-bold bg-gray-50" 
-                          />
-                        </div>
-                      </div>
                     </div>
                   ) : (
                     <div className="border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center text-muted-foreground">
