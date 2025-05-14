@@ -213,20 +213,29 @@ const TransportLokal = () => {
         return;
       }
 
+      // Get all mapped values
+      const programName = programsMap[values.program] || '';
+      const kegiatanName = kegiatanMap[values.kegiatan] || '';
+      const kroName = kroMap[values.kro] || '';
+      const roName = roMap[values.ro] || '';
+      const komponenName = komponenMap[values.komponen] || '';
+      const akunName = akunMap[values.akun] || '';
+      const pembuatDaftarName = organikMap[values.pembuatDaftar] || '';
+
       // Format data untuk spreadsheet
       const rows = transportDetails.map(detail => ({
         // Data utama dari form
-        id: `trl-${format(new Date(), 'yyMMddHHmmss')}`,
+        id: `trl-${format(new Date(), 'yyMMddHHmmss')}-${detail.id}`,
         namaKegiatan: values.namaKegiatan,
         detil: values.detil || '',
-        program: programsMap[values.program] || '',
-        kegiatan: kegiatanMap[values.kegiatan] || '',
-        kro: kroMap[values.kro] || '',
-        ro: roMap[values.ro] || '',
-        komponen: komponenMap[values.komponen] || '',
-        akun: akunMap[values.akun] || '',
+        program: programName,
+        kegiatan: kegiatanName,
+        kro: kroName,
+        ro: roName,
+        komponen: komponenName,
+        akun: akunName,
         tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
-        pembuatDaftar: organikMap[values.pembuatDaftar] || '',
+        pembuatDaftar: pembuatDaftarName,
         
         // Data dari transport detail
         namaPetugas: detail.name,
@@ -241,29 +250,18 @@ const TransportLokal = () => {
       const formData = {
         action: "append",
         sheetName: "TransportLokal",
-        range: "A2:P",
-        values: rows.map(row => [
-          row.id,
-          row.namaKegiatan,
-          row.detil,
-          row.program,
-          row.kegiatan,
-          row.kro,
-          row.ro,
-          row.komponen,
-          row.akun,
-          row.tanggalPengajuan,
-          row.pembuatDaftar,
-          row.namaPetugas,
-          row.jenisPetugas,
-          row.kecamatanTujuan,
-          row.tanggalPelaksanaan,
-          row._timestamp
-        ])
+        range: "A1",
+        values: rows.map(row => Object.values(row))
       };
 
       console.log("Payload yang dikirim:", formData);
       await submitMutation.mutateAsync(formData);
+      
+      toast({
+        title: "Berhasil disimpan",
+        description: "Data transport lokal telah berhasil disimpan"
+      });
+      
     } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
