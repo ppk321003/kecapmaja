@@ -257,7 +257,7 @@ const TransportLokal = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600">SPJ Transport Lokal</h1>
-          <p className="text-sm text-muted-foreground">Formulir Surat Pertanggungjawaban Honor Kegiatan</p>
+          <p className="text-sm text-muted-foreground">Formulir Surat Pertanggungjawaban Transport Lokal Kegiatan</p>
         </div>
 
         <Form {...form}>
@@ -491,7 +491,7 @@ const TransportLokal = () => {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium">Honor Organik BPS</h2>
+                  <h2 className="text-lg font-medium">Transport Lokal Organik BPS</h2>
                   <Button type="button" onClick={addOrganik} className="bg-teal-700 hover:bg-teal-600">
                     Tambah Organik
                   </Button>
@@ -583,7 +583,7 @@ const TransportLokal = () => {
 
                 {honorOrganik.length === 0 && (
                   <p className="text-muted-foreground text-center py-4">
-                    Belum ada data honor organik. Klik tombol "Tambah Organik" untuk menambahkan.
+                    Belum ada data Transport Lokal organik. Klik tombol "Tambah Organik" untuk menambahkan.
                   </p>
                 )}
               </CardContent>
@@ -593,7 +593,7 @@ const TransportLokal = () => {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium">Honor Mitra Statistik</h2>
+                  <h2 className="text-lg font-medium">Transport Lokal Mitra Statistik</h2>
                   <Button type="button" onClick={addMitra} className="bg-teal-700 hover:bg-teal-600">
                     Tambah Mitra
                   </Button>
@@ -685,7 +685,7 @@ const TransportLokal = () => {
 
                 {honorMitra.length === 0 && (
                   <p className="text-muted-foreground text-center py-4">
-                    Belum ada data honor mitra. Klik tombol "Tambah Mitra" untuk menambahkan.
+                    Belum ada data Transport Lokal mitra. Klik tombol "Tambah Mitra" untuk menambahkan.
                   </p>
                 )}
               </CardContent>
