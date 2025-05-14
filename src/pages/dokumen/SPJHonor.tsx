@@ -37,7 +37,7 @@ const formSchema = z.object({
     type: z.enum(["organik", "mitra"]),
     personId: z.string(),
     honorPerOrang: z.number().min(0),
-    kehadiran: z.number().min(0).max(31),
+    kehadiran: z.number().min(0).max(1000),
     pph21: z.number().min(0).max(100),
     totalHonor: z.number().min(0)
   })).optional()
@@ -583,7 +583,7 @@ const SPJHonor = () => {
                           onChange={e => updateHonorDetail("mitra", index, "kehadiran", parseInt(e.target.value, 10) || 0)} 
                           placeholder="0" 
                           min="0" 
-                          max="31" 
+                          max="1000" 
                         />
                       </div>
                       <div className="space-y-2">
