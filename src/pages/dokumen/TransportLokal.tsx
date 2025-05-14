@@ -19,17 +19,6 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
-
-// Daftar kecamatan
-const KECAMATAN_LIST = [
-  "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", 
-  "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", 
-  "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", 
-  "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
-  "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", 
-  "Sumberjaya"
-];
-
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
@@ -44,21 +33,16 @@ const formSchema = z.object({
     required_error: "Tanggal harus dipilih"
   }),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus diisi"),
-  totalKeseluruhan: z.number().min(0),
   honorDetails: z.array(z.object({
     type: z.enum(["organik", "mitra"]),
     personId: z.string(),
-    kecamatanTujuan: z.string().min(1, "Kecamatan harus dipilih"),
-    rate: z.number().min(0),
-    tanggalPelaksanaan: z.date({
-      required_error: "Tanggal pelaksanaan harus dipilih"
-    }),
+    honorPerOrang: z.number().min(0),
+    kehadiran: z.number().min(0).max(1000),
+    pph21: z.number().min(0).max(100),
     totalHonor: z.number().min(0)
   })).optional()
 });
-
 type FormValues = z.infer<typeof formSchema>;
-
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -71,10 +55,8 @@ const defaultValues: FormValues = {
   akun: "",
   tanggalSpj: null,
   pembuatDaftar: "",
-  totalKeseluruhan: 0,
   honorDetails: []
 };
-
 const TransportLokal = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<any[]>([]);
@@ -135,9 +117,7 @@ const TransportLokal = () => {
   // Combine honorDetails for form submission
   useEffect(() => {
     const combined = [...honorOrganik, ...honorMitra];
-    const total = combined.reduce((sum, item) => sum + item.totalHonor, 0);
     form.setValue("honorDetails", combined);
-    form.setValue("totalKeseluruhan", total);
   }, [honorOrganik, honorMitra, form]);
 
   // Add organik handler
@@ -146,9 +126,9 @@ const TransportLokal = () => {
       setHonorOrganik([...honorOrganik, {
         type: "organik",
         personId: "",
-        kecamatanTujuan: "",
-        rate: 0,
-        tanggalPelaksanaan: null,
+        honorPerOrang: 0,
+        kehadiran: 0,
+        pph21: 5,
         totalHonor: 0
       }]);
     }
@@ -160,9 +140,9 @@ const TransportLokal = () => {
       setHonorMitra([...honorMitra, {
         type: "mitra",
         personId: "",
-        kecamatanTujuan: "",
-        rate: 0,
-        tanggalPelaksanaan: null,
+        honorPerOrang: 0,
+        kehadiran: 0,
+        pph21: 0,
         totalHonor: 0
       }]);
     }
@@ -178,8 +158,13 @@ const TransportLokal = () => {
       };
 
       // Auto calculate total honor
-      if (field === "rate") {
-        updated[index].totalHonor = value;
+      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+        const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
+        const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
+        const pph21 = field === "pph21" ? value : updated[index].pph21;
+        const subtotal = honorPerOrang * kehadiran;
+        const pajak = subtotal * (pph21 / 100);
+        updated[index].totalHonor = subtotal - pajak;
       }
       setHonorOrganik(updated);
     } else {
@@ -190,8 +175,13 @@ const TransportLokal = () => {
       };
 
       // Auto calculate total honor
-      if (field === "rate") {
-        updated[index].totalHonor = value;
+      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+        const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
+        const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
+        const pph21 = field === "pph21" ? value : updated[index].pph21;
+        const subtotal = honorPerOrang * kehadiran;
+        const pajak = subtotal * (pph21 / 100);
+        updated[index].totalHonor = subtotal - pajak;
       }
       setHonorMitra(updated);
     }
@@ -213,21 +203,6 @@ const TransportLokal = () => {
   // Form submission handler
   const onSubmit = async (data: FormValues) => {
     try {
-      // Validasi tanggal pelaksanaan tidak boleh lebih awal dari tanggal SPJ
-      const hasInvalidDate = data.honorDetails?.some(item => 
-        item.tanggalPelaksanaan && data.tanggalSpj && 
-        item.tanggalPelaksanaan > data.tanggalSpj
-      );
-
-      if (hasInvalidDate) {
-        toast({
-          variant: "destructive",
-          title: "Validasi Gagal",
-          description: "Tanggal SPJ tidak boleh lebih awal dari tanggal pelaksanaan"
-        });
-        return;
-      }
-
       // Create a submission object with all the data plus mappings for proper display
       const submitData = {
         ...data,
@@ -253,6 +228,12 @@ const TransportLokal = () => {
     }
   };
 
+  // Calculate grand total honor
+  const calculateGrandTotal = () => {
+    const organikTotal = honorOrganik.reduce((sum, item) => sum + item.totalHonor, 0);
+    const mitraTotal = honorMitra.reduce((sum, item) => sum + item.totalHonor, 0);
+    return organikTotal + mitraTotal;
+  };
   return <Layout>
       <div className="space-y-6">
         <div>
@@ -269,7 +250,7 @@ const TransportLokal = () => {
                   <FormField control={form.control} name="namaKegiatan" render={({
                   field
                 }) => <FormItem className="col-span-2">
-                        <FormLabel>Nama Kegiatan (cth: Honor Pendataan Petugas Potensi Desa Tahun 2025)</FormLabel>
+                        <FormLabel>Nama Kegiatan (cth: Transport Lokal Pendataan Petugas Potensi Desa Tahun 2025)</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="Masukkan nama kegiatan" />
                         </FormControl>
@@ -468,26 +449,11 @@ const TransportLokal = () => {
                         </Select>
                         <FormMessage />
                       </FormItem>} />
-
-                  {/* Total Keseluruhan */}
-                  <FormField control={form.control} name="totalKeseluruhan" render={({
-                  field
-                }) => <FormItem className="col-span-2">
-                        <FormLabel>Total Keseluruhan (Rp)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            value={field.value.toLocaleString()} 
-                            readOnly 
-                            className="font-bold text-lg" 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Organik Section */}
+            {/* Organik Section - Modified */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -500,12 +466,12 @@ const TransportLokal = () => {
                 {honorOrganik.map((honor, index) => (
                   <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Organik BPS - {index + 1}</h3>
+                      <h3 className="font-medium">Organik BPS -{index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("organik", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
                         <Select value={honor.personId} onValueChange={value => updateHonorDetail("organik", index, "personId", value)}>
@@ -524,14 +490,22 @@ const TransportLokal = () => {
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>
                         <Select 
-                          value={honor.kecamatanTujuan} 
-                          onValueChange={value => updateHonorDetail("organik", index, "kecamatanTujuan", value)}
+                          value={honor.kecamatan} 
+                          onValueChange={value => updateHonorDetail("organik", index, "kecamatan", value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih Kecamatan" />
                           </SelectTrigger>
                           <SelectContent>
-                            {KECAMATAN_LIST.map(kec => (
+                            {[
+                              "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", 
+                              "Cingambul", "Talaga", "Banjaran", "Argapura", 
+                              "Maja", "Majalengka", "Cigasong", "Sukahaji", 
+                              "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", 
+                              "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
+                              "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", 
+                              "Ligung", "Sumberjaya"
+                            ].map(kec => (
                               <SelectItem key={kec} value={kec}>
                                 {kec}
                               </SelectItem>
@@ -548,35 +522,35 @@ const TransportLokal = () => {
                           placeholder="0" 
                         />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tanggal Pelaksanaan</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !honor.tanggalPelaksanaan && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {honor.tanggalPelaksanaan ? (
-                              format(honor.tanggalPelaksanaan, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={honor.tanggalPelaksanaan}
-                            onSelect={(date) => updateHonorDetail("organik", index, "tanggalPelaksanaan", date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <div className="space-y-2">
+                        <Label>Tanggal Pelaksanaan</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !honor.tanggalPelaksanaan && "text-muted-foreground"
+                              )}
+                            >
+                              {honor.tanggalPelaksanaan ? (
+                                format(honor.tanggalPelaksanaan, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={honor.tanggalPelaksanaan}
+                              onSelect={date => updateHonorDetail("organik", index, "tanggalPelaksanaan", date)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -589,7 +563,7 @@ const TransportLokal = () => {
               </CardContent>
             </Card>
 
-            {/* Mitra Section */}
+            {/* Mitra Section - Modified */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -602,12 +576,12 @@ const TransportLokal = () => {
                 {honorMitra.map((honor, index) => (
                   <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Mitra Statistik - {index + 1}</h3>
+                      <h3 className="font-medium">Mitra Statistik -{index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
                         <Select value={honor.personId} onValueChange={value => updateHonorDetail("mitra", index, "personId", value)}>
@@ -626,14 +600,22 @@ const TransportLokal = () => {
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>
                         <Select 
-                          value={honor.kecamatanTujuan} 
-                          onValueChange={value => updateHonorDetail("mitra", index, "kecamatanTujuan", value)}
+                          value={honor.kecamatan} 
+                          onValueChange={value => updateHonorDetail("mitra", index, "kecamatan", value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih Kecamatan" />
                           </SelectTrigger>
                           <SelectContent>
-                            {KECAMATAN_LIST.map(kec => (
+                            {[
+                              "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", 
+                              "Cingambul", "Talaga", "Banjaran", "Argapura", 
+                              "Maja", "Majalengka", "Cigasong", "Sukahaji", 
+                              "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", 
+                              "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
+                              "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", 
+                              "Ligung", "Sumberjaya"
+                            ].map(kec => (
                               <SelectItem key={kec} value={kec}>
                                 {kec}
                               </SelectItem>
@@ -650,35 +632,35 @@ const TransportLokal = () => {
                           placeholder="0" 
                         />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tanggal Pelaksanaan</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !honor.tanggalPelaksanaan && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {honor.tanggalPelaksanaan ? (
-                              format(honor.tanggalPelaksanaan, "PPP")
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={honor.tanggalPelaksanaan}
-                            onSelect={(date) => updateHonorDetail("mitra", index, "tanggalPelaksanaan", date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <div className="space-y-2">
+                        <Label>Tanggal Pelaksanaan</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !honor.tanggalPelaksanaan && "text-muted-foreground"
+                              )}
+                            >
+                              {honor.tanggalPelaksanaan ? (
+                                format(honor.tanggalPelaksanaan, "PPP")
+                              ) : (
+                                <span>Pilih tanggal</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={honor.tanggalPelaksanaan}
+                              onSelect={date => updateHonorDetail("mitra", index, "tanggalPelaksanaan", date)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -690,11 +672,14 @@ const TransportLokal = () => {
                 )}
               </CardContent>
             </Card>
-
-            {/* Submit Button */}
+            {/* Grand Total */}
             <Card>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Total Keseluruhan (Rp)</Label>
+                    <Input value={calculateGrandTotal().toLocaleString()} readOnly className="font-bold text-lg" />
+                  </div>
                   <Button type="submit" disabled={submitMutation.isPending} className="w-full bg-teal-700 hover:bg-teal-600">
                     {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
@@ -709,5 +694,4 @@ const TransportLokal = () => {
       </div>
     </Layout>;
 };
-
 export default TransportLokal;
