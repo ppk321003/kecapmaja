@@ -142,7 +142,7 @@ const SPJHonor = () => {
         personId: "",
         honorPerOrang: 0,
         kehadiran: 0,
-        pph21: 5,
+        pph21: 0,
         totalHonor: 0
       }]);
     }
