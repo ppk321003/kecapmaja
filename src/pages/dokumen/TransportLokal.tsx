@@ -20,7 +20,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 
 // Hooks and Utilities
 import { cn } from "@/lib/utils";
-import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useJenis, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { toast } from "@/hooks/use-toast";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
@@ -30,18 +30,14 @@ interface TransportDetail {
   type: 'organik' | 'mitra';
   personId: string;
   name: string;
-  banyaknya: number;
   kecamatanTujuan: string;
   tanggalPelaksanaan: Date;
-  rateTranslok: number;
-  jumlah: number;
 }
 
 // Form Schema
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
-  jenis: z.string().min(1, "Jenis harus dipilih"),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -59,7 +55,6 @@ type FormValues = z.infer<typeof formSchema>;
 const DEFAULT_VALUES: FormValues = {
   namaKegiatan: "",
   detil: "",
-  jenis: "",
   program: "",
   kegiatan: "",
   kro: "",
@@ -92,7 +87,6 @@ const TransportLokal = () => {
   });
 
   // Data fetching hooks
-  const { data: jenisList = [] } = useJenis();
   const { data: programList = [] } = usePrograms();
   const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
   const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
@@ -109,7 +103,6 @@ const TransportLokal = () => {
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
-  const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
 
@@ -148,11 +141,17 @@ const TransportLokal = () => {
     const person = personList.find(p => p.id === personId);
     if (!person) return;
 
-    const existing = transportDetails.find(detail => detail.personId === personId && detail.type === type);
-    if (existing) {
+    // Validasi: nama + tanggal tidak boleh sama
+    const hasDuplicate = transportDetails.some(detail => 
+      detail.personId === personId && 
+      detail.tanggalPelaksanaan.toDateString() === new Date().toDateString()
+    );
+
+    if (hasDuplicate) {
       toast({
-        title: "Info",
-        description: `${person.name} sudah ada dalam daftar`
+        variant: "destructive",
+        title: "Gagal menambahkan",
+        description: `${person.name} sudah memiliki jadwal di tanggal yang sama`
       });
       return;
     }
@@ -162,11 +161,8 @@ const TransportLokal = () => {
       type,
       personId,
       name: person.name,
-      banyaknya: 0,
       kecamatanTujuan: "",
-      tanggalPelaksanaan: new Date(),
-      rateTranslok: 0,
-      jumlah: 0
+      tanggalPelaksanaan: new Date()
     };
     setTransportDetails(prev => [...prev, newDetail]);
   };
@@ -178,13 +174,7 @@ const TransportLokal = () => {
   const handleTransportItemChange = (id: string, field: string, value: any) => {
     setTransportDetails(prev => prev.map(detail => {
       if (detail.id === id) {
-        const updated = { ...detail, [field]: value };
-
-        // Recalculate jumlah if banyaknya or rateTranslok changed
-        if (field === "banyaknya" || field === "rateTranslok") {
-          updated.jumlah = (updated.banyaknya || 0) * (updated.rateTranslok || 0);
-        }
-        return updated;
+        return { ...detail, [field]: value };
       }
       return detail;
     }));
@@ -202,29 +192,15 @@ const TransportLokal = () => {
       }
 
       // Prepare data for submission
-      const organikBPS: string[] = [];
-      const mitraStatistik: string[] = [];
-      
-      transportDetails.forEach(detail => {
-        if (detail.type === 'organik') {
-          organikBPS.push(detail.personId);
-        } else {
-          mitraStatistik.push(detail.personId);
-        }
-      });
-
       const formData = {
         ...values,
-        organikBPS,
-        mitraStatistik,
-        daftarTransport: transportDetails,
+        transportDetails,
         _programNameMap: programsMap,
         _kegiatanNameMap: kegiatanMap,
         _kroNameMap: kroMap,
         _roNameMap: roMap,
         _komponenNameMap: komponenMap,
         _akunNameMap: akunMap,
-        _jenisNameMap: jenisMap,
         _organikNameMap: organikMap,
         _mitraNameMap: mitraMap,
         _pembuatDaftarName: organikMap[values.pembuatDaftar]
@@ -241,48 +217,22 @@ const TransportLokal = () => {
     }
   };
 
-  // Calculate total amount
-  const totalAmount = transportDetails.reduce((sum, detail) => sum + detail.jumlah, 0);
-
   // Transport Detail Card Component
   const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => (
-    <Card className="mb-4">
-      <CardContent className="p-4 space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h4 className="font-medium">{detail.name}</h4>
-            <p className="text-sm text-muted-foreground">
+    <Card className="mb-2">
+      <CardContent className="p-4">
+        <div className="grid grid-cols-12 gap-4 items-center">
+          {/* Nama */}
+          <div className="col-span-4">
+            <Label>Nama</Label>
+            <div className="font-medium">{detail.name}</div>
+            <p className="text-xs text-muted-foreground">
               {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
             </p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => removeTransportDetail(detail.id)}
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Banyaknya */}
-          <div className="space-y-2">
-            <Label>Banyaknya</Label>
-            <Input 
-              type="number" 
-              value={detail.banyaknya} 
-              onChange={e => handleTransportItemChange(
-                detail.id, 
-                "banyaknya", 
-                parseInt(e.target.value, 10) || 0
-              )} 
-              placeholder="0" 
-            />
-          </div>
-
+          
           {/* Kecamatan Tujuan */}
-          <div className="space-y-2">
+          <div className="col-span-3">
             <Label>Kecamatan Tujuan</Label>
             <Select
               value={detail.kecamatanTujuan}
@@ -292,7 +242,7 @@ const TransportLokal = () => {
                 value
               )}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Pilih Kecamatan" />
               </SelectTrigger>
               <SelectContent>
@@ -306,7 +256,7 @@ const TransportLokal = () => {
           </div>
 
           {/* Tanggal Pelaksanaan */}
-          <div className="space-y-2">
+          <div className="col-span-4">
             <Label>Tanggal Pelaksanaan</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -319,7 +269,7 @@ const TransportLokal = () => {
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {detail.tanggalPelaksanaan ? (
-                    format(detail.tanggalPelaksanaan, "PPP")
+                    format(detail.tanggalPelaksanaan, "dd/MM/yyyy")
                   ) : (
                     <span>Pilih tanggal</span>
                   )}
@@ -339,35 +289,18 @@ const TransportLokal = () => {
               </PopoverContent>
             </Popover>
           </div>
-        </div>
 
-        {/* Rate Transport */}
-        {detail.kecamatanTujuan && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Rate Transport (Rp)</Label>
-              <Input
-                type="number"
-                value={detail.rateTranslok}
-                onChange={e => handleTransportItemChange(
-                  detail.id,
-                  "rateTranslok",
-                  parseInt(e.target.value, 10) || 0
-                )}
-                placeholder="0"
-              />
-            </div>
+          {/* Delete Button */}
+          <div className="col-span-1 flex justify-end">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => removeTransportDetail(detail.id)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-
-        {/* Jumlah */}
-        <div className="space-y-2">
-          <Label>Jumlah (Rp)</Label>
-          <Input 
-            value={detail.jumlah.toLocaleString()} 
-            disabled 
-            className="font-bold bg-gray-50" 
-          />
         </div>
       </CardContent>
     </Card>
@@ -425,32 +358,6 @@ const TransportLokal = () => {
                         )} 
                       />
                     </div>
-
-                    {/* Jenis */}
-                    <FormField 
-                      control={form.control} 
-                      name="jenis" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Jenis</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih jenis" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {jenisList.map(jenis => (
-                                <SelectItem key={jenis.id} value={jenis.id}>
-                                  {jenis.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
 
                     {/* Program */}
                     <FormField 
@@ -741,22 +648,10 @@ const TransportLokal = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   {transportDetails.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {transportDetails.map((detail) => (
                         <TransportDetailCard key={detail.id} detail={detail} />
                       ))}
-
-                      {/* Total amount */}
-                      <div className="flex justify-end mt-6">
-                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-2">
-                          <Label className="text-lg font-semibold">Total (Rp)</Label>
-                          <Input 
-                            value={totalAmount.toLocaleString()} 
-                            disabled 
-                            className="text-lg font-bold bg-gray-50" 
-                          />
-                        </div>
-                      </div>
                     </div>
                   ) : (
                     <div className="border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center text-muted-foreground">
