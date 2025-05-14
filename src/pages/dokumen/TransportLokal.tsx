@@ -244,7 +244,7 @@ const TransportLokal = () => {
       };
       await submitMutation.mutateAsync(submitData);
     } catch (error: any) {
-      console.error("Error saving SPJ Honor:", error);
+      console.error("Error saving SPJ Transport Lokal:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
@@ -256,7 +256,7 @@ const TransportLokal = () => {
   return <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-orange-600">SPJ Honor</h1>
+          <h1 className="text-2xl font-bold text-orange-600">SPJ Transport Lokal</h1>
           <p className="text-sm text-muted-foreground">Formulir Surat Pertanggungjawaban Honor Kegiatan</p>
         </div>
 
