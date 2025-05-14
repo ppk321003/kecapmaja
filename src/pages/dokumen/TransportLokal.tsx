@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,8 +30,11 @@ interface TransportDetail {
   type: 'organik' | 'mitra';
   personId: string;
   name: string;
+  banyaknya: number;
   kecamatanTujuan: string;
   tanggalPelaksanaan: Date;
+  rateTranslok: number;
+  jumlah: number;
 }
 
 // Form Schema
@@ -105,7 +108,7 @@ const TransportLokal = () => {
   const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, `${item.name} (${item.code})`]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
   const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
@@ -117,7 +120,7 @@ const TransportLokal = () => {
         id: org.id,
         name: org.name,
         type: 'organik'
-      }));
+      })));
     }
   }, [organikList, organikLoading]);
 
@@ -136,10 +139,6 @@ const TransportLokal = () => {
     documentType: "TransportLokal",
     onSuccess: () => {
       navigate("/buat-dokumen");
-      toast({
-        title: "Berhasil menyimpan data",
-        description: "Data transport lokal telah disimpan"
-      });
     }
   });
 
@@ -149,13 +148,25 @@ const TransportLokal = () => {
     const person = personList.find(p => p.id === personId);
     if (!person) return;
 
+    const existing = transportDetails.find(detail => detail.personId === personId && detail.type === type);
+    if (existing) {
+      toast({
+        title: "Info",
+        description: `${person.name} sudah ada dalam daftar`
+      });
+      return;
+    }
+
     const newDetail: TransportDetail = {
       id: Math.random().toString(36).substr(2, 9),
       type,
       personId,
       name: person.name,
+      banyaknya: 0,
       kecamatanTujuan: "",
-      tanggalPelaksanaan: new Date()
+      tanggalPelaksanaan: new Date(),
+      rateTranslok: 0,
+      jumlah: 0
     };
     setTransportDetails(prev => [...prev, newDetail]);
   };
@@ -167,7 +178,13 @@ const TransportLokal = () => {
   const handleTransportItemChange = (id: string, field: string, value: any) => {
     setTransportDetails(prev => prev.map(detail => {
       if (detail.id === id) {
-        return { ...detail, [field]: value };
+        const updated = { ...detail, [field]: value };
+
+        // Recalculate jumlah if banyaknya or rateTranslok changed
+        if (field === "banyaknya" || field === "rateTranslok") {
+          updated.jumlah = (updated.banyaknya || 0) * (updated.rateTranslok || 0);
+        }
+        return updated;
       }
       return detail;
     }));
@@ -185,24 +202,32 @@ const TransportLokal = () => {
       }
 
       // Prepare data for submission
+      const organikBPS: string[] = [];
+      const mitraStatistik: string[] = [];
+      
+      transportDetails.forEach(detail => {
+        if (detail.type === 'organik') {
+          organikBPS.push(detail.personId);
+        } else {
+          mitraStatistik.push(detail.personId);
+        }
+      });
+
       const formData = {
         ...values,
-        tanggalPengajuan: format(values.tanggalPengajuan, 'yyyy-MM-dd'),
-        transportDetails: transportDetails.map(detail => ({
-          type: detail.type,
-          personId: detail.personId,
-          name: detail.name,
-          kecamatanTujuan: detail.kecamatanTujuan,
-          tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'yyyy-MM-dd')
-        })),
-        _programName: programsMap[values.program] || '',
-        _kegiatanName: kegiatanMap[values.kegiatan] || '',
-        _kroName: kroMap[values.kro] || '',
-        _roName: roMap[values.ro] || '',
-        _komponenName: komponenMap[values.komponen] || '',
-        _akunName: akunMap[values.akun] || '',
-        _jenisName: jenisMap[values.jenis] || '',
-        _pembuatDaftarName: organikMap[values.pembuatDaftar] || ''
+        organikBPS,
+        mitraStatistik,
+        daftarTransport: transportDetails,
+        _programNameMap: programsMap,
+        _kegiatanNameMap: kegiatanMap,
+        _kroNameMap: kroMap,
+        _roNameMap: roMap,
+        _komponenNameMap: komponenMap,
+        _akunNameMap: akunMap,
+        _jenisNameMap: jenisMap,
+        _organikNameMap: organikMap,
+        _mitraNameMap: mitraMap,
+        _pembuatDaftarName: organikMap[values.pembuatDaftar]
       };
 
       await submitMutation.mutateAsync(formData);
@@ -216,115 +241,137 @@ const TransportLokal = () => {
     }
   };
 
+  // Calculate total amount
+  const totalAmount = transportDetails.reduce((sum, detail) => sum + detail.jumlah, 0);
+
   // Transport Detail Card Component
-  const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => {
-    return (
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            {/* Nama dan Tombol Hapus */}
-            <div className="flex-1 flex items-center gap-2">
-              <div className="min-w-[120px]">
-                <h4 className="font-medium">{detail.name}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
-                </p>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => removeTransportDetail(detail.id)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Form Input dalam 1 Baris */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-              {/* Kecamatan Tujuan */}
-              <div className="space-y-1">
-                <Label className="text-xs">Kecamatan Tujuan</Label>
-                <Select
-                  value={detail.kecamatanTujuan}
-                  onValueChange={value => handleTransportItemChange(
-                    detail.id,
-                    "kecamatanTujuan",
-                    value
+  const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => (
+    <Card className="mb-4">
+      <CardContent className="p-4 space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h4 className="font-medium">{detail.name}</h4>
+            <p className="text-sm text-muted-foreground">
+              {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
+            </p>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => removeTransportDetail(detail.id)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Banyaknya */}
+          <div className="space-y-2">
+            <Label>Banyaknya</Label>
+            <Input 
+              type="number" 
+              value={detail.banyaknya} 
+              onChange={e => handleTransportItemChange(
+                detail.id, 
+                "banyaknya", 
+                parseInt(e.target.value, 10) || 0
+              )} 
+              placeholder="0" 
+            />
+          </div>
+
+          {/* Kecamatan Tujuan */}
+          <div className="space-y-2">
+            <Label>Kecamatan Tujuan</Label>
+            <Select
+              value={detail.kecamatanTujuan}
+              onValueChange={value => handleTransportItemChange(
+                detail.id,
+                "kecamatanTujuan",
+                value
+              )}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Kecamatan" />
+              </SelectTrigger>
+              <SelectContent>
+                {kecamatanOptions.map(kec => (
+                  <SelectItem key={kec} value={kec}>
+                    {kec}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tanggal Pelaksanaan */}
+          <div className="space-y-2">
+            <Label>Tanggal Pelaksanaan</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !detail.tanggalPelaksanaan && "text-muted-foreground"
                   )}
                 >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Pilih" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {kecamatanOptions.map(kec => (
-                      <SelectItem key={kec} value={kec}>
-                        {kec}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tanggal Pelaksanaan */}
-              <div className="space-y-1">
-                <Label className="text-xs">Tanggal</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full h-8 justify-start text-left font-normal text-xs",
-                        !detail.tanggalPelaksanaan && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3 w-3" />
-                      {detail.tanggalPelaksanaan ? (
-                        format(detail.tanggalPelaksanaan, "dd/MM/yyyy")
-                      ) : (
-                        <span>Pilih</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={detail.tanggalPelaksanaan}
-                      onSelect={date => handleTransportItemChange(
-                        detail.id,
-                        "tanggalPelaksanaan",
-                        date || new Date()
-                      )}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Tombol Duplikat untuk orang yang sama */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                const newDetail: TransportDetail = {
-                  ...detail,
-                  id: Math.random().toString(36).substr(2, 9),
-                  kecamatanTujuan: "",
-                  tanggalPelaksanaan: new Date()
-                };
-                setTransportDetails(prev => [...prev, newDetail]);
-              }}
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Tambah
-            </Button>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {detail.tanggalPelaksanaan ? (
+                    format(detail.tanggalPelaksanaan, "PPP")
+                  ) : (
+                    <span>Pilih tanggal</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={detail.tanggalPelaksanaan}
+                  onSelect={date => handleTransportItemChange(
+                    detail.id,
+                    "tanggalPelaksanaan",
+                    date || new Date()
+                  )}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-        </CardContent>
-      </Card>
-    );
-  };
+        </div>
+
+        {/* Rate Transport */}
+        {detail.kecamatanTujuan && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Rate Transport (Rp)</Label>
+              <Input
+                type="number"
+                value={detail.rateTranslok}
+                onChange={e => handleTransportItemChange(
+                  detail.id,
+                  "rateTranslok",
+                  parseInt(e.target.value, 10) || 0
+                )}
+                placeholder="0"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Jumlah */}
+        <div className="space-y-2">
+          <Label>Jumlah (Rp)</Label>
+          <Input 
+            value={detail.jumlah.toLocaleString()} 
+            disabled 
+            className="font-bold bg-gray-50" 
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Layout>
@@ -698,6 +745,18 @@ const TransportLokal = () => {
                       {transportDetails.map((detail) => (
                         <TransportDetailCard key={detail.id} detail={detail} />
                       ))}
+
+                      {/* Total amount */}
+                      <div className="flex justify-end mt-6">
+                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-2">
+                          <Label className="text-lg font-semibold">Total (Rp)</Label>
+                          <Input 
+                            value={totalAmount.toLocaleString()} 
+                            disabled 
+                            className="text-lg font-bold bg-gray-50" 
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center text-muted-foreground">
