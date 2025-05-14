@@ -17,6 +17,13 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Hooks and Utilities
 import { cn } from "@/lib/utils";
@@ -80,6 +87,8 @@ const TransportLokal = () => {
   const [transportDetails, setTransportDetails] = useState<TransportDetail[]>([]);
   const [availableOrganik, setAvailableOrganik] = useState<any[]>([]);
   const [availableMitra, setAvailableMitra] = useState<any[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<{type: 'organik' | 'mitra', id: string} | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -136,14 +145,24 @@ const TransportLokal = () => {
   });
 
   // Handler functions
-  const addTransportDetail = (type: 'organik' | 'mitra', personId: string) => {
+  const handleAddPerson = () => {
+    if (!selectedPerson) {
+      toast({
+        variant: "destructive",
+        title: "Gagal menambahkan",
+        description: "Silakan pilih petugas terlebih dahulu"
+      });
+      return;
+    }
+
+    const { type, id } = selectedPerson;
     const personList = type === 'organik' ? organikList : mitraList;
-    const person = personList.find(p => p.id === personId);
+    const person = personList.find(p => p.id === id);
     if (!person) return;
 
     // Validasi: nama + tanggal tidak boleh sama
     const hasDuplicate = transportDetails.some(detail => 
-      detail.personId === personId && 
+      detail.personId === id && 
       detail.tanggalPelaksanaan.toDateString() === new Date().toDateString()
     );
 
@@ -159,12 +178,15 @@ const TransportLokal = () => {
     const newDetail: TransportDetail = {
       id: Math.random().toString(36).substr(2, 9),
       type,
-      personId,
+      personId: id,
       name: person.name,
       kecamatanTujuan: "",
       tanggalPelaksanaan: new Date()
     };
+    
     setTransportDetails(prev => [...prev, newDetail]);
+    setSelectedPerson(null);
+    setIsAddDialogOpen(false);
   };
 
   const removeTransportDetail = (id: string) => {
@@ -180,60 +202,77 @@ const TransportLokal = () => {
     }));
   };
 
-const onSubmit = async (values: FormValues) => {
-  try {
-    if (transportDetails.length === 0) {
+  const onSubmit = async (values: FormValues) => {
+    try {
+      if (transportDetails.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Daftar transport kosong",
+          description: "Tambahkan minimal satu petugas"
+        });
+        return;
+      }
+
+      // Format data untuk spreadsheet
+      const rows = transportDetails.map(detail => ({
+        // Data utama dari form
+        id: `trl-${format(new Date(), 'yyMMddHHmmss')}`,
+        namaKegiatan: values.namaKegiatan,
+        detil: values.detil || '',
+        program: programsMap[values.program] || '',
+        kegiatan: kegiatanMap[values.kegiatan] || '',
+        kro: kroMap[values.kro] || '',
+        ro: roMap[values.ro] || '',
+        komponen: komponenMap[values.komponen] || '',
+        akun: akunMap[values.akun] || '',
+        tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
+        pembuatDaftar: organikMap[values.pembuatDaftar] || '',
+        
+        // Data dari transport detail
+        namaPetugas: detail.name,
+        jenisPetugas: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
+        kecamatanTujuan: detail.kecamatanTujuan,
+        tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
+        
+        // Data tambahan
+        _timestamp: new Date().toISOString()
+      }));
+
+      const formData = {
+        action: "append",
+        sheetName: "TransportLokal",
+        range: "A1",
+        values: rows.map(row => [
+          row.id,
+          row.namaKegiatan,
+          row.detil,
+          row.program,
+          row.kegiatan,
+          row.kro,
+          row.ro,
+          row.komponen,
+          row.akun,
+          row.tanggalPengajuan,
+          row.pembuatDaftar,
+          row.namaPetugas,
+          row.jenisPetugas,
+          row.kecamatanTujuan,
+          row.tanggalPelaksanaan,
+          row._timestamp
+        ])
+      };
+
+      console.log("Payload yang dikirim:", formData);
+      await submitMutation.mutateAsync(formData);
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
-        title: "Daftar transport kosong",
-        description: "Tambahkan minimal satu petugas"
+        title: "Gagal menyimpan data",
+        description: error.message || "Terjadi kesalahan saat menyimpan form"
       });
-      return;
     }
-
-    // Format data untuk spreadsheet
-    const rows = transportDetails.map(detail => ({
-      // Data utama dari form
-      id: `trl-${format(new Date(), 'yyMMddHHmmss')}`,
-      namaKegiatan: values.namaKegiatan,
-      detil: values.detil || '',
-      program: programsMap[values.program] || '',
-      kegiatan: kegiatanMap[values.kegiatan] || '',
-      kro: kroMap[values.kro] || '',
-      ro: roMap[values.ro] || '',
-      komponen: komponenMap[values.komponen] || '',
-      akun: akunMap[values.akun] || '',
-      tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
-      pembuatDaftar: organikMap[values.pembuatDaftar] || '',
-      
-      // Data dari transport detail
-      namaPetugas: detail.name,
-      jenisPetugas: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
-      kecamatanTujuan: detail.kecamatanTujuan,
-      tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
-      
-      // Data tambahan
-      _timestamp: new Date().toISOString()
-    }));
-
-    const formData = {
-      action: "append",
-      sheetName: "TransportLokal",
-      range: "A1",
-      values: rows.map(row => Object.values(row)) // Convert object to array of values
-    };
-
-    console.log("Payload yang dikirim:", formData); // Untuk debugging
-    await submitMutation.mutateAsync(formData);
-  } catch (error: any) {
-    console.error("Error submitting form:", error);
-    toast({
-      variant: "destructive",
-      title: "Gagal menyimpan data",
-      description: error.message || "Terjadi kesalahan saat menyimpan form"
-    });
-  }
-};
+  };
 
   // Transport Detail Card Component
   const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => (
@@ -621,47 +660,81 @@ const onSubmit = async (values: FormValues) => {
                 <CardHeader className="bg-gray-50 px-6 py-4 border-b">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <h2 className="text-lg font-semibold">Daftar Transport</h2>
-                    <div className="w-full md:w-auto">
-                      <Select 
-                        onValueChange={value => {
-                          const [type, id] = value.split('|');
-                          addTransportDetail(type as 'organik' | 'mitra', id);
-                        }}
-                      >
-                        <SelectTrigger className="w-full md:w-[250px]">
-                          <SelectValue placeholder="Tambah petugas" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="placeholder" disabled>
-                            -- Pilih Petugas --
-                          </SelectItem>
-                          {availableOrganik.length > 0 && (
-                            <>
-                              <SelectItem value="header-organik" disabled className="font-bold">
-                                Organik BPS
-                              </SelectItem>
-                              {availableOrganik.map(org => (
-                                <SelectItem key={org.id} value={`organik|${org.id}`}>
-                                  {org.name}
-                                </SelectItem>
-                              ))}
-                            </>
+                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Tambah Pelaksana
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Tambah Pelaksana</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Jenis Pelaksana</Label>
+                            <Select 
+                              onValueChange={(value) => {
+                                setSelectedPerson(prev => ({
+                                  type: value as 'organik' | 'mitra',
+                                  id: prev?.id || ''
+                                }));
+                              }}
+                              value={selectedPerson?.type || ''}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih jenis pelaksana" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="organik">Organik BPS</SelectItem>
+                                <SelectItem value="mitra">Mitra Statistik</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {selectedPerson?.type && (
+                            <div className="space-y-2">
+                              <Label>Nama Pelaksana</Label>
+                              <Select
+                                onValueChange={(value) => {
+                                  setSelectedPerson(prev => ({
+                                    ...prev!,
+                                    id: value
+                                  }));
+                                }}
+                                value={selectedPerson.id}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={`Pilih ${selectedPerson.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(selectedPerson.type === 'organik' ? availableOrganik : availableMitra).map(person => (
+                                    <SelectItem key={person.id} value={person.id}>
+                                      {person.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           )}
-                          {availableMitra.length > 0 && (
-                            <>
-                              <SelectItem value="header-mitra" disabled className="font-bold">
-                                Mitra Statistik
-                              </SelectItem>
-                              {availableMitra.map(mitra => (
-                                <SelectItem key={mitra.id} value={`mitra|${mitra.id}`}>
-                                  {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsAddDialogOpen(false)}
+                          >
+                            Batal
+                          </Button>
+                          <Button 
+                            onClick={handleAddPerson}
+                            disabled={!selectedPerson?.id}
+                          >
+                            Tambahkan
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -675,7 +748,7 @@ const onSubmit = async (values: FormValues) => {
                     <div className="border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center text-muted-foreground">
                       <Plus className="h-8 w-8 mb-2" />
                       <p className="text-sm font-medium">Belum ada data transport</p>
-                      <p className="text-sm">Pilih petugas untuk menambahkan data transport</p>
+                      <p className="text-sm">Tambahkan pelaksana untuk membuat daftar transport</p>
                     </div>
                   )}
                 </CardContent>
