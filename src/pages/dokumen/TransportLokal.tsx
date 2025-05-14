@@ -191,55 +191,54 @@ const TransportLokal = () => {
   };
 
   const onSubmit = async (values: FormValues) => {
-    try {
-      if (transportDetails.length === 0) {
-        toast({
-          variant: "destructive",
-          title: "Daftar transport kosong",
-          description: "Tambahkan minimal satu petugas"
-        });
-        return;
-      }
-
-      // Prepare data for submission
-      const organikBPS: string[] = [];
-      const mitraStatistik: string[] = [];
-      
-      transportDetails.forEach(detail => {
-        if (detail.type === 'organik') {
-          organikBPS.push(detail.personId);
-        } else {
-          mitraStatistik.push(detail.personId);
-        }
-      });
-
-      const formData = {
-        ...values,
-        organikBPS,
-        mitraStatistik,
-        daftarTransport: transportDetails,
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _jenisNameMap: jenisMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[values.pembuatDaftar]
-      };
-
-      await submitMutation.mutateAsync(formData);
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
+  try {
+    if (transportDetails.length === 0) {
       toast({
         variant: "destructive",
-        title: "Gagal menyimpan data",
-        description: error.message || "Terjadi kesalahan saat menyimpan form"
+        title: "Daftar transport kosong",
+        description: "Tambahkan minimal satu petugas"
       });
+      return;
     }
-  };
+
+    // Format transport details untuk spreadsheet
+    const formattedTransportDetails = transportDetails.map(detail => ({
+      nama: detail.name,
+      jenis: detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik',
+      banyaknya: detail.banyaknya,
+      kecamatanTujuan: detail.kecamatanTujuan,
+      tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'dd/MM/yyyy'),
+      rateTranslok: detail.rateTranslok,
+      jumlah: detail.jumlah
+    }));
+
+    const formData = {
+      ...values,
+      tanggalPengajuan: format(values.tanggalPengajuan, 'dd/MM/yyyy'),
+      transportDetails: formattedTransportDetails,
+      totalAmount,
+      _programNameMap: programsMap,
+      _kegiatanNameMap: kegiatanMap,
+      _kroNameMap: kroMap,
+      _roNameMap: roMap,
+      _komponenNameMap: komponenMap,
+      _akunNameMap: akunMap,
+      _jenisNameMap: jenisMap,
+      _organikNameMap: organikMap,
+      _mitraNameMap: mitraMap,
+      _pembuatDaftarName: organikMap[values.pembuatDaftar]
+    };
+
+    await submitMutation.mutateAsync(formData);
+  } catch (error: any) {
+    console.error("Error submitting form:", error);
+    toast({
+      variant: "destructive",
+      title: "Gagal menyimpan data",
+      description: error.message || "Terjadi kesalahan saat menyimpan form"
+    });
+  }
+};
 
   // Calculate total amount
   const totalAmount = transportDetails.reduce((sum, detail) => sum + detail.jumlah, 0);
