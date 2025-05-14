@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,8 +31,9 @@ interface TransportDetail {
   personId: string;
   name: string;
   banyaknya: number;
-  kecamatanTujuan: string[];
-  rateTranslok: number[];
+  kecamatanTujuan: string;
+  tanggalPelaksanaan: Date;
+  rateTranslok: number;
   jumlah: number;
 }
 
@@ -163,8 +163,9 @@ const TransportLokal = () => {
       personId,
       name: person.name,
       banyaknya: 0,
-      kecamatanTujuan: [],
-      rateTranslok: [],
+      kecamatanTujuan: "",
+      tanggalPelaksanaan: new Date(),
+      rateTranslok: 0,
       jumlah: 0
     };
     setTransportDetails(prev => [...prev, newDetail]);
@@ -181,70 +182,9 @@ const TransportLokal = () => {
 
         // Recalculate jumlah if banyaknya or rateTranslok changed
         if (field === "banyaknya" || field === "rateTranslok") {
-          let total = 0;
-          for (let i = 0; i < updated.rateTranslok.length; i++) {
-            total += (updated.banyaknya || 0) * (updated.rateTranslok[i] || 0);
-          }
-          updated.jumlah = total;
+          updated.jumlah = (updated.banyaknya || 0) * (updated.rateTranslok || 0);
         }
         return updated;
-      }
-      return detail;
-    }));
-  };
-
-  const handleKecamatanChange = (detailId: string, kecamatan: string, checked: boolean) => {
-    setTransportDetails(prev => prev.map(detail => {
-      if (detail.id === detailId) {
-        let newKecamatanTujuan = [...detail.kecamatanTujuan];
-        let newRateTranslok = [...detail.rateTranslok];
-
-        if (checked) {
-          newKecamatanTujuan.push(kecamatan);
-          newRateTranslok.push(0);
-        } else {
-          const index = newKecamatanTujuan.indexOf(kecamatan);
-          if (index !== -1) {
-            newKecamatanTujuan.splice(index, 1);
-            newRateTranslok.splice(index, 1);
-          }
-        }
-
-        // Recalculate total
-        let total = 0;
-        for (let i = 0; i < newRateTranslok.length; i++) {
-          total += (detail.banyaknya || 0) * (newRateTranslok[i] || 0);
-        }
-
-        return {
-          ...detail,
-          kecamatanTujuan: newKecamatanTujuan,
-          rateTranslok: newRateTranslok,
-          jumlah: total
-        };
-      }
-      return detail;
-    }));
-  };
-
-  const handleRateChange = (detailId: string, kecamatanIndex: number, value: string) => {
-    const rateValue = Number(value) || 0;
-    setTransportDetails(prev => prev.map(detail => {
-      if (detail.id === detailId) {
-        const newRateTranslok = [...detail.rateTranslok];
-        newRateTranslok[kecamatanIndex] = rateValue;
-
-        // Recalculate total
-        let total = 0;
-        for (let i = 0; i < newRateTranslok.length; i++) {
-          total += (detail.banyaknya || 0) * (newRateTranslok[i] || 0);
-        }
-
-        return {
-          ...detail,
-          rateTranslok: newRateTranslok,
-          jumlah: total
-        };
       }
       return detail;
     }));
@@ -326,55 +266,102 @@ const TransportLokal = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Banyaknya */}
           <div className="space-y-2">
             <Label>Banyaknya</Label>
             <Input 
               type="number" 
               value={detail.banyaknya} 
-              onChange={e => handleTransportItemChange(detail.id, "banyaknya", parseInt(e.target.value, 10) || 0)} 
+              onChange={e => handleTransportItemChange(
+                detail.id, 
+                "banyaknya", 
+                parseInt(e.target.value, 10) || 0
+              )} 
               placeholder="0" 
             />
           </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label>Kecamatan Tujuan</Label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {kecamatanOptions.map(kec => (
-              <div key={kec} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`kec-${detail.id}-${kec}`} 
-                  checked={detail.kecamatanTujuan.includes(kec)} 
-                  onCheckedChange={checked => handleKecamatanChange(detail.id, kec, !!checked)} 
+
+          {/* Kecamatan Tujuan */}
+          <div className="space-y-2">
+            <Label>Kecamatan Tujuan</Label>
+            <Select
+              value={detail.kecamatanTujuan}
+              onValueChange={value => handleTransportItemChange(
+                detail.id,
+                "kecamatanTujuan",
+                value
+              )}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Kecamatan" />
+              </SelectTrigger>
+              <SelectContent>
+                {kecamatanOptions.map(kec => (
+                  <SelectItem key={kec} value={kec}>
+                    {kec}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tanggal Pelaksanaan */}
+          <div className="space-y-2">
+            <Label>Tanggal Pelaksanaan</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !detail.tanggalPelaksanaan && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {detail.tanggalPelaksanaan ? (
+                    format(detail.tanggalPelaksanaan, "PPP")
+                  ) : (
+                    <span>Pilih tanggal</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={detail.tanggalPelaksanaan}
+                  onSelect={date => handleTransportItemChange(
+                    detail.id,
+                    "tanggalPelaksanaan",
+                    date || new Date()
+                  )}
+                  initialFocus
                 />
-                <Label htmlFor={`kec-${detail.id}-${kec}`} className="text-sm">
-                  {kec}
-                </Label>
-              </div>
-            ))}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-        
-        {detail.kecamatanTujuan.length > 0 && (
-          <div className="space-y-3">
-            <Label>Rate Transport per Kecamatan (Rp)</Label>
+
+        {/* Rate Transport */}
+        {detail.kecamatanTujuan && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              {detail.kecamatanTujuan.map((kec, kecIndex) => (
-                <div key={kecIndex} className="grid grid-cols-2 gap-2 items-center">
-                  <Label className="text-sm">{kec}</Label>
-                  <Input 
-                    type="number" 
-                    value={detail.rateTranslok[kecIndex] || 0} 
-                    onChange={e => handleRateChange(detail.id, kecIndex, e.target.value)} 
-                    placeholder="0" 
-                  />
-                </div>
-              ))}
+              <Label>Rate Transport (Rp)</Label>
+              <Input
+                type="number"
+                value={detail.rateTranslok}
+                onChange={e => handleTransportItemChange(
+                  detail.id,
+                  "rateTranslok",
+                  parseInt(e.target.value, 10) || 0
+                )}
+                placeholder="0"
+              />
             </div>
           </div>
         )}
-        
-        <div>
+
+        {/* Jumlah */}
+        <div className="space-y-2">
           <Label>Jumlah (Rp)</Label>
           <Input 
             value={detail.jumlah.toLocaleString()} 
