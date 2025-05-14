@@ -504,7 +504,7 @@ const SPJHonor = () => {
                           onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} 
                           placeholder="0" 
                           min="0" 
-                          max="31" 
+                          max="10000" 
                         />
                       </div>
                       <div className="space-y-2">
