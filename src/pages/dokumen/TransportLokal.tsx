@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,7 +106,7 @@ const TransportLokal = () => {
   const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, `${item.name} (${item.code})`]));
   const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
@@ -137,6 +137,10 @@ const TransportLokal = () => {
     documentType: "TransportLokal",
     onSuccess: () => {
       navigate("/buat-dokumen");
+      toast({
+        title: "Berhasil menyimpan data",
+        description: "Data transport lokal telah disimpan"
+      });
     }
   });
 
@@ -185,21 +189,24 @@ const TransportLokal = () => {
       // Prepare data for submission
       const formData = {
         ...values,
+        tanggalPengajuan: format(values.tanggalPengajuan, 'yyyy-MM-dd'),
         transportDetails: transportDetails.map(detail => ({
-          ...detail,
-          tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'yyyy-MM-dd')
+          type: detail.type,
+          personId: detail.personId,
+          name: detail.name,
+          kecamatanTujuan: detail.kecamatanTujuan,
+          tanggalPelaksanaan: format(detail.tanggalPelaksanaan, 'yyyy-MM-dd'),
+          rateTranslok: detail.rateTranslok
         })),
         totalAmount: transportDetails.reduce((sum, detail) => sum + (detail.rateTranslok || 0), 0),
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _jenisNameMap: jenisMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[values.pembuatDaftar]
+        _programName: programsMap[values.program] || '',
+        _kegiatanName: kegiatanMap[values.kegiatan] || '',
+        _kroName: kroMap[values.kro] || '',
+        _roName: roMap[values.ro] || '',
+        _komponenName: komponenMap[values.komponen] || '',
+        _akunName: akunMap[values.akun] || '',
+        _jenisName: jenisMap[values.jenis] || '',
+        _pembuatDaftarName: organikMap[values.pembuatDaftar] || ''
       };
 
       await submitMutation.mutateAsync(formData);
@@ -217,143 +224,156 @@ const TransportLokal = () => {
   const totalAmount = transportDetails.reduce((sum, detail) => sum + (detail.rateTranslok || 0), 0);
 
   // Transport Detail Card Component
-  const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          {/* Nama dan Tombol Hapus */}
-          <div className="flex-1 flex items-center gap-2">
-            <div className="min-w-[120px]">
-              <h4 className="font-medium">{detail.name}</h4>
-              <p className="text-xs text-muted-foreground">
-                {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
-              </p>
+  const TransportDetailCard = ({ detail }: { detail: TransportDetail }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleRateChange = (value: string) => {
+      if (value === '' || /^\d+$/.test(value)) {
+        handleTransportItemChange(
+          detail.id,
+          "rateTranslok",
+          value === '' ? 0 : parseInt(value, 10)
+        );
+      }
+    };
+
+    // Fokuskan input setelah render jika nilai berubah
+    useEffect(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, [detail.rateTranslok]);
+
+    return (
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            {/* Nama dan Tombol Hapus */}
+            <div className="flex-1 flex items-center gap-2">
+              <div className="min-w-[120px]">
+                <h4 className="font-medium">{detail.name}</h4>
+                <p className="text-xs text-muted-foreground">
+                  {detail.type === 'organik' ? 'Organik BPS' : 'Mitra Statistik'}
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => removeTransportDetail(detail.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => removeTransportDetail(detail.id)}
-              className="text-red-500 hover:text-red-700"
+            
+            {/* Form Input dalam 1 Baris */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+              {/* Kecamatan Tujuan */}
+              <div className="space-y-1">
+                <Label className="text-xs">Kecamatan Tujuan</Label>
+                <Select
+                  value={detail.kecamatanTujuan}
+                  onValueChange={value => handleTransportItemChange(
+                    detail.id,
+                    "kecamatanTujuan",
+                    value
+                  )}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Pilih" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {kecamatanOptions.map(kec => (
+                      <SelectItem key={kec} value={kec}>
+                        {kec}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Rate Transport - Diperbaiki input number */}
+              <div className="space-y-1">
+                <Label className="text-xs">Rate (Rp)</Label>
+                <Input
+                  ref={inputRef}
+                  type="number"
+                  value={detail.rateTranslok || ''}
+                  onChange={(e) => handleRateChange(e.target.value)}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      handleTransportItemChange(
+                        detail.id,
+                        "rateTranslok",
+                        0
+                      );
+                    }
+                  }}
+                  className="h-8"
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Tanggal Pelaksanaan */}
+              <div className="space-y-1">
+                <Label className="text-xs">Tanggal</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-8 justify-start text-left font-normal text-xs",
+                        !detail.tanggalPelaksanaan && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3 w-3" />
+                      {detail.tanggalPelaksanaan ? (
+                        format(detail.tanggalPelaksanaan, "dd/MM/yyyy")
+                      ) : (
+                        <span>Pilih</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={detail.tanggalPelaksanaan}
+                      onSelect={date => handleTransportItemChange(
+                        detail.id,
+                        "tanggalPelaksanaan",
+                        date || new Date()
+                      )}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Tombol Duplikat untuk orang yang sama */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                const newDetail: TransportDetail = {
+                  ...detail,
+                  id: Math.random().toString(36).substr(2, 9),
+                  kecamatanTujuan: "",
+                  tanggalPelaksanaan: new Date(),
+                  rateTranslok: 0
+                };
+                setTransportDetails(prev => [...prev, newDetail]);
+              }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Plus className="h-3 w-3 mr-1" />
+              Tambah
             </Button>
           </div>
-          
-          {/* Form Input dalam 1 Baris */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
-            {/* Kecamatan Tujuan */}
-            <div className="space-y-1">
-              <Label className="text-xs">Kecamatan Tujuan</Label>
-              <Select
-                value={detail.kecamatanTujuan}
-                onValueChange={value => handleTransportItemChange(
-                  detail.id,
-                  "kecamatanTujuan",
-                  value
-                )}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Pilih" />
-                </SelectTrigger>
-                <SelectContent>
-                  {kecamatanOptions.map(kec => (
-                    <SelectItem key={kec} value={kec}>
-                      {kec}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Rate Transport - Diperbaiki input number */}
-            <div className="space-y-1">
-              <Label className="text-xs">Rate (Rp)</Label>
-              <Input
-                type="number"
-                value={detail.rateTranslok || ''}
-                onChange={e => {
-                  const value = e.target.value;
-                  if (value === '' || /^\d+$/.test(value)) {
-                    handleTransportItemChange(
-                      detail.id,
-                      "rateTranslok",
-                      value === '' ? 0 : parseInt(value, 10)
-                    );
-                  }
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '') {
-                    handleTransportItemChange(
-                      detail.id,
-                      "rateTranslok",
-                      0
-                    );
-                  }
-                }}
-                className="h-8"
-                placeholder="0"
-              />
-            </div>
-
-            {/* Tanggal Pelaksanaan */}
-            <div className="space-y-1">
-              <Label className="text-xs">Tanggal</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full h-8 justify-start text-left font-normal text-xs",
-                      !detail.tanggalPelaksanaan && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-3 w-3" />
-                    {detail.tanggalPelaksanaan ? (
-                      format(detail.tanggalPelaksanaan, "dd/MM/yyyy")
-                    ) : (
-                      <span>Pilih</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={detail.tanggalPelaksanaan}
-                    onSelect={date => handleTransportItemChange(
-                      detail.id,
-                      "tanggalPelaksanaan",
-                      date || new Date()
-                    )}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* Tombol Duplikat untuk orang yang sama */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={() => {
-              const newDetail: TransportDetail = {
-                ...detail,
-                id: Math.random().toString(36).substr(2, 9),
-                kecamatanTujuan: "",
-                tanggalPelaksanaan: new Date(),
-                rateTranslok: 0
-              };
-              setTransportDetails(prev => [...prev, newDetail]);
-            }}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Tambah
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Layout>
