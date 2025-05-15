@@ -31,7 +31,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "Id",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Jenis Kerangka Acuan Kerja",
       header: "Jenis Kerangka Acuan Kerja",
@@ -58,8 +59,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "daftar-hadir",
     title: "Daftar Hadir",
@@ -68,7 +68,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Jenis",
       header: "Jenis",
@@ -94,8 +95,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "spj-honor",
     title: "SPJ Honor",
@@ -104,7 +104,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -134,8 +135,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "transport-lokal",
     title: "Transport Lokal",
@@ -144,7 +144,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -170,8 +171,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "uang-harian-transport",
     title: "Uang Harian dan Transport Lokal",
@@ -180,7 +180,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -210,8 +211,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "kuitansi-perjalanan-dinas",
     title: "Kuitansi Perjalanan Dinas",
@@ -220,7 +220,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Pelaksana Perjalanan Dinas",
       header: "Pelaksana Perjalanan Dinas",
@@ -250,8 +251,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "dokumen-pengadaan",
     title: "Dokumen Pengadaan",
@@ -260,7 +260,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Paket Pengadaan",
       header: "Nama Paket Pengadaan",
@@ -286,8 +287,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }, {
     id: "tanda-terima",
     title: "Tanda Terima",
@@ -296,7 +296,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -322,8 +323,7 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }],
-    initialSort: { key: "Id", direction: "desc" }
+    }]
   }];
 
   // Get the active document
@@ -380,7 +380,8 @@ const DownloadDokumen = () => {
                   title={doc.title} 
                   columns={doc.columns} 
                   data={data || []}
-                  defaultSort={{ id: "Id", desc: true }}
+                  defaultSortField="Id"
+                  defaultSortOrder="desc"
                 />
               )}
             </TabsContent>
