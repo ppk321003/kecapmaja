@@ -315,7 +315,7 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
   const jenisName = data._jenisNameMap?.[data.jenis] || data.jenis || "";
 
-  // Get display names for Organik and Mitra
+  /* Get display names for Organik and Mitra
   const organikNames = (data.organikBPS || []).map((id: string) => {
     return `"${data._organikNameMap?.[id] || id}"`;
   });
@@ -346,7 +346,7 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     roName,                          // RO
     komponenName,                     // Komponen
     akunName,                         // Akun
-    formatDate(data.tanggalPengajuan),// Tanggal Pengajuan
+    formatDate(data.tanggalSpj),// Tanggal Pengajuan
     data._pembuatDaftarName || data.pembuatDaftar || "",         // Pembuat Daftar
     organikNames.join(", "),          // Organik
     //"",                               // NIP BPS (placeholder)
@@ -357,7 +357,57 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
   // Add kecamatan as last field
   if (kecamatanString) {
     row.push(kecamatanString);        // Nama Kecamatan
-  }
+  }*/
+
+  const row: any[] = [
+    documentId,                    // ID
+    data.namaKegiatan || "",       // Nama Kegiatan
+    data.detil || "",              // Detil
+    jenisName,                     // Jenis
+    programName,                   // Program
+    kegiatanName,                  // Kegiatan
+    kroName,                       // KRO
+    roName,                        // RO
+    komponenName,                  // Komponen
+    akunName,                      // Akun
+    formatDate(data.tanggalSpj),   // Tanggal (SPJ)
+    data._pembuatDaftarName || data.pembuatDaftar || "",      // Pembuat Daftar
+  ];
+
+  // Extract organik and mitra names from honorDetails
+  const organikNames: string[] = [];
+  const mitraNames: string[] = [];
+  const transportDetails: string[] = [];
+
+  (data.transportDetails || []).forEach((detail: any) => {
+    // Format honor details to save to spreadsheet
+    const formattedDetail = {
+      nama: detail.nama || "",
+      kecamatan: detail.kecamatan || "",
+      rate: detail.rate || 0,
+      tanggal: formatDate(detail.tanggalPelaksanaan) || null,
+      type: detail.type || ""
+    };
+    
+    if (detail.type === 'organik' && detail.personId) {      
+      organikNames.push(`"${formattedDetail.nama}"`);
+
+      // Add formatted detail to transportDetails array
+      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.type}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
+      
+    } else if (detail.type === 'mitra' && detail.personId) {
+      mitraNames.push(`"${formattedDetail.nama}"`);
+      
+      // Add formatted detail to transportDetails array
+      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.type}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
+    }
+  });
+
+  row.push(organikNames.join(", "));  // Organik
+  //row.push("");                       // NIP BPS (placeholder)
+  row.push(mitraNames.join(", "));    // Mitra Statistik
+  //row.push("");                       // NIK Mitra Statistik (placeholder)
+  row.push(transportDetails.join(" | ")); // Honor details (format: "name": honorPerOrang, kehadiran, pph21%, totalHonor)
 
   return row;
 }
