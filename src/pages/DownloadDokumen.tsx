@@ -371,7 +371,8 @@ const DownloadDokumen = () => {
                 <DataTable 
                   title={doc.title} 
                   columns={doc.columns} 
-                  data={data || []} 
+                  data={data || []}
+                  defaultSort={{ id: "Id", desc: true }} 
                 />
               )}
             </TabsContent>
