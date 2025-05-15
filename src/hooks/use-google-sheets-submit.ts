@@ -393,13 +393,13 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
       organikNames.push(`"${formattedDetail.nama}"`);
 
       // Add formatted detail to transportDetails array
-      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.type}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
+      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.kecamatan}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
       
     } else if (detail.type === 'mitra' && detail.personId) {
       mitraNames.push(`"${formattedDetail.nama}"`);
       
       // Add formatted detail to transportDetails array
-      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.type}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
+      transportDetails.push(`"${formattedDetail.nama}": "${formattedDetail.kecamatan}", "${formattedDetail.tanggal}", ${formattedDetail.rate}`);
     }
   });
 
