@@ -58,7 +58,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "daftar-hadir",
     title: "Daftar Hadir",
@@ -93,7 +94,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "spj-honor",
     title: "SPJ Honor",
@@ -132,7 +134,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "transport-lokal",
     title: "Transport Lokal",
@@ -167,7 +170,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "uang-harian-transport",
     title: "Uang Harian dan Transport Lokal",
@@ -206,7 +210,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "kuitansi-perjalanan-dinas",
     title: "Kuitansi Perjalanan Dinas",
@@ -245,7 +250,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "dokumen-pengadaan",
     title: "Dokumen Pengadaan",
@@ -280,7 +286,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }, {
     id: "tanda-terima",
     title: "Tanda Terima",
@@ -315,7 +322,8 @@ const DownloadDokumen = () => {
                 <p>Buka dokumen</p>
               </TooltipContent>
             </Tooltip>
-    }]
+    }],
+    initialSort: { key: "Id", direction: "desc" }
   }];
 
   // Get the active document
@@ -372,7 +380,7 @@ const DownloadDokumen = () => {
                   title={doc.title} 
                   columns={doc.columns} 
                   data={data || []}
-                  defaultSort={{ id: "Id", desc: true }} 
+                  initialSort={doc.initialSort}
                 />
               )}
             </TabsContent>
