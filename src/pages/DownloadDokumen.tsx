@@ -380,7 +380,7 @@ const DownloadDokumen = () => {
                   title={doc.title} 
                   columns={doc.columns} 
                   data={data || []}
-                  initialSort={doc.initialSort}
+                  defaultSort={{ id: "Id", desc: true }}
                 />
               )}
             </TabsContent>
