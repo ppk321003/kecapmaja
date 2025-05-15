@@ -246,7 +246,8 @@ const DownloadDokumen = () => {
               </TooltipContent>
             </Tooltip>
     }]
-    }, {
+  
+  }, {
     id: "tanda-terima",
     title: "Tanda Terima",
     sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
@@ -282,41 +283,7 @@ const DownloadDokumen = () => {
             </Tooltip>
     }]
   }];
-  }, {
-    id: "dokumen-pengadaan",
-    title: "Dokumen Pengadaan",
-    sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "ID",
-      isSortable: true
-    }, {
-      key: "Nama Paket Pengadaan",
-      header: "Nama Paket Pengadaan",
-      isSortable: true
-    }, {
-      key: "Kode Kegiatan",
-      header: "Kode Kegiatan",
-      isSortable: true
-    }, {
-      key: "Penyedia Barang/Jasa",
-      header: "Penyedia Barang/Jasa",
-      isSortable: true
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
+
   // Get the active document
   const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];
 
