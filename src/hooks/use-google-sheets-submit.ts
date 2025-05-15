@@ -363,7 +363,7 @@ function formatTransportLokalData(documentId: string, data: any): any[] {
     documentId,                    // ID
     data.namaKegiatan || "",       // Nama Kegiatan
     data.detil || "",              // Detil
-    jenisName,                     // Jenis
+    //jenisName,                     // Jenis
     programName,                   // Program
     kegiatanName,                  // Kegiatan
     kroName,                       // KRO
