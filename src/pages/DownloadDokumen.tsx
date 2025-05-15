@@ -31,8 +31,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "Id",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Jenis Kerangka Acuan Kerja",
       header: "Jenis Kerangka Acuan Kerja",
@@ -68,8 +67,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Jenis",
       header: "Jenis",
@@ -104,8 +102,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -144,8 +141,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -180,8 +176,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -220,8 +215,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Pelaksana Perjalanan Dinas",
       header: "Pelaksana Perjalanan Dinas",
@@ -260,8 +254,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Nama Paket Pengadaan",
       header: "Nama Paket Pengadaan",
@@ -296,8 +289,7 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      isSortable: true
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -380,8 +372,6 @@ const DownloadDokumen = () => {
                   title={doc.title} 
                   columns={doc.columns} 
                   data={data || []}
-                  defaultSortField="Id"
-                  defaultSortOrder="desc"
                 />
               )}
             </TabsContent>
@@ -391,5 +381,3 @@ const DownloadDokumen = () => {
     </Layout>
   );
 };
-
-export default DownloadDokumen;
