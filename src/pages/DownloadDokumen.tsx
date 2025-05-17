@@ -18,6 +18,7 @@ const indonesianOptions = {
   minute: '2-digit' as const,
   second: '2-digit' as const
 };
+
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
 
@@ -29,25 +30,19 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "Id",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "Id"
     }, {
       key: "Jenis Kerangka Acuan Kerja",
-      header: "Jenis Kerangka Acuan Kerja",
-      isSortable: true
+      header: "Jenis Kerangka Acuan Kerja"
     }, {
       key: "Nama Kegiatan-1",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Nama Pembuat Daftar",
-      header: "Nama Pembuat Daftar",
-      isSortable: true
+      header: "Nama Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
-      isSortable: false,
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
@@ -66,21 +61,16 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Jenis",
-      header: "Jenis",
-      isSortable: true
+      header: "Jenis"
     }, {
       key: "Nama Kegiatan",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Pembuat Daftar",
-      header: "Pembuat Daftar",
-      isSortable: true
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -102,25 +92,19 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Nama Kegiatan",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Jenis",
-      header: "Jenis",
-      isSortable: true
+      header: "Jenis"
     }, {
       key: "Detil",
-      header: "Detil",
-      isSortable: true
+      header: "Detil"
     }, {
       key: "Pembuat Daftar",
-      header: "Pembuat Daftar",
-      isSortable: true
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -142,21 +126,16 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Nama Kegiatan",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Detil",
-      header: "Detil",
-      isSortable: true
+      header: "Detil"
     }, {
       key: "Pembuat Daftar",
-      header: "Pembuat Daftar",
-      isSortable: true
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -178,25 +157,19 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Nama Kegiatan",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Detil",
-      header: "Detil",
-      isSortable: true
+      header: "Detil"
     }, {
       key: "Jenis",
-      header: "Jenis",
-      isSortable: true
+      header: "Jenis"
     }, {
       key: "Pembuat Daftar",
-      header: "Pembuat Daftar",
-      isSortable: true
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -218,25 +191,19 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Pelaksana Perjalanan Dinas",
-      header: "Pelaksana Perjalanan Dinas",
-      isSortable: true
+      header: "Pelaksana Perjalanan Dinas"
     }, {
       key: "Nomor Surat Tugas",
-      header: "Nomor Surat Tugas",
-      isSortable: true
+      header: "Nomor Surat Tugas"
     }, {
       key: "Tujuan Pelaksanaan Perjalanan Dinas",
-      header: "Tujuan Pelaksanaan Perjalanan Dinas",
-      isSortable: true
+      header: "Tujuan Pelaksanaan Perjalanan Dinas"
     }, {
       key: "Jenis Perjalanan Dinas",
-      header: "Jenis Perjalanan Dinas",
-      isSortable: true
+      header: "Jenis Perjalanan Dinas"
     }, {
       key: "Link",
       header: "Link",
@@ -258,21 +225,16 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Nama Paket Pengadaan",
-      header: "Nama Paket Pengadaan",
-      isSortable: true
+      header: "Nama Paket Pengadaan"
     }, {
       key: "Kode Kegiatan",
-      header: "Kode Kegiatan",
-      isSortable: true
+      header: "Kode Kegiatan"
     }, {
       key: "Penyedia Barang/Jasa",
-      header: "Penyedia Barang/Jasa",
-      isSortable: true
+      header: "Penyedia Barang/Jasa"
     }, {
       key: "Link",
       header: "Link",
@@ -294,21 +256,16 @@ const DownloadDokumen = () => {
     sheetName: "Sheet1",
     columns: [{
       key: "Id",
-      header: "ID",
-      isSortable: true,
-      defaultSort: "desc"
+      header: "ID"
     }, {
       key: "Nama Kegiatan",
-      header: "Nama Kegiatan",
-      isSortable: true
+      header: "Nama Kegiatan"
     }, {
       key: "Detail Kegiatan",
-      header: "Detail Kegiatan",
-      isSortable: true
+      header: "Detail Kegiatan"
     }, {
       key: "Pembuat Daftar",
-      header: "Pembuat Daftar",
-      isSortable: true
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -337,7 +294,9 @@ const DownloadDokumen = () => {
     sheetId: activeDocument.sheetId,
     sheetName: activeDocument.sheetName
   });
-  return <Layout>
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
@@ -351,24 +310,44 @@ const DownloadDokumen = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
-            {documents.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl">
+            {documents.map(doc => (
+              <TabsTrigger 
+                key={doc.id} 
+                value={doc.id} 
+                className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
+              >
                 {doc.title}
-              </TabsTrigger>)}
+              </TabsTrigger>
+            ))}
           </TabsList>
           
-          {documents.map(doc => <TabsContent key={doc.id} value={doc.id} className="mt-0">
-              {isLoading ? <div className="space-y-2">
+          {documents.map(doc => (
+            <TabsContent key={doc.id} value={doc.id} className="mt-0">
+              {isLoading ? (
+                <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
-                </div> : isError ? <div className="text-center p-8">
+                </div>
+              ) : isError ? (
+                <div className="text-center p-8">
                   <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
-                </div> : <DataTable title={doc.title} columns={doc.columns} data={data || []} defaultSortField="Id" defaultSortOrder="desc" />}
-            </TabsContent>)}
+                </div>
+              ) : (
+                <DataTable 
+                  title={doc.title} 
+                  columns={doc.columns} 
+                  data={data || []} 
+                />
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default DownloadDokumen;
