@@ -31,7 +31,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "Id",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Jenis Kerangka Acuan Kerja",
       header: "Jenis Kerangka Acuan Kerja",
@@ -67,7 +68,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Jenis",
       header: "Jenis",
@@ -102,7 +104,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -141,7 +144,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -176,7 +180,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -215,7 +220,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Pelaksana Perjalanan Dinas",
       header: "Pelaksana Perjalanan Dinas",
@@ -246,7 +252,42 @@ const DownloadDokumen = () => {
               </TooltipContent>
             </Tooltip>
     }]
-  
+  }, {
+    id: "dokumen-pengadaan",
+    title: "Dokumen Pengadaan",
+    sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "ID",
+      isSortable: true,
+      defaultSort: "desc"
+    }, {
+      key: "Nama Paket Pengadaan",
+      header: "Nama Paket Pengadaan",
+      isSortable: true
+    }, {
+      key: "Kode Kegiatan",
+      header: "Kode Kegiatan",
+      isSortable: true
+    }, {
+      key: "Penyedia Barang/Jasa",
+      header: "Penyedia Barang/Jasa",
+      isSortable: true
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
   }, {
     id: "tanda-terima",
     title: "Tanda Terima",
@@ -255,7 +296,8 @@ const DownloadDokumen = () => {
     columns: [{
       key: "Id",
       header: "ID",
-      isSortable: true
+      isSortable: true,
+      defaultSort: "desc"
     }, {
       key: "Nama Kegiatan",
       header: "Nama Kegiatan",
@@ -338,6 +380,8 @@ const DownloadDokumen = () => {
                   title={doc.title} 
                   columns={doc.columns} 
                   data={data || []}
+                  defaultSortField="Id"
+                  defaultSortOrder="desc"
                 />
               )}
             </TabsContent>
@@ -347,3 +391,5 @@ const DownloadDokumen = () => {
     </Layout>
   );
 };
+
+export default DownloadDokumen;
