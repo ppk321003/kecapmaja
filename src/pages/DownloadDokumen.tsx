@@ -18,7 +18,6 @@ const indonesianOptions = {
   minute: '2-digit' as const,
   second: '2-digit' as const
 };
-
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
 
@@ -246,7 +245,6 @@ const DownloadDokumen = () => {
               </TooltipContent>
             </Tooltip>
     }]
-  
   }, {
     id: "tanda-terima",
     title: "Tanda Terima",
@@ -296,9 +294,7 @@ const DownloadDokumen = () => {
     sheetId: activeDocument.sheetId,
     sheetName: activeDocument.sheetName
   });
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
@@ -312,39 +308,24 @@ const DownloadDokumen = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
-            {documents.map(doc => (
-              <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap">
+            {documents.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap text-slate-50 bg-teal-600 hover:bg-teal-500 mx-[3px] my-[3px] py-[6px] px-[9px] rounded-lg">
                 {doc.title}
-              </TabsTrigger>
-            ))}
+              </TabsTrigger>)}
           </TabsList>
           
-          {documents.map(doc => (
-            <TabsContent key={doc.id} value={doc.id} className="mt-0">
-              {isLoading ? (
-                <div className="space-y-2">
+          {documents.map(doc => <TabsContent key={doc.id} value={doc.id} className="mt-0">
+              {isLoading ? <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
-                </div>
-              ) : isError ? (
-                <div className="text-center p-8">
+                </div> : isError ? <div className="text-center p-8">
                   <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
-                </div>
-              ) : (
-                <DataTable 
-                  title={doc.title} 
-                  columns={doc.columns} 
-                  data={data || []}
-                />
-              )}
-            </TabsContent>
-          ))}
+                </div> : <DataTable title={doc.title} columns={doc.columns} data={data || []} />}
+            </TabsContent>)}
         </Tabs>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
 export default DownloadDokumen; // Perhatikan 'export default'
