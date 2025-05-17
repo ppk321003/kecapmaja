@@ -152,7 +152,7 @@ const DownloadDokumen = () => {
     }]
   }, {
     id: "uang-harian-transport",
-    title: "Uang Harian dan Transport Lokal",
+    title: "Tabel Rekap Uang Harian dan Transport Lokal",
     sheetId: "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys",
     sheetName: "Sheet1",
     columns: [{
