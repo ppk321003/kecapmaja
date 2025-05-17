@@ -350,7 +350,7 @@ const DownloadDokumen = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-orange-600">
+          <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
             {documents.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl">
                 {doc.title}
               </TabsTrigger>)}
