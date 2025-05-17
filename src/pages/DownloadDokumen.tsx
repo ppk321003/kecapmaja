@@ -347,4 +347,3 @@ const DownloadDokumen = () => {
     </Layout>
   );
 };
-export default DownloadDokumen; // Perhatikan 'export default'
