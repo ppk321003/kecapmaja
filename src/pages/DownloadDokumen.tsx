@@ -314,7 +314,11 @@ const DownloadDokumen = () => {
               <TabsTrigger 
                 key={doc.id} 
                 value={doc.id} 
-                className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
+                className={`whitespace-nowrap text-neutral-100 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl ${
+                  activeTab === doc.id 
+                    ? 'bg-orange-600 hover:bg-orange-700' 
+                    : 'bg-teal-700 hover:bg-teal-600'
+                }`}
               >
                 {doc.title}
               </TabsTrigger>
