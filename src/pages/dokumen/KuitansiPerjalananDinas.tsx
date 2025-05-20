@@ -65,7 +65,7 @@ const DEFAULT_VALUES: Partial<FormValues> = {
   ro: "",
   komponen: "",
   akun: "",
-  tanggalPengajuan: new Date(),
+  tanggalPengajuan: null,
   kabupatenKota: "",
   namaTempatTujuan: "",
   tanggalBerangkat: undefined,
