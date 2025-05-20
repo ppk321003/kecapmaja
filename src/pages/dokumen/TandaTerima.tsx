@@ -53,7 +53,7 @@ const TandaTerima = () => {
     defaultValues: {
       namaKegiatan: "",
       detail: "",
-      tanggalPembuatanDaftar: format(null, "yyyy-MM-dd"),
+      tanggalPembuatanDaftar: format(new Date(), "yyyy-MM-dd"),
       pembuatDaftar: "",
       organikBPS: [],
       mitraStatistik: [],
