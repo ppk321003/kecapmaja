@@ -71,7 +71,7 @@ const BuatDokumen = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {documentTypes.map(item => <Card key={item.path} className="h-full transition-all duration-200 hover:shadow-md">
               <CardHeader className="pb-2">
                 <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-lg ${item.color}`}>
