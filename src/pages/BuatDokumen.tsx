@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 
 const documentTypes = [
   {
-    title: "Kerangka Acuan Kerja",
-    description: "Buat dokumen kerangka acuan kerja",
-    path: "/dokumen/kerangka-acuan-kerja",
-    color: "bg-blue-50 dark:bg-blue-900/20",
-    iconColor: "text-bps-blue"
-  },
-  {
     title: "Daftar Hadir",
     description: "Buat dokumen daftar hadir",
     path: "/dokumen/daftar-hadir",
@@ -21,9 +14,37 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
+    title: "Dokumen Pengadaan",
+    description: "Buat dokumen pengadaan barang dan jasa",
+    path: "/dokumen/dokumen-pengadaan",
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    iconColor: "text-bps-blue"
+  },
+  {
+    title: "Kerangka Acuan Kerja",
+    description: "Buat dokumen kerangka acuan kerja",
+    path: "/dokumen/kerangka-acuan-kerja",
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    iconColor: "text-bps-blue"
+  },
+  {
+    title: "Kuitansi Perjalanan Dinas",
+    description: "Buat kuitansi perjalanan dinas luar atau dalam kota",
+    path: "/dokumen/kuitansi-perjalanan-dinas",
+    color: "bg-purple-50 dark:bg-purple-900/20",
+    iconColor: "text-purple-500"
+  },
+  {
     title: "SPJ Honor",
     description: "SPJ Honor Pendataan / Pengawasan / Instruktur",
     path: "/dokumen/spj-honor",
+    color: "bg-yellow-50 dark:bg-yellow-900/20",
+    iconColor: "text-bps-yellow"
+  },
+  {
+    title: "Tanda Terima",
+    description: "Buat dokumen tanda terima",
+    path: "/dokumen/tanda-terima",
     color: "bg-yellow-50 dark:bg-yellow-900/20",
     iconColor: "text-bps-yellow"
   },
@@ -40,27 +61,6 @@ const documentTypes = [
     path: "/dokumen/uang-harian-transport",
     color: "bg-green-50 dark:bg-green-900/20",
     iconColor: "text-bps-green"
-  },
-  {
-    title: "Kuitansi Perjalanan Dinas",
-    description: "Buat kuitansi perjalanan dinas luar atau dalam kota",
-    path: "/dokumen/kuitansi-perjalanan-dinas",
-    color: "bg-purple-50 dark:bg-purple-900/20",
-    iconColor: "text-purple-500"
-  },
-  {
-    title: "Dokumen Pengadaan",
-    description: "Buat dokumen pengadaan barang dan jasa",
-    path: "/dokumen/dokumen-pengadaan",
-    color: "bg-blue-50 dark:bg-blue-900/20",
-    iconColor: "text-bps-blue"
-  },
-  {
-    title: "Tanda Terima",
-    description: "Buat dokumen tanda terima",
-    path: "/dokumen/tanda-terima",
-    color: "bg-yellow-50 dark:bg-yellow-900/20",
-    iconColor: "text-bps-yellow"
   }
 ];
 
