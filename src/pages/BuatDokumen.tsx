@@ -10,8 +10,8 @@ const documentTypes = [
     title: "Daftar Hadir",
     description: "Buat dokumen daftar hadir",
     path: "/dokumen/daftar-hadir",
-    color: "bg-green-50 dark:bg-green-900/20",
-    iconColor: "text-bps-green"
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    iconColor: "text-bps-blue"
   },
   {
     title: "Dokumen Pengadaan",
@@ -24,43 +24,43 @@ const documentTypes = [
     title: "Kerangka Acuan Kerja",
     description: "Buat dokumen kerangka acuan kerja",
     path: "/dokumen/kerangka-acuan-kerja",
-    color: "bg-blue-50 dark:bg-blue-900/20",
-    iconColor: "text-bps-blue"
+    color: "bg-green-50 dark:bg-green-900/20",
+    iconColor: "text-bps-green"
   },
   {
     title: "Kuitansi Perjalanan Dinas",
     description: "Buat kuitansi perjalanan dinas luar atau dalam kota",
     path: "/dokumen/kuitansi-perjalanan-dinas",
-    color: "bg-purple-50 dark:bg-purple-900/20",
-    iconColor: "text-purple-500"
+    color: "bg-green-50 dark:bg-green-900/20",
+    iconColor: "text-bps-green"
   },
   {
     title: "SPJ Honor",
     description: "SPJ Honor Pendataan / Pengawasan / Instruktur",
     path: "/dokumen/spj-honor",
-    color: "bg-yellow-50 dark:bg-yellow-900/20",
-    iconColor: "text-bps-yellow"
+    color: "bg-orange-50 dark:bg-orange-900/20",
+    iconColor: "text-bps-orange"
   },
   {
     title: "Tanda Terima",
     description: "Buat dokumen tanda terima",
     path: "/dokumen/tanda-terima",
-    color: "bg-yellow-50 dark:bg-yellow-900/20",
-    iconColor: "text-bps-yellow"
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    iconColor: "text-bps-blue"
   },
   {
     title: "Transport Lokal",
     description: "Transport Lokal (Pendataan, Pemeriksaan, Supervisi)",
     path: "/dokumen/transport-lokal",
-    color: "bg-blue-50 dark:bg-blue-900/20",
-    iconColor: "text-bps-blue"
+    color: "bg-green-50 dark:bg-green-900/20",
+    iconColor: "text-bps-green"
   },
   {
     title: "Uang Harian dan Transport Lokal",
     description: "Buat dokumen uang harian dan transport lokal",
     path: "/dokumen/uang-harian-transport",
-    color: "bg-green-50 dark:bg-green-900/20",
-    iconColor: "text-bps-green"
+    color: "bg-orange-50 dark:bg-orange-900/20",
+    iconColor: "text-bps-orange"
   }
 ];
 
