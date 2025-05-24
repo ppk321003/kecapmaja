@@ -36,7 +36,7 @@ const RekapHonor = () => {
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         {/* Header Utama */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-Teal-700 mb-2">
+          <h1 className="text-3xl font-bold text-teal-700 mb-2">
             Rekap Honor Mitra (Kegiatan)
           </h1>
           <p className="text-muted-foreground text-lg">
