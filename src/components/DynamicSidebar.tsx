@@ -96,7 +96,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 
   if (isLoading) {
     return (
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 transform bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 lg:static lg:translate-x-0">
+      <aside className="fixed inset-y-0 left-0 z-50 w-80 transform bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 lg:static lg:translate-x-0">
         <div className="flex h-full flex-col">
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2">
