@@ -57,7 +57,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
   // Kelompokkan menu berdasarkan kategori
   const groupedMenuItems = menuItems.reduce(
     (acc, item) => {
-      let group = "Halaman Utama";
+      let group = "Menu Utama";
 
       if (
         ["Buat Dokumen", "Download Dokumen", "Blanko Visum", "Surat Pernyataan"].includes(
