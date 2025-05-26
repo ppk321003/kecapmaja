@@ -57,6 +57,7 @@ const App = () => (
             <Route path="/blanko-visum" element={<ExternalLink url="https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing" />} />
             <Route path="/perka-bps" element={<ExternalLink url="https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view" />} />
             <Route path="/sbm-2025" element={<ExternalLink url="https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view" />} />
+            <Route path="/perka-8" element={<ExternalLink url="https://drive.google.com/file/d/10SCXZzSuuycE2OMONv9BGJ_wKsmnubJS/view?usp=sharing" />} />
             
             {/* New External Links */}
             <Route path="/kecap-maja-old" element={<ExternalLink url="https://s.bps.go.id/kecap-maja" />} />

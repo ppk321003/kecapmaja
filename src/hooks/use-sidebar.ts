@@ -136,6 +136,15 @@ export const useSidebar = () => {
           description: "Akses Kecap Maja versi lama",
           order_index: 14,
           is_active: true
+        },
+        {
+          id: "15",
+          title: "Perka PAK Sensus Survei",
+          path: "/perka-8",
+          icon: "Book",
+          description: "PPT Perka 8 Tahun 2024_Perka PAK Sensus Survei",
+          order_index: 15,
+          is_active: true
         }
       ];
       

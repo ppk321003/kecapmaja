@@ -72,7 +72,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       ) {
         group = "Laporan & Rekap";
       } else if (
-        ["Perka BPS", "SBM 2025", "SK Transport Lokal"].includes(item.title)
+        ["Perka BPS", "Perka PAK Sensus Survei","SBM 2025", "SK Transport Lokal"].includes(item.title)
       ) {
         group = "Referensi & Peraturan";
       } else if (
