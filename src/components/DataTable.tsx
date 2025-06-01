@@ -110,8 +110,8 @@ export function DataTable({ title, data, columns, defaultSortField }: DataTableP
                   <SelectValue placeholder="Rows per page" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="20">20 baris</SelectItem>
-                  <SelectItem value="40">40 baris</SelectItem>
+                  <SelectItem value="10">10 baris</SelectItem>
+                  <SelectItem value="20">40 baris</SelectItem>
                   <SelectItem value="100">100 baris</SelectItem>
                   <SelectItem value="all">Semua</SelectItem>
                 </SelectContent>
