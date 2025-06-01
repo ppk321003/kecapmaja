@@ -37,7 +37,7 @@ export function DataTable({ title, data, columns, defaultSortField }: DataTableP
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
     defaultSortField ? { key: defaultSortField, direction: 'asc' } : null
   );
-  const [pageSize, setPageSize] = useState<number>(20);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleSort = (key: string) => {
