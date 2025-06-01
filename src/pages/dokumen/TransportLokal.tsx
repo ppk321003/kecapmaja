@@ -423,7 +423,7 @@ const TransportLokal = () => {
                           {akunList.map(akun => (
                             <SelectItem key={akun.id} value={akun.id}>
                               {akun.name} ({akun.code})
-                            SelectItem>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
