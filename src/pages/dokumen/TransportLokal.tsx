@@ -23,7 +23,6 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
-  //jenis: z.string().min(1, "Jenis harus dipilih"),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -51,7 +50,6 @@ type FormValues = z.infer<typeof formSchema>;
 const defaultValues: Partial<FormValues> = {
   namaKegiatan: "",
   detil: "",
-  //jenis: "",
   program: "",
   kegiatan: "",
   kro: "",
@@ -73,7 +71,6 @@ const TransportLokal = () => {
   });
 
   // Data queries
-  //const { data: jenisList = [] } = useJenis();
   const { data: programs = [] } = usePrograms();
   const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
   const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
@@ -90,7 +87,6 @@ const TransportLokal = () => {
   const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
-  //const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
 
@@ -147,8 +143,7 @@ const TransportLokal = () => {
         updated[index] = {
           ...updated[index],
           personId: value,
-          nama: selectedPerson?.name || "",
-          [field]: value
+          nama: selectedPerson?.name || ""
         };
       } else {
         updated[index] = {
@@ -167,8 +162,7 @@ const TransportLokal = () => {
         updated[index] = {
           ...updated[index],
           personId: value,
-          nama: selectedPerson?.name || "",
-          [field]: value
+          nama: selectedPerson?.name || ""
         };
       } else {
         updated[index] = {
@@ -290,28 +284,6 @@ const TransportLokal = () => {
                       <FormMessage />
                     </FormItem>
                   )} />
-
-                  {/* Jenis 
-                  <FormField control={form.control} name="jenis" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Jenis</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih jenis" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {jenisList.map(jenis => (
-                            <SelectItem key={jenis.id} value={jenis.id}>
-                              {jenis.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />*/}
 
                   {/* Program */}
                   <FormField control={form.control} name="program" render={({ field }) => (
@@ -451,7 +423,7 @@ const TransportLokal = () => {
                           {akunList.map(akun => (
                             <SelectItem key={akun.id} value={akun.id}>
                               {akun.name} ({akun.code})
-                            </SelectItem>
+                            SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { ExternalLink, Search, ArrowUpDown, Link } from "lucide-react";
 import { 
@@ -30,11 +29,14 @@ interface DataTableProps {
     isSortable?: boolean;
     render?: (value: any, record: any) => React.ReactNode;
   }[];
+  defaultSortField?: string;
 }
 
-export function DataTable({ title, data, columns }: DataTableProps) {
+export function DataTable({ title, data, columns, defaultSortField }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    defaultSortField ? { key: defaultSortField, direction: 'asc' } : null
+  );
   const [pageSize, setPageSize] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState(1);
 
