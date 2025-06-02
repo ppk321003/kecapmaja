@@ -36,7 +36,7 @@ const documentTypes = [
   },
   {
     title: "SPJ Honor",
-    description: "SPJ Honor Pendataan / Pengawasan / Instruktur",
+    description: "SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
     path: "/dokumen/spj-honor",
     color: "bg-orange-50 dark:bg-orange-900/20",
     iconColor: "text-bps-orange"
