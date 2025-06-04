@@ -16,6 +16,7 @@ import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+
 const TandaTerima = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +54,7 @@ const TandaTerima = () => {
     defaultValues: {
       namaKegiatan: "",
       detail: "",
-      tanggalPembuatanDaftar: format(null, "yyyy-MM-dd"),
+      tanggalPembuatanDaftar: format(new Date(), "yyyy-MM-dd"),
       pembuatDaftar: "",
       organikBPS: [],
       mitraStatistik: [],
