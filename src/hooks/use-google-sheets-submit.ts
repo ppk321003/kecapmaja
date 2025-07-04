@@ -1,8 +1,8 @@
+
 import { useMutation } from "@tanstack/react-query";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 
 interface SubmitToSheetsOptions {
   documentType: string;
@@ -57,25 +57,14 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         // Skip database saving and focus only on Google Sheets
         console.log(`Successfully preparing ${documentType} data for Google Sheets`);
         
-        // Send properly formatted data to Google Sheet via edge function
-        const { data: responseData, error } = await supabase.functions.invoke('google-sheets', {
-          body: {
-            documentType: documentType,
-            data: {
-              // Send the actual form data, let the edge function format it
-              ...data,
-              // Include the prepared row data for reference
-              _rowData: rowData
-            }
-          }
+        // Append to Google Sheets
+        const response = await GoogleSheetsService.appendData({
+          sheetName: documentType,
+          range: "A1", // Start from the first cell
+          values: [rowData] // Add as a single row
         });
         
-        if (error) {
-          console.error(`Error from Google Sheets function:`, error);
-          throw new Error(error.message);
-        }
-        
-        console.log(`Data successfully saved to ${documentType} sheet:`, responseData);
+        console.log(`Data successfully saved to ${documentType} sheet:`, response);
         
         return { success: true, documentId, skipSaveToSupabase };
       } catch (error: any) {

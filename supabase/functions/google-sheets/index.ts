@@ -1,391 +1,293 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Spreadsheet IDs mapping
+const SPREADSHEET_IDS: Record<string, string> = {
+  "KerangkaAcuanKerja": "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+  "DaftarHadir": "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+  "SPJHonor": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
+  "TransportLokal": "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc",
+  "UangHarianTransport": "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg",
+  "KuitansiPerjalananDinas": "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
+  "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
+  "TandaTerima": "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8",
+  // Default fallback spreadsheet for testing/misc operations
+  "Sheet1": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
+  "Organik": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
+  "Mitra": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg"
+};
 
 serve(async (req) => {
-  console.log('=== Google Sheets Function Started ===')
-  console.log('Request method:', req.method)
-  console.log('Request URL:', req.url)
-  
-  if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request')
-    return new Response('ok', { headers: corsHeaders })
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: corsHeaders,
+    });
   }
 
   try {
-    console.log('=== Parsing Request Body ===')
-    let requestBody
-    try {
-      requestBody = await req.json()
-      console.log('Request body parsed successfully')
-      console.log('Document type:', requestBody.documentType)
-      console.log('Data keys:', requestBody.data ? Object.keys(requestBody.data) : 'No data')
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid JSON in request body',
-          details: parseError.message
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
+    const SUPABASE_URL = "https://jbmgujpkyyqqphlzflfj.supabase.co";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { documentType, data } = requestBody
+    const GOOGLE_SERVICE_ACCOUNT_EMAIL = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") || "";
+    const GOOGLE_PRIVATE_KEY = Deno.env.get("GOOGLE_PRIVATE_KEY") || "";
+    
+    // Log for debugging
+    console.log("Service account email:", GOOGLE_SERVICE_ACCOUNT_EMAIL);
+    console.log("Private key exists:", GOOGLE_PRIVATE_KEY ? "Yes" : "No");
+    console.log("Private key length:", GOOGLE_PRIVATE_KEY.length);
 
-    if (!documentType) {
-      console.error('Missing documentType in request')
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing documentType parameter'
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    if (!data) {
-      console.error('Missing data in request')
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing data parameter'
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    console.log('=== Checking Environment Variables ===')
-    const serviceAccountEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')
-    const privateKey = Deno.env.get('GOOGLE_PRIVATE_KEY')
-
-    console.log('Service account email exists:', !!serviceAccountEmail)
-    console.log('Service account email value:', serviceAccountEmail ? serviceAccountEmail.substring(0, 20) + '...' : 'MISSING')
-    console.log('Private key exists:', !!privateKey)
-    console.log('Private key length:', privateKey?.length || 0)
-
-    if (!serviceAccountEmail || !privateKey) {
-      console.error('Missing Google service account credentials')
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing Google service account credentials',
-          details: {
-            serviceAccountEmail: !!serviceAccountEmail,
-            privateKey: !!privateKey
-          }
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    console.log('=== Creating JWT Token ===')
-    const header = {
-      alg: 'RS256',
-      typ: 'JWT'
-    }
-
-    const now = Math.floor(Date.now() / 1000)
+    // Get JWT token for Google Sheets API
+    const iat = Math.floor(Date.now() / 1000);
+    const exp = iat + 3600; // Token expires in 1 hour
     const payload = {
-      iss: serviceAccountEmail,
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now
-    }
+      iss: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      sub: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      aud: "https://sheets.googleapis.com/",
+      iat: iat,
+      exp: exp,
+      scope: "https://www.googleapis.com/auth/spreadsheets"  // Read and write scope
+    };
 
-    console.log('JWT payload created:', { 
-      iss: payload.iss, 
-      scope: payload.scope, 
-      aud: payload.aud,
-      exp: payload.exp,
-      iat: payload.iat
-    })
+    // Sign JWT
+    const header = { alg: "RS256", typ: "JWT" };
+    const encoder = new TextEncoder();
+    const headerString = JSON.stringify(header);
+    const payloadString = JSON.stringify(payload);
+    const encodedHeader = btoa(headerString).replace(/=+$/, "");
+    const encodedPayload = btoa(payloadString).replace(/=+$/, "");
+    const signatureInput = encoder.encode(`${encodedHeader}.${encodedPayload}`);
 
-    const headerEncoded = btoa(JSON.stringify(header)).replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' })[m] || m)
-    const payloadEncoded = btoa(JSON.stringify(payload)).replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' })[m] || m)
-
-    console.log('=== Processing Private Key ===')
-    let key
+    // Convert PEM to ArrayBuffer for signing - with improved error handling
+    let privateKey;
     try {
-      // Clean up the private key format
-      let cleanPrivateKey = privateKey.replace(/\\n/g, '\n')
-      
-      if (!cleanPrivateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-        cleanPrivateKey = `-----BEGIN PRIVATE KEY-----\n${cleanPrivateKey}\n-----END PRIVATE KEY-----`
-      }
-      
-      console.log('Private key format check:', {
-        hasBeginMarker: cleanPrivateKey.includes('-----BEGIN PRIVATE KEY-----'),
-        hasEndMarker: cleanPrivateKey.includes('-----END PRIVATE KEY-----'),
-        length: cleanPrivateKey.length
-      })
-
-      // Convert PEM to DER format for Web Crypto API
-      const pemHeader = "-----BEGIN PRIVATE KEY-----"
-      const pemFooter = "-----END PRIVATE KEY-----"
-      const pemContents = cleanPrivateKey.substring(
-        pemHeader.length,
-        cleanPrivateKey.length - pemFooter.length
-      ).replace(/\s/g, '')
-      
-      console.log('PEM contents length:', pemContents.length)
-      
-      const binaryDer = atob(pemContents)
-      const der = new Uint8Array(binaryDer.length)
-      for (let i = 0; i < binaryDer.length; i++) {
-        der[i] = binaryDer.charCodeAt(i)
-      }
-
-      console.log('DER conversion completed, length:', der.length)
-
-      key = await crypto.subtle.importKey(
-        'pkcs8',
-        der,
-        {
-          name: 'RSASSA-PKCS1-v1_5',
-          hash: 'SHA-256',
-        },
+      privateKey = await crypto.subtle.importKey(
+        "pkcs8",
+        pemToDer(GOOGLE_PRIVATE_KEY),
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         false,
-        ['sign']
-      )
-      console.log('Successfully imported private key')
-    } catch (keyError) {
-      console.error('Error importing private key:', keyError)
-      console.error('Key error details:', {
-        name: keyError.name,
-        message: keyError.message,
-        stack: keyError.stack
-      })
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to import private key', 
-          details: keyError.message,
-          keyFormat: 'Please ensure the private key is in proper PKCS#8 format'
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+        ["sign"]
+      );
+    } catch (error) {
+      console.error("Error importing private key:", error);
+      return new Response(JSON.stringify({ error: "Failed to import private key: " + error.message }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
     }
 
-    console.log('=== Creating Signature ===')
-    let signature
+    const signature = await crypto.subtle.sign(
+      { name: "RSASSA-PKCS1-v1_5" },
+      privateKey,
+      signatureInput
+    );
+
+    const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+
+    // Parse the request to determine the operation
+    const requestData = await req.json();
+    const { action = "read", sheetName, range, values } = requestData;
+    
+    // Get the spreadsheet ID for the requested sheet
+    const SPREADSHEET_ID = SPREADSHEET_IDS[sheetName] || SPREADSHEET_IDS["Sheet1"];
+    
+    console.log(`Using spreadsheet ID for ${sheetName}: ${SPREADSHEET_ID}`);
+
+    // Always check if the sheet exists and create it if needed
+    // This is important for all sheet operations to prevent errors
     try {
-      signature = await crypto.subtle.sign(
-        'RSASSA-PKCS1-v1_5',
-        key,
-        new TextEncoder().encode(`${headerEncoded}.${payloadEncoded}`)
-      )
-      console.log('Successfully created signature')
-    } catch (signError) {
-      console.error('Error creating signature:', signError)
-      console.error('Sign error details:', {
-        name: signError.name,
-        message: signError.message,
-        stack: signError.stack
-      })
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create JWT signature', 
-          details: signError.message 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      const checkResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!A1`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      )
-    }
-
-    const signatureEncoded = btoa(String.fromCharCode(...new Uint8Array(signature)))
-      .replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' })[m] || m)
-
-    const jwt = `${headerEncoded}.${payloadEncoded}.${signatureEncoded}`
-    console.log('JWT created successfully, length:', jwt.length)
-
-    console.log('=== Requesting Access Token ===')
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
-    })
-
-    console.log('Token response status:', tokenResponse.status)
-    
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text()
-      console.error('Token request failed:', errorText)
-      console.error('Token response status:', tokenResponse.status)
-      console.error('Token response headers:', Object.fromEntries(tokenResponse.headers.entries()))
+      );
       
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to get access token', 
-          details: errorText,
-          status: tokenResponse.status,
-          troubleshooting: 'Check if service account email and private key are correct, and if the service account has proper permissions'
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    const tokenData = await tokenResponse.json()
-    const accessToken = tokenData.access_token
-    console.log('Successfully obtained access token')
-
-    console.log('=== Preparing Data for Google Sheets ===')
-    // Generate ID for the document
-    const documentId = `kui-${Date.now().toString().slice(-7)}`
-    
-    let rowData: (string | number)[] = []
-
-    if (documentType === 'KuitansiPerjalananDinas') {
-      console.log('Processing KuitansiPerjalananDinas data')
-      
-      rowData = [
-        documentId,                               
-        data.nomorSuratTugas || '',               
-        data.tanggalSuratTugas || '',             
-        data.namaPelaksana || '',                 
-        data.tujuanPerjalanan || '',              
-        data.kabupatenKota || '',                 
-        data.namaTempatTujuan || '',              
-        data.tanggalBerangkat || '',              
-        data.tanggalKembali || '',                
-        data.tanggalPengajuan || '',              
-        data._programNameMap?.[data.program] || data.program || '',
-        data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || '',
-        data._kroNameMap?.[data.kro] || data.kro || '',
-        data._roNameMap?.[data.ro] || data.ro || '',
-        data._komponenNameMap?.[data.komponen] || data.komponen || '',
-        data._akunNameMap?.[data.akun] || data.akun || '',
-        data.biayaTransport || '',                
-        data.biayaBBM || '',                      
-        data.biayaPenginapan || '',               
-        data.jenisPerjalanan || ''                
-      ]
-
-      // Add kecamatan details for "Dalam Kota"
-      const kecamatanDetails = data.kecamatanDetails || []
-      const maxKecamatan = 10
-      
-      for (let i = 0; i < maxKecamatan; i++) {
-        if (i < kecamatanDetails.length) {
-          const kec = kecamatanDetails[i]
-          rowData.push(
-            kec.nama || '',
-            kec.tanggalBerangkat ? new Date(kec.tanggalBerangkat).toISOString().split('T')[0] : '',
-            kec.tanggalKembali ? new Date(kec.tanggalKembali).toISOString().split('T')[0] : ''
-          )
+      // If the sheet doesn't exist, try to create it
+      if (!checkResponse.ok && checkResponse.status === 400) {
+        console.log(`Sheet ${sheetName} might not exist, attempting to create it`);
+        
+        // Create the sheet
+        const createSheetResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              requests: [
+                {
+                  addSheet: {
+                    properties: {
+                      title: sheetName
+                    }
+                  }
+                }
+              ]
+            }),
+          }
+        );
+        
+        if (!createSheetResponse.ok) {
+          const errorText = await createSheetResponse.text();
+          console.log(`Error creating sheet: ${errorText}`);
         } else {
-          rowData.push('', '', '')
+          console.log(`Successfully created sheet: ${sheetName}`);
         }
       }
+    } catch (error) {
+      console.error(`Error checking/creating sheet ${sheetName}:`, error);
+    }
+
+    if (action === "read") {
+      // Read data from Google Sheets
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (action === "append") {
+      // Append data to Google Sheets
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            values: values,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (action === "update") {
+      // Update specific cells in Google Sheets
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}?valueInputOption=USER_ENTERED`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            values: values,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Google Sheets API error:", errorText);
+        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: response.status,
+        });
+      }
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     } else {
-      console.log('Document type not specifically handled:', documentType)
-      const timestamp = new Date().toISOString()
-      rowData = [documentId, timestamp, JSON.stringify(data)]
+      return new Response(JSON.stringify({ error: "Invalid action specified" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
-
-    console.log('Row data prepared, length:', rowData.length)
-    console.log('Row data preview:', rowData.slice(0, 5), '... (truncated)')
-
-    // Determine spreadsheet ID and range
-    const spreadsheetId = '1OiWBe8jplhJQjy4pBV0o_GdcLR6a-bCbWCJGpHnKqAw'
-    const range = `${documentType}!A1`
-
-    console.log(`=== Appending to Google Sheets ===`)
-    console.log(`Spreadsheet ID: ${spreadsheetId}`)
-    console.log(`Range: ${range}`)
-
-    // Append data to Google Sheets
-    const sheetsResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          values: [rowData]
-        })
-      }
-    )
-
-    console.log('Sheets API response status:', sheetsResponse.status)
-
-    if (!sheetsResponse.ok) {
-      const errorText = await sheetsResponse.text()
-      console.error('Sheets API error:', errorText)
-      console.error('Sheets response status:', sheetsResponse.status)
-      console.error('Sheets response headers:', Object.fromEntries(sheetsResponse.headers.entries()))
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to append to Google Sheets', 
-          details: errorText,
-          status: sheetsResponse.status,
-          spreadsheetId,
-          range,
-          troubleshooting: 'Check if the service account has edit access to the Google Sheet'
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    const result = await sheetsResponse.json()
-    console.log('Successfully appended to Google Sheets:', result)
-    console.log('=== Google Sheets Function Completed Successfully ===')
-
-    return new Response(
-      JSON.stringify({ success: true, result, documentId }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
-
   } catch (error) {
-    console.error('=== UNEXPECTED ERROR ===')
-    console.error('Error name:', error.name)
-    console.error('Error message:', error.message)
-    console.error('Error stack:', error.stack)
-    console.error('Error details:', error)
-    
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error', 
-        details: error.message,
-        stack: error.stack,
-        name: error.name
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
+    console.error("Error:", error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
-})
+});
+
+// Helper function to convert PEM to DER format with improved error handling
+function pemToDer(pem) {
+  try {
+    if (!pem) {
+      throw new Error("Empty private key");
+    }
+    
+    // Replace \\n with actual newlines if needed (sometimes happens when stored in env vars)
+    pem = pem.replace(/\\n/g, '\n');
+    
+    const lines = pem.split('\n');
+    let encoded = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().length > 0 &&
+          !lines[i].includes('-----BEGIN') &&
+          !lines[i].includes('-----END')) {
+        encoded += lines[i].trim();
+      }
+    }
+    
+    if (!encoded) {
+      throw new Error("Could not extract base64 content from private key");
+    }
+    
+    const binary = atob(encoded);
+    const buffer = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      buffer[i] = binary.charCodeAt(i);
+    }
+    return buffer;
+  } catch (error) {
+    console.error("Error in pemToDer:", error);
+    throw new Error("Failed to decode private key: " + error.message);
+  }
+}
