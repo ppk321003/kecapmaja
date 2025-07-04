@@ -57,6 +57,7 @@ export const GoogleSheetsService = {
         const { data, error } = await supabase.functions.invoke('google-sheets', {
           body: {
             action: 'read',
+            documentType: documentType,
             sheetName: documentType,
             range: 'A2:A1000' // Read the ID column to find the latest
           }
@@ -144,6 +145,7 @@ export const GoogleSheetsService = {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           action: 'read',
+          documentType: sheetName, // Add documentType parameter
           sheetName,
           range
         }
@@ -161,7 +163,7 @@ export const GoogleSheetsService = {
     }
   },
 
-  // Append data to Google Sheets
+  // Append data to Google Sheets - FIXED: now includes documentType
   async appendData({ sheetName, range, values }: GoogleSheetsWriteOptions) {
     try {
       console.log(`Appending data to ${sheetName}!${range}:`, values);
@@ -171,10 +173,11 @@ export const GoogleSheetsService = {
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          action: 'append',
-          sheetName,
-          range,
-          values
+          documentType: sheetName, // ADD THIS - documentType is required by edge function
+          data: {
+            // Format data structure expected by the edge function
+            values: values
+          }
         }
       });
 
@@ -198,6 +201,7 @@ export const GoogleSheetsService = {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           action: 'update',
+          documentType: sheetName, // Add documentType parameter
           sheetName,
           range,
           values
