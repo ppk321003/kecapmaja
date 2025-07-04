@@ -7,27 +7,76 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('=== Google Sheets Function Started ===')
+  console.log('Request method:', req.method)
+  console.log('Request URL:', req.url)
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request')
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { documentType, data } = await req.json()
-    
-    console.log('Received request for documentType:', documentType)
-    console.log('Data keys:', Object.keys(data))
+    console.log('=== Parsing Request Body ===')
+    let requestBody
+    try {
+      requestBody = await req.json()
+      console.log('Request body parsed successfully')
+      console.log('Document type:', requestBody.documentType)
+      console.log('Data keys:', requestBody.data ? Object.keys(requestBody.data) : 'No data')
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid JSON in request body',
+          details: parseError.message
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
+    const { documentType, data } = requestBody
+
+    if (!documentType) {
+      console.error('Missing documentType in request')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing documentType parameter'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    if (!data) {
+      console.error('Missing data in request')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing data parameter'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('=== Checking Environment Variables ===')
     const serviceAccountEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')
-    const privateKey = Deno.env.get('GOOGLE_PRIVATE_KEY')?.replace(/\\n/g, '\n')
+    const privateKey = Deno.env.get('GOOGLE_PRIVATE_KEY')
 
     console.log('Service account email exists:', !!serviceAccountEmail)
+    console.log('Service account email value:', serviceAccountEmail ? serviceAccountEmail.substring(0, 20) + '...' : 'MISSING')
     console.log('Private key exists:', !!privateKey)
     console.log('Private key length:', privateKey?.length || 0)
 
     if (!serviceAccountEmail || !privateKey) {
       console.error('Missing Google service account credentials')
-      console.error('Service account email:', serviceAccountEmail ? 'EXISTS' : 'MISSING')
-      console.error('Private key:', privateKey ? 'EXISTS' : 'MISSING')
       return new Response(
         JSON.stringify({ 
           error: 'Missing Google service account credentials',
@@ -43,7 +92,7 @@ serve(async (req) => {
       )
     }
 
-    // Create JWT token for Google Sheets API
+    console.log('=== Creating JWT Token ===')
     const header = {
       alg: 'RS256',
       typ: 'JWT'
@@ -58,21 +107,26 @@ serve(async (req) => {
       iat: now
     }
 
-    console.log('Creating JWT with payload:', { iss: payload.iss, scope: payload.scope, aud: payload.aud })
+    console.log('JWT payload created:', { 
+      iss: payload.iss, 
+      scope: payload.scope, 
+      aud: payload.aud,
+      exp: payload.exp,
+      iat: payload.iat
+    })
 
     const headerEncoded = btoa(JSON.stringify(header)).replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' })[m] || m)
     const payloadEncoded = btoa(JSON.stringify(payload)).replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' })[m] || m)
 
+    console.log('=== Processing Private Key ===')
     let key
     try {
       // Clean up the private key format
-      let cleanPrivateKey = privateKey
+      let cleanPrivateKey = privateKey.replace(/\\n/g, '\n')
+      
       if (!cleanPrivateKey.includes('-----BEGIN PRIVATE KEY-----')) {
         cleanPrivateKey = `-----BEGIN PRIVATE KEY-----\n${cleanPrivateKey}\n-----END PRIVATE KEY-----`
       }
-      
-      // Remove any extra whitespace and ensure proper line breaks
-      cleanPrivateKey = cleanPrivateKey.replace(/\\n/g, '\n')
       
       console.log('Private key format check:', {
         hasBeginMarker: cleanPrivateKey.includes('-----BEGIN PRIVATE KEY-----'),
@@ -88,11 +142,15 @@ serve(async (req) => {
         cleanPrivateKey.length - pemFooter.length
       ).replace(/\s/g, '')
       
+      console.log('PEM contents length:', pemContents.length)
+      
       const binaryDer = atob(pemContents)
       const der = new Uint8Array(binaryDer.length)
       for (let i = 0; i < binaryDer.length; i++) {
         der[i] = binaryDer.charCodeAt(i)
       }
+
+      console.log('DER conversion completed, length:', der.length)
 
       key = await crypto.subtle.importKey(
         'pkcs8',
@@ -107,6 +165,11 @@ serve(async (req) => {
       console.log('Successfully imported private key')
     } catch (keyError) {
       console.error('Error importing private key:', keyError)
+      console.error('Key error details:', {
+        name: keyError.name,
+        message: keyError.message,
+        stack: keyError.stack
+      })
       return new Response(
         JSON.stringify({ 
           error: 'Failed to import private key', 
@@ -120,6 +183,7 @@ serve(async (req) => {
       )
     }
 
+    console.log('=== Creating Signature ===')
     let signature
     try {
       signature = await crypto.subtle.sign(
@@ -130,6 +194,11 @@ serve(async (req) => {
       console.log('Successfully created signature')
     } catch (signError) {
       console.error('Error creating signature:', signError)
+      console.error('Sign error details:', {
+        name: signError.name,
+        message: signError.message,
+        stack: signError.stack
+      })
       return new Response(
         JSON.stringify({ 
           error: 'Failed to create JWT signature', 
@@ -148,8 +217,7 @@ serve(async (req) => {
     const jwt = `${headerEncoded}.${payloadEncoded}.${signatureEncoded}`
     console.log('JWT created successfully, length:', jwt.length)
 
-    // Get access token
-    console.log('Requesting access token from Google...')
+    console.log('=== Requesting Access Token ===')
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -184,35 +252,36 @@ serve(async (req) => {
     const accessToken = tokenData.access_token
     console.log('Successfully obtained access token')
 
-    // Prepare data for Google Sheets
+    console.log('=== Preparing Data for Google Sheets ===')
+    // Generate ID for the document
+    const documentId = `kui-${Date.now().toString().slice(-7)}`
+    
     let rowData: (string | number)[] = []
-    const timestamp = new Date().toISOString()
 
     if (documentType === 'KuitansiPerjalananDinas') {
-      // Generate ID for Kuitansi
-      const kuitansiId = `kui-${Date.now().toString().slice(-7)}`
+      console.log('Processing KuitansiPerjalananDinas data')
       
       rowData = [
-        kuitansiId,
-        data.nomorSuratTugas || '',
-        data.tanggalSuratTugas || '',
-        data.namaPelaksana || '',
-        data.tujuanPerjalanan || '',
-        data.kabupatenKota || '',
-        data.namaTempatTujuan || '',
-        data.tanggalBerangkat || '',
-        data.tanggalKembali || '',
-        data.tanggalPengajuan || '',
+        documentId,                               
+        data.nomorSuratTugas || '',               
+        data.tanggalSuratTugas || '',             
+        data.namaPelaksana || '',                 
+        data.tujuanPerjalanan || '',              
+        data.kabupatenKota || '',                 
+        data.namaTempatTujuan || '',              
+        data.tanggalBerangkat || '',              
+        data.tanggalKembali || '',                
+        data.tanggalPengajuan || '',              
         data._programNameMap?.[data.program] || data.program || '',
         data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || '',
         data._kroNameMap?.[data.kro] || data.kro || '',
         data._roNameMap?.[data.ro] || data.ro || '',
         data._komponenNameMap?.[data.komponen] || data.komponen || '',
         data._akunNameMap?.[data.akun] || data.akun || '',
-        data.biayaTransport || '',
-        data.biayaBBM || '',
-        data.biayaPenginapan || '',
-        data.jenisPerjalanan || ''
+        data.biayaTransport || '',                
+        data.biayaBBM || '',                      
+        data.biayaPenginapan || '',               
+        data.jenisPerjalanan || ''                
       ]
 
       // Add kecamatan details for "Dalam Kota"
@@ -232,16 +301,21 @@ serve(async (req) => {
         }
       }
     } else {
-      // Handle other document types
       console.log('Document type not specifically handled:', documentType)
-      rowData = [timestamp, JSON.stringify(data)]
+      const timestamp = new Date().toISOString()
+      rowData = [documentId, timestamp, JSON.stringify(data)]
     }
+
+    console.log('Row data prepared, length:', rowData.length)
+    console.log('Row data preview:', rowData.slice(0, 5), '... (truncated)')
 
     // Determine spreadsheet ID and range
     const spreadsheetId = '1OiWBe8jplhJQjy4pBV0o_GdcLR6a-bCbWCJGpHnKqAw'
     const range = `${documentType}!A1`
 
-    console.log(`Appending data to ${range}:`, rowData.slice(0, 5), '... (truncated)')
+    console.log(`=== Appending to Google Sheets ===`)
+    console.log(`Spreadsheet ID: ${spreadsheetId}`)
+    console.log(`Range: ${range}`)
 
     // Append data to Google Sheets
     const sheetsResponse = await fetch(
@@ -284,9 +358,10 @@ serve(async (req) => {
 
     const result = await sheetsResponse.json()
     console.log('Successfully appended to Google Sheets:', result)
+    console.log('=== Google Sheets Function Completed Successfully ===')
 
     return new Response(
-      JSON.stringify({ success: true, result }),
+      JSON.stringify({ success: true, result, documentId }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -294,12 +369,18 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in Google Sheets function:', error)
+    console.error('=== UNEXPECTED ERROR ===')
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', error)
+    
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
         details: error.message,
-        stack: error.stack
+        stack: error.stack,
+        name: error.name
       }),
       { 
         status: 500, 
