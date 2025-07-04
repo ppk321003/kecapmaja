@@ -1,8 +1,8 @@
-
 import { useMutation } from "@tanstack/react-query";
 import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubmitToSheetsOptions {
   documentType: string;
