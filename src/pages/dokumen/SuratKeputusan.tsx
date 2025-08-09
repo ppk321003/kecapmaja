@@ -19,7 +19,6 @@ import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { cn } from "@/lib/utils";
-
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
   tentang: z.string().min(1, "Tentang harus diisi"),
@@ -31,22 +30,24 @@ const suratKeputusanSchema = z.object({
   memutuskanKedua: z.string().optional(),
   memutuskanKetiga: z.string().optional(),
   tanggalSuratKeputusan: z.date({
-    required_error: "Tanggal surat keputusan harus diisi",
+    required_error: "Tanggal surat keputusan harus diisi"
   }),
   organik: z.array(z.string()).min(1, "Minimal satu organik harus dipilih"),
   mitraStatistik: z.array(z.string()).min(1, "Minimal satu mitra statistik harus dipilih"),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
+  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
 });
-
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
-
 const SuratKeputusan = () => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
-
+  const {
+    data: organikList = []
+  } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
   const form = useForm<SuratKeputusanFormData>({
     resolver: zodResolver(suratKeputusanSchema),
     defaultValues: {
@@ -61,10 +62,9 @@ const SuratKeputusan = () => {
       memutuskanKetiga: "",
       organik: [],
       mitraStatistik: [],
-      pembuatDaftar: "",
-    },
+      pembuatDaftar: ""
+    }
   });
-
   const submitToSheets = useSubmitToSheets({
     documentType: "SuratKeputusan",
     onSuccess: () => {
@@ -72,46 +72,40 @@ const SuratKeputusan = () => {
       setIsSubmitting(false);
       toast({
         title: "Berhasil",
-        description: "Surat keputusan berhasil disimpan",
+        description: "Surat keputusan berhasil disimpan"
       });
-    },
+    }
   });
-
   const organikOptions = organikList.map(organik => ({
     value: organik.id,
     label: organik.name
   }));
-
   const mitraOptions = mitraList.map(mitra => ({
     value: mitra.id,
     label: mitra.name
   }));
-
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
-    
     try {
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
-
       const formattedData = {
         ...data,
-        tanggalSuratKeputusan: format(data.tanggalSuratKeputusan, "dd MMMM yyyy", { locale: id }),
+        tanggalSuratKeputusan: format(data.tanggalSuratKeputusan, "dd MMMM yyyy", {
+          locale: id
+        }),
         organikNames: selectedOrganiks.map(o => `"${o.name}"`).join(" | "),
         mitraNames: selectedMitras.map(m => `"${m.name}"`).join(" | "),
-        pembuatName: selectedPembuat?.name || "",
+        pembuatName: selectedPembuat?.name || ""
       };
-
       await submitToSheets.mutateAsync(formattedData);
     } catch (error) {
       setIsSubmitting(false);
       console.error("Error submitting form:", error);
     }
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
@@ -127,294 +121,181 @@ const SuratKeputusan = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Data Surat Keputusan</CardTitle>
+            <CardTitle className="text-orange-600">Data Surat Keputusan</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="nomorSuratKeputusan"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="nomorSuratKeputusan" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
                         <FormControl>
                           <Input placeholder="Masukkan nomor surat keputusan" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="tentang"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="tentang" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Tentang</FormLabel>
                         <FormControl>
                           <Input placeholder="Masukkan tentang" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Menimbang</h3>
+                  <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
                   
-                  <FormField
-                    control={form.control}
-                    name="menimbangKesatu"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Menimbang Kesatu</FormLabel>
+                  <FormField control={form.control} name="menimbangKesatu" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Menimbang Kesatu
+cth:
+bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan menimbang kesatu" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="menimbangKedua"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Menimbang Kedua (Opsional)</FormLabel>
+                  <FormField control={form.control} name="menimbangKedua" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Menimbang Kedua (Opsional)
+cth:
+bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan menimbang kedua" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="menimbangKetiga"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="menimbangKetiga" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Menimbang Ketiga (Opsional)</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan menimbang ketiga" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="menimbangKeempat"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="menimbangKeempat" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Menimbang Keempat (Opsional)</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan menimbang keempat" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Memutuskan</h3>
+                  <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
                   
-                  <FormField
-                    control={form.control}
-                    name="memutuskanKesatu"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Memutuskan Kesatu</FormLabel>
+                  <FormField control={form.control} name="memutuskanKesatu" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Memutuskan Kesatu
+cth:
+Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan memutuskan kesatu" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="memutuskanKedua"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Memutuskan Kedua (Opsional)</FormLabel>
+                  <FormField control={form.control} name="memutuskanKedua" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Memutuskan Kedua (Opsional)
+cth:
+Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan memutuskan kedua" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan memutuskan kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="memutuskanKetiga"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Memutuskan Ketiga (Opsional)</FormLabel>
+                  <FormField control={form.control} name="memutuskanKetiga" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>Memutuskan Ketiga (Opsional)
+Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Masukkan memutuskan ketiga" 
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
+                          <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="tanggalSuratKeputusan"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
+                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({
+                  field
+                }) => <FormItem className="flex flex-col">
                         <FormLabel>Tanggal Surat Keputusan</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "dd MMMM yyyy", { locale: id })
-                                ) : (
-                                  <span>Pilih tanggal</span>
-                                )}
+                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "dd MMMM yyyy", {
+                            locale: id
+                          }) : <span>Pilih tanggal</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date("1900-01-01")} initialFocus />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="organik"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="organik" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Organik</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Pilih organik"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                          />
+                          <FormSelect placeholder="Pilih organik" options={organikOptions} value={field.value} onChange={field.onChange} isMulti={true} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="mitraStatistik"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="mitraStatistik" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Mitra Statistik</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Pilih mitra statistik"
-                            options={mitraOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                          />
+                          <FormSelect placeholder="Pilih mitra statistik" options={mitraOptions} value={field.value} onChange={field.onChange} isMulti={true} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
-                  <FormField
-                    control={form.control}
-                    name="pembuatDaftar"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="pembuatDaftar" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Pilih pembuat daftar"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={false}
-                          />
+                          <FormSelect placeholder="Pilih pembuat daftar" options={organikOptions} value={field.value} onChange={field.onChange} isMulti={false} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                 </div>
 
                 <div className="flex justify-end space-x-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => form.reset()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Reset
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
+                  <Button type="submit" disabled={isSubmitting} className="bg-purple-600 hover:bg-purple-700">
                     {isSubmitting ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
@@ -423,8 +304,6 @@ const SuratKeputusan = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default SuratKeputusan;
