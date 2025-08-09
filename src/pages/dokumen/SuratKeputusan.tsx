@@ -98,8 +98,8 @@ const SuratKeputusan = () => {
       const formattedData = {
         ...data,
         tanggalSuratKeputusan: format(data.tanggalSuratKeputusan, "dd MMMM yyyy", { locale: id }),
-        organikNames: selectedOrganiks.map(o => o.name).join(", "),
-        mitraNames: selectedMitras.map(m => m.name).join(", "),
+        organikNames: selectedOrganiks.map(o => `"${o.name}"`).join(" | "),
+        mitraNames: selectedMitras.map(m => `"${m.name}"`).join(" | "),
         pembuatName: selectedPembuat?.name || "",
       };
 
