@@ -60,7 +60,7 @@ export const GoogleSheetsService = {
         // Map document type to correct sheet name for reading existing IDs
         let readSheetName = documentType;
         if (documentType === "SuratKeputusan") {
-          readSheetName = "Sheet1"; // Use the first sheet for reading IDs
+          readSheetName = "SuratKeputusan"; // Use the correct sheet name
         }
         
         const { data, error } = await supabase.functions.invoke('google-sheets', {

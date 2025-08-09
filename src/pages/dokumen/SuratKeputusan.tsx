@@ -18,6 +18,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { cn } from "@/lib/utils";
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
@@ -42,6 +43,7 @@ const SuratKeputusan = () => {
     toast
   } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingId, setIsGeneratingId] = useState(false);
   const {
     data: organikList = []
   } = useOrganikBPS();
@@ -65,6 +67,29 @@ const SuratKeputusan = () => {
       pembuatDaftar: ""
     }
   });
+
+  // Generate auto ID when component mounts
+  React.useEffect(() => {
+    const generateId = async () => {
+      if (form.getValues("nomorSuratKeputusan") === "") {
+        setIsGeneratingId(true);
+        try {
+          const id = await GoogleSheetsService.generateDocumentId("SuratKeputusan");
+          form.setValue("nomorSuratKeputusan", id);
+        } catch (error) {
+          console.error("Error generating ID:", error);
+          toast({
+            title: "Peringatan",
+            description: "Gagal membuat ID otomatis, silakan isi manual",
+            variant: "destructive"
+          });
+        } finally {
+          setIsGeneratingId(false);
+        }
+      }
+    };
+    generateId();
+  }, [form, toast]);
   const submitToSheets = useSubmitToSheets({
     documentType: "SuratKeputusan",
     onSuccess: () => {
@@ -97,7 +122,8 @@ const SuratKeputusan = () => {
         }),
         organikNames: selectedOrganiks.map(o => `"${o.name}"`).join(" | "),
         mitraNames: selectedMitras.map(m => `"${m.name}"`).join(" | "),
-        pembuatName: selectedPembuat?.name || ""
+        pembuatName: selectedPembuat?.name || "",
+        documentId: data.nomorSuratKeputusan // Include the generated ID
       };
       await submitToSheets.mutateAsync(formattedData);
     } catch (error) {
@@ -126,26 +152,37 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FormField control={form.control} name="nomorSuratKeputusan" render={({
                   field
                 }) => <FormItem>
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
                         <FormControl>
-                          <Input placeholder="Masukkan nomor surat keputusan" {...field} />
+                          <Input 
+                            placeholder={isGeneratingId ? "Membuat ID..." : "SK-yymmxxx"} 
+                            disabled={isGeneratingId}
+                            className="max-w-[150px]"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
 
-                  <FormField control={form.control} name="tentang" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Tentang</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Masukkan tentang" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                  <div className="md:col-span-2">
+                    <FormField control={form.control} name="tentang" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>Tentang</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Masukkan tentang (dapat berisi teks panjang)" 
+                              className="min-h-[80px]"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
+                  </div>
                 </div>
 
                 <div className="space-y-4">
