@@ -60,9 +60,15 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         // Skip database saving and focus only on Google Sheets
         console.log(`Successfully preparing ${documentType} data for Google Sheets`);
         
+        // Map document type to correct sheet name for Google Sheets
+        let sheetName: string = documentType;
+        if (documentType === "surat-keputusan") {
+          sheetName = "SuratKeputusan";
+        }
+        
         // Append to Google Sheets
         const response = await GoogleSheetsService.appendData({
-          sheetName: documentType,
+          sheetName: sheetName as any,
           range: "A1", // Start from the first cell
           values: [rowData] // Add as a single row
         });
