@@ -33,8 +33,8 @@ const suratKeputusanSchema = z.object({
   tanggalSuratKeputusan: z.date({
     required_error: "Tanggal surat keputusan harus diisi",
   }),
-  organik: z.string().min(1, "Organik harus dipilih"),
-  mitraStatistik: z.string().min(1, "Mitra statistik harus dipilih"),
+  organik: z.array(z.string()).min(1, "Minimal satu organik harus dipilih"),
+  mitraStatistik: z.array(z.string()).min(1, "Minimal satu mitra statistik harus dipilih"),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
 });
 
@@ -59,8 +59,8 @@ const SuratKeputusan = () => {
       memutuskanKesatu: "",
       memutuskanKedua: "",
       memutuskanKetiga: "",
-      organik: "",
-      mitraStatistik: "",
+      organik: [],
+      mitraStatistik: [],
       pembuatDaftar: "",
     },
   });
@@ -91,15 +91,15 @@ const SuratKeputusan = () => {
     setIsSubmitting(true);
     
     try {
-      const selectedOrganik = organikList.find(o => o.id === data.organik);
-      const selectedMitra = mitraList.find(m => m.id === data.mitraStatistik);
+      const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
+      const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
       const formattedData = {
         ...data,
         tanggalSuratKeputusan: format(data.tanggalSuratKeputusan, "dd MMMM yyyy", { locale: id }),
-        organikName: selectedOrganik?.name || "",
-        mitraName: selectedMitra?.name || "",
+        organikNames: selectedOrganiks.map(o => o.name).join(", "),
+        mitraNames: selectedMitras.map(m => m.name).join(", "),
         pembuatName: selectedPembuat?.name || "",
       };
 
@@ -353,7 +353,7 @@ const SuratKeputusan = () => {
                             options={organikOptions}
                             value={field.value}
                             onChange={field.onChange}
-                            isMulti={false}
+                            isMulti={true}
                           />
                         </FormControl>
                         <FormMessage />
@@ -373,7 +373,7 @@ const SuratKeputusan = () => {
                             options={mitraOptions}
                             value={field.value}
                             onChange={field.onChange}
-                            isMulti={false}
+                            isMulti={true}
                           />
                         </FormControl>
                         <FormMessage />

@@ -565,8 +565,8 @@ function formatSuratKeputusanData(documentId: string, data: any): any[] {
     data.memutuskanKedua || "",                      // kedua
     data.memutuskanKetiga || "",                     // ketiga
     data.tanggalSuratKeputusan || "",                // tanggal
-    data.organikName || "",                          // Organik
-    data.mitraName || "",                            // Mitra Statistik
+    data.organikNames || "",                         // Organik
+    data.mitraNames || "",                           // Mitra Statistik
     data.pembuatName || ""                           // Pembuat daftar
   ];
 
