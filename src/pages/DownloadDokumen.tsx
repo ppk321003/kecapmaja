@@ -281,7 +281,7 @@ const DownloadDokumen = () => {
             </Tooltip>
     }]
   }, {
-    id: "surat-keputusan", 
+    id: "SuratKeputusan", 
     title: "Surat Keputusan",
     sheetId: "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
     sheetName: "Sheet1",

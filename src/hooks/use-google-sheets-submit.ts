@@ -50,7 +50,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           case "DokumenPengadaan":
             rowData = formatDokumenPengadaanData(documentId, data);
             break;
-          case "surat-keputusan":
+          case "SuratKeputusan":
             rowData = formatSuratKeputusanData(documentId, data);
             break;
           default:
@@ -62,7 +62,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         
         // Map document type to correct sheet name for Google Sheets
         let sheetName: string = documentType;
-        if (documentType === "surat-keputusan") {
+        if (documentType === "SuratKeputusan") {
           sheetName = "SuratKeputusan";
         }
         

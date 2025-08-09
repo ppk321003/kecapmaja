@@ -66,7 +66,7 @@ const SuratKeputusan = () => {
   });
 
   const submitToSheets = useSubmitToSheets({
-    documentType: "surat-keputusan",
+    documentType: "SuratKeputusan",
     onSuccess: () => {
       form.reset();
       setIsSubmitting(false);

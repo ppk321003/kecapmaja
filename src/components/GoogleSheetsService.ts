@@ -48,7 +48,7 @@ export const GoogleSheetsService = {
         case "TandaTerima":
           prefix = "tt";
           break;
-        case "surat-keputusan":
+        case "SuratKeputusan":
           prefix = "sk";
           break;
         default:
@@ -133,7 +133,7 @@ export const GoogleSheetsService = {
         case "TandaTerima":
           prefix = "tt";
           break;
-        case "surat-keputusan":
+        case "SuratKeputusan":
           prefix = "sk";
           break;
         default:

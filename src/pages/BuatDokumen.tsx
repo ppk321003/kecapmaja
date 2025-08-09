@@ -65,7 +65,7 @@ const documentTypes = [
   {
     title: "Surat Keputusan",
     description: "Buat surat keputusan",
-    path: "/dokumen/surat-keputusan",
+    path: "/dokumen/SuratKeputusan",
     color: "bg-purple-50 dark:bg-purple-900/20",
     iconColor: "text-purple-600"
   }
