@@ -25,7 +25,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
 }) => {
   const location = useLocation();
   const { data: menuItems = [], isLoading } = useSidebar();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     "Dokumen dan Formulir": false,
@@ -255,53 +255,6 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
           <div className="text-xs text-sidebar-foreground/80 mb-2 text-center">
             Maju Aman Jeung Amanah
           </div>
-          {/* Tombol ubah tema */}
-          <Button
-            variant="outline"
-            onClick={toggleTheme}
-            className="w-full border-sidebar-border hover:text-sidebar-foreground rounded-none font-medium text-sm bg-emerald-900 hover:bg-emerald-800"
-            aria-label="Toggle theme"
-          >
-            {/* Icon mode gelap / terang */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mr-2 h-4 w-4 dark:hidden"
-            >
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2" />
-              <path d="M12 20v2" />
-              <path d="m4.93 4.93 1.41 1.41" />
-              <path d="m17.66 17.66 1.41 1.41" />
-              <path d="M2 12h2" />
-              <path d="M20 12h2" />
-              <path d="m6.34 17.66-1.41 1.41" />
-              <path d="m19.07 4.93-1.41 1.41" />
-            </svg>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mr-2 h-4 w-4 hidden dark:inline"
-            >
-              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-            </svg>
-            <span className="hidden dark:inline">Light Mode</span>
-            <span className="dark:hidden">Dark Mode</span>
-          </Button>
         </div>
       </div>
     </aside>

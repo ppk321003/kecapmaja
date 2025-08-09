@@ -50,6 +50,9 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           case "DokumenPengadaan":
             rowData = formatDokumenPengadaanData(documentId, data);
             break;
+          case "surat-keputusan":
+            rowData = formatSuratKeputusanData(documentId, data);
+            break;
           default:
             throw new Error(`Unsupported document type: ${documentType}`);
         }
@@ -541,6 +544,30 @@ function formatDokumenPengadaanData(documentId: string, data: any): any[] {
     data.nomorSuratPenawaranHarga || "",       // Nomor Surat Penawaran Harga
     data.nomorSuratPermintaanPembayaran || "", // Nomor Surat Permohonan Pembayaran
     data.nomorInvoice || ""                    // Nomor Invoice Pembayaran
+  ];
+
+  return row;
+}
+
+// Helper function to format Surat Keputusan data
+function formatSuratKeputusanData(documentId: string, data: any): any[] {
+  console.log("Formatting Surat Keputusan data:", data);
+  
+  const row: any[] = [
+    documentId,                                      // ID (SK-yymmxxx)
+    data.nomorSuratKeputusan || "",                  // no_sk
+    data.tentang || "",                              // tentang
+    data.menimbangKesatu || "",                      // menimbang1
+    data.menimbangKedua || "",                       // menimbang2
+    data.menimbangKetiga || "",                      // menimbang3
+    data.menimbangKeempat || "",                     // menimbang4
+    data.memutuskanKesatu || "",                     // kesatu
+    data.memutuskanKedua || "",                      // kedua
+    data.memutuskanKetiga || "",                     // ketiga
+    data.tanggalSuratKeputusan || "",                // tanggal
+    data.organikName || "",                          // Organik
+    data.mitraName || "",                            // Mitra Statistik
+    data.pembuatName || ""                           // Pembuat daftar
   ];
 
   return row;

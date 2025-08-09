@@ -61,6 +61,13 @@ const documentTypes = [
     path: "/dokumen/uang-harian-transport",
     color: "bg-orange-50 dark:bg-orange-900/20",
     iconColor: "text-bps-orange"
+  },
+  {
+    title: "Surat Keputusan",
+    description: "Buat surat keputusan",
+    path: "/dokumen/surat-keputusan",
+    color: "bg-purple-50 dark:bg-purple-900/20",
+    iconColor: "text-purple-600"
   }
 ];
 

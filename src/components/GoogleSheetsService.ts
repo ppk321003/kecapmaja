@@ -48,6 +48,9 @@ export const GoogleSheetsService = {
         case "TandaTerima":
           prefix = "tt";
           break;
+        case "surat-keputusan":
+          prefix = "sk";
+          break;
         default:
           prefix = documentType.toLowerCase().slice(0, 2);
       }
