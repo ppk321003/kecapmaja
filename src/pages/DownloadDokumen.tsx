@@ -20,41 +20,10 @@ const indonesianOptions = {
 };
 
 const DownloadDokumen = () => {
-  const [activeTab, setActiveTab] = useState("kerangka-acuan-kerja");
+  const [activeTab, setActiveTab] = useState("daftar-hadir");
 
   // Data for each table with sheet IDs
   const documents = [{
-    id: "kerangka-acuan-kerja",
-    title: "Kerangka Acuan Kerja",
-    sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "Id"
-    }, {
-      key: "Jenis Kerangka Acuan Kerja",
-      header: "Jenis Kerangka Acuan Kerja"
-    }, {
-      key: "Nama Kegiatan-1",
-      header: "Nama Kegiatan"
-    }, {
-      key: "Nama Pembuat Daftar",
-      header: "Nama Pembuat Daftar"
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
-  }, {
     id: "daftar-hadir",
     title: "Daftar Hadir",
     sheetId: "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
@@ -86,6 +55,102 @@ const DownloadDokumen = () => {
             </Tooltip>
     }]
   }, {
+    id: "dokumen-pengadaan",
+    title: "Dokumen Pengadaan",
+    sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Nama Paket Pengadaan",
+      header: "Nama Paket Pengadaan"
+    }, {
+      key: "Kode Kegiatan",
+      header: "Kode Kegiatan"
+    }, {
+      key: "Penyedia Barang/Jasa",
+      header: "Penyedia Barang/Jasa"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
+    id: "kerangka-acuan-kerja",
+    title: "Kerangka Acuan Kerja",
+    sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "Id"
+    }, {
+      key: "Jenis Kerangka Acuan Kerja",
+      header: "Jenis Kerangka Acuan Kerja"
+    }, {
+      key: "Nama Kegiatan-1",
+      header: "Nama Kegiatan"
+    }, {
+      key: "Nama Pembuat Daftar",
+      header: "Nama Pembuat Daftar"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
+    id: "kuitansi-perjalanan-dinas",
+    title: "Kuitansi Perjalanan Dinas",
+    sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Pelaksana Perjalanan Dinas",
+      header: "Pelaksana Perjalanan Dinas"
+    }, {
+      key: "Nomor Surat Tugas",
+      header: "Nomor Surat Tugas"
+    }, {
+      key: "Tujuan Pelaksanaan Perjalanan Dinas",
+      header: "Tujuan Pelaksanaan Perjalanan Dinas"
+    }, {
+      key: "Jenis Perjalanan Dinas",
+      header: "Jenis Perjalanan Dinas"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
     id: "spj-honor",
     title: "SPJ Honor",
     sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
@@ -102,6 +167,68 @@ const DownloadDokumen = () => {
     }, {
       key: "Detil",
       header: "Detil"
+    }, {
+      key: "Pembuat Daftar",
+      header: "Pembuat Daftar"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
+    id: "SuratKeputusan", 
+    title: "Surat Keputusan",
+    sheetId: "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "Id"
+    }, {
+      key: "no_sk",
+      header: "Nomor SK"
+    }, {
+      key: "tentang",
+      header: "Tentang"
+    }, {
+      key: "Pembuat daftar",
+      header: "Pembuat daftar"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
+    id: "tanda-terima",
+    title: "Tanda Terima",
+    sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Nama Kegiatan",
+      header: "Nama Kegiatan"
+    }, {
+      key: "Detail Kegiatan",
+      header: "Detail Kegiatan"
     }, {
       key: "Pembuat Daftar",
       header: "Pembuat Daftar"
@@ -170,133 +297,6 @@ const DownloadDokumen = () => {
     }, {
       key: "Pembuat Daftar",
       header: "Pembuat Daftar"
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
-  }, {
-    id: "kuitansi-perjalanan-dinas",
-    title: "Kuitansi Perjalanan Dinas",
-    sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "ID"
-    }, {
-      key: "Pelaksana Perjalanan Dinas",
-      header: "Pelaksana Perjalanan Dinas"
-    }, {
-      key: "Nomor Surat Tugas",
-      header: "Nomor Surat Tugas"
-    }, {
-      key: "Tujuan Pelaksanaan Perjalanan Dinas",
-      header: "Tujuan Pelaksanaan Perjalanan Dinas"
-    }, {
-      key: "Jenis Perjalanan Dinas",
-      header: "Jenis Perjalanan Dinas"
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
-  }, {
-    id: "dokumen-pengadaan",
-    title: "Dokumen Pengadaan",
-    sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "ID"
-    }, {
-      key: "Nama Paket Pengadaan",
-      header: "Nama Paket Pengadaan"
-    }, {
-      key: "Kode Kegiatan",
-      header: "Kode Kegiatan"
-    }, {
-      key: "Penyedia Barang/Jasa",
-      header: "Penyedia Barang/Jasa"
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
-  }, {
-    id: "tanda-terima",
-    title: "Tanda Terima",
-    sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "ID"
-    }, {
-      key: "Nama Kegiatan",
-      header: "Nama Kegiatan"
-    }, {
-      key: "Detail Kegiatan",
-      header: "Detail Kegiatan"
-    }, {
-      key: "Pembuat Daftar",
-      header: "Pembuat Daftar"
-    }, {
-      key: "Link",
-      header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-    }]
-  }, {
-    id: "SuratKeputusan", 
-    title: "Surat Keputusan",
-    sheetId: "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
-    sheetName: "Sheet1",
-    columns: [{
-      key: "Id",
-      header: "Id"
-    }, {
-      key: "no_sk",
-      header: "Nomor SK"
-    }, {
-      key: "tentang",
-      header: "Tentang"
-    }, {
-      key: "Pembuat daftar",
-      header: "Pembuat daftar"
     }, {
       key: "Link",
       header: "Link",
