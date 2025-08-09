@@ -43,7 +43,6 @@ const SuratKeputusan = () => {
     toast
   } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeneratingId, setIsGeneratingId] = useState(false);
   const {
     data: organikList = []
   } = useOrganikBPS();
@@ -68,28 +67,7 @@ const SuratKeputusan = () => {
     }
   });
 
-  // Generate auto ID when component mounts
-  React.useEffect(() => {
-    const generateId = async () => {
-      if (form.getValues("nomorSuratKeputusan") === "") {
-        setIsGeneratingId(true);
-        try {
-          const id = await GoogleSheetsService.generateDocumentId("SuratKeputusan");
-          form.setValue("nomorSuratKeputusan", id);
-        } catch (error) {
-          console.error("Error generating ID:", error);
-          toast({
-            title: "Peringatan",
-            description: "Gagal membuat ID otomatis, silakan isi manual",
-            variant: "destructive"
-          });
-        } finally {
-          setIsGeneratingId(false);
-        }
-      }
-    };
-    generateId();
-  }, [form, toast]);
+  // Remove auto-generation of ID for the input field
   const submitToSheets = useSubmitToSheets({
     documentType: "SuratKeputusan",
     onSuccess: () => {
@@ -112,6 +90,9 @@ const SuratKeputusan = () => {
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
     try {
+      // Generate automatic ID for spreadsheet
+      const documentId = await GoogleSheetsService.generateDocumentId("SuratKeputusan");
+      
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
@@ -123,7 +104,7 @@ const SuratKeputusan = () => {
         organikNames: selectedOrganiks.map(o => `"${o.name}"`).join(" | "),
         mitraNames: selectedMitras.map(m => `"${m.name}"`).join(" | "),
         pembuatName: selectedPembuat?.name || "",
-        documentId: data.nomorSuratKeputusan // Include the generated ID
+        documentId: documentId // Use the generated ID for spreadsheet
       };
       await submitToSheets.mutateAsync(formattedData);
     } catch (error) {
@@ -159,8 +140,7 @@ const SuratKeputusan = () => {
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder={isGeneratingId ? "Membuat ID..." : "SK-yymmxxx"} 
-                            disabled={isGeneratingId}
+                            placeholder="Masukkan nomor surat keputusan"
                             className="max-w-[150px]"
                             {...field} 
                           />
