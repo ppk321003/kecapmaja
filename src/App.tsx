@@ -48,7 +48,7 @@ const App = () => (
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />
             <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
             <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
-            <Route path="/dokumen/surat-keputusan" element={<SuratKeputusan />} />
+            <Route path="/dokumen/SuratKeputusan" element={<SuratKeputusan />} />
             
             {/* External Links */}
             <Route path="/bahan-revisi-web" element={<ExternalLink url="https://bahanrevisi-3210.vercel.app/" />} />

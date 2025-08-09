@@ -57,10 +57,16 @@ export const GoogleSheetsService = {
 
       // Check the last ID from the database to increment
       try {
+        // Map document type to correct sheet name for reading existing IDs
+        let readSheetName = documentType;
+        if (documentType === "SuratKeputusan") {
+          readSheetName = "Sheet1"; // Use the first sheet for reading IDs
+        }
+        
         const { data, error } = await supabase.functions.invoke('google-sheets', {
           body: {
             action: 'read',
-            sheetName: documentType,
+            sheetName: readSheetName,
             range: 'A2:A1000' // Read the ID column to find the latest
           }
         });

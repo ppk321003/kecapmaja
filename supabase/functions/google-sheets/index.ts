@@ -17,7 +17,7 @@ const SPREADSHEET_IDS: Record<string, string> = {
   "KuitansiPerjalananDinas": "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
   "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
   "TandaTerima": "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8",
-  "SuratKeputusan":"1UHvxxnQskKvmE5Pv0lHS7IMuMwpwlFTE0kVDh-rFVJg"
+  "SuratKeputusan": "1UHvxxnQskKvmE5Pv0lHS7IMuMwpwlFTE0kVDh-rFVJg"
   // Default fallback spreadsheet for testing/misc operations
   "Sheet1": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
   "Organik": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",

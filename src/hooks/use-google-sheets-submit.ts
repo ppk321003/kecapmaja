@@ -61,9 +61,11 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         console.log(`Successfully preparing ${documentType} data for Google Sheets`);
         
         // Map document type to correct sheet name for Google Sheets
+        // For SuratKeputusan, write to the first sheet which is likely named "Sheet1"
         let sheetName: string = documentType;
         if (documentType === "SuratKeputusan") {
-          sheetName = "SuratKeputusan";
+          // Try writing to the first sheet tab, which is usually "Sheet1"
+          sheetName = "Sheet1";
         }
         
         // Append to Google Sheets
