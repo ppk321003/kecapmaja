@@ -289,11 +289,11 @@ const DownloadDokumen = () => {
       key: "Id",
       header: "Id"
     }, {
-      key: "Nomor SK",
-      header: "no_sk"
+      key: "no_sk",
+      header: "Nomor SK"
     }, {
-      key: "Tentang",
-      header: "tentang"
+      key: "tentang",
+      header: "Tentang"
     }, {
       key: "Pembuat daftar",
       header: "Pembuat daftar"
