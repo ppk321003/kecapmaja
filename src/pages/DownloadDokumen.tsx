@@ -289,7 +289,7 @@ const DownloadDokumen = () => {
       key: "Id",
       header: "Id"
     }, {
-      key: "Nomor SK",
+      key: "no_sk",
       header: "Nomor SK"
     }, {
       key: "tentang",
