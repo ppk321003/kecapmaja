@@ -92,7 +92,6 @@ const SuratKeputusan = () => {
     try {
       // Generate automatic ID for spreadsheet
       const documentId = await GoogleSheetsService.generateDocumentId("SuratKeputusan");
-      
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
@@ -139,11 +138,7 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Masukkan nomor surat keputusan"
-                            className="max-w-[150px]"
-                            {...field} 
-                          />
+                          <Input placeholder="Masukkan nomor surat keputusan" className="max-w-[150px]" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
@@ -154,11 +149,7 @@ const SuratKeputusan = () => {
                   }) => <FormItem>
                           <FormLabel>Tentang</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Masukkan tentang (dapat berisi teks panjang)" 
-                              className="min-h-[80px]"
-                              {...field} 
-                            />
+                            <Textarea placeholder="Masukkan tentang (dapat berisi teks panjang)" className="min-h-[80px]" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>} />
@@ -171,9 +162,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="menimbangKesatu" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Menimbang Kesatu
-cth:
-bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
+                        <FormLabel>KESATU - cth: bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -195,7 +184,7 @@ bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu me
                   <FormField control={form.control} name="menimbangKetiga" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Menimbang Ketiga (Opsional)</FormLabel>
+                        <FormLabel>KETIGA - (Opsional)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -205,7 +194,7 @@ bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu me
                   <FormField control={form.control} name="menimbangKeempat" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Menimbang Keempat (Opsional)</FormLabel>
+                        <FormLabel>KEEMPAT - (Opsional)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -231,9 +220,7 @@ Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertania
                   <FormField control={form.control} name="memutuskanKedua" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Memutuskan Kedua (Opsional)
-cth:
-Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan</FormLabel>
+                        <FormLabel>KEDUA - (Opsional) cth: Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -243,8 +230,7 @@ Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 202
                   <FormField control={form.control} name="memutuskanKetiga" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Memutuskan Ketiga (Opsional)
-Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
+                        <FormLabel>KETIGA - (Opsional) Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
