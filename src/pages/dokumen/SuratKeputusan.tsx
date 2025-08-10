@@ -172,9 +172,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="menimbangKedua" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Menimbang Kedua (Opsional)
-cth:
-bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
+                        <FormLabel>KEDUA (Opsional) cth: bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -208,9 +206,7 @@ bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu me
                   <FormField control={form.control} name="memutuskanKesatu" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>Memutuskan Kesatu
-cth:
-Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.</FormLabel>
+                        <FormLabel>KESATU cth: Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
