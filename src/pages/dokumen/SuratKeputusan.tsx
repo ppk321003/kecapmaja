@@ -36,7 +36,7 @@ const suratKeputusanSchema = z.object({
   organik: z.array(z.string()),
   mitraStatistik: z.array(z.string()),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
-}).refine((data) => {
+}).refine(data => {
   return data.organik.length > 0 || data.mitraStatistik.length > 0;
 }, {
   message: "Minimal salah satu dari Organik atau Mitra Statistik harus dipilih",
@@ -192,7 +192,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="menimbangKesatu" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KESATU - cth: bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
+                        <FormLabel>KESATU - (Wajib)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -202,7 +202,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="menimbangKedua" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KEDUA (Opsional) cth: bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
+                        <FormLabel>KEDUA (Opsional)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -256,7 +256,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="memutuskanKesatu" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KESATU cth: Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.</FormLabel>
+                        <FormLabel>KESATU - (Wajib)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -266,7 +266,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="memutuskanKedua" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KEDUA - (Opsional) cth: Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan</FormLabel>
+                        <FormLabel>KEDUA - (Wajib)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -276,7 +276,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="memutuskanKetiga" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KETIGA - (Opsional) cth: Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
+                        <FormLabel>KETIGA - (Wajib)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
