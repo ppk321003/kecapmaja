@@ -230,7 +230,7 @@ Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertania
                   <FormField control={form.control} name="memutuskanKetiga" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KETIGA - (Opsional) Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
+                        <FormLabel>KETIGA - (Opsional) cth: Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
