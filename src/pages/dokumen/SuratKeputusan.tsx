@@ -298,7 +298,7 @@ Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertania
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Reset
                   </Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-purple-600 hover:bg-purple-700">
+                  <Button type="submit" disabled={isSubmitting} className="bg-teal-700 hover:bg-teal-600">
                     {isSubmitting ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
