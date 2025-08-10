@@ -33,9 +33,14 @@ const suratKeputusanSchema = z.object({
   tanggalSuratKeputusan: z.date({
     required_error: "Tanggal surat keputusan harus diisi"
   }),
-  organik: z.array(z.string()).min(1, "Minimal satu organik harus dipilih"),
-  mitraStatistik: z.array(z.string()).min(1, "Minimal satu mitra statistik harus dipilih"),
+  organik: z.array(z.string()),
+  mitraStatistik: z.array(z.string()),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
+}).refine((data) => {
+  return data.organik.length > 0 || data.mitraStatistik.length > 0;
+}, {
+  message: "Minimal salah satu dari Organik atau Mitra Statistik harus dipilih",
+  path: ["organik"]
 });
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 const SuratKeputusan = () => {
@@ -158,6 +163,31 @@ const SuratKeputusan = () => {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg text-sm text-gray-700">
+                    <p className="font-medium mb-2">Contoh penulisan:</p>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-semibold">- KESATU :</span>
+                        <br />
+                        bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEDUA :</span>
+                        <br />
+                        (Opsional) bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KETIGA :</span>
+                        <br />
+                        (Opsional)
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEEMPAT :</span>
+                        <br />
+                        (Opsional)
+                      </div>
+                    </div>
+                  </div>
                   
                   <FormField control={form.control} name="menimbangKesatu" render={({
                   field
@@ -202,6 +232,26 @@ const SuratKeputusan = () => {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
+                  <div className="bg-green-50 p-4 rounded-lg text-sm text-gray-700">
+                    <p className="font-medium mb-2">Contoh penulisan:</p>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-semibold">- KESATU :</span>
+                        <br />
+                        Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEDUA :</span>
+                        <br />
+                        Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KETIGA :</span>
+                        <br />
+                        Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka
+                      </div>
+                    </div>
+                  </div>
                   
                   <FormField control={form.control} name="memutuskanKesatu" render={({
                   field
