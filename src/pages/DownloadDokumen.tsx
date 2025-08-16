@@ -224,6 +224,9 @@ const DownloadDokumen = () => {
       key: "Id",
       header: "ID"
     }, {
+      key: "Jenis Surat Pernyataan",
+      header: "Jenis Surat Pernyataan"
+    }, {
       key: "kegiatan",
       header: "Kegiatan"
     }, {
