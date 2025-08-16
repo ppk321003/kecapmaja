@@ -65,12 +65,11 @@ const SuratPernyataan = () => {
     if (organikId && !selectedOrganik.includes(organikId)) {
       const jenisSurat = form.getValues("jenisSuratPernyataan");
       const isFasilitasKantor = jenisSurat === "Fasilitas Kantor Tidak Memenuhi";
-      
+
       // If "Fasilitas Kantor Tidak Memenuhi", only allow 1 organik
       if (isFasilitasKantor && selectedOrganik.length >= 1) {
         return;
       }
-      
       const newSelected = [...selectedOrganik, organikId];
       setSelectedOrganik(newSelected);
       form.setValue("organikBPS", newSelected);
@@ -128,9 +127,7 @@ const SuratPernyataan = () => {
 
                 <div className="space-y-4">
                   <Label>
-                    Organik BPS {form.watch("jenisSuratPernyataan") === "Fasilitas Kantor Tidak Memenuhi" 
-                      ? "(Hanya bisa pilih 1 orang)" 
-                      : "(Bisa pilih lebih dari 1)"}
+                    Organik BPS {form.watch("jenisSuratPernyataan") === "Fasilitas Kantor Tidak Memenuhi" ? "(Hanya bisa pilih 1 orang)" : "(Bisa pilih lebih dari 1)"}
                   </Label>
                   <div className="flex gap-2">
                     <Select onValueChange={handleAddOrganik}>
@@ -167,7 +164,7 @@ const SuratPernyataan = () => {
                         <Textarea placeholder="Masukkan nama kegiatan..." className="min-h-[100px]" {...field} />
                       </FormControl>
                       <div className="text-sm text-muted-foreground">
-                        <p className="font-medium mb-1">Contoh penulisan:</p>
+                        <p className="font-medium mb-1">Contoh penulisan nama kegiatan:</p>
                         <ul className="space-y-1">
                           {CONTOH_KEGIATAN.map((contoh, index) => <li key={index} className="text-xs">• {contoh}</li>)}
                         </ul>
