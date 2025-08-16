@@ -37,7 +37,7 @@ const defaultValues: FormValues = {
   pembuatDaftar: ""
 };
 const JENIS_SURAT_PERNYATAAN = ["Tidak Menggunakan Kendaraan Dinas", "Fasilitas Kantor Tidak Memenuhi"];
-const CONTOH_KEGIATAN = ["Konsultasi langkah-langkah akhir tahun anggaran 2024 di KPPN Pratama Kuningan", "Briefing Petugas Survei Industri Mikro Kecil (VIMK) Tahunan Tahun 2025", "Rapat Evaluasi Susenas Maret 2025"];
+const CONTOH_KEGIATAN = ["Konsultasi langkah-langkah akhir tahun anggaran 2024 di KPPN Pratama Kuningan", "Pengawasan Kerangka Sampe Area (KSA) Padi", "Briefing Petugas Survei Industri Mikro Kecil (VIMK) Tahunan Tahun 2025", "Rapat Evaluasi Pendataan Susenas Maret 2025"];
 const SuratPernyataan = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
