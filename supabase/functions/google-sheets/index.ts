@@ -106,9 +106,52 @@ serve(async (req) => {
     
     console.log(`Using spreadsheet ID for ${sheetName}: ${SPREADSHEET_ID}`);
 
-    // Always check if the sheet exists and create it if needed
-    // This is important for all sheet operations to prevent errors
+    // First check if we can access the spreadsheet
     try {
+      console.log("Checking spreadsheet access...");
+      const accessCheckResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (!accessCheckResponse.ok) {
+        const errorText = await accessCheckResponse.text();
+        console.error("Cannot access spreadsheet:", accessCheckResponse.status, errorText);
+        return new Response(JSON.stringify({ 
+          error: `Cannot access spreadsheet: ${accessCheckResponse.status} ${errorText}`,
+          details: {
+            spreadsheetId: SPREADSHEET_ID,
+            sheetName: sheetName,
+            suggestion: "Please ensure the service account has access to this spreadsheet"
+          }
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: accessCheckResponse.status,
+        });
+      }
+      
+      console.log("Spreadsheet access confirmed");
+    } catch (error) {
+      console.error("Error checking spreadsheet access:", error);
+      return new Response(JSON.stringify({ 
+        error: "Failed to check spreadsheet access: " + error.message,
+        details: {
+          spreadsheetId: SPREADSHEET_ID,
+          sheetName: sheetName
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
+    // Check if the specific sheet exists and create it if needed
+    try {
+      console.log(`Checking if sheet '${sheetName}' exists...`);
       const checkResponse = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!A1`,
         {
@@ -120,7 +163,7 @@ serve(async (req) => {
       
       // If the sheet doesn't exist, try to create it
       if (!checkResponse.ok && checkResponse.status === 400) {
-        console.log(`Sheet ${sheetName} might not exist, attempting to create it`);
+        console.log(`Sheet ${sheetName} doesn't exist, attempting to create it`);
         
         // Create the sheet
         const createSheetResponse = await fetch(
@@ -147,13 +190,38 @@ serve(async (req) => {
         
         if (!createSheetResponse.ok) {
           const errorText = await createSheetResponse.text();
-          console.log(`Error creating sheet: ${errorText}`);
+          console.error(`Error creating sheet: ${errorText}`);
+          return new Response(JSON.stringify({ 
+            error: `Failed to create sheet: ${createSheetResponse.status} ${errorText}`,
+            details: {
+              spreadsheetId: SPREADSHEET_ID,
+              sheetName: sheetName
+            }
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: createSheetResponse.status,
+          });
         } else {
           console.log(`Successfully created sheet: ${sheetName}`);
         }
+      } else if (checkResponse.ok) {
+        console.log(`Sheet '${sheetName}' exists and is accessible`);
+      } else {
+        const errorText = await checkResponse.text();
+        console.error(`Error checking sheet: ${checkResponse.status} ${errorText}`);
       }
     } catch (error) {
       console.error(`Error checking/creating sheet ${sheetName}:`, error);
+      return new Response(JSON.stringify({ 
+        error: "Failed to check/create sheet: " + error.message,
+        details: {
+          spreadsheetId: SPREADSHEET_ID,
+          sheetName: sheetName
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
     }
 
     if (action === "read") {
@@ -183,6 +251,9 @@ serve(async (req) => {
       });
     } else if (action === "append") {
       // Append data to Google Sheets
+      console.log(`Attempting to append data to spreadsheet ${SPREADSHEET_ID}, sheet ${sheetName}, range ${range}`);
+      console.log("Data to append:", JSON.stringify(values, null, 2));
+      
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
         {
@@ -197,16 +268,27 @@ serve(async (req) => {
         }
       );
 
+      console.log(`Append response status: ${response.status}`);
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Google Sheets API error:", errorText);
-        return new Response(JSON.stringify({ error: `Google Sheets API error: ${response.status} ${errorText}` }), {
+        console.error("Google Sheets API error:", response.status, errorText);
+        return new Response(JSON.stringify({ 
+          error: `Google Sheets API error: ${response.status} ${errorText}`,
+          details: {
+            spreadsheetId: SPREADSHEET_ID,
+            sheetName: sheetName,
+            range: range,
+            status: response.status
+          }
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: response.status,
         });
       }
 
       const data = await response.json();
+      console.log("Append successful:", JSON.stringify(data, null, 2));
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
