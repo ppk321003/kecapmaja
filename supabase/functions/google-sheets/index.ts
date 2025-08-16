@@ -18,6 +18,7 @@ const SPREADSHEET_IDS: Record<string, string> = {
   "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
   "TandaTerima": "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8",
   "SuratKeputusan": "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo",
+  "SuratPernyataan": "1rGIK4xt2CiKyfuJaZe0rhyz57j_8iFDlzwRBbXnW4xo",
   // Default fallback spreadsheet for testing/misc operations
   "Organik": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg",
   "Mitra": "1aVoCmwZCmkihEOJ9ommE5kccep7uJv6oulI5R3EpOCg"
