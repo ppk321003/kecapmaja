@@ -53,15 +53,6 @@ export const useSidebar = () => {
           order_index: 5,
           is_active: true
         },
-        {
-          id: "6",
-          title: "Surat Pernyataan",
-          path: "/surat-pernyataan",
-          icon: "File",
-          description: "Akses surat pernyataan",
-          order_index: 6,
-          is_active: true
-        },
         // Laporan & Rekap
         {
           id: "7",

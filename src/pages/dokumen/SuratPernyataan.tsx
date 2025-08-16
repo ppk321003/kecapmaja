@@ -63,6 +63,14 @@ const SuratPernyataan = () => {
   });
   const handleAddOrganik = (organikId: string) => {
     if (organikId && !selectedOrganik.includes(organikId)) {
+      const jenisSurat = form.getValues("jenisSuratPernyataan");
+      const isFasilitasKantor = jenisSurat === "Fasilitas Kantor Tidak Memenuhi";
+      
+      // If "Fasilitas Kantor Tidak Memenuhi", only allow 1 organik
+      if (isFasilitasKantor && selectedOrganik.length >= 1) {
+        return;
+      }
+      
       const newSelected = [...selectedOrganik, organikId];
       setSelectedOrganik(newSelected);
       form.setValue("organikBPS", newSelected);
@@ -119,7 +127,11 @@ const SuratPernyataan = () => {
                     </FormItem>} />
 
                 <div className="space-y-4">
-                  <Label>Organik BPS (Bisa pilih lebih dari 1)</Label>
+                  <Label>
+                    Organik BPS {form.watch("jenisSuratPernyataan") === "Fasilitas Kantor Tidak Memenuhi" 
+                      ? "(Hanya bisa pilih 1 orang)" 
+                      : "(Bisa pilih lebih dari 1)"}
+                  </Label>
                   <div className="flex gap-2">
                     <Select onValueChange={handleAddOrganik}>
                       <SelectTrigger>
