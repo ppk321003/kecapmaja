@@ -224,10 +224,7 @@ const DownloadDokumen = () => {
       key: "Id",
       header: "ID"
     }, {
-      key: "Nomor Super",
-      header: "Nomor Super"
-    }, {
-      key: "Kegiatan",
+      key: "kegiatan",
       header: "Kegiatan"
     }, {
       key: "Pembuat daftar",
