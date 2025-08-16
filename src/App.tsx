@@ -19,6 +19,7 @@ import TandaTerima from "./pages/dokumen/TandaTerima";
 import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
 import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import SuratKeputusan from "./pages/dokumen/SuratKeputusan";
+import SuratPernyataan from "./pages/dokumen/SuratPernyataan";
 import ExternalLink from "./pages/ExternalLink";
 import DownloadDokumen from "./pages/DownloadDokumen";
 import RekapHonor from "./pages/RekapHonor";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
             <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
             <Route path="/dokumen/SuratKeputusan" element={<SuratKeputusan />} />
+            <Route path="/dokumen/surat-pernyataan" element={<SuratPernyataan />} />
             
             {/* External Links */}
             <Route path="/bahan-revisi-web" element={<ExternalLink url="https://bahanrevisi-3210.vercel.app/" />} />

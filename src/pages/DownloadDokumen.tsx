@@ -311,6 +311,37 @@ const DownloadDokumen = () => {
               </TooltipContent>
             </Tooltip>
     }]
+  }, {
+    id: "surat-pernyataan",
+    title: "Surat Pernyataan",
+    sheetId: "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
+    sheetName: "SuratPernyataan",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Nomor Super",
+      header: "Nomor Super"
+    }, {
+      key: "Kegiatan",
+      header: "Kegiatan"
+    }, {
+      key: "Pembuat daftar",
+      header: "Pembuat Daftar"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
   }];
 
   // Get the active document

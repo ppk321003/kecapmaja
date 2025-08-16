@@ -68,6 +68,13 @@ const documentTypes = [
     path: "/dokumen/SuratKeputusan",
     color: "bg-purple-50 dark:bg-purple-900/20",
     iconColor: "text-purple-600"
+  },
+  {
+    title: "Surat Pernyataan",
+    description: "Buat surat pernyataan",
+    path: "/dokumen/surat-pernyataan",
+    color: "bg-red-50 dark:bg-red-900/20",
+    iconColor: "text-red-600"
   }
 ];
 

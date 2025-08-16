@@ -51,6 +51,9 @@ export const GoogleSheetsService = {
         case "SuratKeputusan":
           prefix = "sk";
           break;
+        case "surat-pernyataan":
+          prefix = "super";
+          break;
         default:
           prefix = documentType.toLowerCase().slice(0, 2);
       }
@@ -61,6 +64,8 @@ export const GoogleSheetsService = {
         let readSheetName = documentType;
         if (documentType === "SuratKeputusan") {
           readSheetName = "SuratKeputusan"; // Use the correct sheet name
+        } else if (documentType === "surat-pernyataan") {
+          readSheetName = "SuratPernyataan";
         }
         
         const { data, error } = await supabase.functions.invoke('google-sheets', {

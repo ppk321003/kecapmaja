@@ -47,6 +47,9 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           case "KuitansiPerjalananDinas":
             rowData = formatKuitansiPerjalananDinasData(documentId, data);
             break;
+          case "surat-pernyataan":
+            rowData = formatSuratPernyataanData(documentId, data);
+            break;
           case "DokumenPengadaan":
             rowData = formatDokumenPengadaanData(documentId, data);
             break;
@@ -64,6 +67,8 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         let sheetName: string = documentType;
         if (documentType === "SuratKeputusan") {
           sheetName = "SuratKeputusan";
+        } else if (documentType === "surat-pernyataan") {
+          sheetName = "SuratPernyataan";
         }
         
         // Append to Google Sheets
@@ -550,6 +555,22 @@ function formatDokumenPengadaanData(documentId: string, data: any): any[] {
     data.nomorSuratPenawaranHarga || "",       // Nomor Surat Penawaran Harga
     data.nomorSuratPermintaanPembayaran || "", // Nomor Surat Permohonan Pembayaran
     data.nomorInvoice || ""                    // Nomor Invoice Pembayaran
+  ];
+
+  return row;
+}
+
+// Helper function to format Surat Pernyataan data
+function formatSuratPernyataanData(documentId: string, data: any): any[] {
+  console.log("Formatting Surat Pernyataan data:", data);
+  
+  const row: any[] = [
+    documentId,                                          // Id
+    data.jenisSuratPernyataan || "",                     // Jenis Surat Pernyataan
+    data.organikBPS || "",                               // Organik
+    data.namaKegiatan || "",                             // kegiatan
+    data.tanggalSuratPernyataan || "",                   // tanggal
+    data.pembuatDaftar || ""                             // Pembuat daftar
   ];
 
   return row;
