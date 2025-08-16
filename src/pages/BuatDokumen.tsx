@@ -42,6 +42,20 @@ const documentTypes = [
     iconColor: "text-bps-orange"
   },
   {
+    title: "Surat Keputusan",
+    description: "Buat surat keputusan",
+    path: "/dokumen/SuratKeputusan",
+    color: "bg-purple-50 dark:bg-purple-900/20",
+    iconColor: "text-purple-600"
+  },
+  {
+    title: "Surat Pernyataan",
+    description: "Buat surat pernyataan",
+    path: "/dokumen/surat-pernyataan",
+    color: "bg-red-50 dark:bg-red-900/20",
+    iconColor: "text-red-600"
+  },
+  {
     title: "Tanda Terima",
     description: "Buat dokumen tanda terima",
     path: "/dokumen/tanda-terima",
@@ -61,20 +75,6 @@ const documentTypes = [
     path: "/dokumen/uang-harian-transport",
     color: "bg-orange-50 dark:bg-orange-900/20",
     iconColor: "text-bps-orange"
-  },
-  {
-    title: "Surat Keputusan",
-    description: "Buat surat keputusan",
-    path: "/dokumen/SuratKeputusan",
-    color: "bg-purple-50 dark:bg-purple-900/20",
-    iconColor: "text-purple-600"
-  },
-  {
-    title: "Surat Pernyataan",
-    description: "Buat surat pernyataan",
-    path: "/dokumen/surat-pernyataan",
-    color: "bg-red-50 dark:bg-red-900/20",
-    iconColor: "text-red-600"
   }
 ];
 
