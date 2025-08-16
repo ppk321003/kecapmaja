@@ -36,35 +36,35 @@ const documentTypes = [
   },
   {
     title: "SPJ Honor",
-    description: "SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
+    description: "Buat daftar SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
     path: "/dokumen/spj-honor",
     color: "bg-orange-50 dark:bg-orange-900/20",
     iconColor: "text-bps-orange"
   },
   {
     title: "Surat Keputusan",
-    description: "Buat surat keputusan",
+    description: "Buat surat keputusan Kepala BPS Kabupaten Majalengka",
     path: "/dokumen/SuratKeputusan",
     color: "bg-purple-50 dark:bg-purple-900/20",
     iconColor: "text-purple-600"
   },
   {
     title: "Surat Pernyataan",
-    description: "Buat surat pernyataan",
+    description: "Buat surat pernyataan Tidak Menggunakan Kendaraan Dinas & surat pernyataan Fasilitas Kantor Tidak Memenuhi",
     path: "/dokumen/surat-pernyataan",
     color: "bg-red-50 dark:bg-red-900/20",
     iconColor: "text-red-600"
   },
   {
     title: "Tanda Terima",
-    description: "Buat dokumen tanda terima",
+    description: "Buat dokumen daftar tanda terima kegiatan",
     path: "/dokumen/tanda-terima",
     color: "bg-blue-50 dark:bg-blue-900/20",
     iconColor: "text-bps-blue"
   },
   {
     title: "Transport Lokal",
-    description: "Transport Lokal (Pendataan, Pemeriksaan, Supervisi)",
+    description: "Buat daftar Transport Lokal (Pendataan, Pemeriksaan, Supervisi)",
     path: "/dokumen/transport-lokal",
     color: "bg-green-50 dark:bg-green-900/20",
     iconColor: "text-bps-green"
