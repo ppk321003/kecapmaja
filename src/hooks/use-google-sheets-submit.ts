@@ -567,10 +567,11 @@ function formatSuratPernyataanData(documentId: string, data: any): any[] {
   const row: any[] = [
     documentId,                                          // Id
     data.jenisSuratPernyataan || "",                     // Jenis Surat Pernyataan
-    data.organikBPS || "",                               // Organik
-    data.namaKegiatan || "",                             // kegiatan
-    data.tanggalSuratPernyataan || "",                   // tanggal
-    data.pembuatDaftar || ""                             // Pembuat daftar
+    data.organikBPS || "",                               // Organik BPS
+    data.mitraStatistik || "",                           // Mitra Statistik
+    data.namaKegiatan || "",                             // Nama Kegiatan
+    data.tanggalSuratPernyataan || "",                   // Tanggal Surat Pernyataan
+    data.pembuatDaftar || ""                             // Pembuat Daftar
   ];
 
   return row;
