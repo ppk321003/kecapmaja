@@ -17,21 +17,29 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useOrganikBPS } from "@/hooks/use-database";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+
 const formSchema = z.object({
   jenisSuratPernyataan: z.string().min(1, "Jenis surat pernyataan harus dipilih"),
-  organikBPS: z.array(z.string()).min(1, "Minimal pilih 1 organik BPS"),
+  organikBPS: z.array(z.string()),
+  mitraStatistik: z.array(z.string()),
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   tanggalSuratPernyataan: z.date({
     required_error: "Tanggal surat pernyataan harus dipilih"
   }),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
+}).refine((data) => {
+  return data.organikBPS.length > 0 || data.mitraStatistik.length > 0;
+}, {
+  message: "Minimal salah satu dari Organik BPS atau Mitra Statistik harus dipilih",
+  path: ["organikBPS"]
 });
 type FormValues = z.infer<typeof formSchema>;
 const defaultValues: FormValues = {
   jenisSuratPernyataan: "",
   organikBPS: [],
+  mitraStatistik: [],
   namaKegiatan: "",
   tanggalSuratPernyataan: null,
   pembuatDaftar: ""
@@ -41,6 +49,7 @@ const CONTOH_KEGIATAN = ["Konsultasi langkah-langkah akhir tahun anggaran 2024 d
 const SuratPernyataan = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
+  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues
@@ -48,6 +57,9 @@ const SuratPernyataan = () => {
   const {
     data: organikList = []
   } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
   const {
     mutate: submitToSheets,
     isPending
@@ -80,14 +92,35 @@ const SuratPernyataan = () => {
     setSelectedOrganik(newSelected);
     form.setValue("organikBPS", newSelected);
   };
+
+  const handleAddMitra = (mitraId: string) => {
+    if (mitraId && !selectedMitra.includes(mitraId)) {
+      const newSelected = [...selectedMitra, mitraId];
+      setSelectedMitra(newSelected);
+      form.setValue("mitraStatistik", newSelected);
+    }
+  };
+
+  const handleRemoveMitra = (mitraId: string) => {
+    const newSelected = selectedMitra.filter(id => id !== mitraId);
+    setSelectedMitra(newSelected);
+    form.setValue("mitraStatistik", newSelected);
+  };
+
   const getOrganikName = (organikId: string) => {
     const organik = organikList.find(o => o.id === organikId);
     return organik?.name || "";
+  };
+
+  const getMitraName = (mitraId: string) => {
+    const mitra = mitraList.find(m => m.id === mitraId);
+    return mitra?.name || "";
   };
   const onSubmit = (data: FormValues) => {
     const formattedData = {
       ...data,
       organikBPS: selectedOrganik.map(id => getOrganikName(id)).join(" | "),
+      mitraStatistik: selectedMitra.map(id => getMitraName(id)).join(" | "),
       tanggalSuratPernyataan: format(data.tanggalSuratPernyataan, "yyyy-MM-dd"),
       pembuatDaftar: getOrganikName(data.pembuatDaftar)
     };
@@ -151,10 +184,47 @@ const SuratPernyataan = () => {
                           </Button>
                         </div>)}
                     </div>}
-                  {form.formState.errors.organikBPS && <p className="text-sm font-medium text-destructive">
+                   {form.formState.errors.organikBPS && <p className="text-sm font-medium text-destructive">
                       {form.formState.errors.organikBPS.message}
                     </p>}
                 </div>
+
+                {/* Mitra Statistik Section - Only show for "Tidak Menggunakan Kendaraan Dinas" */}
+                {form.watch("jenisSuratPernyataan") === "Tidak Menggunakan Kendaraan Dinas" && (
+                  <div className="space-y-4">
+                    <Label>
+                      Mitra Statistik (Bisa pilih lebih dari 1)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select onValueChange={handleAddMitra}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih mitra statistik" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mitraList.filter(mitra => !selectedMitra.includes(mitra.id)).map(mitra => (
+                            <SelectItem key={mitra.id} value={mitra.id}>
+                              {mitra.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedMitra.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Mitra Statistik Terpilih:</Label>
+                        {selectedMitra.map(mitraId => (
+                          <div key={mitraId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                            <span>{getMitraName(mitraId)}</span>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveMitra(mitraId)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <FormField control={form.control} name="namaKegiatan" render={({
                 field
