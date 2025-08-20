@@ -232,6 +232,9 @@ const DownloadDokumen = () => {
     }, {
       key: "Organik",
       header: "Nama Organik"
+    },  {
+      key: "Mitra Statistik",
+      header: "Mitra Statistik"
     }, {
       key: "Pembuat daftar",
       header: "Pembuat Daftar"
