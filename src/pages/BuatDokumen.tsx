@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 const documentTypes = [
   {
-    title: "Daftar Hadir",
+    title: "Daftar Hadir (Tabel Rekap)",
     description: "Buat dokumen daftar hadir",
     path: "/dokumen/daftar-hadir",
     color: "bg-blue-50 dark:bg-blue-900/20",
@@ -35,7 +35,7 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
-    title: "SPJ Honor",
+    title: "SPJ Honor (Tabel Rekap)",
     description: "Buat daftar SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
     path: "/dokumen/spj-honor",
     color: "bg-orange-50 dark:bg-orange-900/20",
@@ -56,21 +56,21 @@ const documentTypes = [
     iconColor: "text-red-600"
   },
   {
-    title: "Tanda Terima",
+    title: "Tanda Terima (Tabel Rekap)",
     description: "Buat dokumen daftar tanda terima kegiatan",
     path: "/dokumen/tanda-terima",
     color: "bg-blue-50 dark:bg-blue-900/20",
     iconColor: "text-bps-blue"
   },
   {
-    title: "Transport Lokal",
+    title: "Transport Lokal (Tabel Rekap)",
     description: "Buat daftar Transport Lokal (Pendataan, Pemeriksaan, Supervisi)",
     path: "/dokumen/transport-lokal",
     color: "bg-green-50 dark:bg-green-900/20",
     iconColor: "text-bps-green"
   },
   {
-    title: "Uang Harian dan Transport Lokal",
+    title: "Uang Harian dan Transport Lokal (Tabel Rekap)",
     description: "Buat dokumen uang harian dan transport lokal",
     path: "/dokumen/uang-harian-transport",
     color: "bg-orange-50 dark:bg-orange-900/20",
