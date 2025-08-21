@@ -22,7 +22,7 @@ const indonesianOptions = {
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("daftar-hadir");
 
-  // Data for each table with sheet IDs
+  // Data for each table with sheet IDs - sorted alphabetically
   const documents = [{
     id: "daftar-hadir",
     title: "Daftar Hadir",
@@ -136,6 +136,37 @@ const DownloadDokumen = () => {
     }, {
       key: "Jenis Perjalanan Dinas",
       header: "Jenis Perjalanan Dinas"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
+    id: "kuitansi-transport-lokal",
+    title: "Kuitansi Transport Lokal",
+    sheetId: "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
+    sheetName: "Sheet1",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Kegiatan",
+      header: "Kegiatan"
+    }, {
+      key: "Tanggal (SPJ)",
+      header: "Tanggal (SPJ)"
+    }, {
+      key: "Pembuat daftar",
+      header: "Pembuat Daftar"
     }, {
       key: "Link",
       header: "Link",
@@ -348,7 +379,7 @@ const DownloadDokumen = () => {
               </TooltipContent>
             </Tooltip>
     }]
-  }];
+  }].sort((a, b) => a.title.localeCompare(b.title));
 
   // Get the active document
   const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];

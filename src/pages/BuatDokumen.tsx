@@ -35,6 +35,13 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
+    title: "Kuitansi Transport Lokal",
+    description: "Buat kuitansi transport lokal",
+    path: "/dokumen/kuitansi-transport-lokal",
+    color: "bg-green-50 dark:bg-green-900/20",
+    iconColor: "text-bps-green"
+  },
+  {
     title: "SPJ Honor (Tabel Rekap)",
     description: "Buat daftar SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
     path: "/dokumen/spj-honor",
@@ -76,7 +83,7 @@ const documentTypes = [
     color: "bg-orange-50 dark:bg-orange-900/20",
     iconColor: "text-bps-orange"
   }
-];
+].sort((a, b) => a.title.localeCompare(b.title));
 
 const BuatDokumen = () => {
   return (

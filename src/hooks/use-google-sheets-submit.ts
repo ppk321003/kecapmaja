@@ -47,6 +47,9 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           case "KuitansiPerjalananDinas":
             rowData = formatKuitansiPerjalananDinasData(documentId, data);
             break;
+          case "KuitansiTransportLokal":
+            rowData = formatKuitansiTransportLokalData(documentId, data);
+            break;
           case "surat-pernyataan":
             rowData = formatSuratPernyataanData(documentId, data);
             break;
@@ -597,6 +600,74 @@ function formatSuratKeputusanData(documentId: string, data: any): any[] {
     data.mitraNames || "",                           // Mitra Statistik
     data.pembuatName || ""                           // Pembuat daftar
   ];
+
+  return row;
+}
+
+// Helper function to format Kuitansi Transport Lokal data
+function formatKuitansiTransportLokalData(documentId: string, data: any): any[] {
+  console.log("Formatting Kuitansi Transport Lokal data:", data);
+  
+  const programName = data._programNameMap?.[data.program] || data.program || "";
+  const kegiatanName = data._kegiatanNameMap?.[data.kegiatan] || data.kegiatan || "";
+  const kroName = data._kroNameMap?.[data.kro] || data.kro || "";
+  const roName = data._roNameMap?.[data.ro] || data.ro || "";
+  const komponenName = data._komponenNameMap?.[data.komponen] || data.komponen || "";
+  const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
+
+  const row: any[] = [
+    documentId,                      // ID
+    data.tujuanPelaksanaan || "",    // Tujuan Pelaksanaan / Kegiatan
+    programName,                     // Program
+    kegiatanName,                    // Kegiatan
+    kroName,                         // KRO
+    roName,                          // RO
+    komponenName,                    // Komponen
+    akunName,                        // Akun
+    formatDate(data.tanggalSpj),     // Tanggal (SPJ)
+    data._pembuatDaftarName || data.pembuatDaftar || "",  // Pembuat Daftar
+  ];
+
+  // Extract organik and mitra names and details
+  const organikNames: string[] = [];
+  const mitraNames: string[] = [];
+  const organikDariKecamatan: string[] = [];
+  const mitraDariKecamatan: string[] = [];
+  const organikKecamatanTujuan: string[] = [];
+  const mitraKecamatanTujuan: string[] = [];
+
+  let totalKeseluruhan = 0;
+
+  (data.transportDetails || []).forEach((detail: any) => {
+    const formattedDetail = {
+      nama: detail.nama || "",
+      dariKecamatan: detail.dariKecamatan || "",
+      kecamatanTujuan: detail.kecamatanTujuan || "",
+      rate: detail.rate || 0,
+      tanggal: formatDate(detail.tanggalPelaksanaan) || "",
+    };
+    
+    totalKeseluruhan += formattedDetail.rate;
+    
+    if (detail.type === 'organik' && detail.personId) {      
+      organikNames.push(`"${formattedDetail.nama}"`);
+      organikDariKecamatan.push(formattedDetail.dariKecamatan);
+      organikKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
+      
+    } else if (detail.type === 'mitra' && detail.personId) {
+      mitraNames.push(`"${formattedDetail.nama}"`);
+      mitraDariKecamatan.push(formattedDetail.dariKecamatan);
+      mitraKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
+    }
+  });
+
+  row.push(organikNames.join(" | "));              // Organik BPS
+  row.push(organikDariKecamatan.join(" | "));      // Dari Kecamatan (Organik)
+  row.push(organikKecamatanTujuan.join(" | "));    // Kecamatan Tujuan (Organik)
+  row.push(mitraNames.join(" | "));                // Mitra Statistik
+  row.push(mitraDariKecamatan.join(" | "));        // Dari Kecamatan (Mitra)
+  row.push(mitraKecamatanTujuan.join(" | "));      // Kecamatan Tujuan (Mitra)
+  row.push(totalKeseluruhan);                      // Total Keseluruhan (Rp)
 
   return row;
 }
