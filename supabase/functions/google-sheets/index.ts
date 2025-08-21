@@ -14,6 +14,7 @@ const SPREADSHEET_IDS: Record<string, string> = {
   "SPJHonor": "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM",
   "TransportLokal": "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc",
   "UangHarianTransport": "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg",
+  "Kuitansi Transport Lokal": "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI",
   "KuitansiPerjalananDinas": "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
   "DokumenPengadaan": "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg",
   "TandaTerima": "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8",
