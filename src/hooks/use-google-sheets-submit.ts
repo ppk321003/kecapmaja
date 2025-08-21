@@ -635,6 +635,8 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
   const mitraDariKecamatan: string[] = [];
   const organikKecamatanTujuan: string[] = [];
   const mitraKecamatanTujuan: string[] = [];
+  const rateList: string[] = [];
+  const tanggalList: string[] = [];
 
   let totalKeseluruhan = 0;
 
@@ -648,6 +650,10 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     };
     
     totalKeseluruhan += formattedDetail.rate;
+
+    // simpan rate & tanggal utk semua peserta
+    rateList.push(String(formattedDetail.rate));
+    tanggalList.push(formattedDetail.tanggal);
     
     if (detail.type === 'organik' && detail.personId) {      
       organikNames.push(`"${formattedDetail.nama}"`);
@@ -685,3 +691,4 @@ function formatDate(date: string | Date | null | undefined): string {
     return "";
   }
 }
+
