@@ -651,7 +651,7 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     
     totalKeseluruhan += formattedDetail.rate;
 
-    // simpan rate & tanggal utk semua peserta
+    // simpan rate & tanggal
     rateList.push(String(formattedDetail.rate));
     tanggalList.push(formattedDetail.tanggal);
     
@@ -667,17 +667,15 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     }
   });
 
-  row.push(
-    organikNames.join(" | "),              // Organik BPS
-    organikDariKecamatan.join(" | "),      // Dari Kecamatan (Organik)
-    organikKecamatanTujuan.join(" | "),    // Kecamatan Tujuan (Organik)
-    mitraNames.join(" | "),                // Mitra Statistik
-    mitraDariKecamatan.join(" | "),        // Dari Kecamatan (Mitra)
-    mitraKecamatanTujuan.join(" | "),      // Kecamatan Tujuan (Mitra)
-    rateList.join(" | "),                  // Rate per orang
-    tanggalList.join(" | "),               // Tanggal Pelaksanaan per orang
-    totalKeseluruhan                       // Total Keseluruhan (Rp)
-  );
+  row.push(organikNames.join(" | "));              // Organik BPS
+  row.push(organikDariKecamatan.join(" | "));      // Dari Kecamatan (Organik)
+  row.push(organikKecamatanTujuan.join(" | "));    // Kecamatan Tujuan (Organik)
+  row.push(mitraNames.join(" | "));                // Mitra Statistik
+  row.push(mitraDariKecamatan.join(" | "));        // Dari Kecamatan (Mitra)
+  row.push(mitraKecamatanTujuan.join(" | "));      // Kecamatan Tujuan (Mitra)
+  row.push(rateList.join(" | "));                  // Rate per orang
+  row.push(tanggalList.join(" | "));               // Tanggal Pelaksanaan per orang
+  row.push(totalKeseluruhan);                      // Total Keseluruhan (Rp)
 
   return row;
 }
@@ -691,4 +689,3 @@ function formatDate(date: string | Date | null | undefined): string {
     return "";
   }
 }
-
