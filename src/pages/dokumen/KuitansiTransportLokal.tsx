@@ -23,6 +23,7 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
+  nomorSuratTugas: z.string().max(20, "Nomor surat tugas maksimal 20 karakter"),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -50,6 +51,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
+  nomorSuratTugas: "",
   program: "",
   kegiatan: "",
   kro: "",
