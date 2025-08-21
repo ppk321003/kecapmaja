@@ -24,6 +24,9 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(20, "Nomor surat tugas maksimal 20 karakter"),
+  tanggalSuratTugas: z.date({
+    required_error: "Tanggal surat tugas harus dipilih"
+  }),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -31,7 +34,7 @@ const formSchema = z.object({
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
   tanggalSpj: z.date({
-    required_error: "Tanggal SPJ harus dipilih"
+    required_error: "Tanggal pengajuan harus dipilih"
   }),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus diisi"),
   transportDetails: z.array(z.object({
@@ -52,6 +55,7 @@ type FormValues = z.infer<typeof formSchema>;
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
   nomorSuratTugas: "",
+  tanggalSuratTugas: undefined,
   program: "",
   kegiatan: "",
   kro: "",
@@ -267,38 +271,79 @@ const KuitansiTransportLokal = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 gap-6">
+                  {/* Contoh Penulisan Box */}
+                  <div className="bg-muted/50 border rounded-lg p-4">
+                    <h4 className="text-sm font-medium mb-2">Contoh penulisan:</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Pengawasan lapangan pendataan Sakernas Agustus 2025</li>
+                      <li>• Pendataan lapangan Kerangka Sampel Area (KSA) Padi</li>
+                      <li>• Briefing Petugas Survei Industri Mikro Kecil (VIMK) Tahunan Tahun 2025</li>
+                      <li>• Rapat Evaluasi Susenas Maret 2025</li>
+                    </ul>
+                  </div>
+                  
                   {/* Tujuan Pelaksanaan */}
                   <FormField control={form.control} name="tujuanPelaksanaan" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tujuan Pelaksanaan / Kegiatan</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          {...field} 
-                          placeholder={`Contoh penulisan:
-• Pengawasan lapangan pendataan Sakernas Agustus 2025
-• Pendataan lapangan Kerangka Sampel Area (KSA) Padi
-• Briefing Petugas Survei Industri Mikro Kecil (VIMK) Tahunan Tahun 2025
-• Rapat Evaluasi Susenas Maret 2025`}
-                          className="min-h-[120px]"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  {/* Nomor Surat Tugas */}
-                  <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nomor Surat Tugas</FormLabel>
-                      <FormControl>
                         <Input 
                           {...field} 
-                          placeholder="Masukkan nomor surat tugas"
-                          maxLength={20} 
+                          placeholder="Masukkan tujuan pelaksanaan / kegiatan"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+
+                  {/* Nomor Surat Tugas dan Tanggal Surat Tugas */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nomor Surat Tugas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Masukkan nomor surat tugas"
+                            maxLength={20} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="tanggalSuratTugas" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tanggal Surat Tugas</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? format(field.value, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) => false}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Program */}
@@ -447,10 +492,10 @@ const KuitansiTransportLokal = () => {
                       </FormItem>
                     )} />
 
-                    {/* Tanggal SPJ */}
+                    {/* Tanggal Pengajuan */}
                     <FormField control={form.control} name="tanggalSpj" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tanggal (SPJ)</FormLabel>
+                        <FormLabel>Tanggal Pengajuan</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
