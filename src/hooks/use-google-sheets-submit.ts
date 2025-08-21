@@ -688,7 +688,11 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "";
   try {
-    return format(new Date(date), "yyyy-MM-dd");
+    return new Date(date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   } catch {
     return "";
   }
