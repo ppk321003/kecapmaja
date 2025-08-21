@@ -24,9 +24,6 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(20, "Nomor surat tugas maksimal 20 karakter"),
-  tanggalSuratTugas: z.date({
-    required_error: "Tanggal Surat Tugas harus dipilih"
-  }),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -55,14 +52,13 @@ type FormValues = z.infer<typeof formSchema>;
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
   nomorSuratTugas: "",
-  tanggalSuratTugas: null,
   program: "",
   kegiatan: "",
   kro: "",
   ro: "",
   komponen: "",
   akun: "",
-  tanggalSpj: null,
+  tanggalSpj: undefined,
   pembuatDaftar: "",
   transportDetails: []
 };
@@ -289,45 +285,22 @@ const KuitansiTransportLokal = () => {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  {/* Nomor Surat Tugas */}
+                  <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor Surat Tugas</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="Masukkan nomor surat tugas"
+                          maxLength={20} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
-                  {/* Nomor Surat Tugas dan Tanggal Surat Tugas dalam satu baris */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Nomor Surat Tugas */}
-                    <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nomor Surat Tugas</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Masukkan nomor surat tugas"
-                            maxLength={20} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
-                    {/* Tanggal Surat Tugas */}
-                    <FormField control={form.control} name="tanggalSuratTugas" render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Tanggal Surat Tugas</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
                     {/* Program */}
                     <FormField control={form.control} name="program" render={({ field }) => (
                       <FormItem>
