@@ -55,14 +55,14 @@ type FormValues = z.infer<typeof formSchema>;
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
   nomorSuratTugas: "",
-  tanggalSuratTugas: undefined,
+  tanggalSuratTugas: null,
   program: "",
   kegiatan: "",
   kro: "",
   ro: "",
   komponen: "",
   akun: "",
-  tanggalSpj: undefined,
+  tanggalSpj: null,
   pembuatDaftar: "",
   transportDetails: []
 };
