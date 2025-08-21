@@ -163,7 +163,20 @@ const DownloadDokumen = () => {
       header: "Tujuan Kegiatan"
     }, {
       key: "Tanggal Pengajuan",
-      header: "Tanggal Pengajuan"
+      header: "Tanggal Pengajuan",
+      render: value => {
+        if (!value) return "-";
+
+        // Pastikan value adalah objek Date
+        const date = new Date(value);
+        const formatted = date.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        });
+
+        return formatted; // hasil: 21 Agustus 2025
+      }
     }, {
       key: "Pembuat daftar",
       header: "Pembuat Daftar"
