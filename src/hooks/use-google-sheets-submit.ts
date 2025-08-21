@@ -654,14 +654,14 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     totalKeseluruhan += formattedDetail.rate;
     
     if (detail.type === 'organik' && detail.personId) {      
-      organikNames.push(`"${formattedDetail.nama}"`);
+      organikNames.push(formattedDetail.nama);
       organikDariKecamatan.push(formattedDetail.dariKecamatan);
       organikKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
       organikRates.push(String(formattedDetail.rate));
       organikTanggal.push(formattedDetail.tanggal);
       
     } else if (detail.type === 'mitra' && detail.personId) {
-      mitraNames.push(`"${formattedDetail.nama}"`);
+      mitraNames.push(formattedDetail.nama);
       mitraDariKecamatan.push(formattedDetail.dariKecamatan);
       mitraKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
       mitraRates.push(String(formattedDetail.rate));
