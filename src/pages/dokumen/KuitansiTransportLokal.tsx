@@ -285,6 +285,20 @@ const KuitansiTransportLokal = () => {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  {/* Nomor Surat Tugas */}
+                  <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor Surat Tugas</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder="Masukkan nomor surat tugas"
+                          maxLength={20} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Program */}
