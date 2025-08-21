@@ -24,7 +24,6 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(20, "Nomor surat tugas maksimal 20 karakter"),
-  tanggalSuratTugas: z.date({required_error: "Tanggal surat tugas harus dipilih"}),
   program: z.string().min(1, "Program harus dipilih"),
   kegiatan: z.string().min(1, "Kegiatan harus dipilih"),
   kro: z.string().min(1, "KRO harus dipilih"),
@@ -53,7 +52,6 @@ type FormValues = z.infer<typeof formSchema>;
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
   nomorSuratTugas: "",
-  tanggalSuratTugas: undefined,
   program: "",
   kegiatan: "",
   kro: "",
@@ -301,36 +299,7 @@ const KuitansiTransportLokal = () => {
                       <FormMessage />
                     </FormItem>
                   )} />
-                {/* Tanggal Surat Tugas */}
-                  <FormField control={form.control} name="tanggalSuratTugas" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tanggal Surat Tugas</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? format(field.value, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+               
                 </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Program */}
