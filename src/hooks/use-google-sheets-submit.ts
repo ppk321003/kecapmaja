@@ -661,13 +661,17 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     }
   });
 
-  row.push(organikNames.join(" | "));              // Organik BPS
-  row.push(organikDariKecamatan.join(" | "));      // Dari Kecamatan (Organik)
-  row.push(organikKecamatanTujuan.join(" | "));    // Kecamatan Tujuan (Organik)
-  row.push(mitraNames.join(" | "));                // Mitra Statistik
-  row.push(mitraDariKecamatan.join(" | "));        // Dari Kecamatan (Mitra)
-  row.push(mitraKecamatanTujuan.join(" | "));      // Kecamatan Tujuan (Mitra)
-  row.push(totalKeseluruhan);                      // Total Keseluruhan (Rp)
+  row.push(
+    organikNames.join(" | "),              // Organik BPS
+    organikDariKecamatan.join(" | "),      // Dari Kecamatan (Organik)
+    organikKecamatanTujuan.join(" | "),    // Kecamatan Tujuan (Organik)
+    mitraNames.join(" | "),                // Mitra Statistik
+    mitraDariKecamatan.join(" | "),        // Dari Kecamatan (Mitra)
+    mitraKecamatanTujuan.join(" | "),      // Kecamatan Tujuan (Mitra)
+    rateList.join(" | "),                  // Rate per orang
+    tanggalList.join(" | "),               // Tanggal Pelaksanaan per orang
+    totalKeseluruhan                       // Total Keseluruhan (Rp)
+  );
 
   return row;
 }
