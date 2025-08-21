@@ -635,8 +635,10 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
   const mitraDariKecamatan: string[] = [];
   const organikKecamatanTujuan: string[] = [];
   const mitraKecamatanTujuan: string[] = [];
-  const rateList: string[] = [];
-  const tanggalList: string[] = [];
+  const organikRates: string[] = [];
+  const mitraRates: string[] = [];
+  const organikTanggal: string[] = [];
+  const mitraTanggal: string[] = [];
 
   let totalKeseluruhan = 0;
 
@@ -650,31 +652,33 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
     };
     
     totalKeseluruhan += formattedDetail.rate;
-
-    // simpan rate & tanggal
-    rateList.push(String(formattedDetail.rate));
-    tanggalList.push(formattedDetail.tanggal);
     
     if (detail.type === 'organik' && detail.personId) {      
       organikNames.push(`"${formattedDetail.nama}"`);
       organikDariKecamatan.push(formattedDetail.dariKecamatan);
       organikKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
+      organikRates.push(String(formattedDetail.rate));
+      organikTanggal.push(formattedDetail.tanggal);
       
     } else if (detail.type === 'mitra' && detail.personId) {
       mitraNames.push(`"${formattedDetail.nama}"`);
       mitraDariKecamatan.push(formattedDetail.dariKecamatan);
       mitraKecamatanTujuan.push(formattedDetail.kecamatanTujuan);
+      mitraRates.push(String(formattedDetail.rate));
+      mitraTanggal.push(formattedDetail.tanggal);
     }
   });
 
   row.push(organikNames.join(" | "));              // Organik BPS
   row.push(organikDariKecamatan.join(" | "));      // Dari Kecamatan (Organik)
   row.push(organikKecamatanTujuan.join(" | "));    // Kecamatan Tujuan (Organik)
+  row.push(organikRates.join(" | "));              // Rate Organik
+  row.push(organikTanggal.join(" | "));            // Tanggal Pelaksanaan Organik
   row.push(mitraNames.join(" | "));                // Mitra Statistik
   row.push(mitraDariKecamatan.join(" | "));        // Dari Kecamatan (Mitra)
   row.push(mitraKecamatanTujuan.join(" | "));      // Kecamatan Tujuan (Mitra)
-  row.push(rateList.join(" | "));                  // Rate per orang
-  row.push(tanggalList.join(" | "));               // Tanggal Pelaksanaan per orang
+  row.push(mitraRates.join(" | "));                // Rate Mitra
+  row.push(mitraTanggal.join(" | "));              // Tanggal Pelaksanaan Mitra
   row.push(totalKeseluruhan);                      // Total Keseluruhan (Rp)
 
   return row;
