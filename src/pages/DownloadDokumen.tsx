@@ -154,16 +154,16 @@ const DownloadDokumen = () => {
     id: "kuitansi-transport-lokal",
     title: "Kuitansi Transport Lokal",
     sheetId: "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
-    sheetName: "Sheet1",
+    sheetName: "KuitansiTransportLokal",
     columns: [{
       key: "Id",
       header: "ID"
     }, {
-      key: "Kegiatan",
-      header: "Kegiatan"
+      key: "Tujuan",
+      header: "Tujuan Kegiatan"
     }, {
-      key: "Tanggal (SPJ)",
-      header: "Tanggal (SPJ)"
+      key: "Tanggal Pengajuan",
+      header: "Tanggal Pengajuan"
     }, {
       key: "Pembuat daftar",
       header: "Pembuat Daftar"
