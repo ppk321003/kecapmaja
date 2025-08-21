@@ -618,7 +618,7 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
   const row: any[] = [
     documentId,                      // ID
     data.tujuanPelaksanaan || "",    // Tujuan Pelaksanaan / Kegiatan
-    data.nomorSuratTugas || "",      // ⬅️ Tambahan: Nomor Surat Tugas
+    data.nomorSuratTugas || "",      // Nomor Surat Tugas
     formatDate(data.tanggalSuratTugas), // ⬅️ Tambahan: Tanggal Surat Tugas
     programName,                     // Program
     kegiatanName,                    // Kegiatan
