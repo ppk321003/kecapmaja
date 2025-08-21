@@ -488,7 +488,7 @@ function formatKuitansiPerjalananDinasData(documentId: string, data: any): any[]
   const row: any[] = [
     documentId,                               // ID
     data.nomorSuratTugas || "",               // Nomor Surat Tugas
-    formatDate(data.tanggalSuratTugas),       // Tanggal Surat Tugas (NEW)
+    formatDate(data.tanggalSuratTugas),       // Tanggal Surat Tugas
     data.namaPelaksana || "",                 // Nama Pelaksana Perjalanan Dinas
     data.tujuanPerjalanan || "",              // Tujuan Pelaksanaan Perjalanan Dinas
     data.kabupatenKota || "",                 // Kab/Kota Tujuan
@@ -616,17 +616,17 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
   const akunName = data._akunNameMap?.[data.akun] || data.akun || "";
 
   const row: any[] = [
-    documentId,                      // ID
-    data.tujuanPelaksanaan || "",    // Tujuan Pelaksanaan / Kegiatan
-    data.nomorSuratTugas || "",      // Nomor Surat Tugas
+    documentId,                         // ID
+    data.tujuanPelaksanaan || "",       // Tujuan Pelaksanaan / Kegiatan
+    data.nomorSuratTugas || "",         // Nomor Surat Tugas
     formatDate(data.tanggalSuratTugas), // ⬅️ Tambahan: Tanggal Surat Tugas
-    programName,                     // Program
-    kegiatanName,                    // Kegiatan
-    kroName,                         // KRO
-    roName,                          // RO
-    komponenName,                    // Komponen
-    akunName,                        // Akun
-    formatDate(data.tanggalSpj),     // Tanggal (SPJ)
+    programName,                        // Program
+    kegiatanName,                       // Kegiatan
+    kroName,                            // KRO
+    roName,                             // RO
+    komponenName,                       // Komponen
+    akunName,                           // Akun
+    formatDate(data.tanggalSpj),        // Tanggal (SPJ)
     data._pembuatDaftarName || data.pembuatDaftar || "",  // Pembuat Daftar
   ];
 
