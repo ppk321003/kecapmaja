@@ -23,7 +23,7 @@ import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
-  nomorSuratTugas: z.string().max(20, "Nomor surat tugas maksimal 20 karakter"),
+  nomorSuratTugas: z.string().max(50, "Nomor surat tugas maksimal 50 karakter"),
   tanggalSuratTugas: z.date({
     required_error: "Tanggal surat tugas harus dipilih"
   }),
