@@ -305,7 +305,7 @@ const KuitansiTransportLokal = () => {
                           <Input 
                             {...field} 
                             placeholder="Masukkan nomor surat tugas"
-                            maxLength={20} 
+                            maxLength={50} 
                           />
                         </FormControl>
                         <FormMessage />
