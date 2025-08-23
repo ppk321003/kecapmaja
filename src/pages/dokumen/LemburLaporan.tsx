@@ -165,7 +165,7 @@ const LemburLaporan = () => {
                 
                 {/* Bagian 1 */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Bagian 1</h3>
+                  <h3 className="text-lg font-semibold">Bagian 1 (Penugasan)</h3>
                   
                   <FormField
                     control={form.control}
@@ -297,7 +297,7 @@ const LemburLaporan = () => {
 
                 {/* Bagian 2 */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Bagian 2</h3>
+                  <h3 className="text-lg font-semibold">Bagian 2 (Laporan)</h3>
                   
                   <FormField
                     control={form.control}
