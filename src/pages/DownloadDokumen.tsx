@@ -217,7 +217,30 @@ const DownloadDokumen = () => {
       header: "Kegiatan"
     }, {
       key: "Tanggal Pelaksanaan",
-      header: "Tanggal Pelaksanaan"
+      header: "Tanggal Pelaksanaan",
+      render: (value) => {
+        // Handle jika value adalah string Date(...)
+        if (typeof value === 'string' && value.startsWith('Date(')) {
+          // Ekstrak parameter dari Date(2025,7,21)
+          const match = value.match(/Date\((\d+),(\d+),(\d+)\)/);
+          if (match) {
+            const year = parseInt(match[1]);
+            const month = parseInt(match[2]); // 0-based (0=Januari, 1=Februari, ...)
+            const day = parseInt(match[3]);
+            
+            // Array nama bulan dalam Bahasa Indonesia
+            const monthNames = [
+              'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+              'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            ];
+            
+            return `${day} ${monthNames[month]} ${year}`;
+          }
+        }
+        
+        // Fallback untuk format lain atau nilai null
+        return value || '-';
+      }
     }, {
       key: "Pembuat daftar",
       header: "Pembuat Daftar"
