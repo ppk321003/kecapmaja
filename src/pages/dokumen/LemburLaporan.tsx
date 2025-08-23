@@ -82,7 +82,7 @@ const LemburLaporan = () => {
   const { data: organikList = [] } = useOrganikBPS();
 
   const { mutate: submitToSheets, isPending } = useSubmitToSheets({
-    documentType: "Lembur",
+    documentType: "lembur-laporan",
     onSuccess: () => {
       toast({
         title: "Berhasil",
