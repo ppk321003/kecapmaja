@@ -61,13 +61,13 @@ const CONTOH_TUJUAN = [
 ];
 
 const CONTOH_URAIAN = [
-  "1. Entri data Dokumen Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan serta Penarikan Sampel Ubinan Palawija Subround 2 2025.",
+  "1. Entri data Dokumen Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan serta Penarikan Sampel Ubinan Palawija Subround 2 2025",
   "2. Penyelesaian Administrasi Gedung"
 ];
 
 const CONTOH_OUTPUT = [
-  "Entri data Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan menghasilkan Daftar Sampel Rumahtangga Survei Ubinan Tanaman Pangan Subround 2 2025",
-  "Draft laporan selesai disusun"
+  "1. Hasil entri data Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan menghasilkan Daftar Sampel Rumahtangga terpilih",
+  "2. Draft laporan selesai disusun"
 ];
 
 const LemburLaporan = () => {
