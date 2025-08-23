@@ -696,15 +696,14 @@ function formatLemburLaporanData(documentId: string, data: any): any[] {
   
   const row: any[] = [
     documentId,                                  // ID
-    data.tujuanPelaksanaan || "",                // Kegiatan
-    formatDate(data.tanggalPelaksanaan),         // Tanggal Pelaksanaan
-    data.pembuatDaftar || "",                    // Pembuat daftar
-    `https://docs.google.com/spreadsheets/d/1gOIlK84nhv9Hwy_3HGyR7JwD-CXEZ-iXaM5imTgtT3o/edit?gid=0#gid=0`, // Link
     data.nomorSuratTugasLembur || "",            // Nomor Surat Tugas Lembur
-    formatDate(data.tanggalSuratTugasLembur),    // Tanggal Surat Tugas Lembur
+    formatDate(data.tanggalPelaksanaan),         // Tanggal Pelaksanaan
+    data.tujuanPelaksanaan || "",                // Kegiatan
     data.organikBPS || "",                       // Organik BPS
+    formatDate(data.tanggalSuratTugasLembur),    // Tanggal Surat Tugas Lembur    
     data.uraianKegiatan || "",                   // Uraian Kegiatan
-    data.outputHasil || ""                       // Output Hasil
+    data.outputHasil || "",                      // Output Hasil
+    data.pembuatDaftar || ""                     // Pembuat Daftar
   ];
 
   return row;
