@@ -37,7 +37,7 @@ const formSchema = z.object({
     type: z.enum(["organik", "mitra"]),
     personId: z.string().min(1, "Nama harus dipilih"),
     kecamatan: z.string().min(1, "Kecamatan harus dipilih"),
-    rate: z.number().min(0, "Rate harus diisi"),
+    rate: z.string().regex(/^\d+$/, "Rate harus berupa angka"),
     tanggalPelaksanaan: z.date({
       required_error: "Tanggal pelaksanaan harus dipilih"
     }),
@@ -111,7 +111,7 @@ const TransportLokal = () => {
         type: "organik",
         personId: "",
         kecamatan: "",
-        rate: 0,
+        rate: "0",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -125,7 +125,7 @@ const TransportLokal = () => {
         type: "mitra",
         personId: "",
         kecamatan: "",
-        rate: 0,
+        rate: "0",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -235,8 +235,8 @@ const TransportLokal = () => {
 
   // Calculate grand total transport
   const calculateGrandTotal = () => {
-    const organikTotal = transportOrganik.reduce((sum, item) => sum + (item.rate || 0), 0);
-    const mitraTotal = transportMitra.reduce((sum, item) => sum + (item.rate || 0), 0);
+    const organikTotal = transportOrganik.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+    const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
     return organikTotal + mitraTotal;
   };
 
@@ -548,15 +548,19 @@ const TransportLokal = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Rate (Rp)</Label>
-                        <Input
-                          type="number"
-                          value={transport.rate}
-                          onChange={e => updateTransportDetail("organik", index, "rate", parseInt(e.target.value, 10) || 0)}
-                          placeholder="0"
-                        />
-                      </div>
+                       <div className="space-y-2">
+                         <Label>Rate (Rp)</Label>
+                         <Input
+                           type="text"
+                           pattern="[0-9]*"
+                           value={transport.rate}
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("organik", index, "rate", value);
+                           }}
+                           placeholder="0"
+                         />
+                       </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
                         <Popover>
@@ -658,15 +662,19 @@ const TransportLokal = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Rate (Rp)</Label>
-                        <Input
-                          type="number"
-                          value={transport.rate}
-                          onChange={e => updateTransportDetail("mitra", index, "rate", parseInt(e.target.value, 10) || 0)}
-                          placeholder="0"
-                        />
-                      </div>
+                       <div className="space-y-2">
+                         <Label>Rate (Rp)</Label>
+                         <Input
+                           type="text"
+                           pattern="[0-9]*"
+                           value={transport.rate}
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("mitra", index, "rate", value);
+                           }}
+                           placeholder="0"
+                         />
+                       </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
                         <Popover>

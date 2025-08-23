@@ -42,7 +42,7 @@ const formSchema = z.object({
     personId: z.string().min(1, "Nama harus dipilih"),
     dariKecamatan: z.string().min(1, "Dari kecamatan harus dipilih"),
     kecamatanTujuan: z.string().min(1, "Kecamatan tujuan harus dipilih"),
-    rate: z.number().min(0, "Rate harus diisi"),
+    rate: z.string().regex(/^\d+$/, "Rate harus berupa angka"),
     tanggalPelaksanaan: z.date({
       required_error: "Tanggal pelaksanaan harus dipilih"
     }),
@@ -118,7 +118,7 @@ const KuitansiTransportLokal = () => {
         personId: "",
         dariKecamatan: "Majalengka",
         kecamatanTujuan: "",
-        rate: 0,
+        rate: "0",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -133,7 +133,7 @@ const KuitansiTransportLokal = () => {
         personId: "",
         dariKecamatan: "Majalengka",
         kecamatanTujuan: "",
-        rate: 0,
+        rate: "0",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -243,8 +243,8 @@ const KuitansiTransportLokal = () => {
 
   // Calculate grand total transport
   const calculateGrandTotal = () => {
-    const organikTotal = transportOrganik.reduce((sum, item) => sum + (item.rate || 0), 0);
-    const mitraTotal = transportMitra.reduce((sum, item) => sum + (item.rate || 0), 0);
+    const organikTotal = transportOrganik.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+    const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
     return organikTotal + mitraTotal;
   };
 
@@ -636,17 +636,20 @@ const KuitansiTransportLokal = () => {
                         </Select>
                       </div>
 
-                      {/* Rate */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Rate (Rp)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={item.rate || ""}
-                          onChange={(e) => updateTransportDetail("organik", index, "rate", parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                        />
-                      </div>
+                       {/* Rate */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Rate (Rp)</label>
+                         <Input
+                           type="text"
+                           pattern="[0-9]*"
+                           value={item.rate || ""}
+                           onChange={(e) => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("organik", index, "rate", value);
+                           }}
+                           placeholder="0"
+                         />
+                       </div>
 
                       {/* Tanggal Pelaksanaan */}
                       <div className="space-y-2 col-span-2">
@@ -766,17 +769,20 @@ const KuitansiTransportLokal = () => {
                         </Select>
                       </div>
 
-                      {/* Rate */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Rate (Rp)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={item.rate || ""}
-                          onChange={(e) => updateTransportDetail("mitra", index, "rate", parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                        />
-                      </div>
+                       {/* Rate */}
+                       <div className="space-y-2">
+                         <label className="text-sm font-medium">Rate (Rp)</label>
+                         <Input
+                           type="text"
+                           pattern="[0-9]*"
+                           value={item.rate || ""}
+                           onChange={(e) => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("mitra", index, "rate", value);
+                           }}
+                           placeholder="0"
+                         />
+                       </div>
 
                       {/* Tanggal Pelaksanaan */}
                       <div className="space-y-2 col-span-2">

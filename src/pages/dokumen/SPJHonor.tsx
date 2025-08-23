@@ -36,7 +36,7 @@ const formSchema = z.object({
   honorDetails: z.array(z.object({
     type: z.enum(["organik", "mitra"]),
     personId: z.string(),
-    honorPerOrang: z.number().min(0),
+    honorPerOrang: z.string().regex(/^\d+$/, "Harga satuan harus berupa angka"),
     kehadiran: z.number().min(0).max(1000),
     pph21: z.number().min(0).max(100),
     totalHonor: z.number().min(0)
@@ -126,7 +126,7 @@ const SPJHonor = () => {
       setHonorOrganik([...honorOrganik, {
         type: "organik",
         personId: "",
-        honorPerOrang: 0,
+        honorPerOrang: "0",
         kehadiran: 0,
         pph21: 5,
         totalHonor: 0
@@ -140,7 +140,7 @@ const SPJHonor = () => {
       setHonorMitra([...honorMitra, {
         type: "mitra",
         personId: "",
-        honorPerOrang: 0,
+        honorPerOrang: "0",
         kehadiran: 0,
         pph21: 0,
         totalHonor: 0
@@ -159,7 +159,7 @@ const SPJHonor = () => {
 
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
+        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(updated[index].honorPerOrang) || 0;
         const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
         const pph21 = field === "pph21" ? value : updated[index].pph21;
         const subtotal = honorPerOrang * kehadiran;
@@ -176,7 +176,7 @@ const SPJHonor = () => {
 
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        const honorPerOrang = field === "honorPerOrang" ? value : updated[index].honorPerOrang;
+        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(updated[index].honorPerOrang) || 0;
         const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
         const pph21 = field === "pph21" ? value : updated[index].pph21;
         const subtotal = honorPerOrang * kehadiran;
@@ -487,15 +487,19 @@ const SPJHonor = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Harga Satuan (Rp)</Label>
-                        <Input 
-                          type="number" 
-                          value={honor.honorPerOrang} 
-                          onChange={e => updateHonorDetail("organik", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} 
-                          placeholder="0" 
-                        />
-                      </div>
+                       <div className="space-y-2">
+                         <Label>Harga Satuan (Rp)</Label>
+                         <Input 
+                           type="text" 
+                           pattern="[0-9]*"
+                           value={honor.honorPerOrang} 
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateHonorDetail("organik", index, "honorPerOrang", value);
+                           }} 
+                           placeholder="0" 
+                         />
+                       </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
                         <Input 
@@ -566,15 +570,19 @@ const SPJHonor = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Harga Satuan (Rp)</Label>
-                        <Input 
-                          type="number" 
-                          value={honor.honorPerOrang} 
-                          onChange={e => updateHonorDetail("mitra", index, "honorPerOrang", parseInt(e.target.value, 10) || 0)} 
-                          placeholder="0" 
-                        />
-                      </div>
+                       <div className="space-y-2">
+                         <Label>Harga Satuan (Rp)</Label>
+                         <Input 
+                           type="text" 
+                           pattern="[0-9]*"
+                           value={honor.honorPerOrang} 
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateHonorDetail("mitra", index, "honorPerOrang", value);
+                           }} 
+                           placeholder="0" 
+                         />
+                       </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
                         <Input 
