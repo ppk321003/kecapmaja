@@ -76,7 +76,7 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
         } else if (documentType === "surat-pernyataan") {
           sheetName = "SuratPernyataan";
         } else if (documentType === "lembur-laporan") {
-          sheetName = "Lembur&Laporan";
+          sheetName = "Lembur";
         }
         
         // Append to Google Sheets
