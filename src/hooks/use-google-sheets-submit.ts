@@ -50,6 +50,9 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           case "KuitansiTransportLokal":
             rowData = formatKuitansiTransportLokalData(documentId, data);
             break;
+          case "lembur-laporan":
+            rowData = formatLemburLaporanData(documentId, data);
+            break;
           case "surat-pernyataan":
             rowData = formatSuratPernyataanData(documentId, data);
             break;
@@ -72,6 +75,8 @@ export const useSubmitToSheets = ({ documentType, onSuccess, skipSaveToSupabase 
           sheetName = "SuratKeputusan";
         } else if (documentType === "surat-pernyataan") {
           sheetName = "SuratPernyataan";
+        } else if (documentType === "lembur-laporan") {
+          sheetName = "Lembur&Laporan";
         }
         
         // Append to Google Sheets
@@ -682,6 +687,25 @@ function formatKuitansiTransportLokalData(documentId: string, data: any): any[] 
   row.push(mitraRates.join(" | "));                // Rate Mitra
   row.push(mitraTanggal.join(" | "));              // Tanggal Pelaksanaan Mitra
   row.push(totalKeseluruhan);                      // Total Keseluruhan (Rp)
+
+  return row;
+}
+
+function formatLemburLaporanData(documentId: string, data: any): any[] {
+  console.log("Formatting Lembur Laporan data:", data);
+  
+  const row: any[] = [
+    documentId,                                  // ID
+    data.tujuanPelaksanaan || "",                // Kegiatan
+    formatDate(data.tanggalPelaksanaan),         // Tanggal Pelaksanaan
+    data.pembuatDaftar || "",                    // Pembuat daftar
+    `https://docs.google.com/spreadsheets/d/1gOIlK84nhv9Hwy_3HGyR7JwD-CXEZ-iXaM5imTgtT3o/edit?gid=0#gid=0`, // Link
+    data.nomorSuratTugasLembur || "",            // Nomor Surat Tugas Lembur
+    formatDate(data.tanggalSuratTugasLembur),    // Tanggal Surat Tugas Lembur
+    data.organikBPS || "",                       // Organik BPS
+    data.uraianKegiatan || "",                   // Uraian Kegiatan
+    data.outputHasil || ""                       // Output Hasil
+  ];
 
   return row;
 }

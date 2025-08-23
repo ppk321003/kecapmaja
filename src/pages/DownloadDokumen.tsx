@@ -205,6 +205,37 @@ const DownloadDokumen = () => {
             </Tooltip>
     }]
   }, {
+    id: "lembur-laporan",
+    title: "Lembur & Laporan",
+    sheetId: "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
+    sheetName: "Lembur&Laporan",
+    columns: [{
+      key: "Id",
+      header: "ID"
+    }, {
+      key: "Kegiatan",
+      header: "Kegiatan"
+    }, {
+      key: "Tanggal Pelaksanaan",
+      header: "Tanggal Pelaksanaan"
+    }, {
+      key: "Pembuat daftar",
+      header: "Pembuat Daftar"
+    }, {
+      key: "Link",
+      header: "Link",
+      render: value => <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+    }]
+  }, {
     id: "spj-honor",
     title: "SPJ Honor",
     sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",

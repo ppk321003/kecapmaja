@@ -42,6 +42,13 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
+    title: "Lembur & Laporan",
+    description: "Buat dokumen lembur dan laporan",
+    path: "/dokumen/lembur-laporan",
+    color: "bg-indigo-50 dark:bg-indigo-900/20",
+    iconColor: "text-indigo-600"
+  },
+  {
     title: "SPJ Honor (Tabel Rekap)",
     description: "Buat daftar SPJ Honor Pendataan / Pengawasan / Instruktur / Pengolahan",
     path: "/dokumen/spj-honor",

@@ -18,6 +18,7 @@ import UangHarianTransport from "./pages/dokumen/UangHarianTransport";
 import TandaTerima from "./pages/dokumen/TandaTerima";
 import KuitansiPerjalananDinas from "./pages/dokumen/KuitansiPerjalananDinas";
 import KuitansiTransportLokal from "./pages/dokumen/KuitansiTransportLokal";
+import LemburLaporan from "./pages/dokumen/LemburLaporan";
 import DokumenPengadaan from "./pages/dokumen/DokumenPengadaan";
 import SuratKeputusan from "./pages/dokumen/SuratKeputusan";
 import SuratPernyataan from "./pages/dokumen/SuratPernyataan";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/dokumen/tanda-terima" element={<TandaTerima />} />
             <Route path="/dokumen/kuitansi-perjalanan-dinas" element={<KuitansiPerjalananDinas />} />
             <Route path="/dokumen/kuitansi-transport-lokal" element={<KuitansiTransportLokal />} />
+            <Route path="/dokumen/lembur-laporan" element={<LemburLaporan />} />
             <Route path="/dokumen/dokumen-pengadaan" element={<DokumenPengadaan />} />
             <Route path="/dokumen/SuratKeputusan" element={<SuratKeputusan />} />
             <Route path="/dokumen/surat-pernyataan" element={<SuratPernyataan />} />
