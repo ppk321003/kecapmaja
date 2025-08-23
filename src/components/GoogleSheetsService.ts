@@ -54,6 +54,10 @@ export const GoogleSheetsService = {
         case "surat-pernyataan":
           prefix = "super";
           break;
+        case "lembur-laporan":
+          prefix = "lmbr";
+          break;
+
         default:
           prefix = documentType.toLowerCase().slice(0, 2);
       }
