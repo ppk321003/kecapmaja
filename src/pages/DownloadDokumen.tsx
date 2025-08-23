@@ -208,7 +208,7 @@ const DownloadDokumen = () => {
     id: "lembur-laporan",
     title: "Lembur & Laporan",
     sheetId: "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
-    sheetName: "Lembur&Laporan",
+    sheetName: "Sheet1",
     columns: [{
       key: "Id",
       header: "ID"
