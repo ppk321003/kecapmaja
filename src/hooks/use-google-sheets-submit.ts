@@ -697,10 +697,10 @@ function formatLemburLaporanData(documentId: string, data: any): any[] {
   const row: any[] = [
     documentId,                                  // ID
     data.nomorSuratTugasLembur || "",            // Nomor Surat Tugas Lembur
-    formatDate(data.tanggalPelaksanaan),         // Tanggal Pelaksanaan
+    formatDate(data.tanggalSuratTugasLembur),    // Tanggal Surat Tugas Lembur   
     data.tujuanPelaksanaan || "",                // Kegiatan
     data.organikBPS || "",                       // Organik BPS
-    formatDate(data.tanggalSuratTugasLembur),    // Tanggal Surat Tugas Lembur    
+    formatDate(data.tanggalPelaksanaan),         // Tanggal Pelaksanaan 
     data.uraianKegiatan || "",                   // Uraian Kegiatan
     data.outputHasil || "",                      // Output Hasil
     data.pembuatDaftar || ""                     // Pembuat Daftar
