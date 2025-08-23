@@ -407,7 +407,7 @@ const LemburLaporan = () => {
                           <p className="text-sm font-medium mb-2">Contoh penulisan:</p>
                           <ul className="space-y-1">
                             {CONTOH_OUTPUT.map((contoh, index) => (
-                              <li key={index} className="text-xs">• {contoh}</li>
+                              <li key={index} className="text-xs">{contoh}</li>
                             ))}
                           </ul>
                         </div>
