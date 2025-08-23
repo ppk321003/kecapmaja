@@ -66,7 +66,7 @@ const CONTOH_URAIAN = [
 ];
 
 const CONTOH_OUTPUT = [
-  "1. Hasil entri data Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan menghasilkan Daftar Sampel Rumahtangga terpilih",
+  "1. Penyelesaian entri data Pemutakhiran Daftar Usaha Pertanian Perorangan (UTP) Survei Ubinan Tanaman Pangan menghasilkan Daftar Sampel Rumahtangga terpilih",
   "2. Draft laporan selesai disusun"
 ];
 
