@@ -70,6 +70,8 @@ export const GoogleSheetsService = {
           readSheetName = "SuratKeputusan"; // Use the correct sheet name
         } else if (documentType === "surat-pernyataan") {
           readSheetName = "SuratPernyataan";
+        } else if (documentType === "lembur-laporan") {
+          readSheetName = "Lembur"; // sesuaikan dengan nama sheet sebenarnya
         }
         
         const { data, error } = await supabase.functions.invoke('google-sheets', {
