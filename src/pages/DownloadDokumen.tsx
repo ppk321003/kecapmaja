@@ -216,8 +216,8 @@ const DownloadDokumen = () => {
       key: "Kegiatan",
       header: "Kegiatan"
     }, {
-      key: "Tanggal Pelaksanaan",
-      header: "Tanggal Pelaksanaan",
+      key: "Tanggal Surat Tugas Lembur",
+      header: "Tanggal Surat Tugas Lembur",
       render: (value) => {
         // Handle jika value adalah string Date(...)
         if (typeof value === 'string' && value.startsWith('Date(')) {
