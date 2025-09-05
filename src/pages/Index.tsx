@@ -14,40 +14,70 @@ const Index = () => {
   const { data: menuItems = [] } = useSidebar();
   
   return <Layout>
-      <div className="space-y-8">
-        {/* Hero section with two columns */}
-        <div className={`flex flex-col ${!isMobile ? 'md:flex-row' : ''} gap-8 items-center`}>
-          {/* Left column - Description */}
-          <div className="flex-1 text-left">
-            <h1 className="mb-4 text-4xl font-bold text-center text-sky-900">Kecap Maja</h1>
-            <p className="text-muted-foreground pl-0 px-0 text-justify font-normal">Merupakan aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
-
-          </p>
-            <div className="space-y-3">
-              <p className="text-blue-900 text-base font-medium">
-                <span className="font-bold">KECAP -</span> Keuangan Cekatan Anggaran Pengadaan
-              </p>
-              <p className="text-muted-foreground pl-6 px-0 text-justify">
-                Menunjukkan pengelolaan keuangan yang cepat, efisien, dan tanggap, mengacu pada pengelolaan anggaran yang ditujukan untuk pengadaan barang dan jasa
-              </p>
-              <p className="text-blue-900 font-medium">
-                <span className="font-bold">MAJA -</span> Maju Aman Jeung Amanah
-              </p>
-              <p className="text-muted-foreground pl-6 px-0 text-justify">
-                Bergerak maju dengan jaminan keamanan dan kehati-hatian, menunjukkan bahwa segala proses dilakukan dengan penuh tanggung jawab dan integritas
+      <div className="section-spacing content-spacing">
+        {/* Hero section with elegant design */}
+        <div className={`flex flex-col ${!isMobile ? 'lg:flex-row' : ''} gap-12 lg:gap-16 items-center`}>
+          {/* Left column - Enhanced typography */}
+          <div className="flex-1 space-y-8">
+            <div className="text-center lg:text-left">
+              <h1 className="mb-6 text-5xl lg:text-6xl font-bold bg-gradient-to-br from-primary via-primary/80 to-secondary bg-clip-text text-transparent">
+                Kecap Maja
+              </h1>
+              <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
+                Aplikasi Pengelolaan Anggaran dan Pengadaan BPS Kabupaten Majalengka yang memiliki arti:
               </p>
             </div>
             
+            <div className="space-y-8">
+              <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold text-primary mb-3">
+                    KECAP - Keuangan Cekatan Anggaran Pengadaan
+                  </h3>
+                  <p className="text-foreground/80 leading-relaxed">
+                    Menunjukkan pengelolaan keuangan yang cepat, efisien, dan tanggap, mengacu pada pengelolaan anggaran yang ditujukan untuk pengadaan barang dan jasa
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-r from-secondary/5 to-secondary/10 border-secondary/20">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold text-secondary mb-3">
+                    MAJA - Maju Aman Jeung Amanah
+                  </h3>
+                  <p className="text-foreground/80 leading-relaxed">
+                    Bergerak maju dengan jaminan keamanan dan kehati-hatian, menunjukkan bahwa segala proses dilakukan dengan penuh tanggung jawab dan integritas
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          {/* Right column - Image */}
+          {/* Right column - Enhanced image presentation */}
           <div className="flex-1 flex justify-center">
-            <img alt="Kecap Maja Logo" className="max-w-full h-auto max-h-72" src="/lovable-uploads/459d5e42-9ffb-4efe-8bdc-3d5756ad7aed.png" />
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 rounded-3xl blur-xl opacity-30"></div>
+              <img 
+                alt="Kecap Maja Logo" 
+                className="relative max-w-full h-auto max-h-80 lg:max-h-96 rounded-2xl shadow-elegant" 
+                src="/lovable-uploads/459d5e42-9ffb-4efe-8bdc-3d5756ad7aed.png" 
+              />
+            </div>
           </div>
         </div>
 
-        {/* Menu grid from sidebar items */}
-        <MenuGrid items={menuItems} />
+        {/* Menu grid with enhanced spacing */}
+        <div className="mt-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-semibold text-foreground mb-4">
+              Menu Aplikasi
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Akses semua fitur dan layanan yang tersedia dalam sistem
+            </p>
+          </div>
+          <MenuGrid items={menuItems} />
+        </div>
       </div>
     </Layout>;
 };

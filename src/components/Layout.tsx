@@ -15,14 +15,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden bg-background font-inter">
       {/* Mobile menu toggle button */}
-      <div className="fixed top-4 left-4 z-50 lg:hidden">
+      <div className="fixed top-6 left-6 z-50 lg:hidden">
         <Button 
           variant="outline" 
           size="icon" 
           onClick={toggleSidebar} 
-          className="bg-background"
+          className="bg-background/80 backdrop-blur-sm shadow-elegant border-border/50"
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -33,10 +33,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Card className="p-4 md:p-6">
-            {children}
-          </Card>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-gradient-to-br from-background to-muted/30">
+          <div className="container-responsive">
+            <Card className="elegant-card p-6 lg:p-8 min-h-full">
+              {children}
+            </Card>
+          </div>
         </main>
       </div>
     </div>
