@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,7 @@ import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import TransportDetailRow from "@/components/TransportDetailRow";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
@@ -599,124 +600,16 @@ const KuitansiTransportLokal = () => {
                 </div>
                 
                 {transportOrganik.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4 mb-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-medium">Organik BPS #{index + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeTransportDetail("organik", index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Nama Organik */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Nama</label>
-                        <Select
-                          value={item.personId}
-                          onValueChange={(value) => updateTransportDetail("organik", index, "personId", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih nama" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Dari Kecamatan */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Dari Kecamatan</label>
-                        <Select
-                          value={item.dariKecamatan}
-                          onValueChange={(value) => updateTransportDetail("organik", index, "dariKecamatan", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {kecamatanList.map(kecamatan => (
-                              <SelectItem key={kecamatan} value={kecamatan}>
-                                {kecamatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Kecamatan Tujuan */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Kecamatan Tujuan</label>
-                        <Select
-                          value={item.kecamatanTujuan}
-                          onValueChange={(value) => updateTransportDetail("organik", index, "kecamatanTujuan", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih kecamatan tujuan" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {kecamatanList.map(kecamatan => (
-                              <SelectItem key={kecamatan} value={kecamatan}>
-                                {kecamatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                       {/* Rate */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Rate (Rp)</label>
-                         <Input
-                           type="text"
-                           pattern="[0-9]*"
-                           value={item.rate || ""}
-                           onChange={(e) => {
-                             const value = e.target.value.replace(/\D/g, '');
-                             updateTransportDetail("organik", index, "rate", value);
-                           }}
-                           placeholder="0"
-                         />
-                       </div>
-
-                      {/* Tanggal Pelaksanaan */}
-                      <div className="space-y-2 col-span-2">
-                        <label className="text-sm font-medium">Tanggal Pelaksanaan</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !item.tanggalPelaksanaan && "text-muted-foreground"
-                              )}
-                            >
-                              {item.tanggalPelaksanaan ? format(item.tanggalPelaksanaan, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={item.tanggalPelaksanaan}
-                              onSelect={(date) => updateTransportDetail("organik", index, "tanggalPelaksanaan", date)}
-                              disabled={(date) => false}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                  </div>
+                  <TransportDetailRow
+                    key={`organik-${index}-${item.personId}`}
+                    item={item}
+                    index={index}
+                    type="organik"
+                    personList={organikList}
+                    kecamatanList={kecamatanList}
+                    onUpdate={updateTransportDetail}
+                    onRemove={removeTransportDetail}
+                  />
                 ))}
               </CardContent>
             </Card>
@@ -732,124 +625,16 @@ const KuitansiTransportLokal = () => {
                 </div>
                 
                 {transportMitra.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4 mb-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-medium">Mitra Statistik #{index + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeTransportDetail("mitra", index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Nama Mitra */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Nama</label>
-                        <Select
-                          value={item.personId}
-                          onValueChange={(value) => updateTransportDetail("mitra", index, "personId", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih nama" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {mitraList.map(mitra => (
-                              <SelectItem key={mitra.id} value={mitra.id}>
-                                {mitra.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Dari Kecamatan */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Dari Kecamatan</label>
-                        <Select
-                          value={item.dariKecamatan}
-                          onValueChange={(value) => updateTransportDetail("mitra", index, "dariKecamatan", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {kecamatanList.map(kecamatan => (
-                              <SelectItem key={kecamatan} value={kecamatan}>
-                                {kecamatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Kecamatan Tujuan */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Kecamatan Tujuan</label>
-                        <Select
-                          value={item.kecamatanTujuan}
-                          onValueChange={(value) => updateTransportDetail("mitra", index, "kecamatanTujuan", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih kecamatan tujuan" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {kecamatanList.map(kecamatan => (
-                              <SelectItem key={kecamatan} value={kecamatan}>
-                                {kecamatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                       {/* Rate */}
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium">Rate (Rp)</label>
-                         <Input
-                           type="text"
-                           pattern="[0-9]*"
-                           value={item.rate || ""}
-                           onChange={(e) => {
-                             const value = e.target.value.replace(/\D/g, '');
-                             updateTransportDetail("mitra", index, "rate", value);
-                           }}
-                           placeholder="0"
-                         />
-                       </div>
-
-                      {/* Tanggal Pelaksanaan */}
-                      <div className="space-y-2 col-span-2">
-                        <label className="text-sm font-medium">Tanggal Pelaksanaan</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !item.tanggalPelaksanaan && "text-muted-foreground"
-                              )}
-                            >
-                              {item.tanggalPelaksanaan ? format(item.tanggalPelaksanaan, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={item.tanggalPelaksanaan}
-                              onSelect={(date) => updateTransportDetail("mitra", index, "tanggalPelaksanaan", date)}
-                              disabled={(date) => false}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                  </div>
+                  <TransportDetailRow
+                    key={`mitra-${index}-${item.personId}`}
+                    item={item}
+                    index={index}
+                    type="mitra"
+                    personList={mitraList}
+                    kecamatanList={kecamatanList}
+                    onUpdate={updateTransportDetail}
+                    onRemove={removeTransportDetail}
+                  />
                 ))}
               </CardContent>
             </Card>
