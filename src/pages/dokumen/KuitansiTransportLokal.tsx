@@ -19,8 +19,22 @@ import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
-import TransportDetailRow from "@/components/TransportDetailRow";
+import PersonTransportGroup from "@/components/PersonTransportGroup";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+
+// New interfaces for grouped transport data
+interface Trip {
+  kecamatanTujuan: string;
+  rate: string;
+  tanggalPelaksanaan: Date | null;
+}
+
+interface PersonGroup {
+  personId: string;
+  personName: string;
+  dariKecamatan: string;
+  trips: Trip[];
+}
 
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
@@ -70,8 +84,8 @@ const defaultValues: Partial<FormValues> = {
 
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
-  const [transportOrganik, setTransportOrganik] = useState<any[]>([]);
-  const [transportMitra, setTransportMitra] = useState<any[]>([]);
+  const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
+  const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues
@@ -133,112 +147,204 @@ const KuitansiTransportLokal = () => {
     }
   });
 
+  // Convert grouped data to flat structure for form validation
+  const flattenedTransportDetails = useMemo(() => {
+    const flattened: any[] = [];
+    [...organikGroups, ...mitraGroups].forEach(group => {
+      group.trips.forEach(trip => {
+        flattened.push({
+          type: organikGroups.includes(group) ? "organik" : "mitra",
+          personId: group.personId,
+          nama: group.personName,
+          dariKecamatan: group.dariKecamatan,
+          kecamatanTujuan: trip.kecamatanTujuan,
+          rate: trip.rate,
+          tanggalPelaksanaan: trip.tanggalPelaksanaan
+        });
+      });
+    });
+    return flattened;
+  }, [organikGroups, mitraGroups]);
+
   // Debounced form update to prevent excessive re-renders
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const combined = [...transportOrganik, ...transportMitra];
-      form.setValue("transportDetails", combined, { shouldValidate: false });
+      form.setValue("transportDetails", flattenedTransportDetails, { shouldValidate: false });
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [transportOrganik, transportMitra, form]);
+  }, [flattenedTransportDetails, form]);
 
   // Memoized calculations
   const grandTotal = useMemo(() => {
-    const organikTotal = transportOrganik.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
-    const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
-    return organikTotal + mitraTotal;
-  }, [transportOrganik, transportMitra]);
+    return flattenedTransportDetails.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+  }, [flattenedTransportDetails]);
 
-  // Optimized event handlers with useCallback
+  // Optimized event handlers with useCallback for grouped data
   const addOrganik = useCallback(() => {
     if (organikList.length > 0) {
-      setTransportOrganik(prev => [...prev, {
-        type: "organik",
+      setOrganikGroups(prev => [...prev, {
         personId: "",
+        personName: "",
         dariKecamatan: "Majalengka",
-        kecamatanTujuan: "",
-        rate: "0",
-        tanggalPelaksanaan: null,
-        nama: ""
+        trips: [{
+          kecamatanTujuan: "",
+          rate: "0",
+          tanggalPelaksanaan: null
+        }]
       }]);
     }
   }, [organikList.length]);
 
   const addMitra = useCallback(() => {
     if (mitraList.length > 0) {
-      setTransportMitra(prev => [...prev, {
-        type: "mitra",
+      setMitraGroups(prev => [...prev, {
         personId: "",
+        personName: "",
         dariKecamatan: "Majalengka",
-        kecamatanTujuan: "",
-        rate: "0",
-        tanggalPelaksanaan: null,
-        nama: ""
+        trips: [{
+          kecamatanTujuan: "",
+          rate: "0",
+          tanggalPelaksanaan: null
+        }]
       }]);
     }
   }, [mitraList.length]);
 
-  // Optimized update function with useCallback
-  const updateTransportDetail = useCallback((type: "organik" | "mitra", index: number, field: string, value: any) => {
-    if (type === "organik") {
-      setTransportOrganik(prev => {
-        const updated = [...prev];
-        
-        if (field === "personId") {
-          const selectedPerson = organikList.find(p => p.id === value);
-          updated[index] = {
-            ...updated[index],
-            personId: value,
-            nama: selectedPerson?.name || ""
-          };
-        } else {
-          updated[index] = {
-            ...updated[index],
-            [field]: value
-          };
-        }
-        
-        return updated;
-      });
-    } else {
-      setTransportMitra(prev => {
-        const updated = [...prev];
-        
-        if (field === "personId") {
-          const selectedPerson = mitraList.find(p => p.id === value);
-          updated[index] = {
-            ...updated[index],
-            personId: value,
-            nama: selectedPerson?.name || ""
-          };
-        } else {
-          updated[index] = {
-            ...updated[index],
-            [field]: value
-          };
-        }
-        
-        return updated;
-      });
-    }
-  }, [organikList, mitraList]);
+  // Handlers for PersonTransportGroup
+  const handleUpdateOrganikPerson = useCallback((groupIndex: number, personId: string) => {
+    setOrganikGroups(prev => {
+      const updated = [...prev];
+      const selectedPerson = organikList.find(p => p.id === personId);
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        personId,
+        personName: selectedPerson?.name || ""
+      };
+      return updated;
+    });
+  }, [organikList]);
 
-  // Optimized remove function with useCallback
-  const removeTransportDetail = useCallback((type: "organik" | "mitra", index: number) => {
-    if (type === "organik") {
-      setTransportOrganik(prev => {
-        const updated = [...prev];
-        updated.splice(index, 1);
-        return updated;
-      });
-    } else {
-      setTransportMitra(prev => {
-        const updated = [...prev];
-        updated.splice(index, 1);
-        return updated;
-      });
-    }
+  const handleUpdateOrganikDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
+    setOrganikGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        dariKecamatan: kecamatan
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleUpdateOrganikTrip = useCallback((groupIndex: number, tripIndex: number, field: keyof Trip, value: any) => {
+    setOrganikGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: updated[groupIndex].trips.map((trip, i) => 
+          i === tripIndex ? { ...trip, [field]: value } : trip
+        )
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleAddOrganikTrip = useCallback((groupIndex: number) => {
+    setOrganikGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: [...updated[groupIndex].trips, {
+          kecamatanTujuan: "",
+          rate: "0",
+          tanggalPelaksanaan: null
+        }]
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleRemoveOrganikTrip = useCallback((groupIndex: number, tripIndex: number) => {
+    setOrganikGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: updated[groupIndex].trips.filter((_, i) => i !== tripIndex)
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleRemoveOrganikPerson = useCallback((groupIndex: number) => {
+    setOrganikGroups(prev => prev.filter((_, i) => i !== groupIndex));
+  }, []);
+
+  // Similar handlers for Mitra
+  const handleUpdateMitraPerson = useCallback((groupIndex: number, personId: string) => {
+    setMitraGroups(prev => {
+      const updated = [...prev];
+      const selectedPerson = mitraList.find(p => p.id === personId);
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        personId,
+        personName: selectedPerson?.name || ""
+      };
+      return updated;
+    });
+  }, [mitraList]);
+
+  const handleUpdateMitraDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
+    setMitraGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        dariKecamatan: kecamatan
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleUpdateMitraTrip = useCallback((groupIndex: number, tripIndex: number, field: keyof Trip, value: any) => {
+    setMitraGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: updated[groupIndex].trips.map((trip, i) => 
+          i === tripIndex ? { ...trip, [field]: value } : trip
+        )
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleAddMitraTrip = useCallback((groupIndex: number) => {
+    setMitraGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: [...updated[groupIndex].trips, {
+          kecamatanTujuan: "",
+          rate: "0",
+          tanggalPelaksanaan: null
+        }]
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleRemoveMitraTrip = useCallback((groupIndex: number, tripIndex: number) => {
+    setMitraGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        trips: updated[groupIndex].trips.filter((_, i) => i !== tripIndex)
+      };
+      return updated;
+    });
+  }, []);
+
+  const handleRemoveMitraPerson = useCallback((groupIndex: number) => {
+    setMitraGroups(prev => prev.filter((_, i) => i !== groupIndex));
   }, []);
 
   // Form submission handler
@@ -599,16 +705,22 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {transportOrganik.map((item, index) => (
-                  <TransportDetailRow
-                    key={`organik-${index}-${item.personId}`}
-                    item={item}
-                    index={index}
+                {organikGroups.map((group, groupIndex) => (
+                  <PersonTransportGroup
+                    key={`organik-${groupIndex}-${group.personId}`}
+                    personId={group.personId}
+                    personName={group.personName}
+                    dariKecamatan={group.dariKecamatan}
+                    trips={group.trips}
                     type="organik"
                     personList={organikList}
                     kecamatanList={kecamatanList}
-                    onUpdate={updateTransportDetail}
-                    onRemove={removeTransportDetail}
+                    onUpdatePerson={(personId) => handleUpdateOrganikPerson(groupIndex, personId)}
+                    onUpdateDariKecamatan={(kecamatan) => handleUpdateOrganikDariKecamatan(groupIndex, kecamatan)}
+                    onUpdateTrip={(tripIndex, field, value) => handleUpdateOrganikTrip(groupIndex, tripIndex, field, value)}
+                    onAddTrip={() => handleAddOrganikTrip(groupIndex)}
+                    onRemoveTrip={(tripIndex) => handleRemoveOrganikTrip(groupIndex, tripIndex)}
+                    onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)}
                   />
                 ))}
               </CardContent>
@@ -624,16 +736,22 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {transportMitra.map((item, index) => (
-                  <TransportDetailRow
-                    key={`mitra-${index}-${item.personId}`}
-                    item={item}
-                    index={index}
+                {mitraGroups.map((group, groupIndex) => (
+                  <PersonTransportGroup
+                    key={`mitra-${groupIndex}-${group.personId}`}
+                    personId={group.personId}
+                    personName={group.personName}
+                    dariKecamatan={group.dariKecamatan}
+                    trips={group.trips}
                     type="mitra"
                     personList={mitraList}
                     kecamatanList={kecamatanList}
-                    onUpdate={updateTransportDetail}
-                    onRemove={removeTransportDetail}
+                    onUpdatePerson={(personId) => handleUpdateMitraPerson(groupIndex, personId)}
+                    onUpdateDariKecamatan={(kecamatan) => handleUpdateMitraDariKecamatan(groupIndex, kecamatan)}
+                    onUpdateTrip={(tripIndex, field, value) => handleUpdateMitraTrip(groupIndex, tripIndex, field, value)}
+                    onAddTrip={() => handleAddMitraTrip(groupIndex)}
+                    onRemoveTrip={(tripIndex) => handleRemoveMitraTrip(groupIndex, tripIndex)}
+                    onRemovePerson={() => handleRemoveMitraPerson(groupIndex)}
                   />
                 ))}
               </CardContent>
