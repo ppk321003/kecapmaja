@@ -136,7 +136,7 @@
 @layer components {
   /* Enhanced menu styling */
   .menu-item {
-    @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:bg-accent/10 hover:text-accent group;
+    @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:bg-accent/10 hover:text-accent;
   }
 
   .menu-item.active {
