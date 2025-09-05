@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -76,25 +76,53 @@ const KuitansiTransportLokal = () => {
     defaultValues
   });
 
-  // Data queries
+  // Data queries - Use memoized values to prevent excessive re-renders
+  const watchedProgram = form.watch("program");
+  const watchedKegiatan = form.watch("kegiatan");
+  const watchedKro = form.watch("kro");
+  
   const { data: programs = [] } = usePrograms();
-  const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
-  const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
-  const { data: roList = [] } = useRO(form.watch("kro") || null);
+  const { data: kegiatanList = [] } = useKegiatan(watchedProgram || null);
+  const { data: kroList = [] } = useKRO(watchedKegiatan || null);
+  const { data: roList = [] } = useRO(watchedKro || null);
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Create name-to-object mappings for display purposes
-  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
-  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
-  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
-  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
-  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
+  // Create memoized name-to-object mappings for display purposes
+  const programsMap = useMemo(() => 
+    Object.fromEntries((programs || []).map(item => [item.id, item.name])), 
+    [programs]
+  );
+  const kegiatanMap = useMemo(() => 
+    Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name])), 
+    [kegiatanList]
+  );
+  const kroMap = useMemo(() => 
+    Object.fromEntries((kroList || []).map(item => [item.id, item.name])), 
+    [kroList]
+  );
+  const roMap = useMemo(() => 
+    Object.fromEntries((roList || []).map(item => [item.id, item.name])), 
+    [roList]
+  );
+  const komponenMap = useMemo(() => 
+    Object.fromEntries((komponenList || []).map(item => [item.id, item.name])), 
+    [komponenList]
+  );
+  const akunMap = useMemo(() => 
+    Object.fromEntries((akunList || []).map(item => [item.id, item.name])), 
+    [akunList]
+  );
+  const organikMap = useMemo(() => 
+    Object.fromEntries((organikList || []).map(item => [item.id, item.name])), 
+    [organikList]
+  );
+  const mitraMap = useMemo(() => 
+    Object.fromEntries((mitraList || []).map(item => [item.id, item.name])), 
+    [mitraList]
+  );
 
   // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
@@ -104,16 +132,27 @@ const KuitansiTransportLokal = () => {
     }
   });
 
-  // Combine transportDetails for form submission
+  // Debounced form update to prevent excessive re-renders
   useEffect(() => {
-    const combined = [...transportOrganik, ...transportMitra];
-    form.setValue("transportDetails", combined);
+    const timeoutId = setTimeout(() => {
+      const combined = [...transportOrganik, ...transportMitra];
+      form.setValue("transportDetails", combined, { shouldValidate: false });
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [transportOrganik, transportMitra, form]);
 
-  // Add organik handler
-  const addOrganik = () => {
+  // Memoized calculations
+  const grandTotal = useMemo(() => {
+    const organikTotal = transportOrganik.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+    const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+    return organikTotal + mitraTotal;
+  }, [transportOrganik, transportMitra]);
+
+  // Optimized event handlers with useCallback
+  const addOrganik = useCallback(() => {
     if (organikList.length > 0) {
-      setTransportOrganik([...transportOrganik, {
+      setTransportOrganik(prev => [...prev, {
         type: "organik",
         personId: "",
         dariKecamatan: "Majalengka",
@@ -123,12 +162,11 @@ const KuitansiTransportLokal = () => {
         nama: ""
       }]);
     }
-  };
+  }, [organikList.length]);
 
-  // Add mitra handler
-  const addMitra = () => {
+  const addMitra = useCallback(() => {
     if (mitraList.length > 0) {
-      setTransportMitra([...transportMitra, {
+      setTransportMitra(prev => [...prev, {
         type: "mitra",
         personId: "",
         dariKecamatan: "Majalengka",
@@ -138,63 +176,69 @@ const KuitansiTransportLokal = () => {
         nama: ""
       }]);
     }
-  };
+  }, [mitraList.length]);
 
-  // Update transport detail value
-  const updateTransportDetail = (type: "organik" | "mitra", index: number, field: string, value: any) => {
+  // Optimized update function with useCallback
+  const updateTransportDetail = useCallback((type: "organik" | "mitra", index: number, field: string, value: any) => {
     if (type === "organik") {
-      const updated = [...transportOrganik];
-      
-      // Jika mengupdate personId, kita juga update nama
-      if (field === "personId") {
-        const selectedPerson = organikList.find(p => p.id === value);
-        updated[index] = {
-          ...updated[index],
-          personId: value,
-          nama: selectedPerson?.name || ""
-        };
-      } else {
-        updated[index] = {
-          ...updated[index],
-          [field]: value
-        };
-      }
-      
-      setTransportOrganik(updated);
+      setTransportOrganik(prev => {
+        const updated = [...prev];
+        
+        if (field === "personId") {
+          const selectedPerson = organikList.find(p => p.id === value);
+          updated[index] = {
+            ...updated[index],
+            personId: value,
+            nama: selectedPerson?.name || ""
+          };
+        } else {
+          updated[index] = {
+            ...updated[index],
+            [field]: value
+          };
+        }
+        
+        return updated;
+      });
     } else {
-      const updated = [...transportMitra];
-      
-      // Jika mengupdate personId, kita juga update nama
-      if (field === "personId") {
-        const selectedPerson = mitraList.find(p => p.id === value);
-        updated[index] = {
-          ...updated[index],
-          personId: value,
-          nama: selectedPerson?.name || ""
-        };
-      } else {
-        updated[index] = {
-          ...updated[index],
-          [field]: value
-        };
-      }
-      
-      setTransportMitra(updated);
+      setTransportMitra(prev => {
+        const updated = [...prev];
+        
+        if (field === "personId") {
+          const selectedPerson = mitraList.find(p => p.id === value);
+          updated[index] = {
+            ...updated[index],
+            personId: value,
+            nama: selectedPerson?.name || ""
+          };
+        } else {
+          updated[index] = {
+            ...updated[index],
+            [field]: value
+          };
+        }
+        
+        return updated;
+      });
     }
-  };
+  }, [organikList, mitraList]);
 
-  // Remove transport detail
-  const removeTransportDetail = (type: "organik" | "mitra", index: number) => {
+  // Optimized remove function with useCallback
+  const removeTransportDetail = useCallback((type: "organik" | "mitra", index: number) => {
     if (type === "organik") {
-      const updated = [...transportOrganik];
-      updated.splice(index, 1);
-      setTransportOrganik(updated);
+      setTransportOrganik(prev => {
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
     } else {
-      const updated = [...transportMitra];
-      updated.splice(index, 1);
-      setTransportMitra(updated);
+      setTransportMitra(prev => {
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
     }
-  };
+  }, []);
 
   // Form submission handler
   const onSubmit = async (data: FormValues) => {
@@ -239,13 +283,6 @@ const KuitansiTransportLokal = () => {
         description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
     }
-  };
-
-  // Calculate grand total transport
-  const calculateGrandTotal = () => {
-    const organikTotal = transportOrganik.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
-    const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
-    return organikTotal + mitraTotal;
   };
 
   const kecamatanList = [
@@ -820,11 +857,11 @@ const KuitansiTransportLokal = () => {
             {/* Total Section */}
             <Card>
               <CardContent className="p-6">
-                <div className="text-right">
-                  <h3 className="text-lg font-semibold">
-                    Total Keseluruhan: Rp {calculateGrandTotal().toLocaleString("id-ID")}
-                  </h3>
-                </div>
+                 <div className="text-right">
+                   <h3 className="text-lg font-semibold">
+                     Total Keseluruhan: Rp {grandTotal.toLocaleString("id-ID")}
+                   </h3>
+                 </div>
               </CardContent>
             </Card>
 
