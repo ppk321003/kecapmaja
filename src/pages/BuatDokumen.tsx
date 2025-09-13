@@ -28,7 +28,7 @@ const documentTypes = [
     iconColor: "text-bps-green"
   },
   {
-    title: "Kuitansi Perjalanan Dinas 8 Jam",
+    title: "Kuitansi Perjalanan Dinas Luar Kota / Dalam Kota 8 Jam",
     description: "Buat kuitansi perjalanan dinas luar atau dalam kota 8 Jam",
     path: "/dokumen/kuitansi-perjalanan-dinas",
     color: "bg-green-50 dark:bg-green-900/20",
