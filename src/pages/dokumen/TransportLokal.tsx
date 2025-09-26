@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
@@ -514,21 +515,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select
+                        <FormSelect
+                          placeholder="Pilih Organik BPS"
+                          options={organikList.map(organik => ({
+                            value: organik.id,
+                            label: organik.name
+                          }))}
                           value={transport.personId}
-                          onValueChange={value => updateTransportDetail("organik", index, "personId", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih Organik BPS" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={value => updateTransportDetail("organik", index, "personId", value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>
@@ -628,21 +623,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select
+                        <FormSelect
+                          placeholder="Pilih Mitra Statistik"
+                          options={mitraList.map(mitra => ({
+                            value: mitra.id,
+                            label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
+                          }))}
                           value={transport.personId}
-                          onValueChange={value => updateTransportDetail("mitra", index, "personId", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih Mitra Statistik" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {mitraList.map(mitra => (
-                              <SelectItem key={mitra.id} value={mitra.id}>
-                                {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={value => updateTransportDetail("mitra", index, "personId", value)}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>

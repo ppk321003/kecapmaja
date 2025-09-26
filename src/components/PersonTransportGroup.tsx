@@ -8,6 +8,7 @@ import { CalendarIcon, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { FormSelect } from "@/components/FormSelect";
 
 interface Trip {
   kecamatanTujuan: string;
@@ -68,21 +69,15 @@ const PersonTransportGroup = memo(({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-muted/30 rounded-lg">
         <div className="space-y-2">
           <label className="text-sm font-medium">Nama</label>
-          <Select
+          <FormSelect
+            placeholder="Pilih nama"
+            options={personList.map(person => ({
+              value: person.id,
+              label: person.name
+            }))}
             value={personId}
-            onValueChange={onUpdatePerson}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih nama" />
-            </SelectTrigger>
-            <SelectContent className="max-h-60 overflow-y-auto">
-              {personList.map(person => (
-                <SelectItem key={person.id} value={person.id}>
-                  {person.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={onUpdatePerson}
+          />
         </div>
 
         <div className="space-y-2">

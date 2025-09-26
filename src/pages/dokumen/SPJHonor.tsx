@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
@@ -474,18 +475,15 @@ const SPJHonor = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select value={honor.personId} onValueChange={value => updateHonorDetail("organik", index, "personId", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih Organik BPS" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormSelect
+                          placeholder="Pilih Organik BPS"
+                          options={organikList.map(organik => ({
+                            value: organik.id,
+                            label: organik.name
+                          }))}
+                          value={honor.personId}
+                          onChange={value => updateHonorDetail("organik", index, "personId", value)}
+                        />
                       </div>
                        <div className="space-y-2">
                          <Label>Harga Satuan (Rp)</Label>
@@ -557,18 +555,15 @@ const SPJHonor = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <Select value={honor.personId} onValueChange={value => updateHonorDetail("mitra", index, "personId", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih mitra" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {mitraList.map(mitra => (
-                              <SelectItem key={mitra.id} value={mitra.id}>
-                                {mitra.name} {mitra.kecamatan ? `- ${mitra.kecamatan}` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormSelect
+                          placeholder="Pilih mitra"
+                          options={mitraList.map(mitra => ({
+                            value: mitra.id,
+                            label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
+                          }))}
+                          value={honor.personId}
+                          onChange={value => updateHonorDetail("mitra", index, "personId", value)}
+                        />
                       </div>
                        <div className="space-y-2">
                          <Label>Harga Satuan (Rp)</Label>
