@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 const formSchema = z.object({
@@ -414,25 +415,18 @@ const TransportLokal = () => {
                   <FormField control={form.control} name="akun" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Akun</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih akun" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {akunList.map(akun => (
-                            <SelectItem key={akun.id} value={akun.id}>
-                              {akun.name} ({akun.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                      <FormControl>
+                        <AkunSelect 
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Pilih akun"
+                        />
+                      </FormControl>
+                       <FormMessage />
+                     </FormItem>
+                   )} />
 
-                  {/* Tanggal SPJ */}
+                   {/* Tanggal SPJ */}
                   <FormField control={form.control} name="tanggalSpj" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tanggal (SPJ)</FormLabel>

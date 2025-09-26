@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
@@ -391,22 +392,17 @@ const SPJHonor = () => {
                       </FormItem>} />
 
                   {/* Akun */}
-                  <FormField control={form.control} name="akun" render={({
+                <FormField control={form.control} name="akun" render={({
                   field
                 }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih akun" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {akunList.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                                {akun.name} ({akun.code})
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <AkunSelect 
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Pilih akun"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>} />
 

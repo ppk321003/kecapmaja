@@ -17,6 +17,7 @@ import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrgan
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { FormSelect } from "@/components/FormSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 interface FormValues {
   namaKegiatan: string;
   detil: string;
@@ -330,16 +331,11 @@ const UangHarianTransport = () => {
                   required: "Akun harus dipilih"
                 }} render={({
                   field
-                }) => <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih akun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {akuns.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                              {akun.name} ({akun.code})
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>} />
+                }) => <AkunSelect 
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Pilih akun"
+                      />} />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
                 </div>
 
