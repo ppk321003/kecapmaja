@@ -18,6 +18,10 @@ import { Label } from "@/components/ui/label";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS } from "@/hooks/use-database";
 import { toast } from "@/hooks/use-toast";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { KegiatanSelect } from "@/components/KegiatanSelect";
+import { KROSelect } from "@/components/KROSelect";
+import { ROSelect } from "@/components/ROSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 // Interface for kecamatan details
@@ -308,22 +312,16 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("kro", "");
-                    form.setValue("ro", "");
-                  }} value={field.value} disabled={!form.watch("program")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih kegiatan" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <KegiatanSelect 
+                          value={field.value} 
+                          onChange={value => {
+                            field.onChange(value);
+                            form.setValue("kro", "");
+                            form.setValue("ro", "");
+                          }} 
+                          placeholder="Pilih kegiatan" 
+                          programId={form.watch("program")} 
+                        />
                         <FormMessage />
                       </FormItem>} />
 
@@ -332,21 +330,15 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("ro", "");
-                  }} value={field.value} disabled={!form.watch("kegiatan")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih KRO" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {kroList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <KROSelect 
+                          value={field.value} 
+                          onChange={value => {
+                            field.onChange(value);
+                            form.setValue("ro", "");
+                          }} 
+                          placeholder="Pilih KRO" 
+                          kegiatanId={form.watch("kegiatan")} 
+                        />
                         <FormMessage />
                       </FormItem>} />
 
@@ -355,18 +347,12 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!form.watch("kro")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih RO" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {roList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <ROSelect 
+                          value={field.value} 
+                          onChange={field.onChange} 
+                          placeholder="Pilih RO" 
+                          kroId={form.watch("kro")} 
+                        />
                         <FormMessage />
                       </FormItem>} />
 
@@ -384,18 +370,11 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih akun" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {akunList.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                                {akun.name} ({akun.code})
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <AkunSelect 
+                          value={field.value} 
+                          onChange={field.onChange} 
+                          placeholder="Pilih akun" 
+                        />
                         <FormMessage />
                       </FormItem>} />
 

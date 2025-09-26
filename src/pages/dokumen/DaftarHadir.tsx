@@ -15,6 +15,10 @@ import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { KegiatanSelect } from "@/components/KegiatanSelect";
+import { KROSelect } from "@/components/KROSelect";
+import { ROSelect } from "@/components/ROSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { FormSelect } from "@/components/FormSelect";
 interface FormValues {
@@ -269,16 +273,12 @@ const DaftarHadir = () => {
                   required: "Kegiatan harus dipilih"
                 }} render={({
                   field
-                }) => <Select value={field.value} onValueChange={field.onChange} disabled={!watch('program')}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih kegiatan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {kegiatan.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>} />
+                }) => <KegiatanSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih kegiatan" 
+                        programId={watch('program')} 
+                      />} />
                   {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
                 </div>
 
@@ -288,16 +288,12 @@ const DaftarHadir = () => {
                   required: "KRO harus dipilih"
                 }} render={({
                   field
-                }) => <Select value={field.value} onValueChange={field.onChange} disabled={!watch('kegiatan')}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih KRO" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {kros.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>} />
+                }) => <KROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih KRO" 
+                        kegiatanId={watch('kegiatan')} 
+                      />} />
                   {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
                 </div>
 
@@ -307,16 +303,12 @@ const DaftarHadir = () => {
                   required: "RO harus dipilih"
                 }} render={({
                   field
-                }) => <Select value={field.value} onValueChange={field.onChange} disabled={!watch('kro')}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih RO" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ros.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>} />
+                }) => <ROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih RO" 
+                        kroId={watch('kro')} 
+                      />} />
                   {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
                 </div>
 
@@ -336,16 +328,11 @@ const DaftarHadir = () => {
                   required: "Akun harus dipilih"
                 }} render={({
                   field
-                }) => <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih akun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {akuns.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                              {akun.name} ({akun.code})
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>} />
+                }) => <AkunSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih akun" 
+                      />} />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
                 </div>
 

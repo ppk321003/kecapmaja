@@ -15,6 +15,10 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useSaveDocument, useOrganikBPS } from "@/hooks/use-database";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { KegiatanSelect } from "@/components/KegiatanSelect";
+import { KROSelect } from "@/components/KROSelect";
+import { ROSelect } from "@/components/ROSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 interface KegiatanDetail {
   id: string;
   namaKegiatan: string;
@@ -386,44 +390,32 @@ const KerangkaAcuanKerja = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="kegiatan">Kegiatan</Label>
-                  <Select value={formValues.kegiatan} onValueChange={value => handleChange('kegiatan', value)} disabled={!formValues.programPembebanan}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih kegiatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kegiatan.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <KegiatanSelect 
+                    value={formValues.kegiatan} 
+                    onChange={value => handleChange('kegiatan', value)} 
+                    placeholder="Pilih kegiatan" 
+                    programId={formValues.programPembebanan} 
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="kro">KRO</Label>
-                  <Select value={formValues.kro} onValueChange={value => handleChange('kro', value)} disabled={!formValues.kegiatan}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih KRO" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kros.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <KROSelect 
+                    value={formValues.kro} 
+                    onChange={value => handleChange('kro', value)} 
+                    placeholder="Pilih KRO" 
+                    kegiatanId={formValues.kegiatan} 
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="ro">RO</Label>
-                  <Select value={formValues.ro} onValueChange={value => handleChange('ro', value)} disabled={!formValues.kro}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih RO" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ros.map(item => <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <ROSelect 
+                    value={formValues.ro} 
+                    onChange={value => handleChange('ro', value)} 
+                    placeholder="Pilih RO" 
+                    kroId={formValues.kro} 
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -433,16 +425,11 @@ const KerangkaAcuanKerja = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="akun">Akun</Label>
-                  <Select value={formValues.akun} onValueChange={value => handleChange('akun', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih akun" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {akuns.map(akun => <SelectItem key={akun.id} value={akun.id}>
-                          {akun.name} ({akun.code})
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <AkunSelect 
+                    value={formValues.akun} 
+                    onChange={value => handleChange('akun', value)} 
+                    placeholder="Pilih akun" 
+                  />
                 </div>
 
                 <div className="space-y-2">
