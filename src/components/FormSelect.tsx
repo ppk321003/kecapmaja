@@ -54,6 +54,7 @@ export const FormSelect: React.FC<FormSelectProps> = ({
         control: (provided) => ({
           ...provided,
           minHeight: '40px',
+          fontSize: '14px',
           boxShadow: 'none',
           borderColor: 'hsl(var(--input))',
           '&:hover': {
@@ -63,10 +64,24 @@ export const FormSelect: React.FC<FormSelectProps> = ({
         valueContainer: (provided) => ({
           ...provided,
           padding: '0 12px',
+          fontSize: '14px',
         }),
         input: (provided) => ({
           ...provided,
           margin: '0',
+          fontSize: '14px',
+        }),
+        singleValue: (provided) => ({
+          ...provided,
+          fontSize: '14px',
+        }),
+        placeholder: (provided) => ({
+          ...provided,
+          fontSize: '14px',
+        }),
+        option: (provided) => ({
+          ...provided,
+          fontSize: '14px',
         }),
         menu: (provided) => ({
           ...provided,
