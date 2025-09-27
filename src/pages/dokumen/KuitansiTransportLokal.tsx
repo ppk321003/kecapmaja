@@ -29,14 +29,12 @@ interface Trip {
   rate: string;
   tanggalPelaksanaan: Date | null;
 }
-
 interface PersonGroup {
   personId: string;
   personName: string;
   dariKecamatan: string;
   trips: Trip[];
 }
-
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(50, "Nomor surat tugas maksimal 50 karakter"),
@@ -65,9 +63,7 @@ const formSchema = z.object({
     nama: z.string().optional()
   })).min(1, "Minimal harus ada 1 peserta")
 });
-
 type FormValues = z.infer<typeof formSchema>;
-
 const defaultValues: Partial<FormValues> = {
   tujuanPelaksanaan: "",
   nomorSuratTugas: "",
@@ -82,7 +78,6 @@ const defaultValues: Partial<FormValues> = {
   pembuatDaftar: "",
   transportDetails: []
 };
-
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
@@ -96,49 +91,40 @@ const KuitansiTransportLokal = () => {
   const watchedProgram = form.watch("program");
   const watchedKegiatan = form.watch("kegiatan");
   const watchedKro = form.watch("kro");
-  
-  const { data: programs = [] } = usePrograms();
-  const { data: kegiatanList = [] } = useKegiatan(watchedProgram || null);
-  const { data: kroList = [] } = useKRO(watchedKegiatan || null);
-  const { data: roList = [] } = useRO(watchedKro || null);
-  const { data: komponenList = [] } = useKomponen();
-  const { data: akunList = [] } = useAkun();
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
+  const {
+    data: programs = []
+  } = usePrograms();
+  const {
+    data: kegiatanList = []
+  } = useKegiatan(watchedProgram || null);
+  const {
+    data: kroList = []
+  } = useKRO(watchedKegiatan || null);
+  const {
+    data: roList = []
+  } = useRO(watchedKro || null);
+  const {
+    data: komponenList = []
+  } = useKomponen();
+  const {
+    data: akunList = []
+  } = useAkun();
+  const {
+    data: organikList = []
+  } = useOrganikBPS();
+  const {
+    data: mitraList = []
+  } = useMitraStatistik();
 
   // Create memoized name-to-object mappings for display purposes
-  const programsMap = useMemo(() => 
-    Object.fromEntries((programs || []).map(item => [item.id, item.name])), 
-    [programs]
-  );
-  const kegiatanMap = useMemo(() => 
-    Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name])), 
-    [kegiatanList]
-  );
-  const kroMap = useMemo(() => 
-    Object.fromEntries((kroList || []).map(item => [item.id, item.name])), 
-    [kroList]
-  );
-  const roMap = useMemo(() => 
-    Object.fromEntries((roList || []).map(item => [item.id, item.name])), 
-    [roList]
-  );
-  const komponenMap = useMemo(() => 
-    Object.fromEntries((komponenList || []).map(item => [item.id, item.name])), 
-    [komponenList]
-  );
-  const akunMap = useMemo(() => 
-    Object.fromEntries((akunList || []).map(item => [item.id, item.name])), 
-    [akunList]
-  );
-  const organikMap = useMemo(() => 
-    Object.fromEntries((organikList || []).map(item => [item.id, item.name])), 
-    [organikList]
-  );
-  const mitraMap = useMemo(() => 
-    Object.fromEntries((mitraList || []).map(item => [item.id, item.name])), 
-    [mitraList]
-  );
+  const programsMap = useMemo(() => Object.fromEntries((programs || []).map(item => [item.id, item.name])), [programs]);
+  const kegiatanMap = useMemo(() => Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name])), [kegiatanList]);
+  const kroMap = useMemo(() => Object.fromEntries((kroList || []).map(item => [item.id, item.name])), [kroList]);
+  const roMap = useMemo(() => Object.fromEntries((roList || []).map(item => [item.id, item.name])), [roList]);
+  const komponenMap = useMemo(() => Object.fromEntries((komponenList || []).map(item => [item.id, item.name])), [komponenList]);
+  const akunMap = useMemo(() => Object.fromEntries((akunList || []).map(item => [item.id, item.name])), [akunList]);
+  const organikMap = useMemo(() => Object.fromEntries((organikList || []).map(item => [item.id, item.name])), [organikList]);
+  const mitraMap = useMemo(() => Object.fromEntries((mitraList || []).map(item => [item.id, item.name])), [mitraList]);
 
   // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
@@ -170,9 +156,10 @@ const KuitansiTransportLokal = () => {
   // Debounced form update to prevent excessive re-renders
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      form.setValue("transportDetails", flattenedTransportDetails, { shouldValidate: false });
+      form.setValue("transportDetails", flattenedTransportDetails, {
+        shouldValidate: false
+      });
     }, 100);
-
     return () => clearTimeout(timeoutId);
   }, [flattenedTransportDetails, form]);
 
@@ -196,7 +183,6 @@ const KuitansiTransportLokal = () => {
       }]);
     }
   }, [organikList.length]);
-
   const addMitra = useCallback(() => {
     if (mitraList.length > 0) {
       setMitraGroups(prev => [...prev, {
@@ -225,7 +211,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, [organikList]);
-
   const handleUpdateOrganikDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
@@ -236,20 +221,19 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleUpdateOrganikTrip = useCallback((groupIndex: number, tripIndex: number, field: keyof Trip, value: any) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
       updated[groupIndex] = {
         ...updated[groupIndex],
-        trips: updated[groupIndex].trips.map((trip, i) => 
-          i === tripIndex ? { ...trip, [field]: value } : trip
-        )
+        trips: updated[groupIndex].trips.map((trip, i) => i === tripIndex ? {
+          ...trip,
+          [field]: value
+        } : trip)
       };
       return updated;
     });
   }, []);
-
   const handleAddOrganikTrip = useCallback((groupIndex: number) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
@@ -264,7 +248,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleRemoveOrganikTrip = useCallback((groupIndex: number, tripIndex: number) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
@@ -275,7 +258,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleRemoveOrganikPerson = useCallback((groupIndex: number) => {
     setOrganikGroups(prev => prev.filter((_, i) => i !== groupIndex));
   }, []);
@@ -293,7 +275,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, [mitraList]);
-
   const handleUpdateMitraDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
     setMitraGroups(prev => {
       const updated = [...prev];
@@ -304,20 +285,19 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleUpdateMitraTrip = useCallback((groupIndex: number, tripIndex: number, field: keyof Trip, value: any) => {
     setMitraGroups(prev => {
       const updated = [...prev];
       updated[groupIndex] = {
         ...updated[groupIndex],
-        trips: updated[groupIndex].trips.map((trip, i) => 
-          i === tripIndex ? { ...trip, [field]: value } : trip
-        )
+        trips: updated[groupIndex].trips.map((trip, i) => i === tripIndex ? {
+          ...trip,
+          [field]: value
+        } : trip)
       };
       return updated;
     });
   }, []);
-
   const handleAddMitraTrip = useCallback((groupIndex: number) => {
     setMitraGroups(prev => {
       const updated = [...prev];
@@ -332,7 +312,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleRemoveMitraTrip = useCallback((groupIndex: number, tripIndex: number) => {
     setMitraGroups(prev => {
       const updated = [...prev];
@@ -343,7 +322,6 @@ const KuitansiTransportLokal = () => {
       return updated;
     });
   }, []);
-
   const handleRemoveMitraPerson = useCallback((groupIndex: number) => {
     setMitraGroups(prev => prev.filter((_, i) => i !== groupIndex));
   }, []);
@@ -367,7 +345,6 @@ const KuitansiTransportLokal = () => {
           };
         }
       });
-
       const submitData = {
         ...data,
         transportDetails: transportDetailsWithNames,
@@ -381,7 +358,6 @@ const KuitansiTransportLokal = () => {
         _mitraNameMap: mitraMap,
         _pembuatDaftarName: organikMap[data.pembuatDaftar]
       };
-      
       await submitMutation.mutateAsync(submitData);
     } catch (error: any) {
       console.error("Error saving Kuitansi Transport Lokal:", error);
@@ -392,19 +368,8 @@ const KuitansiTransportLokal = () => {
       });
     }
   };
-
-  const kecamatanList = [
-    "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", 
-    "Cingambul", "Talaga", "Banjaran", "Argapura", 
-    "Maja", "Majalengka", "Cigasong", "Sukahaji", 
-    "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", 
-    "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
-    "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", 
-    "Ligung", "Sumberjaya"
-  ];
-
-  return (
-    <Layout>
+  const kecamatanList = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"];
+  return <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
@@ -428,244 +393,191 @@ const KuitansiTransportLokal = () => {
                   </div>
                   
                   {/* Tujuan Pelaksanaan */}
-                  <FormField control={form.control} name="tujuanPelaksanaan" render={({ field }) => (
-                    <FormItem>
+                  <FormField control={form.control} name="tujuanPelaksanaan" render={({
+                  field
+                }) => <FormItem>
                       <FormLabel>Tujuan Pelaksanaan / Kegiatan</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="Masukkan tujuan pelaksanaan / kegiatan"
-                        />
+                        <Input {...field} placeholder="Masukkan tujuan pelaksanaan / kegiatan" />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )} />
+                    </FormItem>} />
 
                   {/* Nomor Surat Tugas dan Tanggal Surat Tugas */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="nomorSuratTugas" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Nomor Surat Tugas</FormLabel>
                         <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Masukkan nomor surat tugas"
-                            maxLength={50} 
-                          />
+                          <Input {...field} placeholder="Masukkan nomor surat tugas" maxLength={50} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
-                    <FormField control={form.control} name="tanggalSuratTugas" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="tanggalSuratTugas" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Tanggal Surat Tugas</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? format(field.value, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
+                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "PPP", {
+                              locale: idLocale
+                            }) : <span>Pilih tanggal</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => false}
-                              initialFocus
-                            />
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => false} initialFocus />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Program */}
-                    <FormField control={form.control} name="program" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="program" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Program</FormLabel>
-                        <Select 
-                          onValueChange={value => {
-                            field.onChange(value);
-                            form.setValue("kegiatan", "");
-                            form.setValue("kro", "");
-                            form.setValue("ro", "");
-                          }} 
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={value => {
+                      field.onChange(value);
+                      form.setValue("kegiatan", "");
+                      form.setValue("kro", "");
+                      form.setValue("ro", "");
+                    }} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih program" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programs.map(program => (
-                              <SelectItem key={program.id} value={program.id}>
+                            {programs.map(program => <SelectItem key={program.id} value={program.id}>
                                 {program.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* Kegiatan */}
-                    <FormField control={form.control} name="kegiatan" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="kegiatan" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <Select 
-                          onValueChange={value => {
-                            field.onChange(value);
-                            form.setValue("kro", "");
-                            form.setValue("ro", "");
-                          }} 
-                          defaultValue={field.value} 
-                          disabled={!form.watch("program")}
-                        >
+                        <Select onValueChange={value => {
+                      field.onChange(value);
+                      form.setValue("kro", "");
+                      form.setValue("ro", "");
+                    }} defaultValue={field.value} disabled={!form.watch("program")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih kegiatan" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kegiatanList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* KRO */}
-                    <FormField control={form.control} name="kro" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="kro" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <Select 
-                          onValueChange={value => {
-                            field.onChange(value);
-                            form.setValue("ro", "");
-                          }} 
-                          defaultValue={field.value} 
-                          disabled={!form.watch("kegiatan")}
-                        >
+                        <Select onValueChange={value => {
+                      field.onChange(value);
+                      form.setValue("ro", "");
+                    }} defaultValue={field.value} disabled={!form.watch("kegiatan")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih KRO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kroList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {kroList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* RO */}
-                    <FormField control={form.control} name="ro" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="ro" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value} 
-                          disabled={!form.watch("kro")}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("kro")}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih RO" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {roList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
+                            {roList.map(item => <SelectItem key={item.id} value={item.id}>
                                 {item.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* Komponen */}
-                    <FormField control={form.control} name="komponen" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="komponen" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Komponen</FormLabel>
                         <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* Akun */}
-                    <FormField control={form.control} name="akun" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="akun" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
                         <FormControl>
-                          <AkunSelect 
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Pilih akun"
-                          />
+                          <AkunSelect value={field.value} onChange={field.onChange} placeholder="Pilih akun" />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* Tanggal Pengajuan */}
-                    <FormField control={form.control} name="tanggalSpj" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="tanggalSpj" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Tanggal Pengajuan</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? format(field.value, "PPP", { locale: idLocale }) : <span>Pilih tanggal</span>}
+                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "PPP", {
+                              locale: idLocale
+                            }) : <span>Pilih tanggal</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => false}
-                              initialFocus
-                            />
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => false} initialFocus />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
                     {/* Pembuat Daftar */}
-                    <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
-                      <FormItem>
+                    <FormField control={form.control} name="pembuatDaftar" render={({
+                    field
+                  }) => <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -674,16 +586,13 @@ const KuitansiTransportLokal = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
+                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
                                 {organik.name}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
                   </div>
                 </div>
               </CardContent>
@@ -699,24 +608,7 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {organikGroups.map((group, groupIndex) => (
-                  <PersonTransportGroup
-                    key={`organik-${groupIndex}-${group.personId}`}
-                    personId={group.personId}
-                    personName={group.personName}
-                    dariKecamatan={group.dariKecamatan}
-                    trips={group.trips}
-                    type="organik"
-                    personList={organikList}
-                    kecamatanList={kecamatanList}
-                    onUpdatePerson={(personId) => handleUpdateOrganikPerson(groupIndex, personId)}
-                    onUpdateDariKecamatan={(kecamatan) => handleUpdateOrganikDariKecamatan(groupIndex, kecamatan)}
-                    onUpdateTrip={(tripIndex, field, value) => handleUpdateOrganikTrip(groupIndex, tripIndex, field, value)}
-                    onAddTrip={() => handleAddOrganikTrip(groupIndex)}
-                    onRemoveTrip={(tripIndex) => handleRemoveOrganikTrip(groupIndex, tripIndex)}
-                    onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)}
-                  />
-                ))}
+                {organikGroups.map((group, groupIndex) => <PersonTransportGroup key={`organik-${groupIndex}-${group.personId}`} personId={group.personId} personName={group.personName} dariKecamatan={group.dariKecamatan} trips={group.trips} type="organik" personList={organikList} kecamatanList={kecamatanList} onUpdatePerson={personId => handleUpdateOrganikPerson(groupIndex, personId)} onUpdateDariKecamatan={kecamatan => handleUpdateOrganikDariKecamatan(groupIndex, kecamatan)} onUpdateTrip={(tripIndex, field, value) => handleUpdateOrganikTrip(groupIndex, tripIndex, field, value)} onAddTrip={() => handleAddOrganikTrip(groupIndex)} onRemoveTrip={tripIndex => handleRemoveOrganikTrip(groupIndex, tripIndex)} onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)} />)}
               </CardContent>
             </Card>
 
@@ -730,24 +622,7 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {mitraGroups.map((group, groupIndex) => (
-                  <PersonTransportGroup
-                    key={`mitra-${groupIndex}-${group.personId}`}
-                    personId={group.personId}
-                    personName={group.personName}
-                    dariKecamatan={group.dariKecamatan}
-                    trips={group.trips}
-                    type="mitra"
-                    personList={mitraList}
-                    kecamatanList={kecamatanList}
-                    onUpdatePerson={(personId) => handleUpdateMitraPerson(groupIndex, personId)}
-                    onUpdateDariKecamatan={(kecamatan) => handleUpdateMitraDariKecamatan(groupIndex, kecamatan)}
-                    onUpdateTrip={(tripIndex, field, value) => handleUpdateMitraTrip(groupIndex, tripIndex, field, value)}
-                    onAddTrip={() => handleAddMitraTrip(groupIndex)}
-                    onRemoveTrip={(tripIndex) => handleRemoveMitraTrip(groupIndex, tripIndex)}
-                    onRemovePerson={() => handleRemoveMitraPerson(groupIndex)}
-                  />
-                ))}
+                {mitraGroups.map((group, groupIndex) => <PersonTransportGroup key={`mitra-${groupIndex}-${group.personId}`} personId={group.personId} personName={group.personName} dariKecamatan={group.dariKecamatan} trips={group.trips} type="mitra" personList={mitraList} kecamatanList={kecamatanList} onUpdatePerson={personId => handleUpdateMitraPerson(groupIndex, personId)} onUpdateDariKecamatan={kecamatan => handleUpdateMitraDariKecamatan(groupIndex, kecamatan)} onUpdateTrip={(tripIndex, field, value) => handleUpdateMitraTrip(groupIndex, tripIndex, field, value)} onAddTrip={() => handleAddMitraTrip(groupIndex)} onRemoveTrip={tripIndex => handleRemoveMitraTrip(groupIndex, tripIndex)} onRemovePerson={() => handleRemoveMitraPerson(groupIndex)} />)}
               </CardContent>
             </Card>
 
@@ -755,7 +630,7 @@ const KuitansiTransportLokal = () => {
             <Card>
               <CardContent className="p-6">
                  <div className="text-right">
-                   <h3 className="text-lg font-semibold">
+                   <h3 className="text-lg font-semibold text-bps-orange">
                      Total Keseluruhan: Rp {grandTotal.toLocaleString("id-ID")}
                    </h3>
                  </div>
@@ -774,8 +649,6 @@ const KuitansiTransportLokal = () => {
           </form>
         </Form>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default KuitansiTransportLokal;
