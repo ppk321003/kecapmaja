@@ -630,7 +630,7 @@ const KuitansiTransportLokal = () => {
             <Card>
               <CardContent className="p-6">
                  <div className="text-right">
-                   <h3 className="text-lg font-semibold text-bps-orange">
+                   <h3 className="text-lg font-semibold text-sky-600">
                      Total Keseluruhan: Rp {grandTotal.toLocaleString("id-ID")}
                    </h3>
                  </div>
