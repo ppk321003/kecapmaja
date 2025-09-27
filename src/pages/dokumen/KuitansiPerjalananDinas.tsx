@@ -312,16 +312,11 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <KegiatanSelect 
-                          value={field.value} 
-                          onChange={value => {
-                            field.onChange(value);
-                            form.setValue("kro", "");
-                            form.setValue("ro", "");
-                          }} 
-                          placeholder="Pilih kegiatan" 
-                          programId={form.watch("program")} 
-                        />
+                        <KegiatanSelect value={field.value} onChange={value => {
+                    field.onChange(value);
+                    form.setValue("kro", "");
+                    form.setValue("ro", "");
+                  }} placeholder="Pilih kegiatan" programId={form.watch("program")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -330,15 +325,10 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <KROSelect 
-                          value={field.value} 
-                          onChange={value => {
-                            field.onChange(value);
-                            form.setValue("ro", "");
-                          }} 
-                          placeholder="Pilih KRO" 
-                          kegiatanId={form.watch("kegiatan")} 
-                        />
+                        <KROSelect value={field.value} onChange={value => {
+                    field.onChange(value);
+                    form.setValue("ro", "");
+                  }} placeholder="Pilih KRO" kegiatanId={form.watch("kegiatan")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -347,12 +337,7 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <ROSelect 
-                          value={field.value} 
-                          onChange={field.onChange} 
-                          placeholder="Pilih RO" 
-                          kroId={form.watch("kro")} 
-                        />
+                        <ROSelect value={field.value} onChange={field.onChange} placeholder="Pilih RO" kroId={form.watch("kro")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -370,11 +355,7 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <AkunSelect 
-                          value={field.value} 
-                          onChange={field.onChange} 
-                          placeholder="Pilih akun" 
-                        />
+                        <AkunSelect value={field.value} onChange={field.onChange} placeholder="Pilih akun" />
                         <FormMessage />
                       </FormItem>} />
 
@@ -516,7 +497,7 @@ const KuitansiPerjalananDinas = () => {
                         {kecamatanDetails.map((detail, index) => <Card key={detail.id} className="overflow-hidden">
                             <CardContent className="p-4 space-y-4">
                               <div className="flex justify-between items-center">
-                                <h4 className="font-medium">Kecamatan (terjauh) {index + 1}</h4>
+                                <h4 className="font-medium text-base">Kecamatan (terjauh) {index + 1}</h4>
                                 <Button variant="ghost" size="icon" onClick={() => removeKecamatanDetail(detail.id)}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
