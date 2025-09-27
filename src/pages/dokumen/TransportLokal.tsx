@@ -520,7 +520,7 @@ const TransportLokal = () => {
 
                 {transportMitra.map((transport, index) => <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Mitra Statistik - {index + 1}</h3>
+                      <h3 className="font-medium text-base">Mitra Statistik - {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeTransportDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
