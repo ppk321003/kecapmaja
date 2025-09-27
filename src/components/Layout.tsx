@@ -32,11 +32,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <DynamicSidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        <main className="flex-1 bg-gradient-to-br from-background to-muted/30">
-          <div className="p-6 lg:p-8">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background to-muted/30">
+          <Card className="elegant-card p-6 lg:p-8 border-0 rounded-none">
             {children}
-          </div>
+          </Card>
         </main>
       </div>
     </div>
