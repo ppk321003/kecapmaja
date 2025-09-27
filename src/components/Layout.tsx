@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background to-muted/30">
-          <Card className="elegant-card p-6 lg:p-8 min-h-screen border-0 rounded-none">
+          <Card className="elegant-card p-6 lg:p-8 border-0 rounded-none">
             {children}
           </Card>
         </main>
