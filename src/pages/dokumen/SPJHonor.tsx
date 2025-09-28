@@ -618,11 +618,11 @@ const SPJHonor = () => {
                     <Label>Total Keseluruhan (Rp)</Label>
                     <Input value={calculateGrandTotal().toLocaleString()} readOnly className="font-bold text-lg" />
                   </div>
-                  <Button type="submit" disabled={submitMutation.isPending} className="w-full bg-teal-700 hover:bg-teal-600">
-                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
-                  </Button>
                   <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/buat-dokumen")}>
                     Batal
+                  </Button>
+                  <Button type="submit" disabled={submitMutation.isPending} className="w-full bg-teal-700 hover:bg-teal-600">
+                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>
               </CardContent>

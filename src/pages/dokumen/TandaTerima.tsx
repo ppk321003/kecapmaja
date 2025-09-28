@@ -283,11 +283,11 @@ const TandaTerima = () => {
               </div>
 
               <div className="flex space-x-4">
-                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
-                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
-                </Button>
                 <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
                   Batal
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
+                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
               </div>
             </form>

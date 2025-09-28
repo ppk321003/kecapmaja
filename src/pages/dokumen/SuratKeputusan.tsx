@@ -342,7 +342,7 @@ const SuratKeputusan = () => {
 
                 <div className="flex justify-end space-x-4">
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
-                    Reset
+                    Batal
                   </Button>
                   <Button type="submit" disabled={isSubmitting} className="bg-teal-700 hover:bg-teal-600">
                     {isSubmitting ? "Menyimpan..." : "Simpan Surat Keputusan"}

@@ -558,11 +558,11 @@ const KuitansiPerjalananDinas = () => {
 
                 {/* Submit Buttons */}
                 <div className="flex space-x-4 pt-4">
-                  <Button type="submit" disabled={submitMutation.isPending} className="bg-teal-800 hover:bg-teal-700">
-                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
-                  </Button>
                   <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
                     Batal
+                  </Button>
+                  <Button type="submit" disabled={submitMutation.isPending} className="bg-teal-800 hover:bg-teal-700">
+                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>
               </CardContent>
