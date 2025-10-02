@@ -11,6 +11,7 @@ import {
   File,
   Book,
   Table,
+  ExternalLink,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -182,11 +183,14 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                           href={item.path}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
                           title={item.description}
                         >
-                          {getIcon(item.icon)}
-                          <span>{item.title}</span>
+                          <div className="flex items-center space-x-2">
+                            {getIcon(item.icon)}
+                            <span>{item.title}</span>
+                          </div>
+                          <ExternalLink className="h-3 w-3 opacity-70" />
                         </a>
                       ) : (
                         <Link
@@ -252,11 +256,14 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                             href={item.path}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                            className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
                             title={item.description}
                           >
-                            {getIcon(item.icon)}
-                            <span>{item.title}</span>
+                            <div className="flex items-center space-x-2">
+                              {getIcon(item.icon)}
+                              <span>{item.title}</span>
+                            </div>
+                            <ExternalLink className="h-3 w-3 opacity-70" />
                           </a>
                         ) : (
                           <Link
