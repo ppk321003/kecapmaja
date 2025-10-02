@@ -74,11 +74,20 @@ export const useSidebar = () => {
         },
         {
           id: "9",
-          title: "Riwayat Kertas Kerja",
+          title: "Riwayat Kertas Kerja (PDF)",
           path: "/riwayat-kertas-kerja",
           icon: "FileArchive",
           description: "Lihat riwayat kertas kerja dalam format PDF",
           order_index: 9,
+          is_active: true
+        },
+        {
+          id: "9",
+          title: "Riwayat Kertas Kerja (Excel)",
+          path: "/riwayat-kertas-kerja-excel",
+          icon: "FileArchive",
+          description: "Lihat riwayat kertas kerja dalam format Excel",
+          order_index: 10,
           is_active: true
         },
         // Referensi & Peraturan
@@ -88,7 +97,7 @@ export const useSidebar = () => {
           path: "/perka-bps",
           icon: "Book",
           description: "Lihat peraturan tentang standar biaya kegiatan statistik",
-          order_index: 10,
+          order_index: 11,
           is_active: true
         },
         {
@@ -97,7 +106,7 @@ export const useSidebar = () => {
           path: "/sbm-2025",
           icon: "Book",
           description: "Standar Biaya Masukan Tahun 2025",
-          order_index: 11,
+          order_index: 12,
           is_active: true
         },
         {
@@ -106,7 +115,7 @@ export const useSidebar = () => {
           path: "/sk-translok",
           icon: "FileText",
           description: "Akses SK Transport Lokal",
-          order_index: 12,
+          order_index: 13,
           is_active: true
         },
         // Inventaris & Arsip
@@ -116,7 +125,7 @@ export const useSidebar = () => {
           path: "/stock-opname",
           icon: "Database",
           description: "Stock opname inventaris",
-          order_index: 13,
+          order_index: 14,
           is_active: true
         },
         {
@@ -125,7 +134,7 @@ export const useSidebar = () => {
           path: "/kecap-maja-old",
           icon: "FileArchive",
           description: "Akses Kecap Maja versi lama",
-          order_index: 14,
+          order_index: 15,
           is_active: true
         },
         {
@@ -134,7 +143,7 @@ export const useSidebar = () => {
           path: "/perka-8",
           icon: "Book",
           description: "PPT Perka 8 Tahun 2024_Perka PAK Sensus Survei",
-          order_index: 15,
+          order_index: 16,
           is_active: true
         }
       ];
