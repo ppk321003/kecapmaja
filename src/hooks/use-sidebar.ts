@@ -74,7 +74,7 @@ export const useSidebar = () => {
         },
         {
           id: "9",
-          title: "Riwayat Kertas Kerja (PDF)",
+          title: "Riwayat Kertas Kerja",
           path: "/riwayat-kertas-kerja",
           icon: "FileArchive",
           description: "Lihat riwayat kertas kerja dalam format PDF",
@@ -84,7 +84,7 @@ export const useSidebar = () => {
         {
           id: "10",
           title: "Riwayat Kertas Kerja (Excel)",
-          path: "/riwayat-kertas-kerja-excel",
+          path: "https://drive.google.com/drive/folders/1-L6ZjyScfQWGshjgJetv98OGnKW-nXjI",
           icon: "FileArchive",
           description: "Lihat riwayat kertas kerja dalam format Excel",
           order_index: 10,

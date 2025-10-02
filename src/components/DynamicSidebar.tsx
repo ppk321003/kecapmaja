@@ -66,7 +66,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       ) {
         group = "Dokumen & Formulir";
       } else if (
-        ["Rekap Honor Mitra", "Rekap SPK dan BAST", "Riwayat Kertas Kerja (PDF)", "Riwayat Kertas Kerja (Excel)"].includes(
+        ["Rekap Honor Mitra", "Rekap SPK dan BAST", "Riwayat Kertas Kerja", "Riwayat Kertas Kerja (Excel)"].includes(
           item.title
         )
       ) {
@@ -173,21 +173,37 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
               if (groupName === "Menu Utama" || groupName === "Bahan Revisi 3210") {
                 return (
                   <React.Fragment key={groupName}>
-                    {items.map((item) => (
-                      <Link
-                        key={item.id}
-                        to={item.path}
-                        className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                          location.pathname === item.path
-                            ? "bg-sidebar-accent text-sidebar-foreground"
-                            : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
-                        }`}
-                        title={item.description}
-                      >
-                        {getIcon(item.icon)}
-                        <span>{item.title}</span>
-                      </Link>
-                    ))}
+                    {items.map((item) => {
+                      const isExternal = item.path.startsWith('http');
+                      
+                      return isExternal ? (
+                        <a
+                          key={item.id}
+                          href={item.path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                          title={item.description}
+                        >
+                          {getIcon(item.icon)}
+                          <span>{item.title}</span>
+                        </a>
+                      ) : (
+                        <Link
+                          key={item.id}
+                          to={item.path}
+                          className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            location.pathname === item.path
+                              ? "bg-sidebar-accent text-sidebar-foreground"
+                              : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                          }`}
+                          title={item.description}
+                        >
+                          {getIcon(item.icon)}
+                          <span>{item.title}</span>
+                        </Link>
+                      );
+                    })}
                   </React.Fragment>
                 );
               }
@@ -227,21 +243,37 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
                   {/* Submenu jika grup diperluas */}
                   {expandedGroups[groupName] && (
                     <div className="ml-4 space-y-1 border-l border-sidebar-border pl-2">
-                      {items.map((item) => (
-                        <Link
-                          key={item.id}
-                          to={item.path}
-                          className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                            location.pathname === item.path
-                              ? "bg-sidebar-accent text-sidebar-foreground"
-                              : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
-                          }`}
-                          title={item.description}
-                        >
-                          {getIcon(item.icon)}
-                          <span>{item.title}</span>
-                        </Link>
-                      ))}
+                      {items.map((item) => {
+                        const isExternal = item.path.startsWith('http');
+                        
+                        return isExternal ? (
+                          <a
+                            key={item.id}
+                            href={item.path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                            title={item.description}
+                          >
+                            {getIcon(item.icon)}
+                            <span>{item.title}</span>
+                          </a>
+                        ) : (
+                          <Link
+                            key={item.id}
+                            to={item.path}
+                            className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                              location.pathname === item.path
+                                ? "bg-sidebar-accent text-sidebar-foreground"
+                                : "hover:bg-sidebar-accent/80 text-sidebar-foreground/90"
+                            }`}
+                            title={item.description}
+                          >
+                            {getIcon(item.icon)}
+                            <span>{item.title}</span>
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
