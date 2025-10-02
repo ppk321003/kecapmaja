@@ -82,7 +82,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "9",
+          id: "10",
           title: "Riwayat Kertas Kerja (Excel)",
           path: "/riwayat-kertas-kerja-excel",
           icon: "FileArchive",
@@ -92,7 +92,7 @@ export const useSidebar = () => {
         },
         // Referensi & Peraturan
         {
-          id: "10",
+          id: "11",
           title: "Perka BPS",
           path: "/perka-bps",
           icon: "Book",
@@ -101,7 +101,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "11",
+          id: "12",
           title: "SBM 2025",
           path: "/sbm-2025",
           icon: "Book",
@@ -110,7 +110,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "12",
+          id: "13",
           title: "SK Transport Lokal",
           path: "/sk-translok",
           icon: "FileText",
@@ -120,7 +120,7 @@ export const useSidebar = () => {
         },
         // Inventaris & Arsip
         {
-          id: "13",
+          id: "14",
           title: "Stock Opname",
           path: "/stock-opname",
           icon: "Database",
@@ -129,7 +129,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "14",
+          id: "15",
           title: "Kecap Maja (OLD)",
           path: "/kecap-maja-old",
           icon: "FileArchive",
@@ -138,7 +138,7 @@ export const useSidebar = () => {
           is_active: true
         },
         {
-          id: "15",
+          id: "16",
           title: "Perka PAK Sensus Survei",
           path: "/perka-8",
           icon: "Book",
