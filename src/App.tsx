@@ -59,8 +59,8 @@ const App = () => (
             {/* External Links */}
             <Route path="/bahan-revisi-web" element={<ExternalLink url="https://bahanrevisi-3210.vercel.app/" />} />
             <Route path="/bahan-revisi-spreadsheet" element={<ExternalLink url="https://docs.google.com/spreadsheets/d/1SgC_2TQz3AZdYTsbx-cIKg-DEvtOt3GtNl76zCzjLxU/edit?usp=sharing" />} />
-            <Route path="/riwayat-kertas-kerja" element={<ExternalLink url="https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P?usp=drive_link" />} />
-            <Route path="/riwayat-kertas-kerja-excel" element={<ExternalLink url="https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1?usp=drive_link" />} />
+            <Route path="/riwayat-kertas-kerja" element={<ExternalLink url="https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P" />} />
+            <Route path="/riwayat-kertas-kerja-excel" element={<ExternalLink url="https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1" />} />
             <Route path="/rekap-spk-bast" element={<ExternalLink url="https://docs.google.com/spreadsheets/d/1TDAIWzaCpKBN5yOsSSNJ71GbQvVXGLkDE-lgq4l7Vhs/edit?usp=sharing" />} />
             <Route path="/surat-pernyataan" element={<ExternalLink url="https://docs.google.com/spreadsheets/d/1tFYH23tDZ3I_dTk_DkndoeWiZotw2b9OApfzEoFnAlo/edit" />} />
             <Route path="/blanko-visum" element={<ExternalLink url="https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing" />} />
