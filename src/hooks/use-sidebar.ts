@@ -74,11 +74,20 @@ export const useSidebar = () => {
         },
         {
           id: "9",
-          title: "Riwayat Kertas Kerja",
+          title: "Riwayat Kertas Kerja (PDF)",
           path: "/riwayat-kertas-kerja",
           icon: "FileArchive",
           description: "Lihat riwayat kertas kerja dalam format PDF",
           order_index: 9,
+          is_active: true
+        },
+        {
+          id: "9b",
+          title: "Riwayat Kertas Kerja (Excel)",
+          path: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1?usp=drive_link",
+          icon: "FileArchive",
+          description: "Lihat riwayat kertas kerja dalam format Excel",
+          order_index: 9.5,
           is_active: true
         },
         // Referensi & Peraturan

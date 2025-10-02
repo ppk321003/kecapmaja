@@ -66,7 +66,7 @@ const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
       ) {
         group = "Dokumen & Formulir";
       } else if (
-        ["Rekap Honor Mitra", "Rekap SPK dan BAST", "Riwayat Kertas Kerja"].includes(
+        ["Rekap Honor Mitra", "Rekap SPK dan BAST", "Riwayat Kertas Kerja (PDF)", "Riwayat Kertas Kerja (Excel)"].includes(
           item.title
         )
       ) {
