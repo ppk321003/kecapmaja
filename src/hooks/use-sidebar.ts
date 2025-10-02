@@ -81,69 +81,60 @@ export const useSidebar = () => {
           order_index: 9,
           is_active: true
         },
-        {
-          id: "10",
-          title: "Riwayat Kertas Kerja (Excel)",
-          path: "https://drive.google.com/drive/folders/1-L6ZjyScfQWGshjgJetv98OGnKW-nXjI",
-          icon: "FileArchive",
-          description: "Lihat riwayat kertas kerja dalam format Excel",
-          order_index: 10,
-          is_active: true
-        },
         // Referensi & Peraturan
         {
-          id: "11",
+          id: "10",
           title: "Perka BPS",
           path: "/perka-bps",
           icon: "Book",
           description: "Lihat peraturan tentang standar biaya kegiatan statistik",
+          order_index: 10,
+          is_active: true
+        },
+        {
+          id: "11",
+          title: "SBM 2025",
+          path: "/sbm-2025",
+          icon: "Book",
+          description: "Standar Biaya Masukan Tahun 2025",
           order_index: 11,
           is_active: true
         },
         {
           id: "12",
-          title: "SBM 2025",
-          path: "/sbm-2025",
-          icon: "Book",
-          description: "Standar Biaya Masukan Tahun 2025",
-          order_index: 12,
-          is_active: true
-        },
-        {
-          id: "13",
           title: "SK Transport Lokal",
           path: "/sk-translok",
           icon: "FileText",
           description: "Akses SK Transport Lokal",
-          order_index: 13,
+          order_index: 12,
           is_active: true
         },
         // Inventaris & Arsip
         {
-          id: "14",
+          id: "13",
           title: "Stock Opname",
           path: "/stock-opname",
           icon: "Database",
           description: "Stock opname inventaris",
+          order_index: 13,
+          is_active: true
+        },
+        {
+          id: "14",
+          title: "Kecap Maja (OLD)",
+          path: "/kecap-maja-old",
+          icon: "FileArchive",
+          description: "Akses Kecap Maja versi lama",
           order_index: 14,
           is_active: true
         },
         {
           id: "15",
-          title: "Kecap Maja (OLD)",
-          path: "/kecap-maja-old",
-          icon: "FileArchive",
-          description: "Akses Kecap Maja versi lama",
-          order_index: 15,
-          is_active: true
-        },
-        {
-          id: "16",
           title: "Perka PAK Sensus Survei",
           path: "/perka-8",
           icon: "Book",
           description: "PPT Perka 8 Tahun 2024_Perka PAK Sensus Survei",
-          order_index: 16,
+          order_index: 15,
           is_active: true
         }
       ];
