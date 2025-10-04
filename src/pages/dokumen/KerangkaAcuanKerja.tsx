@@ -283,6 +283,178 @@ const KerangkaAcuanKerja = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Validate required fields
+    if (!formValues.jenisKak) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Jenis Kerangka Acuan Kerja wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formValues.jenisKak === "Belanja Paket Meeting" && !formValues.jenisPaketMeeting) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Jenis Paket Meeting wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.programPembebanan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Program Pembebanan wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.kegiatan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Kegiatan wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.kro) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "KRO wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.ro) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "RO wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.komponenOutput) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Komponen Output wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.akun) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Akun wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.paguAnggaran) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Pagu Anggaran wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate kegiatan details
+    for (let i = 0; i < formValues.kegiatanDetails.length; i++) {
+      const detail = formValues.kegiatanDetails[i];
+      if (!detail.namaKegiatan || !detail.volume || !detail.satuan || !detail.hargaSatuan) {
+        toast({
+          variant: "destructive",
+          title: "Validasi gagal",
+          description: `Detail Kegiatan ${i + 1} belum lengkap. Semua field wajib diisi`
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    if (!formValues.tanggalMulaiKegiatan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Tanggal Mulai Kegiatan wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.tanggalAkhirKegiatan) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Tanggal Akhir Kegiatan wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.tanggalPengajuanKAK) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Tanggal Pengajuan KAK wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formValues.pembuatDaftar) {
+      toast({
+        variant: "destructive",
+        title: "Validasi gagal",
+        description: "Pembuat Daftar wajib diisi"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate for Belanja Paket Meeting
+    if (formValues.jenisKak === "Belanja Paket Meeting") {
+      if (!formValues.jumlahGelombang || parseInt(formValues.jumlahGelombang) <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Validasi gagal",
+          description: "Jumlah Gelombang wajib diisi dan harus lebih dari 0"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate wave dates
+      for (let i = 0; i < formValues.waveDates.length; i++) {
+        const wave = formValues.waveDates[i];
+        if (!wave.startDate || !wave.endDate) {
+          toast({
+            variant: "destructive",
+            title: "Validasi gagal",
+            description: `Tanggal Gelombang ${i + 1} belum lengkap. Tanggal mulai dan akhir wajib diisi`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    }
+
     // Validate dates
     if (formValues.tanggalPengajuanKAK && formValues.tanggalMulaiKegiatan && formValues.tanggalPengajuanKAK > formValues.tanggalMulaiKegiatan) {
       toast({
@@ -347,8 +519,8 @@ const KerangkaAcuanKerja = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="jenisKak">Jenis Kerangka Acuan Kerja</Label>
-                  <Select value={formValues.jenisKak} onValueChange={value => handleChange('jenisKak', value)}>
+                  <Label htmlFor="jenisKak">Jenis Kerangka Acuan Kerja <span className="text-destructive">*</span></Label>
+                  <Select value={formValues.jenisKak} onValueChange={value => handleChange('jenisKak', value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih jenis KAK" />
                     </SelectTrigger>
@@ -361,8 +533,8 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 {shouldShowJenisPaketMeeting && <div className="space-y-2">
-                    <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting</Label>
-                    <Select value={formValues.jenisPaketMeeting} onValueChange={value => handleChange('jenisPaketMeeting', value)}>
+                    <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting <span className="text-destructive">*</span></Label>
+                    <Select value={formValues.jenisPaketMeeting} onValueChange={value => handleChange('jenisPaketMeeting', value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis paket meeting" />
                       </SelectTrigger>
@@ -375,8 +547,8 @@ const KerangkaAcuanKerja = () => {
                   </div>}
 
                 <div className="space-y-2">
-                  <Label htmlFor="programPembebanan">Program Pembebanan</Label>
-                  <Select value={formValues.programPembebanan} onValueChange={value => handleChange('programPembebanan', value)}>
+                  <Label htmlFor="programPembebanan">Program Pembebanan <span className="text-destructive">*</span></Label>
+                  <Select value={formValues.programPembebanan} onValueChange={value => handleChange('programPembebanan', value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih program pembebanan" />
                     </SelectTrigger>
@@ -389,7 +561,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kegiatan">Kegiatan</Label>
+                  <Label htmlFor="kegiatan">Kegiatan <span className="text-destructive">*</span></Label>
                   <KegiatanSelect 
                     value={formValues.kegiatan} 
                     onChange={value => handleChange('kegiatan', value)} 
@@ -399,7 +571,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kro">KRO</Label>
+                  <Label htmlFor="kro">KRO <span className="text-destructive">*</span></Label>
                   <KROSelect 
                     value={formValues.kro} 
                     onChange={value => handleChange('kro', value)} 
@@ -409,7 +581,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ro">RO</Label>
+                  <Label htmlFor="ro">RO <span className="text-destructive">*</span></Label>
                   <ROSelect 
                     value={formValues.ro} 
                     onChange={value => handleChange('ro', value)} 
@@ -419,12 +591,12 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="komponenOutput">Komponen Output</Label>
+                  <Label htmlFor="komponenOutput">Komponen Output <span className="text-destructive">*</span></Label>
                   <KomponenSelect value={formValues.komponenOutput} onChange={value => handleChange('komponenOutput', value)} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="akun">Akun</Label>
+                  <Label htmlFor="akun">Akun <span className="text-destructive">*</span></Label>
                   <AkunSelect 
                     value={formValues.akun} 
                     onChange={value => handleChange('akun', value)} 
@@ -433,8 +605,8 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paguAnggaran">Pagu Anggaran</Label>
-                  <Input id="paguAnggaran" type="number" placeholder="Masukkan pagu anggaran" value={formValues.paguAnggaran} onChange={e => handleChange('paguAnggaran', e.target.value)} />
+                  <Label htmlFor="paguAnggaran">Pagu Anggaran <span className="text-destructive">*</span></Label>
+                  <Input id="paguAnggaran" type="number" placeholder="Masukkan pagu anggaran" value={formValues.paguAnggaran} onChange={e => handleChange('paguAnggaran', e.target.value)} required />
                 </div>
               </div>
 
@@ -456,16 +628,16 @@ const KerangkaAcuanKerja = () => {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor={`namaKegiatan-${kegiatan.id}`}>Nama Kegiatan</Label>
-                          <Input id={`namaKegiatan-${kegiatan.id}`} placeholder="Masukkan nama kegiatan" value={kegiatan.namaKegiatan} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'namaKegiatan', e.target.value)} />
+                          <Label htmlFor={`namaKegiatan-${kegiatan.id}`}>Nama Kegiatan <span className="text-destructive">*</span></Label>
+                          <Input id={`namaKegiatan-${kegiatan.id}`} placeholder="Masukkan nama kegiatan" value={kegiatan.namaKegiatan} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'namaKegiatan', e.target.value)} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`volume-${kegiatan.id}`}>Volume</Label>
-                          <Input id={`volume-${kegiatan.id}`} type="number" placeholder="Masukkan volume" value={kegiatan.volume} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'volume', e.target.value)} />
+                          <Label htmlFor={`volume-${kegiatan.id}`}>Volume <span className="text-destructive">*</span></Label>
+                          <Input id={`volume-${kegiatan.id}`} type="number" placeholder="Masukkan volume" value={kegiatan.volume} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'volume', e.target.value)} required />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`satuan-${kegiatan.id}`}>Satuan</Label>
-                          <Select value={kegiatan.satuan} onValueChange={value => handleKegiatanDetailChange(kegiatan.id, 'satuan', value)}>
+                          <Label htmlFor={`satuan-${kegiatan.id}`}>Satuan <span className="text-destructive">*</span></Label>
+                          <Select value={kegiatan.satuan} onValueChange={value => handleKegiatanDetailChange(kegiatan.id, 'satuan', value)} required>
                             <SelectTrigger>
                               <SelectValue placeholder="Pilih satuan" />
                             </SelectTrigger>
@@ -477,8 +649,8 @@ const KerangkaAcuanKerja = () => {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`hargaSatuan-${kegiatan.id}`}>Harga Satuan</Label>
-                          <Input id={`hargaSatuan-${kegiatan.id}`} type="number" placeholder="Masukkan harga satuan" value={kegiatan.hargaSatuan} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', e.target.value)} />
+                          <Label htmlFor={`hargaSatuan-${kegiatan.id}`}>Harga Satuan <span className="text-destructive">*</span></Label>
+                          <Input id={`hargaSatuan-${kegiatan.id}`} type="number" placeholder="Masukkan harga satuan" value={kegiatan.hargaSatuan} onChange={e => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', e.target.value)} required />
                         </div>
                       </div>
                     </CardContent>
@@ -487,7 +659,7 @@ const KerangkaAcuanKerja = () => {
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Tanggal Mulai Kegiatan</Label>
+                  <Label>Tanggal Mulai Kegiatan <span className="text-destructive">*</span></Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalMulaiKegiatan && "text-muted-foreground")}>
@@ -502,7 +674,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal Akhir Kegiatan</Label>
+                  <Label>Tanggal Akhir Kegiatan <span className="text-destructive">*</span></Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalAkhirKegiatan && "text-muted-foreground")}>
@@ -517,7 +689,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Tanggal Pengajuan KAK</Label>
+                  <Label>Tanggal Pengajuan KAK <span className="text-destructive">*</span></Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalPengajuanKAK && "text-muted-foreground")}>
@@ -532,8 +704,8 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
-                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)}>
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar <span className="text-destructive">*</span></Label>
+                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih pembuat daftar" />
                     </SelectTrigger>
@@ -548,15 +720,15 @@ const KerangkaAcuanKerja = () => {
 
               {formValues.jenisKak === "Belanja Paket Meeting" && <div className="grid grid-cols-1">
                   <div className="space-y-2">
-                    <Label htmlFor="jumlahGelombang">Jumlah Gelombang</Label>
-                    <Input id="jumlahGelombang" type="number" min="0" placeholder="Masukkan jumlah gelombang" value={formValues.jumlahGelombang} onChange={e => handleChange('jumlahGelombang', e.target.value)} />
+                    <Label htmlFor="jumlahGelombang">Jumlah Gelombang <span className="text-destructive">*</span></Label>
+                    <Input id="jumlahGelombang" type="number" min="1" placeholder="Masukkan jumlah gelombang" value={formValues.jumlahGelombang} onChange={e => handleChange('jumlahGelombang', e.target.value)} required />
                   </div>
                 </div>}
 
               {formValues.jenisKak === "Belanja Paket Meeting" && formValues.waveDates.length > 0 && <div className="grid gap-6 md:grid-cols-2">
                   {formValues.waveDates.map((wave, index) => <React.Fragment key={wave.id}>
                       <div className="space-y-2">
-                        <Label>{`Tanggal Mulai Gelombang-${index + 1}`}</Label>
+                        <Label>{`Tanggal Mulai Gelombang-${index + 1}`} <span className="text-destructive">*</span></Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !wave.startDate && "text-muted-foreground")}>
@@ -571,7 +743,7 @@ const KerangkaAcuanKerja = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>{`Tanggal Akhir Gelombang-${index + 1}`}</Label>
+                        <Label>{`Tanggal Akhir Gelombang-${index + 1}`} <span className="text-destructive">*</span></Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !wave.endDate && "text-muted-foreground")}>
