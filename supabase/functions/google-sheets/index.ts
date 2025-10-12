@@ -15,35 +15,62 @@ interface SheetOperation {
 }
 
 async function getAccessToken() {
+  console.log('Getting access token...');
   const privateKey = Deno.env.get('GOOGLE_PRIVATE_KEY')?.replace(/\\n/g, '\n');
   const serviceAccountEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
 
+  console.log('Service account email:', serviceAccountEmail);
+  console.log('Private key exists:', !!privateKey);
+
   if (!privateKey || !serviceAccountEmail) {
+    console.error('Missing Google credentials');
     throw new Error('Missing Google credentials');
   }
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = now + 3600;
 
   const header = {
     alg: 'RS256',
     typ: 'JWT',
   };
 
-  const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: serviceAccountEmail,
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
+    exp: expiry,
     iat: now,
   };
 
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '');
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '');
-  const unsignedToken = `${headerB64}.${payloadB64}`;
+  // Create JWT manually
+  const encodedHeader = btoa(JSON.stringify(header))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  
+  const encodedPayload = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+
+  console.log('Importing private key...');
+  
+  // Import the private key
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = privateKey
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
+  
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
 
   const key = await crypto.subtle.importKey(
     'pkcs8',
-    encoder.encode(privateKey),
+    binaryDer,
     {
       name: 'RSASSA-PKCS1-v1_5',
       hash: 'SHA-256',
@@ -52,19 +79,22 @@ async function getAccessToken() {
     ['sign']
   );
 
+  console.log('Signing JWT...');
+  const encoder = new TextEncoder();
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5',
     key,
     encoder.encode(unsignedToken)
   );
 
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
-    .replace(/=/g, '');
+    .replace(/=+$/, '');
 
-  const jwt = `${unsignedToken}.${signatureB64}`;
+  const jwt = `${unsignedToken}.${encodedSignature}`;
 
+  console.log('Requesting access token from Google...');
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -72,31 +102,50 @@ async function getAccessToken() {
   });
 
   const tokenData = await tokenResponse.json();
+  console.log('Token response status:', tokenResponse.status);
+  
+  if (!tokenResponse.ok) {
+    console.error('Token error:', tokenData);
+    throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
+  }
+  
+  console.log('Access token obtained successfully');
   return tokenData.access_token;
 }
 
 serve(async (req) => {
+  console.log('Google Sheets function invoked');
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { spreadsheetId, operation, range, values, rowIndex }: SheetOperation = await req.json();
+    const body = await req.json();
+    console.log('Request body:', JSON.stringify(body));
+    
+    const { spreadsheetId, operation, range, values, rowIndex }: SheetOperation = body;
+    
+    console.log('Getting access token...');
     const accessToken = await getAccessToken();
 
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 
     if (operation === 'read') {
+      console.log(`Reading range: ${range || 'Sheet1'}`);
       const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
+      console.log('Read response:', JSON.stringify(data));
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (operation === 'append') {
+      console.log(`Appending to range: ${range || 'Sheet1'}`);
+      console.log('Values to append:', JSON.stringify(values));
       const response = await fetch(
         `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
         {
@@ -109,12 +158,21 @@ serve(async (req) => {
         }
       );
       const data = await response.json();
+      console.log('Append response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        console.error('Append failed:', data);
+        throw new Error(`Append failed: ${JSON.stringify(data)}`);
+      }
+      
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (operation === 'update' && rowIndex !== undefined) {
+      console.log(`Updating row ${rowIndex} in range: ${range || 'Sheet1'}`);
+      console.log('Values to update:', JSON.stringify(values));
       const response = await fetch(
         `${baseUrl}/values/${range || 'Sheet1'}!A${rowIndex}?valueInputOption=USER_ENTERED`,
         {
@@ -127,13 +185,21 @@ serve(async (req) => {
         }
       );
       const data = await response.json();
+      console.log('Update response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        console.error('Update failed:', data);
+        throw new Error(`Update failed: ${JSON.stringify(data)}`);
+      }
+      
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (operation === 'delete' && rowIndex !== undefined) {
-      const sheetId = 889599024; // Default, should be passed as parameter
+      console.log(`Deleting row ${rowIndex}`);
+      const sheetId = 0; // Default sheet ID
       const response = await fetch(
         `${baseUrl}:batchUpdate`,
         {
@@ -157,17 +223,21 @@ serve(async (req) => {
         }
       );
       const data = await response.json();
+      console.log('Delete response:', JSON.stringify(data));
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.error('Invalid operation:', operation);
     return new Response(JSON.stringify({ error: 'Invalid operation' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Error in google-sheets function:', errorMessage);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
