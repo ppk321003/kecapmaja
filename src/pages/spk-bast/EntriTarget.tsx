@@ -38,8 +38,12 @@ const spkData = [
   { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
 ];
 
-// Initialize empty job types
-const jobTypes: any[] = [];
+// Job types options
+const jobTypes = [
+  { id: 1, name: "Petugas Pendataan Lapangan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 2, name: "Petugas Pemeriksaan Lapangan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 3, name: "Petugas Pengolahan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+];
 
 type Worker = {
   id: number;
