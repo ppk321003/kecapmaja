@@ -1,0 +1,1274 @@
+import { useState, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Mock data for SPK periods
+const spkData = [
+  { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 2, month: "Februari", activities: 10, workers: 85, target: 2645, value: 201595000.00, sent: 10, approved: 10 },
+  { id: 3, month: "Maret", activities: 2, workers: 10, target: 500, value: 12200000.00, sent: 2, approved: 2 },
+  { id: 4, month: "April", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 5, month: "Mei", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 6, month: "Juni", activities: 7, workers: 78, target: 1953, value: 114733000.00, sent: 7, approved: 7 },
+  { id: 7, month: "Juli", activities: 4, workers: 29, target: 1190, value: 65362000.00, sent: 4, approved: 4 },
+  { id: 8, month: "Agustus", activities: 2, workers: 24, target: 820, value: 38620000.00, sent: 2, approved: 2 },
+  { id: 9, month: "September", activities: 6, workers: 37, target: 1260, value: 69300000.00, sent: 6, approved: 6 },
+  { id: 10, month: "Oktober", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 11, month: "November", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+];
+
+const jobTypes = [
+  { id: 1, name: "Petugas Pendataan Lapangan", activities: 5, workers: 62, target: 1375, value: 158755000.00, sent: 5, approved: 5 },
+  { id: 2, name: "Petugas Pemeriksaan Lapangan", activities: 2, workers: 13, target: 571, value: 25012000.00, sent: 2, approved: 2 },
+  { id: 3, name: "Petugas Pengolahan", activities: 3, workers: 10, target: 699, value: 17828000.00, sent: 3, approved: 3 },
+];
+
+type Worker = {
+  id: number;
+  nama: string;
+  nip: string;
+  jabatan: string;
+  target: string;
+  realisasi: string;
+};
+
+type Activity = {
+  id: number;
+  namaKegiatan: string;
+  tanggalMulai: Date;
+  tanggalAkhir: Date;
+  hargaSatuan: string;
+  satuan: string;
+  komponenPOK: string;
+  nomorSK: string;
+  tanggalSK: Date;
+  koordinator: string;
+  workers: Worker[];
+  jobType: string;
+};
+
+const komponenPOKOptions = [
+  { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
+  { value: "051", label: "051 - PERSIAPAN" },
+  { value: "052", label: "052 - PENGUMPULAN DATA" },
+  { value: "053", label: "053 - PENGOLAHAN DAN ANALISIS" },
+  { value: "054", label: "054 - DISEMINASI DAN EVALUASI" },
+  { value: "506", label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat" },
+  { value: "516", label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan" },
+  { value: "519", label: "519 - Penyusunan Bahan Publisitas" },
+];
+
+const formSchema = z.object({
+  namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
+  tanggalSK: z.date({ required_error: "Tanggal SK wajib diisi" }),
+  tanggalMulai: z.date({ required_error: "Tanggal mulai wajib diisi" }),
+  tanggalAkhir: z.date({ required_error: "Tanggal akhir wajib diisi" }),
+  hargaSatuan: z.string().min(1, "Harga satuan wajib diisi").refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0;
+  }, "Harga satuan harus berupa angka positif"),
+  satuan: z.string().min(1, "Satuan wajib dipilih"),
+  satuanCustom: z.string().optional(),
+  komponenPOK: z.string().min(1, "Komponen POK wajib dipilih"),
+  nomorSK: z.string().min(1, "Nomor SK wajib diisi"),
+  koordinator: z.string().min(1, "Koordinator wajib dipilih"),
+}).refine((data) => data.tanggalMulai >= data.tanggalSK, {
+  message: "Tanggal mulai kegiatan tidak boleh lebih awal dari tanggal SK",
+  path: ["tanggalMulai"],
+}).refine((data) => data.tanggalAkhir >= data.tanggalSK, {
+  message: "Tanggal akhir kegiatan tidak boleh lebih awal dari tanggal SK",
+  path: ["tanggalAkhir"],
+}).refine((data) => data.tanggalAkhir >= data.tanggalMulai, {
+  message: "Tanggal akhir kegiatan tidak boleh lebih awal dari tanggal mulai",
+  path: ["tanggalAkhir"],
+}).refine((data) => {
+  if (data.satuan === "Lainnya" && !data.satuanCustom?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Satuan custom wajib diisi jika memilih 'Lainnya'",
+  path: ["satuanCustom"],
+});
+
+export default function EntriTarget() {
+  const [selectedYear, setSelectedYear] = useState("2025");
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+  const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
+  const [showJobTypesDialog, setShowJobTypesDialog] = useState(false);
+  const [showProposalsDialog, setShowProposalsDialog] = useState(false);
+  const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
+  const [showAddWorkerDialog, setShowAddWorkerDialog] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [selectedActivityForWorkers, setSelectedActivityForWorkers] = useState<Activity | null>(null);
+  // Store activities per month and job type
+  const [activitiesByPeriod, setActivitiesByPeriod] = useState<{[key: string]: Activity[]}>({});
+  const [selectedWorkers, setSelectedWorkers] = useState<{[key: number]: {selected: boolean, target: string, realisasi: string}}>({});
+  const [editingWorker, setEditingWorker] = useState<{activityId: number, worker: Worker} | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Get activities for current period and job type
+  const periodKey = `${selectedPeriod}-${selectedJobType}`;
+  const activities = activitiesByPeriod[periodKey] || [];
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      namaKegiatan: "",
+      hargaSatuan: "",
+      satuan: "",
+      satuanCustom: "",
+      komponenPOK: "",
+      nomorSK: "",
+      koordinator: "",
+    },
+  });
+
+  const [showCustomSatuan, setShowCustomSatuan] = useState(false);
+
+  const handleActionClick = (month: string) => {
+    setSelectedPeriod(month);
+    setShowJobTypesDialog(true);
+  };
+
+  const handleJobTypeClick = (jobTypeName: string) => {
+    const specialJobTypes = ["Petugas Pendataan Lapangan", "Petugas Pemeriksaan Lapangan", "Petugas Pengolahan"];
+    if (specialJobTypes.includes(jobTypeName)) {
+      setSelectedJobType(jobTypeName);
+      setShowProposalsDialog(true);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value) + ',-';
+  };
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    const finalSatuan = data.satuan === "Lainnya" ? data.satuanCustom || "" : data.satuan;
+    
+    if (editingActivity) {
+      const updatedActivities = activities.map(activity => 
+        activity.id === editingActivity.id 
+          ? {
+              ...activity,
+              namaKegiatan: data.namaKegiatan,
+              tanggalMulai: data.tanggalMulai,
+              tanggalAkhir: data.tanggalAkhir,
+              hargaSatuan: data.hargaSatuan,
+              satuan: finalSatuan,
+              komponenPOK: data.komponenPOK,
+              nomorSK: data.nomorSK,
+              tanggalSK: data.tanggalSK,
+              koordinator: data.koordinator,
+            }
+          : activity
+      );
+      setActivitiesByPeriod({
+        ...activitiesByPeriod,
+        [periodKey]: updatedActivities
+      });
+      
+      toast({
+        title: "Kegiatan berhasil diperbarui",
+        description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`,
+      });
+      setEditingActivity(null);
+    } else {
+      const newActivity: Activity = {
+        id: activities.length + 1,
+        namaKegiatan: data.namaKegiatan,
+        tanggalMulai: data.tanggalMulai,
+        tanggalAkhir: data.tanggalAkhir,
+        hargaSatuan: data.hargaSatuan,
+        satuan: finalSatuan,
+        komponenPOK: data.komponenPOK,
+        nomorSK: data.nomorSK,
+        tanggalSK: data.tanggalSK,
+        koordinator: data.koordinator,
+        workers: [],
+        jobType: selectedJobType || "",
+      };
+      
+      setActivitiesByPeriod({
+        ...activitiesByPeriod,
+        [periodKey]: [...activities, newActivity]
+      });
+      
+      toast({
+        title: "Kegiatan berhasil ditambahkan",
+        description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`,
+      });
+    }
+    
+    setShowAddActivityDialog(false);
+    setShowCustomSatuan(false);
+    form.reset();
+  };
+
+  const handleDeleteActivity = (id: number) => {
+    setActivitiesByPeriod({
+      ...activitiesByPeriod,
+      [periodKey]: activities.filter(activity => activity.id !== id)
+    });
+    toast({
+      title: "Kegiatan berhasil dihapus",
+      description: "Kegiatan telah dihapus dari daftar.",
+    });
+  };
+
+  const handleEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    const standardSatuans = ["BS", "Dokumen", "EA", "Segmen"];
+    const isCustomSatuan = !standardSatuans.includes(activity.satuan);
+    
+    form.reset({
+      namaKegiatan: activity.namaKegiatan,
+      tanggalMulai: activity.tanggalMulai,
+      tanggalAkhir: activity.tanggalAkhir,
+      hargaSatuan: activity.hargaSatuan,
+      satuan: isCustomSatuan ? "Lainnya" : activity.satuan,
+      satuanCustom: isCustomSatuan ? activity.satuan : "",
+      komponenPOK: activity.komponenPOK,
+      nomorSK: activity.nomorSK,
+      tanggalSK: activity.tanggalSK,
+      koordinator: activity.koordinator,
+    });
+    setShowCustomSatuan(isCustomSatuan);
+    setShowAddActivityDialog(true);
+  };
+
+  const handleAddWorker = (activity: Activity) => {
+    setSelectedActivityForWorkers(activity);
+    const initialWorkers: {[key: number]: {selected: boolean, target: string, realisasi: string}} = {};
+    dummyWorkers.forEach(worker => {
+      initialWorkers[worker.id] = { selected: false, target: "", realisasi: "" };
+    });
+    setSelectedWorkers(initialWorkers);
+    setSearchTerm("");
+    setShowAddWorkerDialog(true);
+  };
+
+  const handleSaveWorker = () => {
+    if (!selectedActivityForWorkers) return;
+    
+    const newWorkers: Worker[] = dummyWorkers
+      .filter(worker => selectedWorkers[worker.id]?.selected)
+      .map(worker => ({
+        ...worker,
+        target: selectedWorkers[worker.id].target || "0",
+        realisasi: selectedWorkers[worker.id].realisasi || "0",
+      }));
+    
+    if (newWorkers.length === 0) {
+      toast({
+        title: "Tidak ada petugas dipilih",
+        description: "Pilih minimal satu petugas dan isi targetnya.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate realisasi <= target
+    const invalidWorkers = newWorkers.filter(w => parseFloat(w.realisasi) > parseFloat(w.target));
+    if (invalidWorkers.length > 0) {
+      toast({
+        title: "Realisasi tidak valid",
+        description: `Realisasi tidak boleh lebih besar dari Target untuk: ${invalidWorkers.map(w => w.nama).join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for duplicates within the same activity
+    const existingWorkerIds = selectedActivityForWorkers.workers.map(w => w.id);
+    const duplicates = newWorkers.filter(w => existingWorkerIds.includes(w.id));
+    
+    if (duplicates.length > 0) {
+      toast({
+        title: "Petugas sudah terdaftar",
+        description: `${duplicates.map(d => d.nama).join(", ")} sudah terdaftar dalam kegiatan ini.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const updatedActivities = activities.map(activity => 
+      activity.id === selectedActivityForWorkers.id 
+        ? { ...activity, workers: [...activity.workers, ...newWorkers] }
+        : activity
+    );
+    setActivitiesByPeriod({
+      ...activitiesByPeriod,
+      [periodKey]: updatedActivities
+    });
+    
+    toast({
+      title: "Petugas berhasil ditambahkan",
+      description: `${newWorkers.length} petugas telah ditambahkan untuk kegiatan "${selectedActivityForWorkers?.namaKegiatan}".`,
+    });
+    setShowAddWorkerDialog(false);
+    setSelectedActivityForWorkers(null);
+  };
+
+  const handleDeleteWorker = (activityId: number, workerId: number) => {
+    const updatedActivities = activities.map(activity => 
+      activity.id === activityId 
+        ? { ...activity, workers: activity.workers.filter(w => w.id !== workerId) }
+        : activity
+    );
+    setActivitiesByPeriod({
+      ...activitiesByPeriod,
+      [periodKey]: updatedActivities
+    });
+    toast({
+      title: "Petugas berhasil dihapus",
+      description: "Petugas telah dihapus dari kegiatan.",
+    });
+  };
+
+  const handleEditWorker = (activityId: number, worker: Worker) => {
+    setEditingWorker({ activityId, worker });
+  };
+
+  const handleUpdateWorker = (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
+    // Validate realisasi <= target
+    if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
+      toast({
+        title: "Realisasi tidak valid",
+        description: "Realisasi tidak boleh lebih besar dari Target.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if the new name is already used by another worker in this activity
+    const activity = activities.find(a => a.id === activityId);
+    const duplicateWorker = activity?.workers.find(w => w.id !== workerId && w.nama === newName);
+    
+    if (duplicateWorker) {
+      toast({
+        title: "Nama petugas sudah terdaftar",
+        description: "Nama petugas sudah digunakan dalam kegiatan ini.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedActivities = activities.map(activity => 
+      activity.id === activityId 
+        ? { 
+            ...activity, 
+            workers: activity.workers.map(w => 
+              w.id === workerId 
+                ? { ...w, nama: newName, target: newTarget, realisasi: newRealisasi }
+                : w
+            )
+          }
+        : activity
+    );
+    setActivitiesByPeriod({
+      ...activitiesByPeriod,
+      [periodKey]: updatedActivities
+    });
+    setEditingWorker(null);
+    toast({
+      title: "Petugas berhasil diperbarui",
+      description: "Data petugas telah diperbarui.",
+    });
+  };
+
+  const handleSendToPPK = (activityId: number) => {
+    const activity = activities.find(a => a.id === activityId);
+    toast({
+      title: "Kirim ke PPK",
+      description: `Kegiatan "${activity?.namaKegiatan}" akan dikirim ke PPK untuk disetujui.`,
+    });
+  };
+
+  const dummyWorkers = [
+    { id: 1, nama: "Ahmad Subagio", nip: "198501012010121001", jabatan: "Koordinator" },
+    { id: 2, nama: "Siti Nurhaliza", nip: "198602022011012001", jabatan: "Anggota" },
+    { id: 3, nama: "Budi Santoso", nip: "198703032012011001", jabatan: "Anggota" },
+    { id: 4, nama: "Dewi Lestari", nip: "198804042013012001", jabatan: "Anggota" },
+    { id: 5, nama: "Eko Prasetyo", nip: "198905052014011001", jabatan: "Anggota" },
+  ];
+
+  const getKomponenPOKLabel = (value: string) => {
+    const option = komponenPOKOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
+  };
+
+  // Get worker options for combobox, excluding already added workers and the current editing worker
+  const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number): ComboboxOption[] => {
+    const existingWorkerIds = activity.workers
+      .filter(w => w.id !== excludeWorkerId) // Exclude current worker being edited
+      .map(w => w.id);
+    
+    return dummyWorkers
+      .filter(w => !existingWorkerIds.includes(w.id))
+      .map(w => ({
+        value: w.nama,
+        label: `${w.nama} (${w.nip})`,
+      }));
+  };
+
+  // Filter workers based on search term
+  const filteredWorkers = useMemo(() => {
+    if (!searchTerm) return dummyWorkers;
+    
+    const lowerSearch = searchTerm.toLowerCase();
+    return dummyWorkers.filter(w => 
+      w.nama.toLowerCase().includes(lowerSearch) || 
+      w.nip.includes(searchTerm)
+    );
+  }, [searchTerm]);
+
+  // Activities are already filtered by period and job type via periodKey
+  const filteredActivities = activities;
+
+  // Get job type color and label
+  const getJobTypeInfo = (jobType: string) => {
+    switch(jobType) {
+      case "Petugas Pendataan Lapangan":
+        return { color: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200", label: "Entri Petugas Pendataan Lapangan" };
+      case "Petugas Pemeriksaan Lapangan":
+        return { color: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-200", label: "Entri Petugas Pemeriksaan Lapangan" };
+      case "Petugas Pengolahan":
+        return { color: "bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900 dark:border-orange-700 dark:text-orange-200", label: "Entri Petugas Pengolahan" };
+      default:
+        return { color: "bg-muted", label: "Entri Kegiatan" };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Entri Kegiatan</h1>
+        <p className="text-muted-foreground mt-2">
+          Penetapan target kegiatan untuk mitra statistik
+        </p>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="mb-4">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Pilih Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2024">2024</SelectItem>
+                <SelectItem value="2025">2025</SelectItem>
+                <SelectItem value="2026">2026</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold mb-4">
+              Pilih Periode (Bulan) SPK Tahun <span className="text-destructive">{selectedYear}</span>
+            </h2>
+            
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12">No.</TableHead>
+                    <TableHead>Periode (Bulan) SPK</TableHead>
+                    <TableHead className="text-center">Jumlah Kegiatan Yang Dientri</TableHead>
+                    <TableHead className="text-center">Jumlah Petugas (Unik) Yang Terlibat</TableHead>
+                    <TableHead className="text-center">Target Pekerjaan (BS,Resp,Dok,dll)</TableHead>
+                    <TableHead className="text-right">Nilai Perjanjian Rp.</TableHead>
+                    <TableHead className="text-center">Jumlah kegiatan dikirim ke PPK</TableHead>
+                    <TableHead className="text-center">Jumlah kegiatan Disetujui PPK</TableHead>
+                    <TableHead className="text-center w-20">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {spkData.map((item, index) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>SPK Bulan {item.month} {selectedYear}</TableCell>
+                      <TableCell className="text-center">{item.activities}</TableCell>
+                      <TableCell className="text-center">{item.workers}</TableCell>
+                      <TableCell className="text-center">{item.target || ""}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
+                      <TableCell className="text-center">{item.sent}</TableCell>
+                      <TableCell className="text-center">{item.approved}</TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                          onClick={() => handleActionClick(item.month)}
+                          title="Entri"
+                        >
+                          <LogIn className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Job Types Dialog */}
+      <Dialog open={showJobTypesDialog} onOpenChange={setShowJobTypesDialog}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              Pilih Jenis Pekerjaan untuk SPK Bulan {selectedPeriod} {selectedYear}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-12">No.</TableHead>
+                  <TableHead>Jenis Pekerjaan</TableHead>
+                  <TableHead className="text-center">Jumlah Kegiatan Yang Dientri</TableHead>
+                  <TableHead className="text-center">Jumlah Petugas (Unik) Yang Terlibat</TableHead>
+                  <TableHead className="text-center">Target Pekerjaan (BS,Resp,Dok,dll)</TableHead>
+                  <TableHead className="text-right">Nilai Perjanjian Rp.</TableHead>
+                  <TableHead className="text-center">Jumlah kegiatan dikirim ke PPK</TableHead>
+                  <TableHead className="text-center">Jumlah kegiatan Disetujui PPK</TableHead>
+                  <TableHead className="text-center w-20">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobTypes.map((job, index) => (
+                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleJobTypeClick(job.name)}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{job.name}</TableCell>
+                    <TableCell className="text-center">{job.activities}</TableCell>
+                    <TableCell className="text-center">{job.workers}</TableCell>
+                    <TableCell className="text-center">{job.target}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(job.value)}</TableCell>
+                    <TableCell className="text-center">{job.sent}</TableCell>
+                    <TableCell className="text-center">{job.approved}</TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJobTypeClick(job.name);
+                        }}
+                        title="Entri"
+                      >
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Proposals Dialog */}
+      <Dialog open={showProposalsDialog} onOpenChange={setShowProposalsDialog}>
+        <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 rounded-none">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Daftar Usulan SPK</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 p-4 overflow-y-auto h-[calc(100vh-8rem)]">
+            <div className="bg-muted/30 p-4 rounded-lg">
+              <div className="text-sm">
+                <div className="mb-1"><span className="font-semibold">SPK Bulan {selectedPeriod} {selectedYear}</span></div>
+                <div className="text-muted-foreground">{selectedJobType}</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setShowAddActivityDialog(true)}>
+                Tambah Kegiatan
+              </Button>
+            </div>
+
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12">No.</TableHead>
+                    <TableHead>Nama Kegiatan</TableHead>
+                    <TableHead className="text-center">Tanggal Mulai</TableHead>
+                    <TableHead className="text-center">Tanggal Akhir</TableHead>
+                    <TableHead className="text-right">Harga Satuan</TableHead>
+                    <TableHead>Satuan</TableHead>
+                    <TableHead>Komponen POK</TableHead>
+                    <TableHead>Nomor SK</TableHead>
+                    <TableHead className="text-center">Tanggal SK</TableHead>
+                    <TableHead>Koordinator</TableHead>
+                    <TableHead className="text-center w-40">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredActivities.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                        Belum ada kegiatan. Klik "Tambah Kegiatan" untuk menambahkan.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredActivities.map((activity, index) => (
+                      <>
+                        <TableRow key={activity.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{activity.namaKegiatan}</TableCell>
+                          <TableCell className="text-center">{format(activity.tanggalMulai, "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="text-center">{format(activity.tanggalAkhir, "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(parseFloat(activity.hargaSatuan))}</TableCell>
+                          <TableCell>{activity.satuan}</TableCell>
+                          <TableCell>{getKomponenPOKLabel(activity.komponenPOK)}</TableCell>
+                          <TableCell>{activity.nomorSK}</TableCell>
+                          <TableCell className="text-center">{format(activity.tanggalSK, "dd/MM/yyyy")}</TableCell>
+                          <TableCell>{activity.koordinator}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                                onClick={() => handleAddWorker(activity)}
+                                title="Tambah Petugas"
+                              >
+                                <UserPlus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10"
+                                onClick={() => handleEditActivity(activity)}
+                                title="Edit Kegiatan"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-600 hover:bg-green-600/10"
+                                onClick={() => handleSendToPPK(activity.id)}
+                                title="Kirim ke PPK"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteActivity(activity.id)}
+                                title="Hapus Kegiatan"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {/* Worker sub-rows */}
+                        {activity.workers.map((worker, workerIndex) => (
+                          <TableRow key={`${activity.id}-worker-${worker.id}`} className="bg-muted/30">
+                            <TableCell></TableCell>
+                             <TableCell colSpan={2} className="pl-8">
+                              {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
+                                <Combobox
+                                  options={getAvailableWorkers(activity, worker.id)}
+                                  value={worker.nama}
+                                  onValueChange={(value) => handleUpdateWorker(activity.id, worker.id, value, worker.target, worker.realisasi)}
+                                  placeholder="Pilih petugas"
+                                  searchPlaceholder="Cari nama petugas..."
+                                  className="h-8"
+                                />
+                              ) : (
+                                <span className="text-sm">{workerIndex + 1}. {worker.nama} ({worker.nip})</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center text-sm">
+                              {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs">Target:</span>
+                                    <Input
+                                      type="number"
+                                      defaultValue={worker.target}
+                                      onChange={(e) => {
+                                        const target = e.target.value;
+                                        const realisasi = worker.realisasi;
+                                        if (parseFloat(realisasi) > parseFloat(target)) {
+                                          e.target.setCustomValidity("Realisasi tidak boleh lebih besar dari Target");
+                                        } else {
+                                          e.target.setCustomValidity("");
+                                        }
+                                      }}
+                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, worker.nama, e.target.value, worker.realisasi)}
+                                      className="h-7 w-20"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs">Realisasi:</span>
+                                    <Input
+                                      type="number"
+                                      defaultValue={worker.realisasi}
+                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, worker.nama, worker.target, e.target.value)}
+                                      className="h-7 w-20"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-1">
+                                  <div>Target: {worker.target}</div>
+                                  <div>Realisasi: {worker.realisasi}</div>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                              {worker.jabatan} - Nilai Realisasi = Rp {formatCurrency(parseFloat(worker.realisasi) * parseFloat(activity.hargaSatuan))}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10"
+                                  onClick={() => handleEditWorker(activity.id, worker)}
+                                  title="Edit Petugas"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteWorker(activity.id, worker.id)}
+                                  title="Hapus Petugas"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Activity Dialog */}
+      <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
+        setShowAddActivityDialog(open);
+        if (!open) {
+          setEditingActivity(null);
+          form.reset();
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {editingActivity ? "Edit Kegiatan" : "Tambah Kegiatan"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Color-coded job type indicator */}
+          {selectedJobType && !editingActivity && (
+            <Alert className={cn("border-2", getJobTypeInfo(selectedJobType).color)}>
+              <AlertDescription className="font-semibold">
+                {getJobTypeInfo(selectedJobType).label}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="namaKegiatan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Kegiatan <span className="text-destructive">*</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kegiatan" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <SelectItem key={i + 1} value={`Kegiatan ${i + 1}`}>
+                            Kegiatan {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="nomorSK"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor SK <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="Masukkan nomor SK" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tanggalSK"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal SK <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="tanggalMulai"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal Mulai Kegiatan <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tanggalAkhir"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal Akhir Kegiatan <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="hargaSatuan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Harga Satuan <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Masukkan harga satuan" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="satuan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Satuan <span className="text-destructive">*</span></FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setShowCustomSatuan(value === "Lainnya");
+                          if (value !== "Lainnya") {
+                            form.setValue("satuanCustom", "");
+                          }
+                        }} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih satuan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="BS">BS</SelectItem>
+                          <SelectItem value="Dokumen">Dokumen</SelectItem>
+                          <SelectItem value="EA">EA</SelectItem>
+                          <SelectItem value="Segmen">Segmen</SelectItem>
+                          <SelectItem value="Lainnya">Lainnya</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {showCustomSatuan && (
+                <FormField
+                  control={form.control}
+                  name="satuanCustom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Satuan Custom <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Masukkan satuan custom" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Koordinator and Komponen POK on one row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="koordinator"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Koordinator Fungsi/Ketua Tim <span className="text-destructive">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih koordinator" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.from({ length: 10 }, (_, i) => (
+                            <SelectItem key={i + 1} value={`Orang ${i + 1}`}>
+                              Orang {i + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="komponenPOK"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih komponen POK" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {komponenPOKOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddActivityDialog(false);
+                    setEditingActivity(null);
+                    form.reset();
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button type="submit">
+                  {editingActivity ? "Perbarui Kegiatan" : "Simpan Kegiatan"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Worker Dialog with Search/Sort */}
+      <Dialog open={showAddWorkerDialog} onOpenChange={setShowAddWorkerDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Tambah Nama Petugas</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-muted/30 p-4 rounded-lg">
+              <div className="text-sm">
+                <div className="mb-1"><span className="font-semibold">Kegiatan:</span> {selectedActivityForWorkers?.namaKegiatan}</div>
+                <div className="text-muted-foreground">Nomor SK: {selectedActivityForWorkers?.nomorSK}</div>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Cari nama atau NIP petugas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={filteredWorkers.every(w => {
+                          const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.id === w.id);
+                          return isAlreadyAdded || selectedWorkers[w.id]?.selected;
+                        })}
+                        onCheckedChange={(checked) => {
+                          const newSelected = {...selectedWorkers};
+                          filteredWorkers.forEach(w => {
+                            // Only allow selection if worker not already in activity
+                            const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.id === w.id);
+                            if (!isAlreadyAdded) {
+                              newSelected[w.id] = { 
+                                selected: checked as boolean, 
+                                target: newSelected[w.id]?.target || "",
+                                realisasi: newSelected[w.id]?.realisasi || ""
+                              };
+                            }
+                          });
+                          setSelectedWorkers(newSelected);
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead>Nama Petugas</TableHead>
+                    <TableHead>NIP</TableHead>
+                    <TableHead>Jabatan</TableHead>
+                    <TableHead className="w-28">Target</TableHead>
+                    <TableHead className="w-28">Realisasi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredWorkers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Tidak ada petugas ditemukan
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredWorkers.map((petugas) => {
+                      const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
+                      return (
+                        <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedWorkers[petugas.id]?.selected || false}
+                              disabled={isAlreadyAdded}
+                              onCheckedChange={(checked) => {
+                                setSelectedWorkers({
+                                  ...selectedWorkers,
+                                  [petugas.id]: {
+                                    selected: checked as boolean,
+                                    target: selectedWorkers[petugas.id]?.target || "",
+                                    realisasi: selectedWorkers[petugas.id]?.realisasi || "",
+                                  }
+                                });
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
+                          <TableCell>{petugas.nip}</TableCell>
+                          <TableCell>{petugas.jabatan}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={selectedWorkers[petugas.id]?.target || ""}
+                              onChange={(e) => {
+                                const newTarget = e.target.value;
+                                const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "";
+                                
+                                setSelectedWorkers({
+                                  ...selectedWorkers,
+                                  [petugas.id]: {
+                                    selected: selectedWorkers[petugas.id]?.selected || false,
+                                    target: newTarget,
+                                    realisasi: currentRealisasi,
+                                  }
+                                });
+                              }}
+                              disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                              className="h-8"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={selectedWorkers[petugas.id]?.realisasi || ""}
+                              onChange={(e) => {
+                                const newRealisasi = e.target.value;
+                                const currentTarget = selectedWorkers[petugas.id]?.target || "";
+                                
+                                setSelectedWorkers({
+                                  ...selectedWorkers,
+                                  [petugas.id]: {
+                                    selected: selectedWorkers[petugas.id]?.selected || false,
+                                    target: currentTarget,
+                                    realisasi: newRealisasi,
+                                  }
+                                });
+                              }}
+                              disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                              className="h-8"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddWorkerDialog(false);
+                setSelectedActivityForWorkers(null);
+              }}
+            >
+              Tutup
+            </Button>
+            <Button onClick={handleSaveWorker}>
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
