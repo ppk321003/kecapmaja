@@ -190,9 +190,23 @@ export default function EntriTarget() {
         const jenisPekerjaan = row[3] || ''; // Jenis Pekerjaan
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
-        const tanggalSK = row[6] ? new Date(row[6]) : new Date();
-        const tanggalMulai = row[7] ? new Date(row[7]) : new Date();
-        const tanggalAkhir = row[8] ? new Date(row[8]) : new Date();
+        
+        // Parse dates in DD/MM/YYYY format
+        const parseDateFromSpreadsheet = (dateStr: string) => {
+          if (!dateStr) return new Date();
+          const parts = dateStr.split(/[\/\s-]/);
+          if (parts.length >= 3) {
+            const day = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const year = parseInt(parts[2]);
+            return new Date(year, month, day);
+          }
+          return new Date();
+        };
+        
+        const tanggalSK = parseDateFromSpreadsheet(row[6]);
+        const tanggalMulai = parseDateFromSpreadsheet(row[7]);
+        const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
         const satuanCustom = row[11] || '';
@@ -459,7 +473,7 @@ export default function EntriTarget() {
     setSelectedActivityForWorkers(null);
   };
 
-  const handleDeleteWorker = (activityId: number, workerId: number) => {
+  const handleDeleteWorker = async (activityId: number, workerId: number) => {
     const updatedActivities = activities.map(activity => 
       activity.id === activityId 
         ? { ...activity, workers: activity.workers.filter(w => w.id !== workerId) }
@@ -469,9 +483,16 @@ export default function EntriTarget() {
       ...activitiesByPeriod,
       [periodKey]: updatedActivities
     });
+    
+    // Update spreadsheet to reflect deleted worker
+    const updatedActivity = updatedActivities.find(a => a.id === activityId);
+    if (updatedActivity?.spreadsheetRowIndex) {
+      await updateActivityInSpreadsheet(updatedActivity);
+    }
+    
     toast({
       title: "Petugas berhasil dihapus",
-      description: "Petugas telah dihapus dari kegiatan.",
+      description: "Petugas telah dihapus dari kegiatan dan spreadsheet diperbarui.",
     });
   };
 
