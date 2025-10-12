@@ -18,6 +18,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for SPK periods
 const spkData = [
@@ -110,6 +112,7 @@ const formSchema = z.object({
 });
 
 export default function EntriTarget() {
+  const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -395,12 +398,96 @@ export default function EntriTarget() {
     });
   };
 
-  const handleSendToPPK = (activityId: number) => {
+  const handleSendToPPK = async (activityId: number) => {
     const activity = activities.find(a => a.id === activityId);
-    toast({
-      title: "Kirim ke PPK",
-      description: `Kegiatan "${activity?.namaKegiatan}" akan dikirim ke PPK untuk disetujui.`,
-    });
+    if (!activity) return;
+
+    if (activity.workers.length === 0) {
+      toast({
+        title: "Tidak dapat mengirim",
+        description: "Tambahkan minimal satu petugas sebelum mengirim ke PPK.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Prepare data for Google Sheets
+      const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
+      const targetList = activity.workers.map(w => w.target).join(" | ");
+      const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      const nilaiRealisasiList = activity.workers
+        .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
+        .join(" | ");
+      
+      const totalRealisasi = activity.workers.reduce(
+        (sum, w) => sum + (parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)),
+        0
+      );
+
+      // Get next row number (auto-increment)
+      const { data: existingData } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'read',
+          range: 'Sheet1!A:A',
+        }
+      });
+
+      const nextNo = existingData?.values ? existingData.values.length : 1;
+
+      // Prepare row data according to spreadsheet headers
+      const rowData = [
+        [
+          nextNo.toString(), // No
+          user?.role || "User", // Role
+          `${selectedPeriod} ${selectedYear}`, // Periode (Bulan) SPK
+          selectedJobType || "", // Jenis Pekerjaan
+          activity.namaKegiatan, // Nama Kegiatan
+          activity.nomorSK, // Nomor SK
+          format(activity.tanggalSK, "dd/MM/yyyy"), // Tanggal SK
+          format(activity.tanggalMulai, "dd/MM/yyyy"), // Tanggal Mulai Kegiatan
+          format(activity.tanggalAkhir, "dd/MM/yyyy"), // Tanggal Akhir Kegiatan
+          activity.hargaSatuan, // Harga Satuan
+          activity.satuan, // Satuan
+          "", // Satuan Custom (if needed)
+          activity.koordinator, // Koordinator Fungsi/Ketua Tim
+          getKomponenPOKLabel(activity.komponenPOK), // Komponen POK
+          namaPetugas, // Nama Petugas
+          targetList, // Target
+          realisasiList, // Realisasi
+          nilaiRealisasiList, // Nilai Realisasi
+          formatCurrency(totalRealisasi), // Total Realisasi
+          "Kirim PPK", // Keterangan
+        ]
+      ];
+
+      // Send to Google Sheets
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'append',
+          range: 'Sheet1',
+          values: rowData,
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Berhasil dikirim ke PPK",
+        description: `Kegiatan "${activity.namaKegiatan}" telah disimpan ke Google Sheets dan dikirim ke PPK.`,
+      });
+    } catch (error) {
+      console.error('Error sending to Google Sheets:', error);
+      toast({
+        title: "Gagal mengirim",
+        description: "Terjadi kesalahan saat mengirim data ke Google Sheets.",
+        variant: "destructive",
+      });
+    }
   };
 
   const dummyWorkers = [
