@@ -65,6 +65,7 @@ type Activity = {
   koordinator: string;
   workers: Worker[];
   jobType: string;
+  spreadsheetRowIndex?: number; // Track row in spreadsheet for updates
 };
 
 const komponenPOKOptions = [
@@ -164,7 +165,7 @@ export default function EntriTarget() {
     return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value) + ',-';
   };
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     const finalSatuan = data.satuan === "Lainnya" ? data.satuanCustom || "" : data.satuan;
     
     if (editingActivity) {
@@ -189,6 +190,12 @@ export default function EntriTarget() {
         [periodKey]: updatedActivities
       });
       
+      // Update spreadsheet if row exists
+      const updatedActivity = updatedActivities.find(a => a.id === editingActivity.id);
+      if (updatedActivity?.spreadsheetRowIndex) {
+        await updateActivityInSpreadsheet(updatedActivity);
+      }
+      
       toast({
         title: "Kegiatan berhasil diperbarui",
         description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`,
@@ -210,6 +217,12 @@ export default function EntriTarget() {
         jobType: selectedJobType || "",
       };
       
+      // Save to spreadsheet and get row index
+      const rowIndex = await saveActivityToSpreadsheet(newActivity);
+      if (rowIndex) {
+        newActivity.spreadsheetRowIndex = rowIndex;
+      }
+      
       setActivitiesByPeriod({
         ...activitiesByPeriod,
         [periodKey]: [...activities, newActivity]
@@ -217,7 +230,7 @@ export default function EntriTarget() {
       
       toast({
         title: "Kegiatan berhasil ditambahkan",
-        description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`,
+        description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan dan disimpan ke spreadsheet.`,
       });
     }
     
@@ -269,7 +282,7 @@ export default function EntriTarget() {
     setShowAddWorkerDialog(true);
   };
 
-  const handleSaveWorker = () => {
+  const handleSaveWorker = async () => {
     if (!selectedActivityForWorkers) return;
     
     const newWorkers: Worker[] = dummyWorkers
@@ -323,9 +336,15 @@ export default function EntriTarget() {
       [periodKey]: updatedActivities
     });
     
+    // Update spreadsheet
+    const updatedActivity = updatedActivities.find(a => a.id === selectedActivityForWorkers.id);
+    if (updatedActivity?.spreadsheetRowIndex) {
+      await updateActivityInSpreadsheet(updatedActivity);
+    }
+    
     toast({
       title: "Petugas berhasil ditambahkan",
-      description: `${newWorkers.length} petugas telah ditambahkan untuk kegiatan "${selectedActivityForWorkers?.namaKegiatan}".`,
+      description: `${newWorkers.length} petugas telah ditambahkan dan disimpan ke spreadsheet.`,
     });
     setShowAddWorkerDialog(false);
     setSelectedActivityForWorkers(null);
@@ -351,7 +370,7 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  const handleUpdateWorker = (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
+  const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     // Validate realisasi <= target
     if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
       toast({
@@ -392,10 +411,150 @@ export default function EntriTarget() {
       [periodKey]: updatedActivities
     });
     setEditingWorker(null);
+    
+    // Update spreadsheet
+    const updatedActivity = updatedActivities.find(a => a.id === activityId);
+    if (updatedActivity?.spreadsheetRowIndex) {
+      await updateActivityInSpreadsheet(updatedActivity);
+    }
+    
     toast({
       title: "Petugas berhasil diperbarui",
-      description: "Data petugas telah diperbarui.",
+      description: "Data petugas telah diperbarui di spreadsheet.",
     });
+  };
+
+  const saveActivityToSpreadsheet = async (activity: Activity): Promise<number | null> => {
+    try {
+      // Get current row count to determine next row
+      const { data: existingData } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'read',
+          range: 'Sheet1!A:A',
+        }
+      });
+
+      const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2; // +1 for header
+      const nextNo = existingData?.values ? existingData.values.length : 1;
+
+      // Prepare initial data (without workers yet)
+      const standardSatuans = ["BS", "Dokumen", "EA", "Segmen"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
+      const rowData = [
+        [
+          nextNo.toString(),
+          user?.role || "User",
+          `${selectedPeriod} ${selectedYear}`,
+          selectedJobType || "",
+          activity.namaKegiatan,
+          activity.nomorSK,
+          format(activity.tanggalSK, "dd/MM/yyyy"),
+          format(activity.tanggalMulai, "dd/MM/yyyy"),
+          format(activity.tanggalAkhir, "dd/MM/yyyy"),
+          activity.hargaSatuan,
+          satuan,
+          satuanCustom,
+          activity.koordinator,
+          getKomponenPOKLabel(activity.komponenPOK),
+          "", // Nama Petugas (empty initially)
+          "", // Target
+          "", // Realisasi
+          "", // Nilai Realisasi
+          "", // Total Realisasi
+          "", // Keterangan
+        ]
+      ];
+
+      const { error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'append',
+          range: 'Sheet1',
+          values: rowData,
+        }
+      });
+
+      if (error) throw error;
+      
+      return nextRowIndex;
+    } catch (error) {
+      console.error('Error saving to spreadsheet:', error);
+      toast({
+        title: "Gagal menyimpan",
+        description: "Terjadi kesalahan saat menyimpan ke Google Sheets.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const updateActivityInSpreadsheet = async (activity: Activity) => {
+    if (!activity.spreadsheetRowIndex) return;
+
+    try {
+      const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
+      const targetList = activity.workers.map(w => w.target).join(" | ");
+      const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      const nilaiRealisasiList = activity.workers
+        .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
+        .join(" | ");
+      
+      const totalRealisasi = activity.workers.reduce(
+        (sum, w) => sum + (parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)),
+        0
+      );
+
+      const standardSatuans = ["BS", "Dokumen", "EA", "Segmen"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
+      const rowData = [
+        [
+          activity.spreadsheetRowIndex - 1, // No (keep original)
+          user?.role || "User",
+          `${selectedPeriod} ${selectedYear}`,
+          selectedJobType || "",
+          activity.namaKegiatan,
+          activity.nomorSK,
+          format(activity.tanggalSK, "dd/MM/yyyy"),
+          format(activity.tanggalMulai, "dd/MM/yyyy"),
+          format(activity.tanggalAkhir, "dd/MM/yyyy"),
+          activity.hargaSatuan,
+          satuan,
+          satuanCustom,
+          activity.koordinator,
+          getKomponenPOKLabel(activity.komponenPOK),
+          namaPetugas,
+          targetList,
+          realisasiList,
+          nilaiRealisasiList,
+          formatCurrency(totalRealisasi),
+          "", // Keterangan (preserve existing or empty)
+        ]
+      ];
+
+      const { error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'update',
+          range: 'Sheet1',
+          rowIndex: activity.spreadsheetRowIndex,
+          values: rowData,
+        }
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating spreadsheet:', error);
+      toast({
+        title: "Gagal memperbarui",
+        description: "Terjadi kesalahan saat memperbarui Google Sheets.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSendToPPK = async (activityId: number) => {
@@ -411,8 +570,17 @@ export default function EntriTarget() {
       return;
     }
 
+    if (!activity.spreadsheetRowIndex) {
+      toast({
+        title: "Tidak dapat mengirim",
+        description: "Data kegiatan belum tersimpan di spreadsheet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Prepare data for Google Sheets
+      // Update only the Keterangan column
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
@@ -425,66 +593,56 @@ export default function EntriTarget() {
         0
       );
 
-      // Get next row number (auto-increment)
-      const { data: existingData } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
-          operation: 'read',
-          range: 'Sheet1!A:A',
-        }
-      });
+      const standardSatuans = ["BS", "Dokumen", "EA", "Segmen"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
-      const nextNo = existingData?.values ? existingData.values.length : 1;
-
-      // Prepare row data according to spreadsheet headers
       const rowData = [
         [
-          nextNo.toString(), // No
-          user?.role || "User", // Role
-          `${selectedPeriod} ${selectedYear}`, // Periode (Bulan) SPK
-          selectedJobType || "", // Jenis Pekerjaan
-          activity.namaKegiatan, // Nama Kegiatan
-          activity.nomorSK, // Nomor SK
-          format(activity.tanggalSK, "dd/MM/yyyy"), // Tanggal SK
-          format(activity.tanggalMulai, "dd/MM/yyyy"), // Tanggal Mulai Kegiatan
-          format(activity.tanggalAkhir, "dd/MM/yyyy"), // Tanggal Akhir Kegiatan
-          activity.hargaSatuan, // Harga Satuan
-          activity.satuan, // Satuan
-          "", // Satuan Custom (if needed)
-          activity.koordinator, // Koordinator Fungsi/Ketua Tim
-          getKomponenPOKLabel(activity.komponenPOK), // Komponen POK
-          namaPetugas, // Nama Petugas
-          targetList, // Target
-          realisasiList, // Realisasi
-          nilaiRealisasiList, // Nilai Realisasi
-          formatCurrency(totalRealisasi), // Total Realisasi
-          "Kirim PPK", // Keterangan
+          activity.spreadsheetRowIndex - 1,
+          user?.role || "User",
+          `${selectedPeriod} ${selectedYear}`,
+          selectedJobType || "",
+          activity.namaKegiatan,
+          activity.nomorSK,
+          format(activity.tanggalSK, "dd/MM/yyyy"),
+          format(activity.tanggalMulai, "dd/MM/yyyy"),
+          format(activity.tanggalAkhir, "dd/MM/yyyy"),
+          activity.hargaSatuan,
+          satuan,
+          satuanCustom,
+          activity.koordinator,
+          getKomponenPOKLabel(activity.komponenPOK),
+          namaPetugas,
+          targetList,
+          realisasiList,
+          nilaiRealisasiList,
+          formatCurrency(totalRealisasi),
+          "Kirim PPK", // Update Keterangan
         ]
       ];
 
-      // Send to Google Sheets
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
+      const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
-          operation: 'append',
+          operation: 'update',
           range: 'Sheet1',
+          rowIndex: activity.spreadsheetRowIndex,
           values: rowData,
         }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Berhasil dikirim ke PPK",
-        description: `Kegiatan "${activity.namaKegiatan}" telah disimpan ke Google Sheets dan dikirim ke PPK.`,
+        description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`,
       });
     } catch (error) {
-      console.error('Error sending to Google Sheets:', error);
+      console.error('Error sending to PPK:', error);
       toast({
         title: "Gagal mengirim",
-        description: "Terjadi kesalahan saat mengirim data ke Google Sheets.",
+        description: "Terjadi kesalahan saat mengirim ke PPK.",
         variant: "destructive",
       });
     }
