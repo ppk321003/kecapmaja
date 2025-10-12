@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,26 +22,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for SPK periods
+// Initialize empty SPK data for 12 months
 const spkData = [
   { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 2, month: "Februari", activities: 10, workers: 85, target: 2645, value: 201595000.00, sent: 10, approved: 10 },
-  { id: 3, month: "Maret", activities: 2, workers: 10, target: 500, value: 12200000.00, sent: 2, approved: 2 },
+  { id: 2, month: "Februari", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 3, month: "Maret", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
   { id: 4, month: "April", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
   { id: 5, month: "Mei", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 6, month: "Juni", activities: 7, workers: 78, target: 1953, value: 114733000.00, sent: 7, approved: 7 },
-  { id: 7, month: "Juli", activities: 4, workers: 29, target: 1190, value: 65362000.00, sent: 4, approved: 4 },
-  { id: 8, month: "Agustus", activities: 2, workers: 24, target: 820, value: 38620000.00, sent: 2, approved: 2 },
-  { id: 9, month: "September", activities: 6, workers: 37, target: 1260, value: 69300000.00, sent: 6, approved: 6 },
+  { id: 6, month: "Juni", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 7, month: "Juli", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 8, month: "Agustus", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 9, month: "September", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
   { id: 10, month: "Oktober", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
   { id: 11, month: "November", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
   { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
 ];
 
-const jobTypes = [
-  { id: 1, name: "Petugas Pendataan Lapangan", activities: 5, workers: 62, target: 1375, value: 158755000.00, sent: 5, approved: 5 },
-  { id: 2, name: "Petugas Pemeriksaan Lapangan", activities: 2, workers: 13, target: 571, value: 25012000.00, sent: 2, approved: 2 },
-  { id: 3, name: "Petugas Pengolahan", activities: 3, workers: 10, target: 699, value: 17828000.00, sent: 3, approved: 3 },
-];
+// Initialize empty job types
+const jobTypes: any[] = [];
 
 type Worker = {
   id: number;
@@ -147,6 +145,113 @@ export default function EntriTarget() {
   });
 
   const [showCustomSatuan, setShowCustomSatuan] = useState(false);
+
+  // Load data from spreadsheet on mount
+  useEffect(() => {
+    loadDataFromSpreadsheet();
+  }, []);
+
+  const loadDataFromSpreadsheet = async () => {
+    try {
+      console.log('Loading data from spreadsheet...');
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'read',
+          range: 'Sheet1',
+        }
+      });
+
+      if (error) {
+        console.error('Error loading from spreadsheet:', error);
+        return;
+      }
+
+      console.log('Spreadsheet data loaded:', data);
+
+      if (!data?.values || data.values.length <= 1) {
+        console.log('No data in spreadsheet');
+        return;
+      }
+
+      // Parse spreadsheet data and populate activitiesByPeriod
+      const rows = data.values.slice(1); // Skip header row
+      const activitiesMap: {[key: string]: Activity[]} = {};
+      let activityIdCounter = 1;
+
+      rows.forEach((row: any[], rowIndex: number) => {
+        if (!row[0]) return; // Skip empty rows
+
+        const periode = row[2] || ''; // Periode (Bulan) SPK
+        const jenisPekerjaan = row[3] || ''; // Jenis Pekerjaan
+        const namaKegiatan = row[4] || '';
+        const nomorSK = row[5] || '';
+        const tanggalSK = row[6] ? new Date(row[6]) : new Date();
+        const tanggalMulai = row[7] ? new Date(row[7]) : new Date();
+        const tanggalAkhir = row[8] ? new Date(row[8]) : new Date();
+        const hargaSatuan = row[9] || '0';
+        const satuan = row[10] || '';
+        const satuanCustom = row[11] || '';
+        const koordinator = row[12] || '';
+        const komponenPOK = row[13] || '';
+        
+        // Parse workers data (separated by |)
+        const namaPetugasStr = row[14] || '';
+        const targetStr = row[15] || '';
+        const realisasiStr = row[16] || '';
+        
+        const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const realisasiList = realisasiStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+
+        const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => ({
+          id: idx + 1,
+          nama: nama,
+          nip: '', // Not stored in spreadsheet
+          jabatan: '', // Not stored in spreadsheet
+          target: targetList[idx] || '0',
+          realisasi: realisasiList[idx] || '0',
+        }));
+
+        const activity: Activity = {
+          id: activityIdCounter++,
+          namaKegiatan,
+          tanggalMulai,
+          tanggalAkhir,
+          hargaSatuan,
+          satuan: satuanCustom || satuan,
+          komponenPOK,
+          nomorSK,
+          tanggalSK,
+          koordinator,
+          workers,
+          jobType: jenisPekerjaan,
+          spreadsheetRowIndex: rowIndex + 2, // +2 because: +1 for header, +1 for 0-index
+        };
+
+        const periodKey = `${periode}-${jenisPekerjaan}`;
+        if (!activitiesMap[periodKey]) {
+          activitiesMap[periodKey] = [];
+        }
+        activitiesMap[periodKey].push(activity);
+      });
+
+      setActivitiesByPeriod(activitiesMap);
+      console.log('Activities loaded from spreadsheet:', activitiesMap);
+      
+      toast({
+        title: "Data dimuat",
+        description: "Data berhasil dimuat dari spreadsheet",
+      });
+    } catch (error) {
+      console.error('Error loading from spreadsheet:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data dari spreadsheet",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleActionClick = (month: string) => {
     setSelectedPeriod(month);
