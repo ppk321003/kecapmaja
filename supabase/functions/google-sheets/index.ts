@@ -16,11 +16,42 @@ interface SheetOperation {
 
 async function getAccessToken() {
   console.log('Getting access token...');
-  const privateKey = Deno.env.get('GOOGLE_PRIVATE_KEY')?.replace(/\\n/g, '\n');
-  const serviceAccountEmail = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  
+  let privateKey: string;
+  let serviceAccountEmail: string;
+  
+  // Try to parse as JSON first (if full service account JSON is provided)
+  const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
+  const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  
+  try {
+    // Check if GOOGLE_PRIVATE_KEY contains full JSON
+    if (googlePrivateKeyEnv?.includes('"type"')) {
+      console.log('Parsing full service account JSON from GOOGLE_PRIVATE_KEY');
+      const serviceAccount = JSON.parse(googlePrivateKeyEnv);
+      privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+      serviceAccountEmail = serviceAccount.client_email;
+    } else if (googleServiceAccountEmailEnv?.includes('"type"')) {
+      console.log('Parsing full service account JSON from GOOGLE_SERVICE_ACCOUNT_EMAIL');
+      const serviceAccount = JSON.parse(googleServiceAccountEmailEnv);
+      privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+      serviceAccountEmail = serviceAccount.client_email;
+    } else {
+      // Individual fields provided
+      console.log('Using individual credential fields');
+      privateKey = googlePrivateKeyEnv?.replace(/\\n/g, '\n') || '';
+      serviceAccountEmail = googleServiceAccountEmailEnv || '';
+    }
+  } catch (e) {
+    console.error('Error parsing credentials:', e);
+    // Fall back to individual fields
+    privateKey = googlePrivateKeyEnv?.replace(/\\n/g, '\n') || '';
+    serviceAccountEmail = googleServiceAccountEmailEnv || '';
+  }
 
   console.log('Service account email:', serviceAccountEmail);
   console.log('Private key exists:', !!privateKey);
+  console.log('Private key length:', privateKey?.length || 0);
 
   if (!privateKey || !serviceAccountEmail) {
     console.error('Missing Google credentials');
