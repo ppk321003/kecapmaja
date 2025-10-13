@@ -9,11 +9,10 @@ import { Users, Plus, Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-const ROWS_PER_PAGE = 20;
 
 const petugasSchema = z.object({
   nik: z.string().min(1, "NIK harus diisi").max(50),
@@ -39,7 +38,8 @@ export default function EntriPetugas() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<keyof Petugas>("nama");
   const [sortAsc, setSortAsc] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 20;
   const { toast } = useToast();
 
   const form = useForm<PetugasFormData>({
@@ -165,34 +165,25 @@ export default function EntriPetugas() {
     }
   };
 
-  // 🔍 Filter + Sort + Pagination
-  const filteredSortedPetugas = useMemo(() => {
-    const filtered = petugas.filter((p) =>
-      Object.values(p).some((v) =>
+  const filteredPetugas = petugas
+    .filter(p =>
+      Object.values(p).some(v =>
         v.toString().toLowerCase().includes(searchQuery.toLowerCase())
       )
-    );
-
-    const sorted = [...filtered].sort((a, b) => {
-      const valA = a[sortField]?.toString().toLowerCase() || "";
-      const valB = b[sortField]?.toString().toLowerCase() || "";
-      if (valA < valB) return sortAsc ? -1 : 1;
-      if (valA > valB) return sortAsc ? 1 : -1;
+    )
+    .sort((a, b) => {
+      if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
+      if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
       return 0;
     });
 
-    return sorted;
-  }, [petugas, searchQuery, sortField, sortAsc]);
-
-  const totalPages = Math.ceil(filteredSortedPetugas.length / ROWS_PER_PAGE);
-  const paginatedPetugas = filteredSortedPetugas.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE
-  );
+  const paginatedPetugas = filteredPetugas.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const totalPages = Math.ceil(filteredPetugas.length / itemsPerPage);
 
   const handleSort = (field: keyof Petugas) => {
-    if (sortField === field) setSortAsc(!sortAsc);
-    else {
+    if (field === sortField) {
+      setSortAsc(!sortAsc);
+    } else {
       setSortField(field);
       setSortAsc(true);
     }
@@ -200,76 +191,72 @@ export default function EntriPetugas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Entri Petugas</h1>
           <p className="text-muted-foreground mt-2">
             Pendataan dan pengelolaan informasi petugas mitra statistik
           </p>
         </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Cari petugas..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="max-w-xs"
-          />
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) {
-                setEditingPetugas(null);
-                form.reset();
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Petugas
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingPetugas ? "Edit" : "Tambah"} Petugas</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {["nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map((field) => (
-                    <FormField
-                      key={field}
-                      control={form.control}
-                      name={field as keyof PetugasFormData}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{field.name.toUpperCase()}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                  <Button type="submit" className="w-full">
-                    {editingPetugas ? "Update" : "Tambah"}
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+        {/* Dialog Form */}
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingPetugas(null);
+            form.reset();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Tambah Petugas
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingPetugas ? "Edit" : "Tambah"} Petugas</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {Object.keys(petugasSchema.shape).map((key) => (
+                  <FormField
+                    key={key}
+                    control={form.control}
+                    name={key as keyof PetugasFormData}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{key.charAt(0).toUpperCase() + key.slice(1)}</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+                <Button type="submit" className="w-full">
+                  {editingPetugas ? "Update" : "Tambah"}
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary" />
-            <CardTitle>Daftar Petugas</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-6 w-6 text-primary" />
+              <CardTitle>Daftar Petugas</CardTitle>
+            </div>
+            <Input
+              placeholder="Cari petugas..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-xs"
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -277,19 +264,17 @@ export default function EntriPetugas() {
             <p className="text-center py-8 text-muted-foreground">Memuat data...</p>
           ) : (
             <>
-              <Table>
+              <Table className="text-sm">
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="h-auto">
                     {["nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map((col) => (
                       <TableHead
                         key={col}
-                        className="cursor-pointer select-none"
                         onClick={() => handleSort(col as keyof Petugas)}
+                        className="cursor-pointer select-none py-1"
                       >
-                        <div className="flex items-center gap-1">
-                          {col.toUpperCase()}
-                          {sortField === col && <ArrowUpDown className="h-4 w-4" />}
-                        </div>
+                        {col.charAt(0).toUpperCase() + col.slice(1)}{" "}
+                        <ArrowUpDown className="inline h-3 w-3 ml-1" />
                       </TableHead>
                     ))}
                     <TableHead className="text-right">Aksi</TableHead>
@@ -297,15 +282,15 @@ export default function EntriPetugas() {
                 </TableHeader>
                 <TableBody>
                   {paginatedPetugas.map((p) => (
-                    <TableRow key={p.rowIndex}>
-                      <TableCell>{p.nik}</TableCell>
-                      <TableCell>{p.nama}</TableCell>
-                      <TableCell>{p.pekerjaan}</TableCell>
-                      <TableCell>{p.alamat}</TableCell>
-                      <TableCell>{p.bank}</TableCell>
-                      <TableCell>{p.rekening}</TableCell>
-                      <TableCell>{p.kecamatan}</TableCell>
-                      <TableCell className="text-right">
+                    <TableRow key={p.rowIndex} className="h-auto">
+                      <TableCell className="py-1">{p.nik}</TableCell>
+                      <TableCell className="py-1">{p.nama}</TableCell>
+                      <TableCell className="py-1">{p.pekerjaan}</TableCell>
+                      <TableCell className="py-1">{p.alamat}</TableCell>
+                      <TableCell className="py-1">{p.bank}</TableCell>
+                      <TableCell className="py-1">{p.rekening}</TableCell>
+                      <TableCell className="py-1">{p.kecamatan}</TableCell>
+                      <TableCell className="text-right py-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -318,26 +303,14 @@ export default function EntriPetugas() {
                 </TableBody>
               </Table>
 
-              {/* Pagination Controls */}
-              <div className="flex justify-between items-center mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Halaman {currentPage} dari {totalPages}
-                </p>
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-4 text-sm">
+                <p>Halaman {page} dari {totalPages}</p>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                  >
+                  <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
                     Sebelumnya
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                  >
+                  <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>
                     Berikutnya
                   </Button>
                 </div>
