@@ -70,6 +70,17 @@ type Activity = {
   spreadsheetRowIndex?: number; // Track row in spreadsheet for updates
 };
 
+type PetugasFromSheet = {
+  id: number;
+  nama: string;
+  nik: string;
+  pekerjaan: string;
+  alamat: string;
+  bank: string;
+  rekening: string;
+  kecamatan: string;
+};
+
 const komponenPOKOptions = [
   { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
   { value: "051", label: "051 - PERSIAPAN" },
@@ -130,6 +141,8 @@ export default function EntriTarget() {
   const [selectedWorkers, setSelectedWorkers] = useState<{[key: number]: {selected: boolean, target: string, realisasi: string}}>({});
   const [editingWorker, setEditingWorker] = useState<{activityId: number, worker: Worker} | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [petugasFromSheet, setPetugasFromSheet] = useState<PetugasFromSheet[]>([]);
+  const [loadingPetugas, setLoadingPetugas] = useState(false);
   
   // Get activities for current period and job type - MUST include year to match spreadsheet data
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
@@ -153,6 +166,82 @@ export default function EntriTarget() {
   });
 
   const [showCustomSatuan, setShowCustomSatuan] = useState(false);
+
+  // Load petugas data from MASTER.MITRA sheet
+  const loadPetugasFromSheet = async () => {
+    try {
+      setLoadingPetugas(true);
+      console.log('Loading petugas data from MASTER.MITRA...');
+      
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM',
+          operation: 'read',
+          range: 'MASTER.MITRA',
+        }
+      });
+
+      if (error) {
+        console.error('Error loading petugas data:', error);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data petugas dari spreadsheet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Petugas data loaded:', data);
+
+      if (!data?.values || data.values.length <= 1) {
+        console.log('No petugas data in spreadsheet');
+        setPetugasFromSheet([]);
+        return;
+      }
+
+      // Parse spreadsheet data - skip header row
+      const rows = data.values.slice(1);
+      const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
+        id: index + 1,
+        nama: row[2] || '', // Kolom C: Nama
+        nik: row[1] || '',  // Kolom B: NIK
+        pekerjaan: row[3] || '', // Kolom D: Pekerjaan
+        alamat: row[4] || '', // Kolom E: Alamat
+        bank: row[5] || '', // Kolom F: Bank
+        rekening: row[6] || '', // Kolom G: Rekening
+        kecamatan: row[7] || '', // Kolom H: Kecamatan
+      })).filter((petugas: PetugasFromSheet) => petugas.nama.trim() !== ''); // Filter out empty rows
+
+      setPetugasFromSheet(petugasData);
+      console.log('Petugas data parsed:', petugasData);
+      
+      toast({
+        title: "Data petugas dimuat",
+        description: `${petugasData.length} petugas berhasil dimuat dari MASTER.MITRA`,
+      });
+    } catch (error) {
+      console.error('Error loading petugas:', error);
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat memuat data petugas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPetugas(false);
+    }
+  };
+
+  // Convert petugas from sheet to worker format
+  const petugasAsWorkers = useMemo(() => {
+    return petugasFromSheet.map((petugas, index) => ({
+      id: petugas.id,
+      nama: petugas.nama,
+      nip: petugas.nik, // Using NIK as NIP
+      jabatan: petugas.pekerjaan || 'Petugas',
+      target: "0",
+      realisasi: "0",
+    }));
+  }, [petugasFromSheet]);
 
   // Calculate dynamic SPK data from activitiesByPeriod
   const dynamicSpkData = useMemo(() => {
@@ -250,6 +339,7 @@ export default function EntriTarget() {
   // Load data from spreadsheet on mount
   useEffect(() => {
     loadDataFromSpreadsheet();
+    loadPetugasFromSheet();
   }, []);
 
   const loadDataFromSpreadsheet = async () => {
@@ -517,7 +607,7 @@ export default function EntriTarget() {
   const handleAddWorker = (activity: Activity) => {
     setSelectedActivityForWorkers(activity);
     const initialWorkers: {[key: number]: {selected: boolean, target: string, realisasi: string}} = {};
-    dummyWorkers.forEach(worker => {
+    petugasAsWorkers.forEach(worker => {
       initialWorkers[worker.id] = { selected: false, target: "", realisasi: "" };
     });
     setSelectedWorkers(initialWorkers);
@@ -528,7 +618,7 @@ export default function EntriTarget() {
   const handleSaveWorker = async () => {
     if (!selectedActivityForWorkers) return;
     
-    const newWorkers: Worker[] = dummyWorkers
+    const newWorkers: Worker[] = petugasAsWorkers
       .filter(worker => selectedWorkers[worker.id]?.selected)
       .map(worker => ({
         ...worker,
@@ -898,14 +988,6 @@ export default function EntriTarget() {
     }
   };
 
-  const dummyWorkers = [
-    { id: 1, nama: "Ahmad Subagio", nip: "198501012010121001", jabatan: "Koordinator" },
-    { id: 2, nama: "Siti Nurhaliza", nip: "198602022011012001", jabatan: "Anggota" },
-    { id: 3, nama: "Budi Santoso", nip: "198703032012011001", jabatan: "Anggota" },
-    { id: 4, nama: "Dewi Lestari", nip: "198804042013012001", jabatan: "Anggota" },
-    { id: 5, nama: "Eko Prasetyo", nip: "198905052014011001", jabatan: "Anggota" },
-  ];
-
   const getKomponenPOKLabel = (value: string) => {
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
@@ -917,7 +999,7 @@ export default function EntriTarget() {
       .filter(w => w.id !== excludeWorkerId) // Exclude current worker being edited
       .map(w => w.id);
     
-    return dummyWorkers
+    return petugasAsWorkers
       .filter(w => !existingWorkerIds.includes(w.id))
       .map(w => ({
         value: w.nama,
@@ -927,14 +1009,14 @@ export default function EntriTarget() {
 
   // Filter workers based on search term
   const filteredWorkers = useMemo(() => {
-    if (!searchTerm) return dummyWorkers;
+    if (!searchTerm) return petugasAsWorkers;
     
     const lowerSearch = searchTerm.toLowerCase();
-    return dummyWorkers.filter(w => 
+    return petugasAsWorkers.filter(w => 
       w.nama.toLowerCase().includes(lowerSearch) || 
       w.nip.includes(searchTerm)
     );
-  }, [searchTerm]);
+  }, [searchTerm, petugasAsWorkers]);
 
   // Activities are already filtered by period and job type via periodKey
   const filteredActivities = activities;
@@ -1622,129 +1704,135 @@ export default function EntriTarget() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Cari nama atau NIP petugas..."
+                placeholder="Cari nama atau NIK petugas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={filteredWorkers.every(w => {
-                          const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.id === w.id);
-                          return isAlreadyAdded || selectedWorkers[w.id]?.selected;
-                        })}
-                        onCheckedChange={(checked) => {
-                          const newSelected = {...selectedWorkers};
-                          filteredWorkers.forEach(w => {
-                            // Only allow selection if worker not already in activity
+            {loadingPetugas ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Memuat data petugas...
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={filteredWorkers.every(w => {
                             const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.id === w.id);
-                            if (!isAlreadyAdded) {
-                              newSelected[w.id] = { 
-                                selected: checked as boolean, 
-                                target: newSelected[w.id]?.target || "",
-                                realisasi: newSelected[w.id]?.realisasi || ""
-                              };
-                            }
-                          });
-                          setSelectedWorkers(newSelected);
-                        }}
-                      />
-                    </TableHead>
-                    <TableHead>Nama Petugas</TableHead>
-                    <TableHead>NIP</TableHead>
-                    <TableHead>Jabatan</TableHead>
-                    <TableHead className="w-28">Target</TableHead>
-                    <TableHead className="w-28">Realisasi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredWorkers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        Tidak ada petugas ditemukan
-                      </TableCell>
+                            return isAlreadyAdded || selectedWorkers[w.id]?.selected;
+                          })}
+                          onCheckedChange={(checked) => {
+                            const newSelected = {...selectedWorkers};
+                            filteredWorkers.forEach(w => {
+                              // Only allow selection if worker not already in activity
+                              const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.id === w.id);
+                              if (!isAlreadyAdded) {
+                                newSelected[w.id] = { 
+                                  selected: checked as boolean, 
+                                  target: newSelected[w.id]?.target || "",
+                                  realisasi: newSelected[w.id]?.realisasi || ""
+                                };
+                              }
+                            });
+                            setSelectedWorkers(newSelected);
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Nama Petugas</TableHead>
+                      <TableHead>NIK</TableHead>
+                      <TableHead>Pekerjaan</TableHead>
+                      <TableHead className="w-28">Target</TableHead>
+                      <TableHead className="w-28">Realisasi</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredWorkers.map((petugas) => {
-                      const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
-                      return (
-                        <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedWorkers[petugas.id]?.selected || false}
-                              disabled={isAlreadyAdded}
-                              onCheckedChange={(checked) => {
-                                setSelectedWorkers({
-                                  ...selectedWorkers,
-                                  [petugas.id]: {
-                                    selected: checked as boolean,
-                                    target: selectedWorkers[petugas.id]?.target || "",
-                                    realisasi: selectedWorkers[petugas.id]?.realisasi || "",
-                                  }
-                                });
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
-                          <TableCell>{petugas.nip}</TableCell>
-                          <TableCell>{petugas.jabatan}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              value={selectedWorkers[petugas.id]?.target || ""}
-                              onChange={(e) => {
-                                const newTarget = e.target.value;
-                                const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "";
-                                
-                                setSelectedWorkers({
-                                  ...selectedWorkers,
-                                  [petugas.id]: {
-                                    selected: selectedWorkers[petugas.id]?.selected || false,
-                                    target: newTarget,
-                                    realisasi: currentRealisasi,
-                                  }
-                                });
-                              }}
-                              disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
-                              className="h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              value={selectedWorkers[petugas.id]?.realisasi || ""}
-                              onChange={(e) => {
-                                const newRealisasi = e.target.value;
-                                const currentTarget = selectedWorkers[petugas.id]?.target || "";
-                                
-                                setSelectedWorkers({
-                                  ...selectedWorkers,
-                                  [petugas.id]: {
-                                    selected: selectedWorkers[petugas.id]?.selected || false,
-                                    target: currentTarget,
-                                    realisasi: newRealisasi,
-                                  }
-                                });
-                              }}
-                              disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
-                              className="h-8"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredWorkers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredWorkers.map((petugas) => {
+                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
+                        return (
+                          <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedWorkers[petugas.id]?.selected || false}
+                                disabled={isAlreadyAdded}
+                                onCheckedChange={(checked) => {
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: checked as boolean,
+                                      target: selectedWorkers[petugas.id]?.target || "",
+                                      realisasi: selectedWorkers[petugas.id]?.realisasi || "",
+                                    }
+                                  });
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
+                            <TableCell>{petugas.nip}</TableCell>
+                            <TableCell>{petugas.jabatan}</TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={selectedWorkers[petugas.id]?.target || ""}
+                                onChange={(e) => {
+                                  const newTarget = e.target.value;
+                                  const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "";
+                                  
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: selectedWorkers[petugas.id]?.selected || false,
+                                      target: newTarget,
+                                      realisasi: currentRealisasi,
+                                    }
+                                  });
+                                }}
+                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={selectedWorkers[petugas.id]?.realisasi || ""}
+                                onChange={(e) => {
+                                  const newRealisasi = e.target.value;
+                                  const currentTarget = selectedWorkers[petugas.id]?.target || "";
+                                  
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: selectedWorkers[petugas.id]?.selected || false,
+                                      target: currentTarget,
+                                      realisasi: newRealisasi,
+                                    }
+                                  });
+                                }}
+                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                                className="h-8"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
