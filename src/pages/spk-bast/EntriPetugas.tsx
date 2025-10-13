@@ -56,7 +56,7 @@ export default function EntriPetugas() {
     },
   });
 
-  // 🟢 FETCH DATA DARI SPREADSHEET
+  // 🟢 FETCH DATA
   const fetchPetugas = async () => {
     try {
       setLoading(true);
@@ -99,17 +99,15 @@ export default function EntriPetugas() {
     fetchPetugas();
   }, []);
 
-  // 🟢 SIMPAN ATAU UPDATE DATA
+  // 🟢 SIMPAN / UPDATE
   const onSubmit = async (values: PetugasFormData) => {
     try {
       const operation = editingPetugas ? "update" : "append";
 
-      let nomorUrutBaru = 1;
-      if (!editingPetugas && petugas.length > 0) {
-        const lastNo = Math.max(...petugas.map((p) => p.no));
+      let nomorUrutBaru = editingPetugas ? editingPetugas.no : 1;
+      if (!editingPetugas) {
+        const lastNo = petugas.length > 0 ? Math.max(...petugas.map((p) => p.no)) : 0;
         nomorUrutBaru = lastNo + 1;
-      } else if (!editingPetugas) {
-        nomorUrutBaru = 1;
       }
 
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -154,18 +152,18 @@ export default function EntriPetugas() {
     }
   };
 
-  // 🟢 EDIT DATA
+  // 🟢 EDIT
   const handleEdit = (petugas: Petugas) => {
     setEditingPetugas(petugas);
     form.reset(petugas);
     setDialogOpen(true);
   };
 
-  // 🟢 DELETE DATA
+  // 🟢 DELETE
   const handleDelete = async (petugas: Petugas) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
-
     try {
+      setLoading(true);
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -179,16 +177,19 @@ export default function EntriPetugas() {
 
       toast({
         title: "Sukses",
-        description: "Data petugas berhasil dihapus",
+        description: `Data petugas ${petugas.nama} berhasil dihapus`,
       });
 
-      fetchPetugas();
+      // langsung hapus di state tanpa memanggil invoke kedua
+      setPetugas((prev) => prev.filter((p) => p.rowIndex !== petugas.rowIndex));
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -216,6 +217,7 @@ export default function EntriPetugas() {
     }
   };
 
+  // 🟢 RENDER
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -249,7 +251,7 @@ export default function EntriPetugas() {
               <DialogTitle>{editingPetugas ? "Edit" : "Tambah"} Petugas</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
                 {Object.keys(petugasSchema.shape).map((key) => (
                   <FormField
                     key={key}
@@ -315,6 +317,7 @@ export default function EntriPetugas() {
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {paginatedPetugas.map((p) => (
                     <TableRow key={p.rowIndex} className="h-auto">
@@ -340,8 +343,10 @@ export default function EntriPetugas() {
               </Table>
 
               {/* PAGINATION */}
-              <div className="flex justify-between items-center mt-4 text-sm">
-                <p>Halaman {page} dari {totalPages}</p>
+              <div className="flex justify-between items-center mt-3 text-sm">
+                <p>
+                  Halaman {page} dari {totalPages || 1}
+                </p>
                 <div className="flex gap-2">
                   <Button disabled={page === 1} onClick={() => setPage(1)}>Awal</Button>
                   <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button>
