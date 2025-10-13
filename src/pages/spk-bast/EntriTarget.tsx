@@ -24,18 +24,18 @@ import { supabase } from "@/integrations/supabase/client";
 // Mock data for SPK periods
 // Initialize empty SPK data for 12 months
 const spkData = [
-  { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 2, month: "Februari", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 3, month: "Maret", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 4, month: "April", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 5, month: "Mei", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 6, month: "Juni", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 7, month: "Juli", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 8, month: "Agustus", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 9, month: "September", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 10, month: "Oktober", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 11, month: "November", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
+  { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 2, month: "Februari", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 3, month: "Maret", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 4, month: "April", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 5, month: "Mei", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 6, month: "Juni", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 7, month: "Juli", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 8, month: "Agustus", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 9, month: "September", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 10, month: "Oktober", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 11, month: "November", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
+  { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
 ];
 
 // Job types options
@@ -191,16 +191,39 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // Parse dates in DD/MM/YYYY format
+        // Parse dates - handles DD/MM/YYYY or "DD MonthName YYYY" formats
         const parseDateFromSpreadsheet = (dateStr: string) => {
           if (!dateStr) return new Date();
-          const parts = dateStr.split(/[\/\s-]/);
-          if (parts.length >= 3) {
-            const day = parseInt(parts[0]);
-            const month = parseInt(parts[1]) - 1;
-            const year = parseInt(parts[2]);
+          
+          // Indonesian month names mapping
+          const monthNames: {[key: string]: number} = {
+            'januari': 0, 'februari': 1, 'maret': 2, 'april': 3,
+            'mei': 4, 'juni': 5, 'juli': 6, 'agustus': 7,
+            'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+          };
+          
+          // Try DD/MM/YYYY format first
+          const numericParts = dateStr.split(/[\/\s-]/);
+          if (numericParts.length >= 3 && !isNaN(parseInt(numericParts[0])) && !isNaN(parseInt(numericParts[1]))) {
+            const day = parseInt(numericParts[0]);
+            const month = parseInt(numericParts[1]) - 1;
+            const year = parseInt(numericParts[2]);
             return new Date(year, month, day);
           }
+          
+          // Try "DD MonthName YYYY" format
+          const parts = dateStr.toLowerCase().split(/\s+/);
+          if (parts.length >= 3) {
+            const day = parseInt(parts[0]);
+            const monthName = parts[1];
+            const year = parseInt(parts[2]);
+            const month = monthNames[monthName];
+            
+            if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+              return new Date(year, month, day);
+            }
+          }
+          
           return new Date();
         };
         
@@ -872,8 +895,8 @@ export default function EntriTarget() {
                     <TableHead className="text-center">Jumlah Petugas (Unik) Yang Terlibat</TableHead>
                     <TableHead className="text-center">Target Pekerjaan (BS,Resp,Dok,dll)</TableHead>
                     <TableHead className="text-right">Nilai Perjanjian Rp.</TableHead>
+                    <TableHead className="text-right">Nilai Realisasi Rp.</TableHead>
                     <TableHead className="text-center">Jumlah kegiatan dikirim ke PPK</TableHead>
-                    <TableHead className="text-center">Jumlah kegiatan Disetujui PPK</TableHead>
                     <TableHead className="text-center w-20">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -886,8 +909,8 @@ export default function EntriTarget() {
                       <TableCell className="text-center">{item.workers}</TableCell>
                       <TableCell className="text-center">{item.target || ""}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.realisasi)}</TableCell>
                       <TableCell className="text-center">{item.sent}</TableCell>
-                      <TableCell className="text-center">{item.approved}</TableCell>
                       <TableCell className="text-center">
                         <Button
                           variant="ghost"
