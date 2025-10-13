@@ -150,6 +150,65 @@ export default function EntriTarget() {
 
   const [showCustomSatuan, setShowCustomSatuan] = useState(false);
 
+  // Calculate dynamic SPK data from activitiesByPeriod
+  const dynamicSpkData = useMemo(() => {
+    const monthlyData = spkData.map(month => {
+      let totalActivities = 0;
+      let totalTarget = 0;
+      let totalValue = 0;
+      let totalRealisasi = 0;
+      let totalSent = 0;
+      const uniqueWorkers = new Set<string>();
+
+      // Aggregate data across all job types for this month
+      jobTypes.forEach(jobType => {
+        const key = `${month.month} ${selectedYear}-${jobType.name}`;
+        const monthActivities = activitiesByPeriod[key] || [];
+        
+        totalActivities += monthActivities.length;
+        
+        monthActivities.forEach(activity => {
+          // Count unique workers
+          activity.workers.forEach(worker => uniqueWorkers.add(worker.nama));
+          
+          // Sum targets
+          const activityTarget = activity.workers.reduce((sum, w) => {
+            return sum + parseFloat(w.target || '0');
+          }, 0);
+          totalTarget += activityTarget;
+          
+          // Sum values (Nilai Perjanjian)
+          const activityValue = activity.workers.reduce((sum, w) => {
+            const target = parseFloat(w.target || '0');
+            const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+            return sum + (target * hargaSatuan);
+          }, 0);
+          totalValue += activityValue;
+          
+          // Sum realisasi values
+          const activityRealisasi = activity.workers.reduce((sum, w) => {
+            const realisasi = parseFloat(w.realisasi || '0');
+            const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+            return sum + (realisasi * hargaSatuan);
+          }, 0);
+          totalRealisasi += activityRealisasi;
+        });
+      });
+
+      return {
+        ...month,
+        activities: totalActivities,
+        workers: uniqueWorkers.size,
+        target: totalTarget,
+        value: totalValue,
+        realisasi: totalRealisasi,
+        sent: totalSent, // TODO: implement sent logic later
+      };
+    });
+
+    return monthlyData;
+  }, [activitiesByPeriod, selectedYear]);
+
   // Load data from spreadsheet on mount
   useEffect(() => {
     loadDataFromSpreadsheet();
@@ -901,7 +960,7 @@ export default function EntriTarget() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {spkData.map((item, index) => (
+                  {dynamicSpkData.map((item, index) => (
                     <TableRow key={item.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>SPK Bulan {item.month} {selectedYear}</TableCell>
