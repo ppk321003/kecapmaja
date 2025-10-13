@@ -572,15 +572,64 @@ export default function EntriTarget() {
     form.reset();
   };
 
-  const handleDeleteActivity = (id: number) => {
-    setActivitiesByPeriod({
-      ...activitiesByPeriod,
-      [periodKey]: activities.filter(activity => activity.id !== id)
-    });
-    toast({
-      title: "Kegiatan berhasil dihapus",
-      description: "Kegiatan telah dihapus dari daftar.",
-    });
+  // === DELETE ACTIVITY - DIPERBAIKI ===
+  const handleDeleteActivity = async (id: number) => {
+    const activityToDelete = activities.find(activity => activity.id === id);
+    if (!activityToDelete) return;
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`)) return;
+
+    try {
+      // Hapus dari spreadsheet terlebih dahulu jika ada rowIndex
+      if (activityToDelete.spreadsheetRowIndex) {
+        await deleteActivityFromSpreadsheet(activityToDelete.spreadsheetRowIndex);
+      }
+
+      // Hapus dari state
+      const updatedActivities = activities.filter(activity => activity.id !== id);
+      setActivitiesByPeriod({
+        ...activitiesByPeriod,
+        [periodKey]: updatedActivities
+      });
+      
+      toast({
+        title: "Kegiatan berhasil dihapus",
+        description: `Kegiatan "${activityToDelete.namaKegiatan}" telah dihapus dari spreadsheet.`,
+      });
+    } catch (error: any) {
+      console.error('Error deleting activity:', error);
+      toast({
+        title: "Gagal menghapus kegiatan",
+        description: error.message || "Terjadi kesalahan saat menghapus kegiatan dari spreadsheet",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fungsi untuk menghapus activity dari spreadsheet
+  const deleteActivityFromSpreadsheet = async (rowIndex: number) => {
+    try {
+      console.log('Deleting row from spreadsheet:', rowIndex);
+      
+      const { error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          operation: 'deleteRow',
+          sheetName: 'Sheet1',
+          rowIndex: rowIndex,
+        }
+      });
+
+      if (error) {
+        console.error('Error deleting from spreadsheet:', error);
+        throw error;
+      }
+
+      console.log('Successfully deleted row from spreadsheet');
+    } catch (error) {
+      console.error('Error in deleteActivityFromSpreadsheet:', error);
+      throw error;
+    }
   };
 
   const handleEditActivity = (activity: Activity) => {
@@ -1756,7 +1805,7 @@ export default function EntriTarget() {
                         <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                           {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
                         </TableCell>
-                      </TableRow>
+                    </TableRow>
                     ) : (
                       filteredWorkers.map((petugas) => {
                         const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
