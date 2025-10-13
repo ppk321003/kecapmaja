@@ -19,8 +19,9 @@ const petugasSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
   pekerjaan: z.string().min(1, "Pekerjaan harus diisi").max(100),
   alamat: z.string().min(1, "Alamat harus diisi").max(200),
-  namaBank: z.string().min(1, "Nama Bank harus diisi").max(100),
-  noRekening: z.string().min(1, "No. Rekening harus diisi").max(50),
+  bank: z.string().min(1, "Bank harus diisi").max(100),
+  rekening: z.string().min(1, "Rekening harus diisi").max(50),
+  kecamatan: z.string().min(1, "Kecamatan harus diisi").max(100),
 });
 
 type PetugasFormData = z.infer<typeof petugasSchema>;
@@ -43,8 +44,9 @@ export default function EntriPetugas() {
       nama: "",
       pekerjaan: "",
       alamat: "",
-      namaBank: "",
-      noRekening: "",
+      bank: "",
+      rekening: "",
+      kecamatan: "",
     },
   });
 
@@ -55,7 +57,7 @@ export default function EntriPetugas() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1",
+          range: "MASTER.MITRA",
         },
       });
 
@@ -64,12 +66,13 @@ export default function EntriPetugas() {
       const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
-        nik: row[0] || "",
-        nama: row[1] || "",
-        pekerjaan: row[2] || "",
-        alamat: row[3] || "",
-        namaBank: row[4] || "",
-        noRekening: row[5] || "",
+        nik: row[1] || "",
+        nama: row[2] || "",
+        pekerjaan: row[3] || "",
+        alamat: row[4] || "",
+        bank: row[5] || "",
+        rekening: row[6] || "",
+        kecamatan: row[7] || "",
       }));
 
       setPetugas(petugasData);
@@ -95,8 +98,8 @@ export default function EntriPetugas() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: "Sheet1",
-          values: [[values.nik, values.nama, values.pekerjaan, values.alamat, values.namaBank, values.noRekening]],
+          range: "MASTER.MITRA",
+          values: [["", values.nik, values.nama, values.pekerjaan, values.alamat, values.bank, values.rekening, values.kecamatan]],
           ...(editingPetugas && { rowIndex: editingPetugas.rowIndex }),
         },
       });
@@ -238,10 +241,10 @@ export default function EntriPetugas() {
                 />
                 <FormField
                   control={form.control}
-                  name="namaBank"
+                  name="bank"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nama Bank</FormLabel>
+                      <FormLabel>Bank</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -251,10 +254,23 @@ export default function EntriPetugas() {
                 />
                 <FormField
                   control={form.control}
-                  name="noRekening"
+                  name="rekening"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>No. Rekening Bank</FormLabel>
+                      <FormLabel>Rekening</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="kecamatan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kecamatan</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -289,8 +305,9 @@ export default function EntriPetugas() {
                   <TableHead>Nama</TableHead>
                   <TableHead>Pekerjaan</TableHead>
                   <TableHead>Alamat</TableHead>
-                  <TableHead>Nama Bank</TableHead>
-                  <TableHead>No. Rekening Bank</TableHead>
+                  <TableHead>Bank</TableHead>
+                  <TableHead>Rekening</TableHead>
+                  <TableHead>Kecamatan</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -301,8 +318,9 @@ export default function EntriPetugas() {
                     <TableCell>{p.nama}</TableCell>
                     <TableCell>{p.pekerjaan}</TableCell>
                     <TableCell>{p.alamat}</TableCell>
-                    <TableCell>{p.namaBank}</TableCell>
-                    <TableCell>{p.noRekening}</TableCell>
+                    <TableCell>{p.bank}</TableCell>
+                    <TableCell>{p.rekening}</TableCell>
+                    <TableCell>{p.kecamatan}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
