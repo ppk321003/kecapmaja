@@ -56,7 +56,7 @@ export default function EntriPetugas() {
     },
   });
 
-  // 🔹 Fetch data dari Spreadsheet
+  // 🟢 FETCH DATA
   const fetchPetugas = async () => {
     try {
       setLoading(true);
@@ -69,7 +69,8 @@ export default function EntriPetugas() {
       });
 
       if (error) throw error;
-      const rows = data?.values || [];
+
+      const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
         no: Number(row[0]) || index + 1,
@@ -81,6 +82,7 @@ export default function EntriPetugas() {
         rekening: row[6] || "",
         kecamatan: row[7] || "",
       }));
+
       setPetugas(petugasData);
     } catch (error: any) {
       toast({
@@ -97,44 +99,63 @@ export default function EntriPetugas() {
     fetchPetugas();
   }, []);
 
-  // 🔹 Simpan / Update data
+  // 🟢 SIMPAN / UPDATE
   const onSubmit = async (values: PetugasFormData) => {
     try {
-      const operation = editingPetugas ? "update" : "append";
-      // Nomor urut hanya dibuat baru jika tambah
-      const nomorUrutBaru = editingPetugas
-        ? editingPetugas.no
-        : petugas.length > 0
-        ? Math.max(...petugas.map((p) => p.no)) + 1
-        : 1;
+      let nomorUrutBaru = editingPetugas ? editingPetugas.no : 1;
+      
+      // Jika menambah data baru, cari nomor urut terakhir
+      if (!editingPetugas) {
+        const lastNo = petugas.length > 0 ? Math.max(...petugas.map((p) => p.no)) : 0;
+        nomorUrutBaru = lastNo + 1;
+      }
 
-      const { error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation,
-          sheetName: "MASTER.MITRA",
-          values: [
-            [
-              nomorUrutBaru.toString(),
-              values.nik,
-              values.nama,
-              values.pekerjaan,
-              values.alamat,
-              values.bank,
-              values.rekening,
-              values.kecamatan,
-            ],
-          ],
-          ...(editingPetugas && { rowIndex: editingPetugas.rowIndex }),
-        },
-      });
+      const rowData = [
+        nomorUrutBaru.toString(),
+        values.nik,
+        values.nama,
+        values.pekerjaan,
+        values.alamat,
+        values.bank,
+        values.rekening,
+        values.kecamatan,
+      ];
 
-      if (error) throw error;
+      if (editingPetugas) {
+        // UPDATE data yang sudah ada
+        const { error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "update",
+            range: `MASTER.MITRA!A${editingPetugas.rowIndex}:H${editingPetugas.rowIndex}`,
+            values: [rowData],
+          },
+        });
 
-      toast({
-        title: "Sukses",
-        description: `Data petugas berhasil ${editingPetugas ? "diperbarui" : "ditambahkan"}.`,
-      });
+        if (error) throw error;
+
+        toast({
+          title: "Sukses",
+          description: "Data petugas berhasil diperbarui",
+        });
+      } else {
+        // TAMBAH data baru
+        const { error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "append",
+            range: "MASTER.MITRA",
+            values: [rowData],
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Sukses",
+          description: "Data petugas berhasil ditambahkan",
+        });
+      }
 
       setDialogOpen(false);
       form.reset();
@@ -149,23 +170,30 @@ export default function EntriPetugas() {
     }
   };
 
-  // 🔹 Edit data
+  // 🟢 EDIT
   const handleEdit = (petugas: Petugas) => {
     setEditingPetugas(petugas);
-    form.reset(petugas);
+    form.reset({
+      nik: petugas.nik,
+      nama: petugas.nama,
+      pekerjaan: petugas.pekerjaan,
+      alamat: petugas.alamat,
+      bank: petugas.bank,
+      rekening: petugas.rekening,
+      kecamatan: petugas.kecamatan,
+    });
     setDialogOpen(true);
   };
 
-  // 🔹 Hapus data
+  // 🟢 DELETE
   const handleDelete = async (petugas: Petugas) => {
-    if (!confirm(`Hapus data petugas ${petugas.nama}?`)) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus data petugas ${petugas.nama}?`)) return;
+    
     try {
-      setLoading(true);
-
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "deleteRow",
+          operation: "delete",
           sheetName: "MASTER.MITRA",
           rowIndex: petugas.rowIndex,
         },
@@ -175,22 +203,22 @@ export default function EntriPetugas() {
 
       toast({
         title: "Sukses",
-        description: `Data ${petugas.nama} telah dihapus.`,
+        description: `Data petugas ${petugas.nama} berhasil dihapus`,
       });
 
-      setPetugas((prev) => prev.filter((p) => p.rowIndex !== petugas.rowIndex));
+      // Refresh data
+      fetchPetugas();
     } catch (error: any) {
+      console.error("Delete error:", error);
       toast({
-        title: "Error Hapus",
-        description: error.message,
+        title: "Error",
+        description: error.message || "Gagal menghapus data petugas",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  // 🔹 Filter dan Sort
+  // 🟢 FILTER & SORT
   const filteredPetugas = petugas
     .filter((p) =>
       Object.values(p).some((v) =>
@@ -204,7 +232,7 @@ export default function EntriPetugas() {
     });
 
   const paginatedPetugas = filteredPetugas.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-  const totalPages = Math.ceil(filteredPetugas.length / itemsPerPage) || 1;
+  const totalPages = Math.ceil(filteredPetugas.length / itemsPerPage);
 
   const handleSort = (field: keyof Petugas) => {
     if (field === sortField) setSortAsc(!sortAsc);
@@ -214,10 +242,10 @@ export default function EntriPetugas() {
     }
   };
 
-  // 🔹 Render
+  // 🟢 RENDER
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Entri Petugas</h1>
@@ -226,7 +254,7 @@ export default function EntriPetugas() {
           </p>
         </div>
 
-        {/* Dialog Form */}
+        {/* DIALOG FORM */}
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -239,23 +267,23 @@ export default function EntriPetugas() {
         >
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" /> Tambah Petugas
+              <Plus className="mr-2 h-4 w-4" />
+              Tambah Petugas
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingPetugas ? "Edit" : "Tambah"} Petugas</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-                {Object.keys(petugasSchema.shape).map((key) => (
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    key={key}
                     control={form.control}
-                    name={key as keyof PetugasFormData}
+                    name="nik"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{key.charAt(0).toUpperCase() + key.slice(1)}</FormLabel>
+                        <FormLabel>NIK</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -263,17 +291,108 @@ export default function EntriPetugas() {
                       </FormItem>
                     )}
                   />
-                ))}
-                <Button type="submit" className="w-full">
-                  {editingPetugas ? "Update" : "Tambah"}
-                </Button>
+                  <FormField
+                    control={form.control}
+                    name="nama"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="pekerjaan"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pekerjaan</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="kecamatan"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Kecamatan</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bank"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="rekening"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rekening</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="alamat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Alamat</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex gap-2 pt-2">
+                  <Button type="submit" className="flex-1">
+                    {editingPetugas ? "Update" : "Tambah"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setDialogOpen(false);
+                      form.reset();
+                      setEditingPetugas(null);
+                    }}
+                  >
+                    Batal
+                  </Button>
+                </div>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Table */}
+      {/* TABEL */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -295,59 +414,115 @@ export default function EntriPetugas() {
             <p className="text-center py-8 text-muted-foreground">Memuat data...</p>
           ) : (
             <>
-              <Table className="text-sm">
-                <TableHeader>
-                  <TableRow className="h-auto">
-                    {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map((col) => (
-                      <TableHead
-                        key={col}
-                        onClick={() => handleSort(col as keyof Petugas)}
-                        className="cursor-pointer select-none py-1"
-                      >
-                        {col.charAt(0).toUpperCase() + col.slice(1)}{" "}
-                        <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {paginatedPetugas.map((p) => (
-                    <TableRow key={p.rowIndex} className="h-auto">
-                      <TableCell className="py-1">{p.no}</TableCell>
-                      <TableCell className="py-1">{p.nik}</TableCell>
-                      <TableCell className="py-1">{p.nama}</TableCell>
-                      <TableCell className="py-1">{p.pekerjaan}</TableCell>
-                      <TableCell className="py-1">{p.alamat}</TableCell>
-                      <TableCell className="py-1">{p.bank}</TableCell>
-                      <TableCell className="py-1">{p.rekening}</TableCell>
-                      <TableCell className="py-1">{p.kecamatan}</TableCell>
-                      <TableCell className="text-right py-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map(
+                        (col) => (
+                          <TableHead
+                            key={col}
+                            onClick={() => handleSort(col as keyof Petugas)}
+                            className="cursor-pointer select-none hover:bg-accent"
+                          >
+                            <div className="flex items-center">
+                              {col.charAt(0).toUpperCase() + col.slice(1)}
+                              <ArrowUpDown className="ml-1 h-3 w-3" />
+                            </div>
+                          </TableHead>
+                        )
+                      )}
+                      <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
 
-              {/* Pagination */}
-              <div className="flex justify-between items-center mt-3 text-sm">
-                <p>
-                  Halaman {page} dari {totalPages}
-                </p>
-                <div className="flex gap-2">
-                  <Button disabled={page === 1} onClick={() => setPage(1)}>Awal</Button>
-                  <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button>
-                  <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button>
-                  <Button disabled={page === totalPages} onClick={() => setPage(totalPages)}>Akhir</Button>
-                </div>
+                  <TableBody>
+                    {paginatedPetugas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          {searchQuery ? "Tidak ada data yang sesuai dengan pencarian" : "Belum ada data petugas"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedPetugas.map((p) => (
+                        <TableRow key={p.rowIndex}>
+                          <TableCell>{p.no}</TableCell>
+                          <TableCell>{p.nik}</TableCell>
+                          <TableCell className="font-medium">{p.nama}</TableCell>
+                          <TableCell>{p.pekerjaan}</TableCell>
+                          <TableCell>{p.alamat}</TableCell>
+                          <TableCell>{p.bank}</TableCell>
+                          <TableCell>{p.rekening}</TableCell>
+                          <TableCell>{p.kecamatan}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleEdit(p)}
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDelete(p)}
+                                title="Hapus"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
+
+              {/* PAGINATION */}
+              {filteredPetugas.length > 0 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Menampilkan {Math.min(paginatedPetugas.length, itemsPerPage)} dari {filteredPetugas.length} petugas
+                  </p>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={page === 1} 
+                      onClick={() => setPage(1)}
+                    >
+                      Awal
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={page === 1} 
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={page === totalPages} 
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Berikutnya
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={page === totalPages} 
+                      onClick={() => setPage(totalPages)}
+                    >
+                      Akhir
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </CardContent>
