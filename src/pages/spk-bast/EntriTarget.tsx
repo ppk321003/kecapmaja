@@ -131,9 +131,13 @@ export default function EntriTarget() {
   const [editingWorker, setEditingWorker] = useState<{activityId: number, worker: Worker} | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Get activities for current period and job type
-  const periodKey = `${selectedPeriod}-${selectedJobType}`;
+  // Get activities for current period and job type - MUST include year to match spreadsheet data
+  const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
   const activities = activitiesByPeriod[periodKey] || [];
+  
+  console.log('Current periodKey:', periodKey);
+  console.log('Available keys in activitiesByPeriod:', Object.keys(activitiesByPeriod));
+  console.log('Activities found:', activities);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
