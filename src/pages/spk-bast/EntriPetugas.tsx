@@ -28,6 +28,7 @@ type PetugasFormData = z.infer<typeof petugasSchema>;
 
 interface Petugas extends PetugasFormData {
   rowIndex: number;
+  no: number;
 }
 
 export default function EntriPetugas() {
@@ -55,6 +56,7 @@ export default function EntriPetugas() {
     },
   });
 
+  // 🟢 FETCH DATA DARI SPREADSHEET
   const fetchPetugas = async () => {
     try {
       setLoading(true);
@@ -71,6 +73,7 @@ export default function EntriPetugas() {
       const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
+        no: Number(row[0]) || index + 1,
         nik: row[1] || "",
         nama: row[2] || "",
         pekerjaan: row[3] || "",
@@ -96,15 +99,37 @@ export default function EntriPetugas() {
     fetchPetugas();
   }, []);
 
+  // 🟢 SIMPAN ATAU UPDATE DATA
   const onSubmit = async (values: PetugasFormData) => {
     try {
       const operation = editingPetugas ? "update" : "append";
+
+      let nomorUrutBaru = 1;
+      if (!editingPetugas && petugas.length > 0) {
+        const lastNo = Math.max(...petugas.map((p) => p.no));
+        nomorUrutBaru = lastNo + 1;
+      } else if (!editingPetugas) {
+        nomorUrutBaru = 1;
+      }
+
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
+          sheetName: "MASTER.MITRA",
           range: "MASTER.MITRA",
-          values: [["", values.nik, values.nama, values.pekerjaan, values.alamat, values.bank, values.rekening, values.kecamatan]],
+          values: [
+            [
+              nomorUrutBaru.toString(),
+              values.nik,
+              values.nama,
+              values.pekerjaan,
+              values.alamat,
+              values.bank,
+              values.rekening,
+              values.kecamatan,
+            ],
+          ],
           ...(editingPetugas && { rowIndex: editingPetugas.rowIndex }),
         },
       });
@@ -129,12 +154,14 @@ export default function EntriPetugas() {
     }
   };
 
+  // 🟢 EDIT DATA
   const handleEdit = (petugas: Petugas) => {
     setEditingPetugas(petugas);
     form.reset(petugas);
     setDialogOpen(true);
   };
 
+  // 🟢 DELETE DATA
   const handleDelete = async (petugas: Petugas) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
 
@@ -142,7 +169,7 @@ export default function EntriPetugas() {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "delete",
+          operation: "deleteRow",
           sheetName: "MASTER.MITRA",
           rowIndex: petugas.rowIndex,
         },
@@ -165,9 +192,10 @@ export default function EntriPetugas() {
     }
   };
 
+  // 🟢 FILTER & SORT
   const filteredPetugas = petugas
-    .filter(p =>
-      Object.values(p).some(v =>
+    .filter((p) =>
+      Object.values(p).some((v) =>
         v.toString().toLowerCase().includes(searchQuery.toLowerCase())
       )
     )
@@ -181,9 +209,8 @@ export default function EntriPetugas() {
   const totalPages = Math.ceil(filteredPetugas.length / itemsPerPage);
 
   const handleSort = (field: keyof Petugas) => {
-    if (field === sortField) {
-      setSortAsc(!sortAsc);
-    } else {
+    if (field === sortField) setSortAsc(!sortAsc);
+    else {
       setSortField(field);
       setSortAsc(true);
     }
@@ -191,6 +218,7 @@ export default function EntriPetugas() {
 
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Entri Petugas</h1>
@@ -199,14 +227,17 @@ export default function EntriPetugas() {
           </p>
         </div>
 
-        {/* Dialog Form */}
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setEditingPetugas(null);
-            form.reset();
-          }
-        }}>
+        {/* DIALOG FORM */}
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingPetugas(null);
+              form.reset();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -244,6 +275,7 @@ export default function EntriPetugas() {
         </Dialog>
       </div>
 
+      {/* TABEL */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -259,6 +291,7 @@ export default function EntriPetugas() {
             />
           </div>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <p className="text-center py-8 text-muted-foreground">Memuat data...</p>
@@ -267,22 +300,25 @@ export default function EntriPetugas() {
               <Table className="text-sm">
                 <TableHeader>
                   <TableRow className="h-auto">
-                    {["nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map((col) => (
-                      <TableHead
-                        key={col}
-                        onClick={() => handleSort(col as keyof Petugas)}
-                        className="cursor-pointer select-none py-1"
-                      >
-                        {col.charAt(0).toUpperCase() + col.slice(1)}{" "}
-                        <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                      </TableHead>
-                    ))}
+                    {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map(
+                      (col) => (
+                        <TableHead
+                          key={col}
+                          onClick={() => handleSort(col as keyof Petugas)}
+                          className="cursor-pointer select-none py-1"
+                        >
+                          {col.charAt(0).toUpperCase() + col.slice(1)}{" "}
+                          <ArrowUpDown className="inline h-3 w-3 ml-1" />
+                        </TableHead>
+                      )
+                    )}
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedPetugas.map((p) => (
                     <TableRow key={p.rowIndex} className="h-auto">
+                      <TableCell className="py-1">{p.no}</TableCell>
                       <TableCell className="py-1">{p.nik}</TableCell>
                       <TableCell className="py-1">{p.nama}</TableCell>
                       <TableCell className="py-1">{p.pekerjaan}</TableCell>
@@ -303,16 +339,14 @@ export default function EntriPetugas() {
                 </TableBody>
               </Table>
 
-              {/* Pagination */}
+              {/* PAGINATION */}
               <div className="flex justify-between items-center mt-4 text-sm">
                 <p>Halaman {page} dari {totalPages}</p>
                 <div className="flex gap-2">
-                  <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
-                    Sebelumnya
-                  </Button>
-                  <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-                    Berikutnya
-                  </Button>
+                  <Button disabled={page === 1} onClick={() => setPage(1)}>Awal</Button>
+                  <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button>
+                  <Button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button>
+                  <Button disabled={page === totalPages} onClick={() => setPage(totalPages)}>Akhir</Button>
                 </div>
               </div>
             </>
