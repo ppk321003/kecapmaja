@@ -31,6 +31,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -92,7 +98,7 @@ export default function EntriPetugas() {
 
       const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2, // index + 2 karena baris 1 adalah header
+        rowIndex: index + 2,
         no: Number(row[0]) || index + 1,
         nik: row[1] || "",
         nama: row[2] || "",
@@ -124,7 +130,6 @@ export default function EntriPetugas() {
     try {
       const operation = editingPetugas ? "update" : "append";
 
-      // Nomor urut tetap saat edit
       const nomorUrut = editingPetugas
         ? editingPetugas.no
         : petugas.length > 0
@@ -199,8 +204,6 @@ export default function EntriPetugas() {
 
     try {
       setLoading(true);
-
-      // Gunakan operasi "delete" — sesuai edge function standar
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -217,7 +220,6 @@ export default function EntriPetugas() {
         description: `Data ${pet.nama} berhasil dihapus.`,
       });
 
-      // Hapus dari state lokal agar langsung hilang dari tabel
       setPetugas((prev) => prev.filter((p) => p.rowIndex !== pet.rowIndex));
     } catch (error: any) {
       toast({
@@ -377,7 +379,25 @@ export default function EntriPetugas() {
                       <TableCell className="py-1">{p.nik}</TableCell>
                       <TableCell className="py-1">{p.nama}</TableCell>
                       <TableCell className="py-1">{p.pekerjaan}</TableCell>
-                      <TableCell className="py-1">{p.alamat}</TableCell>
+
+                      {/* === ALAMAT === */}
+                      <TableCell className="py-1 max-w-[200px] truncate">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="block cursor-pointer">
+                                {p.alamat.length > 30
+                                  ? p.alamat.slice(0, 30) + "..."
+                                  : p.alamat}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">{p.alamat}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+
                       <TableCell className="py-1">{p.bank}</TableCell>
                       <TableCell className="py-1">{p.rekening}</TableCell>
                       <TableCell className="py-1">{p.kecamatan}</TableCell>
