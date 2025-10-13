@@ -92,7 +92,7 @@ export default function EntriPetugas() {
 
       const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
+        rowIndex: index + 2, // index + 2 karena baris 1 adalah header
         no: Number(row[0]) || index + 1,
         nik: row[1] || "",
         nama: row[2] || "",
@@ -119,13 +119,13 @@ export default function EntriPetugas() {
     fetchPetugas();
   }, []);
 
-  // === SIMPAN / UPDATE ===
+  // === TAMBAH / UPDATE ===
   const onSubmit = async (values: PetugasFormData) => {
     try {
       const operation = editingPetugas ? "update" : "append";
 
-      // Nomor urut tetap jika edit
-      let nomorUrut = editingPetugas
+      // Nomor urut tetap saat edit
+      const nomorUrut = editingPetugas
         ? editingPetugas.no
         : petugas.length > 0
         ? Math.max(...petugas.map((p) => p.no)) + 1
@@ -134,7 +134,6 @@ export default function EntriPetugas() {
       const bodyData: any = {
         spreadsheetId: SPREADSHEET_ID,
         operation,
-        sheetName: "MASTER.MITRA",
         range: "MASTER.MITRA",
         values: [
           [
@@ -179,30 +178,34 @@ export default function EntriPetugas() {
   };
 
   // === EDIT ===
-  const handleEdit = (petugas: Petugas) => {
-    setEditingPetugas(petugas);
+  const handleEdit = (pet: Petugas) => {
+    setEditingPetugas(pet);
     form.reset({
-      nik: petugas.nik,
-      nama: petugas.nama,
-      pekerjaan: petugas.pekerjaan,
-      alamat: petugas.alamat,
-      bank: petugas.bank,
-      rekening: petugas.rekening,
-      kecamatan: petugas.kecamatan,
+      nik: pet.nik,
+      nama: pet.nama,
+      pekerjaan: pet.pekerjaan,
+      alamat: pet.alamat,
+      bank: pet.bank,
+      rekening: pet.rekening,
+      kecamatan: pet.kecamatan,
     });
     setDialogOpen(true);
   };
 
   // === DELETE ===
   const handleDelete = async (pet: Petugas) => {
-    if (!confirm(`Hapus data ${pet.nama}?`)) return;
+    const confirmed = window.confirm(`Hapus data ${pet.nama}?`);
+    if (!confirmed) return;
+
     try {
       setLoading(true);
+
+      // Gunakan operasi "delete" — sesuai edge function standar
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "deleteRow",
-          sheetName: "MASTER.MITRA",
+          operation: "delete",
+          range: "MASTER.MITRA",
           rowIndex: pet.rowIndex,
         },
       });
@@ -214,10 +217,11 @@ export default function EntriPetugas() {
         description: `Data ${pet.nama} berhasil dihapus.`,
       });
 
+      // Hapus dari state lokal agar langsung hilang dari tabel
       setPetugas((prev) => prev.filter((p) => p.rowIndex !== pet.rowIndex));
     } catch (error: any) {
       toast({
-        title: "Gagal",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -226,7 +230,7 @@ export default function EntriPetugas() {
     }
   };
 
-  // === FILTER, SORT, PAGINATE ===
+  // === FILTER, SORT, PAGINASI ===
   const filteredPetugas = petugas
     .filter((p) =>
       Object.values(p).some((v) =>
