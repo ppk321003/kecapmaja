@@ -209,6 +209,40 @@ export default function EntriTarget() {
     return monthlyData;
   }, [activitiesByPeriod, selectedYear]);
 
+  // Calculate dynamic job types data for selected period
+  const dynamicJobTypes = useMemo(() => {
+    return jobTypes.map(jobType => {
+      const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
+      const jobActivities = activitiesByPeriod[key] || [];
+      
+      let totalTarget = 0;
+      let totalValue = 0;
+      let totalRealisasi = 0;
+      const uniqueWorkers = new Set<string>();
+      
+      jobActivities.forEach(activity => {
+        activity.workers.forEach(worker => {
+          uniqueWorkers.add(worker.nama);
+          totalTarget += parseFloat(worker.target || '0');
+          
+          const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+          totalValue += parseFloat(worker.target || '0') * hargaSatuan;
+          totalRealisasi += parseFloat(worker.realisasi || '0') * hargaSatuan;
+        });
+      });
+      
+      return {
+        ...jobType,
+        activities: jobActivities.length,
+        workers: uniqueWorkers.size,
+        target: totalTarget,
+        value: totalValue,
+        realisasi: totalRealisasi,
+        sent: 0, // TODO: implement sent logic
+      };
+    });
+  }, [activitiesByPeriod, selectedPeriod, selectedYear]);
+
   // Load data from spreadsheet on mount
   useEffect(() => {
     loadDataFromSpreadsheet();
@@ -1009,13 +1043,13 @@ export default function EntriTarget() {
                   <TableHead className="text-center">Jumlah Petugas (Unik) Yang Terlibat</TableHead>
                   <TableHead className="text-center">Target Pekerjaan (BS,Resp,Dok,dll)</TableHead>
                   <TableHead className="text-right">Nilai Perjanjian Rp.</TableHead>
+                  <TableHead className="text-right">Nilai Realisasi Rp.</TableHead>
                   <TableHead className="text-center">Jumlah kegiatan dikirim ke PPK</TableHead>
-                  <TableHead className="text-center">Jumlah kegiatan Disetujui PPK</TableHead>
                   <TableHead className="text-center w-20">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobTypes.map((job, index) => (
+                {dynamicJobTypes.map((job, index) => (
                   <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleJobTypeClick(job.name)}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{job.name}</TableCell>
@@ -1023,8 +1057,8 @@ export default function EntriTarget() {
                     <TableCell className="text-center">{job.workers}</TableCell>
                     <TableCell className="text-center">{job.target}</TableCell>
                     <TableCell className="text-right">{formatCurrency(job.value)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(job.realisasi)}</TableCell>
                     <TableCell className="text-center">{job.sent}</TableCell>
-                    <TableCell className="text-center">{job.approved}</TableCell>
                     <TableCell className="text-center">
                       <Button
                         variant="ghost"
