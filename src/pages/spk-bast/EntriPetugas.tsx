@@ -37,8 +37,44 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+const kecamatanList = [
+  "Argapura",
+  "Banjaran",
+  "Bantarujeg",
+  "Cigasong",
+  "Cikijing",
+  "Cingambul",
+  "Dawuan",
+  "Jatitujuh",
+  "Jatiwangi",
+  "Kadipaten",
+  "Kasokandel",
+  "Kertajati",
+  "Lemahsugih",
+  "Leuwimunding",
+  "Ligung",
+  "Maja",
+  "Majalengka",
+  "Malausma",
+  "Palasah",
+  "Panyingkiran",
+  "Rajagaluh",
+  "Sindang",
+  "Sindangwangi",
+  "Sukahaji",
+  "Sumberjaya",
+  "Talaga",
+];
 
 const petugasSchema = z.object({
   nik: z.string().min(1, "NIK harus diisi").max(50),
@@ -47,7 +83,7 @@ const petugasSchema = z.object({
   alamat: z.string().min(1, "Alamat harus diisi").max(200),
   bank: z.string().min(1, "Bank harus diisi").max(100),
   rekening: z.string().min(1, "Rekening harus diisi").max(50),
-  kecamatan: z.string().min(1, "Kecamatan harus diisi").max(100),
+  kecamatan: z.string().min(1, "Kecamatan harus dipilih").max(100),
 });
 
 type PetugasFormData = z.infer<typeof petugasSchema>;
@@ -295,24 +331,57 @@ export default function EntriPetugas() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
-                {Object.keys(petugasSchema.shape).map((key) => (
-                  <FormField
-                    key={key}
-                    control={form.control}
-                    name={key as keyof PetugasFormData}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {key.charAt(0).toUpperCase() + key.slice(1)}
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
+                {/* Input dinamis kecuali kecamatan */}
+                {Object.keys(petugasSchema.shape).map((key) =>
+                  key === "kecamatan" ? (
+                    <FormField
+                      key={key}
+                      control={form.control}
+                      name="kecamatan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kecamatan</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih kecamatan" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {kecamatanList.map((kec) => (
+                                <SelectItem key={kec} value={kec}>
+                                  {kec}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      key={key}
+                      control={form.control}
+                      name={key as keyof PetugasFormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {key.charAt(0).toUpperCase() + key.slice(1)}
+                          </FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )
+                )}
+
                 <Button type="submit" className="w-full">
                   {editingPetugas ? "Update" : "Tambah"}
                 </Button>
