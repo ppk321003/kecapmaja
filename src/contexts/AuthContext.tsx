@@ -18,10 +18,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const users = [
   { username: 'ppk3210', password: 'bellamy', role: 'PPK' },
   { username: 'PPK3210', password: 'bellamy', role: 'PPK' },
-  { username: 'user3210', password: 'terhormat', role: 'User' },
-  { username: 'USER3210', password: 'terhormat', role: 'User' },
   { username: 'bendahara3210', password: 'terhormat', role: 'Bendahara' },
   { username: 'BENDAHARA3210', password: 'terhormat', role: 'Bendahara' },
+  { username: 'sosial3210', password: 'terhormat', role: 'PPK' },
+  { username: 'SOSIAL3210', password: 'terhormat', role: 'PPK' },
+  { username: 'neraca3210', password: 'terhormat', role: 'User' },
+  { username: 'NERACA3210', password: 'terhormat', role: 'User' },
+  { username: 'produksi3210', password: 'terhormat', role: 'Bendahara' },
+  { username: 'PRODUKSI3210', password: 'terhormat', role: 'Bendahara' },  
+  { username: 'distribusi210', password: 'terhormat', role: 'PPK' },
+  { username: 'DISTRIBUSI3210', password: 'terhormat', role: 'PPK' },
+  { username: 'ipds3210', password: 'terhormat', role: 'User' },
+  { username: 'IPDS3210', password: 'terhormat', role: 'User' },
+  { username: 'pbj3210', password: 'terhormat', role: 'Bendahara' },
+  { username: 'PBJ3210', password: 'terhormat', role: 'Bendahara' },  
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
