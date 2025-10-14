@@ -81,6 +81,12 @@ type PetugasFromSheet = {
   kecamatan: string;
 };
 
+type ActivityOption = {
+  no: number;
+  role: string;
+  namaKegiatan: string;
+};
+
 const komponenPOKOptions = [
   { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
   { value: "051", label: "051 - PERSIAPAN" },
@@ -143,6 +149,8 @@ export default function EntriTarget() {
   const [searchTerm, setSearchTerm] = useState("");
   const [petugasFromSheet, setPetugasFromSheet] = useState<PetugasFromSheet[]>([]);
   const [loadingPetugas, setLoadingPetugas] = useState(false);
+  const [activityOptions, setActivityOptions] = useState<ActivityOption[]>([]);
+  const [loadingActivityOptions, setLoadingActivityOptions] = useState(false);
   
   // Get activities for current period and job type - MUST include year to match spreadsheet data
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
@@ -336,11 +344,68 @@ export default function EntriTarget() {
     });
   }, [activitiesByPeriod, selectedPeriod, selectedYear]);
 
+  // Load activity options from spreadsheet based on user role
+  const loadActivityOptions = async () => {
+    if (!user?.role) return;
+    
+    try {
+      setLoadingActivityOptions(true);
+      console.log('Loading activity options for role:', user.role);
+      
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
+          operation: 'read',
+          range: 'Sheet1',
+        }
+      });
+
+      if (error) {
+        console.error('Error loading activity options:', error);
+        return;
+      }
+
+      console.log('Activity options data loaded:', data);
+
+      if (!data?.values || data.values.length <= 1) {
+        console.log('No activity options in spreadsheet');
+        setActivityOptions([]);
+        return;
+      }
+
+      // Parse spreadsheet data - skip header row
+      const rows = data.values.slice(1);
+      const options: ActivityOption[] = rows
+        .map((row: any[], index: number) => ({
+          no: parseInt(row[0]) || index + 1, // Kolom A: No
+          role: row[1] || '', // Kolom B: Role
+          namaKegiatan: row[2] || '', // Kolom C: Nama Kegiatan
+        }))
+        .filter((option: ActivityOption) => {
+          if (!option.namaKegiatan.trim()) return false;
+          
+          // Check if user's role matches any role in the Role column
+          // Role column can contain multiple roles separated by "|"
+          const roles = option.role.split('|').map(r => r.trim());
+          return roles.includes(user.role);
+        });
+
+      setActivityOptions(options);
+      console.log('Activity options filtered for role:', options);
+      
+    } catch (error) {
+      console.error('Error loading activity options:', error);
+    } finally {
+      setLoadingActivityOptions(false);
+    }
+  };
+
   // Load data from spreadsheet on mount
   useEffect(() => {
     loadDataFromSpreadsheet();
     loadPetugasFromSheet();
-  }, []);
+    loadActivityOptions();
+  }, [user?.role]);
 
   const loadDataFromSpreadsheet = async () => {
     try {
@@ -617,8 +682,7 @@ export default function EntriTarget() {
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
-          operation: 'deleteRow',
-          sheetName: 'Sheet1',
+          operation: 'delete',
           rowIndex: rowIndex,
         }
       });
@@ -1444,18 +1508,24 @@ export default function EntriTarget() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nama Kegiatan <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={loadingActivityOptions}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih kegiatan" />
+                          <SelectValue placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih kegiatan"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Array.from({ length: 10 }, (_, i) => (
-                          <SelectItem key={i + 1} value={`Kegiatan ${i + 1}`}>
-                            Kegiatan {i + 1}
+                        {activityOptions.length > 0 ? (
+                          activityOptions.map((option) => (
+                            <SelectItem key={option.no} value={option.namaKegiatan}>
+                              {option.namaKegiatan}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            {loadingActivityOptions ? "Memuat..." : "Tidak ada kegiatan untuk role Anda"}
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
