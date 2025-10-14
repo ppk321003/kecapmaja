@@ -1117,10 +1117,16 @@ export default function EntriTarget() {
     
     return petugasAsWorkers
       .filter(w => !existingWorkerIds.includes(w.id))
-      .map(w => ({
-        value: w.nama,
-        label: `${w.nama} (${w.nip})`,
-      }));
+      .map(w => {
+        // Find the corresponding petugas data to get kecamatan
+        const petugasData = petugasFromSheet.find(p => p.id === w.id);
+        const kecamatan = petugasData?.kecamatan || '';
+        
+        return {
+          value: w.nama,
+          label: `${w.nama} (${kecamatan})`, // Tampilkan nama dan kecamatan
+        };
+      });
   };
 
   // Filter workers based on search term
@@ -1128,11 +1134,16 @@ export default function EntriTarget() {
     if (!searchTerm) return petugasAsWorkers;
     
     const lowerSearch = searchTerm.toLowerCase();
-    return petugasAsWorkers.filter(w => 
-      w.nama.toLowerCase().includes(lowerSearch) || 
-      w.nip.includes(searchTerm)
-    );
-  }, [searchTerm, petugasAsWorkers]);
+    return petugasAsWorkers.filter(w => {
+      const petugasData = petugasFromSheet.find(p => p.id === w.id);
+      const kecamatan = petugasData?.kecamatan || '';
+      
+      return (
+        w.nama.toLowerCase().includes(lowerSearch) || 
+        kecamatan.toLowerCase().includes(lowerSearch) // Cari juga berdasarkan kecamatan
+      );
+    });
+  }, [searchTerm, petugasAsWorkers, petugasFromSheet]);
 
   // Activities are already filtered by period and job type via periodKey
   const filteredActivities = activities;
@@ -1826,7 +1837,7 @@ export default function EntriTarget() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Cari nama atau NIK petugas..."
+                placeholder="Cari nama atau kecamatan petugas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -1866,7 +1877,7 @@ export default function EntriTarget() {
                         />
                       </TableHead>
                       <TableHead>Nama Petugas</TableHead>
-                      <TableHead>NIK</TableHead>
+                      <TableHead>Kecamatan</TableHead>
                       <TableHead>Pekerjaan</TableHead>
                       <TableHead className="w-28">Target</TableHead>
                       <TableHead className="w-28">Realisasi</TableHead>
@@ -1882,6 +1893,10 @@ export default function EntriTarget() {
                     ) : (
                       filteredWorkers.map((petugas) => {
                         const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
+                        // Find kecamatan from petugasFromSheet
+                        const petugasData = petugasFromSheet.find(p => p.id === petugas.id);
+                        const kecamatan = petugasData?.kecamatan || '';
+                        
                         return (
                           <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
                             <TableCell>
@@ -1901,7 +1916,7 @@ export default function EntriTarget() {
                               />
                             </TableCell>
                             <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
-                            <TableCell>{petugas.nip}</TableCell>
+                            <TableCell>{kecamatan}</TableCell>
                             <TableCell>{petugas.jabatan}</TableCell>
                             <TableCell>
                               <Input
