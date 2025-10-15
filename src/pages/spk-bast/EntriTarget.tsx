@@ -87,6 +87,11 @@ type ActivityOption = {
   namaKegiatan: string;
 };
 
+type KoordinatorOption = {
+  nama: string;
+  jabatan: string;
+};
+
 const komponenPOKOptions = [
   { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
   { value: "051", label: "051 - PERSIAPAN" },
@@ -151,10 +156,25 @@ export default function EntriTarget() {
   const [loadingPetugas, setLoadingPetugas] = useState(false);
   const [activityOptions, setActivityOptions] = useState<ActivityOption[]>([]);
   const [loadingActivityOptions, setLoadingActivityOptions] = useState(false);
+  const [koordinatorOptions, setKoordinatorOptions] = useState<KoordinatorOption[]>([]);
+  const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
   
   // Get activities for current period and job type - MUST include year to match spreadsheet data
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
-  const activities = activitiesByPeriod[periodKey] || [];
+  let activities = activitiesByPeriod[periodKey] || [];
+  
+  // Filter activities by user role (except for Pejabat Pembuat Komitmen who can see all)
+  if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
+    // Only show activities from spreadsheet where role matches
+    // We need to check all activities for the current period
+    const allActivitiesForPeriod = Object.entries(activitiesByPeriod)
+      .filter(([key]) => key.startsWith(`${selectedPeriod} ${selectedYear}-`))
+      .flatMap(([, acts]) => acts);
+    
+    // Filter based on activity options that are available for this role
+    const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
+    activities = activities.filter(act => allowedActivityNames.includes(act.namaKegiatan));
+  }
   
   console.log('Current periodKey:', periodKey);
   console.log('Available keys in activitiesByPeriod:', Object.keys(activitiesByPeriod));
@@ -400,11 +420,65 @@ export default function EntriTarget() {
     }
   };
 
+  // Load koordinator options from pengelola spreadsheet based on user role
+  const loadKoordinatorOptions = async () => {
+    if (!user?.role) return;
+    
+    try {
+      setLoadingKoordinatorOptions(true);
+      console.log('Loading koordinator options for role:', user.role);
+      
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU',
+          operation: 'read',
+          range: 'Sheet1',
+        }
+      });
+
+      if (error) {
+        console.error('Error loading koordinator options:', error);
+        return;
+      }
+
+      console.log('Koordinator options data loaded:', data);
+
+      if (!data?.values || data.values.length <= 1) {
+        console.log('No koordinator options in spreadsheet');
+        setKoordinatorOptions([]);
+        return;
+      }
+
+      // Parse spreadsheet data - skip header row
+      const rows = data.values.slice(1);
+      const options: KoordinatorOption[] = rows
+        .map((row: any[]) => ({
+          nama: row[1] || '', // Kolom B: Nama
+          jabatan: row[3] || '', // Kolom D: Jabatan
+        }))
+        .filter((option: KoordinatorOption) => {
+          if (!option.nama.trim()) return false;
+          
+          // Filter by user role matching jabatan
+          return option.jabatan === user.role;
+        });
+
+      setKoordinatorOptions(options);
+      console.log('Koordinator options filtered for role:', options);
+      
+    } catch (error) {
+      console.error('Error loading koordinator options:', error);
+    } finally {
+      setLoadingKoordinatorOptions(false);
+    }
+  };
+
   // Load data from spreadsheet on mount
   useEffect(() => {
     loadDataFromSpreadsheet();
     loadPetugasFromSheet();
     loadActivityOptions();
+    loadKoordinatorOptions();
   }, [user?.role]);
 
   const loadDataFromSpreadsheet = async () => {
@@ -1751,18 +1825,24 @@ export default function EntriTarget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Koordinator Fungsi/Ketua Tim <span className="text-destructive">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={loadingKoordinatorOptions}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Pilih koordinator" />
+                            <SelectValue placeholder={loadingKoordinatorOptions ? "Memuat koordinator..." : "Pilih koordinator"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Array.from({ length: 10 }, (_, i) => (
-                            <SelectItem key={i + 1} value={`Orang ${i + 1}`}>
-                              Orang {i + 1}
+                          {koordinatorOptions.length > 0 ? (
+                            koordinatorOptions.map((option, index) => (
+                              <SelectItem key={index} value={option.nama}>
+                                {option.nama}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              {loadingKoordinatorOptions ? "Memuat..." : "Tidak ada koordinator untuk role Anda"}
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

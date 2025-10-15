@@ -12,13 +12,12 @@ import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const SPREADSHEET_ID = "1zt-eNxDxapYq5MXE_PsdWMTxBviQe37C7ZBpzOZmCF4";
+const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
 
 const pengelolaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
   nip: z.string().min(1, "NIP harus diisi").max(50),
   jabatan: z.string().min(1, "Jabatan harus diisi").max(100),
-  peran: z.string().min(1, "Peran harus diisi").max(100),
 });
 
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
@@ -32,7 +31,17 @@ export default function EntriPengelola() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPengelola, setEditingPengelola] = useState<Pengelola | null>(null);
+  const [userRole, setUserRole] = useState<string>("");
   const { toast } = useToast();
+
+  // Get user role from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserRole(user.role || "");
+    }
+  }, []);
 
   const form = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
@@ -40,7 +49,6 @@ export default function EntriPengelola() {
       nama: "",
       nip: "",
       jabatan: "",
-      peran: "",
     },
   });
 
@@ -60,10 +68,9 @@ export default function EntriPengelola() {
       const rows = data.values || [];
       const pengelolaData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
-        nama: row[0] || "",
-        nip: row[1] || "",
-        jabatan: row[2] || "",
-        peran: row[3] || "",
+        nama: row[1] || "",
+        nip: row[2] || "",
+        jabatan: row[3] || "",
       }));
 
       setPengelola(pengelolaData);
@@ -90,7 +97,7 @@ export default function EntriPengelola() {
           spreadsheetId: SPREADSHEET_ID,
           operation,
           range: "Sheet1",
-          values: [[values.nama, values.nip, values.jabatan, values.peran]],
+          values: [["", values.nama, values.nip, values.jabatan]],
           ...(editingPengelola && { rowIndex: editingPengelola.rowIndex }),
         },
       });
@@ -167,7 +174,7 @@ export default function EntriPengelola() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={userRole !== "Pejabat Pembuat Komitmen"}>
               <Plus className="mr-2 h-4 w-4" />
               Tambah Pengelola
             </Button>
@@ -217,19 +224,6 @@ export default function EntriPengelola() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="peran"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Peran</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Contoh: PPK, Bendahara, dll" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <Button type="submit" className="w-full">
                   {editingPengelola ? "Update" : "Tambah"}
                 </Button>
@@ -253,36 +247,40 @@ export default function EntriPengelola() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>No</TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead>NIP</TableHead>
                   <TableHead>Jabatan</TableHead>
-                  <TableHead>Peran</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  {userRole === "Pejabat Pembuat Komitmen" && (
+                    <TableHead className="text-right">Aksi</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pengelola.map((p) => (
+                {pengelola.map((p, index) => (
                   <TableRow key={p.rowIndex}>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>{p.nama}</TableCell>
                     <TableCell>{p.nip}</TableCell>
                     <TableCell>{p.jabatan}</TableCell>
-                    <TableCell>{p.peran}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(p)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(p)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {userRole === "Pejabat Pembuat Komitmen" && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(p)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(p)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

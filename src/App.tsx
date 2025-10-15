@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
+import CekSBML from "./pages/spk-bast/CekSBML";
 import EntriSBML from "./pages/spk-bast/EntriSBML";
 import EntriPengelola from "./pages/spk-bast/EntriPengelola";
 import ApprovalPPK from "./pages/spk-bast/ApprovalPPK";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/spk-bast/entri-petugas" element={<ProtectedRoute><Layout><EntriPetugas /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-realisasi" element={<ProtectedRoute><Layout><EntriRealisasi /></Layout></ProtectedRoute>} />
+            <Route path="/spk-bast/cek-sbml" element={<ProtectedRoute><Layout><CekSBML /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-sbml" element={<ProtectedRoute><Layout><EntriSBML /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-pengelola" element={<ProtectedRoute><Layout><EntriPengelola /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/approval-ppk" element={<ProtectedRoute><Layout><ApprovalPPK /></Layout></ProtectedRoute>} />

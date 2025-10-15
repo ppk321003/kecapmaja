@@ -12,13 +12,13 @@ import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const SPREADSHEET_ID = "1ed10VrkecV7WX0btLCiib8um6p5s8CQB_9JWGHLYsG4";
+const SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
 
 const sbmlSchema = z.object({
-  kodeKegiatan: z.string().min(1, "Kode kegiatan harus diisi").max(50),
-  namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi").max(200),
-  satuan: z.string().min(1, "Satuan harus diisi").max(50),
-  hargaSatuan: z.string().min(1, "Harga satuan harus diisi"),
+  tahunAnggaran: z.string().min(1, "Tahun anggaran harus diisi"),
+  sbmlPendata: z.string().min(1, "SBML Pendata harus diisi"),
+  sbmlPemeriksa: z.string().min(1, "SBML Pemeriksa harus diisi"),
+  sbmlPengolah: z.string().min(1, "SBML Pengolah harus diisi"),
 });
 
 type SBMLFormData = z.infer<typeof sbmlSchema>;
@@ -32,15 +32,25 @@ export default function EntriSBML() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSBML, setEditingSBML] = useState<SBML | null>(null);
+  const [userRole, setUserRole] = useState<string>("");
   const { toast } = useToast();
+
+  // Get user role from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserRole(user.role || "");
+    }
+  }, []);
 
   const form = useForm<SBMLFormData>({
     resolver: zodResolver(sbmlSchema),
     defaultValues: {
-      kodeKegiatan: "",
-      namaKegiatan: "",
-      satuan: "",
-      hargaSatuan: "",
+      tahunAnggaran: "",
+      sbmlPendata: "",
+      sbmlPemeriksa: "",
+      sbmlPengolah: "",
     },
   });
 
@@ -60,10 +70,10 @@ export default function EntriSBML() {
       const rows = data.values || [];
       const sbmlList = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
-        kodeKegiatan: row[0] || "",
-        namaKegiatan: row[1] || "",
-        satuan: row[2] || "",
-        hargaSatuan: row[3] || "",
+        tahunAnggaran: row[1] || "",
+        sbmlPendata: row[2] || "",
+        sbmlPemeriksa: row[3] || "",
+        sbmlPengolah: row[4] || "",
       }));
 
       setSbmlData(sbmlList);
@@ -90,7 +100,7 @@ export default function EntriSBML() {
           spreadsheetId: SPREADSHEET_ID,
           operation,
           range: "Sheet1",
-          values: [[values.kodeKegiatan, values.namaKegiatan, values.satuan, values.hargaSatuan]],
+          values: [["", values.tahunAnggaran, values.sbmlPendata, values.sbmlPemeriksa, values.sbmlPengolah]],
           ...(editingSBML && { rowIndex: editingSBML.rowIndex }),
         },
       });
@@ -167,7 +177,7 @@ export default function EntriSBML() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={userRole !== "Pejabat Pembuat Komitmen"}>
               <Plus className="mr-2 h-4 w-4" />
               Tambah SBML
             </Button>
@@ -180,10 +190,10 @@ export default function EntriSBML() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="kodeKegiatan"
+                  name="tahunAnggaran"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Kode Kegiatan</FormLabel>
+                      <FormLabel>Tahun Anggaran</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -193,12 +203,12 @@ export default function EntriSBML() {
                 />
                 <FormField
                   control={form.control}
-                  name="namaKegiatan"
+                  name="sbmlPendata"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nama Kegiatan</FormLabel>
+                      <FormLabel>SBML Pendata (Rp)</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} type="number" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -206,12 +216,12 @@ export default function EntriSBML() {
                 />
                 <FormField
                   control={form.control}
-                  name="satuan"
+                  name="sbmlPemeriksa"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Satuan</FormLabel>
+                      <FormLabel>SBML Pemeriksa (Rp)</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} type="number" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -219,10 +229,10 @@ export default function EntriSBML() {
                 />
                 <FormField
                   control={form.control}
-                  name="hargaSatuan"
+                  name="sbmlPengolah"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Harga Satuan</FormLabel>
+                      <FormLabel>SBML Pengolah (Rp)</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" />
                       </FormControl>
@@ -253,36 +263,42 @@ export default function EntriSBML() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kode Kegiatan</TableHead>
-                  <TableHead>Nama Kegiatan</TableHead>
-                  <TableHead>Satuan</TableHead>
-                  <TableHead>Harga Satuan</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead>No</TableHead>
+                  <TableHead>Tahun Anggaran</TableHead>
+                  <TableHead>SBML Pendata (Rp)</TableHead>
+                  <TableHead>SBML Pemeriksa (Rp)</TableHead>
+                  <TableHead>SBML Pengolah (Rp)</TableHead>
+                  {userRole === "Pejabat Pembuat Komitmen" && (
+                    <TableHead className="text-right">Aksi</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sbmlData.map((sbml) => (
+                {sbmlData.map((sbml, index) => (
                   <TableRow key={sbml.rowIndex}>
-                    <TableCell>{sbml.kodeKegiatan}</TableCell>
-                    <TableCell>{sbml.namaKegiatan}</TableCell>
-                    <TableCell>{sbml.satuan}</TableCell>
-                    <TableCell>Rp {parseInt(sbml.hargaSatuan).toLocaleString('id-ID')}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(sbml)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(sbml)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{sbml.tahunAnggaran}</TableCell>
+                    <TableCell>Rp {parseInt(sbml.sbmlPendata).toLocaleString('id-ID')}</TableCell>
+                    <TableCell>Rp {parseInt(sbml.sbmlPemeriksa).toLocaleString('id-ID')}</TableCell>
+                    <TableCell>Rp {parseInt(sbml.sbmlPengolah).toLocaleString('id-ID')}</TableCell>
+                    {userRole === "Pejabat Pembuat Komitmen" && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(sbml)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(sbml)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

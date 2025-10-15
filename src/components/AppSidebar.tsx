@@ -40,6 +40,7 @@ const mainMenuItems = [
 const spkBastSubItems = [
   { title: "Entri Petugas", url: "/spk-bast/entri-petugas", icon: Users },
   { title: "Entri Kegiatan", url: "/spk-bast/entri-target", icon: Target },
+  { title: "Cek SBML", url: "/spk-bast/cek-sbml", icon: CheckSquare },
   { title: "Entri SBML", url: "/spk-bast/entri-sbml", icon: DollarSign },
   { title: "Entri Pengelola Anggaran", url: "/spk-bast/entri-pengelola", icon: UserCog },
   { title: "Approval PPK", url: "/spk-bast/approval-ppk", icon: CheckCircle },
