@@ -51,10 +51,10 @@ interface ChartItem {
 interface DashboardStats {
   totalKegiatan: number;
   totalRealisasi: number;
-  bulanPeakKegiatan: string;
-  bulanSlowKegiatan: string;
-  bulanPeakAnggaran: string;
-  bulanSlowAnggaran: string;
+  bulanPeakKegiatan: { name: string; value: number };
+  bulanSlowKegiatan: { name: string; value: number };
+  bulanPeakAnggaran: { name: string; value: number };
+  bulanSlowAnggaran: { name: string; value: number };
   rataRataKegiatanPerBulan: number;
   rataRataAnggaranPerBulan: number;
 }
@@ -176,10 +176,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     totalRealisasi: 0,
-    bulanPeakKegiatan: "-",
-    bulanSlowKegiatan: "-",
-    bulanPeakAnggaran: "-",
-    bulanSlowAnggaran: "-",
+    bulanPeakKegiatan: { name: "-", value: 0 },
+    bulanSlowKegiatan: { name: "-", value: 0 },
+    bulanPeakAnggaran: { name: "-", value: 0 },
+    bulanSlowAnggaran: { name: "-", value: 0 },
     rataRataKegiatanPerBulan: 0,
     rataRataAnggaranPerBulan: 0
   });
@@ -372,29 +372,29 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // PERBAIKAN: Hitung bulan peak/slow dengan rule khusus
+      // PERBAIKAN: Hitung bulan peak/slow dengan rule khusus dan simpan nilai
       
       // Untuk KEGIATAN - berdasarkan jumlah kegiatan
       const validBulanKegiatanForSlow = getValidBulanForSlow(filterTahun, bulanKegiatanData);
       const bulanPeakKegiatan = bulanKegiatanData.length > 0 
-        ? bulanKegiatanData.reduce((max, current) => current.value > max.value ? current : max).name
-        : "-";
+        ? bulanKegiatanData.reduce((max, current) => current.value > max.value ? current : max)
+        : { name: "-", value: 0 };
       
       const bulanSlowKegiatan = validBulanKegiatanForSlow.length > 0
-        ? validBulanKegiatanForSlow.reduce((min, current) => current.value < min.value ? current : min).name
-        : "-";
+        ? validBulanKegiatanForSlow.reduce((min, current) => current.value < min.value ? current : min)
+        : { name: "-", value: 0 };
 
       // Untuk ANGGARAN - berdasarkan total uang
       const validBulanAnggaranForSlow = getValidBulanForSlow(filterTahun, bulanAnggaranData);
       const bulanPeakAnggaran = bulanAnggaranData.length > 0 
-        ? bulanAnggaranData.reduce((max, current) => current.value > max.value ? current : max).name
-        : "-";
+        ? bulanAnggaranData.reduce((max, current) => current.value > max.value ? current : max)
+        : { name: "-", value: 0 };
       
       const bulanSlowAnggaran = validBulanAnggaranForSlow.length > 0
-        ? validBulanAnggaranForSlow.reduce((min, current) => current.value < min.value ? current : min).name
-        : "-";
+        ? validBulanAnggaranForSlow.reduce((min, current) => current.value < min.value ? current : min)
+        : { name: "-", value: 0 };
 
-      // PERBAIKAN: Hitung rata-rata yang benar
+      // Hitung rata-rata yang benar
       const bulanDenganKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData).filter(item => item.value > 0);
       const rataRataKegiatanPerBulan = bulanDenganKegiatan.length > 0 
         ? Math.round(bulanDenganKegiatan.reduce((sum, item) => sum + item.value, 0) / bulanDenganKegiatan.length)
@@ -579,7 +579,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {viewMode === 'kegiatan' ? stats.bulanPeakKegiatan : stats.bulanPeakAnggaran}
+              {viewMode === 'kegiatan' 
+                ? `${stats.bulanPeakKegiatan.name} (${stats.bulanPeakKegiatan.value})`
+                : `${stats.bulanPeakAnggaran.name} (${formatRupiah(stats.bulanPeakAnggaran.value)})`
+              }
             </div>
             <p className="text-xs text-muted-foreground">
               {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Anggaran tertinggi'}
@@ -596,7 +599,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {viewMode === 'kegiatan' ? stats.bulanSlowKegiatan : stats.bulanSlowAnggaran}
+              {viewMode === 'kegiatan' 
+                ? `${stats.bulanSlowKegiatan.name} (${stats.bulanSlowKegiatan.value})`
+                : `${stats.bulanSlowAnggaran.name} (${formatRupiah(stats.bulanSlowAnggaran.value)})`
+              }
             </div>
             <p className="text-xs text-muted-foreground">
               {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Anggaran terendah'}
@@ -697,17 +703,17 @@ export default function Dashboard() {
             <div>
               <h3 className="font-semibold mb-2">📊 Analisis Musiman</h3>
               <p>
-                <strong>Bulan {viewMode === 'kegiatan' ? 'Puncak' : 'Anggaran Tertinggi'}:</strong> {viewMode === 'kegiatan' ? stats.bulanPeakKegiatan : stats.bulanPeakAnggaran} - 
+                <strong>Bulan {viewMode === 'kegiatan' ? 'Puncak' : 'Anggaran Tertinggi'}:</strong> {viewMode === 'kegiatan' ? stats.bulanPeakKegiatan.name : stats.bulanPeakAnggaran.name} - 
                 {viewMode === 'kegiatan' 
-                  ? ' periode dengan jumlah kegiatan tertinggi.' 
-                  : ' periode dengan alokasi anggaran tertinggi.'
+                  ? ` ${stats.bulanPeakKegiatan.value} kegiatan (tertinggi)` 
+                  : ` ${formatRupiah(stats.bulanPeakAnggaran.value)} (anggaran tertinggi)`
                 }
               </p>
               <p>
-                <strong>Bulan {viewMode === 'kegiatan' ? 'Slow' : 'Anggaran Terendah'}:</strong> {viewMode === 'kegiatan' ? stats.bulanSlowKegiatan : stats.bulanSlowAnggaran} - 
+                <strong>Bulan {viewMode === 'kegiatan' ? 'Slow' : 'Anggaran Terendah'}:</strong> {viewMode === 'kegiatan' ? stats.bulanSlowKegiatan.name : stats.bulanSlowAnggaran.name} - 
                 {viewMode === 'kegiatan' 
-                  ? ' periode dengan jumlah kegiatan terendah.' 
-                  : ' periode dengan alokasi anggaran terendah.'
+                  ? ` ${stats.bulanSlowKegiatan.value} kegiatan (terendah)` 
+                  : ` ${formatRupiah(stats.bulanSlowAnggaran.value)} (anggaran terendah)`
                 }
               </p>
             </div>
@@ -737,15 +743,15 @@ export default function Dashboard() {
             <ul className="list-disc list-inside space-y-1 text-sm">
               {viewMode === 'kegiatan' ? (
                 <>
-                  <li>Alokasikan resource lebih banyak pada bulan {stats.bulanPeakKegiatan}</li>
-                  <li>Manfaatkan bulan {stats.bulanSlowKegiatan} untuk training dan evaluasi</li>
+                  <li>Alokasikan resource lebih banyak pada bulan {stats.bulanPeakKegiatan.name} ({stats.bulanPeakKegiatan.value} kegiatan)</li>
+                  <li>Manfaatkan bulan {stats.bulanSlowKegiatan.name} ({stats.bulanSlowKegiatan.value} kegiatan) untuk training dan evaluasi</li>
                   <li>Optimalkan distribusi petugas berdasarkan beban kerja</li>
                   <li>Rata-rata {stats.rataRataKegiatanPerBulan} kegiatan per bulan</li>
                 </>
               ) : (
                 <>
-                  <li>Optimalkan alokasi anggaran pada bulan {stats.bulanPeakAnggaran}</li>
-                  <li>Evaluasi efisiensi anggaran pada bulan {stats.bulanSlowAnggaran}</li>
+                  <li>Optimalkan alokasi anggaran pada bulan {stats.bulanPeakAnggaran.name} ({formatRupiah(stats.bulanPeakAnggaran.value)})</li>
+                  <li>Evaluasi efisiensi anggaran pada bulan {stats.bulanSlowAnggaran.name} ({formatRupiah(stats.bulanSlowAnggaran.value)})</li>
                   <li>Monitor ROI (Return on Investment) per jenis pekerjaan</li>
                   <li>Rata-rata anggaran bulanan: {formatRupiah(stats.rataRataAnggaranPerBulan)}</li>
                 </>
