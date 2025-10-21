@@ -51,9 +51,11 @@ interface ChartItem {
 interface DashboardStats {
   totalKegiatan: number;
   totalRealisasi: number;
-  bulanPeak: string;
-  bulanSlow: string;
-  rataRataPerKegiatan: number;
+  bulanPeakKegiatan: string;
+  bulanSlowKegiatan: string;
+  bulanPeakAnggaran: string;
+  bulanSlowAnggaran: string;
+  rataRataAnggaranPerBulan: number;
 }
 
 // Custom Tooltip untuk currency
@@ -155,9 +157,11 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     totalRealisasi: 0,
-    bulanPeak: "-",
-    bulanSlow: "-",
-    rataRataPerKegiatan: 0
+    bulanPeakKegiatan: "-",
+    bulanSlowKegiatan: "-",
+    bulanPeakAnggaran: "-",
+    bulanSlowAnggaran: "-",
+    rataRataAnggaranPerBulan: 0
   });
   
   const [chartData, setChartData] = useState<{
@@ -248,7 +252,6 @@ export default function Dashboard() {
 
       let totalKegiatan = 0;
       let totalRealisasi = 0;
-      const bulanKegiatanCount = new Map<string, number>();
 
       filteredData.forEach((row: any[]) => {
         try {
@@ -272,7 +275,6 @@ export default function Dashboard() {
 
           if (bulan && bulanList.includes(bulan)) {
             bulanKegiatanMap.set(bulan, (bulanKegiatanMap.get(bulan) || 0) + 1);
-            bulanKegiatanCount.set(bulan, (bulanKegiatanCount.get(bulan) || 0) + 1);
           }
 
           if (jenisPekerjaan) {
@@ -350,22 +352,42 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Find peak and slow months (berdasarkan jumlah kegiatan)
-      const bulanWithData = bulanKegiatanData.filter(item => item.value > 0);
-      const bulanPeak = bulanWithData.length > 0 
-        ? bulanWithData.reduce((max, current) => current.value > max.value ? current : max).name
+      // PERBAIKAN: Hitung bulan peak/slow yang benar untuk masing-masing mode
+      
+      // Untuk KEGIATAN - berdasarkan jumlah kegiatan
+      const bulanKegiatanWithData = bulanKegiatanData.filter(item => item.value > 0);
+      const bulanPeakKegiatan = bulanKegiatanWithData.length > 0 
+        ? bulanKegiatanWithData.reduce((max, current) => current.value > max.value ? current : max).name
         : "-";
       
-      const bulanSlow = bulanWithData.length > 0
-        ? bulanWithData.reduce((min, current) => current.value < min.value ? current : min).name
+      const bulanSlowKegiatan = bulanKegiatanWithData.length > 0
+        ? bulanKegiatanWithData.reduce((min, current) => current.value < min.value ? current : min).name
         : "-";
+
+      // Untuk ANGGARAN - berdasarkan total uang
+      const bulanAnggaranWithData = bulanAnggaranData.filter(item => item.value > 0);
+      const bulanPeakAnggaran = bulanAnggaranWithData.length > 0 
+        ? bulanAnggaranWithData.reduce((max, current) => current.value > max.value ? current : max).name
+        : "-";
+      
+      const bulanSlowAnggaran = bulanAnggaranWithData.length > 0
+        ? bulanAnggaranWithData.reduce((min, current) => current.value < min.value ? current : min).name
+        : "-";
+
+      // PERBAIKAN: Hitung rata-rata anggaran per bulan
+      const totalBulanDenganAnggaran = bulanAnggaranWithData.length;
+      const rataRataAnggaranPerBulan = totalBulanDenganAnggaran > 0 
+        ? Math.round(totalRealisasi / totalBulanDenganAnggaran)
+        : 0;
 
       setStats({
         totalKegiatan,
         totalRealisasi,
-        bulanPeak,
-        bulanSlow,
-        rataRataPerKegiatan: totalKegiatan > 0 ? Math.round(totalRealisasi / totalKegiatan) : 0
+        bulanPeakKegiatan,
+        bulanSlowKegiatan,
+        bulanPeakAnggaran,
+        bulanSlowAnggaran,
+        rataRataAnggaranPerBulan
       });
 
       setChartData({
@@ -501,34 +523,38 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {viewMode === 'kegiatan' ? 'Rata-rata per Kegiatan' : 'Total Kegiatan'}
+              {viewMode === 'kegiatan' ? 'Rata-rata per Kegiatan' : 'Rata-rata per Bulan'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             )}
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {viewMode === 'kegiatan' 
-                ? formatRupiah(stats.rataRataPerKegiatan)
-                : stats.totalKegiatan.toLocaleString('id-ID')
+                ? formatRupiah(stats.totalRealisasi / Math.max(stats.totalKegiatan, 1))
+                : formatRupiah(stats.rataRataAnggaranPerBulan)
               }
             </div>
             <p className="text-xs text-muted-foreground">
-              {viewMode === 'kegiatan' ? 'Nilai rata-rata' : 'Jumlah total'}
+              {viewMode === 'kegiatan' ? 'Nilai per kegiatan' : 'Anggaran per bulan'}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bulan Puncak</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {viewMode === 'kegiatan' ? 'Bulan Puncak' : 'Bulan Anggaran Tertinggi'}
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.bulanPeak}</div>
+            <div className="text-2xl font-bold">
+              {viewMode === 'kegiatan' ? stats.bulanPeakKegiatan : stats.bulanPeakAnggaran}
+            </div>
             <p className="text-xs text-muted-foreground">
               {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Anggaran tertinggi'}
             </p>
@@ -537,11 +563,15 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bulan Slow</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {viewMode === 'kegiatan' ? 'Bulan Slow' : 'Bulan Anggaran Terendah'}
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.bulanSlow}</div>
+            <div className="text-2xl font-bold">
+              {viewMode === 'kegiatan' ? stats.bulanSlowKegiatan : stats.bulanSlowAnggaran}
+            </div>
             <p className="text-xs text-muted-foreground">
               {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Anggaran terendah'}
             </p>
@@ -641,14 +671,14 @@ export default function Dashboard() {
             <div>
               <h3 className="font-semibold mb-2">📊 Analisis Musiman</h3>
               <p>
-                <strong>Bulan Puncak:</strong> {stats.bulanPeak} - 
+                <strong>Bulan {viewMode === 'kegiatan' ? 'Puncak' : 'Anggaran Tertinggi'}:</strong> {viewMode === 'kegiatan' ? stats.bulanPeakKegiatan : stats.bulanPeakAnggaran} - 
                 {viewMode === 'kegiatan' 
                   ? ' periode dengan jumlah kegiatan tertinggi.' 
                   : ' periode dengan alokasi anggaran tertinggi.'
                 }
               </p>
               <p>
-                <strong>Bulan Slow:</strong> {stats.bulanSlow} - 
+                <strong>Bulan {viewMode === 'kegiatan' ? 'Slow' : 'Anggaran Terendah'}:</strong> {viewMode === 'kegiatan' ? stats.bulanSlowKegiatan : stats.bulanSlowAnggaran} - 
                 {viewMode === 'kegiatan' 
                   ? ' periode dengan jumlah kegiatan terendah.' 
                   : ' periode dengan alokasi anggaran terendah.'
@@ -666,10 +696,10 @@ export default function Dashboard() {
                 }
               </p>
               <p>
-                <strong>{viewMode === 'kegiatan' ? 'Rata-rata Nilai per Kegiatan' : 'Total Kegiatan'}:</strong>{' '}
+                <strong>{viewMode === 'kegiatan' ? 'Rata-rata Nilai per Kegiatan' : 'Rata-rata Anggaran per Bulan'}:</strong>{' '}
                 {viewMode === 'kegiatan' 
-                  ? formatRupiah(stats.rataRataPerKegiatan)
-                  : stats.totalKegiatan.toLocaleString('id-ID')
+                  ? formatRupiah(stats.totalRealisasi / Math.max(stats.totalKegiatan, 1))
+                  : formatRupiah(stats.rataRataAnggaranPerBulan)
                 }
               </p>
               <p><strong>Tahun Analisis:</strong> {filterTahun}</p>
@@ -681,15 +711,16 @@ export default function Dashboard() {
             <ul className="list-disc list-inside space-y-1 text-sm">
               {viewMode === 'kegiatan' ? (
                 <>
-                  <li>Alokasikan resource lebih banyak pada bulan {stats.bulanPeak}</li>
-                  <li>Manfaatkan bulan {stats.bulanSlow} untuk training dan evaluasi</li>
+                  <li>Alokasikan resource lebih banyak pada bulan {stats.bulanPeakKegiatan}</li>
+                  <li>Manfaatkan bulan {stats.bulanSlowKegiatan} untuk training dan evaluasi</li>
                   <li>Optimalkan distribusi petugas berdasarkan beban kerja</li>
                 </>
               ) : (
                 <>
-                  <li>Optimalkan alokasi anggaran pada bulan {stats.bulanPeak}</li>
-                  <li>Evaluasi efisiensi anggaran pada bulan {stats.bulanSlow}</li>
+                  <li>Optimalkan alokasi anggaran pada bulan {stats.bulanPeakAnggaran}</li>
+                  <li>Evaluasi efisiensi anggaran pada bulan {stats.bulanSlowAnggaran}</li>
                   <li>Monitor ROI (Return on Investment) per jenis pekerjaan</li>
+                  <li>Rata-rata anggaran bulanan: {formatRupiah(stats.rataRataAnggaranPerBulan)}</li>
                 </>
               )}
             </ul>
