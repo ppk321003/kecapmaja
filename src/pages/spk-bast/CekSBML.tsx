@@ -86,8 +86,8 @@ export default function CekSBML() {
     return parseInt(cleaned) || 0;
   };
 
-  // Fetch data SBML untuk validasi
-  const fetchSBMLData = async () => {
+  // Fetch data SBML untuk validasi - DIPERBAIKI: ambil berdasarkan tahun filter
+  const fetchSBMLData = async (tahun: string) => {
     try {
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -101,25 +101,27 @@ export default function CekSBML() {
 
       const rows = sbmlResponse?.values || [];
       if (rows.length > 1) {
-        const currentYear = new Date().getFullYear().toString();
-        const currentSBML = rows.find((row: any[]) => row[1] === currentYear);
+        // Cari SBML berdasarkan tahun yang difilter
+        const sbmlForYear = rows.find((row: any[]) => row[1] === tahun);
         
-        if (currentSBML) {
+        if (sbmlForYear) {
           setSbmlData({
-            tahunAnggaran: currentSBML[1],
-            sbmlPendata: parseHonor(currentSBML[2]),
-            sbmlPemeriksa: parseHonor(currentSBML[3]),
-            sbmlPengolah: parseHonor(currentSBML[4]),
+            tahunAnggaran: sbmlForYear[1],
+            sbmlPendata: parseHonor(sbmlForYear[2]),
+            sbmlPemeriksa: parseHonor(sbmlForYear[3]),
+            sbmlPengolah: parseHonor(sbmlForYear[4]),
           });
-        } else if (rows.length > 1) {
-          // Fallback ke data pertama
-          const firstSBML = rows[1];
+          console.log(`✅ SBML ditemukan untuk tahun ${tahun}:`, sbmlForYear);
+        } else {
+          // Fallback ke data terbaru jika tahun tidak ditemukan
+          const latestSBML = rows[1]; // Ambil data pertama setelah header
           setSbmlData({
-            tahunAnggaran: firstSBML[1],
-            sbmlPendata: parseHonor(firstSBML[2]),
-            sbmlPemeriksa: parseHonor(firstSBML[3]),
-            sbmlPengolah: parseHonor(firstSBML[4]),
+            tahunAnggaran: latestSBML[1],
+            sbmlPendata: parseHonor(latestSBML[2]),
+            sbmlPemeriksa: parseHonor(latestSBML[3]),
+            sbmlPengolah: parseHonor(latestSBML[4]),
           });
+          console.log(`⚠️ SBML untuk tahun ${tahun} tidak ditemukan, menggunakan ${latestSBML[1]}`);
         }
       }
     } catch (error: any) {
@@ -127,7 +129,7 @@ export default function CekSBML() {
     }
   };
 
-  // Fetch data petugas bertugas - DIPERBAIKI DENGAN KOLOM YANG BENAR
+  // Fetch data petugas bertugas
   const fetchData = async () => {
     if (!filterBulan || !filterTahun) {
       toast({
@@ -143,6 +145,9 @@ export default function CekSBML() {
       
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       console.log("🔍 Mencari data untuk periode:", periodeFilter);
+
+      // Ambil SBML untuk tahun yang difilter
+      await fetchSBMLData(filterTahun);
 
       // Fetch data tugas
       const { data: tugasResponse, error: tugasError } = await supabase.functions.invoke("google-sheets", {
@@ -194,21 +199,13 @@ export default function CekSBML() {
 
       console.log("👥 Master petugas loaded:", masterPetugas.size);
 
-      // PROCESS TUGAS DATA - DENGAN KOLOM YANG BENAR!
+      // PROCESS TUGAS DATA
       tugasRows.slice(1).forEach((row: any[], rowIndex: number) => {
         try {
-          // KOLOM YANG BENAR SESUAI STRUKTUR ANDA:
           const periode = row[2]?.toString() || "";        // Kolom C: Periode (Bulan) SPK
           const role = row[3]?.toString() || "";           // Kolom D: Jenis Pekerjaan  
-          const namaPetugas = row[14]?.toString() || "";   // Kolom O: Nama Petugas ← INI YANG BENAR!
-          const nilaiRealisasi = row[17]?.toString() || ""; // Kolom R: Nilai Realisasi ← INI YANG BENAR!
-
-          console.log(`📝 Row ${rowIndex + 2}:`, {
-            periode,
-            role,
-            namaPetugas,
-            nilaiRealisasi
-          });
+          const namaPetugas = row[14]?.toString() || "";   // Kolom O: Nama Petugas
+          const nilaiRealisasi = row[17]?.toString() || ""; // Kolom R: Nilai Realisasi
 
           if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
             console.log("🎯 DATA COCOK DITEMUKAN!");
@@ -239,7 +236,6 @@ export default function CekSBML() {
       });
 
       console.log("📈 Total petugas tugas ditemukan:", petugasTugas.length);
-      console.log("📋 Detail petugas:", petugasTugas);
 
       // Transform to CekSBMLRow format
       const groupedData = new Map<string, CekSBMLRow>();
@@ -248,8 +244,6 @@ export default function CekSBML() {
         const key = petugas.nama.toLowerCase();
         
         if (!groupedData.has(key)) {
-          // Cari di master data, jika tidak ada tetap buat entry
-          const masterData = masterPetugas.get(key);
           groupedData.set(key, {
             no: groupedData.size + 1,
             namaMitra: petugas.nama,
@@ -272,12 +266,8 @@ export default function CekSBML() {
           existing.pemeriksaan += petugas.honor;
         } else if (petugas.role.toLowerCase().includes('pengolah')) {
           existing.pengolahan += petugas.honor;
-        } else {
-          console.warn(`⚠️ Role tidak dikenali: ${petugas.role} untuk ${petugas.nama}`);
         }
       });
-
-      console.log("🎯 Data setelah grouping:", Array.from(groupedData.values()));
 
       // Calculate totals and validate
       const finalData = Array.from(groupedData.values()).map(item => {
@@ -370,9 +360,12 @@ export default function CekSBML() {
     });
   };
 
+  // Update SBML ketika tahun berubah
   useEffect(() => {
-    fetchSBMLData();
-  }, []);
+    if (filterTahun) {
+      fetchSBMLData(filterTahun);
+    }
+  }, [filterTahun]);
 
   const handleSearch = () => {
     fetchData();
@@ -434,13 +427,18 @@ export default function CekSBML() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
 
+            {/* SBML Badge dengan font yang lebih besar */}
             {sbmlData && (
-              <Badge variant="outline" className="ml-auto">
-                SBML {sbmlData.tahunAnggaran}: 
-                Pendata {formatRupiah(sbmlData.sbmlPendata)} | 
-                Pemeriksa {formatRupiah(sbmlData.sbmlPemeriksa)} | 
-                Pengolah {formatRupiah(sbmlData.sbmlPengolah)}
-              </Badge>
+              <div className="ml-auto">
+                <Badge variant="outline" className="text-sm py-2 px-3 bg-blue-50 border-blue-200">
+                  <span className="font-semibold">SBML {sbmlData.tahunAnggaran}:</span>{' '}
+                  <span className="text-base font-bold">
+                    Pendata {formatRupiah(sbmlData.sbmlPendata)} | 
+                    Pemeriksa {formatRupiah(sbmlData.sbmlPemeriksa)} | 
+                    Pengolah {formatRupiah(sbmlData.sbmlPengolah)}
+                  </span>
+                </Badge>
+              </div>
             )}
           </div>
         </CardContent>
@@ -453,7 +451,7 @@ export default function CekSBML() {
             <CheckCircle className="h-6 w-6 text-primary" />
             <CardTitle>Hasil Cek SBML</CardTitle>
             {data.length > 0 && (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-sm">
                 {data.length} Petugas Ditemukan
               </Badge>
             )}
