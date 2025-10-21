@@ -55,6 +55,7 @@ interface DashboardStats {
   bulanSlowKegiatan: string;
   bulanPeakAnggaran: string;
   bulanSlowAnggaran: string;
+  rataRataKegiatanPerBulan: number;
   rataRataAnggaranPerBulan: number;
 }
 
@@ -179,6 +180,7 @@ export default function Dashboard() {
     bulanSlowKegiatan: "-",
     bulanPeakAnggaran: "-",
     bulanSlowAnggaran: "-",
+    rataRataKegiatanPerBulan: 0,
     rataRataAnggaranPerBulan: 0
   });
   
@@ -392,7 +394,12 @@ export default function Dashboard() {
         ? validBulanAnggaranForSlow.reduce((min, current) => current.value < min.value ? current : min).name
         : "-";
 
-      // Hitung rata-rata anggaran per bulan (hanya bulan yang valid)
+      // PERBAIKAN: Hitung rata-rata yang benar
+      const bulanDenganKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData).filter(item => item.value > 0);
+      const rataRataKegiatanPerBulan = bulanDenganKegiatan.length > 0 
+        ? Math.round(bulanDenganKegiatan.reduce((sum, item) => sum + item.value, 0) / bulanDenganKegiatan.length)
+        : 0;
+
       const bulanDenganAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData).filter(item => item.value > 0);
       const rataRataAnggaranPerBulan = bulanDenganAnggaran.length > 0 
         ? Math.round(bulanDenganAnggaran.reduce((sum, item) => sum + item.value, 0) / bulanDenganAnggaran.length)
@@ -405,6 +412,7 @@ export default function Dashboard() {
         bulanSlowKegiatan,
         bulanPeakAnggaran,
         bulanSlowAnggaran,
+        rataRataKegiatanPerBulan,
         rataRataAnggaranPerBulan
       });
 
@@ -541,23 +549,23 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {viewMode === 'kegiatan' ? 'Rata-rata per Kegiatan' : 'Rata-rata per Bulan'}
+              {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Anggaran per Bulan'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            ) : (
               <Calendar className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             )}
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {viewMode === 'kegiatan' 
-                ? formatRupiah(stats.totalRealisasi / Math.max(stats.totalKegiatan, 1))
+                ? stats.rataRataKegiatanPerBulan.toLocaleString('id-ID')
                 : formatRupiah(stats.rataRataAnggaranPerBulan)
               }
             </div>
             <p className="text-xs text-muted-foreground">
-              {viewMode === 'kegiatan' ? 'Nilai per kegiatan' : 'Anggaran per bulan'}
+              {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Anggaran per bulan'}
             </p>
           </CardContent>
         </Card>
@@ -714,9 +722,9 @@ export default function Dashboard() {
                 }
               </p>
               <p>
-                <strong>{viewMode === 'kegiatan' ? 'Rata-rata Nilai per Kegiatan' : 'Rata-rata Anggaran per Bulan'}:</strong>{' '}
+                <strong>{viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Anggaran per Bulan'}:</strong>{' '}
                 {viewMode === 'kegiatan' 
-                  ? formatRupiah(stats.totalRealisasi / Math.max(stats.totalKegiatan, 1))
+                  ? stats.rataRataKegiatanPerBulan.toLocaleString('id-ID')
                   : formatRupiah(stats.rataRataAnggaranPerBulan)
                 }
               </p>
@@ -732,6 +740,7 @@ export default function Dashboard() {
                   <li>Alokasikan resource lebih banyak pada bulan {stats.bulanPeakKegiatan}</li>
                   <li>Manfaatkan bulan {stats.bulanSlowKegiatan} untuk training dan evaluasi</li>
                   <li>Optimalkan distribusi petugas berdasarkan beban kerja</li>
+                  <li>Rata-rata {stats.rataRataKegiatanPerBulan} kegiatan per bulan</li>
                 </>
               ) : (
                 <>
