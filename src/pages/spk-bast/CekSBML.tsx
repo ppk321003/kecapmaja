@@ -82,7 +82,6 @@ export default function CekSBML() {
   // Parse honor dari string format "704.000,-"
   const parseHonor = (honorStr: string): number => {
     if (!honorStr) return 0;
-    // Handle format seperti "704.000,-" atau "704000"
     const cleaned = honorStr.replace(/[^\d]/g, '');
     return parseInt(cleaned) || 0;
   };
@@ -90,7 +89,6 @@ export default function CekSBML() {
   // Fetch data SBML untuk validasi
   const fetchSBMLData = async () => {
     try {
-      console.log("Fetching SBML data...");
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SBML_SPREADSHEET_ID,
@@ -99,12 +97,7 @@ export default function CekSBML() {
         },
       });
 
-      if (error) {
-        console.error("SBML fetch error:", error);
-        throw error;
-      }
-
-      console.log("SBML response:", sbmlResponse);
+      if (error) throw error;
 
       const rows = sbmlResponse?.values || [];
       if (rows.length > 1) {
@@ -112,41 +105,29 @@ export default function CekSBML() {
         const currentSBML = rows.find((row: any[]) => row[1] === currentYear);
         
         if (currentSBML) {
-          const sbml = {
+          setSbmlData({
             tahunAnggaran: currentSBML[1],
             sbmlPendata: parseHonor(currentSBML[2]),
             sbmlPemeriksa: parseHonor(currentSBML[3]),
             sbmlPengolah: parseHonor(currentSBML[4]),
-          };
-          console.log("SBML data found:", sbml);
-          setSbmlData(sbml);
-        } else {
-          console.log("No SBML data for current year");
-          // Fallback: use first available SBML data
-          if (rows.length > 1) {
-            const firstSBML = rows[1];
-            const sbml = {
-              tahunAnggaran: firstSBML[1],
-              sbmlPendata: parseHonor(firstSBML[2]),
-              sbmlPemeriksa: parseHonor(firstSBML[3]),
-              sbmlPengolah: parseHonor(firstSBML[4]),
-            };
-            console.log("Using first available SBML:", sbml);
-            setSbmlData(sbml);
-          }
+          });
+        } else if (rows.length > 1) {
+          // Fallback ke data pertama
+          const firstSBML = rows[1];
+          setSbmlData({
+            tahunAnggaran: firstSBML[1],
+            sbmlPendata: parseHonor(firstSBML[2]),
+            sbmlPemeriksa: parseHonor(firstSBML[3]),
+            sbmlPengolah: parseHonor(firstSBML[4]),
+          });
         }
       }
     } catch (error: any) {
       console.error("Error fetching SBML data:", error);
-      toast({
-        title: "Error SBML",
-        description: "Gagal memuat data SBML: " + error.message,
-        variant: "destructive",
-      });
     }
   };
 
-  // Fetch data petugas bertugas
+  // Fetch data petugas bertugas - DIPERBAIKI
   const fetchData = async () => {
     if (!filterBulan || !filterTahun) {
       toast({
@@ -159,13 +140,11 @@ export default function CekSBML() {
 
     try {
       setLoading(true);
-      console.log("Starting data fetch...");
       
       const periodeFilter = `${filterBulan} ${filterTahun}`;
-      console.log("Filter periode:", periodeFilter);
+      console.log("🔍 Mencari data untuk periode:", periodeFilter);
 
       // Fetch data tugas
-      console.log("Fetching tugas data...");
       const { data: tugasResponse, error: tugasError } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TUGAS_SPREADSHEET_ID,
@@ -174,13 +153,9 @@ export default function CekSBML() {
         },
       });
 
-      if (tugasError) {
-        console.error("Tugas fetch error:", tugasError);
-        throw tugasError;
-      }
+      if (tugasError) throw tugasError;
 
       // Fetch data master petugas
-      console.log("Fetching master data...");
       const { data: masterResponse, error: masterError } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
@@ -189,61 +164,63 @@ export default function CekSBML() {
         },
       });
 
-      if (masterError) {
-        console.error("Master fetch error:", masterError);
-        throw masterError;
-      }
+      if (masterError) throw masterError;
 
       const tugasRows = tugasResponse?.values || [];
       const masterRows = masterResponse?.values || [];
 
-      console.log("Tugas rows:", tugasRows.length);
-      console.log("Master rows:", masterRows.length);
-      console.log("Sample tugas row:", tugasRows[1]); // Row pertama setelah header
+      console.log("📊 Total rows tugas:", tugasRows.length);
+      console.log("📊 Total rows master:", masterRows.length);
 
       // Process data
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
       // Build master petugas map - Nama di kolom C (index 2)
-      masterRows.slice(1).forEach((row: any[], index: number) => {
-        if (row[2]) { // Nama di kolom C
+      masterRows.slice(1).forEach((row: any[]) => {
+        if (row[2]) {
           const nama = row[2].toString().trim();
           masterPetugas.set(nama.toLowerCase(), {
             nama: nama,
-            nik: row[1]?.toString() || "", // Kolom B
-            pekerjaan: row[3]?.toString() || "", // Kolom D
-            alamat: row[4]?.toString() || "", // Kolom E
-            bank: row[5]?.toString() || "", // Kolom F
-            rekening: row[6]?.toString() || "", // Kolom G
-            kecamatan: row[7]?.toString() || "", // Kolom H
+            nik: row[1]?.toString() || "",
+            pekerjaan: row[3]?.toString() || "",
+            alamat: row[4]?.toString() || "",
+            bank: row[5]?.toString() || "",
+            rekening: row[6]?.toString() || "",
+            kecamatan: row[7]?.toString() || "",
           });
         }
       });
 
-      console.log("Master petugas count:", masterPetugas.size);
-      console.log("Sample master data:", Array.from(masterPetugas.values())[0]);
+      console.log("👥 Master petugas loaded:", masterPetugas.size);
 
-      // Process tugas data - SESUAI STRUKTUR SPREADSHEET ANDA
+      // PROCESS TUGAS DATA - YANG BENAR!
       tugasRows.slice(1).forEach((row: any[], rowIndex: number) => {
         try {
-          // Sesuaikan dengan struktur kolom yang Anda berikan
-          const periode = row[2]?.toString() || ""; // Kolom C: Periode (Bulan) SPK
-          const role = row[3]?.toString() || ""; // Kolom D: Jenis Pekerjaan
-          const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
+          // KOLOM YANG BENAR:
+          const periode = row[2]?.toString() || "";        // Kolom C: Periode (Bulan) SPK
+          const role = row[3]?.toString() || "";           // Kolom D: Jenis Pekerjaan  
+          const namaPetugas = row[13]?.toString() || "";   // Kolom N: Nama Petugas ← INI YANG BENAR!
           const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
 
-          console.log(`Row ${rowIndex + 2}: Periode="${periode}", Role="${role}", Nama="${namaPetugas}", Nilai="${nilaiRealisasi}"`);
+          console.log(`📝 Row ${rowIndex + 2}:`, {
+            periode,
+            role,
+            namaPetugas,
+            nilaiRealisasi
+          });
 
           if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
-            console.log(`MATCH FOUND for periode ${periodeFilter}`);
+            console.log("🎯 DATA COCOK DITEMUKAN!");
             
+            // Parse nama dan honor yang dipisah " | "
             const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
             const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
 
-            console.log(`Parsed - Nama:`, namaList);
-            console.log(`Parsed - Honor:`, honorList);
+            console.log("👤 Nama parsed:", namaList);
+            console.log("💰 Honor parsed:", honorList);
 
+            // Map setiap nama ke honor yang sesuai
             namaList.forEach((nama: string, index: number) => {
               if (nama && honorList[index] !== undefined) {
                 petugasTugas.push({
@@ -252,72 +229,55 @@ export default function CekSBML() {
                   honor: honorList[index] || 0,
                   periode: periode,
                 });
-                console.log(`Added petugas: ${nama} dengan honor: ${honorList[index]}`);
+                console.log(`✅ Ditambahkan: ${nama} - ${role} - Rp ${honorList[index]}`);
               }
             });
           }
         } catch (error) {
-          console.error(`Error processing row ${rowIndex + 2}:`, error, row);
+          console.error(`❌ Error processing row ${rowIndex + 2}:`, error);
         }
       });
 
-      console.log("Total petugas tugas found:", petugasTugas.length);
-      console.log("Petugas tugas details:", petugasTugas);
+      console.log("📈 Total petugas tugas ditemukan:", petugasTugas.length);
+      console.log("📋 Detail petugas:", petugasTugas);
 
-      // Transform to CekSBMLRow format - Group by nama dan role
+      // Transform to CekSBMLRow format
       const groupedData = new Map<string, CekSBMLRow>();
 
       petugasTugas.forEach((petugas) => {
         const key = petugas.nama.toLowerCase();
         
         if (!groupedData.has(key)) {
+          // Cari di master data, jika tidak ada tetap buat entry
           const masterData = masterPetugas.get(key);
-          if (masterData) {
-            groupedData.set(key, {
-              no: groupedData.size + 1,
-              namaMitra: petugas.nama,
-              pendataan: 0,
-              pemeriksaan: 0,
-              pengolahan: 0,
-              pekerjaanProvinsi: 0,
-              jumlah: 0,
-              isExceeded: false,
-              warnings: [],
-            });
-          } else {
-            console.log(`Master data not found for: ${petugas.nama}`);
-            // Tetap tambahkan meski tidak ada di master
-            groupedData.set(key, {
-              no: groupedData.size + 1,
-              namaMitra: petugas.nama,
-              pendataan: 0,
-              pemeriksaan: 0,
-              pengolahan: 0,
-              pekerjaanProvinsi: 0,
-              jumlah: 0,
-              isExceeded: false,
-              warnings: [],
-            });
-          }
+          groupedData.set(key, {
+            no: groupedData.size + 1,
+            namaMitra: petugas.nama,
+            pendataan: 0,
+            pemeriksaan: 0,
+            pengolahan: 0,
+            pekerjaanProvinsi: 0,
+            jumlah: 0,
+            isExceeded: false,
+            warnings: [],
+          });
         }
 
         const existing = groupedData.get(key)!;
         
-        // Assign honor berdasarkan role
-        if (petugas.role.includes('Pendataan')) {
+        // Assign honor berdasarkan role - DIPERBAIKI
+        if (petugas.role.toLowerCase().includes('pendataan')) {
           existing.pendataan += petugas.honor;
-        } else if (petugas.role.includes('Pemeriksaan')) {
+        } else if (petugas.role.toLowerCase().includes('pemeriksaan')) {
           existing.pemeriksaan += petugas.honor;
-        } else if (petugas.role.includes('Pengolah')) {
+        } else if (petugas.role.toLowerCase().includes('pengolah')) {
           existing.pengolahan += petugas.honor;
         } else {
-          // Default ke pendataan jika role tidak jelas
-          existing.pendataan += petugas.honor;
+          console.warn(`⚠️ Role tidak dikenali: ${petugas.role} untuk ${petugas.nama}`);
         }
       });
 
-      console.log("Grouped data count:", groupedData.size);
-      console.log("Grouped data:", Array.from(groupedData.values()));
+      console.log("🎯 Data setelah grouping:", Array.from(groupedData.values()));
 
       // Calculate totals and validate
       const finalData = Array.from(groupedData.values()).map(item => {
@@ -347,7 +307,6 @@ export default function CekSBML() {
       });
 
       setData(finalData);
-      console.log("Final data set:", finalData);
 
       if (finalData.length > 0) {
         toast({
@@ -358,12 +317,11 @@ export default function CekSBML() {
         toast({
           title: "Info",
           description: `Tidak ada data untuk periode ${periodeFilter}`,
-          variant: "default",
         });
       }
 
     } catch (error: any) {
-      console.error("Fetch data error:", error);
+      console.error("❌ Fetch data error:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data: " + error.message,
@@ -371,7 +329,6 @@ export default function CekSBML() {
       });
     } finally {
       setLoading(false);
-      console.log("Loading finished");
     }
   };
 
@@ -537,22 +494,18 @@ export default function CekSBML() {
                       <TableCell>{row.no}</TableCell>
                       <TableCell className="font-medium">{row.namaMitra}</TableCell>
                       
-                      {/* Petugas Pendataan Lapangan */}
                       <TableCell className={`text-right ${row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}`}>
                         {formatRupiah(row.pendataan)}
                       </TableCell>
                       
-                      {/* Petugas Pemeriksaan Lapangan */}
                       <TableCell className={`text-right ${row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0) ? "text-red-600 font-semibold" : ""}`}>
                         {formatRupiah(row.pemeriksaan)}
                       </TableCell>
                       
-                      {/* Petugas Pengolahan */}
                       <TableCell className={`text-right ${row.pengolahan > (sbmlData?.sbmlPengolah || 0) ? "text-red-600 font-semibold" : ""}`}>
                         {formatRupiah(row.pengolahan)}
                       </TableCell>
                       
-                      {/* Pekerjaan dari Provinsi - Editable */}
                       <TableCell>
                         <Input
                           type="text"
@@ -563,12 +516,10 @@ export default function CekSBML() {
                         />
                       </TableCell>
                       
-                      {/* Jumlah */}
                       <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
                         {formatRupiah(row.jumlah)}
                       </TableCell>
                       
-                      {/* Status */}
                       <TableCell>
                         {row.isExceeded ? (
                           <Tooltip content={row.warnings.join(', ')}>
@@ -590,7 +541,7 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component untuk warning details
+// Tooltip component
 const Tooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
