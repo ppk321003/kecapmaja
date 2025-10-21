@@ -150,6 +150,24 @@ const SafePieChart = ({ data, title, mode }: { data: ChartItem[], title: string,
   );
 };
 
+// Fungsi helper untuk menentukan bulan yang valid untuk dianggap "terendah"
+const getValidBulanForSlow = (tahun: string, data: ChartItem[]): ChartItem[] => {
+  const currentYear = new Date().getFullYear().toString();
+  const currentMonth = new Date().getMonth(); // 0-based (0=Januari, 11=Desember)
+  
+  // Jika tahun yang difilter adalah tahun berjalan
+  if (tahun === currentYear) {
+    return data.filter(item => {
+      const bulanIndex = bulanList.indexOf(item.name);
+      // Hanya include bulan yang sudah lewat (bulanIndex <= currentMonth)
+      return bulanIndex <= currentMonth;
+    });
+  }
+  
+  // Untuk tahun sebelumnya atau mendatang, include semua bulan
+  return data;
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
@@ -352,32 +370,32 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // PERBAIKAN: Hitung bulan peak/slow yang benar untuk masing-masing mode
+      // PERBAIKAN: Hitung bulan peak/slow dengan rule khusus
       
       // Untuk KEGIATAN - berdasarkan jumlah kegiatan
-      const bulanKegiatanWithData = bulanKegiatanData.filter(item => item.value > 0);
-      const bulanPeakKegiatan = bulanKegiatanWithData.length > 0 
-        ? bulanKegiatanWithData.reduce((max, current) => current.value > max.value ? current : max).name
+      const validBulanKegiatanForSlow = getValidBulanForSlow(filterTahun, bulanKegiatanData);
+      const bulanPeakKegiatan = bulanKegiatanData.length > 0 
+        ? bulanKegiatanData.reduce((max, current) => current.value > max.value ? current : max).name
         : "-";
       
-      const bulanSlowKegiatan = bulanKegiatanWithData.length > 0
-        ? bulanKegiatanWithData.reduce((min, current) => current.value < min.value ? current : min).name
+      const bulanSlowKegiatan = validBulanKegiatanForSlow.length > 0
+        ? validBulanKegiatanForSlow.reduce((min, current) => current.value < min.value ? current : min).name
         : "-";
 
       // Untuk ANGGARAN - berdasarkan total uang
-      const bulanAnggaranWithData = bulanAnggaranData.filter(item => item.value > 0);
-      const bulanPeakAnggaran = bulanAnggaranWithData.length > 0 
-        ? bulanAnggaranWithData.reduce((max, current) => current.value > max.value ? current : max).name
+      const validBulanAnggaranForSlow = getValidBulanForSlow(filterTahun, bulanAnggaranData);
+      const bulanPeakAnggaran = bulanAnggaranData.length > 0 
+        ? bulanAnggaranData.reduce((max, current) => current.value > max.value ? current : max).name
         : "-";
       
-      const bulanSlowAnggaran = bulanAnggaranWithData.length > 0
-        ? bulanAnggaranWithData.reduce((min, current) => current.value < min.value ? current : min).name
+      const bulanSlowAnggaran = validBulanAnggaranForSlow.length > 0
+        ? validBulanAnggaranForSlow.reduce((min, current) => current.value < min.value ? current : min).name
         : "-";
 
-      // PERBAIKAN: Hitung rata-rata anggaran per bulan
-      const totalBulanDenganAnggaran = bulanAnggaranWithData.length;
-      const rataRataAnggaranPerBulan = totalBulanDenganAnggaran > 0 
-        ? Math.round(totalRealisasi / totalBulanDenganAnggaran)
+      // Hitung rata-rata anggaran per bulan (hanya bulan yang valid)
+      const bulanDenganAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData).filter(item => item.value > 0);
+      const rataRataAnggaranPerBulan = bulanDenganAnggaran.length > 0 
+        ? Math.round(bulanDenganAnggaran.reduce((sum, item) => sum + item.value, 0) / bulanDenganAnggaran.length)
         : 0;
 
       setStats({
