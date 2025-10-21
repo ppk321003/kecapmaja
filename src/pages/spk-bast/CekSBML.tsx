@@ -58,7 +58,6 @@ interface CekSBMLRow {
   pengolahan: number;
   pekerjaanProvinsi: number;
   jumlah: number;
-  role: string;
   isExceeded: boolean;
   warnings: string[];
 }
@@ -80,10 +79,10 @@ export default function CekSBML() {
     }).format(amount);
   };
 
-  // Parse honor dari string format "477.000,-"
+  // Parse honor dari string format "704.000,-"
   const parseHonor = (honorStr: string): number => {
     if (!honorStr) return 0;
-    // Handle format seperti "477.000,-" atau "477000"
+    // Handle format seperti "704.000,-" atau "704000"
     const cleaned = honorStr.replace(/[^\d]/g, '');
     return parseInt(cleaned) || 0;
   };
@@ -123,6 +122,18 @@ export default function CekSBML() {
           setSbmlData(sbml);
         } else {
           console.log("No SBML data for current year");
+          // Fallback: use first available SBML data
+          if (rows.length > 1) {
+            const firstSBML = rows[1];
+            const sbml = {
+              tahunAnggaran: firstSBML[1],
+              sbmlPendata: parseHonor(firstSBML[2]),
+              sbmlPemeriksa: parseHonor(firstSBML[3]),
+              sbmlPengolah: parseHonor(firstSBML[4]),
+            };
+            console.log("Using first available SBML:", sbml);
+            setSbmlData(sbml);
+          }
         }
       }
     } catch (error: any) {
@@ -188,43 +199,50 @@ export default function CekSBML() {
 
       console.log("Tugas rows:", tugasRows.length);
       console.log("Master rows:", masterRows.length);
+      console.log("Sample tugas row:", tugasRows[1]); // Row pertama setelah header
 
       // Process data
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
-      // Build master petugas map
-      masterRows.slice(1).forEach((row: any[]) => {
-        if (row[2]) { // Nama di kolom index 2
-          masterPetugas.set(row[2].toLowerCase().trim(), {
-            nama: row[2] || "",
-            nik: row[1] || "",
-            pekerjaan: row[3] || "",
-            alamat: row[4] || "",
-            bank: row[5] || "",
-            rekening: row[6] || "",
-            kecamatan: row[7] || "",
+      // Build master petugas map - Nama di kolom C (index 2)
+      masterRows.slice(1).forEach((row: any[], index: number) => {
+        if (row[2]) { // Nama di kolom C
+          const nama = row[2].toString().trim();
+          masterPetugas.set(nama.toLowerCase(), {
+            nama: nama,
+            nik: row[1]?.toString() || "", // Kolom B
+            pekerjaan: row[3]?.toString() || "", // Kolom D
+            alamat: row[4]?.toString() || "", // Kolom E
+            bank: row[5]?.toString() || "", // Kolom F
+            rekening: row[6]?.toString() || "", // Kolom G
+            kecamatan: row[7]?.toString() || "", // Kolom H
           });
         }
       });
 
       console.log("Master petugas count:", masterPetugas.size);
+      console.log("Sample master data:", Array.from(masterPetugas.values())[0]);
 
-      // Process tugas data - dengan error handling yang lebih robust
-      tugasRows.slice(1).forEach((row: any[]) => {
+      // Process tugas data - SESUAI STRUKTUR SPREADSHEET ANDA
+      tugasRows.slice(1).forEach((row: any[], rowIndex: number) => {
         try {
-          const periode = row[2] || ""; // Periode (Bulan) di kolom C
-          const role = row[3] || ""; // Jenis Pekerjaan di kolom D
-          const namaPetugas = row[13] || ""; // Nama Petugas di kolom N
-          const nilaiRealisasi = row[16] || ""; // Nilai Realisasi di kolom Q
+          // Sesuaikan dengan struktur kolom yang Anda berikan
+          const periode = row[2]?.toString() || ""; // Kolom C: Periode (Bulan) SPK
+          const role = row[3]?.toString() || ""; // Kolom D: Jenis Pekerjaan
+          const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
+          const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
 
-          console.log(`Processing row - Periode: ${periode}, Role: ${role}`);
+          console.log(`Row ${rowIndex + 2}: Periode="${periode}", Role="${role}", Nama="${namaPetugas}", Nilai="${nilaiRealisasi}"`);
 
           if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
+            console.log(`MATCH FOUND for periode ${periodeFilter}`);
+            
             const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
             const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
 
-            console.log(`Found ${namaList.length} petugas for periode ${periode}`);
+            console.log(`Parsed - Nama:`, namaList);
+            console.log(`Parsed - Honor:`, honorList);
 
             namaList.forEach((nama: string, index: number) => {
               if (nama && honorList[index] !== undefined) {
@@ -234,20 +252,22 @@ export default function CekSBML() {
                   honor: honorList[index] || 0,
                   periode: periode,
                 });
+                console.log(`Added petugas: ${nama} dengan honor: ${honorList[index]}`);
               }
             });
           }
         } catch (error) {
-          console.error("Error processing row:", error, row);
+          console.error(`Error processing row ${rowIndex + 2}:`, error, row);
         }
       });
 
-      console.log("Petugas tugas found:", petugasTugas.length);
+      console.log("Total petugas tugas found:", petugasTugas.length);
+      console.log("Petugas tugas details:", petugasTugas);
 
-      // Transform to CekSBMLRow format
+      // Transform to CekSBMLRow format - Group by nama dan role
       const groupedData = new Map<string, CekSBMLRow>();
 
-      petugasTugas.forEach((petugas, index) => {
+      petugasTugas.forEach((petugas) => {
         const key = petugas.nama.toLowerCase();
         
         if (!groupedData.has(key)) {
@@ -261,29 +281,43 @@ export default function CekSBML() {
               pengolahan: 0,
               pekerjaanProvinsi: 0,
               jumlah: 0,
-              role: petugas.role,
               isExceeded: false,
               warnings: [],
             });
           } else {
             console.log(`Master data not found for: ${petugas.nama}`);
+            // Tetap tambahkan meski tidak ada di master
+            groupedData.set(key, {
+              no: groupedData.size + 1,
+              namaMitra: petugas.nama,
+              pendataan: 0,
+              pemeriksaan: 0,
+              pengolahan: 0,
+              pekerjaanProvinsi: 0,
+              jumlah: 0,
+              isExceeded: false,
+              warnings: [],
+            });
           }
         }
 
-        const existing = groupedData.get(key);
-        if (existing) {
-          // Assign honor berdasarkan role
-          if (petugas.role.includes('Pendataan')) {
-            existing.pendataan += petugas.honor;
-          } else if (petugas.role.includes('Pemeriksaan')) {
-            existing.pemeriksaan += petugas.honor;
-          } else if (petugas.role.includes('Pengolah')) {
-            existing.pengolahan += petugas.honor;
-          }
+        const existing = groupedData.get(key)!;
+        
+        // Assign honor berdasarkan role
+        if (petugas.role.includes('Pendataan')) {
+          existing.pendataan += petugas.honor;
+        } else if (petugas.role.includes('Pemeriksaan')) {
+          existing.pemeriksaan += petugas.honor;
+        } else if (petugas.role.includes('Pengolah')) {
+          existing.pengolahan += petugas.honor;
+        } else {
+          // Default ke pendataan jika role tidak jelas
+          existing.pendataan += petugas.honor;
         }
       });
 
       console.log("Grouped data count:", groupedData.size);
+      console.log("Grouped data:", Array.from(groupedData.values()));
 
       // Calculate totals and validate
       const finalData = Array.from(groupedData.values()).map(item => {
@@ -313,12 +347,20 @@ export default function CekSBML() {
       });
 
       setData(finalData);
-      console.log("Final data set:", finalData.length);
+      console.log("Final data set:", finalData);
 
-      toast({
-        title: "Sukses",
-        description: `Data berhasil dimuat untuk periode ${periodeFilter} - ${finalData.length} petugas ditemukan`,
-      });
+      if (finalData.length > 0) {
+        toast({
+          title: "Sukses",
+          description: `Data berhasil dimuat untuk periode ${periodeFilter} - ${finalData.length} petugas ditemukan`,
+        });
+      } else {
+        toast({
+          title: "Info",
+          description: `Tidak ada data untuk periode ${periodeFilter}`,
+          variant: "default",
+        });
+      }
 
     } catch (error: any) {
       console.error("Fetch data error:", error);
@@ -438,7 +480,9 @@ export default function CekSBML() {
             {sbmlData && (
               <Badge variant="outline" className="ml-auto">
                 SBML {sbmlData.tahunAnggaran}: 
-                Pendata {formatRupiah(sbmlData.sbmlPendata)}
+                Pendata {formatRupiah(sbmlData.sbmlPendata)} | 
+                Pemeriksa {formatRupiah(sbmlData.sbmlPemeriksa)} | 
+                Pengolah {formatRupiah(sbmlData.sbmlPengolah)}
               </Badge>
             )}
           </div>
