@@ -85,6 +85,7 @@ type ActivityOption = {
   no: number;
   role: string;
   namaKegiatan: string;
+  bebanAnggaran: string; // NEW: Tambah field bebanAnggaran
 };
 
 type KoordinatorOption = {
@@ -158,6 +159,7 @@ export default function EntriTarget() {
   const [loadingActivityOptions, setLoadingActivityOptions] = useState(false);
   const [koordinatorOptions, setKoordinatorOptions] = useState<KoordinatorOption[]>([]);
   const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
+  const [bebanAnggaran, setBebanAnggaran] = useState<string>(""); // NEW: State untuk menyimpan beban anggaran
   
   // Get activities for current period and job type - MUST include year to match spreadsheet data
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
@@ -400,6 +402,7 @@ export default function EntriTarget() {
           no: parseInt(row[0]) || index + 1, // Kolom A: No
           role: row[1] || '', // Kolom B: Role
           namaKegiatan: row[2] || '', // Kolom C: Nama Kegiatan
+          bebanAnggaran: row[3] || '', // Kolom D: Beban Anggaran (NEW)
         }))
         .filter((option: ActivityOption) => {
           if (!option.namaKegiatan.trim()) return false;
@@ -470,6 +473,22 @@ export default function EntriTarget() {
       console.error('Error loading koordinator options:', error);
     } finally {
       setLoadingKoordinatorOptions(false);
+    }
+  };
+
+  // NEW: Fungsi untuk handle perubahan nama kegiatan dan mengambil beban anggaran
+  const handleNamaKegiatanChange = (selectedKegiatan: string) => {
+    // Update form value
+    form.setValue("namaKegiatan", selectedKegiatan);
+    
+    // Cari data beban anggaran berdasarkan nama kegiatan yang dipilih
+    const selectedActivity = activityOptions.find(option => option.namaKegiatan === selectedKegiatan);
+    
+    if (selectedActivity) {
+      setBebanAnggaran(selectedActivity.bebanAnggaran);
+      console.log('Beban Anggaran untuk', selectedKegiatan, ':', selectedActivity.bebanAnggaran);
+    } else {
+      setBebanAnggaran("");
     }
   };
 
@@ -709,6 +728,7 @@ export default function EntriTarget() {
     setShowAddActivityDialog(false);
     setShowCustomSatuan(false);
     form.reset();
+    setBebanAnggaran(""); // Reset beban anggaran setelah submit
   };
 
   // === DELETE ACTIVITY - DIPERBAIKI ===
@@ -791,6 +811,11 @@ export default function EntriTarget() {
       koordinator: activity.koordinator,
     });
     setShowCustomSatuan(isCustomSatuan);
+    
+    // Cari dan set beban anggaran saat edit
+    const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
+    setBebanAnggaran(selectedActivity?.bebanAnggaran || "");
+    
     setShowAddActivityDialog(true);
   };
 
@@ -1567,6 +1592,7 @@ export default function EntriTarget() {
         if (!open) {
           setEditingActivity(null);
           form.reset();
+          setBebanAnggaran(""); // Reset beban anggaran saat tutup dialog
         }
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1600,7 +1626,7 @@ export default function EntriTarget() {
                         label: option.namaKegiatan
                       }))}
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={handleNamaKegiatanChange} // MODIFIED: Gunakan fungsi custom
                       placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"}
                       searchPlaceholder="Cari nama kegiatan..."
                       disabled={loadingActivityOptions}
@@ -1614,6 +1640,15 @@ export default function EntriTarget() {
                   </FormItem>
                 )}
               />
+
+              {/* NEW: Tampilkan Beban Anggaran */}
+              {bebanAnggaran && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-blue-800">
+                    <strong>Beban Anggaran:</strong> {bebanAnggaran}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
@@ -1881,6 +1916,7 @@ export default function EntriTarget() {
                     setShowAddActivityDialog(false);
                     setEditingActivity(null);
                     form.reset();
+                    setBebanAnggaran(""); // Reset beban anggaran saat batal
                   }}
                 >
                   Batal
