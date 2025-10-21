@@ -68,6 +68,7 @@ type Activity = {
   workers: Worker[];
   jobType: string;
   spreadsheetRowIndex?: number; // Track row in spreadsheet for updates
+  bebanAnggaran?: string; // NEW: Tambah field bebanAnggaran
 };
 
 type PetugasFromSheet = {
@@ -580,6 +581,7 @@ export default function EntriTarget() {
         const satuanCustom = row[11] || '';
         const koordinator = row[12] || '';
         const komponenPOK = row[13] || '';
+        const bebanAnggaran = row[18] || ''; // NEW: Kolom S - Beban Anggaran
         
         // Parse workers data (separated by |)
         const namaPetugasStr = row[14] || '';
@@ -613,6 +615,7 @@ export default function EntriTarget() {
           workers,
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2, // +2 because: +1 for header, +1 for 0-index
+          bebanAnggaran, // NEW: Simpan beban anggaran
         };
 
         const periodKey = `${periode}-${jenisPekerjaan}`;
@@ -673,6 +676,7 @@ export default function EntriTarget() {
               nomorSK: data.nomorSK,
               tanggalSK: data.tanggalSK,
               koordinator: data.koordinator,
+              bebanAnggaran: bebanAnggaran, // NEW: Simpan beban anggaran
             }
           : activity
       );
@@ -706,6 +710,7 @@ export default function EntriTarget() {
         koordinator: data.koordinator,
         workers: [],
         jobType: selectedJobType || "",
+        bebanAnggaran: bebanAnggaran, // NEW: Simpan beban anggaran
       };
       
       // Save to spreadsheet and get row index
@@ -814,7 +819,7 @@ export default function EntriTarget() {
     
     // Cari dan set beban anggaran saat edit
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
-    setBebanAnggaran(selectedActivity?.bebanAnggaran || "");
+    setBebanAnggaran(selectedActivity?.bebanAnggaran || activity.bebanAnggaran || "");
     
     setShowAddActivityDialog(true);
   };
@@ -1019,6 +1024,7 @@ export default function EntriTarget() {
           "", // Realisasi
           "", // Nilai Realisasi
           "", // Total Realisasi
+          activity.bebanAnggaran || "", // NEW: Kolom S - Beban Anggaran
           "", // Keterangan
         ]
       ];
@@ -1087,6 +1093,7 @@ export default function EntriTarget() {
           realisasiList,
           nilaiRealisasiList,
           formatCurrency(totalRealisasi),
+          activity.bebanAnggaran || "", // NEW: Kolom S - Beban Anggaran
           "", // Keterangan (preserve existing or empty)
         ]
       ];
@@ -1173,6 +1180,7 @@ export default function EntriTarget() {
           realisasiList,
           nilaiRealisasiList,
           formatCurrency(totalRealisasi),
+          activity.bebanAnggaran || "", // NEW: Kolom S - Beban Anggaran
           "Kirim PPK", // Update Keterangan
         ]
       ];
