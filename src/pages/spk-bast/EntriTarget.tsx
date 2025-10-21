@@ -1600,6 +1600,22 @@ export default function EntriTarget() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {/* Search Input */}
+                        <div className="p-2">
+                          <Input
+                            placeholder="Cari kegiatan..."
+                            className="h-8"
+                            onChange={(e) => {
+                              // Anda perlu menambahkan state untuk filtered activities
+                              const searchValue = e.target.value.toLowerCase();
+                              const filtered = activityOptions.filter(option =>
+                                option.namaKegiatan.toLowerCase().includes(searchValue)
+                              );
+                              // Set state filtered activities di sini
+                            }}
+                          />
+                        </div>
+                        
                         {activityOptions.length > 0 ? (
                           activityOptions.map((option) => (
                             <SelectItem key={option.no} value={option.namaKegiatan}>
