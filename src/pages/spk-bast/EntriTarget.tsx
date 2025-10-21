@@ -1587,48 +1587,29 @@ export default function EntriTarget() {
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* MODIFIED: FormField for namaKegiatan with Combobox for search functionality */}
               <FormField
                 control={form.control}
                 name="namaKegiatan"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nama Kegiatan <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={loadingActivityOptions}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih kegiatan"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {/* Search Input */}
-                        <div className="p-2">
-                          <Input
-                            placeholder="Cari kegiatan..."
-                            className="h-8"
-                            onChange={(e) => {
-                              // Anda perlu menambahkan state untuk filtered activities
-                              const searchValue = e.target.value.toLowerCase();
-                              const filtered = activityOptions.filter(option =>
-                                option.namaKegiatan.toLowerCase().includes(searchValue)
-                              );
-                              // Set state filtered activities di sini
-                            }}
-                          />
-                        </div>
-                        
-                        {activityOptions.length > 0 ? (
-                          activityOptions.map((option) => (
-                            <SelectItem key={option.no} value={option.namaKegiatan}>
-                              {option.namaKegiatan}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="" disabled>
-                            {loadingActivityOptions ? "Memuat..." : "Tidak ada kegiatan untuk role Anda"}
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={activityOptions.map(option => ({
+                        value: option.namaKegiatan,
+                        label: option.namaKegiatan
+                      }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"}
+                      searchPlaceholder="Cari nama kegiatan..."
+                      disabled={loadingActivityOptions}
+                      emptyMessage={
+                        loadingActivityOptions 
+                          ? "Memuat..." 
+                          : "Tidak ada kegiatan untuk role Anda"
+                      }
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
