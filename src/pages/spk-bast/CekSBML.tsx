@@ -127,7 +127,7 @@ export default function CekSBML() {
     }
   };
 
-  // Fetch data petugas bertugas - DIPERBAIKI
+  // Fetch data petugas bertugas - DIPERBAIKI DENGAN KOLOM YANG BENAR
   const fetchData = async () => {
     if (!filterBulan || !filterTahun) {
       toast({
@@ -194,14 +194,14 @@ export default function CekSBML() {
 
       console.log("👥 Master petugas loaded:", masterPetugas.size);
 
-      // PROCESS TUGAS DATA - YANG BENAR!
+      // PROCESS TUGAS DATA - DENGAN KOLOM YANG BENAR!
       tugasRows.slice(1).forEach((row: any[], rowIndex: number) => {
         try {
-          // KOLOM YANG BENAR:
+          // KOLOM YANG BENAR SESUAI STRUKTUR ANDA:
           const periode = row[2]?.toString() || "";        // Kolom C: Periode (Bulan) SPK
           const role = row[3]?.toString() || "";           // Kolom D: Jenis Pekerjaan  
-          const namaPetugas = row[13]?.toString() || "";   // Kolom N: Nama Petugas ← INI YANG BENAR!
-          const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
+          const namaPetugas = row[14]?.toString() || "";   // Kolom O: Nama Petugas ← INI YANG BENAR!
+          const nilaiRealisasi = row[17]?.toString() || ""; // Kolom R: Nilai Realisasi ← INI YANG BENAR!
 
           console.log(`📝 Row ${rowIndex + 2}:`, {
             periode,
@@ -265,7 +265,7 @@ export default function CekSBML() {
 
         const existing = groupedData.get(key)!;
         
-        // Assign honor berdasarkan role - DIPERBAIKI
+        // Assign honor berdasarkan role
         if (petugas.role.toLowerCase().includes('pendataan')) {
           existing.pendataan += petugas.honor;
         } else if (petugas.role.toLowerCase().includes('pemeriksaan')) {
