@@ -26,7 +26,7 @@ const users = [
   { username: 'NERACA3210', password: 'terhormat', role: 'Fungsi Neraca' },
   { username: 'produksi3210', password: 'terhormat', role: 'Fungsi Produksi' },
   { username: 'PRODUKSI3210', password: 'terhormat', role: 'Fungsi Produksi' },  
-  { username: 'distribusi210', password: 'terhormat', role: 'Fungsi Distribusi' },
+  { username: 'distribusi3210', password: 'terhormat', role: 'Fungsi Distribusi' },
   { username: 'DISTRIBUSI3210', password: 'terhormat', role: 'Fungsi Distribusi' },
   { username: 'ipds3210', password: 'terhormat', role: 'Fungsi IPDS' },
   { username: 'IPDS3210', password: 'terhormat', role: 'Fungsi IPDS' },
