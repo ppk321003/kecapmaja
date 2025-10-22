@@ -311,7 +311,6 @@ const getValidBulanForSlow = (tahun: string, data: ChartItem[]): ChartItem[] => 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  // PERBAIKAN 3: Default view mode diubah menjadi 'anggaran'
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
@@ -413,12 +412,12 @@ export default function Dashboard() {
       const jenisPekerjaanAnggaranMap = new Map<string, number>();
       const roleAnggaranMap = new Map<string, number>();
 
-      // Maps untuk data workload dan risk dengan menghitung jenis pekerjaan unik
+      // Maps untuk data workload dan risk dengan menghitung NAMA KEGIATAN unik
       const petugasDetailMap = new Map<string, { 
         kegiatan: number, 
         anggaran: number, 
         roles: Set<string>,
-        jenisPekerjaanUnik: Set<string>
+        namaKegiatanUnik: Set<string> // PERBAIKAN: Ganti dari jenisPekerjaanUnik ke namaKegiatanUnik
       }>();
 
       let totalKegiatan = 0;
@@ -429,6 +428,7 @@ export default function Dashboard() {
           const periode = row[2]?.toString() || "";
           const role = row[1]?.toString() || "";
           const jenisPekerjaan = row[3]?.toString() || "";
+          const namaKegiatan = row[4]?.toString() || ""; // PERBAIKAN: Kolom E = Nama Kegiatan
           const namaPetugas = row[14]?.toString() || "";
           const nilaiRealisasi = row[17]?.toString() || "";
 
@@ -449,13 +449,13 @@ export default function Dashboard() {
             // Anggaran
             petugasAnggaranMap.set(nama, (petugasAnggaranMap.get(nama) || 0) + nilai);
 
-            // Workload data - Support multiple roles dan jenis pekerjaan unik
+            // Workload data - Support multiple roles dan NAMA KEGIATAN unik
             if (!petugasDetailMap.has(nama)) {
               petugasDetailMap.set(nama, { 
                 kegiatan: 0, 
                 anggaran: 0, 
                 roles: new Set(),
-                jenisPekerjaanUnik: new Set()
+                namaKegiatanUnik: new Set() // PERBAIKAN: Ganti ke namaKegiatanUnik
               });
             }
             const detail = petugasDetailMap.get(nama)!;
@@ -467,9 +467,9 @@ export default function Dashboard() {
               detail.roles.add(role.trim());
             }
 
-            // Tambahkan jenis pekerjaan ke Set untuk menghitung yang unik
-            if (jenisPekerjaan && jenisPekerjaan.trim() !== '') {
-              detail.jenisPekerjaanUnik.add(jenisPekerjaan.trim());
+            // PERBAIKAN: Tambahkan NAMA KEGIATAN ke Set untuk menghitung yang unik
+            if (namaKegiatan && namaKegiatan.trim() !== '') {
+              detail.namaKegiatanUnik.add(namaKegiatan.trim());
             }
           });
 
@@ -500,7 +500,6 @@ export default function Dashboard() {
       });
 
       // Prepare chart data untuk KEGIATAN dan ANGGARAN
-      // PERBAIKAN 2: Grafik petugas anggaran tampilkan 10 nama
       const petugasKegiatanData: ChartItem[] = Array.from(petugasKegiatanMap.entries())
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
@@ -519,11 +518,10 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // PERBAIKAN 2: Grafik petugas anggaran tampilkan 10 nama
       const petugasAnggaranData: ChartItem[] = Array.from(petugasAnggaranMap.entries())
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 10); // Diubah dari 8 menjadi 10
+        .slice(0, 10);
 
       const bulanAnggaranData: ChartItem[] = bulanList.map(bulan => ({
         name: bulan,
@@ -549,18 +547,17 @@ export default function Dashboard() {
         .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan)
         .slice(0, 10);
 
-      // PERBAIKAN 1: Prepare risk data dengan kriteria baru dan menggunakan jumlah JENIS PEKERJAAN UNIK
+      // PERBAIKAN: Prepare risk data dengan menggunakan jumlah NAMA KEGIATAN UNIK
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
-          // Gunakan jumlah jenis pekerjaan unik untuk risk assessment
-          const jumlahJenisPekerjaanUnik = detail.jenisPekerjaanUnik.size;
+          // PERBAIKAN: Gunakan jumlah NAMA KEGIATAN unik untuk risk assessment
+          const jumlahNamaKegiatanUnik = detail.namaKegiatanUnik.size;
           
           let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
           
-          // PERBAIKAN 1: Kriteria risiko baru
-          if (jumlahJenisPekerjaanUnik < 25) {
+          if (jumlahNamaKegiatanUnik < 25) {
             riskLevel = 'Rendah';
-          } else if (jumlahJenisPekerjaanUnik >= 25 && jumlahJenisPekerjaanUnik <= 50) {
+          } else if (jumlahNamaKegiatanUnik >= 25 && jumlahNamaKegiatanUnik <= 50) {
             riskLevel = 'Sedang';
           } else {
             riskLevel = 'Tinggi';
@@ -568,7 +565,7 @@ export default function Dashboard() {
 
           return {
             name: petugas,
-            kegiatan: jumlahJenisPekerjaanUnik,
+            kegiatan: jumlahNamaKegiatanUnik,
             anggaran: detail.anggaran,
             riskLevel: riskLevel
           };
@@ -609,6 +606,14 @@ export default function Dashboard() {
       const rataRataAnggaranPerBulan = validBulanAnggaran.length > 0 
         ? Math.round(totalAnggaranValidBulan / validBulanAnggaran.length)
         : 0;
+
+      console.log('Debug risk assessment:', {
+        riskData: riskDataArray.map(item => ({ 
+          petugas: item.name, 
+          namaKegiatanUnik: item.kegiatan,
+          riskLevel: item.riskLevel 
+        }))
+      });
 
       setStats({
         totalKegiatan,
@@ -698,7 +703,7 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* PERBAIKAN 3: Toggle View Mode - tukar posisi dan default anggaran */}
+          {/* Toggle View Mode */}
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kegiatan' | 'anggaran')}>
             <TabsList>
               <TabsTrigger value="anggaran" className="flex items-center gap-2">
@@ -956,8 +961,8 @@ export default function Dashboard() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold">No</th>
-                    <th className="text-left py-3 font-semibold">Mitra Statistik</th>
-                    <th className="text-left py-3 font-semibold">PJ Kegiatan</th>
+                    <th className="text-left py-3 font-semibold">Nama Mitra Statistik</th>
+                    <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Realisasi</th>
                   </tr>
