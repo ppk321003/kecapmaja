@@ -568,7 +568,7 @@ export default function Dashboard() {
       const petugasKegiatanData: ChartItem[] = Array.from(petugasKegiatanUnikMap.entries())
         .map(([name, kegiatanSet]) => ({ name, value: kegiatanSet.size }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 8);
+        .slice(0, 10);
 
       const bulanKegiatanData: ChartItem[] = bulanList.map(bulan => ({
         name: bulan,
@@ -885,8 +885,8 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>
               {viewMode === 'kegiatan' 
-                ? 'Top Petugas Berdasarkan Kegiatan' 
-                : 'Top Petugas Berdasarkan Anggaran'
+                ? 'Top Mitra Statistik Berdasarkan Kegiatan' 
+                : 'Top Mitra Statistik Berdasarkan Anggaran'
               }
             </CardTitle>
           </CardHeader>
@@ -984,7 +984,7 @@ export default function Dashboard() {
               Assesmen Risiko
             </CardTitle>
             <CardDescription>
-              Top 10 petugas dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail
+              Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -997,7 +997,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Table className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 15 Petugas
+              Distribusi Realisasi Honor - Top 15 Mitra Statistik
             </CardTitle>
             <CardDescription>
               Tabel detail distribusi realisasi honor per mitra statistik
