@@ -928,7 +928,7 @@ export default function Dashboard() {
               Distribusi Beban Kerja - Top 10 Petugas
             </CardTitle>
             <CardDescription>
-              Tabel detail distribusi beban kerja dan anggaran per petugas
+              Tabel detail distribusi beban kerja dan realisasi per mitra statistik
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -937,46 +937,37 @@ export default function Dashboard() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold">No</th>
-                    <th className="text-left py-3 font-semibold">Petugas</th>
-                    <th className="text-left py-3 font-semibold">Role</th>
+                    <th className="text-left py-3 font-semibold">Mitra Statistik</th>
+                    <th className="text-left py-3 font-semibold">PJ Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Jumlah Kegiatan</th>
-                    <th className="text-right py-3 font-semibold">Total Anggaran</th>
-                    <th className="text-right py-3 font-semibold">Persentase</th>
+                    <th className="text-right py-3 font-semibold">Total Realisasi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {workloadData.map((item, index) => {
-                    // Hitung persentase berdasarkan mode yang dipilih
-                    const total = viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi;
-                    const value = viewMode === 'kegiatan' ? item.jumlahKegiatan : item.totalAnggaran;
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                    
-                    return (
-                      <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="py-3 text-muted-foreground">{index + 1}</td>
-                        <td className="py-3 font-medium">{item.petugas}</td>
-                        <td className="py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {item.roles.map((role, roleIndex) => (
-                              <span 
-                                key={roleIndex} 
-                                className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-                              >
-                                {role}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="text-right py-3 font-medium">
-                          {item.jumlahKegiatan.toLocaleString('id-ID')}
-                        </td>
-                        <td className="text-right py-3 font-medium">
-                          {formatRupiah(item.totalAnggaran)}
-                        </td>
-                        <td className="text-right py-3 font-medium">{percentage}%</td>
-                      </tr>
-                    );
-                  })}
+                  {workloadData.map((item, index) => (
+                    <tr key={index} className="border-b hover:bg-muted/50">
+                      <td className="py-3 text-muted-foreground">{index + 1}</td>
+                      <td className="py-3 font-medium">{item.petugas}</td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {item.roles.map((role, roleIndex) => (
+                            <span 
+                              key={roleIndex} 
+                              className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="text-right py-3 font-medium">
+                        {item.jumlahKegiatan.toLocaleString('id-ID')}
+                      </td>
+                      <td className="text-right py-3 font-medium">
+                        {formatRupiah(item.totalAnggaran)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
