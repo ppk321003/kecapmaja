@@ -387,6 +387,19 @@ export default function CekSBML() {
     );
   }, [sbmlData, formatRupiah]);
 
+  // Hitung total untuk setiap kolom
+  const totals = useMemo(() => {
+    if (data.length === 0) return null;
+    
+    return {
+      pendataan: data.reduce((sum, row) => sum + row.pendataan, 0),
+      pemeriksaan: data.reduce((sum, row) => sum + row.pemeriksaan, 0),
+      pengolahan: data.reduce((sum, row) => sum + row.pengolahan, 0),
+      pekerjaanProvinsi: data.reduce((sum, row) => sum + row.pekerjaanProvinsi, 0),
+      jumlah: data.reduce((sum, row) => sum + row.jumlah, 0),
+    };
+  }, [data]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -575,6 +588,31 @@ export default function CekSBML() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  
+                  {/* Baris Total */}
+                  {totals && (
+                    <TableRow className="bg-gray-50 font-semibold border-t-2 border-gray-300">
+                      <TableCell colSpan={2} className="text-right font-bold">
+                        TOTAL
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatRupiah(totals.pendataan)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatRupiah(totals.pemeriksaan)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatRupiah(totals.pengolahan)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatRupiah(totals.pekerjaanProvinsi)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-blue-600">
+                        {formatRupiah(totals.jumlah)}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -608,16 +646,16 @@ const StatusTooltip = ({
       </div>
       {showTooltip && (
         <div className={`absolute z-50 w-80 p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg ${
-          rowIndex === 0 ? 'top-full mt-2' : 'bottom-full mb-2'
+          rowIndex < 4 ? 'top-full mt-2' : 'bottom-full mb-2'
         } left-1/2 transform -translate-x-1/2`}>
           <div className="font-semibold mb-2 text-center">Melebihi SBML:</div>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
+          <div className="space-y-1">
             {content.map((warning, index) => (
               <div key={index} className="text-xs break-words">• {warning}</div>
             ))}
           </div>
           <div className={`absolute w-3 h-3 bg-gray-900 transform rotate-45 ${
-            rowIndex === 0 
+            rowIndex < 4 
               ? 'bottom-full -translate-y-1/2' 
               : 'top-full -translate-y-1/2'
           } left-1/2 -translate-x-1/2`}></div>
@@ -627,7 +665,7 @@ const StatusTooltip = ({
   );
 };
 
-// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI (bisa 2 baris)
+// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI
 const HonorTooltip = ({ 
   details, 
   title, 
@@ -658,7 +696,7 @@ const HonorTooltip = ({
       </div>
       {showTooltip && (
         <div className={`absolute z-50 w-96 p-3 text-sm rounded-lg shadow-lg ${
-          rowIndex === 0 ? 'top-full mt-2' : 'bottom-full mb-2'
+          rowIndex < 4 ? 'top-full mt-2' : 'bottom-full mb-2'
         } left-1/2 transform -translate-x-1/2 ${
           isExceeded ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
         }`}>
@@ -667,7 +705,7 @@ const HonorTooltip = ({
           }`}>
             {title}
           </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="space-y-2">
             {details.map((detail, index) => (
               <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
                 <div className="font-medium text-gray-900 mb-1 break-words leading-tight max-w-full">
@@ -680,7 +718,7 @@ const HonorTooltip = ({
             ))}
           </div>
           <div className={`absolute w-3 h-3 transform rotate-45 ${
-            rowIndex === 0 
+            rowIndex < 4 
               ? 'bottom-full -translate-y-1/2 border-b border-r' 
               : 'top-full -translate-y-1/2 border-t border-l'
           } left-1/2 -translate-x-1/2 ${
