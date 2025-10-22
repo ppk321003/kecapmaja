@@ -236,54 +236,6 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Progress Gauge - HANYA untuk mode kegiatan
-const ProgressGauge = ({ value, max, title }: { value: number, max: number, title: string }) => {
-  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  
-  const getColor = (percent: number) => {
-    if (percent < 50) return '#00C49F';
-    if (percent < 80) return '#FFBB28';
-    return '#FF8042';
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center p-4">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
-      <div className="relative w-32 h-32">
-        <svg className="w-full h-full" viewBox="0 0 120 120">
-          {/* Background circle */}
-          <circle
-            cx="60"
-            cy="60"
-            r="54"
-            fill="none"
-            stroke="#e0e0e0"
-            strokeWidth="12"
-          />
-          {/* Progress circle */}
-          <circle
-            cx="60"
-            cy="60"
-            r="54"
-            fill="none"
-            stroke={getColor(percentage)}
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={`${percentage * 3.39} 339`}
-            transform="rotate(-90 60 60)"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold">{percentage.toFixed(0)}%</span>
-          <span className="text-xs text-muted-foreground text-center">
-            {value} kegiatan
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Komponen Risk Matrix dengan kriteria baru
 const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
   if (!data || data.length === 0) {
@@ -305,6 +257,24 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
 
   return (
     <div className="space-y-3">
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+        <h4 className="font-semibold text-sm mb-2">Kriteria Risiko:</h4>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span>Rendah: &lt; 3</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <span>Sedang: 3 - 10</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span>Tinggi: &gt; 10</span>
+          </div>
+        </div>
+      </div>
+      
       {data.map((item, index) => (
         <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
           <div className="flex-1">
@@ -568,13 +538,13 @@ export default function Dashboard() {
         }))
         .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan);
 
-      // Prepare risk data dengan kriteria baru: Rendah < 2, Sedang 2-10, Tinggi > 10
+      // Prepare risk data dengan kriteria baru: Rendah < 3, Sedang 3-10, Tinggi > 10
       const riskDataArray: RiskData[] = workloadDataArray.map(item => {
         let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
         
-        if (item.jumlahKegiatan < 2) {
+        if (item.jumlahKegiatan < 3) {
           riskLevel = 'Rendah';
-        } else if (item.jumlahKegiatan >= 2 && item.jumlahKegiatan <= 10) {
+        } else if (item.jumlahKegiatan >= 3 && item.jumlahKegiatan <= 10) {
           riskLevel = 'Sedang';
         } else {
           riskLevel = 'Tinggi';
@@ -927,46 +897,6 @@ export default function Dashboard() {
           />
         </CardContent>
       </Card>
-
-      {/* Progress Achievement - HANYA untuk mode kegiatan */}
-      {viewMode === 'kegiatan' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Progress Pencapaian Kegiatan
-            </CardTitle>
-            <CardDescription>
-              Pencapaian target vs realisasi kegiatan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-around">
-              <ProgressGauge 
-                value={stats.totalKegiatan}
-                max={stats.rataRataKegiatanPerBulan * 12}
-                title="Progress Kegiatan"
-              />
-              <div className="flex flex-col justify-center space-y-2">
-                <div className="text-sm">
-                  <strong>Total:</strong> {stats.totalKegiatan.toLocaleString('id-ID')} kegiatan
-                </div>
-                <div className="text-sm">
-                  <strong>Target Tahunan:</strong> {(stats.rataRataKegiatanPerBulan * 12).toLocaleString('id-ID')} kegiatan
-                </div>
-                <div className="text-sm">
-                  <strong>Kriteria Risiko:</strong>
-                  <ul className="list-disc list-inside mt-1 text-xs">
-                    <li>Rendah: &lt; 2 kegiatan</li>
-                    <li>Sedang: 2 - 10 kegiatan</li>
-                    <li>Tinggi: &gt; 10 kegiatan</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
