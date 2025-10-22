@@ -397,25 +397,25 @@ export default function CekSBML() {
         </p>
       </div>
 
-      {/* Filter Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
+      {/* Filter Section - DIPERBAIKI: lebih compact */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Search className="h-4 w-4" />
             Filter Periode
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end flex-wrap">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Bulan</label>
+        <CardContent className="pt-0">
+          <div className="flex gap-3 items-center flex-wrap">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Bulan</label>
               <Select value={filterBulan} onValueChange={setFilterBulan}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32 h-8 text-sm">
                   <SelectValue placeholder="Pilih Bulan" />
                 </SelectTrigger>
                 <SelectContent>
                   {bulanList.map(bulan => (
-                    <SelectItem key={bulan} value={bulan}>
+                    <SelectItem key={bulan} value={bulan} className="text-sm">
                       {bulan}
                     </SelectItem>
                   ))}
@@ -423,15 +423,15 @@ export default function CekSBML() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tahun</label>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Tahun</label>
               <Select value={filterTahun} onValueChange={setFilterTahun}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-24 h-8 text-sm">
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
                   {tahunList.map(tahun => (
-                    <SelectItem key={tahun} value={tahun}>
+                    <SelectItem key={tahun} value={tahun} className="text-sm">
                       {tahun}
                     </SelectItem>
                   ))}
@@ -439,11 +439,19 @@ export default function CekSBML() {
               </Select>
             </div>
 
-            <Button onClick={handleSearch} disabled={loading}>
+            <Button 
+              onClick={handleSearch} 
+              disabled={loading}
+              className="h-8 px-4 text-sm mt-5"
+            >
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
 
-            {sbmlBadgeContent}
+            {sbmlBadgeContent && (
+              <div className="ml-auto">
+                {sbmlBadgeContent}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -543,7 +551,7 @@ export default function CekSBML() {
                           type="text"
                           value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
                           onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right min-w-[100px]"
+                          className="text-right min-w-[100px] h-8 text-sm"
                           placeholder="0"
                         />
                       </TableCell>
