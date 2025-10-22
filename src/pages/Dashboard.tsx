@@ -234,7 +234,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover untuk menampilkan jenis kegiatan
+// PERBAIKAN: Komponen Risk Matrix dengan Hover di samping kanan dan tepat di tengah
 const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
   if (!data || data.length === 0) {
     return (
@@ -289,8 +289,8 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
             {item.riskLevel}
           </span>
           
-          {/* PERBAIKAN: Hover Tooltip untuk menampilkan jenis kegiatan */}
-          <div className="absolute invisible group-hover:visible z-50 bottom-full left-0 mb-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+          {/* PERBAIKAN: Hover Tooltip di samping kanan dan tepat di tengah */}
+          <div className="absolute invisible group-hover:visible z-50 left-full top-1/2 transform -translate-y-1/2 ml-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
             <h5 className="font-semibold text-sm mb-2">Jenis Kegiatan ({item.kegiatan}):</h5>
             <div className="max-h-40 overflow-y-auto">
               <ul className="space-y-1 text-xs">
