@@ -619,7 +619,7 @@ const StatusTooltip = ({
   );
 };
 
-// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI
+// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI (bisa 2 baris)
 const HonorTooltip = ({ 
   details, 
   title, 
@@ -662,10 +662,10 @@ const HonorTooltip = ({
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {details.map((detail, index) => (
               <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
-                <div className="font-medium text-gray-900 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="font-medium text-gray-900 mb-1 break-words leading-tight max-w-full">
                   {detail.namaKegiatan}
                 </div>
-                <div className="text-green-600 font-semibold whitespace-nowrap">
+                <div className="text-green-600 font-semibold">
                   {detail.nilaiRealisasi}
                 </div>
               </div>
