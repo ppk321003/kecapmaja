@@ -502,6 +502,7 @@ export default function CekSBML() {
                           details={row.detailPendataan} 
                           title="Detail Pendataan"
                           isExceeded={row.pendataan > (sbmlData?.sbmlPendata || 0)}
+                          rowIndex={index}
                         >
                           <span className={row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}>
                             {formatRupiah(row.pendataan)}
@@ -515,6 +516,7 @@ export default function CekSBML() {
                           details={row.detailPemeriksaan} 
                           title="Detail Pemeriksaan"
                           isExceeded={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0)}
+                          rowIndex={index}
                         >
                           <span className={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0) ? "text-red-600 font-semibold" : ""}>
                             {formatRupiah(row.pemeriksaan)}
@@ -528,6 +530,7 @@ export default function CekSBML() {
                           details={row.detailPengolahan} 
                           title="Detail Pengolahan"
                           isExceeded={row.pengolahan > (sbmlData?.sbmlPengolah || 0)}
+                          rowIndex={index}
                         >
                           <span className={row.pengolahan > (sbmlData?.sbmlPengolah || 0) ? "text-red-600 font-semibold" : ""}>
                             {formatRupiah(row.pengolahan)}
@@ -551,11 +554,11 @@ export default function CekSBML() {
                       
                       <TableCell className="text-center">
                         {row.isExceeded ? (
-                          <Tooltip content={row.warnings}>
+                          <StatusTooltip content={row.warnings} rowIndex={index}>
                             <div className="flex justify-center">
                               <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
                             </div>
-                          </Tooltip>
+                          </StatusTooltip>
                         ) : (
                           <div className="flex justify-center">
                             <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
@@ -574,8 +577,16 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component untuk status melebihi SBML
-const Tooltip = ({ content, children }: { content: string[]; children: React.ReactNode }) => {
+// Tooltip component untuk status melebihi SBML - DIPERBAIKI
+const StatusTooltip = ({ 
+  content, 
+  children,
+  rowIndex 
+}: { 
+  content: string[]; 
+  children: React.ReactNode;
+  rowIndex: number;
+}) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -588,30 +599,38 @@ const Tooltip = ({ content, children }: { content: string[]; children: React.Rea
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 w-80 max-w-[90vw] p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 mb-2">
+        <div className={`absolute z-50 w-80 p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg ${
+          rowIndex === 0 ? 'top-full mt-2' : 'bottom-full mb-2'
+        } left-1/2 transform -translate-x-1/2`}>
           <div className="font-semibold mb-2 text-center">Melebihi SBML:</div>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {content.map((warning, index) => (
               <div key={index} className="text-xs break-words">• {warning}</div>
             ))}
           </div>
-          <div className="absolute w-3 h-3 bg-gray-900 transform rotate-45 top-full left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+          <div className={`absolute w-3 h-3 bg-gray-900 transform rotate-45 ${
+            rowIndex === 0 
+              ? 'bottom-full -translate-y-1/2' 
+              : 'top-full -translate-y-1/2'
+          } left-1/2 -translate-x-1/2`}></div>
         </div>
       )}
     </div>
   );
 };
 
-// Komponen Tooltip Baru untuk Detail Honor
+// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI
 const HonorTooltip = ({ 
   details, 
   title, 
   isExceeded,
+  rowIndex,
   children 
 }: { 
   details: { namaKegiatan: string; nilaiRealisasi: string }[];
   title: string;
   isExceeded: boolean;
+  rowIndex: number;
   children: React.ReactNode;
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -630,7 +649,9 @@ const HonorTooltip = ({
         {children}
       </div>
       {showTooltip && (
-        <div className={`absolute z-50 w-72 p-3 text-sm rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 mb-2 ${
+        <div className={`absolute z-50 w-96 p-3 text-sm rounded-lg shadow-lg ${
+          rowIndex === 0 ? 'top-full mt-2' : 'bottom-full mb-2'
+        } left-1/2 transform -translate-x-1/2 ${
           isExceeded ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
         }`}>
           <div className={`font-semibold mb-2 text-center ${
@@ -641,13 +662,23 @@ const HonorTooltip = ({
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {details.map((detail, index) => (
               <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
-                <div className="font-medium text-gray-900 mb-1">{detail.namaKegiatan}</div>
-                <div className="text-green-600 font-semibold">{detail.nilaiRealisasi}</div>
+                <div className="font-medium text-gray-900 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                  {detail.namaKegiatan}
+                </div>
+                <div className="text-green-600 font-semibold whitespace-nowrap">
+                  {detail.nilaiRealisasi}
+                </div>
               </div>
             ))}
           </div>
-          <div className={`absolute w-3 h-3 transform rotate-45 top-full left-1/2 -translate-x-1/2 -translate-y-1/2 ${
-            isExceeded ? 'bg-red-50 border-r border-b border-red-200' : 'bg-white border-r border-b border-gray-200'
+          <div className={`absolute w-3 h-3 transform rotate-45 ${
+            rowIndex === 0 
+              ? 'bottom-full -translate-y-1/2 border-b border-r' 
+              : 'top-full -translate-y-1/2 border-t border-l'
+          } left-1/2 -translate-x-1/2 ${
+            isExceeded 
+              ? 'bg-red-50 border-red-200' 
+              : 'bg-white border-gray-200'
           }`}></div>
         </div>
       )}
