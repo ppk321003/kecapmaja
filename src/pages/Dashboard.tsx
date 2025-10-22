@@ -262,15 +262,15 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span>Rendah: &lt; 3</span>
+            <span>Rendah: &lt; 25</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span>Sedang: 3 - 10</span>
+            <span>Sedang: 25 - 50</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span>Tinggi: &gt; 10</span>
+            <span>Tinggi: &gt; 50</span>
           </div>
         </div>
       </div>
@@ -280,7 +280,7 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
           <div className="flex-1">
             <h4 className="font-semibold">{item.name}</h4>
             <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-              <span>{item.kegiatan} kegiatan</span>
+              <span>{item.kegiatan} jenis kegiatan</span>
               <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
             </div>
           </div>
@@ -311,7 +311,8 @@ const getValidBulanForSlow = (tahun: string, data: ChartItem[]): ChartItem[] => 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('kegiatan');
+  // PERBAIKAN 3: Default view mode diubah menjadi 'anggaran'
+  const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     totalRealisasi: 0,
@@ -412,11 +413,12 @@ export default function Dashboard() {
       const jenisPekerjaanAnggaranMap = new Map<string, number>();
       const roleAnggaranMap = new Map<string, number>();
 
-      // Maps untuk data workload dan risk - DIPERBAIKI untuk multiple roles
+      // Maps untuk data workload dan risk dengan menghitung jenis pekerjaan unik
       const petugasDetailMap = new Map<string, { 
         kegiatan: number, 
         anggaran: number, 
-        roles: Set<string>
+        roles: Set<string>,
+        jenisPekerjaanUnik: Set<string>
       }>();
 
       let totalKegiatan = 0;
@@ -447,12 +449,13 @@ export default function Dashboard() {
             // Anggaran
             petugasAnggaranMap.set(nama, (petugasAnggaranMap.get(nama) || 0) + nilai);
 
-            // Workload data - DIPERBAIKI: Support multiple roles
+            // Workload data - Support multiple roles dan jenis pekerjaan unik
             if (!petugasDetailMap.has(nama)) {
               petugasDetailMap.set(nama, { 
                 kegiatan: 0, 
                 anggaran: 0, 
-                roles: new Set() 
+                roles: new Set(),
+                jenisPekerjaanUnik: new Set()
               });
             }
             const detail = petugasDetailMap.get(nama)!;
@@ -462,6 +465,11 @@ export default function Dashboard() {
             // Tambahkan role ke Set (otomatis menghindari duplikasi)
             if (role && role.trim() !== '') {
               detail.roles.add(role.trim());
+            }
+
+            // Tambahkan jenis pekerjaan ke Set untuk menghitung yang unik
+            if (jenisPekerjaan && jenisPekerjaan.trim() !== '') {
+              detail.jenisPekerjaanUnik.add(jenisPekerjaan.trim());
             }
           });
 
@@ -492,6 +500,7 @@ export default function Dashboard() {
       });
 
       // Prepare chart data untuk KEGIATAN dan ANGGARAN
+      // PERBAIKAN 2: Grafik petugas anggaran tampilkan 10 nama
       const petugasKegiatanData: ChartItem[] = Array.from(petugasKegiatanMap.entries())
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
@@ -510,10 +519,11 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
+      // PERBAIKAN 2: Grafik petugas anggaran tampilkan 10 nama
       const petugasAnggaranData: ChartItem[] = Array.from(petugasAnggaranMap.entries())
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 8);
+        .slice(0, 10); // Diubah dari 8 menjadi 10
 
       const bulanAnggaranData: ChartItem[] = bulanList.map(bulan => ({
         name: bulan,
@@ -528,7 +538,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - DIPERBAIKI: Convert Set to Array untuk roles dan ambil TOP 10
+      // Prepare workload data
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -537,32 +547,39 @@ export default function Dashboard() {
           roles: Array.from(detail.roles)
         }))
         .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan)
-        .slice(0, 10); // AMBIL TOP 10 PETUGAS
+        .slice(0, 10);
 
-      // Prepare risk data dengan kriteria baru: Rendah < 3, Sedang 3-10, Tinggi > 10
-      const riskDataArray: RiskData[] = workloadDataArray.map(item => {
-        let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
-        
-        if (item.jumlahKegiatan < 3) {
-          riskLevel = 'Rendah';
-        } else if (item.jumlahKegiatan >= 3 && item.jumlahKegiatan <= 10) {
-          riskLevel = 'Sedang';
-        } else {
-          riskLevel = 'Tinggi';
-        }
+      // PERBAIKAN 1: Prepare risk data dengan kriteria baru dan menggunakan jumlah JENIS PEKERJAAN UNIK
+      const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
+        .map(([petugas, detail]) => {
+          // Gunakan jumlah jenis pekerjaan unik untuk risk assessment
+          const jumlahJenisPekerjaanUnik = detail.jenisPekerjaanUnik.size;
+          
+          let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
+          
+          // PERBAIKAN 1: Kriteria risiko baru
+          if (jumlahJenisPekerjaanUnik < 25) {
+            riskLevel = 'Rendah';
+          } else if (jumlahJenisPekerjaanUnik >= 25 && jumlahJenisPekerjaanUnik <= 50) {
+            riskLevel = 'Sedang';
+          } else {
+            riskLevel = 'Tinggi';
+          }
 
-        return {
-          name: item.petugas,
-          kegiatan: item.jumlahKegiatan,
-          anggaran: item.totalAnggaran,
-          riskLevel: riskLevel
-        };
-      }).sort((a, b) => {
-        const riskOrder = { 'Tinggi': 3, 'Sedang': 2, 'Rendah': 1 };
-        return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
-      });
+          return {
+            name: petugas,
+            kegiatan: jumlahJenisPekerjaanUnik,
+            anggaran: detail.anggaran,
+            riskLevel: riskLevel
+          };
+        })
+        .sort((a, b) => {
+          const riskOrder = { 'Tinggi': 3, 'Sedang': 2, 'Rendah': 1 };
+          return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
+        })
+        .slice(0, 5);
 
-      // PERBAIKAN: Hitung stats dengan rumus yang benar
+      // Hitung stats lainnya...
       const validBulanKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData);
       const validBulanAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData);
 
@@ -582,24 +599,16 @@ export default function Dashboard() {
         ? validBulanAnggaran.reduce((min, current) => current.value < min.value ? current : min)
         : { name: "-", value: 0 };
 
-      // PERBAIKAN: Rumus rata-rata yang benar - menggunakan semua bulan valid (termasuk yang 0)
+      // Rumus rata-rata yang benar - menggunakan semua bulan valid (termasuk yang 0)
       const totalKegiatanValidBulan = validBulanKegiatan.reduce((sum, item) => sum + item.value, 0);
       const rataRataKegiatanPerBulan = validBulanKegiatan.length > 0 
         ? Math.round(totalKegiatanValidBulan / validBulanKegiatan.length)
         : 0;
 
-      // PERBAIKAN: Rumus rata-rata anggaran yang benar - menggunakan semua bulan valid (termasuk yang 0)
       const totalAnggaranValidBulan = validBulanAnggaran.reduce((sum, item) => sum + item.value, 0);
       const rataRataAnggaranPerBulan = validBulanAnggaran.length > 0 
         ? Math.round(totalAnggaranValidBulan / validBulanAnggaran.length)
         : 0;
-
-      console.log('Debug rata-rata:', {
-        totalAnggaranValidBulan,
-        jumlahBulanValid: validBulanAnggaran.length,
-        rataRataAnggaranPerBulan,
-        validBulanAnggaran: validBulanAnggaran.map(item => ({ bulan: item.name, nilai: item.value }))
-      });
 
       setStats({
         totalKegiatan,
@@ -689,16 +698,16 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Toggle View Mode */}
+          {/* PERBAIKAN 3: Toggle View Mode - tukar posisi dan default anggaran */}
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kegiatan' | 'anggaran')}>
             <TabsList>
-              <TabsTrigger value="kegiatan" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Berdasarkan Kegiatan
-              </TabsTrigger>
               <TabsTrigger value="anggaran" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Berdasarkan Anggaran
+              </TabsTrigger>
+              <TabsTrigger value="kegiatan" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Berdasarkan Kegiatan
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -926,7 +935,7 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RiskMatrix data={riskData.slice(0, 5)} mode={viewMode} />
+            <RiskMatrix data={riskData} mode={viewMode} />
           </CardContent>
         </Card>
 
