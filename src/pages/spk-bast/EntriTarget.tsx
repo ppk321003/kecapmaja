@@ -800,7 +800,7 @@ export default function EntriTarget() {
 
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
-    const standardSatuans = ["BS", "Dokumen", "EA", "Rumahtangga", "Segmen", "SLS"];
+    const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
     const isCustomSatuan = !standardSatuans.includes(activity.satuan);
     
     form.reset({
@@ -999,7 +999,7 @@ export default function EntriTarget() {
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
       // Prepare initial data (without workers yet)
-      const standardSatuans = ["BS", "Dokumen", "EA", "Rumahtangga", "Segmen", "SLS"];
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
@@ -1068,7 +1068,7 @@ export default function EntriTarget() {
         0
       );
 
-      const standardSatuans = ["BS", "Dokumen", "EA", "Rumahtangga", "Segmen", "SLS"];
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
@@ -1155,7 +1155,7 @@ export default function EntriTarget() {
         0
       );
 
-      const standardSatuans = ["BS", "Dokumen", "EA", "Rumahtangga", "Segmen", "SLS"];
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
@@ -1828,6 +1828,7 @@ export default function EntriTarget() {
                           <SelectItem value="BS">BS</SelectItem>
                           <SelectItem value="Dokumen">Dokumen</SelectItem>
                           <SelectItem value="EA">EA</SelectItem>
+                          <SelectItem value="Lembaga">Lembaga</SelectItem>
                           <SelectItem value="Rumahtangga">Rumahtangga</SelectItem>
                           <SelectItem value="Segmen">Segmen</SelectItem>
                           <SelectItem value="SLS">SLS</SelectItem>
