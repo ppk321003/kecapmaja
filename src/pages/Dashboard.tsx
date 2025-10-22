@@ -64,7 +64,7 @@ interface WorkloadData {
   petugas: string;
   jumlahKegiatan: number;
   totalAnggaran: number;
-  roles: string[]; // Diubah dari string ke string[] untuk multiple roles
+  roles: string[];
 }
 
 interface RiskData {
@@ -74,7 +74,7 @@ interface RiskData {
   riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
 }
 
-// Custom Tooltip untuk currency
+// Custom Tooltip untuk currency dengan format yang lebih baik
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -98,7 +98,7 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   return null;
 };
 
-// Komponen Chart yang aman
+// Komponen Chart yang aman dengan format YAxis untuk anggaran
 const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string, mode: string }) => {
   if (!data || data.length === 0) {
     return (
@@ -107,6 +107,19 @@ const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string,
       </div>
     );
   }
+
+  // Format tick untuk YAxis jika mode anggaran
+  const formatYAxisTick = (value: number) => {
+    if (mode === 'anggaran') {
+      if (value >= 1000000) {
+        return `Rp${(value / 1000000).toFixed(0)}Jt`;
+      } else if (value >= 1000) {
+        return `Rp${(value / 1000).toFixed(0)}Rb`;
+      }
+      return `Rp${value}`;
+    }
+    return value.toLocaleString('id-ID');
+  };
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -119,7 +132,10 @@ const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string,
           height={80}
           fontSize={12}
         />
-        <YAxis />
+        <YAxis 
+          tickFormatter={formatYAxisTick}
+          fontSize={12}
+        />
         <Tooltip content={<CurrencyTooltip mode={mode} />} />
         <Legend />
         <Bar 
@@ -166,7 +182,7 @@ const SafePieChart = ({ data, title, mode }: { data: ChartItem[], title: string,
   );
 };
 
-// Komponen untuk Line Chart Trend
+// Komponen untuk Line Chart Trend dengan format YAxis
 const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string, mode: string }) => {
   if (!data || data.length === 0) {
     return (
@@ -175,6 +191,19 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
       </div>
     );
   }
+
+  // Format tick untuk YAxis jika mode anggaran
+  const formatYAxisTick = (value: number) => {
+    if (mode === 'anggaran') {
+      if (value >= 1000000) {
+        return `Rp${(value / 1000000).toFixed(0)}Jt`;
+      } else if (value >= 1000) {
+        return `Rp${(value / 1000).toFixed(0)}Rb`;
+      }
+      return `Rp${value}`;
+    }
+    return value.toLocaleString('id-ID');
+  };
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -187,7 +216,10 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
           height={80}
           fontSize={12}
         />
-        <YAxis />
+        <YAxis 
+          tickFormatter={formatYAxisTick}
+          fontSize={12}
+        />
         <Tooltip content={<CurrencyTooltip mode={mode} />} />
         <Legend />
         <Line 
@@ -204,8 +236,8 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Progress Gauge
-const ProgressGauge = ({ value, max, title, mode }: { value: number, max: number, title: string, mode: string }) => {
+// Komponen Progress Gauge - HANYA untuk mode kegiatan
+const ProgressGauge = ({ value, max, title }: { value: number, max: number, title: string }) => {
   const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   
   const getColor = (percent: number) => {
@@ -244,10 +276,7 @@ const ProgressGauge = ({ value, max, title, mode }: { value: number, max: number
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold">{percentage.toFixed(0)}%</span>
           <span className="text-xs text-muted-foreground text-center">
-            {mode === 'anggaran' 
-              ? `Rp ${value.toLocaleString('id-ID')}`
-              : `${value} kegiatan`
-            }
+            {value} kegiatan
           </span>
         </div>
       </div>
@@ -255,8 +284,8 @@ const ProgressGauge = ({ value, max, title, mode }: { value: number, max: number
   );
 };
 
-// Komponen Risk Matrix
-const RiskMatrix = ({ data }: { data: RiskData[] }) => {
+// Komponen Risk Matrix dengan kriteria baru
+const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -417,7 +446,7 @@ export default function Dashboard() {
       const petugasDetailMap = new Map<string, { 
         kegiatan: number, 
         anggaran: number, 
-        roles: Set<string> // Menggunakan Set untuk menghindari duplikasi role
+        roles: Set<string>
       }>();
 
       let totalKegiatan = 0;
@@ -535,32 +564,27 @@ export default function Dashboard() {
           petugas,
           jumlahKegiatan: detail.kegiatan,
           totalAnggaran: detail.anggaran,
-          roles: Array.from(detail.roles) // Convert Set to Array
+          roles: Array.from(detail.roles)
         }))
         .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan);
 
-      // Prepare risk data
-      const avgKegiatan = workloadDataArray.length > 0 
-        ? workloadDataArray.reduce((sum, item) => sum + item.jumlahKegiatan, 0) / workloadDataArray.length 
-        : 0;
-      const avgAnggaran = workloadDataArray.length > 0
-        ? workloadDataArray.reduce((sum, item) => sum + item.totalAnggaran, 0) / workloadDataArray.length
-        : 0;
-
+      // Prepare risk data dengan kriteria baru: Rendah < 2, Sedang 2-10, Tinggi > 10
       const riskDataArray: RiskData[] = workloadDataArray.map(item => {
-        const kegiatanRisk = item.jumlahKegiatan > avgKegiatan * 1.5 ? 'Tinggi' : 
-                           item.jumlahKegiatan > avgKegiatan * 1.2 ? 'Sedang' : 'Rendah';
-        const anggaranRisk = item.totalAnggaran > avgAnggaran * 1.5 ? 'Tinggi' : 
-                           item.totalAnggaran > avgAnggaran * 1.2 ? 'Sedang' : 'Rendah';
+        let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
         
-        const finalRisk = kegiatanRisk === 'Tinggi' || anggaranRisk === 'Tinggi' ? 'Tinggi' :
-                         kegiatanRisk === 'Sedang' || anggaranRisk === 'Sedang' ? 'Sedang' : 'Rendah';
+        if (item.jumlahKegiatan < 2) {
+          riskLevel = 'Rendah';
+        } else if (item.jumlahKegiatan >= 2 && item.jumlahKegiatan <= 10) {
+          riskLevel = 'Sedang';
+        } else {
+          riskLevel = 'Tinggi';
+        }
 
         return {
           name: item.petugas,
           kegiatan: item.jumlahKegiatan,
           anggaran: item.totalAnggaran,
-          riskLevel: finalRisk
+          riskLevel: riskLevel
         };
       }).sort((a, b) => {
         const riskOrder = { 'Tinggi': 3, 'Sedang': 2, 'Rendah': 1 };
@@ -904,48 +928,48 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Grid untuk Progress Achievement dan Risk Assessment */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Progress Achievement */}
+      {/* Progress Achievement - HANYA untuk mode kegiatan */}
+      {viewMode === 'kegiatan' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Progress Pencapaian
+              Progress Pencapaian Kegiatan
             </CardTitle>
             <CardDescription>
-              {viewMode === 'kegiatan' 
-                ? 'Pencapaian target vs realisasi kegiatan' 
-                : 'Penggunaan anggaran vs rencana'
-              }
+              Pencapaian target vs realisasi kegiatan
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex justify-around">
               <ProgressGauge 
-                value={viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi}
-                max={viewMode === 'kegiatan' ? stats.rataRataKegiatanPerBulan * 12 : stats.rataRataAnggaranPerBulan * 12}
-                title={viewMode === 'kegiatan' ? 'Progress Kegiatan' : 'Progress Anggaran'}
-                mode={viewMode}
+                value={stats.totalKegiatan}
+                max={stats.rataRataKegiatanPerBulan * 12}
+                title="Progress Kegiatan"
               />
               <div className="flex flex-col justify-center space-y-2">
                 <div className="text-sm">
-                  <strong>Total:</strong> {viewMode === 'kegiatan' 
-                    ? stats.totalKegiatan.toLocaleString('id-ID') + ' kegiatan'
-                    : formatRupiah(stats.totalRealisasi)
-                  }
+                  <strong>Total:</strong> {stats.totalKegiatan.toLocaleString('id-ID')} kegiatan
                 </div>
                 <div className="text-sm">
-                  <strong>Target Tahunan:</strong> {viewMode === 'kegiatan' 
-                    ? (stats.rataRataKegiatanPerBulan * 12).toLocaleString('id-ID') + ' kegiatan'
-                    : formatRupiah(stats.rataRataAnggaranPerBulan * 12)
-                  }
+                  <strong>Target Tahunan:</strong> {(stats.rataRataKegiatanPerBulan * 12).toLocaleString('id-ID')} kegiatan
+                </div>
+                <div className="text-sm">
+                  <strong>Kriteria Risiko:</strong>
+                  <ul className="list-disc list-inside mt-1 text-xs">
+                    <li>Rendah: &lt; 2 kegiatan</li>
+                    <li>Sedang: 2 - 10 kegiatan</li>
+                    <li>Tinggi: &gt; 10 kegiatan</li>
+                  </ul>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
+      )}
 
+      {/* Grid untuk Risk Assessment dan Workload Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Risk Assessment */}
         <Card>
           <CardHeader>
@@ -961,76 +985,76 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RiskMatrix data={riskData.slice(0, 5)} />
+            <RiskMatrix data={riskData.slice(0, 5)} mode={viewMode} />
+          </CardContent>
+        </Card>
+
+        {/* Workload Distribution Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Table className="h-5 w-5" />
+              Distribusi Beban Kerja
+            </CardTitle>
+            <CardDescription>
+              Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'} - Menampilkan semua role
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 font-semibold">Petugas</th>
+                    <th className="text-left py-3 font-semibold">Role</th>
+                    <th className="text-right py-3 font-semibold">
+                      {viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Anggaran'}
+                    </th>
+                    <th className="text-right py-3 font-semibold">Persentase</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workloadData.slice(0, 5).map((item, index) => {
+                    const total = viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi;
+                    const value = viewMode === 'kegiatan' ? item.jumlahKegiatan : item.totalAnggaran;
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                    
+                    return (
+                      <tr key={index} className="border-b hover:bg-muted/50">
+                        <td className="py-3">{item.petugas}</td>
+                        <td className="py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {item.roles.map((role, roleIndex) => (
+                              <span 
+                                key={roleIndex} 
+                                className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="text-right py-3">
+                          {viewMode === 'kegiatan' 
+                            ? item.jumlahKegiatan.toLocaleString('id-ID')
+                            : formatRupiah(item.totalAnggaran)
+                          }
+                        </td>
+                        <td className="text-right py-3">{percentage}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {workloadData.length === 0 && (
+              <div className="flex items-center justify-center h-32">
+                <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Workload Distribution Table - DIPERBAIKI: Menampilkan semua role */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Table className="h-5 w-5" />
-            Distribusi Beban Kerja
-          </CardTitle>
-          <CardDescription>
-            Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'} - Menampilkan semua role
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 font-semibold">Petugas</th>
-                  <th className="text-left py-3 font-semibold">Role</th>
-                  <th className="text-right py-3 font-semibold">
-                    {viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Anggaran'}
-                  </th>
-                  <th className="text-right py-3 font-semibold">Persentase</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workloadData.slice(0, 10).map((item, index) => {
-                  const total = viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi;
-                  const value = viewMode === 'kegiatan' ? item.jumlahKegiatan : item.totalAnggaran;
-                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                  
-                  return (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="py-3">{item.petugas}</td>
-                      <td className="py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {item.roles.map((role, roleIndex) => (
-                            <span 
-                              key={roleIndex} 
-                              className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-                            >
-                              {role}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="text-right py-3">
-                        {viewMode === 'kegiatan' 
-                          ? item.jumlahKegiatan.toLocaleString('id-ID')
-                          : formatRupiah(item.totalAnggaran)
-                        }
-                      </td>
-                      <td className="text-right py-3">{percentage}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {workloadData.length === 0 && (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
