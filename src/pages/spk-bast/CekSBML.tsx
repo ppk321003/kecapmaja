@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Search, AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -31,16 +31,6 @@ interface PetugasTugas {
   role: string;
   honor: number;
   periode: string;
-}
-
-interface MasterPetugas {
-  nama: string;
-  nik: string;
-  pekerjaan: string;
-  alamat: string;
-  bank: string;
-  rekening: string;
-  kecamatan: string;
 }
 
 interface SBMLData {
@@ -70,24 +60,25 @@ export default function CekSBML() {
   const [sbmlData, setSbmlData] = useState<SBMLData | null>(null);
   const { toast } = useToast();
 
-  // Format currency helper
-  const formatRupiah = (amount: number) => {
+  // Format currency helper - dioptimalkan dengan useCallback
+  const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
+  }, []);
 
-  // Parse honor dari string format "704.000,-"
-  const parseHonor = (honorStr: string): number => {
-    if (!honorStr) return 0;
+  // Parse honor dari string format "704.000,-" - dioptimalkan
+  const parseHonor = useCallback((honorStr: string): number => {
+    if (!honorStr || honorStr === '-') return 0;
+    // Handle berbagai format: "704.000,-", "704.000", "704000"
     const cleaned = honorStr.replace(/[^\d]/g, '');
     return parseInt(cleaned) || 0;
-  };
+  }, []);
 
-  // Fetch data SBML untuk validasi - DIPERBAIKI: ambil berdasarkan tahun filter
-  const fetchSBMLData = async (tahun: string) => {
+  // Fetch data SBML untuk validasi - dioptimalkan
+  const fetchSBMLData = useCallback(async (tahun: string) => {
     try {
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -100,6 +91,7 @@ export default function CekSBML() {
       if (error) throw error;
 
       const rows = sbmlResponse?.values || [];
+      
       if (rows.length > 1) {
         // Cari SBML berdasarkan tahun yang difilter
         const sbmlForYear = rows.find((row: any[]) => row[1] === tahun);
@@ -111,26 +103,135 @@ export default function CekSBML() {
             sbmlPemeriksa: parseHonor(sbmlForYear[3]),
             sbmlPengolah: parseHonor(sbmlForYear[4]),
           });
-          console.log(`✅ SBML ditemukan untuk tahun ${tahun}:`, sbmlForYear);
         } else {
           // Fallback ke data terbaru jika tahun tidak ditemukan
-          const latestSBML = rows[1]; // Ambil data pertama setelah header
+          const latestSBML = rows[1];
           setSbmlData({
             tahunAnggaran: latestSBML[1],
             sbmlPendata: parseHonor(latestSBML[2]),
             sbmlPemeriksa: parseHonor(latestSBML[3]),
             sbmlPengolah: parseHonor(latestSBML[4]),
           });
-          console.log(`⚠️ SBML untuk tahun ${tahun} tidak ditemukan, menggunakan ${latestSBML[1]}`);
         }
       }
     } catch (error: any) {
       console.error("Error fetching SBML data:", error);
     }
-  };
+  }, [parseHonor]);
 
-  // Fetch data petugas bertugas
-  const fetchData = async () => {
+  // Validasi data - dioptimalkan dan dipisahkan
+  const validateData = useCallback((item: CekSBMLRow, sbml: SBMLData) => {
+    const warnings: string[] = [];
+    
+    if (item.pendataan > sbml.sbmlPendata) {
+      warnings.push(`Pendataan: ${formatRupiah(item.pendataan)} > ${formatRupiah(sbml.sbmlPendata)}`);
+    }
+    if (item.pemeriksaan > sbml.sbmlPemeriksa) {
+      warnings.push(`Pemeriksaan: ${formatRupiah(item.pemeriksaan)} > ${formatRupiah(sbml.sbmlPemeriksa)}`);
+    }
+    if (item.pengolahan > sbml.sbmlPengolah) {
+      warnings.push(`Pengolahan: ${formatRupiah(item.pengolahan)} > ${formatRupiah(sbml.sbmlPengolah)}`);
+    }
+    if (item.jumlah > sbml.sbmlPendata) {
+      warnings.push(`Total: ${formatRupiah(item.jumlah)} > ${formatRupiah(sbml.sbmlPendata)}`);
+    }
+    
+    return warnings;
+  }, [formatRupiah]);
+
+  // Process data tugas - dioptimalkan dan dipisahkan
+  const processTugasData = useCallback((tugasRows: any[], periodeFilter: string) => {
+    const petugasTugas: PetugasTugas[] = [];
+    let matchCount = 0;
+
+    // Pre-compute filter untuk performa
+    const filterLower = periodeFilter.toLowerCase();
+
+    for (let rowIndex = 1; rowIndex < tugasRows.length; rowIndex++) {
+      const row = tugasRows[rowIndex];
+      if (!row || row.length < 18) continue;
+
+      try {
+        const periode = row[2]?.toString() || "";
+        const role = row[3]?.toString() || "";
+        const namaPetugas = row[14]?.toString() || "";
+        const nilaiRealisasi = row[17]?.toString() || "";
+
+        // Optimasi: skip early jika data tidak memenuhi kriteria
+        if (!periode.toLowerCase().includes(filterLower) || 
+            !namaPetugas || 
+            namaPetugas === '-' || 
+            !nilaiRealisasi || 
+            nilaiRealisasi === '-') {
+          continue;
+        }
+
+        matchCount++;
+        
+        // Parse nama dan honor
+        const namaList = namaPetugas.split('|').map((n: string) => n.trim()).filter(n => n && n !== '-');
+        const honorList = nilaiRealisasi.split('|').map((h: string) => parseHonor(h.trim()));
+
+        // Map setiap nama ke honor yang sesuai
+        for (let i = 0; i < namaList.length; i++) {
+          if (namaList[i] && honorList[i] !== undefined) {
+            petugasTugas.push({
+              nama: namaList[i].trim(),
+              role: role.trim(),
+              honor: honorList[i] || 0,
+              periode: periode,
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing row ${rowIndex + 2}:`, error);
+      }
+    }
+
+    return { petugasTugas, matchCount };
+  }, [parseHonor]);
+
+  // Group data - dioptimalkan
+  const groupPetugasData = useCallback((petugasTugas: PetugasTugas[]) => {
+    const groupedData = new Map<string, CekSBMLRow>();
+
+    for (const petugas of petugasTugas) {
+      const key = petugas.nama.toLowerCase();
+      
+      if (!groupedData.has(key)) {
+        groupedData.set(key, {
+          no: groupedData.size + 1,
+          namaMitra: petugas.nama,
+          pendataan: 0,
+          pemeriksaan: 0,
+          pengolahan: 0,
+          pekerjaanProvinsi: 0,
+          jumlah: 0,
+          isExceeded: false,
+          warnings: [],
+        });
+      }
+
+      const existing = groupedData.get(key)!;
+      const roleLower = petugas.role.toLowerCase();
+      
+      // Assign honor berdasarkan role
+      if (roleLower.includes('pendataan') || roleLower.includes('pendata')) {
+        existing.pendataan += petugas.honor;
+      } else if (roleLower.includes('pemeriksaan') || roleLower.includes('pemeriksa')) {
+        existing.pemeriksaan += petugas.honor;
+      } else if (roleLower.includes('pengolah') || roleLower.includes('pengolahan')) {
+        existing.pengolahan += petugas.honor;
+      } else {
+        existing.pendataan += petugas.honor;
+      }
+    }
+
+    return groupedData;
+  }, []);
+
+  // Fetch data petugas bertugas - dioptimalkan
+  const fetchData = useCallback(async () => {
     if (!filterBulan || !filterTahun) {
       toast({
         title: "Peringatan",
@@ -142,173 +243,78 @@ export default function CekSBML() {
 
     try {
       setLoading(true);
+      setData([]);
       
       const periodeFilter = `${filterBulan} ${filterTahun}`;
-      console.log("🔍 Mencari data untuk periode:", periodeFilter);
 
-      // Ambil SBML untuk tahun yang difilter
-      await fetchSBMLData(filterTahun);
+      // Paralel fetching untuk performa lebih baik
+      const [sbmlPromise, tugasPromise, masterPromise] = await Promise.allSettled([
+        fetchSBMLData(filterTahun),
+        supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            operation: "read",
+            range: "Sheet1",
+          },
+        }),
+        supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: MASTER_SPREADSHEET_ID,
+            operation: "read",
+            range: "MASTER.MITRA",
+          },
+        })
+      ]);
 
-      // Fetch data tugas
-      const { data: tugasResponse, error: tugasError } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1",
-        },
-      });
+      // Handle tugas data
+      if (tugasPromise.status === 'rejected') throw tugasPromise.reason;
+      const tugasResponse = tugasPromise.value;
+      if (tugasResponse.error) throw tugasResponse.error;
 
-      if (tugasError) throw tugasError;
+      const tugasRows = tugasResponse.data?.values || [];
+      if (tugasRows.length <= 1) {
+        toast({
+          title: "Data Tidak Ditemukan",
+          description: `Tidak ada data tugas untuk periode ${periodeFilter}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Fetch data master petugas
-      const { data: masterResponse, error: masterError } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
-          operation: "read",
-          range: "MASTER.MITRA",
-        },
-      });
+      // Process data dengan optimasi
+      const { petugasTugas, matchCount } = processTugasData(tugasRows, periodeFilter);
 
-      if (masterError) throw masterError;
+      if (petugasTugas.length === 0) {
+        toast({
+          title: "Data Tidak Ditemukan",
+          description: `Tidak ada data tugas untuk periode ${periodeFilter}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      const tugasRows = tugasResponse?.values || [];
-      const masterRows = masterResponse?.values || [];
-
-      console.log("📊 Total rows tugas:", tugasRows.length);
-      console.log("📊 Total rows master:", masterRows.length);
-
-      // Process data
-      const petugasTugas: PetugasTugas[] = [];
-      const masterPetugas: Map<string, MasterPetugas> = new Map();
-
-      // Build master petugas map - Nama di kolom C (index 2)
-      masterRows.slice(1).forEach((row: any[]) => {
-        if (row[2]) {
-          const nama = row[2].toString().trim();
-          masterPetugas.set(nama.toLowerCase(), {
-            nama: nama,
-            nik: row[1]?.toString() || "",
-            pekerjaan: row[3]?.toString() || "",
-            alamat: row[4]?.toString() || "",
-            bank: row[5]?.toString() || "",
-            rekening: row[6]?.toString() || "",
-            kecamatan: row[7]?.toString() || "",
-          });
-        }
-      });
-
-      console.log("👥 Master petugas loaded:", masterPetugas.size);
-
-      // PROCESS TUGAS DATA
-      tugasRows.slice(1).forEach((row: any[], rowIndex: number) => {
-        try {
-          const periode = row[2]?.toString() || "";        // Kolom C: Periode (Bulan) SPK
-          const role = row[3]?.toString() || "";           // Kolom D: Jenis Pekerjaan  
-          const namaPetugas = row[14]?.toString() || "";   // Kolom O: Nama Petugas
-          const nilaiRealisasi = row[17]?.toString() || ""; // Kolom R: Nilai Realisasi
-
-          if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
-            console.log("🎯 DATA COCOK DITEMUKAN!");
-            
-            // Parse nama dan honor yang dipisah " | "
-            const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
-            const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
-
-            console.log("👤 Nama parsed:", namaList);
-            console.log("💰 Honor parsed:", honorList);
-
-            // Map setiap nama ke honor yang sesuai
-            namaList.forEach((nama: string, index: number) => {
-              if (nama && honorList[index] !== undefined) {
-                petugasTugas.push({
-                  nama: nama.trim(),
-                  role: role.trim(),
-                  honor: honorList[index] || 0,
-                  periode: periode,
-                });
-                console.log(`✅ Ditambahkan: ${nama} - ${role} - Rp ${honorList[index]}`);
-              }
-            });
-          }
-        } catch (error) {
-          console.error(`❌ Error processing row ${rowIndex + 2}:`, error);
-        }
-      });
-
-      console.log("📈 Total petugas tugas ditemukan:", petugasTugas.length);
-
-      // Transform to CekSBMLRow format
-      const groupedData = new Map<string, CekSBMLRow>();
-
-      petugasTugas.forEach((petugas) => {
-        const key = petugas.nama.toLowerCase();
-        
-        if (!groupedData.has(key)) {
-          groupedData.set(key, {
-            no: groupedData.size + 1,
-            namaMitra: petugas.nama,
-            pendataan: 0,
-            pemeriksaan: 0,
-            pengolahan: 0,
-            pekerjaanProvinsi: 0,
-            jumlah: 0,
-            isExceeded: false,
-            warnings: [],
-          });
-        }
-
-        const existing = groupedData.get(key)!;
-        
-        // Assign honor berdasarkan role
-        if (petugas.role.toLowerCase().includes('pendataan')) {
-          existing.pendataan += petugas.honor;
-        } else if (petugas.role.toLowerCase().includes('pemeriksaan')) {
-          existing.pemeriksaan += petugas.honor;
-        } else if (petugas.role.toLowerCase().includes('pengolah')) {
-          existing.pengolahan += petugas.honor;
-        }
-      });
+      // Group data
+      const groupedData = groupPetugasData(petugasTugas);
 
       // Calculate totals and validate
       const finalData = Array.from(groupedData.values()).map(item => {
         item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan + item.pekerjaanProvinsi;
         
-        // Validasi
-        const warnings: string[] = [];
         if (sbmlData) {
-          if (item.pendataan > sbmlData.sbmlPendata) {
-            warnings.push(`Pendataan melebihi SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
-          }
-          if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-            warnings.push(`Pemeriksaan melebihi SBML (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
-          }
-          if (item.pengolahan > sbmlData.sbmlPengolah) {
-            warnings.push(`Pengolahan melebihi SBML (${formatRupiah(sbmlData.sbmlPengolah)})`);
-          }
-          if (item.jumlah > sbmlData.sbmlPendata) {
-            warnings.push(`Total melebihi SBML Pendata (${formatRupiah(sbmlData.sbmlPendata)})`);
-          }
+          const warnings = validateData(item, sbmlData);
+          item.warnings = warnings;
+          item.isExceeded = warnings.length > 0;
         }
-        
-        item.warnings = warnings;
-        item.isExceeded = warnings.length > 0;
         
         return item;
       });
 
       setData(finalData);
 
-      if (finalData.length > 0) {
-        toast({
-          title: "Sukses",
-          description: `Data berhasil dimuat untuk periode ${periodeFilter} - ${finalData.length} petugas ditemukan`,
-        });
-      } else {
-        toast({
-          title: "Info",
-          description: `Tidak ada data untuk periode ${periodeFilter}`,
-        });
-      }
+      toast({
+        title: "Sukses",
+        description: `Data berhasil dimuat untuk periode ${periodeFilter} - ${finalData.length} petugas ditemukan`,
+      });
 
     } catch (error: any) {
       console.error("❌ Fetch data error:", error);
@@ -320,52 +326,35 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterBulan, filterTahun, fetchSBMLData, processTugasData, groupPetugasData, validateData, sbmlData, toast]);
 
-  // Handle input manual perubahan
-  const handlePekerjaanProvinsiChange = (index: number, value: string) => {
+  // Handle input manual perubahan - dioptimalkan
+  const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
     const numericValue = parseInt(value.replace(/[^\d]/g, '')) || 0;
     
     setData(prev => {
       const newData = [...prev];
-      newData[index] = {
-        ...newData[index],
-        pekerjaanProvinsi: numericValue,
-        jumlah: newData[index].pendataan + newData[index].pemeriksaan + newData[index].pengolahan + numericValue,
-      };
+      const item = newData[index];
+      
+      item.pekerjaanProvinsi = numericValue;
+      item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan + numericValue;
 
-      // Re-validate after change
       if (sbmlData) {
-        const warnings: string[] = [];
-        const item = newData[index];
-        
-        if (item.pendataan > sbmlData.sbmlPendata) {
-          warnings.push(`Pendataan melebihi SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
-        }
-        if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-          warnings.push(`Pemeriksaan melebihi SBML (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
-        }
-        if (item.pengolahan > sbmlData.sbmlPengolah) {
-          warnings.push(`Pengolahan melebihi SBML (${formatRupiah(sbmlData.sbmlPengolah)})`);
-        }
-        if (item.jumlah > sbmlData.sbmlPendata) {
-          warnings.push(`Total melebihi SBML Pendata (${formatRupiah(sbmlData.sbmlPendata)})`);
-        }
-        
-        newData[index].warnings = warnings;
-        newData[index].isExceeded = warnings.length > 0;
+        const warnings = validateData(item, sbmlData);
+        item.warnings = warnings;
+        item.isExceeded = warnings.length > 0;
       }
 
       return newData;
     });
-  };
+  }, [sbmlData, validateData]);
 
   // Update SBML ketika tahun berubah
   useEffect(() => {
     if (filterTahun) {
       fetchSBMLData(filterTahun);
     }
-  }, [filterTahun]);
+  }, [filterTahun, fetchSBMLData]);
 
   const handleSearch = () => {
     fetchData();
@@ -390,7 +379,7 @@ export default function CekSBML() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 items-end">
+          <div className="flex gap-4 items-end flex-wrap">
             <div className="space-y-2">
               <label className="text-sm font-medium">Bulan</label>
               <Select value={filterBulan} onValueChange={setFilterBulan}>
@@ -427,16 +416,11 @@ export default function CekSBML() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
 
-            {/* SBML Badge dengan font yang lebih besar */}
             {sbmlData && (
               <div className="ml-auto">
-                <Badge variant="outline" className="text-sm py-2 px-3 bg-blue-50 border-blue-200">
+                <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200 max-w-xs">
                   <span className="font-semibold">SBML {sbmlData.tahunAnggaran}:</span>{' '}
-                  <span className="text-base font-bold">
-                    Pendata {formatRupiah(sbmlData.sbmlPendata)} | 
-                    Pemeriksa {formatRupiah(sbmlData.sbmlPemeriksa)} | 
-                    Pengolah {formatRupiah(sbmlData.sbmlPengolah)}
-                  </span>
+                  <span>Pendata {formatRupiah(sbmlData.sbmlPendata)}</span>
                 </Badge>
               </div>
             )}
@@ -472,25 +456,25 @@ export default function CekSBML() {
               </p>
             </div>
           ) : (
-            <div className="border rounded-lg">
-              <Table>
+            <div className="border rounded-lg overflow-x-auto">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
-                    <TableHead>Nama Mitra</TableHead>
-                    <TableHead className="text-right">Petugas Pendataan Lapangan</TableHead>
-                    <TableHead className="text-right">Petugas Pemeriksaan Lapangan</TableHead>
-                    <TableHead className="text-right">Petugas Pengolahan</TableHead>
-                    <TableHead className="text-right">Pekerjaan dari Provinsi</TableHead>
-                    <TableHead className="text-right">Jumlah</TableHead>
-                    <TableHead className="w-20">Status</TableHead>
+                    <TableHead className="min-w-[150px]">Nama Mitra</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
+                    <TableHead className="text-right min-w-[140px]">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
+                    <TableHead className="w-20 text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.map((row, index) => (
                     <TableRow key={row.namaMitra} className={row.isExceeded ? "bg-red-50" : ""}>
-                      <TableCell>{row.no}</TableCell>
-                      <TableCell className="font-medium">{row.namaMitra}</TableCell>
+                      <TableCell className="font-medium">{row.no}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
                       
                       <TableCell className={`text-right ${row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}`}>
                         {formatRupiah(row.pendataan)}
@@ -509,7 +493,7 @@ export default function CekSBML() {
                           type="text"
                           value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
                           onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right"
+                          className="text-right min-w-[100px]"
                           placeholder="0"
                         />
                       </TableCell>
@@ -518,13 +502,17 @@ export default function CekSBML() {
                         {formatRupiah(row.jumlah)}
                       </TableCell>
                       
-                      <TableCell>
+                      <TableCell className="text-center">
                         {row.isExceeded ? (
-                          <Tooltip content={row.warnings.join(', ')}>
-                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                          <Tooltip content={row.warnings}>
+                            <div className="flex justify-center">
+                              <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                            </div>
                           </Tooltip>
                         ) : (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <div className="flex justify-center">
+                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -539,8 +527,8 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component
-const Tooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
+// Tooltip component yang diperbaiki
+const Tooltip = ({ content, children }: { content: string[]; children: React.ReactNode }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -548,13 +536,19 @@ const Tooltip = ({ content, children }: { content: string; children: React.React
       <div
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        className="cursor-help"
       >
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 w-64 p-2 text-xs text-white bg-gray-900 rounded shadow-lg -top-12 left-1/2 transform -translate-x-1/2">
-          {content}
-          <div className="absolute w-2 h-2 bg-gray-900 transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2"></div>
+        <div className="absolute z-50 w-72 p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full">
+          <div className="font-semibold mb-2">Melebihi SBML:</div>
+          <div className="space-y-1">
+            {content.map((warning, index) => (
+              <div key={index} className="text-xs">• {warning}</div>
+            ))}
+          </div>
+          <div className="absolute w-3 h-3 bg-gray-900 transform rotate-45 bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2"></div>
         </div>
       )}
     </div>
