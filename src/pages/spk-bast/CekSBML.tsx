@@ -277,16 +277,16 @@ export default function CekSBML() {
         const warnings: string[] = [];
         if (sbmlData) {
           if (item.pendataan > sbmlData.sbmlPendata) {
-            warnings.push(`SBML Pendata (${formatRupiah(sbmlData.sbmlPendata)})`);
+            warnings.push(`SBML Pendataan (${formatRupiah(sbmlData.sbmlPendata)})`);
           }
           if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-            warnings.push(`SBML Pemeriksa (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
+            warnings.push(`SBML Pemeriksaan (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
           }
           if (item.pengolahan > sbmlData.sbmlPengolah) {
-            warnings.push(`SBML Olah (${formatRupiah(sbmlData.sbmlPengolah)})`);
+            warnings.push(`SBML Pengolahan (${formatRupiah(sbmlData.sbmlPengolah)})`);
           }
           if (item.jumlah > sbmlData.sbmlPendata) {
-            warnings.push(`Melebihi SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
+            warnings.push(`SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
           }
         }
         
@@ -340,13 +340,13 @@ export default function CekSBML() {
         const item = newData[index];
         
         if (item.pendataan > sbmlData.sbmlPendata) {
-          warnings.push(`Pendataan melebihi SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
+          warnings.push(`SBML Pendataan (${formatRupiah(sbmlData.sbmlPendata)})`);
         }
         if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-          warnings.push(`Pemeriksaan melebihi SBML (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
+          warnings.push(`SBML Pemeriksaan (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
         }
         if (item.pengolahan > sbmlData.sbmlPengolah) {
-          warnings.push(`Pengolahan melebihi SBML (${formatRupiah(sbmlData.sbmlPengolah)})`);
+          warnings.push(`SBML Pengolahan (${formatRupiah(sbmlData.sbmlPengolah)})`);
         }
         if (item.jumlah > sbmlData.sbmlPendata) {
           warnings.push(`Total melebihi SBML Pendata (${formatRupiah(sbmlData.sbmlPendata)})`);
