@@ -64,7 +64,7 @@ interface WorkloadData {
   petugas: string;
   jumlahKegiatan: number;
   totalAnggaran: number;
-  role: string;
+  roles: string[]; // Diubah dari string ke string[] untuk multiple roles
 }
 
 interface RiskData {
@@ -413,8 +413,12 @@ export default function Dashboard() {
       const jenisPekerjaanAnggaranMap = new Map<string, number>();
       const roleAnggaranMap = new Map<string, number>();
 
-      // Maps untuk data workload dan risk
-      const petugasDetailMap = new Map<string, { kegiatan: number, anggaran: number, role: string }>();
+      // Maps untuk data workload dan risk - DIPERBAIKI untuk multiple roles
+      const petugasDetailMap = new Map<string, { 
+        kegiatan: number, 
+        anggaran: number, 
+        roles: Set<string> // Menggunakan Set untuk menghindari duplikasi role
+      }>();
 
       let totalKegiatan = 0;
       let totalRealisasi = 0;
@@ -444,13 +448,22 @@ export default function Dashboard() {
             // Anggaran
             petugasAnggaranMap.set(nama, (petugasAnggaranMap.get(nama) || 0) + nilai);
 
-            // Workload data
+            // Workload data - DIPERBAIKI: Support multiple roles
             if (!petugasDetailMap.has(nama)) {
-              petugasDetailMap.set(nama, { kegiatan: 0, anggaran: 0, role });
+              petugasDetailMap.set(nama, { 
+                kegiatan: 0, 
+                anggaran: 0, 
+                roles: new Set() 
+              });
             }
             const detail = petugasDetailMap.get(nama)!;
             detail.kegiatan += 1;
             detail.anggaran += nilai;
+            
+            // Tambahkan role ke Set (otomatis menghindari duplikasi)
+            if (role && role.trim() !== '') {
+              detail.roles.add(role.trim());
+            }
           });
 
           if (bulan && bulanList.includes(bulan)) {
@@ -516,19 +529,23 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data
+      // Prepare workload data - DIPERBAIKI: Convert Set to Array untuk roles
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
           jumlahKegiatan: detail.kegiatan,
           totalAnggaran: detail.anggaran,
-          role: detail.role
+          roles: Array.from(detail.roles) // Convert Set to Array
         }))
         .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan);
 
       // Prepare risk data
-      const avgKegiatan = workloadDataArray.reduce((sum, item) => sum + item.jumlahKegiatan, 0) / workloadDataArray.length;
-      const avgAnggaran = workloadDataArray.reduce((sum, item) => sum + item.totalAnggaran, 0) / workloadDataArray.length;
+      const avgKegiatan = workloadDataArray.length > 0 
+        ? workloadDataArray.reduce((sum, item) => sum + item.jumlahKegiatan, 0) / workloadDataArray.length 
+        : 0;
+      const avgAnggaran = workloadDataArray.length > 0
+        ? workloadDataArray.reduce((sum, item) => sum + item.totalAnggaran, 0) / workloadDataArray.length
+        : 0;
 
       const riskDataArray: RiskData[] = workloadDataArray.map(item => {
         const kegiatanRisk = item.jumlahKegiatan > avgKegiatan * 1.5 ? 'Tinggi' : 
@@ -949,7 +966,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Workload Distribution Table */}
+      {/* Workload Distribution Table - DIPERBAIKI: Menampilkan semua role */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -957,7 +974,7 @@ export default function Dashboard() {
             Distribusi Beban Kerja
           </CardTitle>
           <CardDescription>
-            Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'}
+            Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'} - Menampilkan semua role
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -982,7 +999,18 @@ export default function Dashboard() {
                   return (
                     <tr key={index} className="border-b hover:bg-muted/50">
                       <td className="py-3">{item.petugas}</td>
-                      <td className="py-3">{item.role}</td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {item.roles.map((role, roleIndex) => (
+                            <span 
+                              key={roleIndex} 
+                              className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="text-right py-3">
                         {viewMode === 'kegiatan' 
                           ? item.jumlahKegiatan.toLocaleString('id-ID')
