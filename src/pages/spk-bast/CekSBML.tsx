@@ -31,6 +31,8 @@ interface PetugasTugas {
   role: string;
   honor: number;
   periode: string;
+  namaKegiatan: string;
+  nilaiRealisasi: string;
 }
 
 interface MasterPetugas {
@@ -60,6 +62,10 @@ interface CekSBMLRow {
   jumlah: number;
   isExceeded: boolean;
   warnings: string[];
+  // Tambahan untuk detail tooltips
+  detailPendataan: { namaKegiatan: string; nilaiRealisasi: string }[];
+  detailPemeriksaan: { namaKegiatan: string; nilaiRealisasi: string }[];
+  detailPengolahan: { namaKegiatan: string; nilaiRealisasi: string }[];
 }
 
 export default function CekSBML() {
@@ -207,19 +213,21 @@ export default function CekSBML() {
         }
       }
 
-      // PROCESS TUGAS DATA dengan optimasi
+      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 18) continue;
 
         const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
+        const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
         const namaPetugas = row[14]?.toString() || "";
         const nilaiRealisasi = row[17]?.toString() || "";
 
         if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
           const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
           const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
+          const nilaiRealisasiList = nilaiRealisasi.split(' | ').map((n: string) => n.trim());
 
           for (let j = 0; j < namaList.length; j++) {
             if (namaList[j] && honorList[j] !== undefined) {
@@ -228,13 +236,15 @@ export default function CekSBML() {
                 role: role.trim(),
                 honor: honorList[j] || 0,
                 periode: periode,
+                namaKegiatan: namaKegiatan,
+                nilaiRealisasi: nilaiRealisasiList[j] || "0",
               });
             }
           }
         }
       }
 
-      // Transform to CekSBMLRow format
+      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menyimpan detail
       const groupedData = new Map<string, CekSBMLRow>();
 
       for (const petugas of petugasTugas) {
@@ -251,18 +261,30 @@ export default function CekSBML() {
             jumlah: 0,
             isExceeded: false,
             warnings: [],
+            detailPendataan: [],
+            detailPemeriksaan: [],
+            detailPengolahan: [],
           });
         }
 
         const existing = groupedData.get(key)!;
         const roleLower = petugas.role.toLowerCase();
         
+        // Tambahkan detail ke array yang sesuai
+        const detailItem = {
+          namaKegiatan: petugas.namaKegiatan,
+          nilaiRealisasi: petugas.nilaiRealisasi
+        };
+
         if (roleLower.includes('pendataan')) {
           existing.pendataan += petugas.honor;
+          existing.detailPendataan.push(detailItem);
         } else if (roleLower.includes('pemeriksaan')) {
           existing.pemeriksaan += petugas.honor;
+          existing.detailPemeriksaan.push(detailItem);
         } else if (roleLower.includes('pengolah')) {
           existing.pengolahan += petugas.honor;
+          existing.detailPengolahan.push(detailItem);
         }
       }
 
@@ -474,16 +496,43 @@ export default function CekSBML() {
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
                       
-                      <TableCell className={`text-right ${row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}`}>
-                        {formatRupiah(row.pendataan)}
+                      {/* Kolom Pendataan dengan Tooltip */}
+                      <TableCell className="text-right">
+                        <HonorTooltip 
+                          details={row.detailPendataan} 
+                          title="Detail Pendataan"
+                          isExceeded={row.pendataan > (sbmlData?.sbmlPendata || 0)}
+                        >
+                          <span className={row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pendataan)}
+                          </span>
+                        </HonorTooltip>
                       </TableCell>
                       
-                      <TableCell className={`text-right ${row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0) ? "text-red-600 font-semibold" : ""}`}>
-                        {formatRupiah(row.pemeriksaan)}
+                      {/* Kolom Pemeriksaan dengan Tooltip */}
+                      <TableCell className="text-right">
+                        <HonorTooltip 
+                          details={row.detailPemeriksaan} 
+                          title="Detail Pemeriksaan"
+                          isExceeded={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0)}
+                        >
+                          <span className={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pemeriksaan)}
+                          </span>
+                        </HonorTooltip>
                       </TableCell>
                       
-                      <TableCell className={`text-right ${row.pengolahan > (sbmlData?.sbmlPengolah || 0) ? "text-red-600 font-semibold" : ""}`}>
-                        {formatRupiah(row.pengolahan)}
+                      {/* Kolom Pengolahan dengan Tooltip */}
+                      <TableCell className="text-right">
+                        <HonorTooltip 
+                          details={row.detailPengolahan} 
+                          title="Detail Pengolahan"
+                          isExceeded={row.pengolahan > (sbmlData?.sbmlPengolah || 0)}
+                        >
+                          <span className={row.pengolahan > (sbmlData?.sbmlPengolah || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pengolahan)}
+                          </span>
+                        </HonorTooltip>
                       </TableCell>
                       
                       <TableCell>
@@ -525,7 +574,7 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component yang DIPERBAIKI - tidak menyebabkan geser layar
+// Tooltip component untuk status melebihi SBML
 const Tooltip = ({ content, children }: { content: string[]; children: React.ReactNode }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -547,6 +596,59 @@ const Tooltip = ({ content, children }: { content: string[]; children: React.Rea
             ))}
           </div>
           <div className="absolute w-3 h-3 bg-gray-900 transform rotate-45 top-full left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Komponen Tooltip Baru untuk Detail Honor
+const HonorTooltip = ({ 
+  details, 
+  title, 
+  isExceeded,
+  children 
+}: { 
+  details: { namaKegiatan: string; nilaiRealisasi: string }[];
+  title: string;
+  isExceeded: boolean;
+  children: React.ReactNode;
+}) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  if (details.length === 0) {
+    return <div className="text-right">{children}</div>;
+  }
+
+  return (
+    <div className="relative inline-block text-right w-full">
+      <div
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className="cursor-help"
+      >
+        {children}
+      </div>
+      {showTooltip && (
+        <div className={`absolute z-50 w-72 p-3 text-sm rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 mb-2 ${
+          isExceeded ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
+        }`}>
+          <div className={`font-semibold mb-2 text-center ${
+            isExceeded ? 'text-red-700' : 'text-gray-700'
+          }`}>
+            {title}
+          </div>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {details.map((detail, index) => (
+              <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
+                <div className="font-medium text-gray-900 mb-1">{detail.namaKegiatan}</div>
+                <div className="text-green-600 font-semibold">{detail.nilaiRealisasi}</div>
+              </div>
+            ))}
+          </div>
+          <div className={`absolute w-3 h-3 transform rotate-45 top-full left-1/2 -translate-x-1/2 -translate-y-1/2 ${
+            isExceeded ? 'bg-red-50 border-r border-b border-red-200' : 'bg-white border-r border-b border-gray-200'
+          }`}></div>
         </div>
       )}
     </div>
