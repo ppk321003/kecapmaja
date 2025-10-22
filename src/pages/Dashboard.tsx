@@ -69,6 +69,7 @@ interface RiskData {
   kegiatan: number;
   anggaran: number;
   riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
+  namaKegiatanList: string[]; // PERBAIKAN: Tambahkan daftar nama kegiatan
 }
 
 // Custom Tooltip untuk currency dengan format yang lebih baik
@@ -233,7 +234,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan kriteria baru
+// Komponen Risk Matrix dengan Hover untuk menampilkan jenis kegiatan
 const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
   if (!data || data.length === 0) {
     return (
@@ -273,7 +274,10 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
       </div>
       
       {data.map((item, index) => (
-        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+        <div 
+          key={index} 
+          className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+        >
           <div className="flex-1">
             <h4 className="font-semibold">{item.name}</h4>
             <div className="flex gap-4 text-sm text-muted-foreground mt-1">
@@ -284,6 +288,23 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
           <span className={`px-3 py-1 rounded-full border text-sm font-medium ${getRiskColor(item.riskLevel)}`}>
             {item.riskLevel}
           </span>
+          
+          {/* PERBAIKAN: Hover Tooltip untuk menampilkan jenis kegiatan */}
+          <div className="absolute invisible group-hover:visible z-50 bottom-full left-0 mb-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+            <h5 className="font-semibold text-sm mb-2">Jenis Kegiatan ({item.kegiatan}):</h5>
+            <div className="max-h-40 overflow-y-auto">
+              <ul className="space-y-1 text-xs">
+                {item.namaKegiatanList.map((kegiatan, idx) => (
+                  <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
+                    • {kegiatan}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Arahkan kursor untuk melihat detail
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -415,7 +436,8 @@ export default function Dashboard() {
         kegiatanUnik: number, 
         totalAnggaran: number, 
         roles: Set<string>,
-        namaKegiatanUnik: Set<string>
+        namaKegiatanUnik: Set<string>,
+        namaKegiatanList: string[] // PERBAIKAN: Simpan daftar nama kegiatan
       }>();
 
       let totalKegiatanUnik = new Set<string>();
@@ -488,12 +510,17 @@ export default function Dashboard() {
                 kegiatanUnik: 0, 
                 totalAnggaran: 0, 
                 roles: new Set(),
-                namaKegiatanUnik: new Set()
+                namaKegiatanUnik: new Set(),
+                namaKegiatanList: [] // PERBAIKAN: Inisialisasi array
               });
             }
             const detail = petugasDetailMap.get(nama)!;
             if (namaKegiatan && namaKegiatan.trim() !== '') {
               detail.namaKegiatanUnik.add(namaKegiatan.trim());
+              // PERBAIKAN: Tambahkan ke daftar nama kegiatan (unik)
+              if (!detail.namaKegiatanList.includes(namaKegiatan.trim())) {
+                detail.namaKegiatanList.push(namaKegiatan.trim());
+              }
             }
             detail.totalAnggaran += nilai;
             
@@ -574,7 +601,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - sort berdasarkan totalAnggaran
+      // PERBAIKAN 1: Prepare workload data - Top 15 Petugas
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -583,7 +610,7 @@ export default function Dashboard() {
           roles: Array.from(detail.roles)
         }))
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
-        .slice(0, 10);
+        .slice(0, 15); // PERBAIKAN: Diubah dari 10 menjadi 15
 
       // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
@@ -604,7 +631,8 @@ export default function Dashboard() {
             name: petugas,
             kegiatan: jumlahNamaKegiatanUnik,
             anggaran: detail.totalAnggaran,
-            riskLevel: riskLevel
+            riskLevel: riskLevel,
+            namaKegiatanList: detail.namaKegiatanList.sort() // PERBAIKAN: Tambahkan daftar nama kegiatan
           };
         })
         .sort((a, b) => b.kegiatan - a.kegiatan)
@@ -948,7 +976,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment - Lebar dikurangi 10% */}
+        {/* Risk Assessment dengan Hover */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -956,7 +984,7 @@ export default function Dashboard() {
               Assesmen Risiko
             </CardTitle>
             <CardDescription>
-              Top 10 petugas dengan jumlah jenis kegiatan terbanyak
+              Top 10 petugas dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -964,12 +992,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Workload Distribution Table - Lebar ditambah 10% */}
+        {/* PERBAIKAN 1: Workload Distribution Table - Top 15 Petugas */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Table className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 10 Petugas
+              Distribusi Realisasi Honor - Top 15 Petugas
             </CardTitle>
             <CardDescription>
               Tabel detail distribusi realisasi honor per mitra statistik
