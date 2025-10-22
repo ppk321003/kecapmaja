@@ -528,7 +528,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - DIPERBAIKI: Convert Set to Array untuk roles
+      // Prepare workload data - DIPERBAIKI: Convert Set to Array untuk roles dan ambil TOP 10
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -536,7 +536,8 @@ export default function Dashboard() {
           totalAnggaran: detail.anggaran,
           roles: Array.from(detail.roles)
         }))
-        .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan);
+        .sort((a, b) => b.jumlahKegiatan - a.jumlahKegiatan)
+        .slice(0, 10); // AMBIL TOP 10 PETUGAS
 
       // Prepare risk data dengan kriteria baru: Rendah < 3, Sedang 3-10, Tinggi > 10
       const riskDataArray: RiskData[] = workloadDataArray.map(item => {
@@ -919,12 +920,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Workload Distribution Table */}
+        {/* Workload Distribution Table - TOP 10 PETUGAS */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Table className="h-5 w-5" />
-              Distribusi Beban Kerja
+              Distribusi Beban Kerja - Top 10 Petugas
             </CardTitle>
             <CardDescription>
               Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'} - Menampilkan semua role
@@ -935,6 +936,7 @@ export default function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 font-semibold">No</th>
                     <th className="text-left py-3 font-semibold">Petugas</th>
                     <th className="text-left py-3 font-semibold">Role</th>
                     <th className="text-right py-3 font-semibold">
@@ -944,14 +946,15 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {workloadData.slice(0, 5).map((item, index) => {
+                  {workloadData.map((item, index) => {
                     const total = viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi;
                     const value = viewMode === 'kegiatan' ? item.jumlahKegiatan : item.totalAnggaran;
                     const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
                     
                     return (
                       <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="py-3">{item.petugas}</td>
+                        <td className="py-3 text-muted-foreground">{index + 1}</td>
+                        <td className="py-3 font-medium">{item.petugas}</td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-1">
                             {item.roles.map((role, roleIndex) => (
@@ -964,13 +967,13 @@ export default function Dashboard() {
                             ))}
                           </div>
                         </td>
-                        <td className="text-right py-3">
+                        <td className="text-right py-3 font-medium">
                           {viewMode === 'kegiatan' 
                             ? item.jumlahKegiatan.toLocaleString('id-ID')
                             : formatRupiah(item.totalAnggaran)
                           }
                         </td>
-                        <td className="text-right py-3">{percentage}%</td>
+                        <td className="text-right py-3 font-medium">{percentage}%</td>
                       </tr>
                     );
                   })}
