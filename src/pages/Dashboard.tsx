@@ -928,7 +928,7 @@ export default function Dashboard() {
               Distribusi Beban Kerja - Top 10 Petugas
             </CardTitle>
             <CardDescription>
-              Tabel detail distribusi {viewMode === 'kegiatan' ? 'beban kerja per petugas' : 'alokasi anggaran per item'} - Menampilkan semua role
+              Tabel detail distribusi beban kerja dan anggaran per petugas
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -939,14 +939,14 @@ export default function Dashboard() {
                     <th className="text-left py-3 font-semibold">No</th>
                     <th className="text-left py-3 font-semibold">Petugas</th>
                     <th className="text-left py-3 font-semibold">Role</th>
-                    <th className="text-right py-3 font-semibold">
-                      {viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Anggaran'}
-                    </th>
+                    <th className="text-right py-3 font-semibold">Jumlah Kegiatan</th>
+                    <th className="text-right py-3 font-semibold">Total Anggaran</th>
                     <th className="text-right py-3 font-semibold">Persentase</th>
                   </tr>
                 </thead>
                 <tbody>
                   {workloadData.map((item, index) => {
+                    // Hitung persentase berdasarkan mode yang dipilih
                     const total = viewMode === 'kegiatan' ? stats.totalKegiatan : stats.totalRealisasi;
                     const value = viewMode === 'kegiatan' ? item.jumlahKegiatan : item.totalAnggaran;
                     const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
@@ -968,10 +968,10 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="text-right py-3 font-medium">
-                          {viewMode === 'kegiatan' 
-                            ? item.jumlahKegiatan.toLocaleString('id-ID')
-                            : formatRupiah(item.totalAnggaran)
-                          }
+                          {item.jumlahKegiatan.toLocaleString('id-ID')}
+                        </td>
+                        <td className="text-right py-3 font-medium">
+                          {formatRupiah(item.totalAnggaran)}
                         </td>
                         <td className="text-right py-3 font-medium">{percentage}%</td>
                       </tr>
