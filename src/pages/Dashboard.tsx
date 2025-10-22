@@ -37,7 +37,7 @@ const bulanList = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
+const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString();
 
 // Warna untuk charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -401,7 +401,7 @@ export default function Dashboard() {
 
       console.log(`Data for year ${filterTahun}:`, filteredData.length);
 
-      // PERBAIKAN: Maps untuk data KEGIATAN menggunakan namaKegiatanUnik
+      // Maps untuk data KEGIATAN menggunakan namaKegiatanUnik
       const petugasKegiatanUnikMap = new Map<string, Set<string>>();
       const bulanKegiatanUnikMap = new Map<string, Set<string>>();
       const jenisPekerjaanKegiatanUnikMap = new Map<string, Set<string>>();
@@ -421,7 +421,7 @@ export default function Dashboard() {
         namaKegiatanUnik: Set<string>
       }>();
 
-      let totalKegiatanUnik = new Set<string>(); // PERBAIKAN: Total kegiatan menggunakan Set untuk unik
+      let totalKegiatanUnik = new Set<string>();
       let totalRealisasi = 0;
 
       filteredData.forEach((row: any[]) => {
@@ -440,11 +440,11 @@ export default function Dashboard() {
           const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
           const nilaiList = nilaiRealisasi.split(' | ').map(parseNilai);
 
-          // PERBAIKAN: Process untuk mode KEGIATAN menggunakan namaKegiatanUnik
+          // Process untuk mode KEGIATAN menggunakan namaKegiatanUnik
           namaList.forEach((nama, index) => {
             const nilai = nilaiList[index] || 0;
             
-            // PERBAIKAN: Kegiatan unik per petugas
+            // Kegiatan unik per petugas
             if (!petugasKegiatanUnikMap.has(nama)) {
               petugasKegiatanUnikMap.set(nama, new Set());
             }
@@ -452,7 +452,7 @@ export default function Dashboard() {
               petugasKegiatanUnikMap.get(nama)!.add(namaKegiatan.trim());
             }
 
-            // PERBAIKAN: Kegiatan unik per bulan
+            // Kegiatan unik per bulan
             if (bulan && bulanList.includes(bulan)) {
               if (!bulanKegiatanUnikMap.has(bulan)) {
                 bulanKegiatanUnikMap.set(bulan, new Set());
@@ -462,7 +462,7 @@ export default function Dashboard() {
               }
             }
 
-            // PERBAIKAN: Kegiatan unik per jenis pekerjaan
+            // Kegiatan unik per jenis pekerjaan
             if (jenisPekerjaan) {
               if (!jenisPekerjaanKegiatanUnikMap.has(jenisPekerjaan)) {
                 jenisPekerjaanKegiatanUnikMap.set(jenisPekerjaan, new Set());
@@ -472,7 +472,7 @@ export default function Dashboard() {
               }
             }
 
-            // PERBAIKAN: Kegiatan unik per role
+            // Kegiatan unik per role
             if (role) {
               if (!roleKegiatanUnikMap.has(role)) {
                 roleKegiatanUnikMap.set(role, new Set());
@@ -506,7 +506,7 @@ export default function Dashboard() {
             }
           });
 
-          // PERBAIKAN: Total kegiatan unik
+          // Total kegiatan unik
           if (namaKegiatan && namaKegiatan.trim() !== '') {
             totalKegiatanUnik.add(namaKegiatan.trim());
           }
@@ -536,12 +536,12 @@ export default function Dashboard() {
         }
       });
 
-      // PERBAIKAN: Update kegiatanUnik untuk setiap petugas
+      // Update kegiatanUnik untuk setiap petugas
       petugasDetailMap.forEach((detail, petugas) => {
         detail.kegiatanUnik = detail.namaKegiatanUnik.size;
       });
 
-      // PERBAIKAN: Prepare chart data untuk KEGIATAN menggunakan data unik
+      // Prepare chart data untuk KEGIATAN menggunakan data unik
       const petugasKegiatanData: ChartItem[] = Array.from(petugasKegiatanUnikMap.entries())
         .map(([name, kegiatanSet]) => ({ name, value: kegiatanSet.size }))
         .sort((a, b) => b.value - a.value)
@@ -578,25 +578,24 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // PERBAIKAN 3: Prepare workload data - sort berdasarkan totalAnggaran (Total Realisasi)
+      // Prepare workload data - sort berdasarkan totalAnggaran (Total Realisasi)
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
-          jumlahKegiatan: detail.kegiatanUnik, // PERBAIKAN 2: Gunakan kegiatanUnik
+          jumlahKegiatan: detail.kegiatanUnik,
           totalAnggaran: detail.totalAnggaran,
           roles: Array.from(detail.roles)
         }))
-        .sort((a, b) => b.totalAnggaran - a.totalAnggaran) // PERBAIKAN 3: Sort by Total Realisasi
+        .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 10);
 
-      // PERBAIKAN 1: Prepare risk data dengan kriteria baru
+      // PERBAIKAN: Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
           const jumlahNamaKegiatanUnik = detail.kegiatanUnik;
           
           let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
           
-          // PERBAIKAN 1: Kriteria risiko baru
           if (jumlahNamaKegiatanUnik < 10) {
             riskLevel = 'Rendah';
           } else if (jumlahNamaKegiatanUnik >= 10 && jumlahNamaKegiatanUnik <= 25) {
@@ -612,13 +611,10 @@ export default function Dashboard() {
             riskLevel: riskLevel
           };
         })
-        .sort((a, b) => {
-          const riskOrder = { 'Tinggi': 3, 'Sedang': 2, 'Rendah': 1 };
-          return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
-        })
-        .slice(0, 5);
+        .sort((a, b) => b.kegiatan - a.kegiatan) // PERBAIKAN: Sort by jumlah kegiatan terbanyak
+        .slice(0, 10); // PERBAIKAN: Tampilkan Top 10
 
-      // PERBAIKAN: Hitung stats menggunakan data unik
+      // Hitung stats menggunakan data unik
       const validBulanKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData);
       const validBulanAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData);
 
@@ -638,7 +634,7 @@ export default function Dashboard() {
         ? validBulanAnggaran.reduce((min, current) => current.value < min.value ? current : min)
         : { name: "-", value: 0 };
 
-      // PERBAIKAN: Rumus rata-rata menggunakan data unik
+      // Rumus rata-rata menggunakan data unik
       const totalKegiatanValidBulan = validBulanKegiatan.reduce((sum, item) => sum + item.value, 0);
       const rataRataKegiatanPerBulan = validBulanKegiatan.length > 0 
         ? Math.round(totalKegiatanValidBulan / validBulanKegiatan.length)
@@ -649,7 +645,7 @@ export default function Dashboard() {
         ? Math.round(totalAnggaranValidBulan / validBulanAnggaran.length)
         : 0;
 
-      // PERBAIKAN: Total kegiatan menggunakan data unik
+      // Total kegiatan menggunakan data unik
       const totalKegiatan = totalKegiatanUnik.size;
 
       setStats({
@@ -770,91 +766,92 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics dengan warna yang elegan dan profesional */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        {/* Box dengan warna berbeda untuk setiap kategori */}
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-blue-800">
               {viewMode === 'kegiatan' ? 'Total Kegiatan' : 'Total Anggaran'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-blue-600" />
             ) : (
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-4 w-4 text-blue-600" />
             )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-blue-900">
               {viewMode === 'kegiatan' 
                 ? stats.totalKegiatan.toLocaleString('id-ID')
                 : formatRupiah(stats.totalRealisasi)
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-blue-700">
               Tahun {filterTahun}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-green-800">
               {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Anggaran per Bulan'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Calendar className="h-4 w-4 text-green-600" />
             ) : (
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <DollarSign className="h-4 w-4 text-green-600" />
             )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-900">
               {viewMode === 'kegiatan' 
                 ? stats.rataRataKegiatanPerBulan.toLocaleString('id-ID')
                 : formatRupiah(stats.rataRataAnggaranPerBulan)
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-green-700">
               {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Anggaran per bulan'}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-purple-800">
               {viewMode === 'kegiatan' ? 'Bulan Puncak' : 'Bulan Anggaran Tertinggi'}
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-purple-900">
               {viewMode === 'kegiatan' 
                 ? `${stats.bulanPeakKegiatan.name} (${stats.bulanPeakKegiatan.value})`
                 : `${stats.bulanPeakAnggaran.name} (${formatRupiah(stats.bulanPeakAnggaran.value)})`
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-purple-700">
               {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Anggaran tertinggi'}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium text-orange-800">
               {viewMode === 'kegiatan' ? 'Bulan Slow' : 'Bulan Anggaran Terendah'}
             </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-orange-900">
               {viewMode === 'kegiatan' 
                 ? `${stats.bulanSlowKegiatan.name} (${stats.bulanSlowKegiatan.value})`
                 : `${stats.bulanSlowAnggaran.name} (${formatRupiah(stats.bulanSlowAnggaran.value)})`
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-orange-700">
               {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Anggaran terendah'}
             </p>
           </CardContent>
@@ -962,7 +959,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution dengan lebar yang disesuaikan */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment - Lebar dikurangi 20% */}
+        {/* PERBAIKAN: Risk Assessment - Lebar dikurangi 10% */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -981,7 +978,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* PERBAIKAN 3: Workload Distribution Table - ganti nama dan sort by Total Realisasi */}
+        {/* PERBAIKAN: Workload Distribution Table - Lebar ditambah 10% dan rata tengah untuk Jumlah Kegiatan */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -997,17 +994,17 @@ export default function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 font-semibold">No</th>
-                    <th className="text-left py-3 font-semibold">Mitra Statistik</th>
-                    <th className="text-left py-3 font-semibold">PJ Kegiatan</th>
-                    <th className="text-right py-3 font-semibold">Jumlah Kegiatan</th>
+                    <th className="text-left py-3 font-semibold w-12">No</th>
+                    <th className="text-left py-3 font-semibold">Nama Mitra Statistik</th>
+                    <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
+                    <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Realisasi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {workloadData.map((item, index) => (
                     <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="py-3 text-muted-foreground">{index + 1}</td>
+                      <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                       <td className="py-3 font-medium">{item.petugas}</td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-1">
@@ -1021,7 +1018,7 @@ export default function Dashboard() {
                           ))}
                         </div>
                       </td>
-                      <td className="text-right py-3 font-medium">
+                      <td className="text-center py-3 font-medium">
                         {item.jumlahKegiatan.toLocaleString('id-ID')}
                       </td>
                       <td className="text-right py-3 font-medium">
