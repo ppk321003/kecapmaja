@@ -341,16 +341,27 @@ export default function CekSBML() {
     fetchData();
   };
 
-  // SBML badge content yang dioptimalkan
+  // SBML badge content yang dioptimalkan dengan 3 baris dan warna berbeda
   const sbmlBadgeContent = useMemo(() => {
     if (!sbmlData) return null;
+    
     return (
-      <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200">
-        <span className="font-semibold">SBML {sbmlData.tahunAnggaran}:</span>
-        <span className="ml-1">
-          Pendata {formatRupiah(sbmlData.sbmlPendata)}
-        </span>
-      </Badge>
+      <div className="flex flex-col gap-1 ml-auto">
+        <div className="text-xs font-semibold text-center text-gray-700 mb-1">
+          SBML {sbmlData.tahunAnggaran}
+        </div>
+        <div className="flex flex-col gap-1">
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200 text-blue-700">
+            <span className="font-medium">Pendataan:</span> {formatRupiah(sbmlData.sbmlPendata)}
+          </Badge>
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-green-50 border-green-200 text-green-700">
+            <span className="font-medium">Pemeriksaan:</span> {formatRupiah(sbmlData.sbmlPemeriksa)}
+          </Badge>
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-purple-50 border-purple-200 text-purple-700">
+            <span className="font-medium">Pengolahan:</span> {formatRupiah(sbmlData.sbmlPengolah)}
+          </Badge>
+        </div>
+      </div>
     );
   }, [sbmlData, formatRupiah]);
 
@@ -410,11 +421,7 @@ export default function CekSBML() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
 
-            {sbmlBadgeContent && (
-              <div className="ml-auto">
-                {sbmlBadgeContent}
-              </div>
-            )}
+            {sbmlBadgeContent}
           </div>
         </CardContent>
       </Card>
