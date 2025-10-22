@@ -562,34 +562,44 @@ export default function Dashboard() {
         return riskOrder[b.riskLevel] - riskOrder[a.riskLevel];
       });
 
-      // Hitung stats lainnya...
-      const validBulanKegiatanForSlow = getValidBulanForSlow(filterTahun, bulanKegiatanData);
+      // PERBAIKAN: Hitung stats dengan rumus yang benar
+      const validBulanKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData);
+      const validBulanAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData);
+
       const bulanPeakKegiatan = bulanKegiatanData.length > 0 
         ? bulanKegiatanData.reduce((max, current) => current.value > max.value ? current : max)
         : { name: "-", value: 0 };
       
-      const bulanSlowKegiatan = validBulanKegiatanForSlow.length > 0
-        ? validBulanKegiatanForSlow.reduce((min, current) => current.value < min.value ? current : min)
+      const bulanSlowKegiatan = validBulanKegiatan.length > 0
+        ? validBulanKegiatan.reduce((min, current) => current.value < min.value ? current : min)
         : { name: "-", value: 0 };
 
-      const validBulanAnggaranForSlow = getValidBulanForSlow(filterTahun, bulanAnggaranData);
       const bulanPeakAnggaran = bulanAnggaranData.length > 0 
         ? bulanAnggaranData.reduce((max, current) => current.value > max.value ? current : max)
         : { name: "-", value: 0 };
       
-      const bulanSlowAnggaran = validBulanAnggaranForSlow.length > 0
-        ? validBulanAnggaranForSlow.reduce((min, current) => current.value < min.value ? current : min)
+      const bulanSlowAnggaran = validBulanAnggaran.length > 0
+        ? validBulanAnggaran.reduce((min, current) => current.value < min.value ? current : min)
         : { name: "-", value: 0 };
 
-      const bulanDenganKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData).filter(item => item.value > 0);
-      const rataRataKegiatanPerBulan = bulanDenganKegiatan.length > 0 
-        ? Math.round(bulanDenganKegiatan.reduce((sum, item) => sum + item.value, 0) / bulanDenganKegiatan.length)
+      // PERBAIKAN: Rumus rata-rata yang benar - menggunakan semua bulan valid (termasuk yang 0)
+      const totalKegiatanValidBulan = validBulanKegiatan.reduce((sum, item) => sum + item.value, 0);
+      const rataRataKegiatanPerBulan = validBulanKegiatan.length > 0 
+        ? Math.round(totalKegiatanValidBulan / validBulanKegiatan.length)
         : 0;
 
-      const bulanDenganAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData).filter(item => item.value > 0);
-      const rataRataAnggaranPerBulan = bulanDenganAnggaran.length > 0 
-        ? Math.round(bulanDenganAnggaran.reduce((sum, item) => sum + item.value, 0) / bulanDenganAnggaran.length)
+      // PERBAIKAN: Rumus rata-rata anggaran yang benar - menggunakan semua bulan valid (termasuk yang 0)
+      const totalAnggaranValidBulan = validBulanAnggaran.reduce((sum, item) => sum + item.value, 0);
+      const rataRataAnggaranPerBulan = validBulanAnggaran.length > 0 
+        ? Math.round(totalAnggaranValidBulan / validBulanAnggaran.length)
         : 0;
+
+      console.log('Debug rata-rata:', {
+        totalAnggaranValidBulan,
+        jumlahBulanValid: validBulanAnggaran.length,
+        rataRataAnggaranPerBulan,
+        validBulanAnggaran: validBulanAnggaran.map(item => ({ bulan: item.name, nilai: item.value }))
+      });
 
       setStats({
         totalKegiatan,
