@@ -899,10 +899,10 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Grid untuk Risk Assessment dan Workload Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Risk Assessment */}
-        <Card>
+      {/* Grid untuk Risk Assessment dan Workload Distribution dengan lebar yang disesuaikan */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Risk Assessment - Lebar dikurangi 20% */}
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
@@ -920,8 +920,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Workload Distribution Table - TOP 10 PETUGAS */}
-        <Card>
+        {/* Workload Distribution Table - Lebar ditambah 20% */}
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Table className="h-5 w-5" />
