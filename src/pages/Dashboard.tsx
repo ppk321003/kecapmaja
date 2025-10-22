@@ -22,12 +22,9 @@ import {
   Pie,
   Cell,
   LineChart,
-  Line,
-  AreaChart,
-  Area
+  Line
 } from 'recharts';
-import { TrendingUp, Users, Calendar, DollarSign, Award, Activity, BarChart3, SwitchCamera, Target, AlertTriangle, Table } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -37,7 +34,7 @@ const bulanList = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString())
+const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
 
 // Warna untuk charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -407,13 +404,13 @@ export default function Dashboard() {
       const jenisPekerjaanKegiatanUnikMap = new Map<string, Set<string>>();
       const roleKegiatanUnikMap = new Map<string, Set<string>>();
 
-      // Maps untuk data anggaran (tetap menggunakan count biasa)
+      // Maps untuk data anggaran
       const petugasAnggaranMap = new Map<string, number>();
       const bulanAnggaranMap = new Map<string, number>();
       const jenisPekerjaanAnggaranMap = new Map<string, number>();
       const roleAnggaranMap = new Map<string, number>();
 
-      // Maps untuk data workload dan risk dengan menghitung NAMA KEGIATAN unik
+      // Maps untuk data workload dan risk
       const petugasDetailMap = new Map<string, { 
         kegiatanUnik: number, 
         totalAnggaran: number, 
@@ -440,7 +437,7 @@ export default function Dashboard() {
           const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
           const nilaiList = nilaiRealisasi.split(' | ').map(parseNilai);
 
-          // Process untuk mode KEGIATAN menggunakan namaKegiatanUnik
+          // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
             const nilai = nilaiList[index] || 0;
             
@@ -482,7 +479,7 @@ export default function Dashboard() {
               }
             }
 
-            // Anggaran (tetap menggunakan count biasa)
+            // Anggaran
             petugasAnggaranMap.set(nama, (petugasAnggaranMap.get(nama) || 0) + nilai);
 
             // Workload data
@@ -500,7 +497,6 @@ export default function Dashboard() {
             }
             detail.totalAnggaran += nilai;
             
-            // Tambahkan role ke Set (otomatis menghindari duplikasi)
             if (role && role.trim() !== '') {
               detail.roles.add(role.trim());
             }
@@ -578,7 +574,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - sort berdasarkan totalAnggaran (Total Realisasi)
+      // Prepare workload data - sort berdasarkan totalAnggaran
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -589,7 +585,7 @@ export default function Dashboard() {
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 10);
 
-      // PERBAIKAN: Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
+      // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
           const jumlahNamaKegiatanUnik = detail.kegiatanUnik;
@@ -611,8 +607,8 @@ export default function Dashboard() {
             riskLevel: riskLevel
           };
         })
-        .sort((a, b) => b.kegiatan - a.kegiatan) // PERBAIKAN: Sort by jumlah kegiatan terbanyak
-        .slice(0, 10); // PERBAIKAN: Tampilkan Top 10
+        .sort((a, b) => b.kegiatan - a.kegiatan)
+        .slice(0, 10);
 
       // Hitung stats menggunakan data unik
       const validBulanKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData);
@@ -736,7 +732,6 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Toggle View Mode */}
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kegiatan' | 'anggaran')}>
             <TabsList>
               <TabsTrigger value="anggaran" className="flex items-center gap-2">
@@ -750,7 +745,6 @@ export default function Dashboard() {
             </TabsList>
           </Tabs>
 
-          {/* Tahun Filter */}
           <Select value={filterTahun} onValueChange={setFilterTahun}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Pilih Tahun" />
@@ -766,9 +760,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics dengan warna yang elegan dan profesional */}
+      {/* Key Metrics dengan warna yang elegan */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Box dengan warna berbeda untuk setiap kategori */}
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">
@@ -860,7 +853,6 @@ export default function Dashboard() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grafik Petugas */}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -879,7 +871,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Grafik Bulan */}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -898,7 +889,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Grafik Jenis Pekerjaan */}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -917,7 +907,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Grafik Role */}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -937,7 +926,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Grafik Baru: Trend Line Chart */}
+      {/* Trend Line Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -957,9 +946,9 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Grid untuk Risk Assessment dan Workload Distribution dengan lebar yang disesuaikan */}
+      {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* PERBAIKAN: Risk Assessment - Lebar dikurangi 10% */}
+        {/* Risk Assessment - Lebar dikurangi 10% */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -967,10 +956,7 @@ export default function Dashboard() {
               Assesmen Risiko
             </CardTitle>
             <CardDescription>
-              {viewMode === 'kegiatan' 
-                ? 'Identifikasi bottleneck petugas dengan workload tertinggi' 
-                : 'Identifikasi cost center terbesar'
-              }
+              Top 10 petugas dengan jumlah jenis kegiatan terbanyak
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -978,7 +964,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* PERBAIKAN: Workload Distribution Table - Lebar ditambah 10% dan rata tengah untuk Jumlah Kegiatan */}
+        {/* Workload Distribution Table - Lebar ditambah 10% */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -995,8 +981,8 @@ export default function Dashboard() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
-                    <th className="text-left py-3 font-semibold">Nama Mitra Statistik</th>
-                    <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
+                    <th className="text-left py-3 font-semibold">Mitra Statistik</th>
+                    <th className="text-left py-3 font-semibold">PJ Kegiatan</th>
                     <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Realisasi</th>
                   </tr>
