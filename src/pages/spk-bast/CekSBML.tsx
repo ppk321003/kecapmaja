@@ -277,16 +277,16 @@ export default function CekSBML() {
         const warnings: string[] = [];
         if (sbmlData) {
           if (item.pendataan > sbmlData.sbmlPendata) {
-            warnings.push(`SBML Pendataan (${formatRupiah(sbmlData.sbmlPendata)})`);
+            warnings.push(`Pendataan: ${formatRupiah(item.pendataan)} > ${formatRupiah(sbmlData.sbmlPendata)}`);
           }
           if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-            warnings.push(`SBML Pemeriksaan (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
+            warnings.push(`Pemeriksaan: ${formatRupiah(item.pemeriksaan)} > ${formatRupiah(sbmlData.sbmlPemeriksa)}`);
           }
           if (item.pengolahan > sbmlData.sbmlPengolah) {
-            warnings.push(`SBML Pengolahan (${formatRupiah(sbmlData.sbmlPengolah)})`);
+            warnings.push(`Pengolahan: ${formatRupiah(item.pengolahan)} > ${formatRupiah(sbmlData.sbmlPengolah)}`);
           }
           if (item.jumlah > sbmlData.sbmlPendata) {
-            warnings.push(`SBML (${formatRupiah(sbmlData.sbmlPendata)})`);
+            warnings.push(`Total: ${formatRupiah(item.jumlah)} > ${formatRupiah(sbmlData.sbmlPendata)}`);
           }
         }
         
@@ -340,16 +340,16 @@ export default function CekSBML() {
         const item = newData[index];
         
         if (item.pendataan > sbmlData.sbmlPendata) {
-          warnings.push(`SBML Pendataan (${formatRupiah(sbmlData.sbmlPendata)})`);
+          warnings.push(`Pendataan: ${formatRupiah(item.pendataan)} > ${formatRupiah(sbmlData.sbmlPendata)}`);
         }
         if (item.pemeriksaan > sbmlData.sbmlPemeriksa) {
-          warnings.push(`SBML Pemeriksaan (${formatRupiah(sbmlData.sbmlPemeriksa)})`);
+          warnings.push(`Pemeriksaan: ${formatRupiah(item.pemeriksaan)} > ${formatRupiah(sbmlData.sbmlPemeriksa)}`);
         }
         if (item.pengolahan > sbmlData.sbmlPengolah) {
-          warnings.push(`SBML Pengolahan (${formatRupiah(sbmlData.sbmlPengolah)})`);
+          warnings.push(`Pengolahan: ${formatRupiah(item.pengolahan)} > ${formatRupiah(sbmlData.sbmlPengolah)}`);
         }
         if (item.jumlah > sbmlData.sbmlPendata) {
-          warnings.push(`Total melebihi SBML Pendata (${formatRupiah(sbmlData.sbmlPendata)})`);
+          warnings.push(`Total: ${formatRupiah(item.jumlah)} > ${formatRupiah(sbmlData.sbmlPendata)}`);
         }
         
         newData[index].warnings = warnings;
@@ -390,7 +390,7 @@ export default function CekSBML() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 items-end">
+          <div className="flex gap-4 items-end flex-wrap">
             <div className="space-y-2">
               <label className="text-sm font-medium">Bulan</label>
               <Select value={filterBulan} onValueChange={setFilterBulan}>
@@ -427,16 +427,12 @@ export default function CekSBML() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
 
-            {/* SBML Badge dengan font yang lebih besar */}
+            {/* SBML Badge dengan layout yang lebih compact */}
             {sbmlData && (
               <div className="ml-auto">
-                <Badge variant="outline" className="text-sm py-2 px-3 bg-blue-50 border-blue-200">
+                <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200 max-w-xs">
                   <span className="font-semibold">SBML {sbmlData.tahunAnggaran}:</span>{' '}
-                  <span className="text-base font-bold">
-                    Pendata {formatRupiah(sbmlData.sbmlPendata)} | 
-                    Pemeriksa {formatRupiah(sbmlData.sbmlPemeriksa)} | 
-                    Pengolah {formatRupiah(sbmlData.sbmlPengolah)}
-                  </span>
+                  <span>Pendata {formatRupiah(sbmlData.sbmlPendata)}</span>
                 </Badge>
               </div>
             )}
@@ -472,25 +468,25 @@ export default function CekSBML() {
               </p>
             </div>
           ) : (
-            <div className="border rounded-lg">
-              <Table>
+            <div className="border rounded-lg overflow-x-auto">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
-                    <TableHead>Nama Mitra</TableHead>
-                    <TableHead className="text-right">Petugas Pendataan Lapangan</TableHead>
-                    <TableHead className="text-right">Petugas Pemeriksaan Lapangan</TableHead>
-                    <TableHead className="text-right">Petugas Pengolahan</TableHead>
-                    <TableHead className="text-right">Pekerjaan dari Provinsi</TableHead>
-                    <TableHead className="text-right">Jumlah</TableHead>
-                    <TableHead className="w-20">Status</TableHead>
+                    <TableHead className="min-w-[150px]">Nama Mitra</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
+                    <TableHead className="text-right min-w-[140px]">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
+                    <TableHead className="w-20 text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.map((row, index) => (
                     <TableRow key={row.namaMitra} className={row.isExceeded ? "bg-red-50" : ""}>
-                      <TableCell>{row.no}</TableCell>
-                      <TableCell className="font-medium">{row.namaMitra}</TableCell>
+                      <TableCell className="font-medium">{row.no}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
                       
                       <TableCell className={`text-right ${row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}`}>
                         {formatRupiah(row.pendataan)}
@@ -509,7 +505,7 @@ export default function CekSBML() {
                           type="text"
                           value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
                           onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right"
+                          className="text-right min-w-[100px]"
                           placeholder="0"
                         />
                       </TableCell>
@@ -518,13 +514,17 @@ export default function CekSBML() {
                         {formatRupiah(row.jumlah)}
                       </TableCell>
                       
-                      <TableCell>
+                      <TableCell className="text-center">
                         {row.isExceeded ? (
-                          <Tooltip content={row.warnings.join(', ')}>
-                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                          <Tooltip content={row.warnings}>
+                            <div className="flex justify-center">
+                              <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                            </div>
                           </Tooltip>
                         ) : (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <div className="flex justify-center">
+                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -539,8 +539,8 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component
-const Tooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
+// Tooltip component yang diperbaiki
+const Tooltip = ({ content, children }: { content: string[]; children: React.ReactNode }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -548,13 +548,19 @@ const Tooltip = ({ content, children }: { content: string; children: React.React
       <div
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        className="cursor-help"
       >
         {children}
       </div>
       {showTooltip && (
-        <div className="absolute z-50 w-64 p-2 text-xs text-white bg-gray-900 rounded shadow-lg -top-12 left-1/2 transform -translate-x-1/2">
-          {content}
-          <div className="absolute w-2 h-2 bg-gray-900 transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2"></div>
+        <div className="absolute z-50 w-72 p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full">
+          <div className="font-semibold mb-2">Melebihi SBML:</div>
+          <div className="space-y-1">
+            {content.map((warning, index) => (
+              <div key={index} className="text-xs">• {warning}</div>
+            ))}
+          </div>
+          <div className="absolute w-3 h-3 bg-gray-900 transform rotate-45 bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2"></div>
         </div>
       )}
     </div>
