@@ -93,7 +93,7 @@ export default function Home() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Manfaat AKI MAJAL</CardTitle>
+            <CardTitle className="text-2xl">Manfaat AKI MAJA</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3 text-foreground">

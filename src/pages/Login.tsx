@@ -22,7 +22,7 @@ export default function Login() {
     if (login(username, password)) {
       toast({
         title: "Login berhasil",
-        description: "Selamat datang di SIMAJA"
+        description: "Selamat datang"
       });
       navigate('/');
     } else {
