@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -110,9 +110,9 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 min-w-64"
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 min-w-64 pointer-events-none transition-opacity duration-200"
       style={{
-        left: position.x + 10,
+        left: Math.min(position.x + 10, window.innerWidth - 300),
         top: position.y - 10,
       }}
     >
@@ -138,6 +138,63 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
         </div>
       </div>
     </div>
+  );
+};
+
+// Komponen RoleBadge dengan tooltip stabil
+const RoleBadge = ({ 
+  role, 
+  petugas, 
+  roleData, 
+  onShowTooltip, 
+  onHideTooltip 
+}: { 
+  role: string; 
+  petugas: string; 
+  roleData?: { kegiatan: number; anggaran: number };
+  onShowTooltip: (data: RoleTooltipData, position: { x: number; y: number }) => void;
+  onHideTooltip: () => void;
+}) => {
+  const badgeRef = useRef<HTMLSpanElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (badgeRef.current && roleData) {
+        const rect = badgeRef.current.getBoundingClientRect();
+        onShowTooltip({
+          role,
+          totalKegiatan: roleData.kegiatan,
+          totalAnggaran: roleData.anggaran,
+          petugas
+        }, {
+          x: rect.left,
+          y: rect.top
+        });
+      }
+    }, 100);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    onHideTooltip();
+  };
+
+  return (
+    <span 
+      ref={badgeRef}
+      className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs cursor-help transition-colors hover:bg-secondary/80"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {role}
+    </span>
   );
 };
 
@@ -421,7 +478,10 @@ export default function Dashboard() {
   // State untuk tooltip role
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  const [petugasRoleData, setPetugasRoleData] = useState<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
+
+  // Ref untuk menghindari blinking
+  const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
+  const hideTooltipTimeout = useRef<NodeJS.Timeout>();
 
   const { toast } = useToast();
 
@@ -439,6 +499,22 @@ export default function Dashboard() {
     if (!nilaiStr) return 0;
     const cleaned = nilaiStr.replace(/[^\d]/g, '');
     return parseInt(cleaned) || 0;
+  };
+
+  // Fungsi untuk menampilkan tooltip
+  const handleShowTooltip = (data: RoleTooltipData, position: { x: number; y: number }) => {
+    if (hideTooltipTimeout.current) {
+      clearTimeout(hideTooltipTimeout.current);
+    }
+    setRoleTooltipData(data);
+    setTooltipPosition(position);
+  };
+
+  // Fungsi untuk menyembunyikan tooltip dengan delay
+  const handleHideTooltip = () => {
+    hideTooltipTimeout.current = setTimeout(() => {
+      setRoleTooltipData(null);
+    }, 100);
   };
 
   const fetchDashboardData = async () => {
@@ -770,7 +846,7 @@ export default function Dashboard() {
 
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
-      setPetugasRoleData(petugasRoleDetailMap);
+      petugasRoleData.current = petugasRoleDetailMap;
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -787,6 +863,15 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [filterTahun]);
+
+  // Cleanup timeout saat component unmount
+  useEffect(() => {
+    return () => {
+      if (hideTooltipTimeout.current) {
+        clearTimeout(hideTooltipTimeout.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -1094,30 +1179,16 @@ export default function Dashboard() {
                       <td className="py-3">
                         <div className="flex flex-wrap gap-1">
                           {item.roles.map((role, roleIndex) => {
-                            const roleData = petugasRoleData.get(item.petugas)?.get(role);
+                            const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
                             return (
-                              <span 
-                                key={roleIndex} 
-                                className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs cursor-help transition-colors hover:bg-secondary/80"
-                                onMouseEnter={(e) => {
-                                  if (roleData) {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    setTooltipPosition({
-                                      x: rect.left,
-                                      y: rect.top
-                                    });
-                                    setRoleTooltipData({
-                                      role: role,
-                                      totalKegiatan: roleData.kegiatan,
-                                      totalAnggaran: roleData.anggaran,
-                                      petugas: item.petugas
-                                    });
-                                  }
-                                }}
-                                onMouseLeave={() => setRoleTooltipData(null)}
-                              >
-                                {role}
-                              </span>
+                              <RoleBadge
+                                key={roleIndex}
+                                role={role}
+                                petugas={item.petugas}
+                                roleData={roleData}
+                                onShowTooltip={handleShowTooltip}
+                                onHideTooltip={handleHideTooltip}
+                              />
                             );
                           })}
                         </div>
