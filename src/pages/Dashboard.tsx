@@ -274,7 +274,7 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang stabil - POSISI DI SAMPING BARIS
+// Komponen RiskItem dengan hover yang stabil - POSISI DI SAMPING BARIS DENGAN SEDIKIT GESER KE KIRI
 const RiskItem = ({ 
   item, 
   filterFungsi,
@@ -312,8 +312,8 @@ const RiskItem = ({
         const rect = itemRef.current.getBoundingClientRect();
         const tooltipWidth = 320;
         
-        // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT
-        let leftPosition = rect.right + 15; // 15px dari sebelah kanan baris
+        // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT - GESER SEDIKIT KE KIRI
+        let leftPosition = rect.right + 8; // 8px dari sebelah kanan baris (dikurangi dari 15px)
         let topPosition = rect.top - 10;    // Sedikit di atas baris
         
         // Jika tooltip terlalu ke kanan, posisikan di kiri baris
@@ -741,9 +741,20 @@ export default function Dashboard() {
         }
       });
 
-      // Urutkan berdasarkan anggaran tertinggi dan ambil 15 teratas
+      // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
       const sortedWorkloadData = filteredWorkloadData
-        .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
+        .sort((a, b) => {
+          // Pertama: Total Anggaran (descending)
+          if (b.totalAnggaran !== a.totalAnggaran) {
+            return b.totalAnggaran - a.totalAnggaran;
+          }
+          // Kedua: Jumlah Kegiatan (descending)
+          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
+            return b.jumlahKegiatan - a.jumlahKegiatan;
+          }
+          // Ketiga: Nama (ascending)
+          return a.petugas.localeCompare(b.petugas);
+        })
         .slice(0, 15);
 
       // Filter risk data dari seluruh data mentah
@@ -775,9 +786,20 @@ export default function Dashboard() {
         }
       });
 
-      // Urutkan risk data berdasarkan jumlah kegiatan dan ambil 10 teratas
+      // PERBAIKAN: Urutkan risk data berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
       const sortedRiskData = filteredRiskData
-        .sort((a, b) => b.kegiatan - a.kegiatan)
+        .sort((a, b) => {
+          // Pertama: Jumlah Kegiatan (descending)
+          if (b.kegiatan !== a.kegiatan) {
+            return b.kegiatan - a.kegiatan;
+          }
+          // Kedua: Total Anggaran (descending)
+          if (b.anggaran !== a.anggaran) {
+            return b.anggaran - a.anggaran;
+          }
+          // Ketiga: Nama (ascending)
+          return a.name.localeCompare(b.name);
+        })
         .slice(0, 10);
 
       // Filter petugas role data untuk tooltip
@@ -1123,7 +1145,19 @@ export default function Dashboard() {
           totalAnggaran: detail.totalAnggaran,
           roles: Array.from(detail.roles)
         }))
-        .sort((a, b) => b.totalAnggaran - a.totalAnggaran);
+        // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
+        .sort((a, b) => {
+          // Pertama: Total Anggaran (descending)
+          if (b.totalAnggaran !== a.totalAnggaran) {
+            return b.totalAnggaran - a.totalAnggaran;
+          }
+          // Kedua: Jumlah Kegiatan (descending)
+          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
+            return b.jumlahKegiatan - a.jumlahKegiatan;
+          }
+          // Ketiga: Nama (ascending)
+          return a.petugas.localeCompare(b.petugas);
+        });
 
       // Data untuk tampilan "Semua Fungsi" (15 teratas)
       const workloadDataArray = allPetugasWorkloadData.slice(0, 15);
@@ -1151,7 +1185,19 @@ export default function Dashboard() {
             namaKegiatanList: detail.namaKegiatanList.sort()
           };
         })
-        .sort((a, b) => b.kegiatan - a.kegiatan);
+        // PERBAIKAN: Urutkan berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
+        .sort((a, b) => {
+          // Pertama: Jumlah Kegiatan (descending)
+          if (b.kegiatan !== a.kegiatan) {
+            return b.kegiatan - a.kegiatan;
+          }
+          // Kedua: Total Anggaran (descending)
+          if (b.anggaran !== a.anggaran) {
+            return b.anggaran - a.anggaran;
+          }
+          // Ketiga: Nama (ascending)
+          return a.name.localeCompare(b.name);
+        });
 
       // Data untuk tampilan "Semua Fungsi" (10 teratas)
       const riskDataArray = allPetugasRiskDataArray.slice(0, 10);
