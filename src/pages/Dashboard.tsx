@@ -96,7 +96,7 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   return null;
 };
 
-// Komponen Chart yang aman dengan format YAxis untuk anggaran
+// Komponen Chart yang aman dengan format YAxis untuk Realisasi
 const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string, mode: string }) => {
   if (!data || data.length === 0) {
     return (
@@ -106,7 +106,7 @@ const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string,
     );
   }
 
-  // Format tick untuk YAxis jika mode anggaran
+  // Format tick untuk YAxis jika mode Realisasi
   const formatYAxisTick = (value: number) => {
     if (mode === 'anggaran') {
       if (value >= 1000000) {
@@ -138,7 +138,7 @@ const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string,
         <Legend />
         <Bar 
           dataKey="value" 
-          name={mode === 'anggaran' ? 'Total Anggaran' : 'Jumlah Kegiatan'}
+          name={mode === 'anggaran' ? 'Total Realisasi' : 'Jumlah Kegiatan'}
           fill={mode === 'anggaran' ? '#00C49F' : '#0088FE'} 
           radius={[4, 4, 0, 0]}
         />
@@ -223,7 +223,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
         <Line 
           type="monotone" 
           dataKey="value" 
-          name={mode === 'anggaran' ? 'Trend Anggaran' : 'Trend Kegiatan'}
+          name={mode === 'anggaran' ? 'Trend Realisasi' : 'Trend Kegiatan'}
           stroke={mode === 'anggaran' ? '#00C49F' : '#0088FE'} 
           strokeWidth={3}
           dot={{ r: 4 }}
@@ -764,7 +764,7 @@ export default function Dashboard() {
             <TabsList>
               <TabsTrigger value="anggaran" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Berdasarkan Anggaran
+                Berdasarkan Realisasi
               </TabsTrigger>
               <TabsTrigger value="kegiatan" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
@@ -793,7 +793,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">
-              {viewMode === 'kegiatan' ? 'Total Kegiatan' : 'Total Anggaran'}
+              {viewMode === 'kegiatan' ? 'Total Kegiatan' : 'Total Realisasi'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
               <Activity className="h-4 w-4 text-blue-600" />
@@ -817,7 +817,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-800">
-              {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Anggaran per Bulan'}
+              {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Realisasi per Bulan'}
             </CardTitle>
             {viewMode === 'kegiatan' ? (
               <Calendar className="h-4 w-4 text-green-600" />
@@ -833,7 +833,7 @@ export default function Dashboard() {
               }
             </div>
             <p className="text-xs text-green-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Anggaran per bulan'}
+              {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Realisasi per bulan'}
             </p>
           </CardContent>
         </Card>
@@ -841,7 +841,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">
-              {viewMode === 'kegiatan' ? 'Bulan Puncak' : 'Bulan Anggaran Tertinggi'}
+              {viewMode === 'kegiatan' ? 'Bulan Puncak' : 'Bulan Realisasi Tertinggi'}
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
@@ -853,7 +853,7 @@ export default function Dashboard() {
               }
             </div>
             <p className="text-xs text-purple-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Anggaran tertinggi'}
+              {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Realisasi tertinggi'}
             </p>
           </CardContent>
         </Card>
@@ -861,7 +861,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-orange-800">
-              {viewMode === 'kegiatan' ? 'Bulan Slow' : 'Bulan Anggaran Terendah'}
+              {viewMode === 'kegiatan' ? 'Bulan Slow' : 'Bulan Realisasi Terendah'}
             </CardTitle>
             <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
@@ -873,7 +873,7 @@ export default function Dashboard() {
               }
             </div>
             <p className="text-xs text-orange-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Anggaran terendah'}
+              {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Realisasi terendah'}
             </p>
           </CardContent>
         </Card>
@@ -886,14 +886,14 @@ export default function Dashboard() {
             <CardTitle>
               {viewMode === 'kegiatan' 
                 ? 'Top Mitra Statistik Berdasarkan Kegiatan' 
-                : 'Top Mitra Statistik Berdasarkan Anggaran'
+                : 'Top Mitra Statistik Berdasarkan Realisasi'
               }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <SafeBarChart 
               data={currentData.petugas} 
-              title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Anggaran'}
+              title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'}
               mode={viewMode}
             />
           </CardContent>
@@ -904,14 +904,14 @@ export default function Dashboard() {
             <CardTitle>
               {viewMode === 'kegiatan' 
                 ? 'Distribusi Kegiatan per Bulan' 
-                : 'Distribusi Anggaran per Bulan'
+                : 'Distribusi Realisasi per Bulan'
               }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <SafeBarChart 
               data={currentData.bulan} 
-              title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Anggaran'}
+              title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'}
               mode={viewMode}
             />
           </CardContent>
@@ -922,14 +922,14 @@ export default function Dashboard() {
             <CardTitle>
               {viewMode === 'kegiatan' 
                 ? 'Kegiatan per Jenis Pekerjaan' 
-                : 'Anggaran per Jenis Pekerjaan'
+                : 'Realisasi per Jenis Pekerjaan'
               }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <SafePieChart 
               data={currentData.jenisPekerjaan} 
-              title={viewMode === 'kegiatan' ? 'Jenis Pekerjaan' : 'Anggaran per Jenis'}
+              title={viewMode === 'kegiatan' ? 'Jenis Pekerjaan' : 'Realisasi per Jenis'}
               mode={viewMode}
             />
           </CardContent>
@@ -940,14 +940,14 @@ export default function Dashboard() {
             <CardTitle>
               {viewMode === 'kegiatan' 
                 ? 'Distribusi per Role' 
-                : 'Anggaran per Role'
+                : 'Realisasi per Role'
               }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <SafePieChart 
               data={currentData.role} 
-              title={viewMode === 'kegiatan' ? 'Role' : 'Anggaran per Role'}
+              title={viewMode === 'kegiatan' ? 'Role' : 'Realisasi per Role'}
               mode={viewMode}
             />
           </CardContent>
@@ -968,7 +968,7 @@ export default function Dashboard() {
         <CardContent>
           <SafeLineChart 
             data={currentData.bulan} 
-            title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Anggaran'}
+            title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Realisasi'}
             mode={viewMode}
           />
         </CardContent>
