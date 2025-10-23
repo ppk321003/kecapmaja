@@ -34,7 +34,7 @@ const bulanList = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString();
+const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
 
 // Daftar fungsi yang tersedia
 const fungsiList = [
