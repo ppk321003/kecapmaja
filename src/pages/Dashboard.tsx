@@ -160,16 +160,22 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix
-const RiskTooltip = ({ data, position }: { data: RiskHoverData, position: { x: number, y: number } }) => {
+// Komponen RiskTooltip untuk hover di risk matrix - DIPERBAIKI
+const RiskTooltip = ({ 
+  data, 
+  position 
+}: { 
+  data: RiskHoverData; 
+  position: { x: number; y: number };
+}) => {
   if (!data) return null;
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200"
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200"
       style={{
-        left: Math.min(position.x + 10, window.innerWidth - 330),
-        top: position.y - 10,
+        left: position.x,
+        top: position.y,
       }}
     >
       <h4 className="font-semibold text-sm mb-2">
@@ -268,19 +274,24 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang sesuai filter
+// Komponen RiskItem dengan hover yang stabil - DIPERBAIKI
 const RiskItem = ({ 
   item, 
   filterFungsi,
+  index,
+  totalItems,
   onShowRiskTooltip,
   onHideRiskTooltip
 }: { 
   item: RiskData;
   filterFungsi: string;
+  index: number;
+  totalItems: number;
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout>();
 
   const getRiskColor = (level: string) => {
@@ -300,6 +311,43 @@ const RiskItem = ({
     hoverTimeoutRef.current = setTimeout(() => {
       if (itemRef.current) {
         const rect = itemRef.current.getBoundingClientRect();
+        const tooltipWidth = 320; // Lebar tooltip
+        const tooltipHeight = 300; // Tinggi tooltip perkiraan
+        
+        // Hitung posisi optimal
+        let leftPosition = rect.left + rect.width / 2 - tooltipWidth / 2;
+        let topPosition = rect.top + rect.height / 2 - tooltipHeight / 2;
+        
+        // Untuk 4 item terakhir, atur posisi agar tooltip tidak terpotong
+        const isLastFourItems = index >= totalItems - 4;
+        if (isLastFourItems) {
+          // Untuk item terakhir, posisikan tooltip di atas
+          if (topPosition + tooltipHeight > window.innerHeight - 20) {
+            topPosition = rect.top - tooltipHeight - 10;
+          }
+          // Pastikan tooltip tidak keluar dari layar kiri/kanan
+          if (leftPosition < 10) {
+            leftPosition = 10;
+          }
+          if (leftPosition + tooltipWidth > window.innerWidth - 10) {
+            leftPosition = window.innerWidth - tooltipWidth - 10;
+          }
+        } else {
+          // Untuk item lainnya, posisi rata tengah dengan batasan layar
+          if (leftPosition < 10) {
+            leftPosition = 10;
+          }
+          if (leftPosition + tooltipWidth > window.innerWidth - 10) {
+            leftPosition = window.innerWidth - tooltipWidth - 10;
+          }
+          if (topPosition < 10) {
+            topPosition = 10;
+          }
+          if (topPosition + tooltipHeight > window.innerHeight - 10) {
+            topPosition = window.innerHeight - tooltipHeight - 10;
+          }
+        }
+
         onShowRiskTooltip({
           petugas: item.name,
           kegiatan: item.kegiatan,
@@ -307,38 +355,57 @@ const RiskItem = ({
           namaKegiatanList: item.namaKegiatanList,
           filterFungsi: filterFungsi
         }, {
-          x: rect.right,
-          y: rect.top
+          x: leftPosition,
+          y: topPosition
         });
       }
-    }, 100);
+    }, 150); // Sedikit delay untuk stabilitas
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    // Cek apakah cursor berpindah ke tooltip
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget?.closest?.('.risk-tooltip-container')) {
+      return; // Jangan sembunyikan tooltip jika cursor pindah ke tooltip
+    }
+
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
     onHideRiskTooltip();
   };
 
+  const handleTooltipMouseEnter = () => {
+    // Reset timeout ketika cursor masuk ke tooltip
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+  };
+
+  const handleTooltipMouseLeave = () => {
+    onHideRiskTooltip();
+  };
+
   return (
-    <div 
-      ref={itemRef}
-      className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-help"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div className="flex-1">
-        <h4 className="font-semibold">{item.name}</h4>
-        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-          <span>{item.kegiatan} jenis kegiatan</span>
-          <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
+    <>
+      <div 
+        ref={itemRef}
+        className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-help"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex-1">
+          <h4 className="font-semibold">{item.name}</h4>
+          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+            <span>{item.kegiatan} jenis kegiatan</span>
+            <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
+          </div>
         </div>
+        <span className={`px-3 py-1 rounded-full border text-sm font-medium ${getRiskColor(item.riskLevel)}`}>
+          {item.riskLevel}
+        </span>
       </div>
-      <span className={`px-3 py-1 rounded-full border text-sm font-medium ${getRiskColor(item.riskLevel)}`}>
-        {item.riskLevel}
-      </span>
-    </div>
+    </>
   );
 };
 
@@ -480,7 +547,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover yang sesuai filter
+// Komponen Risk Matrix dengan Hover yang stabil - DIPERBAIKI
 const RiskMatrix = ({ 
   data, 
   mode, 
@@ -527,6 +594,8 @@ const RiskMatrix = ({
           key={index}
           item={item}
           filterFungsi={filterFungsi}
+          index={index}
+          totalItems={data.length}
           onShowRiskTooltip={onShowRiskTooltip}
           onHideRiskTooltip={onHideRiskTooltip}
         />
@@ -604,7 +673,7 @@ export default function Dashboard() {
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // State untuk tooltip risk matrix
+  // State untuk tooltip risk matrix - DIPERBAIKI
   const [riskTooltipData, setRiskTooltipData] = useState<RiskHoverData | null>(null);
   const [riskTooltipPosition, setRiskTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -659,7 +728,7 @@ export default function Dashboard() {
     }, 100);
   };
 
-  // Fungsi untuk menampilkan tooltip risk matrix
+  // Fungsi untuk menampilkan tooltip risk matrix - DIPERBAIKI
   const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
     if (hideRiskTooltipTimeout.current) {
       clearTimeout(hideRiskTooltipTimeout.current);
@@ -668,11 +737,11 @@ export default function Dashboard() {
     setRiskTooltipPosition(position);
   };
 
-  // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
+  // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay - DIPERBAIKI
   const handleHideRiskTooltip = () => {
     hideRiskTooltipTimeout.current = setTimeout(() => {
       setRiskTooltipData(null);
-    }, 100);
+    }, 200); // Delay lebih lama untuk memberikan waktu pindah ke tooltip
   };
 
   // Fungsi untuk memfilter data berdasarkan fungsi
@@ -1487,7 +1556,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover */}
+        {/* Risk Assessment dengan Hover - DIPERBAIKI */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1590,9 +1659,22 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Render Risk Tooltip */}
+      {/* Render Risk Tooltip - DIPERBAIKI */}
       {riskTooltipData && (
-        <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
+        <div 
+          className="risk-tooltip-container"
+          onMouseEnter={() => {
+            if (hideRiskTooltipTimeout.current) {
+              clearTimeout(hideRiskTooltipTimeout.current);
+            }
+          }}
+          onMouseLeave={handleHideRiskTooltip}
+        >
+          <RiskTooltip 
+            data={riskTooltipData} 
+            position={riskTooltipPosition}
+          />
+        </div>
       )}
     </div>
   );
