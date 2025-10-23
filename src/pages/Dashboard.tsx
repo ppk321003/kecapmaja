@@ -160,16 +160,33 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix
-const RiskTooltip = ({ data, position }: { data: RiskHoverData, position: { x: number, y: number } }) => {
+// Komponen RiskTooltip untuk hover di risk matrix - DIPERBAIKI POSISI
+const RiskTooltip = ({ data, position, itemIndex, totalItems }: { 
+  data: RiskHoverData, 
+  position: { x: number, y: number },
+  itemIndex: number,
+  totalItems: number 
+}) => {
   if (!data) return null;
+
+  // Hitung posisi optimal untuk menghindari pemotongan layar
+  const isBottomItem = itemIndex >= totalItems - 3; // 3 item terakhir
+  const tooltipHeight = 300; // Perkiraan tinggi tooltip
+  const windowHeight = window.innerHeight;
+  
+  let topPosition = position.y;
+  
+  // Jika item di bagian bawah, posisikan tooltip di atas item
+  if (isBottomItem && (position.y + tooltipHeight > windowHeight - 50)) {
+    topPosition = position.y - tooltipHeight - 10;
+  }
 
   return (
     <div 
       className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200"
       style={{
         left: Math.min(position.x + 10, window.innerWidth - 330),
-        top: position.y - 10,
+        top: topPosition,
       }}
     >
       <h4 className="font-semibold text-sm mb-2">
@@ -268,16 +285,20 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang sesuai filter
+// Komponen RiskItem dengan hover yang sesuai filter - DIPERBAIKI POSISI
 const RiskItem = ({ 
   item, 
   filterFungsi,
+  index,
+  totalItems,
   onShowRiskTooltip,
   onHideRiskTooltip
 }: { 
   item: RiskData;
   filterFungsi: string;
-  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
+  index: number;
+  totalItems: number;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => void;
   onHideRiskTooltip: () => void;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
@@ -308,8 +329,8 @@ const RiskItem = ({
           filterFungsi: filterFungsi
         }, {
           x: rect.right,
-          y: rect.top + rect.height / 2
-        });
+          y: rect.top
+        }, index, totalItems);
       }
     }, 100);
   };
@@ -324,7 +345,7 @@ const RiskItem = ({
   return (
     <div 
       ref={itemRef}
-      className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+      className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-help"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -480,7 +501,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover yang sesuai filter
+// Komponen Risk Matrix dengan Hover yang sesuai filter - DIPERBAIKI
 const RiskMatrix = ({ 
   data, 
   mode, 
@@ -491,7 +512,7 @@ const RiskMatrix = ({
   data: RiskData[]; 
   mode: 'kegiatan' | 'anggaran';
   filterFungsi: string;
-  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => void;
   onHideRiskTooltip: () => void;
 }) => {
   if (!data || data.length === 0) {
@@ -527,6 +548,8 @@ const RiskMatrix = ({
           key={index}
           item={item}
           filterFungsi={filterFungsi}
+          index={index}
+          totalItems={data.length}
           onShowRiskTooltip={onShowRiskTooltip}
           onHideRiskTooltip={onHideRiskTooltip}
         />
@@ -604,9 +627,11 @@ export default function Dashboard() {
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // State untuk tooltip risk matrix
+  // State untuk tooltip risk matrix - DIPERBAIKI
   const [riskTooltipData, setRiskTooltipData] = useState<RiskHoverData | null>(null);
   const [riskTooltipPosition, setRiskTooltipPosition] = useState({ x: 0, y: 0 });
+  const [riskTooltipIndex, setRiskTooltipIndex] = useState<number>(0);
+  const [riskTooltipTotalItems, setRiskTooltipTotalItems] = useState<number>(0);
 
   // Ref untuk menghindari blinking
   const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
@@ -658,13 +683,15 @@ export default function Dashboard() {
     }, 100);
   };
 
-  // Fungsi untuk menampilkan tooltip risk matrix
-  const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
+  // Fungsi untuk menampilkan tooltip risk matrix - DIPERBAIKI
+  const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => {
     if (hideRiskTooltipTimeout.current) {
       clearTimeout(hideRiskTooltipTimeout.current);
     }
     setRiskTooltipData(data);
     setRiskTooltipPosition(position);
+    setRiskTooltipIndex(index);
+    setRiskTooltipTotalItems(totalItems);
   };
 
   // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
@@ -1476,7 +1503,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover */}
+        {/* Risk Assessment dengan Hover - DIPERBAIKI */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1579,9 +1606,14 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Render Risk Tooltip */}
+      {/* Render Risk Tooltip - DIPERBAIKI */}
       {riskTooltipData && (
-        <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
+        <RiskTooltip 
+          data={riskTooltipData} 
+          position={riskTooltipPosition}
+          itemIndex={riskTooltipIndex}
+          totalItems={riskTooltipTotalItems}
+        />
       )}
     </div>
   );
