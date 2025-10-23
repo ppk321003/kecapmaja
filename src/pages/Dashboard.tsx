@@ -1010,7 +1010,7 @@ export default function Dashboard() {
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
                     <th className="text-left py-3 font-semibold">Mitra Statistik</th>
-                    <th className="text-left py-3 font-semibold">PJ Kegiatan</th>
+                    <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
                     <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Realisasi</th>
                   </tr>
