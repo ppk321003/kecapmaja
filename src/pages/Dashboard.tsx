@@ -160,33 +160,16 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix - DIPERBAIKI POSISI
-const RiskTooltip = ({ data, position, itemIndex, totalItems }: { 
-  data: RiskHoverData, 
-  position: { x: number, y: number },
-  itemIndex: number,
-  totalItems: number 
-}) => {
+// Komponen RiskTooltip untuk hover di risk matrix
+const RiskTooltip = ({ data, position }: { data: RiskHoverData, position: { x: number, y: number } }) => {
   if (!data) return null;
-
-  // Hitung posisi optimal untuk menghindari pemotongan layar
-  const isBottomItem = itemIndex >= totalItems - 3; // 3 item terakhir
-  const tooltipHeight = 300; // Perkiraan tinggi tooltip
-  const windowHeight = window.innerHeight;
-  
-  let topPosition = position.y;
-  
-  // Jika item di bagian bawah, posisikan tooltip di atas item
-  if (isBottomItem && (position.y + tooltipHeight > windowHeight - 50)) {
-    topPosition = position.y - tooltipHeight - 10;
-  }
 
   return (
     <div 
       className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200"
       style={{
         left: Math.min(position.x + 10, window.innerWidth - 330),
-        top: topPosition,
+        top: position.y - 10,
       }}
     >
       <h4 className="font-semibold text-sm mb-2">
@@ -285,20 +268,16 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang sesuai filter - DIPERBAIKI POSISI
+// Komponen RiskItem dengan hover yang sesuai filter
 const RiskItem = ({ 
   item, 
   filterFungsi,
-  index,
-  totalItems,
   onShowRiskTooltip,
   onHideRiskTooltip
 }: { 
   item: RiskData;
   filterFungsi: string;
-  index: number;
-  totalItems: number;
-  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => void;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
@@ -330,7 +309,7 @@ const RiskItem = ({
         }, {
           x: rect.right,
           y: rect.top
-        }, index, totalItems);
+        });
       }
     }, 100);
   };
@@ -501,7 +480,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover yang sesuai filter - DIPERBAIKI
+// Komponen Risk Matrix dengan Hover yang sesuai filter
 const RiskMatrix = ({ 
   data, 
   mode, 
@@ -512,7 +491,7 @@ const RiskMatrix = ({
   data: RiskData[]; 
   mode: 'kegiatan' | 'anggaran';
   filterFungsi: string;
-  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => void;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
   if (!data || data.length === 0) {
@@ -548,8 +527,6 @@ const RiskMatrix = ({
           key={index}
           item={item}
           filterFungsi={filterFungsi}
-          index={index}
-          totalItems={data.length}
           onShowRiskTooltip={onShowRiskTooltip}
           onHideRiskTooltip={onHideRiskTooltip}
         />
@@ -627,11 +604,9 @@ export default function Dashboard() {
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // State untuk tooltip risk matrix - DIPERBAIKI
+  // State untuk tooltip risk matrix
   const [riskTooltipData, setRiskTooltipData] = useState<RiskHoverData | null>(null);
   const [riskTooltipPosition, setRiskTooltipPosition] = useState({ x: 0, y: 0 });
-  const [riskTooltipIndex, setRiskTooltipIndex] = useState<number>(0);
-  const [riskTooltipTotalItems, setRiskTooltipTotalItems] = useState<number>(0);
 
   // Ref untuk menghindari blinking
   const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
@@ -653,15 +628,16 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Parse nilai realisasi - DIPERBAIKI untuk handle berbagai format
+  // Parse nilai realisasi - DIPERBAIKI untuk handle format yang berbeda
   const parseNilai = (nilaiStr: string): number => {
     if (!nilaiStr) return 0;
     
-    // Handle format seperti "159.000,-" atau "1.280.000,-"
+    // Handle berbagai format: "159.000,-", "1.280.000,-", "159000", dll.
     const cleaned = nilaiStr
-      .replace(/[^\d,.-]/g, '') // Hapus karakter non-digit kecuali koma dan titik
+      .replace(/[^\d,.-]/g, '') // Hapus karakter non-digit kecuali koma, titik, dan minus
       .replace(/\./g, '') // Hapus titik (separator ribuan)
-      .replace(',', '.'); // Ganti koma dengan titik untuk decimal
+      .replace(/,/g, '.') // Ganti koma dengan titik untuk decimal
+      .replace(/,-$/, ''); // Hapus ",-" di akhir
     
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : Math.round(parsed);
@@ -683,15 +659,13 @@ export default function Dashboard() {
     }, 100);
   };
 
-  // Fungsi untuk menampilkan tooltip risk matrix - DIPERBAIKI
-  const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }, index: number, totalItems: number) => {
+  // Fungsi untuk menampilkan tooltip risk matrix
+  const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
     if (hideRiskTooltipTimeout.current) {
       clearTimeout(hideRiskTooltipTimeout.current);
     }
     setRiskTooltipData(data);
     setRiskTooltipPosition(position);
-    setRiskTooltipIndex(index);
-    setRiskTooltipTotalItems(totalItems);
   };
 
   // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
@@ -803,7 +777,7 @@ export default function Dashboard() {
       // Filter data berdasarkan tahun - DIPERBAIKI: Handle berbagai format periode
       const filteredData = allData.filter((row: any[]) => {
         const periode = row[2]?.toString() || "";
-        // Cek apakah periode mengandung tahun yang dipilih
+        // Cek apakah periode mengandung tahun yang dipilih (handle format seperti "Februari 2025")
         return periode.includes(filterTahun);
       });
 
@@ -839,7 +813,7 @@ export default function Dashboard() {
       let totalKegiatanUnik = new Set<string>();
       let totalRealisasi = 0;
 
-      filteredData.forEach((row: any[]) => {
+      filteredData.forEach((row: any[], rowIndex) => {
         try {
           const periode = row[2]?.toString() || "";
           const role = row[1]?.toString() || "";
@@ -853,14 +827,19 @@ export default function Dashboard() {
           const bulan = bulanMatch ? bulanMatch[1] : "";
           
           // Parse petugas dan nilai realisasi - DIPERBAIKI: Handle format yang berbeda
-          const namaList = namaPetugas.split('|').map((n: string) => n.trim()).filter(n => n);
-          const nilaiList = nilaiRealisasi.split('|').map(parseNilai);
+          const namaList = namaPetugas.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
+          const nilaiList = nilaiRealisasi.split(/\s*\|\s*/).map(parseNilai);
 
-          console.log(`Processing: ${namaKegiatan}, Petugas: ${namaList.length}, Nilai: ${nilaiList.length}`);
+          console.log(`Row ${rowIndex}: ${namaKegiatan}, Petugas: ${namaList.length}, Nilai: ${nilaiList.length}`);
+
+          // Validasi: pastikan jumlah petugas dan nilai sama
+          const validNilaiList = nilaiList.length === namaList.length ? 
+            nilaiList : 
+            Array(namaList.length).fill(0).map((_, i) => nilaiList[i] || 0);
 
           // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
-            const nilai = nilaiList[index] || 0;
+            const nilai = validNilaiList[index] || 0;
             const namaNormalized = nama.trim();
             
             if (!namaNormalized) return; // Skip jika nama kosong
@@ -891,16 +870,19 @@ export default function Dashboard() {
             
             const fungsiData = fungsiMap.get(role)!;
 
+            // Buat identifier unik untuk kegiatan (gabungkan nama + bulan untuk menghindari duplikasi)
+            const kegiatanUnikId = `${namaKegiatan.trim()} - ${bulan} - ${periode}`;
+
             // Kegiatan unik per petugas
             if (!petugasKegiatanUnikMap.has(namaNormalized)) {
               petugasKegiatanUnikMap.set(namaNormalized, new Set());
             }
             if (namaKegiatan && namaKegiatan.trim() !== '') {
-              petugasKegiatanUnikMap.get(namaNormalized)!.add(namaKegiatan.trim());
+              petugasKegiatanUnikMap.get(namaNormalized)!.add(kegiatanUnikId);
               // Hitung kegiatan UNIK untuk tooltip role
-              roleData.kegiatan.add(namaKegiatan.trim());
+              roleData.kegiatan.add(kegiatanUnikId);
               // Hitung kegiatan UNIK untuk fungsi
-              fungsiData.kegiatan.add(namaKegiatan.trim());
+              fungsiData.kegiatan.add(kegiatanUnikId);
               if (!fungsiData.namaKegiatanList.includes(namaKegiatan.trim())) {
                 fungsiData.namaKegiatanList.push(namaKegiatan.trim());
               }
@@ -912,7 +894,7 @@ export default function Dashboard() {
                 bulanKegiatanUnikMap.set(bulan, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                bulanKegiatanUnikMap.get(bulan)!.add(namaKegiatan.trim());
+                bulanKegiatanUnikMap.get(bulan)!.add(kegiatanUnikId);
               }
             }
 
@@ -922,7 +904,7 @@ export default function Dashboard() {
                 jenisPekerjaanKegiatanUnikMap.set(jenisPekerjaan, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                jenisPekerjaanKegiatanUnikMap.get(jenisPekerjaan)!.add(namaKegiatan.trim());
+                jenisPekerjaanKegiatanUnikMap.get(jenisPekerjaan)!.add(kegiatanUnikId);
               }
             }
 
@@ -932,7 +914,7 @@ export default function Dashboard() {
                 roleKegiatanUnikMap.set(role, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                roleKegiatanUnikMap.get(role)!.add(namaKegiatan.trim());
+                roleKegiatanUnikMap.get(role)!.add(kegiatanUnikId);
               }
             }
 
@@ -957,7 +939,7 @@ export default function Dashboard() {
             }
             const detail = petugasDetailMap.get(namaNormalized)!;
             if (namaKegiatan && namaKegiatan.trim() !== '') {
-              detail.namaKegiatanUnik.add(namaKegiatan.trim());
+              detail.namaKegiatanUnik.add(kegiatanUnikId);
               if (!detail.namaKegiatanList.includes(namaKegiatan.trim())) {
                 detail.namaKegiatanList.push(namaKegiatan.trim());
               }
@@ -971,34 +953,34 @@ export default function Dashboard() {
 
           // Total kegiatan unik
           if (namaKegiatan && namaKegiatan.trim() !== '') {
-            totalKegiatanUnik.add(namaKegiatan.trim());
+            totalKegiatanUnik.add(`${namaKegiatan.trim()} - ${bulan} - ${periode}`);
           }
 
           // Anggaran per bulan
           if (bulan && bulanList.includes(bulan)) {
-            const totalNilaiBulan = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
+            const totalNilaiBulan = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentBulanAnggaran = bulanAnggaranMap.get(bulan) || 0;
             bulanAnggaranMap.set(bulan, currentBulanAnggaran + totalNilaiBulan);
           }
 
           // Anggaran per jenis pekerjaan
           if (jenisPekerjaan) {
-            const totalNilaiJenis = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
+            const totalNilaiJenis = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentJenisAnggaran = jenisPekerjaanAnggaranMap.get(jenisPekerjaan) || 0;
             jenisPekerjaanAnggaranMap.set(jenisPekerjaan, currentJenisAnggaran + totalNilaiJenis);
           }
 
           // Anggaran per role
           if (role) {
-            const totalNilaiRole = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
+            const totalNilaiRole = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentRoleAnggaran = roleAnggaranMap.get(role) || 0;
             roleAnggaranMap.set(role, currentRoleAnggaran + totalNilaiRole);
           }
 
-          totalRealisasi += nilaiList.reduce((sum, nilai) => sum + nilai, 0);
+          totalRealisasi += validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
 
         } catch (error) {
-          console.error("Error processing row:", error, row);
+          console.error(`Error processing row ${rowIndex}:`, error, row);
         }
       });
 
@@ -1009,6 +991,7 @@ export default function Dashboard() {
 
       console.log("Petugas processed:", petugasDetailMap.size);
       console.log("Total realisasi:", totalRealisasi);
+      console.log("Sample petugas data:", Array.from(petugasDetailMap.entries()).slice(0, 3));
 
       // Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
       const petugasRoleDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
@@ -1186,6 +1169,7 @@ export default function Dashboard() {
       console.log("Dashboard data loaded successfully");
       console.log("Workload data count:", workloadDataArray.length);
       console.log("Risk data count:", riskDataArray.length);
+      console.log("Sample workload data:", workloadDataArray.slice(0, 5));
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -1503,7 +1487,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover - DIPERBAIKI */}
+        {/* Risk Assessment dengan Hover */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1606,14 +1590,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Render Risk Tooltip - DIPERBAIKI */}
+      {/* Render Risk Tooltip */}
       {riskTooltipData && (
-        <RiskTooltip 
-          data={riskTooltipData} 
-          position={riskTooltipPosition}
-          itemIndex={riskTooltipIndex}
-          totalItems={riskTooltipTotalItems}
-        />
+        <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
       )}
     </div>
   );
