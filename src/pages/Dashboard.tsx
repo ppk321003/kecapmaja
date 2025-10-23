@@ -24,7 +24,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table, Filter } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -35,6 +35,16 @@ const bulanList = [
 ];
 
 const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
+
+// Daftar fungsi yang tersedia
+const fungsiList = [
+  "Semua Fungsi",
+  "Fungsi Distribusi",
+  "Fungsi Produksi",
+  "Fungsi Sosial",
+  "Fungsi Neraca",
+  "Fungsi IPDS"
+];
 
 // Warna untuk charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -432,6 +442,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
+  const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     totalRealisasi: 0,
@@ -474,6 +485,8 @@ export default function Dashboard() {
   // Data untuk grafik baru
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
   const [riskData, setRiskData] = useState<RiskData[]>([]);
+  const [allWorkloadData, setAllWorkloadData] = useState<WorkloadData[]>([]);
+  const [allRiskData, setAllRiskData] = useState<RiskData[]>([]);
 
   // State untuk tooltip role
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
@@ -481,6 +494,7 @@ export default function Dashboard() {
 
   // Ref untuk menghindari blinking
   const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
+  const allPetugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
   const hideTooltipTimeout = useRef<NodeJS.Timeout>();
 
   const { toast } = useToast();
@@ -516,6 +530,88 @@ export default function Dashboard() {
       setRoleTooltipData(null);
     }, 100);
   };
+
+  // Fungsi untuk memfilter data berdasarkan fungsi
+  const filterDataByFungsi = () => {
+    if (filterFungsi === "Semua Fungsi") {
+      setWorkloadData(allWorkloadData);
+      setRiskData(allRiskData);
+      petugasRoleData.current = allPetugasRoleData.current;
+    } else {
+      // Filter workload data berdasarkan fungsi
+      const filteredWorkloadData = allWorkloadData
+        .map(item => {
+          // Cek apakah petugas memiliki role yang sesuai dengan filter
+          const hasMatchingRole = item.roles.some(role => role === filterFungsi);
+          if (!hasMatchingRole) return null;
+
+          // Hitung ulang data hanya untuk fungsi yang dipilih
+          const roleMap = allPetugasRoleData.current.get(item.petugas);
+          if (!roleMap) return null;
+
+          const roleData = roleMap.get(filterFungsi);
+          if (!roleData) return null;
+
+          return {
+            ...item,
+            jumlahKegiatan: roleData.kegiatan,
+            totalAnggaran: roleData.anggaran,
+            roles: [filterFungsi] // Hanya tampilkan fungsi yang dipilih
+          };
+        })
+        .filter((item): item is WorkloadData => item !== null)
+        .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
+        .slice(0, 15);
+
+      // Filter risk data berdasarkan fungsi
+      const filteredRiskData = allRiskData
+        .map(item => {
+          const roleMap = allPetugasRoleData.current.get(item.name);
+          if (!roleMap) return null;
+
+          const roleData = roleMap.get(filterFungsi);
+          if (!roleData) return null;
+
+          let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
+          if (roleData.kegiatan < 10) {
+            riskLevel = 'Rendah';
+          } else if (roleData.kegiatan >= 10 && roleData.kegiatan <= 25) {
+            riskLevel = 'Sedang';
+          } else {
+            riskLevel = 'Tinggi';
+          }
+
+          return {
+            ...item,
+            kegiatan: roleData.kegiatan,
+            anggaran: roleData.anggaran,
+            riskLevel: riskLevel
+          };
+        })
+        .filter((item): item is RiskData => item !== null)
+        .sort((a, b) => b.kegiatan - a.kegiatan)
+        .slice(0, 10);
+
+      // Filter petugas role data untuk tooltip
+      const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
+      allPetugasRoleData.current.forEach((roleMap, petugas) => {
+        const roleData = roleMap.get(filterFungsi);
+        if (roleData) {
+          const newRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
+          newRoleMap.set(filterFungsi, roleData);
+          filteredPetugasRoleData.set(petugas, newRoleMap);
+        }
+      });
+
+      setWorkloadData(filteredWorkloadData);
+      setRiskData(filteredRiskData);
+      petugasRoleData.current = filteredPetugasRoleData;
+    }
+  };
+
+  useEffect(() => {
+    filterDataByFungsi();
+  }, [filterFungsi, allWorkloadData, allRiskData]);
 
   const fetchDashboardData = async () => {
     try {
@@ -760,7 +856,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - Top 15 Petugas
+      // Prepare workload data - Top 15 Petugas (SEMUA FUNGSI)
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -771,7 +867,7 @@ export default function Dashboard() {
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 15);
 
-      // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
+      // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak (SEMUA FUNGSI)
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
           const jumlahNamaKegiatanUnik = detail.kegiatanUnik;
@@ -857,8 +953,13 @@ export default function Dashboard() {
         }
       });
 
+      // Simpan semua data untuk filtering
+      setAllWorkloadData(workloadDataArray);
+      setAllRiskData(riskDataArray);
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
+      
+      allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
 
     } catch (error: any) {
@@ -1010,7 +1111,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">
-              {viewMode === 'kegiatan' ? 'Bulan Puncak' : 'Bulan Realisasi Tertinggi'}
+              {viewMode === 'kegiatan' ? 'Bulan Puncak Kegiatan' : 'Bulan Realisasi Tertinggi'}
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
@@ -1030,7 +1131,7 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-orange-800">
-              {viewMode === 'kegiatan' ? 'Bulan Slow' : 'Bulan Realisasi Terendah'}
+              {viewMode === 'kegiatan' ? 'Bulan Kegiatan Rendah' : 'Bulan Realisasi Terendah'}
             </CardTitle>
             <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
@@ -1143,6 +1244,35 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Filter Fungsi untuk Risk Assessment dan Workload Distribution */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Analisis Detail</h2>
+          <p className="text-muted-foreground mt-1">
+            Analisis mendalam berdasarkan fungsi dan risiko
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Filter Fungsi:</span>
+            <Select value={filterFungsi} onValueChange={setFilterFungsi}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Pilih Fungsi" />
+              </SelectTrigger>
+              <SelectContent>
+                {fungsiList.map(fungsi => (
+                  <SelectItem key={fungsi} value={fungsi}>
+                    {fungsi}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Risk Assessment dengan Hover */}
@@ -1150,10 +1280,13 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              Assesmen Risiko
+              Assesmen Risiko - {filterFungsi}
             </CardTitle>
             <CardDescription>
-              Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail
+              {filterFungsi === "Semua Fungsi" 
+                ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail"
+                : `Top 10 Mitra Statistik untuk ${filterFungsi} - Hover untuk melihat detail`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1166,10 +1299,13 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Table className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 15 Mitra Statistik
+              Distribusi Realisasi Honor - Top 15 Mitra Statistik {filterFungsi !== "Semua Fungsi" ? `- ${filterFungsi}` : ""}
             </CardTitle>
             <CardDescription>
-              Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi
+              {filterFungsi === "Semua Fungsi"
+                ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi"
+                : `Tabel detail distribusi realisasi honor untuk ${filterFungsi} - Hover untuk melihat detail`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1224,7 +1360,12 @@ export default function Dashboard() {
             </div>
             {workloadData.length === 0 && (
               <div className="flex items-center justify-center h-32">
-                <p className="text-muted-foreground">Tidak ada data untuk ditampilkan</p>
+                <p className="text-muted-foreground">
+                  {filterFungsi === "Semua Fungsi" 
+                    ? "Tidak ada data untuk ditampilkan" 
+                    : `Tidak ada data untuk ${filterFungsi}`
+                  }
+                </p>
               </div>
             )}
           </CardContent>
