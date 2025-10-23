@@ -939,15 +939,15 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>
               {viewMode === 'kegiatan' 
-                ? 'Distribusi per Role' 
-                : 'Realisasi per Role'
+                ? 'Distribusi per Penanggung Jawab Kegiatan' 
+                : 'Realisasi per Penanggung Jawab Kegiatan'
               }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <SafePieChart 
               data={currentData.role} 
-              title={viewMode === 'kegiatan' ? 'Role' : 'Realisasi per Role'}
+              title={viewMode === 'kegiatan' ? 'Role' : 'Realisasi per Penanggung Jawab Kegiatan'}
               mode={viewMode}
             />
           </CardContent>
