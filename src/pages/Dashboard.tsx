@@ -90,6 +90,15 @@ interface RoleTooltipData {
   petugas: string;
 }
 
+// Interface untuk data hover risk matrix
+interface RiskHoverData {
+  petugas: string;
+  kegiatan: number;
+  anggaran: number;
+  namaKegiatanList: string[];
+  filterFungsi: string;
+}
+
 // Custom Tooltip untuk currency dengan format yang lebih baik
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   if (active && payload && payload.length) {
@@ -151,6 +160,57 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
+// Komponen RiskTooltip untuk hover di risk matrix - DIPERBAIKI
+const RiskTooltip = ({ data, position }: { data: RiskHoverData, position: { x: number, y: number } }) => {
+  if (!data) return null;
+
+  return (
+    <div 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200"
+      style={{
+        left: Math.min(position.x + 10, window.innerWidth - 330),
+        top: position.y - 10,
+      }}
+    >
+      <h4 className="font-semibold text-sm mb-2">
+        {data.filterFungsi === "Semua Fungsi" ? "Semua Fungsi" : data.filterFungsi}
+      </h4>
+      <div className="space-y-2 text-xs">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Mitra:</span>
+          <span className="font-medium">{data.petugas}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Jumlah Kegiatan:</span>
+          <span className="font-medium">{data.kegiatan.toLocaleString('id-ID')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Realisasi:</span>
+          <span className="font-medium">
+            {new Intl.NumberFormat('id-ID', {
+              style: 'currency',
+              currency: 'IDR',
+              minimumFractionDigits: 0,
+            }).format(data.anggaran)}
+          </span>
+        </div>
+        <div className="mt-2">
+          <h5 className="font-semibold mb-1">Jenis Kegiatan ({data.kegiatan}):</h5>
+          <div className="max-h-32 overflow-y-auto border rounded p-2">
+            <ul className="space-y-1">
+              {data.namaKegiatanList.map((kegiatan, idx) => (
+                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
+                  • {kegiatan}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Komponen RoleBadge dengan tooltip stabil
 const RoleBadge = ({ 
   role, 
@@ -205,6 +265,80 @@ const RoleBadge = ({
     >
       {role}
     </span>
+  );
+};
+
+// Komponen RiskItem dengan hover yang sesuai filter - DIPERBAIKI
+const RiskItem = ({ 
+  item, 
+  filterFungsi,
+  onShowRiskTooltip,
+  onHideRiskTooltip
+}: { 
+  item: RiskData;
+  filterFungsi: string;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
+  onHideRiskTooltip: () => void;
+}) => {
+  const itemRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const getRiskColor = (level: string) => {
+    switch (level) {
+      case 'Rendah': return 'bg-green-100 text-green-800 border-green-300';
+      case 'Sedang': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'Tinggi': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (itemRef.current) {
+        const rect = itemRef.current.getBoundingClientRect();
+        onShowRiskTooltip({
+          petugas: item.name,
+          kegiatan: item.kegiatan,
+          anggaran: item.anggaran,
+          namaKegiatanList: item.namaKegiatanList,
+          filterFungsi: filterFungsi
+        }, {
+          x: rect.right,
+          y: rect.top + rect.height / 2
+        });
+      }
+    }, 100);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    onHideRiskTooltip();
+  };
+
+  return (
+    <div 
+      ref={itemRef}
+      className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className="flex-1">
+        <h4 className="font-semibold">{item.name}</h4>
+        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+          <span>{item.kegiatan} jenis kegiatan</span>
+          <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+      <span className={`px-3 py-1 rounded-full border text-sm font-medium ${getRiskColor(item.riskLevel)}`}>
+        {item.riskLevel}
+      </span>
+    </div>
   );
 };
 
@@ -346,8 +480,20 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover di samping kanan dan tepat di tengah
-const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
+// Komponen Risk Matrix dengan Hover yang sesuai filter - DIPERBAIKI
+const RiskMatrix = ({ 
+  data, 
+  mode, 
+  filterFungsi,
+  onShowRiskTooltip,
+  onHideRiskTooltip 
+}: { 
+  data: RiskData[]; 
+  mode: 'kegiatan' | 'anggaran';
+  filterFungsi: string;
+  onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
+  onHideRiskTooltip: () => void;
+}) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -355,15 +501,6 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
       </div>
     );
   }
-
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'Rendah': return 'bg-green-100 text-green-800 border-green-300';
-      case 'Sedang': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'Tinggi': return 'bg-red-100 text-red-800 border-red-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
 
   return (
     <div className="space-y-3">
@@ -386,38 +523,13 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
       </div>
       
       {data.map((item, index) => (
-        <div 
-          key={index} 
-          className="group relative flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex-1">
-            <h4 className="font-semibold">{item.name}</h4>
-            <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-              <span>{item.kegiatan} jenis kegiatan</span>
-              <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
-            </div>
-          </div>
-          <span className={`px-3 py-1 rounded-full border text-sm font-medium ${getRiskColor(item.riskLevel)}`}>
-            {item.riskLevel}
-          </span>
-          
-          {/* Hover Tooltip di samping kanan dan tepat di tengah */}
-          <div className="absolute invisible group-hover:visible z-50 left-full top-1/2 transform -translate-y-1/2 ml-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
-            <h5 className="font-semibold text-sm mb-2">Jenis Kegiatan ({item.kegiatan}):</h5>
-            <div className="max-h-40 overflow-y-auto">
-              <ul className="space-y-1 text-xs">
-                {item.namaKegiatanList.map((kegiatan, idx) => (
-                  <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
-                    • {kegiatan}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              Arahkan kursor untuk melihat detail
-            </div>
-          </div>
-        </div>
+        <RiskItem
+          key={index}
+          item={item}
+          filterFungsi={filterFungsi}
+          onShowRiskTooltip={onShowRiskTooltip}
+          onHideRiskTooltip={onHideRiskTooltip}
+        />
       ))}
     </div>
   );
@@ -492,10 +604,18 @@ export default function Dashboard() {
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
+  // State untuk tooltip risk matrix - DIPERBAIKI
+  const [riskTooltipData, setRiskTooltipData] = useState<RiskHoverData | null>(null);
+  const [riskTooltipPosition, setRiskTooltipPosition] = useState({ x: 0, y: 0 });
+
   // Ref untuk menghindari blinking
   const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
   const allPetugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
   const hideTooltipTimeout = useRef<NodeJS.Timeout>();
+  const hideRiskTooltipTimeout = useRef<NodeJS.Timeout>();
+
+  // Map untuk menyimpan data kegiatan per fungsi per petugas - DIPERBAIKI
+  const petugasFungsiKegiatanMap = useRef<Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>>(new Map());
 
   const { toast } = useToast();
 
@@ -515,7 +635,7 @@ export default function Dashboard() {
     return parseInt(cleaned) || 0;
   };
 
-  // Fungsi untuk menampilkan tooltip
+  // Fungsi untuk menampilkan tooltip role
   const handleShowTooltip = (data: RoleTooltipData, position: { x: number; y: number }) => {
     if (hideTooltipTimeout.current) {
       clearTimeout(hideTooltipTimeout.current);
@@ -524,10 +644,26 @@ export default function Dashboard() {
     setTooltipPosition(position);
   };
 
-  // Fungsi untuk menyembunyikan tooltip dengan delay
+  // Fungsi untuk menyembunyikan tooltip role dengan delay
   const handleHideTooltip = () => {
     hideTooltipTimeout.current = setTimeout(() => {
       setRoleTooltipData(null);
+    }, 100);
+  };
+
+  // Fungsi untuk menampilkan tooltip risk matrix - DIPERBAIKI
+  const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
+    if (hideRiskTooltipTimeout.current) {
+      clearTimeout(hideRiskTooltipTimeout.current);
+    }
+    setRiskTooltipData(data);
+    setRiskTooltipPosition(position);
+  };
+
+  // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
+  const handleHideRiskTooltip = () => {
+    hideRiskTooltipTimeout.current = setTimeout(() => {
+      setRiskTooltipData(null);
     }, 100);
   };
 
@@ -538,7 +674,7 @@ export default function Dashboard() {
       setRiskData(allRiskData);
       petugasRoleData.current = allPetugasRoleData.current;
     } else {
-      // Filter workload data berdasarkan fungsi - DIPERBAIKI: Urutkan setelah filtering
+      // Filter workload data berdasarkan fungsi
       const filteredWorkloadData = allWorkloadData
         .map(item => {
           const roleMap = allPetugasRoleData.current.get(item.petugas);
@@ -555,37 +691,39 @@ export default function Dashboard() {
           };
         })
         .filter((item): item is WorkloadData => item !== null)
-        .sort((a, b) => b.totalAnggaran - a.totalAnggaran) // DIPERBAIKI: Urutkan setelah filtering
+        .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 15);
 
-      // Filter risk data berdasarkan fungsi - DIPERBAIKI: Urutkan setelah filtering
-      const filteredRiskData = allRiskData
-        .map(item => {
-          const roleMap = allPetugasRoleData.current.get(item.name);
-          if (!roleMap) return null;
+      // Filter risk data berdasarkan fungsi - DIPERBAIKI: Gunakan data yang sesuai filter
+      const filteredRiskData: RiskData[] = [];
+      
+      allRiskData.forEach(item => {
+        const fungsiMap = petugasFungsiKegiatanMap.current.get(item.name);
+        if (!fungsiMap) return;
 
-          const roleData = roleMap.get(filterFungsi);
-          if (!roleData) return null;
+        const fungsiData = fungsiMap.get(filterFungsi);
+        if (!fungsiData) return;
 
-          let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
-          if (roleData.kegiatan < 10) {
-            riskLevel = 'Rendah';
-          } else if (roleData.kegiatan >= 10 && roleData.kegiatan <= 25) {
-            riskLevel = 'Sedang';
-          } else {
-            riskLevel = 'Tinggi';
-          }
+        let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
+        if (fungsiData.kegiatan < 10) {
+          riskLevel = 'Rendah';
+        } else if (fungsiData.kegiatan >= 10 && fungsiData.kegiatan <= 25) {
+          riskLevel = 'Sedang';
+        } else {
+          riskLevel = 'Tinggi';
+        }
 
-          return {
-            ...item,
-            kegiatan: roleData.kegiatan,
-            anggaran: roleData.anggaran,
-            riskLevel: riskLevel
-          };
-        })
-        .filter((item): item is RiskData => item !== null)
-        .sort((a, b) => b.kegiatan - a.kegiatan) // DIPERBAIKI: Urutkan setelah filtering
-        .slice(0, 10);
+        filteredRiskData.push({
+          name: item.name,
+          kegiatan: fungsiData.kegiatan,
+          anggaran: fungsiData.anggaran,
+          riskLevel: riskLevel,
+          namaKegiatanList: fungsiData.namaKegiatanList
+        });
+      });
+
+      // Urutkan risk data berdasarkan jumlah kegiatan
+      filteredRiskData.sort((a, b) => b.kegiatan - a.kegiatan).slice(0, 10);
 
       // Filter petugas role data untuk tooltip
       const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
@@ -648,7 +786,7 @@ export default function Dashboard() {
       const jenisPekerjaanAnggaranMap = new Map<string, number>();
       const roleAnggaranMap = new Map<string, number>();
 
-      // Maps untuk data workload dan risk - DIPERBAIKI: Normalisasi nama
+      // Maps untuk data workload dan risk
       const petugasDetailMap = new Map<string, { 
         kegiatanUnik: number, 
         totalAnggaran: number, 
@@ -659,6 +797,9 @@ export default function Dashboard() {
 
       // Map untuk data role per petugas (UNTUK TOOLTIP) - MENGGUNAKAN KEGIATAN UNIK
       const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number }>>();
+
+      // Map untuk data per fungsi per petugas - DIPERBAIKI
+      const petugasFungsiDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number; namaKegiatanList: string[] }>>();
 
       let totalKegiatanUnik = new Set<string>();
       let totalRealisasi = 0;
@@ -675,14 +816,14 @@ export default function Dashboard() {
           // Extract bulan dari periode
           const bulan = periode.split(' ')[0];
           
-          // Parse petugas dan nilai realisasi - DIPERBAIKI: Normalisasi nama
+          // Parse petugas dan nilai realisasi
           const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
           const nilaiList = nilaiRealisasi.split(' | ').map(parseNilai);
 
           // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
             const nilai = nilaiList[index] || 0;
-            const namaNormalized = nama.trim(); // DIPERBAIKI: Normalisasi nama
+            const namaNormalized = nama.trim();
             
             // Inisialisasi map untuk petugas jika belum ada (UNTUK TOOLTIP)
             if (!petugasRoleDetailMap.has(namaNormalized)) {
@@ -698,6 +839,18 @@ export default function Dashboard() {
             
             const roleData = roleMap.get(role)!;
             
+            // Inisialisasi map untuk fungsi per petugas - DIPERBAIKI
+            if (!petugasFungsiDetailMap.has(namaNormalized)) {
+              petugasFungsiDetailMap.set(namaNormalized, new Map());
+            }
+            
+            const fungsiMap = petugasFungsiDetailMap.get(namaNormalized)!;
+            if (!fungsiMap.has(role)) {
+              fungsiMap.set(role, { kegiatan: new Set(), anggaran: 0, namaKegiatanList: [] });
+            }
+            
+            const fungsiData = fungsiMap.get(role)!;
+
             // Kegiatan unik per petugas
             if (!petugasKegiatanUnikMap.has(namaNormalized)) {
               petugasKegiatanUnikMap.set(namaNormalized, new Set());
@@ -706,6 +859,11 @@ export default function Dashboard() {
               petugasKegiatanUnikMap.get(namaNormalized)!.add(namaKegiatan.trim());
               // Hitung kegiatan UNIK untuk tooltip role
               roleData.kegiatan.add(namaKegiatan.trim());
+              // Hitung kegiatan UNIK untuk fungsi
+              fungsiData.kegiatan.add(namaKegiatan.trim());
+              if (!fungsiData.namaKegiatanList.includes(namaKegiatan.trim())) {
+                fungsiData.namaKegiatanList.push(namaKegiatan.trim());
+              }
             }
 
             // Kegiatan unik per bulan
@@ -742,8 +900,10 @@ export default function Dashboard() {
             petugasAnggaranMap.set(namaNormalized, (petugasAnggaranMap.get(namaNormalized) || 0) + nilai);
             // Tambahkan anggaran untuk tooltip role
             roleData.anggaran += nilai;
+            // Tambahkan anggaran untuk fungsi
+            fungsiData.anggaran += nilai;
 
-            // Workload data - DIPERBAIKI: Gunakan nama yang dinormalisasi
+            // Workload data
             if (!petugasDetailMap.has(namaNormalized)) {
               petugasDetailMap.set(namaNormalized, { 
                 kegiatanUnik: 0, 
@@ -808,11 +968,25 @@ export default function Dashboard() {
         const convertedRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
         roleMap.forEach((roleData, role) => {
           convertedRoleMap.set(role, {
-            kegiatan: roleData.kegiatan.size, // Menggunakan size dari Set (kegiatan unik)
+            kegiatan: roleData.kegiatan.size,
             anggaran: roleData.anggaran
           });
         });
         petugasRoleDataFinal.set(petugas, convertedRoleMap);
+      });
+
+      // Konversi petugasFungsiDetailMap untuk risk matrix - DIPERBAIKI
+      const petugasFungsiDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>();
+      petugasFungsiDetailMap.forEach((fungsiMap, petugas) => {
+        const convertedFungsiMap = new Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>();
+        fungsiMap.forEach((fungsiData, fungsi) => {
+          convertedFungsiMap.set(fungsi, {
+            kegiatan: fungsiData.kegiatan.size,
+            anggaran: fungsiData.anggaran,
+            namaKegiatanList: fungsiData.namaKegiatanList.sort()
+          });
+        });
+        petugasFungsiDataFinal.set(petugas, convertedFungsiMap);
       });
 
       // Prepare chart data untuk KEGIATAN menggunakan data unik
@@ -852,7 +1026,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Prepare workload data - Top 15 Petugas (SEMUA FUNGSI) - DIPERBAIKI: Normalisasi nama
+      // Prepare workload data - Top 15 Petugas (SEMUA FUNGSI)
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -860,10 +1034,10 @@ export default function Dashboard() {
           totalAnggaran: detail.totalAnggaran,
           roles: Array.from(detail.roles)
         }))
-        .sort((a, b) => b.totalAnggaran - a.totalAnggaran) // DIPERBAIKI: Urutkan berdasarkan anggaran
+        .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 15);
 
-      // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak (SEMUA FUNGSI) - DIPERBAIKI: Normalisasi nama
+      // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak (SEMUA FUNGSI)
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
           const jumlahNamaKegiatanUnik = detail.kegiatanUnik;
@@ -886,7 +1060,7 @@ export default function Dashboard() {
             namaKegiatanList: detail.namaKegiatanList.sort()
           };
         })
-        .sort((a, b) => b.kegiatan - a.kegiatan) // DIPERBAIKI: Urutkan berdasarkan jumlah kegiatan
+        .sort((a, b) => b.kegiatan - a.kegiatan)
         .slice(0, 10);
 
       // Hitung stats menggunakan data unik
@@ -957,6 +1131,9 @@ export default function Dashboard() {
       
       allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
+      
+      // Simpan data fungsi untuk risk matrix - DIPERBAIKI
+      petugasFungsiKegiatanMap.current = petugasFungsiDataFinal;
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -979,6 +1156,9 @@ export default function Dashboard() {
     return () => {
       if (hideTooltipTimeout.current) {
         clearTimeout(hideTooltipTimeout.current);
+      }
+      if (hideRiskTooltipTimeout.current) {
+        clearTimeout(hideRiskTooltipTimeout.current);
       }
     };
   }, []);
@@ -1271,7 +1451,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover */}
+        {/* Risk Assessment dengan Hover - DIPERBAIKI */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1286,7 +1466,13 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RiskMatrix data={riskData} mode={viewMode} />
+            <RiskMatrix 
+              data={riskData} 
+              mode={viewMode}
+              filterFungsi={filterFungsi}
+              onShowRiskTooltip={handleShowRiskTooltip}
+              onHideRiskTooltip={handleHideRiskTooltip}
+            />
           </CardContent>
         </Card>
 
@@ -1367,6 +1553,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Render Risk Tooltip */}
+      {riskTooltipData && (
+        <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
+      )}
     </div>
   );
 }
