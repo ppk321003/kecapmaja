@@ -123,7 +123,7 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
           <span className="font-medium">{data.petugas}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Total Kegiatan:</span>
+          <span className="text-muted-foreground">Jumlah Kegiatan:</span>
           <span className="font-medium">{data.totalKegiatan.toLocaleString('id-ID')}</span>
         </div>
         <div className="flex justify-between">
@@ -566,8 +566,8 @@ export default function Dashboard() {
         namaKegiatanList: string[]
       }>();
 
-      // Map untuk data role per petugas (UNTUK TOOLTIP)
-      const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: number, anggaran: number }>>();
+      // Map untuk data role per petugas (UNTUK TOOLTIP) - MENGGUNAKAN KEGIATAN UNIK
+      const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number }>>();
 
       let totalKegiatanUnik = new Set<string>();
       let totalRealisasi = 0;
@@ -599,9 +599,9 @@ export default function Dashboard() {
             
             const roleMap = petugasRoleDetailMap.get(nama)!;
             
-            // Inisialisasi data untuk role jika belum ada
+            // Inisialisasi data untuk role jika belum ada - MENGGUNAKAN SET UNTUK KEGIATAN UNIK
             if (!roleMap.has(role)) {
-              roleMap.set(role, { kegiatan: 0, anggaran: 0 });
+              roleMap.set(role, { kegiatan: new Set(), anggaran: 0 });
             }
             
             const roleData = roleMap.get(role)!;
@@ -612,8 +612,8 @@ export default function Dashboard() {
             }
             if (namaKegiatan && namaKegiatan.trim() !== '') {
               petugasKegiatanUnikMap.get(nama)!.add(namaKegiatan.trim());
-              // Hitung kegiatan untuk tooltip role
-              roleData.kegiatan += 1;
+              // Hitung kegiatan UNIK untuk tooltip role
+              roleData.kegiatan.add(namaKegiatan.trim());
             }
 
             // Kegiatan unik per bulan
@@ -708,6 +708,19 @@ export default function Dashboard() {
       // Update kegiatanUnik untuk setiap petugas
       petugasDetailMap.forEach((detail, petugas) => {
         detail.kegiatanUnik = detail.namaKegiatanUnik.size;
+      });
+
+      // Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
+      const petugasRoleDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
+      petugasRoleDetailMap.forEach((roleMap, petugas) => {
+        const convertedRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
+        roleMap.forEach((roleData, role) => {
+          convertedRoleMap.set(role, {
+            kegiatan: roleData.kegiatan.size, // Menggunakan size dari Set (kegiatan unik)
+            anggaran: roleData.anggaran
+          });
+        });
+        petugasRoleDataFinal.set(petugas, convertedRoleMap);
       });
 
       // Prepare chart data untuk KEGIATAN menggunakan data unik
@@ -846,7 +859,7 @@ export default function Dashboard() {
 
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
-      petugasRoleData.current = petugasRoleDetailMap;
+      petugasRoleData.current = petugasRoleDataFinal;
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
