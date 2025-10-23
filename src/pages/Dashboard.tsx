@@ -160,7 +160,7 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix - PERBAIKAN POSISI
+// Komponen RiskTooltip untuk hover di risk matrix - POSISI DI SAMPING BARIS
 const RiskTooltip = ({ 
   data, 
   position 
@@ -174,8 +174,8 @@ const RiskTooltip = ({
     <div 
       className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200"
       style={{
-        left: position.x + 100, // GESER 100px KE KANAN
-        top: position.y - 50,   // SESUAIKAN VERTIKAL
+        left: position.x,
+        top: position.y,
       }}
     >
       <h4 className="font-semibold text-sm mb-2">
@@ -274,7 +274,7 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang stabil - PERBAIKAN POSISI
+// Komponen RiskItem dengan hover yang stabil - POSISI DI SAMPING BARIS
 const RiskItem = ({ 
   item, 
   filterFungsi,
@@ -311,28 +311,19 @@ const RiskItem = ({
       if (itemRef.current) {
         const rect = itemRef.current.getBoundingClientRect();
         const tooltipWidth = 320;
-        const tooltipHeight = 300;
         
-        // POSISI TOOLTIP DI SEBELAH KANAN DENGAN JARAK YANG LEBIH BESAR
-        let leftPosition = rect.right + 80; // GESER 80px KE KANAN DARI ELEMENT
-        let topPosition = rect.top - 50;    // SESUAIKAN POSISI VERTIKAL
+        // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT
+        let leftPosition = rect.right + 15; // 15px dari sebelah kanan baris
+        let topPosition = rect.top - 10;    // Sedikit di atas baris
         
-        // Jika tooltip terlalu ke kanan, posisikan di kiri item
+        // Jika tooltip terlalu ke kanan, posisikan di kiri baris
         if (leftPosition + tooltipWidth > window.innerWidth - 20) {
-          leftPosition = rect.left - tooltipWidth - 20;
+          leftPosition = rect.left - tooltipWidth - 10;
         }
         
         // Jika tooltip terlalu ke bawah, adjust posisi vertikal
-        if (topPosition + tooltipHeight > window.innerHeight - 20) {
-          topPosition = window.innerHeight - tooltipHeight - 20;
-        }
-        
-        // Pastikan posisi tidak keluar dari viewport
         if (topPosition < 20) {
           topPosition = 20;
-        }
-        if (leftPosition < 20) {
-          leftPosition = 20;
         }
 
         onShowRiskTooltip({
