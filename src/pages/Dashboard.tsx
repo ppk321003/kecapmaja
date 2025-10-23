@@ -174,7 +174,7 @@ const RiskTooltip = ({
     <div 
       className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200"
       style={{
-        left: position.x,
+        left: position.x + 20, // Geser sedikit ke kanan
         top: position.y,
       }}
     >
@@ -349,7 +349,7 @@ const RiskItem = ({
           namaKegiatanList: item.namaKegiatanList,
           filterFungsi: filterFungsi
         }, {
-          x: leftPosition,
+          x: leftPosition + 20, // Geser sedikit ke kanan
           y: topPosition
         });
       }
@@ -1413,8 +1413,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold text-purple-900">
               {viewMode === 'kegiatan' 
-                ? `${stats.bulanPeakKegiatan.name} (${stats.bulanPeakKegiatan.value})`
-                : `${stats.bulanPeakAnggaran.name} (${formatRupiah(stats.bulanPeakAnggaran.value)})`
+                ? `${stats.bulanPeakKegiatan.name} ${stats.bulanPeakKegiatan.value}` // HILANGKAN TANDA ()
+                : `${stats.bulanPeakAnggaran.name} ${formatRupiah(stats.bulanPeakAnggaran.value)}` // HILANGKAN TANDA ()
               }
             </div>
             <p className="text-xs text-purple-700">
@@ -1433,8 +1433,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold text-orange-900">
               {viewMode === 'kegiatan' 
-                ? `${stats.bulanSlowKegiatan.name} (${stats.bulanSlowKegiatan.value})`
-                : `${stats.bulanSlowAnggaran.name} (${formatRupiah(stats.bulanSlowAnggaran.value)})`
+                ? `${stats.bulanSlowKegiatan.name} ${stats.bulanSlowKegiatan.value}` // HILANGKAN TANDA ()
+                : `${stats.bulanSlowAnggaran.name} ${formatRupiah(stats.bulanSlowAnggaran.value)}` // HILANGKAN TANDA ()
               }
             </div>
             <p className="text-xs text-orange-700">
@@ -1443,6 +1443,26 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Trend Line Chart - DIPINDAHKAN ke urutan pertama setelah box metrics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Realisasi'} per Bulan
+          </CardTitle>
+          <CardDescription>
+            Melihat pola musiman dan prediksi kebutuhan ke depan
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SafeLineChart 
+            data={currentData.bulan} 
+            title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Realisasi'}
+            mode={viewMode}
+          />
+        </CardContent>
+      </Card>
 
       {/* Charts Grid - DIKEMBALIKAN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1518,26 +1538,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Trend Line Chart - DIKEMBALIKAN */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Realisasi'} per Bulan
-          </CardTitle>
-          <CardDescription>
-            Melihat pola musiman dan prediksi kebutuhan ke depan
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SafeLineChart 
-            data={currentData.bulan} 
-            title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Realisasi'}
-            mode={viewMode}
-          />
-        </CardContent>
-      </Card>
 
       {/* Filter Fungsi untuk Risk Assessment dan Workload Distribution */}
       <div className="flex justify-between items-center">
