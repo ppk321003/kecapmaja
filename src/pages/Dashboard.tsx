@@ -160,7 +160,7 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix
+// Komponen RiskTooltip untuk hover di risk matrix - PERBAIKAN POSISI
 const RiskTooltip = ({ 
   data, 
   position 
@@ -174,8 +174,8 @@ const RiskTooltip = ({
     <div 
       className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200"
       style={{
-        left: position.x + 20, // Geser sedikit ke kanan
-        top: position.y,
+        left: position.x + 100, // GESER 100px KE KANAN
+        top: position.y - 50,   // SESUAIKAN VERTIKAL
       }}
     >
       <h4 className="font-semibold text-sm mb-2">
@@ -274,7 +274,7 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang stabil
+// Komponen RiskItem dengan hover yang stabil - PERBAIKAN POSISI
 const RiskItem = ({ 
   item, 
   filterFungsi,
@@ -313,33 +313,26 @@ const RiskItem = ({
         const tooltipWidth = 320;
         const tooltipHeight = 300;
         
-        let leftPosition = rect.left + rect.width / 2 - tooltipWidth / 2;
-        let topPosition = rect.top + rect.height / 2 - tooltipHeight / 2;
+        // POSISI TOOLTIP DI SEBELAH KANAN DENGAN JARAK YANG LEBIH BESAR
+        let leftPosition = rect.right + 80; // GESER 80px KE KANAN DARI ELEMENT
+        let topPosition = rect.top - 50;    // SESUAIKAN POSISI VERTIKAL
         
-        const isLastFourItems = index >= totalItems - 4;
-        if (isLastFourItems) {
-          if (topPosition + tooltipHeight > window.innerHeight - 20) {
-            topPosition = rect.top - tooltipHeight - 10;
-          }
-          if (leftPosition < 10) {
-            leftPosition = 10;
-          }
-          if (leftPosition + tooltipWidth > window.innerWidth - 10) {
-            leftPosition = window.innerWidth - tooltipWidth - 10;
-          }
-        } else {
-          if (leftPosition < 10) {
-            leftPosition = 10;
-          }
-          if (leftPosition + tooltipWidth > window.innerWidth - 10) {
-            leftPosition = window.innerWidth - tooltipWidth - 10;
-          }
-          if (topPosition < 10) {
-            topPosition = 10;
-          }
-          if (topPosition + tooltipHeight > window.innerHeight - 10) {
-            topPosition = window.innerHeight - tooltipHeight - 10;
-          }
+        // Jika tooltip terlalu ke kanan, posisikan di kiri item
+        if (leftPosition + tooltipWidth > window.innerWidth - 20) {
+          leftPosition = rect.left - tooltipWidth - 20;
+        }
+        
+        // Jika tooltip terlalu ke bawah, adjust posisi vertikal
+        if (topPosition + tooltipHeight > window.innerHeight - 20) {
+          topPosition = window.innerHeight - tooltipHeight - 20;
+        }
+        
+        // Pastikan posisi tidak keluar dari viewport
+        if (topPosition < 20) {
+          topPosition = 20;
+        }
+        if (leftPosition < 20) {
+          leftPosition = 20;
         }
 
         onShowRiskTooltip({
@@ -349,7 +342,7 @@ const RiskItem = ({
           namaKegiatanList: item.namaKegiatanList,
           filterFungsi: filterFungsi
         }, {
-          x: leftPosition + 20, // Geser sedikit ke kanan
+          x: leftPosition,
           y: topPosition
         });
       }
