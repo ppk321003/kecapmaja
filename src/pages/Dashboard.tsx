@@ -744,7 +744,7 @@ export default function Dashboard() {
     }, 200); // Delay lebih lama untuk memberikan waktu pindah ke tooltip
   };
 
-  // PERBAIKAN 1: Fungsi untuk memfilter data berdasarkan fungsi - DIPERBAIKI
+  // PERBAIKAN UTAMA: Fungsi untuk memfilter data berdasarkan fungsi - DIPERBAIKI TOTAL
   const filterDataByFungsi = () => {
     console.log(`Filtering data for fungsi: ${filterFungsi}`);
     
@@ -754,81 +754,68 @@ export default function Dashboard() {
       petugasRoleData.current = allPetugasRoleData.current;
       console.log("Showing all data:", allWorkloadData.length, "workload items,", allRiskData.length, "risk items");
     } else {
-      // Filter workload data berdasarkan fungsi - LOGIKA DIPERBAIKI
-      const filteredWorkloadData = allWorkloadData
-        .map(item => {
-          const roleMap = allPetugasRoleData.current.get(item.petugas);
-          if (!roleMap) {
-            console.log(`No role data found for petugas: ${item.petugas}`);
-            return null;
+      // PERBAIKAN: Filter workload data - gunakan petugasFungsiKegiatanMap sebagai sumber kebenaran
+      const filteredWorkloadData: WorkloadData[] = [];
+      
+      // Iterasi melalui semua petugas di petugasFungsiKegiatanMap
+      petugasFungsiKegiatanMap.current.forEach((fungsiMap, petugas) => {
+        const fungsiData = fungsiMap.get(filterFungsi);
+        
+        // Jika petugas memiliki data untuk fungsi yang dipilih
+        if (fungsiData && fungsiData.kegiatan > 0) {
+          // Cari data lengkap petugas dari allWorkloadData
+          const petugasFullData = allWorkloadData.find(item => item.petugas === petugas);
+          
+          if (petugasFullData) {
+            filteredWorkloadData.push({
+              petugas: petugas,
+              jumlahKegiatan: fungsiData.kegiatan,
+              totalAnggaran: fungsiData.anggaran,
+              roles: petugasFullData.roles.filter(role => role === filterFungsi)
+            });
           }
+        }
+      });
 
-          // Cek apakah petugas memiliki peran di fungsi yang dipilih
-          const hasRoleInFilteredFungsi = Array.from(roleMap.keys()).some(role => 
-            role === filterFungsi
-          );
-
-          if (!hasRoleInFilteredFungsi) {
-            return null;
-          }
-
-          // Hitung ulang jumlah kegiatan dan anggaran hanya untuk fungsi yang dipilih
-          let totalKegiatanFungsi = 0;
-          let totalAnggaranFungsi = 0;
-          const rolesInFungsi: string[] = [];
-
-          roleMap.forEach((roleData, role) => {
-            if (role === filterFungsi) {
-              totalKegiatanFungsi += roleData.kegiatan;
-              totalAnggaranFungsi += roleData.anggaran;
-              rolesInFungsi.push(role);
-            }
-          });
-
-          return {
-            ...item,
-            jumlahKegiatan: totalKegiatanFungsi,
-            totalAnggaran: totalAnggaranFungsi,
-            roles: rolesInFungsi
-          };
-        })
-        .filter((item): item is WorkloadData => item !== null)
+      // Urutkan berdasarkan anggaran tertinggi dan ambil 15 teratas
+      const sortedWorkloadData = filteredWorkloadData
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 15);
 
-      // PERBAIKAN 2: Filter risk data berdasarkan fungsi - LOGIKA DIPERBAIKI
+      // PERBAIKAN: Filter risk data - gunakan pendekatan yang sama
       const filteredRiskData: RiskData[] = [];
       
-      allRiskData.forEach(item => {
-        const fungsiMap = petugasFungsiKegiatanMap.current.get(item.name);
-        if (!fungsiMap) return;
-
+      petugasFungsiKegiatanMap.current.forEach((fungsiMap, petugas) => {
         const fungsiData = fungsiMap.get(filterFungsi);
-        if (!fungsiData || fungsiData.kegiatan === 0) return;
+        
+        if (fungsiData && fungsiData.kegiatan > 0) {
+          let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
+          if (fungsiData.kegiatan < 10) {
+            riskLevel = 'Rendah';
+          } else if (fungsiData.kegiatan >= 10 && fungsiData.kegiatan <= 25) {
+            riskLevel = 'Sedang';
+          } else {
+            riskLevel = 'Tinggi';
+          }
 
-        let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
-        if (fungsiData.kegiatan < 10) {
-          riskLevel = 'Rendah';
-        } else if (fungsiData.kegiatan >= 10 && fungsiData.kegiatan <= 25) {
-          riskLevel = 'Sedang';
-        } else {
-          riskLevel = 'Tinggi';
+          filteredRiskData.push({
+            name: petugas,
+            kegiatan: fungsiData.kegiatan,
+            anggaran: fungsiData.anggaran,
+            riskLevel: riskLevel,
+            namaKegiatanList: fungsiData.namaKegiatanList
+          });
         }
-
-        filteredRiskData.push({
-          name: item.name,
-          kegiatan: fungsiData.kegiatan,
-          anggaran: fungsiData.anggaran,
-          riskLevel: riskLevel,
-          namaKegiatanList: fungsiData.namaKegiatanList
-        });
       });
 
-      // Urutkan risk data berdasarkan jumlah kegiatan
-      const sortedRiskData = filteredRiskData.sort((a, b) => b.kegiatan - a.kegiatan).slice(0, 10);
+      // Urutkan risk data berdasarkan jumlah kegiatan dan ambil 10 teratas
+      const sortedRiskData = filteredRiskData
+        .sort((a, b) => b.kegiatan - a.kegiatan)
+        .slice(0, 10);
 
-      // Filter petugas role data untuk tooltip
+      // PERBAIKAN: Filter petugas role data untuk tooltip
       const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
+      
       allPetugasRoleData.current.forEach((roleMap, petugas) => {
         const roleData = roleMap.get(filterFungsi);
         if (roleData && roleData.kegiatan > 0) {
@@ -838,9 +825,9 @@ export default function Dashboard() {
         }
       });
 
-      console.log(`Filtered data - Workload: ${filteredWorkloadData.length}, Risk: ${sortedRiskData.length}`);
+      console.log(`Filtered data - Workload: ${sortedWorkloadData.length}, Risk: ${sortedRiskData.length}`);
       
-      setWorkloadData(filteredWorkloadData);
+      setWorkloadData(sortedWorkloadData);
       setRiskData(sortedRiskData);
       petugasRoleData.current = filteredPetugasRoleData;
     }
@@ -879,8 +866,7 @@ export default function Dashboard() {
 
       console.log(`Data for year ${filterTahun}:`, filteredData.length);
 
-      // PERBAIKAN UTAMA: Maps untuk data KEGIATAN menggunakan namaKegiatanUnik
-      // Gunakan Set untuk melacak kegiatan unik per kombinasi kriteria
+      // PERBAIKAN: Maps untuk data KEGIATAN menggunakan namaKegiatanUnik
       const kegiatanUnikGlobal = new Set<string>();
       const petugasKegiatanUnikMap = new Map<string, Set<string>>();
       const bulanKegiatanUnikMap = new Map<string, Set<string>>();
@@ -905,12 +891,12 @@ export default function Dashboard() {
       // Map untuk data role per petugas (UNTUK TOOLTIP) - MENGGUNAKAN KEGIATAN UNIK
       const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number }>>();
 
-      // Map untuk data per fungsi per petugas
+      // Map untuk data per fungsi per petugas - DIPERBAIKI: Inisialisasi yang lebih robust
       const petugasFungsiDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number; namaKegiatanList: string[] }>>();
 
       let totalRealisasi = 0;
 
-      // PERBAIKAN: Proses data dengan pendekatan yang lebih akurat untuk menghindari double counting
+      // PERBAIKAN: Proses data dengan pendekatan yang lebih akurat
       filteredData.forEach((row: any[], rowIndex) => {
         try {
           const no = row[0]?.toString() || "";
@@ -922,11 +908,11 @@ export default function Dashboard() {
           const namaPetugas = row[14]?.toString() || "";
           const nilaiRealisasi = row[17]?.toString() || "";
 
-          // Extract bulan dari periode - DIPERBAIKI: Handle berbagai format
+          // Extract bulan dari periode
           const bulanMatch = periode.match(/^(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i);
           const bulan = bulanMatch ? bulanMatch[1] : "";
           
-          // Parse petugas dan nilai realisasi - DIPERBAIKI: Handle format yang berbeda
+          // Parse petugas dan nilai realisasi
           const namaList = namaPetugas.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
           const nilaiList = nilaiRealisasi.split(/\s*\|\s*/).map(parseNilai);
 
@@ -935,8 +921,7 @@ export default function Dashboard() {
             nilaiList : 
             Array(namaList.length).fill(0).map((_, i) => nilaiList[i] || 0);
 
-          // PERBAIKAN UTAMA: Buat identifier unik untuk kegiatan
-          // Gunakan kombinasi yang lebih spesifik untuk menghindari duplikasi
+          // PERBAIKAN: Buat identifier unik untuk kegiatan
           const kegiatanUnikId = `${namaKegiatan.trim()}|${jenisPekerjaan.trim()}|${nomorSK.trim()}|${bulan}`;
 
           // Tambahkan ke global set untuk total kegiatan
@@ -949,23 +934,23 @@ export default function Dashboard() {
             const nilai = validNilaiList[index] || 0;
             const namaNormalized = nama.trim();
             
-            if (!namaNormalized) return; // Skip jika nama kosong
+            if (!namaNormalized) return;
 
-            // Inisialisasi map untuk petugas jika belum ada (UNTUK TOOLTIP)
+            // PERBAIKAN: Inisialisasi map untuk petugas jika belum ada - lebih robust
             if (!petugasRoleDetailMap.has(namaNormalized)) {
               petugasRoleDetailMap.set(namaNormalized, new Map());
             }
             
             const roleMap = petugasRoleDetailMap.get(namaNormalized)!;
             
-            // Inisialisasi data untuk role jika belum ada - MENGGUNAKAN SET UNTUK KEGIATAN UNIK
+            // Inisialisasi data untuk role jika belum ada
             if (!roleMap.has(role)) {
               roleMap.set(role, { kegiatan: new Set(), anggaran: 0 });
             }
             
             const roleData = roleMap.get(role)!;
             
-            // Inisialisasi map untuk fungsi per petugas
+            // PERBAIKAN: Inisialisasi map untuk fungsi per petugas - lebih robust
             if (!petugasFungsiDetailMap.has(namaNormalized)) {
               petugasFungsiDetailMap.set(namaNormalized, new Map());
             }
@@ -977,7 +962,7 @@ export default function Dashboard() {
             
             const fungsiData = fungsiMap.get(role)!;
 
-            // PERBAIKAN: Kegiatan unik per petugas - hanya tambahkan jika belum ada
+            // Kegiatan unik per petugas
             if (!petugasKegiatanUnikMap.has(namaNormalized)) {
               petugasKegiatanUnikMap.set(namaNormalized, new Set());
             }
@@ -995,7 +980,7 @@ export default function Dashboard() {
               }
             }
 
-            // PERBAIKAN: Kegiatan unik per bulan - hanya tambahkan sekali per kegiatan
+            // Kegiatan unik per bulan
             if (bulan && bulanList.includes(bulan)) {
               if (!bulanKegiatanUnikMap.has(bulan)) {
                 bulanKegiatanUnikMap.set(bulan, new Set());
@@ -1005,7 +990,7 @@ export default function Dashboard() {
               }
             }
 
-            // PERBAIKAN: Kegiatan unik per jenis pekerjaan
+            // Kegiatan unik per jenis pekerjaan
             if (jenisPekerjaan) {
               if (!jenisPekerjaanKegiatanUnikMap.has(jenisPekerjaan)) {
                 jenisPekerjaanKegiatanUnikMap.set(jenisPekerjaan, new Set());
@@ -1015,7 +1000,7 @@ export default function Dashboard() {
               }
             }
 
-            // PERBAIKAN: Kegiatan unik per role
+            // Kegiatan unik per role
             if (role) {
               if (!roleKegiatanUnikMap.has(role)) {
                 roleKegiatanUnikMap.set(role, new Set());
@@ -1025,7 +1010,7 @@ export default function Dashboard() {
               }
             }
 
-            // Anggaran - tetap akumulasi normal (bukan unik)
+            // Anggaran
             const currentAnggaran = petugasAnggaranMap.get(namaNormalized) || 0;
             petugasAnggaranMap.set(namaNormalized, currentAnggaran + nilai);
             
@@ -1086,7 +1071,7 @@ export default function Dashboard() {
         }
       });
 
-      // PERBAIKAN: Update kegiatanUnik untuk setiap petugas dengan data yang benar
+      // PERBAIKAN: Update kegiatanUnik untuk setiap petugas
       petugasDetailMap.forEach((detail, petugas) => {
         const kegiatanSet = petugasKegiatanUnikMap.get(petugas);
         detail.kegiatanUnik = kegiatanSet ? kegiatanSet.size : 0;
@@ -1096,7 +1081,7 @@ export default function Dashboard() {
       console.log("Petugas processed:", petugasDetailMap.size);
       console.log("Total realisasi:", totalRealisasi);
 
-      // Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
+      // PERBAIKAN: Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
       const petugasRoleDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
       petugasRoleDetailMap.forEach((roleMap, petugas) => {
         const convertedRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
@@ -1109,7 +1094,7 @@ export default function Dashboard() {
         petugasRoleDataFinal.set(petugas, convertedRoleMap);
       });
 
-      // Konversi petugasFungsiDetailMap untuk risk matrix
+      // PERBAIKAN: Konversi petugasFungsiDetailMap untuk risk matrix
       const petugasFungsiDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>();
       petugasFungsiDetailMap.forEach((fungsiMap, petugas) => {
         const convertedFungsiMap = new Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>();
