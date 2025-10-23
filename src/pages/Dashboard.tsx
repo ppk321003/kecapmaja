@@ -69,7 +69,15 @@ interface RiskData {
   kegiatan: number;
   anggaran: number;
   riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
-  namaKegiatanList: string[]; // PERBAIKAN: Tambahkan daftar nama kegiatan
+  namaKegiatanList: string[];
+}
+
+// Interface untuk tooltip role
+interface RoleTooltipData {
+  role: string;
+  totalKegiatan: number;
+  totalAnggaran: number;
+  petugas: string;
 }
 
 // Custom Tooltip untuk currency dengan format yang lebih baik
@@ -94,6 +102,43 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
     );
   }
   return null;
+};
+
+// Komponen RoleTooltip untuk hover di tabel
+const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x: number, y: number } }) => {
+  if (!data) return null;
+
+  return (
+    <div 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 min-w-64"
+      style={{
+        left: position.x + 10,
+        top: position.y - 10,
+      }}
+    >
+      <h4 className="font-semibold text-sm mb-2">{data.role}</h4>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Mitra:</span>
+          <span className="font-medium">{data.petugas}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Kegiatan:</span>
+          <span className="font-medium">{data.totalKegiatan.toLocaleString('id-ID')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Realisasi:</span>
+          <span className="font-medium">
+            {new Intl.NumberFormat('id-ID', {
+              style: 'currency',
+              currency: 'IDR',
+              minimumFractionDigits: 0,
+            }).format(data.totalAnggaran)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Komponen Chart yang aman dengan format YAxis untuk Realisasi
@@ -234,7 +279,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// PERBAIKAN: Komponen Risk Matrix dengan Hover di samping kanan dan tepat di tengah
+// Komponen Risk Matrix dengan Hover di samping kanan dan tepat di tengah
 const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'anggaran' }) => {
   if (!data || data.length === 0) {
     return (
@@ -289,7 +334,7 @@ const RiskMatrix = ({ data, mode }: { data: RiskData[], mode: 'kegiatan' | 'angg
             {item.riskLevel}
           </span>
           
-          {/* PERBAIKAN: Hover Tooltip di samping kanan dan tepat di tengah */}
+          {/* Hover Tooltip di samping kanan dan tepat di tengah */}
           <div className="absolute invisible group-hover:visible z-50 left-full top-1/2 transform -translate-y-1/2 ml-2 w-80 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
             <h5 className="font-semibold text-sm mb-2">Jenis Kegiatan ({item.kegiatan}):</h5>
             <div className="max-h-40 overflow-y-auto">
@@ -373,6 +418,11 @@ export default function Dashboard() {
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
   const [riskData, setRiskData] = useState<RiskData[]>([]);
 
+  // State untuk tooltip role
+  const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [petugasRoleData, setPetugasRoleData] = useState<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
+
   const { toast } = useToast();
 
   // Format currency helper
@@ -437,8 +487,11 @@ export default function Dashboard() {
         totalAnggaran: number, 
         roles: Set<string>,
         namaKegiatanUnik: Set<string>,
-        namaKegiatanList: string[] // PERBAIKAN: Simpan daftar nama kegiatan
+        namaKegiatanList: string[]
       }>();
+
+      // Map untuk data role per petugas (UNTUK TOOLTIP)
+      const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: number, anggaran: number }>>();
 
       let totalKegiatanUnik = new Set<string>();
       let totalRealisasi = 0;
@@ -463,12 +516,28 @@ export default function Dashboard() {
           namaList.forEach((nama, index) => {
             const nilai = nilaiList[index] || 0;
             
+            // Inisialisasi map untuk petugas jika belum ada (UNTUK TOOLTIP)
+            if (!petugasRoleDetailMap.has(nama)) {
+              petugasRoleDetailMap.set(nama, new Map());
+            }
+            
+            const roleMap = petugasRoleDetailMap.get(nama)!;
+            
+            // Inisialisasi data untuk role jika belum ada
+            if (!roleMap.has(role)) {
+              roleMap.set(role, { kegiatan: 0, anggaran: 0 });
+            }
+            
+            const roleData = roleMap.get(role)!;
+            
             // Kegiatan unik per petugas
             if (!petugasKegiatanUnikMap.has(nama)) {
               petugasKegiatanUnikMap.set(nama, new Set());
             }
             if (namaKegiatan && namaKegiatan.trim() !== '') {
               petugasKegiatanUnikMap.get(nama)!.add(namaKegiatan.trim());
+              // Hitung kegiatan untuk tooltip role
+              roleData.kegiatan += 1;
             }
 
             // Kegiatan unik per bulan
@@ -503,6 +572,8 @@ export default function Dashboard() {
 
             // Anggaran
             petugasAnggaranMap.set(nama, (petugasAnggaranMap.get(nama) || 0) + nilai);
+            // Tambahkan anggaran untuk tooltip role
+            roleData.anggaran += nilai;
 
             // Workload data
             if (!petugasDetailMap.has(nama)) {
@@ -511,13 +582,12 @@ export default function Dashboard() {
                 totalAnggaran: 0, 
                 roles: new Set(),
                 namaKegiatanUnik: new Set(),
-                namaKegiatanList: [] // PERBAIKAN: Inisialisasi array
+                namaKegiatanList: []
               });
             }
             const detail = petugasDetailMap.get(nama)!;
             if (namaKegiatan && namaKegiatan.trim() !== '') {
               detail.namaKegiatanUnik.add(namaKegiatan.trim());
-              // PERBAIKAN: Tambahkan ke daftar nama kegiatan (unik)
               if (!detail.namaKegiatanList.includes(namaKegiatan.trim())) {
                 detail.namaKegiatanList.push(namaKegiatan.trim());
               }
@@ -601,7 +671,7 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // PERBAIKAN 1: Prepare workload data - Top 15 Petugas
+      // Prepare workload data - Top 15 Petugas
       const workloadDataArray: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
@@ -610,7 +680,7 @@ export default function Dashboard() {
           roles: Array.from(detail.roles)
         }))
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
-        .slice(0, 15); // PERBAIKAN: Diubah dari 10 menjadi 15
+        .slice(0, 15);
 
       // Prepare risk data - Top 10 dan sort by jumlah kegiatan terbanyak
       const riskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
@@ -632,7 +702,7 @@ export default function Dashboard() {
             kegiatan: jumlahNamaKegiatanUnik,
             anggaran: detail.totalAnggaran,
             riskLevel: riskLevel,
-            namaKegiatanList: detail.namaKegiatanList.sort() // PERBAIKAN: Tambahkan daftar nama kegiatan
+            namaKegiatanList: detail.namaKegiatanList.sort()
           };
         })
         .sort((a, b) => b.kegiatan - a.kegiatan)
@@ -700,6 +770,7 @@ export default function Dashboard() {
 
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
+      setPetugasRoleData(petugasRoleDetailMap);
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -992,7 +1063,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* PERBAIKAN 1: Workload Distribution Table - Top 15 Petugas */}
+        {/* Workload Distribution Table - Top 15 Petugas dengan Hover Role */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1000,11 +1071,11 @@ export default function Dashboard() {
               Distribusi Realisasi Honor - Top 15 Mitra Statistik
             </CardTitle>
             <CardDescription>
-              Tabel detail distribusi realisasi honor per mitra statistik
+              Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -1022,14 +1093,33 @@ export default function Dashboard() {
                       <td className="py-3 font-medium">{item.petugas}</td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-1">
-                          {item.roles.map((role, roleIndex) => (
-                            <span 
-                              key={roleIndex} 
-                              className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-                            >
-                              {role}
-                            </span>
-                          ))}
+                          {item.roles.map((role, roleIndex) => {
+                            const roleData = petugasRoleData.get(item.petugas)?.get(role);
+                            return (
+                              <span 
+                                key={roleIndex} 
+                                className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs cursor-help transition-colors hover:bg-secondary/80"
+                                onMouseEnter={(e) => {
+                                  if (roleData) {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setTooltipPosition({
+                                      x: rect.left,
+                                      y: rect.top
+                                    });
+                                    setRoleTooltipData({
+                                      role: role,
+                                      totalKegiatan: roleData.kegiatan,
+                                      totalAnggaran: roleData.anggaran,
+                                      petugas: item.petugas
+                                    });
+                                  }
+                                }}
+                                onMouseLeave={() => setRoleTooltipData(null)}
+                              >
+                                {role}
+                              </span>
+                            );
+                          })}
                         </div>
                       </td>
                       <td className="text-center py-3 font-medium">
@@ -1042,6 +1132,11 @@ export default function Dashboard() {
                   ))}
                 </tbody>
               </table>
+              
+              {/* Render Role Tooltip */}
+              {roleTooltipData && (
+                <RoleTooltip data={roleTooltipData} position={tooltipPosition} />
+              )}
             </div>
             {workloadData.length === 0 && (
               <div className="flex items-center justify-center h-32">
