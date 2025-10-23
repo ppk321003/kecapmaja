@@ -62,7 +62,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border" style={{ background: "var(--gradient-primary)" }}>
       <SidebarContent>
         <div className="px-4 py-6">
-          <h2 className="text-xl font-bold text-sidebar-foreground">SIMAJA</h2>
+          <h2 className="text-xl font-bold text-sidebar-foreground">AKI MAJA</h2>
           <p className="text-xs text-sidebar-foreground/80 mt-1">
             Sistem Informasi Monitoring Mitra
           </p>

@@ -14,8 +14,8 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-accent/80 flex items-center">
           <div className="px-8 text-primary-foreground">
-            <h1 className="text-4xl font-bold mb-2">SIMAJA</h1>
-            <p className="text-xl">Sistem Informasi Monitoring dan Administrasi Mitra Statistik Majalengka</p>
+            <h1 className="text-4xl font-bold mb-2">AKI MAJA</h1>
+            <p className="text-xl">Aplikasi Kinerja Monitoring dan Administrasi Mitra Statistik Majalengka</p>
           </div>
         </div>
       </section>
@@ -24,17 +24,17 @@ export default function Home() {
       <section className="prose max-w-none">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Tentang SIMAJA</CardTitle>
+            <CardTitle className="text-2xl">Tentang AKI MAJA</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-foreground">
             <p className="text-justify leading-relaxed">
-              Sistem Informasi Monitoring dan Administrasi Mitra Statistik Majalengka (SIMAJA) adalah aplikasi berbasis web 
+              Aplikasi Kinerja Monitoring dan Administrasi Mitra Statistik Majalengka (AKI MAJA) adalah aplikasi berbasis web 
               yang dirancang untuk mengelola dan memantau kinerja mitra statistik di wilayah Kabupaten Majalengka. 
               Aplikasi ini merupakan solusi digital yang mengintegrasikan berbagai proses administrasi dan monitoring 
               dalam satu platform yang efisien dan terstruktur.
             </p>
             <p className="text-justify leading-relaxed">
-              SIMAJA dikembangkan untuk mendukung transparansi, akuntabilitas, dan efektivitas dalam pengelolaan 
+              AKI MAJA dikembangkan untuk mendukung transparansi, akuntabilitas, dan efektivitas dalam pengelolaan 
               kegiatan statistik. Dengan fitur-fitur yang komprehensif, aplikasi ini memfasilitasi proses entri data, 
               monitoring target dan realisasi kegiatan, hingga penerbitan dokumen-dokumen resmi seperti Surat Perjanjian 
               Kerja (SPK) dan Berita Acara Serah Terima (BAST).
@@ -93,7 +93,7 @@ export default function Home() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Manfaat SIMAJA</CardTitle>
+            <CardTitle className="text-2xl">Manfaat AKI MAJAL</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3 text-foreground">
