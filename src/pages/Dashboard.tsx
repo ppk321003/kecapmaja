@@ -160,7 +160,7 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
-// Komponen RiskTooltip untuk hover di risk matrix - DIPERBAIKI
+// Komponen RiskTooltip untuk hover di risk matrix
 const RiskTooltip = ({ data, position }: { data: RiskHoverData, position: { x: number, y: number } }) => {
   if (!data) return null;
 
@@ -268,7 +268,7 @@ const RoleBadge = ({
   );
 };
 
-// Komponen RiskItem dengan hover yang sesuai filter - DIPERBAIKI
+// Komponen RiskItem dengan hover yang sesuai filter
 const RiskItem = ({ 
   item, 
   filterFungsi,
@@ -480,7 +480,7 @@ const SafeLineChart = ({ data, title, mode }: { data: ChartItem[], title: string
   );
 };
 
-// Komponen Risk Matrix dengan Hover yang sesuai filter - DIPERBAIKI
+// Komponen Risk Matrix dengan Hover yang sesuai filter
 const RiskMatrix = ({ 
   data, 
   mode, 
@@ -604,7 +604,7 @@ export default function Dashboard() {
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // State untuk tooltip risk matrix - DIPERBAIKI
+  // State untuk tooltip risk matrix
   const [riskTooltipData, setRiskTooltipData] = useState<RiskHoverData | null>(null);
   const [riskTooltipPosition, setRiskTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -614,7 +614,7 @@ export default function Dashboard() {
   const hideTooltipTimeout = useRef<NodeJS.Timeout>();
   const hideRiskTooltipTimeout = useRef<NodeJS.Timeout>();
 
-  // Map untuk menyimpan data kegiatan per fungsi per petugas - DIPERBAIKI
+  // Map untuk menyimpan data kegiatan per fungsi per petugas
   const petugasFungsiKegiatanMap = useRef<Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>>(new Map());
 
   const { toast } = useToast();
@@ -628,11 +628,18 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Parse nilai realisasi
+  // Parse nilai realisasi - DIPERBAIKI untuk handle berbagai format
   const parseNilai = (nilaiStr: string): number => {
     if (!nilaiStr) return 0;
-    const cleaned = nilaiStr.replace(/[^\d]/g, '');
-    return parseInt(cleaned) || 0;
+    
+    // Handle format seperti "159.000,-" atau "1.280.000,-"
+    const cleaned = nilaiStr
+      .replace(/[^\d,.-]/g, '') // Hapus karakter non-digit kecuali koma dan titik
+      .replace(/\./g, '') // Hapus titik (separator ribuan)
+      .replace(',', '.'); // Ganti koma dengan titik untuk decimal
+    
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : Math.round(parsed);
   };
 
   // Fungsi untuk menampilkan tooltip role
@@ -651,7 +658,7 @@ export default function Dashboard() {
     }, 100);
   };
 
-  // Fungsi untuk menampilkan tooltip risk matrix - DIPERBAIKI
+  // Fungsi untuk menampilkan tooltip risk matrix
   const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
     if (hideRiskTooltipTimeout.current) {
       clearTimeout(hideRiskTooltipTimeout.current);
@@ -667,7 +674,7 @@ export default function Dashboard() {
     }, 100);
   };
 
-  // Fungsi untuk memfilter data berdasarkan fungsi - DIPERBAIKI
+  // Fungsi untuk memfilter data berdasarkan fungsi
   const filterDataByFungsi = () => {
     if (filterFungsi === "Semua Fungsi") {
       setWorkloadData(allWorkloadData);
@@ -694,7 +701,7 @@ export default function Dashboard() {
         .sort((a, b) => b.totalAnggaran - a.totalAnggaran)
         .slice(0, 15);
 
-      // Filter risk data berdasarkan fungsi - DIPERBAIKI: Gunakan data yang sesuai filter
+      // Filter risk data berdasarkan fungsi
       const filteredRiskData: RiskData[] = [];
       
       allRiskData.forEach(item => {
@@ -766,9 +773,10 @@ export default function Dashboard() {
       // Process data
       const allData = rows.slice(1) || [];
       
-      // Filter data berdasarkan tahun
+      // Filter data berdasarkan tahun - DIPERBAIKI: Handle berbagai format periode
       const filteredData = allData.filter((row: any[]) => {
         const periode = row[2]?.toString() || "";
+        // Cek apakah periode mengandung tahun yang dipilih
         return periode.includes(filterTahun);
       });
 
@@ -798,7 +806,7 @@ export default function Dashboard() {
       // Map untuk data role per petugas (UNTUK TOOLTIP) - MENGGUNAKAN KEGIATAN UNIK
       const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number }>>();
 
-      // Map untuk data per fungsi per petugas - DIPERBAIKI
+      // Map untuk data per fungsi per petugas
       const petugasFungsiDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number; namaKegiatanList: string[] }>>();
 
       let totalKegiatanUnik = new Set<string>();
@@ -813,18 +821,23 @@ export default function Dashboard() {
           const namaPetugas = row[14]?.toString() || "";
           const nilaiRealisasi = row[17]?.toString() || "";
 
-          // Extract bulan dari periode
-          const bulan = periode.split(' ')[0];
+          // Extract bulan dari periode - DIPERBAIKI: Handle berbagai format
+          const bulanMatch = periode.match(/^(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i);
+          const bulan = bulanMatch ? bulanMatch[1] : "";
           
-          // Parse petugas dan nilai realisasi
-          const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
-          const nilaiList = nilaiRealisasi.split(' | ').map(parseNilai);
+          // Parse petugas dan nilai realisasi - DIPERBAIKI: Handle format yang berbeda
+          const namaList = namaPetugas.split('|').map((n: string) => n.trim()).filter(n => n);
+          const nilaiList = nilaiRealisasi.split('|').map(parseNilai);
+
+          console.log(`Processing: ${namaKegiatan}, Petugas: ${namaList.length}, Nilai: ${nilaiList.length}`);
 
           // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
             const nilai = nilaiList[index] || 0;
             const namaNormalized = nama.trim();
             
+            if (!namaNormalized) return; // Skip jika nama kosong
+
             // Inisialisasi map untuk petugas jika belum ada (UNTUK TOOLTIP)
             if (!petugasRoleDetailMap.has(namaNormalized)) {
               petugasRoleDetailMap.set(namaNormalized, new Map());
@@ -839,7 +852,7 @@ export default function Dashboard() {
             
             const roleData = roleMap.get(role)!;
             
-            // Inisialisasi map untuk fungsi per petugas - DIPERBAIKI
+            // Inisialisasi map untuk fungsi per petugas
             if (!petugasFungsiDetailMap.has(namaNormalized)) {
               petugasFungsiDetailMap.set(namaNormalized, new Map());
             }
@@ -897,7 +910,9 @@ export default function Dashboard() {
             }
 
             // Anggaran
-            petugasAnggaranMap.set(namaNormalized, (petugasAnggaranMap.get(namaNormalized) || 0) + nilai);
+            const currentAnggaran = petugasAnggaranMap.get(namaNormalized) || 0;
+            petugasAnggaranMap.set(namaNormalized, currentAnggaran + nilai);
+            
             // Tambahkan anggaran untuk tooltip role
             roleData.anggaran += nilai;
             // Tambahkan anggaran untuk fungsi
@@ -935,25 +950,28 @@ export default function Dashboard() {
           // Anggaran per bulan
           if (bulan && bulanList.includes(bulan)) {
             const totalNilaiBulan = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
-            bulanAnggaranMap.set(bulan, (bulanAnggaranMap.get(bulan) || 0) + totalNilaiBulan);
+            const currentBulanAnggaran = bulanAnggaranMap.get(bulan) || 0;
+            bulanAnggaranMap.set(bulan, currentBulanAnggaran + totalNilaiBulan);
           }
 
           // Anggaran per jenis pekerjaan
           if (jenisPekerjaan) {
             const totalNilaiJenis = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
-            jenisPekerjaanAnggaranMap.set(jenisPekerjaan, (jenisPekerjaanAnggaranMap.get(jenisPekerjaan) || 0) + totalNilaiJenis);
+            const currentJenisAnggaran = jenisPekerjaanAnggaranMap.get(jenisPekerjaan) || 0;
+            jenisPekerjaanAnggaranMap.set(jenisPekerjaan, currentJenisAnggaran + totalNilaiJenis);
           }
 
           // Anggaran per role
           if (role) {
             const totalNilaiRole = nilaiList.reduce((sum, nilai) => sum + nilai, 0);
-            roleAnggaranMap.set(role, (roleAnggaranMap.get(role) || 0) + totalNilaiRole);
+            const currentRoleAnggaran = roleAnggaranMap.get(role) || 0;
+            roleAnggaranMap.set(role, currentRoleAnggaran + totalNilaiRole);
           }
 
           totalRealisasi += nilaiList.reduce((sum, nilai) => sum + nilai, 0);
 
         } catch (error) {
-          console.error("Error processing row:", error);
+          console.error("Error processing row:", error, row);
         }
       });
 
@@ -961,6 +979,9 @@ export default function Dashboard() {
       petugasDetailMap.forEach((detail, petugas) => {
         detail.kegiatanUnik = detail.namaKegiatanUnik.size;
       });
+
+      console.log("Petugas processed:", petugasDetailMap.size);
+      console.log("Total realisasi:", totalRealisasi);
 
       // Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
       const petugasRoleDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
@@ -975,7 +996,7 @@ export default function Dashboard() {
         petugasRoleDataFinal.set(petugas, convertedRoleMap);
       });
 
-      // Konversi petugasFungsiDetailMap untuk risk matrix - DIPERBAIKI
+      // Konversi petugasFungsiDetailMap untuk risk matrix
       const petugasFungsiDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>();
       petugasFungsiDetailMap.forEach((fungsiMap, petugas) => {
         const convertedFungsiMap = new Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>();
@@ -1132,8 +1153,12 @@ export default function Dashboard() {
       allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
       
-      // Simpan data fungsi untuk risk matrix - DIPERBAIKI
+      // Simpan data fungsi untuk risk matrix
       petugasFungsiKegiatanMap.current = petugasFungsiDataFinal;
+
+      console.log("Dashboard data loaded successfully");
+      console.log("Workload data count:", workloadDataArray.length);
+      console.log("Risk data count:", riskDataArray.length);
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -1451,7 +1476,7 @@ export default function Dashboard() {
 
       {/* Grid untuk Risk Assessment dan Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover - DIPERBAIKI */}
+        {/* Risk Assessment dengan Hover */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
