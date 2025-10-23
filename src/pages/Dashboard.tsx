@@ -959,7 +959,7 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Anggaran'} per Bulan
+            Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Realisasi'} per Bulan
           </CardTitle>
           <CardDescription>
             Melihat pola musiman dan prediksi kebutuhan ke depan
