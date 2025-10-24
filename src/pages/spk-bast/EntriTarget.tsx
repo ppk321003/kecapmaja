@@ -314,6 +314,27 @@ export default function EntriTarget() {
     return monthlyData;
   }, [activitiesByPeriod, selectedYear]);
 
+  // Calculate totals for the summary row
+  const summaryData = useMemo(() => {
+    return dynamicSpkData.reduce((acc, month) => {
+      return {
+        activities: acc.activities + month.activities,
+        workers: acc.workers + month.workers,
+        target: acc.target + month.target,
+        value: acc.value + month.value,
+        realisasi: acc.realisasi + month.realisasi,
+        sent: acc.sent + month.sent,
+      };
+    }, {
+      activities: 0,
+      workers: 0,
+      target: 0,
+      value: 0,
+      realisasi: 0,
+      sent: 0,
+    });
+  }, [dynamicSpkData]);
+
   // Calculate dynamic job types data for selected period
   const dynamicJobTypes = useMemo(() => {
     return jobTypes.map(jobType => {
@@ -1281,6 +1302,17 @@ export default function EntriTarget() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {/* Baris Jumlah */}
+                  <TableRow className="bg-primary/10 font-semibold">
+                    <TableCell colSpan={2} className="text-center font-bold">JUMLAH</TableCell>
+                    <TableCell className="text-center font-bold">{summaryData.activities}</TableCell>
+                    <TableCell className="text-center font-bold">{summaryData.workers}</TableCell>
+                    <TableCell className="text-center font-bold">{summaryData.target}</TableCell>
+                    <TableCell className="text-right font-bold">{formatCurrency(summaryData.value)}</TableCell>
+                    <TableCell className="text-right font-bold">{formatCurrency(summaryData.realisasi)}</TableCell>
+                    <TableCell className="text-center font-bold">{summaryData.sent}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -1344,6 +1376,7 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
+      {/* Kode untuk dialog lainnya tetap sama... */}
       <Dialog open={showProposalsDialog} onOpenChange={setShowProposalsDialog}>
         <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 rounded-none">
           <DialogHeader>
@@ -1550,6 +1583,7 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
+      {/* Kode untuk dialog Add Activity dan Add Worker tetap sama... */}
       <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
         setShowAddActivityDialog(open);
         if (!open) {
