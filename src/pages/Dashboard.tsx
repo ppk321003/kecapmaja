@@ -627,6 +627,13 @@ const getValidBulanForSlow = (tahun: string, data: ChartItem[]): ChartItem[] => 
   return data;
 };
 
+// PERBAIKAN UTAMA: Fungsi untuk menghitung realisasi seperti entri target
+const calculateRealisasiLikeEntri = (hargaSatuanStr: string, realisasiQuantityStr: string): number => {
+  const hargaSatuan = parseFloat(hargaSatuanStr) || 0;
+  const realisasiQuantity = parseFloat(realisasiQuantityStr) || 0;
+  return Math.round(hargaSatuan * realisasiQuantity);
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
@@ -918,6 +925,7 @@ export default function Dashboard() {
     filterDataByFungsi();
   }, [filterFungsi, allWorkloadData, allRiskData]);
 
+  // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -976,7 +984,7 @@ export default function Dashboard() {
 
       let totalRealisasi = 0;
 
-      // Proses data
+      // PERBAIKAN UTAMA: Proses data dengan perhitungan realisasi seperti entri target
       filteredData.forEach((row: any[], rowIndex) => {
         try {
           const no = row[0]?.toString() || "";
@@ -986,20 +994,28 @@ export default function Dashboard() {
           const namaKegiatan = row[4]?.toString() || "";
           const nomorSK = row[5]?.toString() || "";
           const namaPetugas = row[14]?.toString() || "";
-          const nilaiRealisasi = row[17]?.toString() || "";
+          const targetStr = row[15]?.toString() || ""; // Kolom target quantity
+          const realisasiStr = row[16]?.toString() || ""; // Kolom realisasi quantity
+          const hargaSatuan = row[9]?.toString() || "0"; // Kolom harga satuan
 
           // Extract bulan dari periode
           const bulanMatch = periode.match(/^(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i);
           const bulan = bulanMatch ? bulanMatch[1] : "";
           
-          // Parse petugas dan nilai realisasi
+          // PERBAIKAN UTAMA: Parse petugas dan hitung realisasi seperti entri target
           const namaList = namaPetugas.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
-          const nilaiList = nilaiRealisasi.split(/\s*\|\s*/).map(parseNilai);
+          const targetList = targetStr.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+          const realisasiList = realisasiStr.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+
+          // PERBAIKAN UTAMA: Hitung nilai realisasi untuk setiap petugas seperti entri target
+          const nilaiRealisasiList = realisasiList.map((realisasiQty, index) => {
+            return calculateRealisasiLikeEntri(hargaSatuan, realisasiQty);
+          });
 
           // Validasi: pastikan jumlah petugas dan nilai sama
-          const validNilaiList = nilaiList.length === namaList.length ? 
-            nilaiList : 
-            Array(namaList.length).fill(0).map((_, i) => nilaiList[i] || 0);
+          const validNilaiList = nilaiRealisasiList.length === namaList.length ? 
+            nilaiRealisasiList : 
+            Array(namaList.length).fill(0).map((_, i) => nilaiRealisasiList[i] || 0);
 
           // PERBAIKAN: Buat identifier unik untuk kegiatan - HANYA gunakan namaKegiatan untuk "jenis kegiatan"
           const kegiatanUnikId = `${namaKegiatan.trim()}`; // ✅ Hanya nama kegiatan
@@ -1012,6 +1028,7 @@ export default function Dashboard() {
 
           // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
+            // PERBAIKAN UTAMA: Gunakan nilai realisasi yang dihitung seperti entri target
             const nilai = validNilaiList[index] || 0;
             const namaNormalized = nama.trim();
             
@@ -1092,7 +1109,7 @@ export default function Dashboard() {
               }
             }
 
-            // Anggaran
+            // PERBAIKAN UTAMA: Anggaran - gunakan nilai realisasi yang dihitung seperti entri target
             const currentAnggaran = petugasAnggaranMap.get(namaNormalized) || 0;
             petugasAnggaranMap.set(namaNormalized, currentAnggaran + nilai);
             
@@ -1121,6 +1138,7 @@ export default function Dashboard() {
                 }
               }
             }
+            // PERBAIKAN UTAMA: Gunakan nilai realisasi yang dihitung
             detail.totalAnggaran += nilai;
             
             if (role && role.trim() !== '') {
@@ -1128,27 +1146,28 @@ export default function Dashboard() {
             }
           });
 
-          // Anggaran per bulan
+          // PERBAIKAN UTAMA: Anggaran per bulan - gunakan nilai realisasi yang dihitung
           if (bulan && bulanList.includes(bulan)) {
             const totalNilaiBulan = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentBulanAnggaran = bulanAnggaranMap.get(bulan) || 0;
             bulanAnggaranMap.set(bulan, currentBulanAnggaran + totalNilaiBulan);
           }
 
-          // Anggaran per jenis pekerjaan
+          // PERBAIKAN UTAMA: Anggaran per jenis pekerjaan - gunakan nilai realisasi yang dihitung
           if (jenisPekerjaan) {
             const totalNilaiJenis = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentJenisAnggaran = jenisPekerjaanAnggaranMap.get(jenisPekerjaan) || 0;
             jenisPekerjaanAnggaranMap.set(jenisPekerjaan, currentJenisAnggaran + totalNilaiJenis);
           }
 
-          // Anggaran per role
+          // PERBAIKAN UTAMA: Anggaran per role - gunakan nilai realisasi yang dihitung
           if (role) {
             const totalNilaiRole = validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
             const currentRoleAnggaran = roleAnggaranMap.get(role) || 0;
             roleAnggaranMap.set(role, currentRoleAnggaran + totalNilaiRole);
           }
 
+          // PERBAIKAN UTAMA: Total realisasi - gunakan nilai realisasi yang dihitung
           totalRealisasi += validNilaiList.reduce((sum, nilai) => sum + nilai, 0);
 
         } catch (error) {
@@ -1163,7 +1182,7 @@ export default function Dashboard() {
 
       console.log("Total kegiatan unik global:", kegiatanUnikGlobal.size);
       console.log("Petugas processed:", petugasDetailMap.size);
-      console.log("Total realisasi:", totalRealisasi);
+      console.log("Total realisasi (calculated like entri):", totalRealisasi);
 
       // Konversi petugasRoleDetailMap dari Set ke number untuk tooltip
       const petugasRoleDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
@@ -1211,6 +1230,7 @@ export default function Dashboard() {
         .map(([name, kegiatanSet]) => ({ name, value: kegiatanSet.size }))
         .sort((a, b) => b.value - a.value);
 
+      // PERBAIKAN UTAMA: Chart data anggaran menggunakan nilai realisasi yang dihitung
       const petugasAnggaranData: ChartItem[] = Array.from(petugasAnggaranMap.entries())
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
@@ -1234,7 +1254,7 @@ export default function Dashboard() {
         .map(([petugas, detail]) => ({
           petugas,
           jumlahKegiatan: detail.kegiatanUnik, // ✅ Jumlah jenis kegiatan unik
-          totalAnggaran: detail.totalAnggaran,
+          totalAnggaran: detail.totalAnggaran, // PERBAIKAN: Sudah menggunakan nilai realisasi yang dihitung
           roles: Array.from(detail.roles)
         }))
         // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
@@ -1272,7 +1292,7 @@ export default function Dashboard() {
           return {
             name: petugas,
             kegiatan: jumlahNamaKegiatanUnik, // ✅ Jumlah jenis kegiatan unik
-            anggaran: detail.totalAnggaran,
+            anggaran: detail.totalAnggaran, // PERBAIKAN: Sudah menggunakan nilai realisasi yang dihitung
             riskLevel: riskLevel,
             namaKegiatanList: detail.namaKegiatanList.sort()
           };
@@ -1331,7 +1351,7 @@ export default function Dashboard() {
       // PERBAIKAN: Set stats dan chart data - KEMBALIKAN data yang hilang
       setStats({
         totalKegiatan,
-        totalRealisasi,
+        totalRealisasi, // PERBAIKAN: Sudah menggunakan nilai realisasi yang dihitung seperti entri target
         bulanPeakKegiatan,
         bulanSlowKegiatan,
         bulanPeakAnggaran,
@@ -1403,6 +1423,10 @@ export default function Dashboard() {
       }
     };
   }, []);
+
+  // ... (kode UI tetap sama persis seperti sebelumnya)
+  // Semua komponen UI dari sini sampai akhir file TIDAK BERUBAH
+  // Hanya bagian data processing yang diperbaiki
 
   if (loading) {
     return (
