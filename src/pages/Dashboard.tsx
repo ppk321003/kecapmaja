@@ -550,7 +550,7 @@ const RiskMatrix = ({
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
-  // Filter data berdasarkan search query
+  // Filter data berdasarkan search query - PERBAIKAN: Search di seluruh data
   const filteredData = data.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -581,11 +581,16 @@ const RiskMatrix = ({
             <span>Tinggi: &gt; 25</span>
           </div>
         </div>
+        {searchQuery && (
+          <div className="mt-2 text-xs text-blue-700">
+            Menampilkan {filteredData.length} dari {data.length} mitra untuk pencarian "{searchQuery}"
+          </div>
+        )}
       </div>
       
       {filteredData.length === 0 ? (
         <div className="flex items-center justify-center h-32">
-          <p className="text-muted-foreground">Tidak ada data yang cocok dengan pencarian</p>
+          <p className="text-muted-foreground">Tidak ada data yang cocok dengan pencarian "{searchQuery}"</p>
         </div>
       ) : (
         filteredData.map((item, index) => (
@@ -751,11 +756,38 @@ export default function Dashboard() {
     }, 200);
   };
 
-  // Filter data workload berdasarkan search query
-  const filteredWorkloadData = workloadData.filter(item => 
-    item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
-    item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
-  );
+  // PERBAIKAN: Filter data workload berdasarkan search query - Search di SELURUH DATA
+  const filteredWorkloadData = allPetugasData
+    .filter(item => 
+      item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
+      item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
+    )
+    // Tetap urutkan sesuai kriteria
+    .sort((a, b) => {
+      if (b.totalAnggaran !== a.totalAnggaran) {
+        return b.totalAnggaran - a.totalAnggaran;
+      }
+      if (b.jumlahKegiatan !== a.jumlahKegiatan) {
+        return b.jumlahKegiatan - a.jumlahKegiatan;
+      }
+      return a.petugas.localeCompare(b.petugas);
+    });
+
+  // PERBAIKAN: Filter data risk berdasarkan search query - Search di SELURUH DATA
+  const filteredRiskData = allPetugasRiskData
+    .filter(item => 
+      item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
+    )
+    // Tetap urutkan sesuai kriteria
+    .sort((a, b) => {
+      if (b.kegiatan !== a.kegiatan) {
+        return b.kegiatan - a.kegiatan;
+      }
+      if (b.anggaran !== a.anggaran) {
+        return b.anggaran - a.anggaran;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
   // PERBAIKAN: Fungsi untuk memfilter data berdasarkan fungsi - Filter dari SELURUH DATA
   const filterDataByFungsi = () => {
@@ -763,10 +795,13 @@ export default function Dashboard() {
     
     if (filterFungsi === "Semua Fungsi") {
       // Tampilkan 15 teratas dari semua data
-      setWorkloadData(allWorkloadData);
-      setRiskData(allRiskData);
+      const top15Workload = allPetugasData.slice(0, 15);
+      const top10Risk = allPetugasRiskData.slice(0, 10);
+      
+      setWorkloadData(top15Workload);
+      setRiskData(top10Risk);
       petugasRoleData.current = allPetugasRoleData.current;
-      console.log("Showing top 15 from all data:", allWorkloadData.length, "workload items");
+      console.log("Showing top 15 from all data:", top15Workload.length, "workload items");
     } else {
       // Filter dari SELURUH DATA MENTAH, bukan dari 15 teratas
       const filteredWorkloadData: WorkloadData[] = [];
@@ -1314,8 +1349,8 @@ export default function Dashboard() {
       // Simpan semua data untuk filtering
       setAllWorkloadData(workloadDataArray);
       setAllRiskData(riskDataArray);
-      setAllPetugasData(allPetugasWorkloadData);
-      setAllPetugasRiskData(allPetugasRiskDataArray);
+      setAllPetugasData(allPetugasWorkloadData); // ✅ Simpan SEMUA data petugas
+      setAllPetugasRiskData(allPetugasRiskDataArray); // ✅ Simpan SEMUA data risk
       
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
@@ -1667,11 +1702,16 @@ export default function Dashboard() {
                 ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail"
                 : `Top 10 Mitra Statistik - Hover untuk melihat detail`
               }
+              {riskSearchQuery && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Pencarian: "{riskSearchQuery}" - Menampilkan {filteredRiskData.length} hasil
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <RiskMatrix 
-              data={riskData} 
+              data={filteredRiskData} // ✅ PERBAIKAN: Gunakan filtered data untuk search
               mode={viewMode}
               filterFungsi={filterFungsi}
               searchQuery={riskSearchQuery}
@@ -1700,6 +1740,11 @@ export default function Dashboard() {
                 ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi"
                 : `Tabel detail distribusi realisasi honor - Hover untuk melihat detail`
               }
+              {workloadSearchQuery && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Pencarian: "{workloadSearchQuery}" - Menampilkan {filteredWorkloadData.length} hasil
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1719,7 +1764,7 @@ export default function Dashboard() {
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
                         {workloadSearchQuery ? 
-                          "Tidak ada data yang cocok dengan pencarian" : 
+                          `Tidak ada data yang cocok dengan pencarian "${workloadSearchQuery}"` : 
                           "Tidak ada data untuk ditampilkan"
                         }
                       </td>
@@ -1763,7 +1808,7 @@ export default function Dashboard() {
                 <RoleTooltip data={roleTooltipData} position={tooltipPosition} />
               )}
             </div>
-            {workloadData.length === 0 && !workloadSearchQuery && (
+            {filteredWorkloadData.length === 0 && !workloadSearchQuery && (
               <div className="flex items-center justify-center h-32">
                 <p className="text-muted-foreground">
                   {filterFungsi === "Semua Fungsi" 
