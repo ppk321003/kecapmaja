@@ -314,15 +314,13 @@ const RiskItem = ({
         const tooltipWidth = 320;
         
         // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT - GESER SEDIKIT KE KIRI
-        let leftPosition = rect.right + 8; // 8px dari sebelah kanan baris (dikurangi dari 15px)
-        let topPosition = rect.top - 10;    // Sedikit di atas baris
+        let leftPosition = rect.right + 8;
+        let topPosition = rect.top - 10;
         
-        // Jika tooltip terlalu ke kanan, posisikan di kiri baris
         if (leftPosition + tooltipWidth > window.innerWidth - 20) {
           leftPosition = rect.left - tooltipWidth - 10;
         }
         
-        // Jika tooltip terlalu ke bawah, adjust posisi vertikal
         if (topPosition < 20) {
           topPosition = 20;
         }
@@ -550,7 +548,6 @@ const RiskMatrix = ({
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
-  // PERBAIKAN: Jika ada search query, tampilkan semua hasil pencarian, jika tidak tampilkan maksimal 10
   const displayData = searchQuery ? data : data.slice(0, 10);
 
   if (!data || data.length === 0) {
@@ -805,7 +802,7 @@ export default function Dashboard() {
   // PERBAIKAN: Jika ada search query, tampilkan semua hasil, jika tidak tampilkan maksimal 10
   const displayRiskData = riskSearchQuery ? filteredRiskData : filteredRiskData.slice(0, 10);
 
-  // PERBAIKAN: Fungsi untuk memfilter data berdasarkan fungsi - Filter dari SELURUH DATA
+  // PERBAIKAN UTAMA: Fungsi untuk memfilter data berdasarkan fungsi - LOGIKA YANG DIPERBAIKI
   const filterDataByFungsi = () => {
     console.log(`Filtering data for fungsi: ${filterFungsi}`);
     
@@ -819,50 +816,44 @@ export default function Dashboard() {
       petugasRoleData.current = allPetugasRoleData.current;
       console.log("Showing top 15 from all data:", top15Workload.length, "workload items");
     } else {
-      // Filter dari SELURUH DATA MENTAH, bukan dari 15 teratas
+      // PERBAIKAN: Filter dari SELURUH DATA MENTAH dengan logika yang benar
       const filteredWorkloadData: WorkloadData[] = [];
-      
-      // Iterasi melalui semua petugas di data mentah
+      const filteredRiskData: RiskData[] = [];
+      const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
+
+      // PERBAIKAN: Iterasi melalui semua petugas di data mentah
       allPetugasData.forEach(petugasData => {
         const fungsiMap = petugasFungsiKegiatanMap.current.get(petugasData.petugas);
         
-        // Jika petugas memiliki data untuk fungsi yang dipilih
-        if (fungsiMap) {
+        // PERBAIKAN: Pastikan petugas memiliki data untuk fungsi yang dipilih
+        if (fungsiMap && fungsiMap.has(filterFungsi)) {
           const fungsiData = fungsiMap.get(filterFungsi);
+          // PERBAIKAN: Cek apakah ada data dan kegiatan > 0
           if (fungsiData && fungsiData.kegiatan > 0) {
+            // PERBAIKAN: Tambahkan ke workload data dengan data yang benar
             filteredWorkloadData.push({
               petugas: petugasData.petugas,
               jumlahKegiatan: fungsiData.kegiatan,
               totalAnggaran: fungsiData.anggaran,
-              roles: petugasData.roles.filter(role => role === filterFungsi)
+              roles: [filterFungsi] // Hanya tampilkan fungsi yang dipilih
             });
+
+            // PERBAIKAN: Setup role data untuk tooltip
+            const roleMap = new Map<string, { kegiatan: number; anggaran: number }>();
+            roleMap.set(filterFungsi, {
+              kegiatan: fungsiData.kegiatan,
+              anggaran: fungsiData.anggaran
+            });
+            filteredPetugasRoleData.set(petugasData.petugas, roleMap);
           }
         }
       });
 
-      // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
-      const sortedWorkloadData = filteredWorkloadData
-        .sort((a, b) => {
-          // Pertama: Total Anggaran (descending)
-          if (b.totalAnggaran !== a.totalAnggaran) {
-            return b.totalAnggaran - a.totalAnggaran;
-          }
-          // Kedua: Jumlah Kegiatan (descending)
-          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
-            return b.jumlahKegiatan - a.jumlahKegiatan;
-          }
-          // Ketiga: Nama (ascending)
-          return a.petugas.localeCompare(b.petugas);
-        })
-        .slice(0, 15);
-
-      // Filter risk data dari seluruh data mentah
-      const filteredRiskData: RiskData[] = [];
-      
+      // PERBAIKAN: Filter risk data dari seluruh data mentah
       allPetugasRiskData.forEach(riskItem => {
         const fungsiMap = petugasFungsiKegiatanMap.current.get(riskItem.name);
         
-        if (fungsiMap) {
+        if (fungsiMap && fungsiMap.has(filterFungsi)) {
           const fungsiData = fungsiMap.get(filterFungsi);
           if (fungsiData && fungsiData.kegiatan > 0) {
             let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
@@ -885,45 +876,72 @@ export default function Dashboard() {
         }
       });
 
-      // PERBAIKAN: Urutkan risk data berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
+      // PERBAIKAN: Urutkan berdasarkan kriteria yang benar
+      const sortedWorkloadData = filteredWorkloadData
+        .sort((a, b) => {
+          if (b.totalAnggaran !== a.totalAnggaran) {
+            return b.totalAnggaran - a.totalAnggaran;
+          }
+          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
+            return b.jumlahKegiatan - a.jumlahKegiatan;
+          }
+          return a.petugas.localeCompare(b.petugas);
+        })
+        .slice(0, 15);
+
       const sortedRiskData = filteredRiskData
         .sort((a, b) => {
-          // Pertama: Jumlah Kegiatan (descending)
           if (b.kegiatan !== a.kegiatan) {
             return b.kegiatan - a.kegiatan;
           }
-          // Kedua: Total Anggaran (descending)
           if (b.anggaran !== a.anggaran) {
             return b.anggaran - a.anggaran;
           }
-          // Ketiga: Nama (ascending)
           return a.name.localeCompare(b.name);
         })
         .slice(0, 10);
 
-      // Filter petugas role data untuk tooltip
-      const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
-      
-      allPetugasRoleData.current.forEach((roleMap, petugas) => {
-        const roleData = roleMap.get(filterFungsi);
-        if (roleData && roleData.kegiatan > 0) {
-          const newRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
-          newRoleMap.set(filterFungsi, roleData);
-          filteredPetugasRoleData.set(petugas, newRoleMap);
-        }
+      console.log(`Filtered data for ${filterFungsi}:`, {
+        workload: sortedWorkloadData.length,
+        risk: sortedRiskData.length,
+        filteredWorkloadRaw: filteredWorkloadData.length,
+        filteredRiskRaw: filteredRiskData.length
       });
 
-      console.log(`Filtered data - Workload: ${sortedWorkloadData.length}, Risk: ${sortedRiskData.length}`);
-      
+      // PERBAIKAN: Debug untuk melihat data yang difilter
+      if (sortedWorkloadData.length === 0) {
+        console.log("No workload data found for filter. Checking petugasFungsiKegiatanMap:");
+        let foundCount = 0;
+        petugasFungsiKegiatanMap.current.forEach((fungsiMap, petugas) => {
+          if (fungsiMap.has(filterFungsi)) {
+            const fungsiData = fungsiMap.get(filterFungsi);
+            if (fungsiData && fungsiData.kegiatan > 0) {
+              console.log(`Found data for ${petugas}:`, fungsiData);
+              foundCount++;
+            }
+          }
+        });
+        console.log(`Total found for ${filterFungsi}: ${foundCount}`);
+      }
+
       setWorkloadData(sortedWorkloadData);
       setRiskData(sortedRiskData);
       petugasRoleData.current = filteredPetugasRoleData;
     }
   };
 
+  // PERBAIKAN: Tambahkan useEffect ini untuk memastikan filter dipanggil dengan benar
   useEffect(() => {
-    filterDataByFungsi();
-  }, [filterFungsi, allWorkloadData, allRiskData]);
+    console.log("Filter function triggered with:", {
+      filterFungsi,
+      allPetugasDataLength: allPetugasData.length,
+      allPetugasRiskDataLength: allPetugasRiskData.length
+    });
+    
+    if (allPetugasData.length > 0 && allPetugasRiskData.length > 0) {
+      filterDataByFungsi();
+    }
+  }, [filterFungsi, allPetugasData, allPetugasRiskData]);
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
@@ -1424,10 +1442,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // ... (kode UI tetap sama persis seperti sebelumnya)
-  // Semua komponen UI dari sini sampai akhir file TIDAK BERUBAH
-  // Hanya bagian data processing yang diperbaiki
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1749,7 +1763,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <RiskMatrix 
-              data={displayRiskData} // ✅ PERBAIKAN: Gunakan display data yang sudah dibatasi
+              data={displayRiskData}
               mode={viewMode}
               filterFungsi={filterFungsi}
               searchQuery={riskSearchQuery}
