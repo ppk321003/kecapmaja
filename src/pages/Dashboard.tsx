@@ -550,10 +550,8 @@ const RiskMatrix = ({
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
-  // Filter data berdasarkan search query - PERBAIKAN: Search di seluruh data
-  const filteredData = data.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // PERBAIKAN: Jika ada search query, tampilkan semua hasil pencarian, jika tidak tampilkan maksimal 10
+  const displayData = searchQuery ? data : data.slice(0, 10);
 
   if (!data || data.length === 0) {
     return (
@@ -583,23 +581,28 @@ const RiskMatrix = ({
         </div>
         {searchQuery && (
           <div className="mt-2 text-xs text-blue-700">
-            Menampilkan {filteredData.length} dari {data.length} mitra untuk pencarian "{searchQuery}"
+            Menampilkan {displayData.length} dari {data.length} mitra untuk pencarian "{searchQuery}"
+          </div>
+        )}
+        {!searchQuery && data.length > 10 && (
+          <div className="mt-2 text-xs text-blue-700">
+            Menampilkan 10 mitra dengan risiko tertinggi dari {data.length} total mitra
           </div>
         )}
       </div>
       
-      {filteredData.length === 0 ? (
+      {displayData.length === 0 ? (
         <div className="flex items-center justify-center h-32">
           <p className="text-muted-foreground">Tidak ada data yang cocok dengan pencarian "{searchQuery}"</p>
         </div>
       ) : (
-        filteredData.map((item, index) => (
+        displayData.map((item, index) => (
           <RiskItem
             key={index}
             item={item}
             filterFungsi={filterFungsi}
             index={index}
-            totalItems={filteredData.length}
+            totalItems={displayData.length}
             onShowRiskTooltip={onShowRiskTooltip}
             onHideRiskTooltip={onHideRiskTooltip}
           />
@@ -773,6 +776,9 @@ export default function Dashboard() {
       return a.petugas.localeCompare(b.petugas);
     });
 
+  // PERBAIKAN: Jika ada search query, tampilkan semua hasil, jika tidak tampilkan maksimal 15
+  const displayWorkloadData = workloadSearchQuery ? filteredWorkloadData : filteredWorkloadData.slice(0, 15);
+
   // PERBAIKAN: Filter data risk berdasarkan search query - Search di SELURUH DATA
   const filteredRiskData = allPetugasRiskData
     .filter(item => 
@@ -789,12 +795,15 @@ export default function Dashboard() {
       return a.name.localeCompare(b.name);
     });
 
+  // PERBAIKAN: Jika ada search query, tampilkan semua hasil, jika tidak tampilkan maksimal 10
+  const displayRiskData = riskSearchQuery ? filteredRiskData : filteredRiskData.slice(0, 10);
+
   // PERBAIKAN: Fungsi untuk memfilter data berdasarkan fungsi - Filter dari SELURUH DATA
   const filterDataByFungsi = () => {
     console.log(`Filtering data for fungsi: ${filterFungsi}`);
     
     if (filterFungsi === "Semua Fungsi") {
-      // Tampilkan 15 teratas dari semua data
+      // Tampilkan 15 teratas dari semua data untuk workload, 10 untuk risk
       const top15Workload = allPetugasData.slice(0, 15);
       const top10Risk = allPetugasRiskData.slice(0, 10);
       
@@ -1704,14 +1713,19 @@ export default function Dashboard() {
               }
               {riskSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{riskSearchQuery}" - Menampilkan {filteredRiskData.length} hasil
+                  Pencarian: "{riskSearchQuery}" - Menampilkan {displayRiskData.length} hasil
+                </div>
+              )}
+              {!riskSearchQuery && displayRiskData.length > 0 && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Menampilkan 10 mitra dengan risiko tertinggi
                 </div>
               )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <RiskMatrix 
-              data={filteredRiskData} // ✅ PERBAIKAN: Gunakan filtered data untuk search
+              data={displayRiskData} // ✅ PERBAIKAN: Gunakan display data yang sudah dibatasi
               mode={viewMode}
               filterFungsi={filterFungsi}
               searchQuery={riskSearchQuery}
@@ -1742,7 +1756,12 @@ export default function Dashboard() {
               }
               {workloadSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{workloadSearchQuery}" - Menampilkan {filteredWorkloadData.length} hasil
+                  Pencarian: "{workloadSearchQuery}" - Menampilkan {displayWorkloadData.length} hasil
+                </div>
+              )}
+              {!workloadSearchQuery && displayWorkloadData.length > 0 && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Menampilkan 15 mitra dengan realisasi tertinggi
                 </div>
               )}
             </CardDescription>
@@ -1760,7 +1779,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWorkloadData.length === 0 ? (
+                  {displayWorkloadData.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
                         {workloadSearchQuery ? 
@@ -1770,7 +1789,7 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ) : (
-                    filteredWorkloadData.map((item, index) => (
+                    displayWorkloadData.map((item, index) => (
                       <tr key={index} className="border-b hover:bg-muted/50">
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.petugas}</td>
@@ -1808,7 +1827,7 @@ export default function Dashboard() {
                 <RoleTooltip data={roleTooltipData} position={tooltipPosition} />
               )}
             </div>
-            {filteredWorkloadData.length === 0 && !workloadSearchQuery && (
+            {displayWorkloadData.length === 0 && !workloadSearchQuery && (
               <div className="flex items-center justify-center h-32">
                 <p className="text-muted-foreground">
                   {filterFungsi === "Semua Fungsi" 
