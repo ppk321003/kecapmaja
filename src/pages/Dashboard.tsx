@@ -564,7 +564,7 @@ const RiskMatrix = ({
   return (
     <div className="space-y-3">
       <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-        <h4 className="font-semibold text-sm mb-2">Kriteria Risiko:</h4>
+        <h4 className="font-semibold text-sm mb-2">Kriteria beban tugas:</h4>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
@@ -586,7 +586,7 @@ const RiskMatrix = ({
         )}
         {!searchQuery && data.length > 10 && (
           <div className="mt-2 text-xs text-blue-700">
-            Menampilkan 10 mitra dengan risiko tertinggi dari {data.length} total mitra
+            Menampilkan 10 mitra dengan beban tugas tertinggi dari {data.length} total mitra
           </div>
         )}
       </div>
@@ -1666,7 +1666,7 @@ export default function Dashboard() {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Analisis Detail</h2>
           <p className="text-muted-foreground mt-1">
-            Analisis mendalam berdasarkan fungsi dan risiko
+            Analisis mendalam berdasarkan fungsi dan beban tugas
           </p>
         </div>
         
@@ -1698,7 +1698,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                Assesmen Risiko
+                Assesmen Beban Tugas
               </CardTitle>
               <SearchInput
                 value={riskSearchQuery}
@@ -1718,7 +1718,7 @@ export default function Dashboard() {
               )}
               {!riskSearchQuery && displayRiskData.length > 0 && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Menampilkan 10 mitra dengan risiko tertinggi
+                  Menampilkan 10 mitra dengan beban tugas tertinggi
                 </div>
               )}
             </CardDescription>
