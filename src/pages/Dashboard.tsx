@@ -550,12 +550,12 @@ const RiskMatrix = ({
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
-  // PERBAIKAN: Search dari semua data yang sudah difilter oleh fungsi
-  const displayData = searchQuery 
+  // PERBAIKAN: Filter data berdasarkan search query dari data lengkap
+  const filteredData = searchQuery 
     ? data.filter(item => 
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : data;
+    : data.slice(0, 10); // Tampilkan top 10 jika tidak ada search
 
   if (!data || data.length === 0) {
     return (
@@ -583,35 +583,29 @@ const RiskMatrix = ({
             <span>Tinggi: &gt; 25</span>
           </div>
         </div>
-        {searchQuery && (
+        {searchQuery ? (
           <div className="mt-2 text-xs text-blue-700">
-            Menampilkan {displayData.length} dari {data.length} mitra untuk pencarian "{searchQuery}"
+            Menampilkan {filteredData.length} dari {data.length} mitra untuk pencarian "{searchQuery}"
           </div>
-        )}
-        {!searchQuery && filterFungsi === "Semua Fungsi" && data.length > 10 && (
+        ) : (
           <div className="mt-2 text-xs text-blue-700">
             Menampilkan 10 mitra dengan beban tugas tertinggi dari {data.length} total mitra
           </div>
         )}
-        {!searchQuery && filterFungsi !== "Semua Fungsi" && (
-          <div className="mt-2 text-xs text-blue-700">
-            Menampilkan {data.length} mitra dengan kegiatan di {filterFungsi}
-          </div>
-        )}
       </div>
       
-      {displayData.length === 0 ? (
+      {filteredData.length === 0 ? (
         <div className="flex items-center justify-center h-32">
           <p className="text-muted-foreground">Tidak ada data yang cocok dengan pencarian "{searchQuery}"</p>
         </div>
       ) : (
-        displayData.map((item, index) => (
+        filteredData.map((item, index) => (
           <RiskItem
             key={index}
             item={item}
             filterFungsi={filterFungsi}
             index={index}
-            totalItems={displayData.length}
+            totalItems={filteredData.length}
             onShowRiskTooltip={onShowRiskTooltip}
             onHideRiskTooltip={onHideRiskTooltip}
           />
@@ -691,13 +685,13 @@ export default function Dashboard() {
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
   const [riskData, setRiskData] = useState<RiskData[]>([]);
   
+  // PERBAIKAN UTAMA: Data lengkap yang sudah difilter berdasarkan fungsi (untuk search)
+  const [filteredWorkloadData, setFilteredWorkloadData] = useState<WorkloadData[]>([]);
+  const [filteredRiskData, setFilteredRiskData] = useState<RiskData[]>([]);
+  
   // DATA MENTAH untuk filtering - PERBAIKAN UTAMA
   const [allPetugasData, setAllPetugasData] = useState<WorkloadData[]>([]);
   const [allPetugasRiskData, setAllPetugasRiskData] = useState<RiskData[]>([]);
-
-  // PERBAIKAN: State untuk data yang sudah difilter berdasarkan fungsi (SEMUA DATA, tidak dibatasi)
-  const [allFilteredWorkloadData, setAllFilteredWorkloadData] = useState<WorkloadData[]>([]);
-  const [allFilteredRiskData, setAllFilteredRiskData] = useState<RiskData[]>([]);
 
   // State untuk search
   const [workloadSearchQuery, setWorkloadSearchQuery] = useState("");
@@ -763,32 +757,32 @@ export default function Dashboard() {
     }, 200);
   };
 
-  // PERBAIKAN UTAMA: Filter data berdasarkan fungsi - FIXED VERSION
+  // PERBAIKAN UTAMA: Filter data berdasarkan fungsi
   const filterDataByFungsi = () => {
     console.log(`Filtering data for fungsi: ${filterFungsi}`);
     
     if (filterFungsi === "Semua Fungsi") {
-      // Tampilkan 15 teratas dari semua data untuk workload, 10 untuk risk
+      // Untuk "Semua Fungsi", tampilkan top 15 untuk workload dan top 10 untuk risk
       const top15Workload = allPetugasData.slice(0, 15);
       const top10Risk = allPetugasRiskData.slice(0, 10);
       
-      // Simpan data untuk display (dibatasi)
       setWorkloadData(top15Workload);
       setRiskData(top10Risk);
       
-      // Simpan SEMUA data yang difilter untuk search (tidak dibatasi)
-      setAllFilteredWorkloadData(allPetugasData);
-      setAllFilteredRiskData(allPetugasRiskData);
+      // Simpan data lengkap untuk search
+      setFilteredWorkloadData(allPetugasData);
+      setFilteredRiskData(allPetugasRiskData);
       
       petugasRoleData.current = allPetugasRoleData.current;
       console.log("Showing top 15 from all data:", top15Workload.length, "workload items");
     } else {
-      // PERBAIKAN UTAMA: Filter dan urutkan data berdasarkan fungsi yang dipilih
+      // PERBAIKAN UTAMA: Filter data berdasarkan fungsi yang dipilih
       const filteredWorkloadData: WorkloadData[] = [];
       const filteredRiskData: RiskData[] = [];
       const filteredRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
 
       console.log("All petugas data count:", allPetugasData.length);
+      console.log("Petugas fungsi map size:", petugasFungsiKegiatanMap.current.size);
 
       // Iterasi melalui semua petugas di data mentah
       allPetugasData.forEach(petugasData => {
@@ -831,7 +825,12 @@ export default function Dashboard() {
           return a.petugas.localeCompare(b.petugas);
         });
 
-      const displayWorkloadData = sortedWorkloadData.slice(0, 15); // Batasi untuk display
+      // Simpan data lengkap yang sudah difilter untuk search
+      setFilteredWorkloadData(sortedWorkloadData);
+      
+      // Tampilkan hanya top 15 untuk workload
+      const top15Workload = sortedWorkloadData.slice(0, 15);
+      setWorkloadData(top15Workload);
 
       // Filter risk data dari seluruh data mentah
       allPetugasRiskData.forEach(riskItem => {
@@ -872,22 +871,17 @@ export default function Dashboard() {
           return a.name.localeCompare(b.name);
         });
 
-      const displayRiskData = filterFungsi === "Semua Fungsi" 
-        ? sortedRiskData.slice(0, 10) // Untuk "Semua Fungsi", batasi 10
-        : sortedRiskData; // Untuk fungsi tertentu, tampilkan semua
+      // Simpan data lengkap yang sudah difilter untuk search
+      setFilteredRiskData(sortedRiskData);
+      
+      // Tampilkan hanya top 10 untuk risk
+      const top10Risk = sortedRiskData.slice(0, 10);
+      setRiskData(top10Risk);
 
-      console.log(`Filtered data - Workload: ${displayWorkloadData.length}, Risk: ${displayRiskData.length}`);
-      console.log("All filtered workload data count:", sortedWorkloadData.length);
-      
-      // Set data untuk display (dibatasi)
-      setWorkloadData(displayWorkloadData);
-      setRiskData(displayRiskData);
-      
-      // Set SEMUA data yang difilter untuk search (tidak dibatasi)
-      setAllFilteredWorkloadData(sortedWorkloadData);
-      setAllFilteredRiskData(sortedRiskData);
-      
       petugasRoleData.current = filteredRoleData;
+
+      console.log(`Filtered data - Full Workload: ${sortedWorkloadData.length}, Display Workload: ${top15Workload.length}`);
+      console.log(`Filtered data - Full Risk: ${sortedRiskData.length}, Display Risk: ${top10Risk.length}`);
     }
   };
 
@@ -895,19 +889,19 @@ export default function Dashboard() {
     filterDataByFungsi();
   }, [filterFungsi, allPetugasData, allPetugasRiskData]);
 
-  // PERBAIKAN: Filter data untuk search - Mencari dari SEMUA data yang sesuai filter fungsi
-  const filteredWorkloadData = workloadSearchQuery 
-    ? allFilteredWorkloadData.filter(item => 
+  // PERBAIKAN: Filter data untuk search dari data lengkap yang sudah difilter
+  const searchedWorkloadData = workloadSearchQuery 
+    ? filteredWorkloadData.filter(item => 
         item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
         item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
       )
-    : workloadData;
+    : workloadData; // Gunakan top 15 jika tidak ada search
 
-  const filteredRiskData = riskSearchQuery 
-    ? allFilteredRiskData.filter(item => 
+  const searchedRiskData = riskSearchQuery 
+    ? filteredRiskData.filter(item => 
         item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
       )
-    : riskData;
+    : riskData; // Gunakan top 10 jika tidak ada search
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
@@ -1290,6 +1284,10 @@ export default function Dashboard() {
       const workloadDataArray = allPetugasWorkloadData.slice(0, 15);
       const riskDataArray = allPetugasRiskDataArray.slice(0, 10);
 
+      // Simpan data lengkap untuk search
+      setFilteredWorkloadData(allPetugasWorkloadData);
+      setFilteredRiskData(allPetugasRiskDataArray);
+
       // Hitung stats menggunakan data unik
       const validBulanKegiatan = getValidBulanForSlow(filterTahun, bulanKegiatanData);
       const validBulanAnggaran = getValidBulanForSlow(filterTahun, bulanAnggaranData);
@@ -1355,13 +1353,8 @@ export default function Dashboard() {
       setAllPetugasData(allPetugasWorkloadData);
       setAllPetugasRiskData(allPetugasRiskDataArray);
       
-      // Set data untuk display (dibatasi)
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
-      
-      // Set SEMUA data yang difilter untuk search (tidak dibatasi)
-      setAllFilteredWorkloadData(allPetugasWorkloadData);
-      setAllFilteredRiskData(allPetugasRiskDataArray);
       
       allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
@@ -1712,14 +1705,14 @@ export default function Dashboard() {
               }
               {riskSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{riskSearchQuery}" - Menampilkan {filteredRiskData.length} hasil
+                  Pencarian: "{riskSearchQuery}" - Menampilkan {searchedRiskData.length} hasil
                 </div>
               )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <RiskMatrix 
-              data={filteredRiskData}
+              data={searchedRiskData}
               mode={viewMode}
               filterFungsi={filterFungsi}
               searchQuery={riskSearchQuery}
@@ -1750,7 +1743,7 @@ export default function Dashboard() {
               }
               {workloadSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{workloadSearchQuery}" - Menampilkan {filteredWorkloadData.length} hasil
+                  Pencarian: "{workloadSearchQuery}" - Menampilkan {searchedWorkloadData.length} hasil
                 </div>
               )}
             </CardDescription>
@@ -1768,7 +1761,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWorkloadData.length === 0 ? (
+                  {searchedWorkloadData.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
                         {workloadSearchQuery ? 
@@ -1778,7 +1771,7 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ) : (
-                    filteredWorkloadData.map((item, index) => (
+                    searchedWorkloadData.map((item, index) => (
                       <tr key={index} className="border-b hover:bg-muted/50">
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.petugas}</td>
