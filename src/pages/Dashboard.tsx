@@ -314,13 +314,15 @@ const RiskItem = ({
         const tooltipWidth = 320;
         
         // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT - GESER SEDIKIT KE KIRI
-        let leftPosition = rect.right + 8;
-        let topPosition = rect.top - 10;
+        let leftPosition = rect.right + 8; // 8px dari sebelah kanan baris (dikurangi dari 15px)
+        let topPosition = rect.top - 10;    // Sedikit di atas baris
         
+        // Jika tooltip terlalu ke kanan, posisikan di kiri baris
         if (leftPosition + tooltipWidth > window.innerWidth - 20) {
           leftPosition = rect.left - tooltipWidth - 10;
         }
         
+        // Jika tooltip terlalu ke bawah, adjust posisi vertikal
         if (topPosition < 20) {
           topPosition = 20;
         }
@@ -548,6 +550,7 @@ const RiskMatrix = ({
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
+  // PERBAIKAN: Jika ada search query, tampilkan semua hasil pencarian, jika tidak tampilkan maksimal 10
   const displayData = searchQuery ? data : data.slice(0, 10);
 
   if (!data || data.length === 0) {
@@ -678,8 +681,6 @@ export default function Dashboard() {
   // Data untuk grafik dan filtering
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
   const [riskData, setRiskData] = useState<RiskData[]>([]);
-  const [allWorkloadData, setAllWorkloadData] = useState<WorkloadData[]>([]);
-  const [allRiskData, setAllRiskData] = useState<RiskData[]>([]);
   
   // DATA MENTAH untuk filtering - PERBAIKAN UTAMA
   const [allPetugasData, setAllPetugasData] = useState<WorkloadData[]>([]);
@@ -802,7 +803,7 @@ export default function Dashboard() {
   // PERBAIKAN: Jika ada search query, tampilkan semua hasil, jika tidak tampilkan maksimal 10
   const displayRiskData = riskSearchQuery ? filteredRiskData : filteredRiskData.slice(0, 10);
 
-  // PERBAIKAN UTAMA: Fungsi untuk memfilter data berdasarkan fungsi - LOGIKA YANG DIPERBAIKI
+  // PERBAIKAN UTAMA: Fungsi untuk memfilter data berdasarkan fungsi
   const filterDataByFungsi = () => {
     console.log(`Filtering data for fungsi: ${filterFungsi}`);
     
@@ -816,21 +817,20 @@ export default function Dashboard() {
       petugasRoleData.current = allPetugasRoleData.current;
       console.log("Showing top 15 from all data:", top15Workload.length, "workload items");
     } else {
-      // PERBAIKAN: Filter dari SELURUH DATA MENTAH dengan logika yang benar
+      // Filter dari SELURUH DATA MENTAH berdasarkan fungsi yang dipilih
       const filteredWorkloadData: WorkloadData[] = [];
       const filteredRiskData: RiskData[] = [];
-      const filteredPetugasRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
+      const filteredRoleData = new Map<string, Map<string, { kegiatan: number; anggaran: number }>>();
 
-      // PERBAIKAN: Iterasi melalui semua petugas di data mentah
+      // Iterasi melalui semua petugas di data mentah
       allPetugasData.forEach(petugasData => {
         const fungsiMap = petugasFungsiKegiatanMap.current.get(petugasData.petugas);
         
-        // PERBAIKAN: Pastikan petugas memiliki data untuk fungsi yang dipilih
-        if (fungsiMap && fungsiMap.has(filterFungsi)) {
+        // Jika petugas memiliki data untuk fungsi yang dipilih
+        if (fungsiMap) {
           const fungsiData = fungsiMap.get(filterFungsi);
-          // PERBAIKAN: Cek apakah ada data dan kegiatan > 0
           if (fungsiData && fungsiData.kegiatan > 0) {
-            // PERBAIKAN: Tambahkan ke workload data dengan data yang benar
+            // Tambahkan ke workload data
             filteredWorkloadData.push({
               petugas: petugasData.petugas,
               jumlahKegiatan: fungsiData.kegiatan,
@@ -838,22 +838,38 @@ export default function Dashboard() {
               roles: [filterFungsi] // Hanya tampilkan fungsi yang dipilih
             });
 
-            // PERBAIKAN: Setup role data untuk tooltip
+            // Tambahkan ke role data untuk tooltip
             const roleMap = new Map<string, { kegiatan: number; anggaran: number }>();
             roleMap.set(filterFungsi, {
               kegiatan: fungsiData.kegiatan,
               anggaran: fungsiData.anggaran
             });
-            filteredPetugasRoleData.set(petugasData.petugas, roleMap);
+            filteredRoleData.set(petugasData.petugas, roleMap);
           }
         }
       });
 
-      // PERBAIKAN: Filter risk data dari seluruh data mentah
+      // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
+      const sortedWorkloadData = filteredWorkloadData
+        .sort((a, b) => {
+          // Pertama: Total Anggaran (descending)
+          if (b.totalAnggaran !== a.totalAnggaran) {
+            return b.totalAnggaran - a.totalAnggaran;
+          }
+          // Kedua: Jumlah Kegiatan (descending)
+          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
+            return b.jumlahKegiatan - a.jumlahKegiatan;
+          }
+          // Ketiga: Nama (ascending)
+          return a.petugas.localeCompare(b.petugas);
+        })
+        .slice(0, 15);
+
+      // Filter risk data dari seluruh data mentah
       allPetugasRiskData.forEach(riskItem => {
         const fungsiMap = petugasFungsiKegiatanMap.current.get(riskItem.name);
         
-        if (fungsiMap && fungsiMap.has(filterFungsi)) {
+        if (fungsiMap) {
           const fungsiData = fungsiMap.get(filterFungsi);
           if (fungsiData && fungsiData.kegiatan > 0) {
             let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
@@ -876,71 +892,32 @@ export default function Dashboard() {
         }
       });
 
-      // PERBAIKAN: Urutkan berdasarkan kriteria yang benar
-      const sortedWorkloadData = filteredWorkloadData
-        .sort((a, b) => {
-          if (b.totalAnggaran !== a.totalAnggaran) {
-            return b.totalAnggaran - a.totalAnggaran;
-          }
-          if (b.jumlahKegiatan !== a.jumlahKegiatan) {
-            return b.jumlahKegiatan - a.jumlahKegiatan;
-          }
-          return a.petugas.localeCompare(b.petugas);
-        })
-        .slice(0, 15);
-
+      // PERBAIKAN: Urutkan risk data berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
       const sortedRiskData = filteredRiskData
         .sort((a, b) => {
+          // Pertama: Jumlah Kegiatan (descending)
           if (b.kegiatan !== a.kegiatan) {
             return b.kegiatan - a.kegiatan;
           }
+          // Kedua: Total Anggaran (descending)
           if (b.anggaran !== a.anggaran) {
             return b.anggaran - a.anggaran;
           }
+          // Ketiga: Nama (ascending)
           return a.name.localeCompare(b.name);
         })
         .slice(0, 10);
 
-      console.log(`Filtered data for ${filterFungsi}:`, {
-        workload: sortedWorkloadData.length,
-        risk: sortedRiskData.length,
-        filteredWorkloadRaw: filteredWorkloadData.length,
-        filteredRiskRaw: filteredRiskData.length
-      });
-
-      // PERBAIKAN: Debug untuk melihat data yang difilter
-      if (sortedWorkloadData.length === 0) {
-        console.log("No workload data found for filter. Checking petugasFungsiKegiatanMap:");
-        let foundCount = 0;
-        petugasFungsiKegiatanMap.current.forEach((fungsiMap, petugas) => {
-          if (fungsiMap.has(filterFungsi)) {
-            const fungsiData = fungsiMap.get(filterFungsi);
-            if (fungsiData && fungsiData.kegiatan > 0) {
-              console.log(`Found data for ${petugas}:`, fungsiData);
-              foundCount++;
-            }
-          }
-        });
-        console.log(`Total found for ${filterFungsi}: ${foundCount}`);
-      }
-
+      console.log(`Filtered data - Workload: ${sortedWorkloadData.length}, Risk: ${sortedRiskData.length}`);
+      
       setWorkloadData(sortedWorkloadData);
       setRiskData(sortedRiskData);
-      petugasRoleData.current = filteredPetugasRoleData;
+      petugasRoleData.current = filteredRoleData;
     }
   };
 
-  // PERBAIKAN: Tambahkan useEffect ini untuk memastikan filter dipanggil dengan benar
   useEffect(() => {
-    console.log("Filter function triggered with:", {
-      filterFungsi,
-      allPetugasDataLength: allPetugasData.length,
-      allPetugasRiskDataLength: allPetugasRiskData.length
-    });
-    
-    if (allPetugasData.length > 0 && allPetugasRiskData.length > 0) {
-      filterDataByFungsi();
-    }
+    filterDataByFungsi();
   }, [filterFungsi, allPetugasData, allPetugasRiskData]);
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
@@ -997,7 +974,7 @@ export default function Dashboard() {
       // Map untuk data role per petugas (UNTUK TOOLTIP)
       const petugasRoleDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number }>>();
 
-      // Map untuk data per fungsi per petugas
+      // Map untuk data per fungsi per petugas - PERBAIKAN UTAMA
       const petugasFungsiDetailMap = new Map<string, Map<string, { kegiatan: Set<string>; anggaran: number; namaKegiatanList: string[] }>>();
 
       let totalRealisasi = 0;
@@ -1066,7 +1043,7 @@ export default function Dashboard() {
             
             const roleData = roleMap.get(role)!;
             
-            // Inisialisasi map untuk fungsi per petugas
+            // PERBAIKAN UTAMA: Inisialisasi map untuk fungsi per petugas
             if (!petugasFungsiDetailMap.has(namaNormalized)) {
               petugasFungsiDetailMap.set(namaNormalized, new Map());
             }
@@ -1215,7 +1192,7 @@ export default function Dashboard() {
         petugasRoleDataFinal.set(petugas, convertedRoleMap);
       });
 
-      // Konversi petugasFungsiDetailMap untuk risk matrix
+      // PERBAIKAN UTAMA: Konversi petugasFungsiDetailMap untuk risk matrix
       const petugasFungsiDataFinal = new Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>();
       petugasFungsiDetailMap.forEach((fungsiMap, petugas) => {
         const convertedFungsiMap = new Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>();
@@ -1289,9 +1266,6 @@ export default function Dashboard() {
           return a.petugas.localeCompare(b.petugas);
         });
 
-      // Data untuk tampilan "Semua Fungsi" (15 teratas)
-      const workloadDataArray = allPetugasWorkloadData.slice(0, 15);
-
       // Simpan DATA MENTAH risk (semua petugas)
       const allPetugasRiskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
@@ -1329,7 +1303,8 @@ export default function Dashboard() {
           return a.name.localeCompare(b.name);
         });
 
-      // Data untuk tampilan "Semua Fungsi" (10 teratas)
+      // Data untuk tampilan "Semua Fungsi" (15 teratas untuk workload, 10 untuk risk)
+      const workloadDataArray = allPetugasWorkloadData.slice(0, 15);
       const riskDataArray = allPetugasRiskDataArray.slice(0, 10);
 
       // Hitung stats menggunakan data unik
@@ -1366,7 +1341,7 @@ export default function Dashboard() {
       // Total kegiatan menggunakan data unik
       const totalKegiatan = kegiatanUnikGlobal.size;
 
-      // PERBAIKAN: Set stats dan chart data - KEMBALIKAN data yang hilang
+      // PERBAIKAN: Set stats dan chart data
       setStats({
         totalKegiatan,
         totalRealisasi, // PERBAIKAN: Sudah menggunakan nilai realisasi yang dihitung seperti entri target
@@ -1394,8 +1369,6 @@ export default function Dashboard() {
       });
 
       // Simpan semua data untuk filtering
-      setAllWorkloadData(workloadDataArray);
-      setAllRiskData(riskDataArray);
       setAllPetugasData(allPetugasWorkloadData); // ✅ Simpan SEMUA data petugas
       setAllPetugasRiskData(allPetugasRiskDataArray); // ✅ Simpan SEMUA data risk
       
@@ -1405,7 +1378,7 @@ export default function Dashboard() {
       allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
       
-      // Simpan data fungsi untuk risk matrix
+      // PERBAIKAN UTAMA: Simpan data fungsi untuk filtering
       petugasFungsiKegiatanMap.current = petugasFungsiDataFinal;
 
       console.log("Dashboard data loaded successfully");
@@ -1413,6 +1386,7 @@ export default function Dashboard() {
       console.log("Top 15 workload data count:", workloadDataArray.length);
       console.log("All risk data count:", allPetugasRiskDataArray.length);
       console.log("Top 10 risk data count:", riskDataArray.length);
+      console.log("Petugas fungsi map size:", petugasFungsiDataFinal.size);
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -1513,7 +1487,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics dengan warna yang elegan - DIKEMBALIKAN */}
+      {/* Key Metrics dengan warna yang elegan */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1604,7 +1578,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Trend Line Chart - DIPINDAHKAN ke urutan pertama setelah box metrics */}
+      {/* Trend Line Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1624,7 +1598,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Charts Grid - DIKEMBALIKAN */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -1747,7 +1721,7 @@ export default function Dashboard() {
             <CardDescription>
               {filterFungsi === "Semua Fungsi" 
                 ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail"
-                : `Top 10 Mitra Statistik - Hover untuk melihat detail`
+                : `Mitra Statistik dengan kegiatan di ${filterFungsi} - Hover untuk melihat detail`
               }
               {riskSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
@@ -1756,7 +1730,10 @@ export default function Dashboard() {
               )}
               {!riskSearchQuery && displayRiskData.length > 0 && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Menampilkan 10 mitra dengan beban tugas tertinggi
+                  {filterFungsi === "Semua Fungsi" 
+                    ? "Menampilkan 10 mitra dengan beban tugas tertinggi" 
+                    : `Menampilkan ${Math.min(displayRiskData.length, 10)} mitra dengan beban tugas tertinggi di ${filterFungsi}`
+                  }
                 </div>
               )}
             </CardDescription>
@@ -1790,7 +1767,7 @@ export default function Dashboard() {
             <CardDescription>
               {filterFungsi === "Semua Fungsi"
                 ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi"
-                : `Tabel detail distribusi realisasi honor - Hover untuk melihat detail`
+                : `Tabel detail distribusi realisasi honor di ${filterFungsi} - Hover untuk melihat detail`
               }
               {workloadSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
@@ -1799,7 +1776,10 @@ export default function Dashboard() {
               )}
               {!workloadSearchQuery && displayWorkloadData.length > 0 && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Menampilkan 15 mitra dengan realisasi tertinggi
+                  {filterFungsi === "Semua Fungsi"
+                    ? "Menampilkan 15 mitra dengan realisasi tertinggi"
+                    : `Menampilkan ${Math.min(displayWorkloadData.length, 15)} mitra dengan realisasi tertinggi di ${filterFungsi}`
+                  }
                 </div>
               )}
             </CardDescription>
@@ -1822,7 +1802,7 @@ export default function Dashboard() {
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
                         {workloadSearchQuery ? 
                           `Tidak ada data yang cocok dengan pencarian "${workloadSearchQuery}"` : 
-                          "Tidak ada data untuk ditampilkan"
+                          `Tidak ada data untuk ${filterFungsi}`
                         }
                       </td>
                     </tr>
@@ -1865,16 +1845,6 @@ export default function Dashboard() {
                 <RoleTooltip data={roleTooltipData} position={tooltipPosition} />
               )}
             </div>
-            {displayWorkloadData.length === 0 && !workloadSearchQuery && (
-              <div className="flex items-center justify-center h-32">
-                <p className="text-muted-foreground">
-                  {filterFungsi === "Semua Fungsi" 
-                    ? "Tidak ada data untuk ditampilkan" 
-                    : `Tidak ada data untuk ${filterFungsi}`
-                  }
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
