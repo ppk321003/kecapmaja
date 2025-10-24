@@ -695,9 +695,9 @@ export default function Dashboard() {
   const [allPetugasData, setAllPetugasData] = useState<WorkloadData[]>([]);
   const [allPetugasRiskData, setAllPetugasRiskData] = useState<RiskData[]>([]);
 
-  // PERBAIKAN: State untuk data yang sudah difilter berdasarkan fungsi (tanpa search)
-  const [filteredWorkloadDataByFungsi, setFilteredWorkloadDataByFungsi] = useState<WorkloadData[]>([]);
-  const [filteredRiskDataByFungsi, setFilteredRiskDataByFungsi] = useState<RiskData[]>([]);
+  // PERBAIKAN: State untuk data yang sudah difilter berdasarkan fungsi (SEMUA DATA, tidak dibatasi)
+  const [allFilteredWorkloadData, setAllFilteredWorkloadData] = useState<WorkloadData[]>([]);
+  const [allFilteredRiskData, setAllFilteredRiskData] = useState<RiskData[]>([]);
 
   // State untuk search
   const [workloadSearchQuery, setWorkloadSearchQuery] = useState("");
@@ -772,10 +772,14 @@ export default function Dashboard() {
       const top15Workload = allPetugasData.slice(0, 15);
       const top10Risk = allPetugasRiskData.slice(0, 10);
       
+      // Simpan data untuk display (dibatasi)
       setWorkloadData(top15Workload);
       setRiskData(top10Risk);
-      setFilteredWorkloadDataByFungsi(top15Workload);
-      setFilteredRiskDataByFungsi(top10Risk);
+      
+      // Simpan SEMUA data yang difilter untuk search (tidak dibatasi)
+      setAllFilteredWorkloadData(allPetugasData);
+      setAllFilteredRiskData(allPetugasRiskData);
+      
       petugasRoleData.current = allPetugasRoleData.current;
       console.log("Showing top 15 from all data:", top15Workload.length, "workload items");
     } else {
@@ -825,8 +829,9 @@ export default function Dashboard() {
             return b.jumlahKegiatan - a.jumlahKegiatan;
           }
           return a.petugas.localeCompare(b.petugas);
-        })
-        .slice(0, 15); // Tetap batasi 15 teratas untuk fungsi tertentu
+        });
+
+      const displayWorkloadData = sortedWorkloadData.slice(0, 15); // Batasi untuk display
 
       // Filter risk data dari seluruh data mentah
       allPetugasRiskData.forEach(riskItem => {
@@ -866,15 +871,22 @@ export default function Dashboard() {
           }
           return a.name.localeCompare(b.name);
         });
-        // Hapus slice(0, 10) agar menampilkan SEMUA data untuk fungsi tertentu
 
-      console.log(`Filtered data - Workload: ${sortedWorkloadData.length}, Risk: ${sortedRiskData.length}`);
-      console.log("Filtered workload data:", sortedWorkloadData);
+      const displayRiskData = filterFungsi === "Semua Fungsi" 
+        ? sortedRiskData.slice(0, 10) // Untuk "Semua Fungsi", batasi 10
+        : sortedRiskData; // Untuk fungsi tertentu, tampilkan semua
+
+      console.log(`Filtered data - Workload: ${displayWorkloadData.length}, Risk: ${displayRiskData.length}`);
+      console.log("All filtered workload data count:", sortedWorkloadData.length);
       
-      setWorkloadData(sortedWorkloadData);
-      setRiskData(sortedRiskData);
-      setFilteredWorkloadDataByFungsi(sortedWorkloadData);
-      setFilteredRiskDataByFungsi(sortedRiskData);
+      // Set data untuk display (dibatasi)
+      setWorkloadData(displayWorkloadData);
+      setRiskData(displayRiskData);
+      
+      // Set SEMUA data yang difilter untuk search (tidak dibatasi)
+      setAllFilteredWorkloadData(sortedWorkloadData);
+      setAllFilteredRiskData(sortedRiskData);
+      
       petugasRoleData.current = filteredRoleData;
     }
   };
@@ -883,16 +895,16 @@ export default function Dashboard() {
     filterDataByFungsi();
   }, [filterFungsi, allPetugasData, allPetugasRiskData]);
 
-  // PERBAIKAN: Filter data untuk search - Mencari dari semua data yang sudah difilter oleh fungsi
+  // PERBAIKAN: Filter data untuk search - Mencari dari SEMUA data yang sesuai filter fungsi
   const filteredWorkloadData = workloadSearchQuery 
-    ? filteredWorkloadDataByFungsi.filter(item => 
+    ? allFilteredWorkloadData.filter(item => 
         item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
         item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
       )
     : workloadData;
 
   const filteredRiskData = riskSearchQuery 
-    ? filteredRiskDataByFungsi.filter(item => 
+    ? allFilteredRiskData.filter(item => 
         item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
       )
     : riskData;
@@ -1343,10 +1355,13 @@ export default function Dashboard() {
       setAllPetugasData(allPetugasWorkloadData);
       setAllPetugasRiskData(allPetugasRiskDataArray);
       
+      // Set data untuk display (dibatasi)
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
-      setFilteredWorkloadDataByFungsi(workloadDataArray);
-      setFilteredRiskDataByFungsi(riskDataArray);
+      
+      // Set SEMUA data yang difilter untuk search (tidak dibatasi)
+      setAllFilteredWorkloadData(allPetugasWorkloadData);
+      setAllFilteredRiskData(allPetugasRiskDataArray);
       
       allPetugasRoleData.current = petugasRoleDataFinal;
       petugasRoleData.current = petugasRoleDataFinal;
