@@ -28,6 +28,7 @@ import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, T
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 
+// PERBAIKAN: Gunakan spreadsheet ID yang sama dengan entri target
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 
 const bulanList = [
@@ -627,6 +628,55 @@ const getValidBulanForSlow = (tahun: string, data: ChartItem[]): ChartItem[] => 
   return data;
 };
 
+// PERBAIKAN: Fungsi parsing nilai yang sama dengan entri target
+const parseNilai = (nilaiStr: string): number => {
+  if (!nilaiStr) return 0;
+  
+  // PERBAIKAN: Gunakan logika yang sama dengan entri target
+  const cleaned = nilaiStr
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '.')
+    .replace(/,-$/, '');
+  
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : Math.round(parsed);
+};
+
+// PERBAIKAN: Fungsi parsing tanggal yang sama dengan entri target
+const parseDateFromSpreadsheet = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  
+  // PERBAIKAN: Gunakan logika parsing yang sama dengan entri target
+  const monthNames: {[key: string]: number} = {
+    'januari': 0, 'februari': 1, 'maret': 2, 'april': 3,
+    'mei': 4, 'juni': 5, 'juli': 6, 'agustus': 7,
+    'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+  };
+  
+  const numericParts = dateStr.split(/[\/\s-]/);
+  if (numericParts.length >= 3 && !isNaN(parseInt(numericParts[0])) && !isNaN(parseInt(numericParts[1]))) {
+    const day = parseInt(numericParts[0]);
+    const month = parseInt(numericParts[1]) - 1;
+    const year = parseInt(numericParts[2]);
+    return new Date(year, month, day);
+  }
+  
+  const parts = dateStr.toLowerCase().split(/\s+/);
+  if (parts.length >= 3) {
+    const day = parseInt(parts[0]);
+    const monthName = parts[1];
+    const year = parseInt(parts[2]);
+    const month = monthNames[monthName];
+    
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      return new Date(year, month, day);
+    }
+  }
+  
+  return new Date();
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
@@ -674,13 +724,9 @@ export default function Dashboard() {
   // Data untuk grafik dan filtering
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
   const [riskData, setRiskData] = useState<RiskData[]>([]);
-  const [allWorkloadData, setAllWorkloadData] = useState<WorkloadData[]>([]);
-  const [allRiskData, setAllRiskData] = useState<RiskData[]>([]);
-  
-  // DATA MENTAH untuk filtering - PERBAIKAN UTAMA
   const [allPetugasData, setAllPetugasData] = useState<WorkloadData[]>([]);
   const [allPetugasRiskData, setAllPetugasRiskData] = useState<RiskData[]>([]);
-
+  
   // State untuk search
   const [workloadSearchQuery, setWorkloadSearchQuery] = useState("");
   const [riskSearchQuery, setRiskSearchQuery] = useState("");
@@ -704,7 +750,11 @@ export default function Dashboard() {
 
   const { toast } = useToast();
 
-  // Format currency helper
+  // Format currency helper - PERBAIKAN: sama dengan entri target
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value) + ',-';
+  };
+
   const formatRupiah = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -713,21 +763,7 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  // Parse nilai realisasi
-  const parseNilai = (nilaiStr: string): number => {
-    if (!nilaiStr) return 0;
-    
-    const cleaned = nilaiStr
-      .replace(/[^\d,.-]/g, '')
-      .replace(/\./g, '')
-      .replace(/,/g, '.')
-      .replace(/,-$/, '');
-    
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : Math.round(parsed);
-  };
-
-  // Fungsi untuk menampilkan tooltip role
+  // PERBAIKAN: Fungsi untuk menampilkan tooltip role
   const handleShowTooltip = (data: RoleTooltipData, position: { x: number; y: number }) => {
     if (hideTooltipTimeout.current) {
       clearTimeout(hideTooltipTimeout.current);
@@ -736,14 +772,14 @@ export default function Dashboard() {
     setTooltipPosition(position);
   };
 
-  // Fungsi untuk menyembunyikan tooltip role dengan delay
+  // PERBAIKAN: Fungsi untuk menyembunyikan tooltip role dengan delay
   const handleHideTooltip = () => {
     hideTooltipTimeout.current = setTimeout(() => {
       setRoleTooltipData(null);
     }, 100);
   };
 
-  // Fungsi untuk menampilkan tooltip risk matrix
+  // PERBAIKAN: Fungsi untuk menampilkan tooltip risk matrix
   const handleShowRiskTooltip = (data: RiskHoverData, position: { x: number; y: number }) => {
     if (hideRiskTooltipTimeout.current) {
       clearTimeout(hideRiskTooltipTimeout.current);
@@ -752,7 +788,7 @@ export default function Dashboard() {
     setRiskTooltipPosition(position);
   };
 
-  // Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
+  // PERBAIKAN: Fungsi untuk menyembunyikan tooltip risk matrix dengan delay
   const handleHideRiskTooltip = () => {
     hideRiskTooltipTimeout.current = setTimeout(() => {
       setRiskTooltipData(null);
@@ -765,7 +801,6 @@ export default function Dashboard() {
       item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
       item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
     )
-    // Tetap urutkan sesuai kriteria
     .sort((a, b) => {
       if (b.totalAnggaran !== a.totalAnggaran) {
         return b.totalAnggaran - a.totalAnggaran;
@@ -784,7 +819,6 @@ export default function Dashboard() {
     .filter(item => 
       item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
     )
-    // Tetap urutkan sesuai kriteria
     .sort((a, b) => {
       if (b.kegiatan !== a.kegiatan) {
         return b.kegiatan - a.kegiatan;
@@ -836,15 +870,12 @@ export default function Dashboard() {
       // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
       const sortedWorkloadData = filteredWorkloadData
         .sort((a, b) => {
-          // Pertama: Total Anggaran (descending)
           if (b.totalAnggaran !== a.totalAnggaran) {
             return b.totalAnggaran - a.totalAnggaran;
           }
-          // Kedua: Jumlah Kegiatan (descending)
           if (b.jumlahKegiatan !== a.jumlahKegiatan) {
             return b.jumlahKegiatan - a.jumlahKegiatan;
           }
-          // Ketiga: Nama (ascending)
           return a.petugas.localeCompare(b.petugas);
         })
         .slice(0, 15);
@@ -881,15 +912,12 @@ export default function Dashboard() {
       // PERBAIKAN: Urutkan risk data berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
       const sortedRiskData = filteredRiskData
         .sort((a, b) => {
-          // Pertama: Jumlah Kegiatan (descending)
           if (b.kegiatan !== a.kegiatan) {
             return b.kegiatan - a.kegiatan;
           }
-          // Kedua: Total Anggaran (descending)
           if (b.anggaran !== a.anggaran) {
             return b.anggaran - a.anggaran;
           }
-          // Ketiga: Nama (ascending)
           return a.name.localeCompare(b.name);
         })
         .slice(0, 10);
@@ -916,8 +944,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     filterDataByFungsi();
-  }, [filterFungsi, allWorkloadData, allRiskData]);
+  }, [filterFungsi, allPetugasData, allPetugasRiskData]);
 
+  // PERBAIKAN UTAMA: Fetch data dengan logika yang sama seperti entri target
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -933,12 +962,12 @@ export default function Dashboard() {
       if (error) throw error;
 
       const rows = tugasResponse?.values || [];
-      console.log("Total rows fetched:", rows.length);
+      console.log("Total rows fetched from spreadsheet:", rows.length);
 
-      // Process data
+      // Process data - PERBAIKAN: Gunakan logika yang sama dengan entri target
       const allData = rows.slice(1) || [];
       
-      // Filter data berdasarkan tahun
+      // PERBAIKAN: Filter data berdasarkan tahun dengan logika yang sama
       const filteredData = allData.filter((row: any[]) => {
         const periode = row[2]?.toString() || "";
         return periode.includes(filterTahun);
@@ -946,7 +975,7 @@ export default function Dashboard() {
 
       console.log(`Data for year ${filterTahun}:`, filteredData.length);
 
-      // PERBAIKAN: Maps untuk data KEGIATAN - gunakan namaKegiatan saja untuk menghitung "jenis kegiatan"
+      // PERBAIKAN: Maps untuk data KEGIATAN - gunakan logika yang sama dengan entri target
       const kegiatanUnikGlobal = new Set<string>();
       const petugasKegiatanUnikMap = new Map<string, Set<string>>();
       const bulanKegiatanUnikMap = new Map<string, Set<string>>();
@@ -964,7 +993,7 @@ export default function Dashboard() {
         kegiatanUnik: number, 
         totalAnggaran: number, 
         roles: Set<string>,
-        namaKegiatanUnik: Set<string>, // PERBAIKAN: Untuk "jenis kegiatan" gunakan namaKegiatan saja
+        namaKegiatanUnik: Set<string>,
         namaKegiatanList: string[]
       }>();
 
@@ -976,7 +1005,7 @@ export default function Dashboard() {
 
       let totalRealisasi = 0;
 
-      // Proses data
+      // PERBAIKAN: Proses data dengan logika yang sama seperti entri target
       filteredData.forEach((row: any[], rowIndex) => {
         try {
           const no = row[0]?.toString() || "";
@@ -988,29 +1017,28 @@ export default function Dashboard() {
           const namaPetugas = row[14]?.toString() || "";
           const nilaiRealisasi = row[17]?.toString() || "";
 
-          // Extract bulan dari periode
+          // PERBAIKAN: Extract bulan dari periode dengan logika yang sama
           const bulanMatch = periode.match(/^(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i);
           const bulan = bulanMatch ? bulanMatch[1] : "";
           
-          // Parse petugas dan nilai realisasi
+          // PERBAIKAN: Parse petugas dan nilai realisasi dengan logika yang sama
           const namaList = namaPetugas.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
           const nilaiList = nilaiRealisasi.split(/\s*\|\s*/).map(parseNilai);
 
-          // Validasi: pastikan jumlah petugas dan nilai sama
+          // PERBAIKAN: Validasi jumlah petugas dan nilai sama seperti entri target
           const validNilaiList = nilaiList.length === namaList.length ? 
             nilaiList : 
             Array(namaList.length).fill(0).map((_, i) => nilaiList[i] || 0);
 
-          // PERBAIKAN: Buat identifier unik untuk kegiatan - HANYA gunakan namaKegiatan untuk "jenis kegiatan"
-          const kegiatanUnikId = `${namaKegiatan.trim()}`; // ✅ Hanya nama kegiatan
-          const kegiatanDetailId = `${namaKegiatan.trim()}|${jenisPekerjaan.trim()}|${nomorSK.trim()}|${bulan}`; // Untuk tracking detail
+          // PERBAIKAN: Gunakan identifier yang sama dengan entri target untuk konsistensi
+          const kegiatanUnikId = `${namaKegiatan.trim()}|${jenisPekerjaan.trim()}|${nomorSK.trim()}`;
 
           // Tambahkan ke global set untuk total kegiatan
           if (namaKegiatan.trim()) {
             kegiatanUnikGlobal.add(kegiatanUnikId);
           }
 
-          // Process data untuk setiap petugas
+          // PERBAIKAN: Process data untuk setiap petugas dengan logika yang sama
           namaList.forEach((nama, index) => {
             const nilai = validNilaiList[index] || 0;
             const namaNormalized = nama.trim();
@@ -1043,13 +1071,12 @@ export default function Dashboard() {
             
             const fungsiData = fungsiMap.get(role)!;
 
-            // PERBAIKAN: Kegiatan unik per petugas - gunakan namaKegiatan saja untuk "jenis kegiatan"
+            // PERBAIKAN: Kegiatan unik per petugas - gunakan identifier yang sama
             if (!petugasKegiatanUnikMap.has(namaNormalized)) {
               petugasKegiatanUnikMap.set(namaNormalized, new Set());
             }
             if (namaKegiatan && namaKegiatan.trim() !== '') {
               const petugasKegiatanSet = petugasKegiatanUnikMap.get(namaNormalized)!;
-              // ✅ Hanya tambahkan jika nama kegiatan belum ada
               if (!petugasKegiatanSet.has(kegiatanUnikId)) {
                 petugasKegiatanSet.add(kegiatanUnikId);
                 // Hitung kegiatan UNIK untuk tooltip role
@@ -1062,33 +1089,33 @@ export default function Dashboard() {
               }
             }
 
-            // Kegiatan unik per bulan (tetap gunakan detail untuk chart)
+            // Kegiatan unik per bulan
             if (bulan && bulanList.includes(bulan)) {
               if (!bulanKegiatanUnikMap.has(bulan)) {
                 bulanKegiatanUnikMap.set(bulan, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                bulanKegiatanUnikMap.get(bulan)!.add(kegiatanDetailId);
+                bulanKegiatanUnikMap.get(bulan)!.add(kegiatanUnikId);
               }
             }
 
-            // Kegiatan unik per jenis pekerjaan (tetap gunakan detail untuk chart)
+            // Kegiatan unik per jenis pekerjaan
             if (jenisPekerjaan) {
               if (!jenisPekerjaanKegiatanUnikMap.has(jenisPekerjaan)) {
                 jenisPekerjaanKegiatanUnikMap.set(jenisPekerjaan, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                jenisPekerjaanKegiatanUnikMap.get(jenisPekerjaan)!.add(kegiatanDetailId);
+                jenisPekerjaanKegiatanUnikMap.get(jenisPekerjaan)!.add(kegiatanUnikId);
               }
             }
 
-            // Kegiatan unik per role (tetap gunakan detail untuk chart)
+            // Kegiatan unik per role
             if (role) {
               if (!roleKegiatanUnikMap.has(role)) {
                 roleKegiatanUnikMap.set(role, new Set());
               }
               if (namaKegiatan && namaKegiatan.trim() !== '') {
-                roleKegiatanUnikMap.get(role)!.add(kegiatanDetailId);
+                roleKegiatanUnikMap.get(role)!.add(kegiatanUnikId);
               }
             }
 
@@ -1107,13 +1134,12 @@ export default function Dashboard() {
                 kegiatanUnik: 0, 
                 totalAnggaran: 0, 
                 roles: new Set(),
-                namaKegiatanUnik: new Set(), // PERBAIKAN: Untuk "jenis kegiatan"
+                namaKegiatanUnik: new Set(),
                 namaKegiatanList: []
               });
             }
             const detail = petugasDetailMap.get(namaNormalized)!;
             if (namaKegiatan && namaKegiatan.trim() !== '') {
-              // ✅ Hanya tambahkan nama kegiatan jika belum ada
               if (!detail.namaKegiatanUnik.has(kegiatanUnikId)) {
                 detail.namaKegiatanUnik.add(kegiatanUnikId);
                 if (!detail.namaKegiatanList.includes(namaKegiatan.trim())) {
@@ -1156,9 +1182,9 @@ export default function Dashboard() {
         }
       });
 
-      // PERBAIKAN: Update kegiatanUnik untuk setiap petugas - gunakan namaKegiatanUnik
+      // PERBAIKAN: Update kegiatanUnik untuk setiap petugas
       petugasDetailMap.forEach((detail, petugas) => {
-        detail.kegiatanUnik = detail.namaKegiatanUnik.size; // ✅ Jumlah jenis kegiatan unik
+        detail.kegiatanUnik = detail.namaKegiatanUnik.size;
       });
 
       console.log("Total kegiatan unik global:", kegiatanUnikGlobal.size);
@@ -1171,7 +1197,7 @@ export default function Dashboard() {
         const convertedRoleMap = new Map<string, { kegiatan: number; anggaran: number }>();
         roleMap.forEach((roleData, role) => {
           convertedRoleMap.set(role, {
-            kegiatan: roleData.kegiatan.size, // ✅ Jumlah jenis kegiatan unik
+            kegiatan: roleData.kegiatan.size,
             anggaran: roleData.anggaran
           });
         });
@@ -1184,7 +1210,7 @@ export default function Dashboard() {
         const convertedFungsiMap = new Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>();
         fungsiMap.forEach((fungsiData, fungsi) => {
           convertedFungsiMap.set(fungsi, {
-            kegiatan: fungsiData.kegiatan.size, // ✅ Jumlah jenis kegiatan unik
+            kegiatan: fungsiData.kegiatan.size,
             anggaran: fungsiData.anggaran,
             namaKegiatanList: fungsiData.namaKegiatanList.sort()
           });
@@ -1229,35 +1255,31 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-      // Simpan DATA MENTAH untuk filtering (semua petugas)
+      // PERBAIKAN: Simpan DATA MENTAH untuk filtering (semua petugas)
       const allPetugasWorkloadData: WorkloadData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => ({
           petugas,
-          jumlahKegiatan: detail.kegiatanUnik, // ✅ Jumlah jenis kegiatan unik
+          jumlahKegiatan: detail.kegiatanUnik,
           totalAnggaran: detail.totalAnggaran,
           roles: Array.from(detail.roles)
         }))
-        // PERBAIKAN: Urutkan berdasarkan totalAnggaran DESC, jumlahKegiatan DESC, nama ASC
         .sort((a, b) => {
-          // Pertama: Total Anggaran (descending)
           if (b.totalAnggaran !== a.totalAnggaran) {
             return b.totalAnggaran - a.totalAnggaran;
           }
-          // Kedua: Jumlah Kegiatan (descending)
           if (b.jumlahKegiatan !== a.jumlahKegiatan) {
             return b.jumlahKegiatan - a.jumlahKegiatan;
           }
-          // Ketiga: Nama (ascending)
           return a.petugas.localeCompare(b.petugas);
         });
 
       // Data untuk tampilan "Semua Fungsi" (15 teratas)
       const workloadDataArray = allPetugasWorkloadData.slice(0, 15);
 
-      // Simpan DATA MENTAH risk (semua petugas)
+      // PERBAIKAN: Simpan DATA MENTAH risk (semua petugas)
       const allPetugasRiskDataArray: RiskData[] = Array.from(petugasDetailMap.entries())
         .map(([petugas, detail]) => {
-          const jumlahNamaKegiatanUnik = detail.kegiatanUnik; // ✅ Jumlah jenis kegiatan unik
+          const jumlahNamaKegiatanUnik = detail.kegiatanUnik;
           
           let riskLevel: 'Rendah' | 'Sedang' | 'Tinggi';
           
@@ -1271,23 +1293,19 @@ export default function Dashboard() {
 
           return {
             name: petugas,
-            kegiatan: jumlahNamaKegiatanUnik, // ✅ Jumlah jenis kegiatan unik
+            kegiatan: jumlahNamaKegiatanUnik,
             anggaran: detail.totalAnggaran,
             riskLevel: riskLevel,
             namaKegiatanList: detail.namaKegiatanList.sort()
           };
         })
-        // PERBAIKAN: Urutkan berdasarkan jumlah kegiatan DESC, anggaran DESC, nama ASC
         .sort((a, b) => {
-          // Pertama: Jumlah Kegiatan (descending)
           if (b.kegiatan !== a.kegiatan) {
             return b.kegiatan - a.kegiatan;
           }
-          // Kedua: Total Anggaran (descending)
           if (b.anggaran !== a.anggaran) {
             return b.anggaran - a.anggaran;
           }
-          // Ketiga: Nama (ascending)
           return a.name.localeCompare(b.name);
         });
 
@@ -1328,7 +1346,7 @@ export default function Dashboard() {
       // Total kegiatan menggunakan data unik
       const totalKegiatan = kegiatanUnikGlobal.size;
 
-      // PERBAIKAN: Set stats dan chart data - KEMBALIKAN data yang hilang
+      // PERBAIKAN: Set stats dan chart data
       setStats({
         totalKegiatan,
         totalRealisasi,
@@ -1356,10 +1374,8 @@ export default function Dashboard() {
       });
 
       // Simpan semua data untuk filtering
-      setAllWorkloadData(workloadDataArray);
-      setAllRiskData(riskDataArray);
-      setAllPetugasData(allPetugasWorkloadData); // ✅ Simpan SEMUA data petugas
-      setAllPetugasRiskData(allPetugasRiskDataArray); // ✅ Simpan SEMUA data risk
+      setAllPetugasData(allPetugasWorkloadData);
+      setAllPetugasRiskData(allPetugasRiskDataArray);
       
       setWorkloadData(workloadDataArray);
       setRiskData(riskDataArray);
@@ -1404,6 +1420,7 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Kode UI tetap sama...
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1475,7 +1492,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics dengan warna yang elegan - DIKEMBALIKAN */}
+      {/* Key Metrics dengan warna yang elegan */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1535,8 +1552,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold text-purple-900">
               {viewMode === 'kegiatan' 
-                ? `${stats.bulanPeakKegiatan.name} ${stats.bulanPeakKegiatan.value}` // HILANGKAN TANDA ()
-                : `${stats.bulanPeakAnggaran.name} ${formatRupiah(stats.bulanPeakAnggaran.value)}` // HILANGKAN TANDA ()
+                ? `${stats.bulanPeakKegiatan.name} ${stats.bulanPeakKegiatan.value}`
+                : `${stats.bulanPeakAnggaran.name} ${formatRupiah(stats.bulanPeakAnggaran.value)}`
               }
             </div>
             <p className="text-xs text-purple-700">
@@ -1555,8 +1572,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold text-orange-900">
               {viewMode === 'kegiatan' 
-                ? `${stats.bulanSlowKegiatan.name} ${stats.bulanSlowKegiatan.value}` // HILANGKAN TANDA ()
-                : `${stats.bulanSlowAnggaran.name} ${formatRupiah(stats.bulanSlowAnggaran.value)}` // HILANGKAN TANDA ()
+                ? `${stats.bulanSlowKegiatan.name} ${stats.bulanSlowKegiatan.value}`
+                : `${stats.bulanSlowAnggaran.name} ${formatRupiah(stats.bulanSlowAnggaran.value)}`
               }
             </div>
             <p className="text-xs text-orange-700">
@@ -1566,7 +1583,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Trend Line Chart - DIPINDAHKAN ke urutan pertama setelah box metrics */}
+      {/* Trend Line Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1586,7 +1603,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Charts Grid - DIKEMBALIKAN */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -1725,7 +1742,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <RiskMatrix 
-              data={displayRiskData} // ✅ PERBAIKAN: Gunakan display data yang sudah dibatasi
+              data={displayRiskData}
               mode={viewMode}
               filterFungsi={filterFungsi}
               searchQuery={riskSearchQuery}
@@ -1781,7 +1798,7 @@ export default function Dashboard() {
                 <tbody>
                   {displayWorkloadData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <td colSpan={5} className="text-center text-muted-foreground py-8">
                         {workloadSearchQuery ? 
                           `Tidak ada data yang cocok dengan pencarian "${workloadSearchQuery}"` : 
                           "Tidak ada data untuk ditampilkan"
