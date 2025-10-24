@@ -35,7 +35,7 @@ const bulanList = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString();
+const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
 
 // Daftar fungsi yang tersedia
 const fungsiList = [
@@ -782,12 +782,12 @@ export default function Dashboard() {
           if (fungsiData && fungsiData.kegiatan > 0) {
             console.log(`Adding ${petugasData.petugas} to filtered data with ${fungsiData.kegiatan} kegiatan`);
             
-            // Tambahkan ke workload data
+            // PERBAIKAN UTAMA: Hanya tampilkan fungsi yang dipilih di kolom roles
             filteredWorkloadData.push({
               petugas: petugasData.petugas,
               jumlahKegiatan: fungsiData.kegiatan,
               totalAnggaran: fungsiData.anggaran,
-              roles: [filterFungsi] // Hanya tampilkan fungsi yang dipilih
+              roles: [filterFungsi] // HANYA tampilkan fungsi yang dipilih
             });
 
             // Tambahkan ke role data untuk tooltip
@@ -1747,6 +1747,7 @@ export default function Dashboard() {
                         <td className="py-3 font-medium">{item.petugas}</td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-1">
+                            {/* PERBAIKAN UTAMA: Hanya tampilkan fungsi yang dipilih */}
                             {item.roles.map((role, roleIndex) => {
                               const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
                               return (
