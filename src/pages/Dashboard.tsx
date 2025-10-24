@@ -24,8 +24,9 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table, Filter } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table, Filter, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 
@@ -373,6 +374,30 @@ const RiskItem = ({
   );
 };
 
+// Komponen Search untuk tabel
+const SearchInput = ({ 
+  value, 
+  onChange, 
+  placeholder 
+}: { 
+  value: string; 
+  onChange: (value: string) => void; 
+  placeholder: string;
+}) => {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-10 pr-4 py-2 w-full max-w-xs"
+      />
+    </div>
+  );
+};
+
 // Komponen Chart yang aman dengan format YAxis untuk Realisasi
 const SafeBarChart = ({ data, title, mode }: { data: ChartItem[], title: string, mode: string }) => {
   if (!data || data.length === 0) {
@@ -514,15 +539,22 @@ const RiskMatrix = ({
   data, 
   mode, 
   filterFungsi,
+  searchQuery,
   onShowRiskTooltip,
   onHideRiskTooltip 
 }: { 
   data: RiskData[]; 
   mode: 'kegiatan' | 'anggaran';
   filterFungsi: string;
+  searchQuery: string;
   onShowRiskTooltip: (data: RiskHoverData, position: { x: number; y: number }) => void;
   onHideRiskTooltip: () => void;
 }) => {
+  // Filter data berdasarkan search query
+  const filteredData = data.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -551,17 +583,23 @@ const RiskMatrix = ({
         </div>
       </div>
       
-      {data.map((item, index) => (
-        <RiskItem
-          key={index}
-          item={item}
-          filterFungsi={filterFungsi}
-          index={index}
-          totalItems={data.length}
-          onShowRiskTooltip={onShowRiskTooltip}
-          onHideRiskTooltip={onHideRiskTooltip}
-        />
-      ))}
+      {filteredData.length === 0 ? (
+        <div className="flex items-center justify-center h-32">
+          <p className="text-muted-foreground">Tidak ada data yang cocok dengan pencarian</p>
+        </div>
+      ) : (
+        filteredData.map((item, index) => (
+          <RiskItem
+            key={index}
+            item={item}
+            filterFungsi={filterFungsi}
+            index={index}
+            totalItems={filteredData.length}
+            onShowRiskTooltip={onShowRiskTooltip}
+            onHideRiskTooltip={onHideRiskTooltip}
+          />
+        ))
+      )}
     </div>
   );
 };
@@ -634,6 +672,10 @@ export default function Dashboard() {
   // DATA MENTAH untuk filtering - PERBAIKAN UTAMA
   const [allPetugasData, setAllPetugasData] = useState<WorkloadData[]>([]);
   const [allPetugasRiskData, setAllPetugasRiskData] = useState<RiskData[]>([]);
+
+  // State untuk search
+  const [workloadSearchQuery, setWorkloadSearchQuery] = useState("");
+  const [riskSearchQuery, setRiskSearchQuery] = useState("");
 
   // State untuk tooltip role
   const [roleTooltipData, setRoleTooltipData] = useState<RoleTooltipData | null>(null);
@@ -708,6 +750,12 @@ export default function Dashboard() {
       setRiskTooltipData(null);
     }, 200);
   };
+
+  // Filter data workload berdasarkan search query
+  const filteredWorkloadData = workloadData.filter(item => 
+    item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
+    item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
+  );
 
   // PERBAIKAN: Fungsi untuk memfilter data berdasarkan fungsi - Filter dari SELURUH DATA
   const filterDataByFungsi = () => {
@@ -1603,10 +1651,17 @@ export default function Dashboard() {
         {/* Risk Assessment dengan Hover */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Assesmen Risiko
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Assesmen Risiko
+              </CardTitle>
+              <SearchInput
+                value={riskSearchQuery}
+                onChange={setRiskSearchQuery}
+                placeholder="Cari nama mitra..."
+              />
+            </div>
             <CardDescription>
               {filterFungsi === "Semua Fungsi" 
                 ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail"
@@ -1619,6 +1674,7 @@ export default function Dashboard() {
               data={riskData} 
               mode={viewMode}
               filterFungsi={filterFungsi}
+              searchQuery={riskSearchQuery}
               onShowRiskTooltip={handleShowRiskTooltip}
               onHideRiskTooltip={handleHideRiskTooltip}
             />
@@ -1628,10 +1684,17 @@ export default function Dashboard() {
         {/* Workload Distribution Table - Top 15 Petugas dengan Hover Role */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Table className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 15 Mitra Statistik
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Table className="h-5 w-5" />
+                Distribusi Realisasi Honor - Top 15 Mitra Statistik
+              </CardTitle>
+              <SearchInput
+                value={workloadSearchQuery}
+                onChange={setWorkloadSearchQuery}
+                placeholder="Cari nama mitra..."
+              />
+            </div>
             <CardDescription>
               {filterFungsi === "Semua Fungsi"
                 ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi"
@@ -1652,35 +1715,46 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {workloadData.map((item, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
-                      <td className="py-3 font-medium">{item.petugas}</td>
-                      <td className="py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {item.roles.map((role, roleIndex) => {
-                            const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
-                            return (
-                              <RoleBadge
-                                key={roleIndex}
-                                role={role}
-                                petugas={item.petugas}
-                                roleData={roleData}
-                                onShowTooltip={handleShowTooltip}
-                                onHideTooltip={handleHideTooltip}
-                              />
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="text-center py-3 font-medium">
-                        {item.jumlahKegiatan.toLocaleString('id-ID')}
-                      </td>
-                      <td className="text-right py-3 font-medium">
-                        {formatRupiah(item.totalAnggaran)}
+                  {filteredWorkloadData.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                        {workloadSearchQuery ? 
+                          "Tidak ada data yang cocok dengan pencarian" : 
+                          "Tidak ada data untuk ditampilkan"
+                        }
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredWorkloadData.map((item, index) => (
+                      <tr key={index} className="border-b hover:bg-muted/50">
+                        <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
+                        <td className="py-3 font-medium">{item.petugas}</td>
+                        <td className="py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {item.roles.map((role, roleIndex) => {
+                              const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
+                              return (
+                                <RoleBadge
+                                  key={roleIndex}
+                                  role={role}
+                                  petugas={item.petugas}
+                                  roleData={roleData}
+                                  onShowTooltip={handleShowTooltip}
+                                  onHideTooltip={handleHideTooltip}
+                                />
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="text-center py-3 font-medium">
+                          {item.jumlahKegiatan.toLocaleString('id-ID')}
+                        </td>
+                        <td className="text-right py-3 font-medium">
+                          {formatRupiah(item.totalAnggaran)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
               
@@ -1689,7 +1763,7 @@ export default function Dashboard() {
                 <RoleTooltip data={roleTooltipData} position={tooltipPosition} />
               )}
             </div>
-            {workloadData.length === 0 && (
+            {workloadData.length === 0 && !workloadSearchQuery && (
               <div className="flex items-center justify-center h-32">
                 <p className="text-muted-foreground">
                   {filterFungsi === "Semua Fungsi" 
