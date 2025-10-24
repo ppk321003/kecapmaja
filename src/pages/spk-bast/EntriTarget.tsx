@@ -1315,7 +1315,15 @@ export default function EntriTarget() {
                 </TableHeader>
                 <TableBody>
                   {dynamicSpkData.map((item, index) => (
-                    <TableRow key={item.id}>
+                    <TableRow 
+                      key={item.id} 
+                      className={cn(
+                        // PERBAIKAN: Tambahkan warna warning untuk baris dengan target 0 atau belum ada isian
+                        (item.target === 0 || item.activities === 0) 
+                          ? "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400" 
+                          : ""
+                      )}
+                    >
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>SPK Bulan {item.month} {selectedYear}</TableCell>
                       <TableCell className="text-center">{item.activities}</TableCell>
@@ -1370,7 +1378,17 @@ export default function EntriTarget() {
               </TableHeader>
               <TableBody>
                 {dynamicJobTypes.map((job, index) => (
-                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleJobTypeClick(job.name)}>
+                  <TableRow 
+                    key={job.id} 
+                    className={cn(
+                      "cursor-pointer hover:bg-muted/50",
+                      // PERBAIKAN: Tambahkan warna warning untuk baris dengan target 0 atau belum ada isian
+                      (job.target === 0 || job.activities === 0) 
+                        ? "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400" 
+                        : ""
+                    )}
+                    onClick={() => handleJobTypeClick(job.name)}
+                  >
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{job.name}</TableCell>
                     <TableCell className="text-center">{job.activities}</TableCell>
@@ -1449,7 +1467,15 @@ export default function EntriTarget() {
                   ) : (
                     filteredActivities.map((activity, index) => (
                       <>
-                        <TableRow key={activity.id}>
+                        <TableRow 
+                          key={activity.id}
+                          className={cn(
+                            // PERBAIKAN: Tambahkan warna warning untuk kegiatan yang belum ada petugas
+                            activity.workers.length === 0 
+                              ? "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400" 
+                              : ""
+                          )}
+                        >
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{activity.namaKegiatan}</TableCell>
                           <TableCell className="text-center">{format(activity.tanggalMulai, "dd/MM/yyyy")}</TableCell>
@@ -1503,7 +1529,16 @@ export default function EntriTarget() {
                         </TableRow>
                         {/* Worker sub-rows */}
                         {activity.workers.map((worker, workerIndex) => (
-                          <TableRow key={`${activity.id}-worker-${worker.id}`} className="bg-muted/30">
+                          <TableRow 
+                            key={`${activity.id}-worker-${worker.id}`} 
+                            className={cn(
+                              "bg-muted/30",
+                              // PERBAIKAN: Tambahkan warna warning untuk petugas dengan target 0
+                              (parseFloat(worker.target) === 0 || worker.target === "") 
+                                ? "bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-900/30 border-l-4 border-l-orange-400" 
+                                : ""
+                            )}
+                          >
                             <TableCell></TableCell>
                              <TableCell colSpan={2} className="pl-8">
                               {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
@@ -2022,7 +2057,16 @@ export default function EntriTarget() {
                         const kecamatan = petugasData?.kecamatan || '';
                         
                         return (
-                          <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
+                          <TableRow 
+                            key={petugas.id} 
+                            className={cn(
+                              isAlreadyAdded ? "opacity-50" : "",
+                              // PERBAIKAN: Tambahkan warna warning untuk petugas dengan target 0 di dialog
+                              (selectedWorkers[petugas.id]?.target === "0" || selectedWorkers[petugas.id]?.target === "") && selectedWorkers[petugas.id]?.selected
+                                ? "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30" 
+                                : ""
+                            )}
+                          >
                             <TableCell>
                               <Checkbox
                                 checked={selectedWorkers[petugas.id]?.selected || false}
