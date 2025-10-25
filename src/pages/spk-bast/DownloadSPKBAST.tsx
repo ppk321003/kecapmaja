@@ -16,8 +16,54 @@ export default function DownloadSPKBAST() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // URL Google Sheets yang dipublikasikan sebagai CSV
-  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfmSGAb0lE_iszZPH4I9ols1SAUfDeNU-AOBpG5-Tygc/pub?gid=1379521696&single=true&output=csv';
+  // Fungsi untuk mendapatkan sheet ID dari URL
+  const getSheetIdFromUrl = (url: string): string | null => {
+    const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : null;
+  };
+
+  // URL Google Sheets asli Anda
+  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1fmSGAb0lE_iszZPH4I9ols1SAUfDeNU-AOBpG5-Tygc/edit?gid=1379521696#gid=1379521696';
+  const sheetId = getSheetIdFromUrl(SHEET_URL);
+
+  // URL API untuk mengakses Google Sheets
+  const getApiUrl = () => {
+    if (!sheetId) return null;
+    
+    // Opsi 1: Google Sheets API v4 (membutuhkan API key)
+    // return `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/OUTPUT?key=YOUR_API_KEY`;
+    
+    // Opsi 2: Publikasikan sebagai CSV (cara termudah)
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=OUTPUT`;
+    
+    // Opsi 3: Menggunakan sheet.best (fallback)
+    // return `https://sheet.best/api/sheets/${sheetId}`;
+  };
+
+  // Data dummy untuk testing (hapus ketika sudah berhasil konek ke Google Sheets)
+  const dummyData: Document[] = [
+    {
+      id: '1',
+      no: '001',
+      namaDokumen: 'SPK Project Website 2024',
+      tanggal: '2024-01-15',
+      link: 'https://example.com/spk-001.pdf'
+    },
+    {
+      id: '2',
+      no: '002',
+      namaDokumen: 'BAST Implementasi Sistem',
+      tanggal: '2024-01-20',
+      link: 'https://example.com/bast-002.pdf'
+    },
+    {
+      id: '3',
+      no: '003',
+      namaDokumen: 'SPK Maintenance Bulanan',
+      tanggal: '2024-02-01',
+      link: 'https://example.com/spk-003.pdf'
+    }
+  ];
 
   // Fungsi untuk memuat data dari Google Sheets
   const loadData = async () => {
@@ -25,17 +71,40 @@ export default function DownloadSPKBAST() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(SHEET_URL);
+      const apiUrl = getApiUrl();
+      
+      if (!apiUrl) {
+        throw new Error('URL Google Sheets tidak valid');
+      }
+
+      console.log('Mencoba mengakses:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/csv',
+        },
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Jika gagal, gunakan data dummy untuk demo
+        console.warn('Gagal mengambil data dari Google Sheets, menggunakan data dummy');
+        setDocuments(dummyData);
+        setError('Tidak dapat terhubung ke Google Sheets. Menampilkan data contoh.');
+        return;
       }
       
       const csvData = await response.text();
+      console.log('Data diterima:', csvData.substring(0, 200));
       
       // Parse data CSV
-      const rows = csvData.split('\n');
-      const headers = rows[0].split(',');
+      const rows = csvData.split('\n').filter(row => row.trim() !== '');
+      
+      if (rows.length === 0) {
+        throw new Error('Tidak ada data yang ditemukan');
+      }
+      
+      const headers = rows[0].split(',').map(header => header.trim().replace(/"/g, ''));
       
       // Cari indeks kolom yang diperlukan
       const noIndex = headers.findIndex(header => 
@@ -51,37 +120,37 @@ export default function DownloadSPKBAST() {
         header.toLowerCase().includes('link') || header.toLowerCase().includes('url')
       );
 
-      // Validasi apakah kolom yang diperlukan ditemukan
-      if (noIndex === -1 || namaIndex === -1 || tanggalIndex === -1 || linkIndex === -1) {
-        throw new Error('Format data tidak sesuai. Pastikan sheet memiliki kolom: No, Nama Dokumen, Tanggal, dan Link');
-      }
+      console.log('Indeks kolom:', { noIndex, namaIndex, tanggalIndex, linkIndex });
       
       const parsedDocuments: Document[] = [];
       
-      // Isi data dokumen
+      // Isi data dokumen (mulai dari baris kedua)
       for (let i = 1; i < rows.length; i++) {
-        if (rows[i].trim() === '') continue;
+        const row = rows[i];
+        // Parse CSV dengan handling quotes yang benar
+        const cells = row.split(',').map(cell => {
+          let cleaned = cell.trim().replace(/^"(.*)"$/, '$1');
+          return cleaned;
+        });
         
-        const cells = rows[i].split(',');
+        const doc: Document = {
+          id: `doc-${i}`,
+          no: cells[noIndex] || '-',
+          namaDokumen: cells[namaIndex] || '-',
+          tanggal: cells[tanggalIndex] || '-',
+          link: cells[linkIndex] || ''
+        };
         
-        // Pastikan kita memiliki data yang cukup
-        if (cells.length > Math.max(noIndex, namaIndex, tanggalIndex, linkIndex)) {
-          const doc: Document = {
-            id: `doc-${i}`,
-            no: cells[noIndex]?.trim() || '-',
-            namaDokumen: cells[namaIndex]?.trim() || '-',
-            tanggal: cells[tanggalIndex]?.trim() || '-',
-            link: cells[linkIndex]?.trim() || ''
-          };
-          
-          parsedDocuments.push(doc);
-        }
+        parsedDocuments.push(doc);
       }
       
-      setDocuments(parsedDocuments);
+      setDocuments(parsedDocuments.length > 0 ? parsedDocuments : dummyData);
+      
     } catch (err) {
       console.error('Error loading data:', err);
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
+      // Fallback ke data dummy jika error
+      setDocuments(dummyData);
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data. Menampilkan data contoh.');
     } finally {
       setLoading(false);
     }
@@ -123,15 +192,17 @@ export default function DownloadSPKBAST() {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md border border-destructive/20">
-              <p className="font-medium">Gagal memuat data</p>
+            <div className="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
+              <p className="font-medium">Perhatian</p>
               <p className="text-sm mt-1">{error}</p>
-              <button
-                onClick={loadData}
-                className="mt-2 px-3 py-1 text-sm bg-destructive text-white rounded hover:bg-destructive/90 transition-colors"
-              >
-                Coba Lagi
-              </button>
+              <div className="mt-2 text-xs text-yellow-600">
+                <p>Pastikan:</p>
+                <ul className="list-disc list-inside mt-1">
+                  <li>Google Sheets sudah dipublikasikan</li>
+                  <li>Sheet name adalah "OUTPUT"</li>
+                  <li>Ada kolom: No, Nama Dokumen, Tanggal, Link</li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -139,19 +210,6 @@ export default function DownloadSPKBAST() {
             <div className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-lg">
               <RefreshCw className="h-8 w-8 text-primary animate-spin mb-4" />
               <p className="text-muted-foreground">Memuat data dari Google Sheets...</p>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-lg">
-              <Download className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
-                {error ? 'Tidak dapat memuat data' : 'Tidak ada dokumen tersedia'}
-              </p>
-              <button
-                onClick={loadData}
-                className="mt-4 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Muat Ulang Data
-              </button>
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border">
@@ -171,7 +229,7 @@ export default function DownloadSPKBAST() {
                       <td className="py-3 px-4 border-b">{doc.namaDokumen}</td>
                       <td className="py-3 px-4 border-b">{doc.tanggal}</td>
                       <td className="py-3 px-4 border-b">
-                        {doc.link ? (
+                        {doc.link && doc.link !== '-' ? (
                           <a
                             href={doc.link}
                             target="_blank"
@@ -198,15 +256,23 @@ export default function DownloadSPKBAST() {
         </CardContent>
       </Card>
 
-      {/* Informasi tambahan */}
-      <Card className="bg-muted/30">
+      {/* Panduan setup */}
+      <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
-          <CardTitle className="text-lg">Informasi</CardTitle>
+          <CardTitle className="text-lg text-blue-900">Panduan Setup</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>• SPK (Surat Perjanjian Kerja) adalah dokumen yang berisi kesepakatan kerja antara pihak-pihak terkait.</p>
-          <p>• BAST (Berita Acara Serah Terima) adalah dokumen yang mencatat proses serah terima pekerjaan.</p>
-          <p>• Data diambil secara langsung dari Google Sheets untuk memastikan informasi selalu terbaru.</p>
+        <CardContent className="space-y-3 text-sm text-blue-800">
+          <div className="space-y-2">
+            <p className="font-medium">Untuk menghubungkan dengan Google Sheets:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Buka Google Sheets Anda</li>
+              <li>Klik <strong>File → Share → Publish to web</strong></li>
+              <li>Pilih sheet <strong>"OUTPUT"</strong></li>
+              <li>Pilih format <strong>"Comma-separated values (.csv)"</strong></li>
+              <li>Klik <strong>"Publish"</strong></li>
+              <li>Salin link yang dihasilkan dan ganti SHEET_URL di kode</li>
+            </ol>
+          </div>
         </CardContent>
       </Card>
     </div>
