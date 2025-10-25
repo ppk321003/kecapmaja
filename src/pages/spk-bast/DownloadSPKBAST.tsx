@@ -19,7 +19,14 @@ interface SPKData {
   persentaseRealisasi: number;
   link: string;
   tahun: number;
+  bulan: string;
 }
+
+// Daftar nama bulan
+const bulanList = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
 
 export default function DownloadSPKBAST() {
   const [data, setData] = useState<SPKData[]>([]);
@@ -33,6 +40,46 @@ export default function DownloadSPKBAST() {
 
   // Generate tahun list dari 2024 sampai 2030
   const tahunList = Array.from({ length: 7 }, (_, i) => 2024 + i);
+
+  // Fungsi untuk generate data lengkap 12 bulan
+  const generateCompleteData = (tahun: number, existingData: SPKData[]): SPKData[] => {
+    const completeData: SPKData[] = [];
+    
+    // Buat map dari data yang ada untuk lookup cepat
+    const existingDataMap = new Map<string, SPKData>();
+    existingData.forEach(item => {
+      const key = `${item.bulan} ${tahun}`;
+      existingDataMap.set(key, item);
+    });
+
+    // Generate 12 bulan lengkap
+    bulanList.forEach((bulan, index) => {
+      const periode = `${bulan} ${tahun}`;
+      const existingItem = existingDataMap.get(periode);
+      
+      if (existingItem) {
+        // Jika ada data, gunakan data yang ada
+        completeData.push({
+          ...existingItem,
+          no: index + 1 // Nomor urut berdasarkan urutan bulan
+        });
+      } else {
+        // Jika tidak ada data, buat data kosong
+        completeData.push({
+          no: index + 1,
+          periode: periode,
+          nilaiPerjanjian: 0,
+          nilaiRealisasi: 0,
+          persentaseRealisasi: 0,
+          link: "",
+          tahun: tahun,
+          bulan: bulan
+        });
+      }
+    });
+
+    return completeData;
+  };
 
   // Fungsi untuk mengambil data dari Google Sheets dengan berbagai approach
   const fetchDataFromSheets = async () => {
@@ -156,24 +203,34 @@ export default function DownloadSPKBAST() {
           const nilaiRealisasi = parseNilai(nilaiRealisasiStr);
           const persentaseRealisasi = parsePersentase(persentaseStr);
 
-          // Extract tahun dari periode
+          // Extract tahun dan bulan dari periode
           let tahun = new Date().getFullYear();
+          let bulan = "";
+          
           const tahunMatch = periode.match(/(\d{4})/);
           if (tahunMatch) {
             tahun = parseInt(tahunMatch[1]);
           }
 
+          // Extract bulan dari periode
+          for (const namaBulan of bulanList) {
+            if (periode.toLowerCase().includes(namaBulan.toLowerCase())) {
+              bulan = namaBulan;
+              break;
+            }
+          }
+
           // Validasi data - hanya tambahkan jika ada data yang meaningful
           if (periode || nilaiPerjanjian > 0 || nilaiRealisasi > 0) {
-            // NO TIDAK DIPARSE DARI SPREADSHEET, AKAN DIHITUNG OTOMATIS
             parsedData.push({
-              no: 0, // Akan diisi ulang saat filtering
+              no: 0, // Akan diisi ulang saat generate complete data
               periode,
               nilaiPerjanjian,
               nilaiRealisasi,
               persentaseRealisasi,
               link,
-              tahun
+              tahun,
+              bulan
             });
           }
 
@@ -191,13 +248,10 @@ export default function DownloadSPKBAST() {
 
       setData(parsedData);
       
-      // Filter data berdasarkan tahun yang dipilih dan reset nomor urut
-      const filtered = parsedData.filter(item => item.tahun === selectedTahun);
-      const filteredWithAutoNumber = filtered.map((item, index) => ({
-        ...item,
-        no: index + 1 // Nomor urut otomatis mulai dari 1
-      }));
-      setFilteredData(filteredWithAutoNumber);
+      // Generate data lengkap untuk tahun yang dipilih
+      const dataForSelectedYear = parsedData.filter(item => item.tahun === selectedTahun);
+      const completeData = generateCompleteData(selectedTahun, dataForSelectedYear);
+      setFilteredData(completeData);
 
       toast({
         title: "Berhasil",
@@ -230,7 +284,8 @@ export default function DownloadSPKBAST() {
         nilaiRealisasi: 57688000,
         persentaseRealisasi: 100.00,
         link: "",
-        tahun: 2025
+        tahun: 2025,
+        bulan: "Januari"
       },
       {
         no: 0,
@@ -239,7 +294,8 @@ export default function DownloadSPKBAST() {
         nilaiRealisasi: 246960000,
         persentaseRealisasi: 99.95,
         link: "",
-        tahun: 2025
+        tahun: 2025,
+        bulan: "Februari"
       },
       {
         no: 0,
@@ -248,37 +304,17 @@ export default function DownloadSPKBAST() {
         nilaiRealisasi: 82109000,
         persentaseRealisasi: 99.97,
         link: "",
-        tahun: 2025
-      },
-      {
-        no: 0,
-        periode: "April 2025",
-        nilaiPerjanjian: 75798000,
-        nilaiRealisasi: 75798000,
-        persentaseRealisasi: 100.00,
-        link: "",
-        tahun: 2025
-      },
-      {
-        no: 0,
-        periode: "Mei 2025",
-        nilaiPerjanjian: 75660000,
-        nilaiRealisasi: 75660000,
-        persentaseRealisasi: 100.00,
-        link: "",
-        tahun: 2025
+        tahun: 2025,
+        bulan: "Maret"
       }
     ];
 
     setData(dummyData);
     
-    // Filter dan reset nomor urut untuk data dummy
-    const filtered = dummyData.filter(item => item.tahun === selectedTahun);
-    const filteredWithAutoNumber = filtered.map((item, index) => ({
-      ...item,
-      no: index + 1
-    }));
-    setFilteredData(filteredWithAutoNumber);
+    // Generate data lengkap untuk tahun yang dipilih
+    const dataForSelectedYear = dummyData.filter(item => item.tahun === selectedTahun);
+    const completeData = generateCompleteData(selectedTahun, dataForSelectedYear);
+    setFilteredData(completeData);
     
     setError(null);
     
@@ -289,15 +325,16 @@ export default function DownloadSPKBAST() {
     });
   };
 
-  // Filter data berdasarkan tahun yang dipilih dan reset nomor urut
+  // Filter data berdasarkan tahun yang dipilih dan generate data lengkap
   useEffect(() => {
     if (data.length > 0) {
-      const filtered = data.filter(item => item.tahun === selectedTahun);
-      const filteredWithAutoNumber = filtered.map((item, index) => ({
-        ...item,
-        no: index + 1 // Nomor urut otomatis mulai dari 1
-      }));
-      setFilteredData(filteredWithAutoNumber);
+      const dataForSelectedYear = data.filter(item => item.tahun === selectedTahun);
+      const completeData = generateCompleteData(selectedTahun, dataForSelectedYear);
+      setFilteredData(completeData);
+    } else {
+      // Jika tidak ada data, generate data kosong untuk tahun yang dipilih
+      const emptyData = generateCompleteData(selectedTahun, []);
+      setFilteredData(emptyData);
     }
   }, [selectedTahun, data]);
 
@@ -318,6 +355,7 @@ export default function DownloadSPKBAST() {
 
   // Format persentase dengan koma
   const formatPersentase = (angka: number): string => {
+    if (angka === 0) return "0,00%";
     return `${angka.toFixed(2).replace('.', ',')}%`;
   };
 
@@ -427,7 +465,7 @@ export default function DownloadSPKBAST() {
           {filteredData.length === 0 ? (
             <div className="flex items-center justify-center h-32 bg-muted rounded-lg">
               <p className="text-muted-foreground">
-                {data.length === 0 ? 'Tidak ada data yang ditemukan' : `Tidak ada data untuk tahun ${selectedTahun}`}
+                Tidak ada data yang ditemukan
               </p>
             </div>
           ) : (
@@ -459,27 +497,28 @@ export default function DownloadSPKBAST() {
                   <tbody>
                     {filteredData.map((item, index) => (
                       <tr 
-                        key={`${selectedTahun}-${index}`} 
+                        key={`${selectedTahun}-${item.bulan}`} 
                         className={index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}
                       >
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center">
-                          {item.no} {/* Nomor urut otomatis */}
+                          {item.no}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
                           {item.periode}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-right">
-                          {formatRupiah(item.nilaiPerjanjian)}
+                          {item.nilaiPerjanjian > 0 ? formatRupiah(item.nilaiPerjanjian) : "-"}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-right">
-                          {formatRupiah(item.nilaiRealisasi)}
+                          {item.nilaiRealisasi > 0 ? formatRupiah(item.nilaiRealisasi) : "-"}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center">
                           <span className={`font-medium ${
                             item.persentaseRealisasi >= 90 ? 'text-green-600' : 
-                            item.persentaseRealisasi >= 80 ? 'text-yellow-600' : 'text-red-600'
+                            item.persentaseRealisasi >= 80 ? 'text-yellow-600' : 
+                            item.persentaseRealisasi > 0 ? 'text-red-600' : 'text-gray-400'
                           }`}>
-                            {formatPersentase(item.persentaseRealisasi)}
+                            {item.persentaseRealisasi > 0 ? formatPersentase(item.persentaseRealisasi) : "-"}
                           </span>
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-center">
@@ -503,7 +542,7 @@ export default function DownloadSPKBAST() {
                     {/* Baris Total */}
                     <tr className="bg-blue-50 font-semibold">
                       <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center" colSpan={2}>
-                        TOTAL ({jumlahData} data)
+                        TOTAL ({filteredData.filter(item => item.nilaiPerjanjian > 0).length} data berisi nilai)
                       </td>
                       <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-right">
                         {formatRupiah(totalNilaiPerjanjian)}
@@ -574,8 +613,8 @@ export default function DownloadSPKBAST() {
         <CardContent className="p-4">
           <p className="text-sm text-blue-700">
             <strong>Catatan:</strong> Data diambil langsung dari Google Sheets. 
+            Menampilkan semua bulan dalam tahun {selectedTahun}, termasuk bulan yang tidak memiliki data.
             Pastikan koneksi internet tersedia untuk melihat data terbaru.
-            Saat ini menampilkan data untuk tahun {selectedTahun}.
           </p>
         </CardContent>
       </Card>
