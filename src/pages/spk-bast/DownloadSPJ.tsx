@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download } from "lucide-react";
 
-export default function DownloadSPJ() {
+export default function RekapBendahara() {
   return (
     <div className="space-y-6">
       <div>
