@@ -121,10 +121,6 @@ export default function DownloadSPKBAST() {
         if (!row || row.length < 3) continue;
 
         try {
-          // Debug setiap row
-          console.log(`Processing row ${i}:`, row);
-
-          const no = parseInt(row[0]) || (i - dataStartIndex + 1);
           const periode = row[1]?.toString()?.trim() || '';
           const nilaiPerjanjianStr = row[2]?.toString()?.trim() || '0';
           const nilaiRealisasiStr = row[3]?.toString()?.trim() || '0';
@@ -169,8 +165,9 @@ export default function DownloadSPKBAST() {
 
           // Validasi data - hanya tambahkan jika ada data yang meaningful
           if (periode || nilaiPerjanjian > 0 || nilaiRealisasi > 0) {
+            // NO TIDAK DIPARSE DARI SPREADSHEET, AKAN DIHITUNG OTOMATIS
             parsedData.push({
-              no,
+              no: 0, // Akan diisi ulang saat filtering
               periode,
               nilaiPerjanjian,
               nilaiRealisasi,
@@ -187,7 +184,6 @@ export default function DownloadSPKBAST() {
       }
 
       console.log("Data berhasil diparsing:", parsedData.length, "items");
-      console.log("Sample data:", parsedData.slice(0, 3));
 
       if (parsedData.length === 0) {
         throw new Error('Data ditemukan tetapi tidak dapat diparsing. Periksa format spreadsheet.');
@@ -195,9 +191,13 @@ export default function DownloadSPKBAST() {
 
       setData(parsedData);
       
-      // Filter data berdasarkan tahun yang dipilih
+      // Filter data berdasarkan tahun yang dipilih dan reset nomor urut
       const filtered = parsedData.filter(item => item.tahun === selectedTahun);
-      setFilteredData(filtered);
+      const filteredWithAutoNumber = filtered.map((item, index) => ({
+        ...item,
+        no: index + 1 // Nomor urut otomatis mulai dari 1
+      }));
+      setFilteredData(filteredWithAutoNumber);
 
       toast({
         title: "Berhasil",
@@ -224,7 +224,7 @@ export default function DownloadSPKBAST() {
   const useDummyData = () => {
     const dummyData: SPKData[] = [
       {
-        no: 1,
+        no: 0,
         periode: "Januari 2025",
         nilaiPerjanjian: 57688000,
         nilaiRealisasi: 57688000,
@@ -233,7 +233,7 @@ export default function DownloadSPKBAST() {
         tahun: 2025
       },
       {
-        no: 2,
+        no: 0,
         periode: "Februari 2025",
         nilaiPerjanjian: 247088000,
         nilaiRealisasi: 246960000,
@@ -242,7 +242,7 @@ export default function DownloadSPKBAST() {
         tahun: 2025
       },
       {
-        no: 3,
+        no: 0,
         periode: "Maret 2025",
         nilaiPerjanjian: 82135000,
         nilaiRealisasi: 82109000,
@@ -251,7 +251,7 @@ export default function DownloadSPKBAST() {
         tahun: 2025
       },
       {
-        no: 4,
+        no: 0,
         periode: "April 2025",
         nilaiPerjanjian: 75798000,
         nilaiRealisasi: 75798000,
@@ -260,7 +260,7 @@ export default function DownloadSPKBAST() {
         tahun: 2025
       },
       {
-        no: 5,
+        no: 0,
         periode: "Mei 2025",
         nilaiPerjanjian: 75660000,
         nilaiRealisasi: 75660000,
@@ -271,8 +271,15 @@ export default function DownloadSPKBAST() {
     ];
 
     setData(dummyData);
+    
+    // Filter dan reset nomor urut untuk data dummy
     const filtered = dummyData.filter(item => item.tahun === selectedTahun);
-    setFilteredData(filtered);
+    const filteredWithAutoNumber = filtered.map((item, index) => ({
+      ...item,
+      no: index + 1
+    }));
+    setFilteredData(filteredWithAutoNumber);
+    
     setError(null);
     
     toast({
@@ -282,11 +289,15 @@ export default function DownloadSPKBAST() {
     });
   };
 
-  // Filter data berdasarkan tahun yang dipilih
+  // Filter data berdasarkan tahun yang dipilih dan reset nomor urut
   useEffect(() => {
     if (data.length > 0) {
       const filtered = data.filter(item => item.tahun === selectedTahun);
-      setFilteredData(filtered);
+      const filteredWithAutoNumber = filtered.map((item, index) => ({
+        ...item,
+        no: index + 1 // Nomor urut otomatis mulai dari 1
+      }));
+      setFilteredData(filteredWithAutoNumber);
     }
   }, [selectedTahun, data]);
 
@@ -448,11 +459,11 @@ export default function DownloadSPKBAST() {
                   <tbody>
                     {filteredData.map((item, index) => (
                       <tr 
-                        key={item.no} 
+                        key={`${selectedTahun}-${index}`} 
                         className={index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}
                       >
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center">
-                          {item.no}
+                          {item.no} {/* Nomor urut otomatis */}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
                           {item.periode}
