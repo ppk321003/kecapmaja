@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/spk-bast/entri-pengelola" element={<ProtectedRoute><Layout><EntriPengelola /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/approval-ppk" element={<ProtectedRoute><Layout><ApprovalPPK /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/download-spk-bast" element={<ProtectedRoute><Layout><DownloadSPKBAST /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/download-spj" element={<ProtectedRoute><Layout><RekapBendahara /></Layout></ProtectedRoute>} />
+            <Route path="/spk-bast/RekapBendahara" element={<ProtectedRoute><Layout><RekapBendahara /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
