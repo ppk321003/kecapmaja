@@ -24,13 +24,15 @@ interface SPKData {
 export default function DownloadSPKBAST() {
   const [data, setData] = useState<SPKData[]>([]);
   const [filteredData, setFilteredData] = useState<SPKData[]>([]);
-  const [tahunList, setTahunList] = useState<number[]>([]);
-  const [selectedTahun, setSelectedTahun] = useState<number | 'all'>('all');
+  const [selectedTahun, setSelectedTahun] = useState<number>(2025);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const SPK_SPREADSHEET_ID = "1fmSGAb0lE_iszZPH4I9ols1SAUfDeNU-AOBpG5-Tygc";
+
+  // Generate tahun list dari 2024 sampai 2030
+  const tahunList = Array.from({ length: 7 }, (_, i) => 2024 + i);
 
   // Fungsi untuk mengambil data dari Google Sheets dengan berbagai approach
   const fetchDataFromSheets = async () => {
@@ -192,15 +194,10 @@ export default function DownloadSPKBAST() {
       }
 
       setData(parsedData);
-      setFilteredData(parsedData);
       
-      // Extract unique years dari data
-      const years = [...new Set(parsedData.map(item => item.tahun))].sort((a, b) => b - a);
-      setTahunList(years);
-      
-      if (years.length > 0) {
-        setSelectedTahun(years[0]);
-      }
+      // Filter data berdasarkan tahun yang dipilih
+      const filtered = parsedData.filter(item => item.tahun === selectedTahun);
+      setFilteredData(filtered);
 
       toast({
         title: "Berhasil",
@@ -252,13 +249,30 @@ export default function DownloadSPKBAST() {
         persentaseRealisasi: 99.97,
         link: "",
         tahun: 2025
+      },
+      {
+        no: 4,
+        periode: "April 2025",
+        nilaiPerjanjian: 75798000,
+        nilaiRealisasi: 75798000,
+        persentaseRealisasi: 100.00,
+        link: "",
+        tahun: 2025
+      },
+      {
+        no: 5,
+        periode: "Mei 2025",
+        nilaiPerjanjian: 75660000,
+        nilaiRealisasi: 75660000,
+        persentaseRealisasi: 100.00,
+        link: "",
+        tahun: 2025
       }
     ];
 
     setData(dummyData);
-    setFilteredData(dummyData);
-    setTahunList([2025]);
-    setSelectedTahun(2025);
+    const filtered = dummyData.filter(item => item.tahun === selectedTahun);
+    setFilteredData(filtered);
     setError(null);
     
     toast({
@@ -270,9 +284,7 @@ export default function DownloadSPKBAST() {
 
   // Filter data berdasarkan tahun yang dipilih
   useEffect(() => {
-    if (selectedTahun === 'all') {
-      setFilteredData(data);
-    } else {
+    if (data.length > 0) {
       const filtered = data.filter(item => item.tahun === selectedTahun);
       setFilteredData(filtered);
     }
@@ -350,14 +362,13 @@ export default function DownloadSPKBAST() {
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <Select
-                  value={selectedTahun === 'all' ? 'all' : selectedTahun.toString()}
-                  onValueChange={(value) => setSelectedTahun(value === 'all' ? 'all' : parseInt(value))}
+                  value={selectedTahun.toString()}
+                  onValueChange={(value) => setSelectedTahun(parseInt(value))}
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Pilih Tahun" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Tahun</SelectItem>
                     {tahunList.map((tahun) => (
                       <SelectItem key={tahun} value={tahun.toString()}>
                         {tahun}
@@ -388,8 +399,7 @@ export default function DownloadSPKBAST() {
             </div>
           </div>
           <CardDescription>
-            Daftar dokumen SPK dan BAST yang tersedia untuk diunduh
-            {selectedTahun !== 'all' && ` (Tahun ${selectedTahun})`}
+            Daftar dokumen SPK dan BAST yang tersedia untuk diunduh - Tahun {selectedTahun}
             {error && " - Sedang menampilkan data contoh"}
           </CardDescription>
         </CardHeader>
@@ -545,6 +555,17 @@ export default function DownloadSPKBAST() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Informasi tambahan */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <p className="text-sm text-blue-700">
+            <strong>Catatan:</strong> Data diambil langsung dari Google Sheets. 
+            Pastikan koneksi internet tersedia untuk melihat data terbaru.
+            Saat ini menampilkan data untuk tahun {selectedTahun}.
+          </p>
         </CardContent>
       </Card>
     </div>
