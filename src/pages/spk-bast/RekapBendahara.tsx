@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Filter, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Download, Filter, RefreshCw, AlertCircle, CheckCircle2, ExternalLink } from "lucide-react";
 
 // Types
 interface SheetData {
@@ -22,36 +22,14 @@ interface FilterState {
   columnFilters: Record<string, string>;
 }
 
-// Mock data untuk development
-const mockSheetData: Record<string, SheetData> = {
-  'Januari': {
-    sheetName: 'Januari',
-    headers: ['Tanggal', 'Kegiatan', 'Pemasukan', 'Pengeluaran', 'Keterangan'],
-    rows: [
-      { Tanggal: '2024-01-01', Kegiatan: 'Saldo Awal', Pemasukan: '5.000.000', Pengeluaran: '0', Keterangan: 'Saldo awal bulan' },
-      { Tanggal: '2024-01-05', Kegiatan: 'Iuran Bulanan', Pemasukan: '1.500.000', Pengeluaran: '0', Keterangan: 'Iuran anggota' },
-      { Tanggal: '2024-01-10', Kegiatan: 'Bayar Listrik', Pemasukan: '0', Pengeluaran: '750.000', Keterangan: 'Pembayaran listrik kantor' },
-      { Tanggal: '2024-01-15', Kegiatan: 'Event Internal', Pemasukan: '2.000.000', Pengeluaran: '1.200.000', Keterangan: 'Acara rutin bulanan' }
-    ]
-  },
-  'Februari': {
-    sheetName: 'Februari',
-    headers: ['Tanggal', 'Kegiatan', 'Pemasukan', 'Pengeluaran', 'Keterangan', 'Status'],
-    rows: [
-      { Tanggal: '2024-02-01', Kegiatan: 'Saldo Awal', Pemasukan: '6.050.000', Pengeluaran: '0', Keterangan: 'Saldo dari Januari', Status: 'Verified' },
-      { Tanggal: '2024-02-08', Kegiatan: 'Workshop', Pemasukan: '3.000.000', Pengeluaran: '1.500.000', Keterangan: 'Workshop kepemudaan', Status: 'Pending' },
-      { Tanggal: '2024-02-20', Kegiatan: 'Bantuan Sosial', Pemasukan: '0', Pengeluaran: '2.000.000', Keterangan: 'Bantuan ke panti asuhan', Status: 'Completed' }
-    ]
-  },
-  'REKAP-KEGIATAN': {
-    sheetName: 'REKAP-KEGIATAN',
-    headers: ['Bulan', 'Total Pemasukan', 'Total Pengeluaran', 'Saldo Akhir', 'Kegiatan Utama'],
-    rows: [
-      { Bulan: 'Januari', 'Total Pemasukan': '6.500.000', 'Total Pengeluaran': '1.950.000', 'Saldo Akhir': '4.550.000', 'Kegiatan Utama': 'Iuran dan Operasional' },
-      { Bulan: 'Februari', 'Total Pemasukan': '3.000.000', 'Total Pengeluaran': '3.500.000', 'Saldo Akhir': '4.050.000', 'Kegiatan Utama': 'Workshop dan Sosial' }
-    ]
-  }
-};
+interface GoogleSheetsResponse {
+  success: boolean;
+  data: SheetData;
+  error?: string;
+}
+
+// Ganti dengan URL Google Apps Script Anda setelah deploy
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 
 export default function RekapBendahara() {
   const [filters, setFilters] = useState<FilterState>({
@@ -74,9 +52,6 @@ export default function RekapBendahara() {
     setError(null);
     
     try {
-      // Simulasi loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       let sheetName = '';
       if (filters.periodType === 'monthly') {
         sheetName = filters.selectedMonth;
@@ -84,12 +59,22 @@ export default function RekapBendahara() {
         sheetName = 'REKAP-KEGIATAN';
       }
 
-      if (mockSheetData[sheetName]) {
-        setData(mockSheetData[sheetName]);
+      // Fetch data dari Google Apps Script
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?sheet=${encodeURIComponent(sheetName)}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: GoogleSheetsResponse = await response.json();
+      
+      if (result.success && result.data) {
+        setData(result.data);
       } else {
-        throw new Error(`Data untuk ${sheetName} tidak ditemukan`);
+        throw new Error(result.error || 'Gagal memuat data dari Google Sheets');
       }
     } catch (err) {
+      console.error('Error loading data:', err);
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
       setData(null);
     } finally {
@@ -132,17 +117,16 @@ export default function RekapBendahara() {
   const handleExport = () => {
     if (!data) return;
     
-    // Simulasi export data
     const csvContent = [
       data.headers.join(','),
       ...data.rows.map(row => data.headers.map(header => `"${row[header] || ''}"`).join(','))
     ].join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rekap-bendahara-${data.sheetName}.csv`;
+    a.download = `rekap-bendahara-${data.sheetName}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -157,10 +141,23 @@ export default function RekapBendahara() {
             Sistem Manajemen Data Keuangan Terintegrasi Google Sheets
           </p>
         </div>
-        <Badge variant="secondary" className="px-3 py-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-          Terhubung dengan Google Sheets
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="px-3 py-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+            Terhubung dengan Google Sheets
+          </Badge>
+          <Button variant="outline" size="sm" asChild>
+            <a 
+              href="https://docs.google.com/spreadsheets/d/1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88/edit?gid=349886725#gid=349886725" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Buka Sheets
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Controls */}
@@ -171,7 +168,7 @@ export default function RekapBendahara() {
             Kontrol Data
           </CardTitle>
           <CardDescription>
-            Pilih periode dan muat data dari Google Sheets
+            Pilih periode dan muat data langsung dari Google Sheets
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -278,6 +275,8 @@ export default function RekapBendahara() {
                 {filters.periodType === 'monthly' 
                   ? `Bulan ${filters.selectedMonth}` 
                   : 'REKAP-KEGIATAN'}
+                {' | '}
+                <strong>Spreadsheet:</strong> AKI Rekap Bendahara
               </span>
             </div>
           </div>
@@ -318,7 +317,7 @@ export default function RekapBendahara() {
             </div>
           </div>
           <CardDescription>
-            Data akan otomatis menyesuaikan struktur header dari Google Sheets
+            Data langsung dari Google Sheets - Header menyesuaikan struktur sheet secara otomatis
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -326,6 +325,7 @@ export default function RekapBendahara() {
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
               <p className="text-muted-foreground">Memuat data dari Google Sheets...</p>
+              <p className="text-sm text-muted-foreground">Sheet: {filters.periodType === 'monthly' ? filters.selectedMonth : 'REKAP-KEGIATAN'}</p>
             </div>
           ) : !data ? (
             <div className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
@@ -335,7 +335,7 @@ export default function RekapBendahara() {
               <div>
                 <h3 className="font-semibold text-lg">Data belum dimuat</h3>
                 <p className="text-muted-foreground mt-1">
-                  Pilih periode dan klik "Muat Data" untuk menampilkan data
+                  Pilih periode dan klik "Muat Data" untuk menampilkan data langsung dari Google Sheets
                 </p>
               </div>
             </div>
@@ -347,7 +347,7 @@ export default function RekapBendahara() {
               <div>
                 <h3 className="font-semibold text-lg">Tidak ada data</h3>
                 <p className="text-muted-foreground mt-1">
-                  Tidak ditemukan data untuk periode yang dipilih
+                  Tidak ditemukan data untuk sheet {data.sheetName}
                 </p>
               </div>
             </div>
@@ -359,12 +359,12 @@ export default function RekapBendahara() {
                     <tr>
                       {data.headers.map((header, index) => (
                         <th key={index} className="text-left p-3 font-semibold border-b">
-                          <div className="mb-2">{header}</div>
+                          <div className="mb-2 text-foreground">{header}</div>
                           <Input
                             placeholder={`Filter ${header}`}
                             value={filters.columnFilters[header] || ''}
                             onChange={(e) => handleColumnFilterChange(header, e.target.value)}
-                            className="h-8 text-xs"
+                            className="h-8 text-xs bg-background"
                           />
                         </th>
                       ))}
@@ -389,6 +389,8 @@ export default function RekapBendahara() {
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>
                     Menampilkan {filteredData?.rows.length} dari {data.rows.length} baris
+                    {Object.keys(filters.columnFilters).some(key => filters.columnFilters[key]) && 
+                      ' (difilter)'}
                   </span>
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={handleExport}>
@@ -403,24 +405,34 @@ export default function RekapBendahara() {
         </CardContent>
       </Card>
 
-      {/* Footer Info */}
-      <Card className="bg-muted/50">
-        <CardContent className="pt-6">
-          <div className="text-center text-sm text-muted-foreground space-y-1">
-            <p>
-              🔗 Terhubung dengan:{' '}
-              <a 
-                href="https://docs.google.com/spreadsheets/d/1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88/edit?usp=sharing" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-medium"
-              >
-                Google Sheets Sumber Data
-              </a>
-            </p>
-            <p>
-              ⚡ Data akan otomatis mengikuti perubahan struktur sheet
-            </p>
+      {/* Integration Instructions */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-blue-900 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" />
+            Instruksi Integrasi Google Sheets
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-blue-800 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="font-semibold mb-2">Langkah 1: Deploy Google Apps Script</h4>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Buka <a href="https://script.google.com" target="_blank" className="underline">script.google.com</a></li>
+                <li>Buat project baru</li>
+                <li>Copy-paste kode Google Apps Script</li>
+                <li>Deploy sebagai Web App</li>
+                <li>Set access ke "Anyone"</li>
+              </ol>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Langkah 2: Konfigurasi URL</h4>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Copy URL deployment Google Apps Script</li>
+                <li>Ganti <code>YOUR_SCRIPT_ID</code> di kode dengan URL Anda</li>
+                <li>Save dan reload halaman ini</li>
+              </ol>
+            </div>
           </div>
         </CardContent>
       </Card>
