@@ -45,7 +45,7 @@ const spkBastSubItems = [
   { title: "Entri Pengelola Anggaran", url: "/spk-bast/entri-pengelola", icon: UserCog },
   { title: "Approval PPK", url: "/spk-bast/approval-ppk", icon: CheckCircle },
   { title: "Download SPK & BAST", url: "/spk-bast/download-spk-bast", icon: Download },
-  { title: "Rekap Bendahara", url: "/spk-bast/RekapBendahara", icon: Users },
+  { title: "Download SPJ", url: "/spk-bast/download-spj", icon: Download },
   { title: "Download Raw Data", url: "/spk-bast/download-raw-data", icon: Database },
   { title: "Pedoman", url: "/spk-bast/pedoman", icon: BookOpen },
 ];
