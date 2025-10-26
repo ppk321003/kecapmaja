@@ -155,14 +155,6 @@ export default function CekSBML() {
     return warnings;
   }, [formatRupiah]);
 
-  // Fungsi untuk membersihkan dan memformat periode
-  const cleanPeriode = useCallback((periode: string): string => {
-    if (!periode) return '';
-    
-    // Hapus spasi berlebih dan format konsisten
-    return periode.trim().replace(/\s+/g, ' ');
-  }, []);
-
   // Fungsi untuk memproses data petugas dengan NIK dan mendapatkan kecamatan
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, nilaiRealisasi: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
@@ -185,7 +177,7 @@ export default function CekSBML() {
         } else {
           // Fallback: cari berdasarkan nama saja
           for (const [key, value] of masterMap.entries()) {
-            if (key.toLowerCase().startsWith(nama.toLowerCase() + '_')) {
+            if (key.toLowerCase().includes(nama.toLowerCase())) {
               kecamatan = value.kecamatan;
               break;
             }
@@ -220,12 +212,10 @@ export default function CekSBML() {
       setLoading(true);
       
       const periodeFilter = `${filterBulan} ${filterTahun}`;
-      const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
-
-      console.log(`🔍 Mencari data untuk periode: "${cleanedPeriodeFilter}"`);
 
       // Paralel fetching untuk performa lebih baik
-      const [tugasResult, masterResult] = await Promise.all([
+      const [sbmlResult, tugasResult, masterResult] = await Promise.all([
+        fetchSBMLData(filterTahun),
         supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: TUGAS_SPREADSHEET_ID,
@@ -248,9 +238,6 @@ export default function CekSBML() {
       const tugasRows = tugasResult.data?.values || [];
       const masterRows = masterResult.data?.values || [];
 
-      console.log(`📊 Total baris data tugas: ${tugasRows.length}`);
-      console.log(`📊 Total baris data master: ${masterRows.length}`);
-
       // Process data dengan optimasi
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
@@ -262,8 +249,7 @@ export default function CekSBML() {
           const nama = row[2].toString().trim();
           const nik = row[1]?.toString() || "";
           // Simpan dengan key nama_nik untuk pencarian yang lebih akurat
-          const key = `${nama.toLowerCase()}_${nik}`;
-          masterPetugas.set(key, {
+          masterPetugas.set(`${nama.toLowerCase()}_${nik}`, {
             nama: nama,
             nik: nik,
             pekerjaan: row[3]?.toString() || "",
@@ -275,28 +261,19 @@ export default function CekSBML() {
         }
       }
 
-      console.log(`👥 Total master petugas: ${masterPetugas.size}`);
-
       // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail, NIK, dan kecamatan
-      let matchCount = 0;
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 23) continue;
+        if (!row || row.length < 23) continue; // Diperbarui untuk mengakomodasi kolom NIK (index 22)
 
-        const periode = cleanPeriode(row[2]?.toString() || "");
+        const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
         const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
         const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
         const nikPetugas = row[22]?.toString() || ""; // Kolom W: NIK (kolom terakhir)
 
-        // Debug: tampilkan beberapa periode untuk troubleshooting
-        if (i <= 5) {
-          console.log(`📝 Baris ${i}: Periode="${periode}", Filter="${cleanedPeriodeFilter}"`);
-        }
-
-        if (periode === cleanedPeriodeFilter && namaPetugas && nilaiRealisasi) {
-          matchCount++;
+        if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, nilaiRealisasi, masterPetugas);
 
           for (const petugas of processedPetugas) {
@@ -313,9 +290,6 @@ export default function CekSBML() {
           }
         }
       }
-
-      console.log(`✅ Baris yang match dengan periode: ${matchCount}`);
-      console.log(`👥 Total petugas tugas: ${petugasTugas.length}`);
 
       // Transform to CekSBMLRow format - DIMODIFIKASI untuk menggunakan Nama + NIK sebagai key
       const groupedData = new Map<string, CekSBMLRow>();
@@ -382,13 +356,12 @@ export default function CekSBML() {
       if (finalData.length > 0) {
         toast({
           title: "Sukses",
-          description: `Data berhasil dimuat untuk periode ${cleanedPeriodeFilter} - ${finalData.length} petugas ditemukan`,
+          description: `Data berhasil dimuat untuk periode ${periodeFilter} - ${finalData.length} petugas ditemukan`,
         });
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Pastikan format periode sesuai (Contoh: "Januari 2024")`,
-          variant: "destructive",
+          description: `Tidak ada data untuk periode ${periodeFilter}`,
         });
       }
 
@@ -402,7 +375,7 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
+  }, [filterBulan, filterTahun, fetchSBMLData, processPetugasData, validateRow, sbmlData, toast]);
 
   // Handle input manual perubahan - dioptimalkan
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
@@ -581,12 +554,12 @@ export default function CekSBML() {
                     <TableHead className="w-12">No</TableHead>
                     <TableHead className="min-w-[160px]">Nama Mitra Statistik</TableHead>
                     <TableHead className="min-w-[120px]">Kecamatan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pendataan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pemeriksaan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pengolahan</TableHead>
-                    <TableHead className="text-right min-w-[90px]">Pekerjaan Provinsi</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Jumlah</TableHead>
-                    <TableHead className="w-16 text-center">Status</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
+                    <TableHead className="text-right min-w-[90x]">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
+                    <TableHead className="w-20 text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -638,12 +611,12 @@ export default function CekSBML() {
                         </HonorTooltip>
                       </TableCell>
                       
-                      <TableCell className="px-2">
+                      <TableCell>
                         <Input
                           type="text"
                           value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
                           onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right w-20 h-8 text-sm"
+                          className="text-right min-w-[100px] h-8 text-sm"
                           placeholder="0"
                         />
                       </TableCell>
