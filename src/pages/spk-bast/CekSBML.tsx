@@ -28,6 +28,7 @@ const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
 
 interface PetugasTugas {
   nama: string;
+  nik: string;
   kecamatan: string;
   role: string;
   honor: number;
@@ -56,6 +57,7 @@ interface SBMLData {
 interface CekSBMLRow {
   no: number;
   namaMitra: string;
+  nik: string;
   kecamatan: string;
   pendataan: number;
   pemeriksaan: number;
@@ -153,16 +155,47 @@ export default function CekSBML() {
     return warnings;
   }, [formatRupiah]);
 
-  // Fungsi untuk mendapatkan kecamatan dari master data berdasarkan nama
-  const getKecamatanFromMaster = useCallback((nama: string, masterMap: Map<string, MasterPetugas>): string => {
-    // Cari berdasarkan nama (case insensitive)
-    for (const [key, value] of masterMap.entries()) {
-      if (key.toLowerCase().includes(nama.toLowerCase())) {
-        return value.kecamatan || "";
+  // Fungsi untuk memproses data petugas dengan NIK dan mendapatkan kecamatan
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, nilaiRealisasi: string, masterMap: Map<string, MasterPetugas>) => {
+    const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
+    const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
+    const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
+    const nilaiRealisasiList = nilaiRealisasi.split(' | ').map((n: string) => n.trim());
+
+    const result: { nama: string; nik: string; kecamatan: string; honor: number; nilaiRealisasi: string }[] = [];
+
+    for (let j = 0; j < namaList.length; j++) {
+      if (namaList[j] && honorList[j] !== undefined) {
+        const nama = namaList[j].trim();
+        const nik = nikList[j] || "";
+        
+        // Cari kecamatan dari master data berdasarkan nama + nik
+        let kecamatan = "";
+        const masterKey = `${nama.toLowerCase()}_${nik}`;
+        if (masterMap.has(masterKey)) {
+          kecamatan = masterMap.get(masterKey)!.kecamatan;
+        } else {
+          // Fallback: cari berdasarkan nama saja
+          for (const [key, value] of masterMap.entries()) {
+            if (key.toLowerCase().includes(nama.toLowerCase())) {
+              kecamatan = value.kecamatan;
+              break;
+            }
+          }
+        }
+        
+        result.push({
+          nama: nama,
+          nik: nik,
+          kecamatan: kecamatan || "",
+          honor: honorList[j] || 0,
+          nilaiRealisasi: nilaiRealisasiList[j] || "0",
+        });
       }
     }
-    return "";
-  }, []);
+
+    return result;
+  }, [parseHonor]);
 
   // Fetch data petugas bertugas - dioptimalkan dengan Promise.all
   const fetchData = useCallback(async () => {
@@ -209,13 +242,13 @@ export default function CekSBML() {
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
-      // Build master petugas map
+      // Build master petugas map dengan NIK sebagai key tambahan
       for (let i = 1; i < masterRows.length; i++) {
         const row = masterRows[i];
         if (row && row[2]) {
           const nama = row[2].toString().trim();
           const nik = row[1]?.toString() || "";
-          // Simpan dengan key nama untuk pencarian
+          // Simpan dengan key nama_nik untuk pencarian yang lebih akurat
           masterPetugas.set(`${nama.toLowerCase()}_${nik}`, {
             nama: nama,
             nik: nik,
@@ -228,52 +261,48 @@ export default function CekSBML() {
         }
       }
 
-      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail dan kecamatan
+      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail, NIK, dan kecamatan
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 18) continue;
+        if (!row || row.length < 23) continue; // Diperbarui untuk mengakomodasi kolom NIK (index 22)
 
         const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
         const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
         const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
+        const nikPetugas = row[22]?.toString() || ""; // Kolom W: NIK (kolom terakhir)
 
         if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
-          const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
-          const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
-          const nilaiRealisasiList = nilaiRealisasi.split(' | ').map((n: string) => n.trim());
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, nilaiRealisasi, masterPetugas);
 
-          for (let j = 0; j < namaList.length; j++) {
-            if (namaList[j] && honorList[j] !== undefined) {
-              const nama = namaList[j].trim();
-              const kecamatan = getKecamatanFromMaster(nama, masterPetugas);
-              
-              petugasTugas.push({
-                nama: nama,
-                kecamatan: kecamatan,
-                role: role.trim(),
-                honor: honorList[j] || 0,
-                periode: periode,
-                namaKegiatan: namaKegiatan,
-                nilaiRealisasi: nilaiRealisasiList[j] || "0",
-              });
-            }
+          for (const petugas of processedPetugas) {
+            petugasTugas.push({
+              nama: petugas.nama,
+              nik: petugas.nik,
+              kecamatan: petugas.kecamatan,
+              role: role.trim(),
+              honor: petugas.honor,
+              periode: periode,
+              namaKegiatan: namaKegiatan,
+              nilaiRealisasi: petugas.nilaiRealisasi,
+            });
           }
         }
       }
 
-      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menggunakan Nama + Kecamatan sebagai key
+      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menggunakan Nama + NIK sebagai key
       const groupedData = new Map<string, CekSBMLRow>();
 
       for (const petugas of petugasTugas) {
-        // Gunakan kombinasi nama dan kecamatan sebagai key unik
-        const key = `${petugas.nama.toLowerCase()}_${petugas.kecamatan}`;
+        // Gunakan kombinasi nama dan NIK sebagai key unik
+        const key = `${petugas.nama.toLowerCase()}_${petugas.nik}`;
         
         if (!groupedData.has(key)) {
           groupedData.set(key, {
             no: groupedData.size + 1,
             namaMitra: petugas.nama,
+            nik: petugas.nik,
             kecamatan: petugas.kecamatan,
             pendataan: 0,
             pemeriksaan: 0,
@@ -346,7 +375,7 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, fetchSBMLData, parseHonor, getKecamatanFromMaster, validateRow, sbmlData, toast]);
+  }, [filterBulan, filterTahun, fetchSBMLData, processPetugasData, validateRow, sbmlData, toast]);
 
   // Handle input manual perubahan - dioptimalkan
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
@@ -535,10 +564,10 @@ export default function CekSBML() {
                 </TableHeader>
                 <TableBody>
                   {data.map((row, index) => (
-                    <TableRow key={`${row.namaMitra}_${row.kecamatan}`} className={row.isExceeded ? "bg-red-50" : ""}>
+                    <TableRow key={`${row.namaMitra}_${row.nik}`} className={row.isExceeded ? "bg-red-50" : ""}>
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
-                      <TableCell className="font-medium min-w-[150px]">{row.kecamatan || "-"}</TableCell>
+                      <TableCell className="min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
                       {/* Kolom Pendataan dengan Tooltip */}
                       <TableCell className="text-right">
