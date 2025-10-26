@@ -576,13 +576,13 @@ export default function DownloadSPKBAST() {
                         Jumlah SPK
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                        Nilai Perjanjian Rp.
+                        Nilai Perjanjian
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                        Nilai Realisasi Rp.
+                        Nilai Realisasi
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                        % Realisasi
+                        Realisasi
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Link
