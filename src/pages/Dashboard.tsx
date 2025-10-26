@@ -637,6 +637,26 @@ const calculateRealisasiLikeEntri = (hargaSatuanStr: string, realisasiQuantitySt
   return Math.round(hargaSatuan * realisasiQuantity);
 };
 
+// PERBAIKAN UTAMA: Fungsi untuk mengekstrak nama dari kombinasi nama + NIK untuk tampilan UI
+const extractDisplayName = (namaNik: string): string => {
+  // Jika tidak mengandung pipe, kembalikan string asli
+  if (!namaNik.includes('|')) return namaNik;
+  
+  // Split dan ambil bagian nama saja (sebelum pipe pertama)
+  const parts = namaNik.split('|');
+  return parts[0].trim();
+};
+
+// PERBAIKAN UTAMA: Fungsi untuk membuat identifier unik nama + NIK
+const createPetugasIdentifier = (nama: string, nik: string): string => {
+  const namaTrimmed = nama.trim();
+  const nikTrimmed = nik.trim();
+  
+  if (!nikTrimmed) return namaTrimmed;
+  
+  return `${namaTrimmed}|${nikTrimmed}`;
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
@@ -891,16 +911,24 @@ export default function Dashboard() {
 
   // PERBAIKAN: Filter data untuk search dari data lengkap yang sudah difilter
   const searchedWorkloadData = workloadSearchQuery 
-    ? filteredWorkloadData.filter(item => 
-        item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
-        item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
-      )
+    ? filteredWorkloadData.filter(item => {
+        const displayName = extractDisplayName(item.petugas);
+        return (
+          displayName.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
+          item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
+          item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
+        );
+      })
     : workloadData; // Gunakan top 15 jika tidak ada search
 
   const searchedRiskData = riskSearchQuery 
-    ? filteredRiskData.filter(item => 
-        item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
-      )
+    ? filteredRiskData.filter(item => {
+        const displayName = extractDisplayName(item.name);
+        return (
+          displayName.toLowerCase().includes(riskSearchQuery.toLowerCase()) ||
+          item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
+        );
+      })
     : riskData; // Gunakan top 10 jika tidak ada search
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
@@ -972,6 +1000,7 @@ export default function Dashboard() {
           const namaPetugas = row[13]?.toString() || "";
           const realisasiStr = row[15]?.toString() || ""; // Kolom realisasi quantity
           const hargaSatuan = row[9]?.toString() || "0"; // Kolom harga satuan
+          const nik = row[22]?.toString() || ""; // PERBAIKAN UTAMA: Kolom NIK
 
           // Extract bulan dari periode
           const bulanMatch = periode.match(/^(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i);
@@ -980,6 +1009,7 @@ export default function Dashboard() {
           // PERBAIKAN UTAMA: Parse petugas dan hitung realisasi seperti entri target
           const namaList = namaPetugas.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
           const realisasiList = realisasiStr.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+          const nikList = nik.split(/\s*\|\s*/).map((n: string) => n.trim()).filter(n => n && n !== '');
 
           // PERBAIKAN UTAMA: Hitung nilai realisasi untuk setiap petugas seperti entri target
           const nilaiRealisasiList = realisasiList.map((realisasiQty, index) => {
@@ -1002,11 +1032,15 @@ export default function Dashboard() {
 
           // Process data untuk setiap petugas
           namaList.forEach((nama, index) => {
+            // PERBAIKAN UTAMA: Gunakan identifier nama + NIK
+            const nikPetugas = nikList[index] || "";
+            const petugasIdentifier = createPetugasIdentifier(nama, nikPetugas);
+            
             // PERBAIKAN UTAMA: Gunakan nilai realisasi yang dihitung seperti entri target
             const nilai = validNilaiList[index] || 0;
-            const namaNormalized = nama.trim();
+            const namaNormalized = petugasIdentifier;
             
-            if (!namaNormalized) return;
+            if (!nama.trim()) return;
 
             // Inisialisasi map untuk petugas jika belum ada
             if (!petugasRoleDetailMap.has(namaNormalized)) {
@@ -1193,7 +1227,10 @@ export default function Dashboard() {
 
       // Prepare chart data untuk KEGIATAN menggunakan data unik
       const petugasKegiatanData: ChartItem[] = Array.from(petugasKegiatanUnikMap.entries())
-        .map(([name, kegiatanSet]) => ({ name, value: kegiatanSet.size }))
+        .map(([name, kegiatanSet]) => ({ 
+          name: extractDisplayName(name), // PERBAIKAN UTAMA: Tampilkan hanya nama
+          value: kegiatanSet.size 
+        }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 10);
 
@@ -1212,7 +1249,10 @@ export default function Dashboard() {
 
       // PERBAIKAN UTAMA: Chart data anggaran menggunakan nilai realisasi yang dihitung
       const petugasAnggaranData: ChartItem[] = Array.from(petugasAnggaranMap.entries())
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({ 
+          name: extractDisplayName(name), // PERBAIKAN UTAMA: Tampilkan hanya nama
+          value 
+        }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 10);
 
@@ -1774,7 +1814,8 @@ export default function Dashboard() {
                     searchedWorkloadData.map((item, index) => (
                       <tr key={index} className="border-b hover:bg-muted/50">
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
-                        <td className="py-3 font-medium">{item.petugas}</td>
+                        {/* PERBAIKAN UTAMA: Tampilkan hanya nama tanpa NIK */}
+                        <td className="py-3 font-medium">{extractDisplayName(item.petugas)}</td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-1">
                             {/* PERBAIKAN UTAMA: Hanya tampilkan fungsi yang dipilih */}
@@ -1784,7 +1825,7 @@ export default function Dashboard() {
                                 <RoleBadge
                                   key={roleIndex}
                                   role={role}
-                                  petugas={item.petugas}
+                                  petugas={extractDisplayName(item.petugas)} // PERBAIKAN UTAMA: Tampilkan hanya nama
                                   roleData={roleData}
                                   onShowTooltip={handleShowTooltip}
                                   onHideTooltip={handleHideTooltip}
