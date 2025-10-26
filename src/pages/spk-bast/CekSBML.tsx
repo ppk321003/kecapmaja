@@ -187,13 +187,12 @@ export default function CekSBML() {
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
-    const hargaSatuanList = hargaSatuan.split(' | ').map((n: string) => n.trim());
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
 
     console.log(`🔢 Debug processPetugasData:`);
     console.log(`   Nama: ${namaList}`);
     console.log(`   NIK: ${nikList}`);
-    console.log(`   Harga Satuan: ${hargaSatuanList}`);
+    console.log(`   Harga Satuan: ${hargaSatuan}`); // Harga satuan TIDAK dipisah, jadi langsung string
     console.log(`   Realisasi: ${realisasiList}`);
 
     const result: { nama: string; nik: string; kecamatan: string; honor: number; nilaiRealisasi: string }[] = [];
@@ -202,13 +201,13 @@ export default function CekSBML() {
       if (namaList[j]) {
         const nama = namaList[j].trim();
         const nik = nikList[j] || "";
-        const hargaSatuanItem = hargaSatuanList[j] || "0";
         const realisasiItem = realisasiList[j] || "0";
         
-        const honor = calculateHonor(hargaSatuanItem, realisasiItem);
+        // Gunakan harga satuan yang SAMA untuk semua petugas dalam baris ini
+        const honor = calculateHonor(hargaSatuan, realisasiItem);
         const nilaiRealisasi = formatRupiah(honor);
         
-        console.log(`   🧮 Perhitungan untuk ${nama}: ${hargaSatuanItem} × ${realisasiItem} = ${honor}`);
+        console.log(`   🧮 Perhitungan untuk ${nama}: ${hargaSatuan} × ${realisasiItem} = ${honor}`);
         
         // Cari kecamatan dari master data berdasarkan nama + nik
         let kecamatan = "";
@@ -320,8 +319,8 @@ export default function CekSBML() {
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
         const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
-        const hargaSatuan = row[9]?.toString() || ""; // Kolom J: Harga Satuan
-        const realisasi = row[15]?.toString() || ""; // Kolom P: Realisasi
+        const hargaSatuan = row[9]?.toString() || ""; // Kolom J: Harga Satuan (TIDAK dipisah)
+        const realisasi = row[15]?.toString() || ""; // Kolom P: Realisasi (dipisah dengan |)
         const nikPetugas = row[22]?.toString() || ""; // Kolom W: NIK (kolom terakhir)
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
