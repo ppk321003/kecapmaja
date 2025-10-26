@@ -98,10 +98,22 @@ export default function CekSBML() {
 
   // Fungsi untuk menghitung honor berdasarkan Harga Satuan × Realisasi
   const calculateHonor = useCallback((hargaSatuanStr: string, realisasiStr: string): number => {
+    // Parse harga satuan (format Rupiah: "704.000,-" atau "500000")
     const hargaSatuan = parseHonor(hargaSatuanStr);
-    const realisasi = parseFloat(realisasiStr.replace(',', '.')) || 0;
     
-    return hargaSatuan * realisasi;
+    // Parse realisasi (format angka: "1" atau "1.5" atau "2,5")
+    let realisasi = 0;
+    if (realisasiStr) {
+      // Ganti koma dengan titik untuk format desimal Indonesia
+      const cleanedRealisasi = realisasiStr.replace(',', '.');
+      realisasi = parseFloat(cleanedRealisasi) || 0;
+    }
+    
+    const result = hargaSatuan * realisasi;
+    
+    console.log(`   💰 calculateHonor: "${hargaSatuanStr}" × "${realisasiStr}" = ${hargaSatuan} × ${realisasi} = ${result}`);
+    
+    return result;
   }, [parseHonor]);
 
   // Fetch data SBML untuk validasi - dioptimalkan
@@ -178,14 +190,25 @@ export default function CekSBML() {
     const hargaSatuanList = hargaSatuan.split(' | ').map((n: string) => n.trim());
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
 
+    console.log(`🔢 Debug processPetugasData:`);
+    console.log(`   Nama: ${namaList}`);
+    console.log(`   NIK: ${nikList}`);
+    console.log(`   Harga Satuan: ${hargaSatuanList}`);
+    console.log(`   Realisasi: ${realisasiList}`);
+
     const result: { nama: string; nik: string; kecamatan: string; honor: number; nilaiRealisasi: string }[] = [];
 
     for (let j = 0; j < namaList.length; j++) {
       if (namaList[j]) {
         const nama = namaList[j].trim();
         const nik = nikList[j] || "";
-        const honor = calculateHonor(hargaSatuanList[j] || "0", realisasiList[j] || "0");
+        const hargaSatuanItem = hargaSatuanList[j] || "0";
+        const realisasiItem = realisasiList[j] || "0";
+        
+        const honor = calculateHonor(hargaSatuanItem, realisasiItem);
         const nilaiRealisasi = formatRupiah(honor);
+        
+        console.log(`   🧮 Perhitungan untuk ${nama}: ${hargaSatuanItem} × ${realisasiItem} = ${honor}`);
         
         // Cari kecamatan dari master data berdasarkan nama + nik
         let kecamatan = "";
@@ -301,12 +324,12 @@ export default function CekSBML() {
         const realisasi = row[15]?.toString() || ""; // Kolom P: Realisasi
         const nikPetugas = row[22]?.toString() || ""; // Kolom W: NIK (kolom terakhir)
 
-        // Debug: tampilkan beberapa periode untuk troubleshooting
-        if (i <= 5) {
-          console.log(`📝 Baris ${i}: Periode="${periode}", Filter="${cleanedPeriodeFilter}"`);
-        }
-
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
+          console.log(`📋 Baris ${i}: ${namaKegiatan}`);
+          console.log(`   👥 Nama: ${namaPetugas}`);
+          console.log(`   💵 Harga Satuan: ${hargaSatuan}`);
+          console.log(`   📊 Realisasi: ${realisasi}`);
+          
           matchCount++;
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, masterPetugas);
 
