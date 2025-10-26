@@ -114,6 +114,7 @@ const formSchema = z.object({
     return !isNaN(num) && num >= 0;
   }, "Harga satuan harus berupa angka positif"),
   satuan: z.string().min(1, "Satuan wajib dipilih"),
+  satuanCustom: z.string().optional(),
   komponenPOK: z.string().min(1, "Komponen POK wajib dipilih"),
   nomorSK: z.string().min(1, "Nomor SK wajib diisi"),
   koordinator: z.string().min(1, "Koordinator wajib dipilih"),
@@ -126,6 +127,14 @@ const formSchema = z.object({
 }).refine((data) => data.tanggalAkhir >= data.tanggalMulai, {
   message: "Tanggal akhir kegiatan tidak boleh lebih awal dari tanggal mulai",
   path: ["tanggalAkhir"],
+}).refine((data) => {
+  if (data.satuan === "Lainnya" && !data.satuanCustom?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Satuan custom wajib diisi jika memilih 'Lainnya'",
+  path: ["satuanCustom"],
 });
 
 // Constants for spreadsheet IDs
@@ -173,11 +182,14 @@ export default function EntriTarget() {
       namaKegiatan: "",
       hargaSatuan: "",
       satuan: "",
+      satuanCustom: "",
       komponenPOK: "",
       nomorSK: "",
       koordinator: "",
     },
   });
+
+  const [showCustomSatuan, setShowCustomSatuan] = useState(false);
 
   // Load petugas data from MASTER.MITRA sheet
   const loadPetugasFromSheet = async () => {
@@ -558,13 +570,14 @@ export default function EntriTarget() {
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
-        const koordinator = row[11] || '';
-        const komponenPOK = row[12] || '';
-        const bebanAnggaran = row[17] || '';
+        const satuanCustom = row[11] || '';
+        const koordinator = row[12] || '';
+        const komponenPOK = row[13] || '';
+        const bebanAnggaran = row[18] || '';
         
-        const namaPetugasStr = row[13] || '';
-        const targetStr = row[14] || '';
-        const realisasiStr = row[15] || '';
+        const namaPetugasStr = row[14] || '';
+        const targetStr = row[15] || '';
+        const realisasiStr = row[16] || '';
         
         const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
         const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
@@ -585,7 +598,7 @@ export default function EntriTarget() {
           tanggalMulai,
           tanggalAkhir,
           hargaSatuan,
-          satuan: satuan,
+          satuan: satuanCustom || satuan,
           komponenPOK,
           nomorSK,
           tanggalSK,
@@ -638,6 +651,8 @@ export default function EntriTarget() {
   };
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    const finalSatuan = data.satuan === "Lainnya" ? data.satuanCustom || "" : data.satuan;
+    
     if (editingActivity) {
       const updatedActivities = activities.map(activity => 
         activity.id === editingActivity.id 
@@ -647,7 +662,7 @@ export default function EntriTarget() {
               tanggalMulai: data.tanggalMulai,
               tanggalAkhir: data.tanggalAkhir,
               hargaSatuan: data.hargaSatuan,
-              satuan: data.satuan,
+              satuan: finalSatuan,
               komponenPOK: data.komponenPOK,
               nomorSK: data.nomorSK,
               tanggalSK: data.tanggalSK,
@@ -678,7 +693,7 @@ export default function EntriTarget() {
         tanggalMulai: data.tanggalMulai,
         tanggalAkhir: data.tanggalAkhir,
         hargaSatuan: data.hargaSatuan,
-        satuan: data.satuan,
+        satuan: finalSatuan,
         komponenPOK: data.komponenPOK,
         nomorSK: data.nomorSK,
         tanggalSK: data.tanggalSK,
@@ -705,6 +720,7 @@ export default function EntriTarget() {
     }
     
     setShowAddActivityDialog(false);
+    setShowCustomSatuan(false);
     form.reset();
     setBebanAnggaran("");
   };
@@ -768,18 +784,22 @@ export default function EntriTarget() {
 
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
+    const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
+    const isCustomSatuan = !standardSatuans.includes(activity.satuan);
     
     form.reset({
       namaKegiatan: activity.namaKegiatan,
       tanggalMulai: activity.tanggalMulai,
       tanggalAkhir: activity.tanggalAkhir,
       hargaSatuan: activity.hargaSatuan,
-      satuan: activity.satuan,
+      satuan: isCustomSatuan ? "Lainnya" : activity.satuan,
+      satuanCustom: isCustomSatuan ? activity.satuan : "",
       komponenPOK: activity.komponenPOK,
       nomorSK: activity.nomorSK,
       tanggalSK: activity.tanggalSK,
       koordinator: activity.koordinator,
     });
+    setShowCustomSatuan(isCustomSatuan);
     
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
     setBebanAnggaran(selectedActivity?.bebanAnggaran || activity.bebanAnggaran || "");
@@ -953,6 +973,10 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
       // Prepare NIK data for column X (index 23)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
@@ -968,7 +992,8 @@ export default function EntriTarget() {
           format(activity.tanggalMulai, "dd/MM/yyyy"),
           format(activity.tanggalAkhir, "dd/MM/yyyy"),
           activity.hargaSatuan,
-          activity.satuan,
+          satuan,
+          satuanCustom,
           activity.koordinator,
           getKomponenPOKLabel(activity.komponenPOK),
           "",
@@ -978,10 +1003,10 @@ export default function EntriTarget() {
           "",
           activity.bebanAnggaran || "",
           "",
-          "", // Kolom T
           "", // Kolom U
-          "", // Kolom V
-          nikList, // ✅ Kolom X (index 23) - NIK data
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
@@ -1024,6 +1049,10 @@ export default function EntriTarget() {
         0
       );
 
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
       // Prepare NIK data for column X (index 23)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
@@ -1039,7 +1068,8 @@ export default function EntriTarget() {
           format(activity.tanggalMulai, "dd/MM/yyyy"),
           format(activity.tanggalAkhir, "dd/MM/yyyy"),
           activity.hargaSatuan,
-          activity.satuan,
+          satuan,
+          satuanCustom,
           activity.koordinator,
           getKomponenPOKLabel(activity.komponenPOK),
           namaPetugas,
@@ -1049,10 +1079,10 @@ export default function EntriTarget() {
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
           "",
-          "", // Kolom T
           "", // Kolom U
-          "", // Kolom V
-          nikList, // ✅ Kolom X (index 23) - NIK data
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
@@ -1112,6 +1142,10 @@ export default function EntriTarget() {
         0
       );
 
+      const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
+      const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
+      const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
       // Prepare NIK data for column X (index 23)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
@@ -1127,7 +1161,8 @@ export default function EntriTarget() {
           format(activity.tanggalMulai, "dd/MM/yyyy"),
           format(activity.tanggalAkhir, "dd/MM/yyyy"),
           activity.hargaSatuan,
-          activity.satuan,
+          satuan,
+          satuanCustom,
           activity.koordinator,
           getKomponenPOKLabel(activity.komponenPOK),
           namaPetugas,
@@ -1137,10 +1172,10 @@ export default function EntriTarget() {
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
           "Kirim PPK",
-          "", // Kolom T
           "", // Kolom U
-          "", // Kolom V
-          nikList, // ✅ Kolom X (index 23) - NIK data
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
@@ -1372,6 +1407,7 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
+      {/* Kode untuk dialog lainnya tetap sama... */}
       <Dialog open={showProposalsDialog} onOpenChange={setShowProposalsDialog}>
         <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 rounded-none">
           <DialogHeader>
@@ -1477,6 +1513,7 @@ export default function EntriTarget() {
                             key={`${activity.id}-worker-${worker.id}`} 
                             className={cn(
                               "bg-muted/30",
+                              // PERBAIKAN UTAMA: Berikan warna warning untuk petugas yang memiliki target > 0 tetapi realisasi = 0
                               hasTargetButNoRealisasi(worker) 
                                 ? "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400" 
                                 : ""
@@ -1577,6 +1614,7 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
+      {/* Kode untuk dialog Add Activity dan Add Worker tetap sama... */}
       <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
         setShowAddActivityDialog(open);
         if (!open) {
@@ -1789,7 +1827,13 @@ export default function EntriTarget() {
                     <FormItem>
                       <FormLabel>Satuan <span className="text-destructive">*</span></FormLabel>
                       <Select 
-                        onValueChange={field.onChange} 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setShowCustomSatuan(value === "Lainnya");
+                          if (value !== "Lainnya") {
+                            form.setValue("satuanCustom", "");
+                          }
+                        }} 
                         value={field.value}
                       >
                         <FormControl>
@@ -1805,6 +1849,7 @@ export default function EntriTarget() {
                           <SelectItem value="Rumahtangga">Rumahtangga</SelectItem>
                           <SelectItem value="Segmen">Segmen</SelectItem>
                           <SelectItem value="SLS">SLS</SelectItem>
+                          <SelectItem value="Lainnya">Lainnya</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1812,6 +1857,25 @@ export default function EntriTarget() {
                   )}
                 />
               </div>
+
+              {showCustomSatuan && (
+                <FormField
+                  control={form.control}
+                  name="satuanCustom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Satuan Custom <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Masukkan satuan custom" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
