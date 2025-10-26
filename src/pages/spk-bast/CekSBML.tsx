@@ -28,6 +28,7 @@ const tahunList = Array.from({ length: 9 }, (_, i) => (2022 + i).toString());
 
 interface PetugasTugas {
   nama: string;
+  nik: string;
   role: string;
   honor: number;
   periode: string;
@@ -55,6 +56,7 @@ interface SBMLData {
 interface CekSBMLRow {
   no: number;
   namaMitra: string;
+  nik: string;
   pendataan: number;
   pemeriksaan: number;
   pengolahan: number;
@@ -151,6 +153,29 @@ export default function CekSBML() {
     return warnings;
   }, [formatRupiah]);
 
+  // Fungsi untuk memproses data petugas dengan NIK
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, nilaiRealisasi: string) => {
+    const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
+    const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
+    const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
+    const nilaiRealisasiList = nilaiRealisasi.split(' | ').map((n: string) => n.trim());
+
+    const result: { nama: string; nik: string; honor: number; nilaiRealisasi: string }[] = [];
+
+    for (let j = 0; j < namaList.length; j++) {
+      if (namaList[j] && honorList[j] !== undefined) {
+        result.push({
+          nama: namaList[j].trim(),
+          nik: nikList[j] || "", // Gunakan NIK yang sesuai atau string kosong jika tidak ada
+          honor: honorList[j] || 0,
+          nilaiRealisasi: nilaiRealisasiList[j] || "0",
+        });
+      }
+    }
+
+    return result;
+  }, [parseHonor]);
+
   // Fetch data petugas bertugas - dioptimalkan dengan Promise.all
   const fetchData = useCallback(async () => {
     if (!filterBulan || !filterTahun) {
@@ -196,14 +221,16 @@ export default function CekSBML() {
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
-      // Build master petugas map
+      // Build master petugas map dengan NIK sebagai key tambahan
       for (let i = 1; i < masterRows.length; i++) {
         const row = masterRows[i];
         if (row && row[2]) {
           const nama = row[2].toString().trim();
-          masterPetugas.set(nama.toLowerCase(), {
+          const nik = row[1]?.toString() || "";
+          // Simpan dengan key nama dan nik untuk pencarian yang lebih akurat
+          masterPetugas.set(`${nama.toLowerCase()}_${nik}`, {
             nama: nama,
-            nik: row[1]?.toString() || "",
+            nik: nik,
             pekerjaan: row[3]?.toString() || "",
             alamat: row[4]?.toString() || "",
             bank: row[5]?.toString() || "",
@@ -213,47 +240,47 @@ export default function CekSBML() {
         }
       }
 
-      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail
+      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail dan NIK
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 18) continue;
+        if (!row || row.length < 22) continue; // Diperbarui untuk mengakomodasi kolom NIK (index 21)
 
         const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
-        const namaPetugas = row[13]?.toString() || "";
-        const nilaiRealisasi = row[16]?.toString() || "";
+        const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
+        const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
+        const nikPetugas = row[21]?.toString() || ""; // Kolom V: NIK (kolom terakhir)
 
         if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
-          const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
-          const honorList = nilaiRealisasi.split(' | ').map(parseHonor);
-          const nilaiRealisasiList = nilaiRealisasi.split(' | ').map((n: string) => n.trim());
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, nilaiRealisasi);
 
-          for (let j = 0; j < namaList.length; j++) {
-            if (namaList[j] && honorList[j] !== undefined) {
-              petugasTugas.push({
-                nama: namaList[j].trim(),
-                role: role.trim(),
-                honor: honorList[j] || 0,
-                periode: periode,
-                namaKegiatan: namaKegiatan,
-                nilaiRealisasi: nilaiRealisasiList[j] || "0",
-              });
-            }
+          for (const petugas of processedPetugas) {
+            petugasTugas.push({
+              nama: petugas.nama,
+              nik: petugas.nik,
+              role: role.trim(),
+              honor: petugas.honor,
+              periode: periode,
+              namaKegiatan: namaKegiatan,
+              nilaiRealisasi: petugas.nilaiRealisasi,
+            });
           }
         }
       }
 
-      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menyimpan detail
+      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menggunakan Nama + NIK sebagai key
       const groupedData = new Map<string, CekSBMLRow>();
 
       for (const petugas of petugasTugas) {
-        const key = petugas.nama.toLowerCase();
+        // Gunakan kombinasi nama dan NIK sebagai key unik
+        const key = `${petugas.nama.toLowerCase()}_${petugas.nik}`;
         
         if (!groupedData.has(key)) {
           groupedData.set(key, {
             no: groupedData.size + 1,
             namaMitra: petugas.nama,
+            nik: petugas.nik,
             pendataan: 0,
             pemeriksaan: 0,
             pengolahan: 0,
@@ -325,7 +352,7 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, fetchSBMLData, parseHonor, validateRow, sbmlData, toast]);
+  }, [filterBulan, filterTahun, fetchSBMLData, processPetugasData, validateRow, sbmlData, toast]);
 
   // Handle input manual perubahan - dioptimalkan
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
@@ -410,7 +437,7 @@ export default function CekSBML() {
         </p>
       </div>
 
-      {/* Filter Section - DIPERBAIKI: lebih compact */}
+      {/* Filter Section */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -503,6 +530,7 @@ export default function CekSBML() {
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
                     <TableHead className="min-w-[150px]">Nama Mitra</TableHead>
+                    <TableHead className="min-w-[120px]">NIK</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
@@ -513,9 +541,10 @@ export default function CekSBML() {
                 </TableHeader>
                 <TableBody>
                   {data.map((row, index) => (
-                    <TableRow key={row.namaMitra} className={row.isExceeded ? "bg-red-50" : ""}>
+                    <TableRow key={`${row.namaMitra}_${row.nik}`} className={row.isExceeded ? "bg-red-50" : ""}>
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
+                      <TableCell className="font-mono text-xs min-w-[120px]">{row.nik || "-"}</TableCell>
                       
                       {/* Kolom Pendataan dengan Tooltip */}
                       <TableCell className="text-right">
@@ -592,7 +621,7 @@ export default function CekSBML() {
                   {/* Baris Total */}
                   {totals && (
                     <TableRow className="bg-gray-50 font-semibold border-t-2 border-gray-300">
-                      <TableCell colSpan={2} className="text-right font-bold">
+                      <TableCell colSpan={3} className="text-right font-bold">
                         TOTAL
                       </TableCell>
                       <TableCell className="text-right font-bold">
@@ -623,7 +652,7 @@ export default function CekSBML() {
   );
 }
 
-// Tooltip component untuk status melebihi SBML - DIPERBAIKI
+// Tooltip component untuk status melebihi SBML
 const StatusTooltip = ({ 
   content, 
   children,
@@ -665,7 +694,7 @@ const StatusTooltip = ({
   );
 };
 
-// Komponen Tooltip Baru untuk Detail Honor - DIPERBAIKI
+// Komponen Tooltip untuk Detail Honor
 const HonorTooltip = ({ 
   details, 
   title, 
