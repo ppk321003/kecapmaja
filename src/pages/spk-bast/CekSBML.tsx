@@ -221,8 +221,8 @@ export default function CekSBML() {
         const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
-        const namaPetugas = row[14]?.toString() || "";
-        const nilaiRealisasi = row[17]?.toString() || "";
+        const namaPetugas = row[13]?.toString() || "";
+        const nilaiRealisasi = row[16]?.toString() || "";
 
         if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
           const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
