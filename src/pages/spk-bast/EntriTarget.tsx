@@ -568,13 +568,13 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // Parse date from various formats
+        // PERBAIKAN: Parse date dari spreadsheet dengan benar
         const parseDateFromSpreadsheet = (dateStr: string) => {
           if (!dateStr) return new Date();
           
-          // Try parsing as Date object first
+          // Handle berbagai format tanggal
           if (typeof dateStr === 'string') {
-            // Handle format "dd/mm/yyyy"
+            // Format "dd/mm/yyyy"
             if (dateStr.includes('/')) {
               const parts = dateStr.split('/');
               if (parts.length === 3) {
@@ -586,7 +586,7 @@ export default function EntriTarget() {
                 }
               }
             }
-            // Handle format "yyyy-mm-dd"
+            // Format "yyyy-mm-dd"
             if (dateStr.includes('-')) {
               const parts = dateStr.split('-');
               if (parts.length === 3) {
@@ -596,6 +596,15 @@ export default function EntriTarget() {
                 if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
                   return new Date(year, month, day);
                 }
+              }
+            }
+            // Format serial number Excel
+            if (/^\d+$/.test(dateStr)) {
+              const excelDate = parseInt(dateStr);
+              // Excel date starts from January 1, 1900
+              const date = new Date(1900, 0, excelDate - 1);
+              if (!isNaN(date.getTime())) {
+                return date;
               }
             }
           }
@@ -833,19 +842,20 @@ export default function EntriTarget() {
     }
   };
 
+  // PERBAIKAN: Handle edit activity dengan tanggal dari database
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
-    // PERBAIKAN: Pastikan semua data terisi dengan benar
+    // PERBAIKAN: Pastikan semua data terisi dengan benar termasuk tanggal dari database
     form.reset({
       namaKegiatan: activity.namaKegiatan || "",
-      tanggalMulai: activity.tanggalMulai || new Date(),
-      tanggalAkhir: activity.tanggalAkhir || new Date(),
+      tanggalMulai: activity.tanggalMulai ? new Date(activity.tanggalMulai) : new Date(),
+      tanggalAkhir: activity.tanggalAkhir ? new Date(activity.tanggalAkhir) : new Date(),
       hargaSatuan: activity.hargaSatuan || "0",
       satuan: activity.satuan || "",
       komponenPOK: activity.komponenPOK || "",
       nomorSK: activity.nomorSK || "",
-      tanggalSK: activity.tanggalSK || new Date(),
+      tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(),
       koordinator: activity.koordinator || "",
     });
     
@@ -983,6 +993,7 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
+  // PERBAIKAN: Handle update worker dengan izin nama sama asal NIK berbeda
   const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -997,8 +1008,13 @@ export default function EntriTarget() {
       const activity = activities.find(a => a.id === activityId);
       
       // PERBAIKAN: Izinkan nama yang sama asalkan NIK berbeda
+      // Cari petugas berdasarkan nama untuk mendapatkan NIK yang baru
+      const petugasData = getPetugasByNama(newName);
+      const newNik = petugasData?.nik || getNikByNama(newName);
+      
+      // Cek duplikasi berdasarkan NIK, bukan nama
       const duplicateWorker = activity?.workers.find(w => 
-        w.id !== workerId && w.nip === getNikByNama(newName)
+        w.id !== workerId && w.nip === newNik
       );
       
       if (duplicateWorker) {
@@ -1011,8 +1027,6 @@ export default function EntriTarget() {
       }
 
       // PERBAIKAN: Ambil semua data petugas dari database
-      const petugasData = getPetugasByNama(newName);
-      const newNik = petugasData?.nik || getNikByNama(newName);
       const newKecamatan = petugasData?.kecamatan || getKecamatanByNama(newName);
       const newJabatan = petugasData?.pekerjaan || 'Petugas';
 
@@ -1063,6 +1077,7 @@ export default function EntriTarget() {
     }
   };
 
+  // PERBAIKAN: Save activity dengan komponen POK yang benar (value, bukan label)
   const saveActivityToSpreadsheet = async (activity: Activity): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1093,7 +1108,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK, bukan label
+          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK (005, 051, dll) sesuai pilihan di aplikasi
           "",
           "",
           "",
@@ -1125,6 +1140,7 @@ export default function EntriTarget() {
     }
   };
 
+  // PERBAIKAN: Update activity dengan komponen POK yang benar (value, bukan label)
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1160,7 +1176,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK, bukan label
+          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK (005, 051, dll) sesuai pilihan di aplikasi
           namaPetugas,
           targetList,
           realisasiList,
