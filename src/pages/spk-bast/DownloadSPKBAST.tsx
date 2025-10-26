@@ -671,7 +671,7 @@ export default function DownloadSPKBAST() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-4">
-                    <div className="text-sm text-blue-600 font-medium">Total Jumlah SPK</div>
+                    <div className="text-sm text-blue-600 font-medium">Total Jumlah SPK/BAST</div>
                     <div className="text-2xl font-bold text-blue-700">{totalJumlahSPK}</div>
                   </CardContent>
                 </Card>
@@ -719,8 +719,7 @@ export default function DownloadSPKBAST() {
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="p-4">
           <p className="text-sm text-blue-700">
-            <strong>Catatan:</strong> Data diambil langsung dari Google Sheets. 
-            Menampilkan semua bulan dalam tahun {selectedTahun}, termasuk bulan yang tidak memiliki data.
+            <strong>Catatan:</strong> Data dmenampilkan semua bulan dalam tahun {selectedTahun}.
             Pastikan koneksi internet tersedia untuk melihat data terbaru.
           </p>
         </CardContent>
