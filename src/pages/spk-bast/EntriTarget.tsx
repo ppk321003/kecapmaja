@@ -911,13 +911,22 @@ export default function EntriTarget() {
       return;
     }
 
+    // PERBAIKAN: Ambil NIK terbaru berdasarkan nama yang baru
+    const newNik = getNikByNama(newName);
+
     const updatedActivities = activities.map(activity => 
       activity.id === activityId 
         ? { 
             ...activity, 
             workers: activity.workers.map(w => 
               w.id === workerId 
-                ? { ...w, nama: newName, target: newTarget, realisasi: newRealisasi }
+                ? { 
+                    ...w, 
+                    nama: newName, 
+                    nip: newNik, // PERBAIKAN: Update NIK berdasarkan nama baru
+                    target: newTarget, 
+                    realisasi: newRealisasi 
+                  }
                 : w
             )
           }
