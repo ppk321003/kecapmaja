@@ -207,7 +207,7 @@ export default function EntriTarget() {
     }).format(value) + ',-';
   };
 
-  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari format Indonesia
+  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari format Indonesia yang lebih robust
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       console.log('Empty date string, returning current date');
@@ -217,7 +217,33 @@ export default function EntriTarget() {
     const str = dateStr.toString().trim();
     console.log('Parsing date string:', str);
 
-    // PERBAIKAN: Handle format Indonesia "13 Januari 2025"
+    // PERBAIKAN: Handle format "dd/mm/yyyy" - PRIORITAS UTAMA untuk format Indonesia
+    if (str.includes('/')) {
+      try {
+        const parts = str.split('/').map(part => part.trim());
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1; // Bulan di JavaScript dimulai dari 0
+          const year = parseInt(parts[2]);
+          
+          console.log('Date parts:', { day, month, year });
+          
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            const fullYear = year < 100 ? 2000 + year : year;
+            const parsedDate = new Date(fullYear, month, day);
+            
+            if (!isNaN(parsedDate.getTime())) {
+              console.log('Successfully parsed date with / format:', parsedDate);
+              return parsedDate;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse date with / format:', str, e);
+      }
+    }
+
+    // Handle format Indonesia "13 Januari 2025"
     if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
       try {
         const parts = str.split(' ');
@@ -239,30 +265,6 @@ export default function EntriTarget() {
         }
       } catch (e) {
         console.warn('Failed to parse Indonesian date:', str, e);
-      }
-    }
-
-    // Handle format "dd/mm/yyyy" - PERBAIKAN: Prioritaskan format Indonesia
-    if (str.includes('/')) {
-      try {
-        const parts = str.split('/').map(part => part.trim());
-        if (parts.length === 3) {
-          const day = parseInt(parts[0]);
-          const month = parseInt(parts[1]) - 1;
-          const year = parseInt(parts[2]);
-          
-          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-            const fullYear = year < 100 ? 2000 + year : year;
-            const parsedDate = new Date(fullYear, month, day);
-            
-            if (!isNaN(parsedDate.getTime())) {
-              console.log('Successfully parsed date with / format:', parsedDate);
-              return parsedDate;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse date with / format:', str, e);
       }
     }
 
@@ -407,7 +409,7 @@ export default function EntriTarget() {
   const calculateSentToPPK = (activities: Activity[]) => {
     return activities.filter(activity => {
       // Kolom 20 (T) berisi status "Kirim ke PPK"
-      return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim PPK");
+      return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim ke PPK");
     }).length;
   };
 
@@ -700,6 +702,13 @@ export default function EntriTarget() {
         const nomorSK = row[5] || '';
         
         // PERBAIKAN 1: Parse tanggal dari spreadsheet dengan benar dan jangan diubah
+        // Tambahkan logging untuk debugging
+        console.log(`Row ${rowIndex + 2}:`, {
+          tanggalSKRaw: row[6],
+          tanggalMulaiRaw: row[7], 
+          tanggalAkhirRaw: row[8]
+        });
+
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
