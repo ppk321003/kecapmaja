@@ -566,25 +566,25 @@ export default function DownloadSPKBAST() {
                 <table className="w-full border-collapse border border-gray-200">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         No
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Periode (Bulan) SPK
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Jumlah SPK
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Nilai Perjanjian Rp.
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Nilai Realisasi Rp.
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         % Realisasi
                       </th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Link
                       </th>
                     </tr>
