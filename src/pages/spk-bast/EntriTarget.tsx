@@ -268,6 +268,18 @@ export default function EntriTarget() {
     return petugasFromSheet.find(p => p.nama === nama);
   };
 
+  // PERBAIKAN: Fungsi untuk mendapatkan value komponen POK dari label
+  const getKomponenPOKValueFromLabel = (label: string): string => {
+    const option = komponenPOKOptions.find(opt => opt.label === label);
+    return option ? option.value : label;
+  };
+
+  // PERBAIKAN: Fungsi untuk mendapatkan label komponen POK dari value
+  const getKomponenPOKLabelFromValue = (value: string): string => {
+    const option = komponenPOKOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
+  };
+
   // Calculate dynamic SPK data from activitiesByPeriod
   const dynamicSpkData = useMemo(() => {
     const monthlyData = spkData.map(month => {
@@ -625,7 +637,14 @@ export default function EntriTarget() {
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
         const koordinator = row[11] || '';
-        const komponenPOK = row[12] || '';
+        
+        // PERBAIKAN: Handle komponen POK dari spreadsheet - bisa berupa value atau label
+        let komponenPOK = row[12] || '';
+        // Jika komponen POK berisi tanda "-", berarti ini adalah label, konversi ke value
+        if (komponenPOK.includes('-')) {
+          komponenPOK = getKomponenPOKValueFromLabel(komponenPOK);
+        }
+        
         const bebanAnggaran = row[17] || '';
         
         const namaPetugasStr = row[13] || '';
@@ -842,7 +861,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Handle edit activity dengan tanggal dari database
+  // PERBAIKAN: Handle edit activity dengan tanggal dari database dan komponen POK yang benar
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
@@ -853,7 +872,7 @@ export default function EntriTarget() {
       tanggalAkhir: activity.tanggalAkhir ? new Date(activity.tanggalAkhir) : new Date(),
       hargaSatuan: activity.hargaSatuan || "0",
       satuan: activity.satuan || "",
-      komponenPOK: activity.komponenPOK || "",
+      komponenPOK: activity.komponenPOK || "", // PERBAIKAN: Simpan value komponen POK
       nomorSK: activity.nomorSK || "",
       tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(),
       koordinator: activity.koordinator || "",
@@ -993,7 +1012,7 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // PERBAIKAN: Handle update worker dengan izin nama sama asal NIK berbeda
+  // PERBAIKAN: Handle update worker dengan izin nama sama asal NIK berbeda dan combobox yang lebih baik
   const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -1077,7 +1096,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Save activity dengan komponen POK yang benar (value, bukan label)
+  // PERBAIKAN: Save activity dengan komponen POK yang benar (label, bukan value)
   const saveActivityToSpreadsheet = async (activity: Activity): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1094,6 +1113,9 @@ export default function EntriTarget() {
       // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
+      // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+      const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
+
       const rowData = [
         [
           nextNo.toString(),
@@ -1108,7 +1130,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK (005, 051, dll) sesuai pilihan di aplikasi
+          komponenPOKLabel, // PERBAIKAN: Simpan label komponen POK ke spreadsheet
           "",
           "",
           "",
@@ -1140,7 +1162,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Update activity dengan komponen POK yang benar (value, bukan label)
+  // PERBAIKAN: Update activity dengan komponen POK yang benar (label, bukan value)
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1162,6 +1184,9 @@ export default function EntriTarget() {
       // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
+      // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+      const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
+
       const rowData = [
         [
           (activity.spreadsheetRowIndex - 1).toString(),
@@ -1176,7 +1201,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK (005, 051, dll) sesuai pilihan di aplikasi
+          komponenPOKLabel, // PERBAIKAN: Simpan label komponen POK ke spreadsheet
           namaPetugas,
           targetList,
           realisasiList,
@@ -1248,17 +1273,23 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
+  // PERBAIKAN: Fungsi untuk mendapatkan available workers dengan grouping nama yang sama
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
     const existingWorkerNips = activity.workers
       .filter(w => w.id !== excludeWorkerId)
       .map(w => w.nip);
     
-    return petugasAsWorkers
-      .filter(w => !existingWorkerNips.includes(w.nip))
-      .map(w => ({
-        value: w.nama,
-        label: `${w.nama} (${w.kecamatan}) - ${w.nip}`,
-      }));
+    const availableWorkers = petugasAsWorkers
+      .filter(w => !existingWorkerNips.includes(w.nip));
+    
+    // Group by nama untuk menampilkan pilihan yang lebih jelas
+    const groupedWorkers = availableWorkers.map(w => ({
+      value: w.nama,
+      label: `${w.nama} (${w.kecamatan}) - ${w.nip}`,
+      data: w
+    }));
+    
+    return groupedWorkers;
   };
 
   const filteredWorkers = useMemo(() => {
