@@ -189,69 +189,98 @@ export default function EntriTarget() {
     }).format(value) + ',-';
   };
 
-  // PERBAIKAN 1: Fungsi untuk parse tanggal dari spreadsheet dengan format dd/MM/yyyy yang lebih robust
-  const parseDateFromSpreadsheet = (dateStr: string): Date => {
-    if (!dateStr || dateStr.toString().trim() === '') {
-      console.log('Empty date string, returning current date');
+  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari spreadsheet dengan benar
+  const parseDateFromSpreadsheet = (dateStr: any): Date => {
+    console.log('Parsing date from spreadsheet:', dateStr);
+    
+    if (!dateStr) {
+      console.log('No date string provided, returning current date');
       return new Date();
     }
-
-    const str = dateStr.toString().trim();
-    console.log('Parsing date string:', str);
-
-    // Handle format "dd/mm/yyyy" - PRIORITAS UTAMA
-    if (str.includes('/')) {
-      try {
-        const parts = str.split('/').map(part => part.trim());
-        if (parts.length === 3) {
-          const day = parseInt(parts[0]);
-          const month = parseInt(parts[1]) - 1;
-          const year = parseInt(parts[2]);
-          
-          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-            // Handle tahun 2 digit
-            const fullYear = year < 100 ? 2000 + year : year;
-            const parsedDate = new Date(fullYear, month, day);
+    
+    // Jika sudah berupa Date object, return langsung
+    if (dateStr instanceof Date) {
+      console.log('Already a Date object:', dateStr);
+      return dateStr;
+    }
+    
+    // Handle string date
+    if (typeof dateStr === 'string') {
+      const trimmedDateStr = dateStr.trim();
+      
+      // Coba parse format "dd/mm/yyyy" - format utama
+      if (trimmedDateStr.includes('/')) {
+        try {
+          const parts = trimmedDateStr.split('/');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const year = parseInt(parts[2]);
+            console.log('Parsing dd/mm/yyyy:', { day, month: month + 1, year });
             
-            if (!isNaN(parsedDate.getTime())) {
-              console.log('Successfully parsed date with / format:', parsedDate);
-              return parsedDate;
+            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+              const date = new Date(year, month, day);
+              if (!isNaN(date.getTime())) {
+                console.log('Successfully parsed date:', date);
+                return date;
+              }
             }
           }
+        } catch (e) {
+          console.warn('Failed to parse date with / format:', trimmedDateStr, e);
         }
-      } catch (e) {
-        console.warn('Failed to parse date with / format:', str, e);
       }
-    }
-
-    // Handle format Excel serial number (angka)
-    if (/^\d+\.?\d*$/.test(str)) {
-      try {
-        const excelDate = parseFloat(str);
-        // Excel date starts from January 1, 1900 (with bug for 1900 being leap year)
-        const baseDate = new Date(1900, 0, 1);
-        const date = new Date(baseDate.getTime() + (excelDate - 1) * 24 * 60 * 60 * 1000);
-        if (!isNaN(date.getTime())) {
-          console.log('Successfully parsed Excel date:', date);
-          return date;
+      
+      // Coba parse format "yyyy-mm-dd"
+      if (trimmedDateStr.includes('-')) {
+        try {
+          const parts = trimmedDateStr.split('-');
+          if (parts.length === 3) {
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const day = parseInt(parts[2]);
+            console.log('Parsing yyyy-mm-dd:', { day, month: month + 1, year });
+            
+            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+              const date = new Date(year, month, day);
+              if (!isNaN(date.getTime())) {
+                console.log('Successfully parsed date:', date);
+                return date;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse date with - format:', trimmedDateStr, e);
         }
-      } catch (e) {
-        console.warn('Failed to parse Excel date:', str, e);
+      }
+      
+      // Coba parse sebagai timestamp
+      const timestamp = Date.parse(trimmedDateStr);
+      if (!isNaN(timestamp)) {
+        const date = new Date(timestamp);
+        console.log('Parsed as timestamp:', date);
+        return date;
+      }
+      
+      // Handle serial number Excel
+      if (/^\d+\.?\d*$/.test(trimmedDateStr)) {
+        try {
+          const excelDate = parseFloat(trimmedDateStr);
+          console.log('Parsing Excel date:', excelDate);
+          // Excel date starts from January 1, 1900
+          const baseDate = new Date(1900, 0, 1);
+          const date = new Date(baseDate.getTime() + (excelDate - 1) * 24 * 60 * 60 * 1000);
+          if (!isNaN(date.getTime())) {
+            console.log('Successfully parsed Excel date:', date);
+            return date;
+          }
+        } catch (e) {
+          console.warn('Failed to parse Excel date:', trimmedDateStr, e);
+        }
       }
     }
-
-    // Handle format ISO string atau format lain
-    try {
-      const parsed = new Date(str);
-      if (!isNaN(parsed.getTime())) {
-        console.log('Successfully parsed as Date object:', parsed);
-        return parsed;
-      }
-    } catch (e) {
-      console.warn('Failed to parse as Date object:', str, e);
-    }
-
-    console.warn('Could not parse date, using current date:', str);
+    
+    console.warn('Could not parse date, using current date:', dateStr);
     return new Date();
   };
 
@@ -344,9 +373,14 @@ export default function EntriTarget() {
     return petugasFromSheet.find(p => p.nama === nama);
   };
 
-  // PERBAIKAN 2: Get petugas data by NIK (untuk handle nama sama tapi NIK berbeda)
-  const getPetugasByNik = (nik: string): PetugasFromSheet | undefined => {
-    return petugasFromSheet.find(p => p.nik === nik);
+  // PERBAIKAN: Fungsi untuk mendapatkan petugas berdasarkan nama dan NIK
+  const getPetugasByNamaAndNik = (nama: string, nik: string): PetugasFromSheet | undefined => {
+    return petugasFromSheet.find(p => p.nama === nama && p.nik === nik);
+  };
+
+  // Fungsi untuk mendapatkan semua petugas dengan nama yang sama
+  const getAllPetugasByNama = (nama: string): PetugasFromSheet[] => {
+    return petugasFromSheet.filter(p => p.nama === nama);
   };
 
   // Fungsi untuk mendapatkan value komponen POK dari label
@@ -653,17 +687,19 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // PERBAIKAN 1: Parse tanggal dari spreadsheet dengan benar
+        // PERBAIKAN UTAMA: Parse tanggal dari spreadsheet dengan benar
+        console.log('Parsing dates for activity:', namaKegiatan);
+        console.log('Tanggal SK from spreadsheet:', row[6]);
+        console.log('Tanggal Mulai from spreadsheet:', row[7]);
+        console.log('Tanggal Akhir from spreadsheet:', row[8]);
+        
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
         
-        console.log(`Activity ${namaKegiatan}:`, {
-          tanggalSKRaw: row[6],
+        console.log('Parsed dates:', {
           tanggalSK: format(tanggalSK, "dd/MM/yyyy"),
-          tanggalMulaiRaw: row[7],
           tanggalMulai: format(tanggalMulai, "dd/MM/yyyy"),
-          tanggalAkhirRaw: row[8],
           tanggalAkhir: format(tanggalAkhir, "dd/MM/yyyy")
         });
         
@@ -691,22 +727,23 @@ export default function EntriTarget() {
 
         const workers: Worker[] = [];
         
-        // PERBAIKAN 2: Gunakan NIK sebagai identifier utama
+        // PERBAIKAN UTAMA: Handle multiple workers dengan nama sama tetapi NIK berbeda
         namaPetugasList.forEach((nama: string, idx: number) => {
-          // Prioritaskan NIK dari kolom W, jika tidak ada cari dari master data
-          let nip = nikList[idx] || '';
-          
-          if (!nip) {
-            // Jika tidak ada NIK di kolom W, cari berdasarkan nama
-            const allMatchingPetugas = petugasFromSheet.filter(p => p.nama === nama);
-            if (allMatchingPetugas.length > 0) {
-              nip = allMatchingPetugas[0].nik;
+          let nip = '';
+          if (nikList[idx]) {
+            nip = nikList[idx];
+          } else {
+            // Cari NIK dari database berdasarkan nama
+            const petugasWithSameName = getAllPetugasByNama(nama);
+            if (petugasWithSameName.length > 0) {
+              // Gunakan NIK pertama yang ditemukan untuk nama yang sama
+              nip = petugasWithSameName[0].nik;
             } else {
               nip = `NIK-${idx + 1}`;
             }
           }
           
-          const petugasData = getPetugasByNik(nip);
+          const petugasData = getPetugasByNamaAndNik(nama, nip);
           
           workers.push({
             id: idx + 1,
@@ -901,23 +938,17 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN 1: Handle edit activity dengan tanggal dari database yang benar
+  // PERBAIKAN UTAMA: Handle edit activity dengan tanggal dari database
   const handleEditActivity = (activity: Activity) => {
-    setEditingActivity(activity);
-    
-    console.log('Editing activity with dates from database:', {
-      namaKegiatan: activity.namaKegiatan,
-      tanggalSK: activity.tanggalSK,
-      tanggalMulai: activity.tanggalMulai,
-      tanggalAkhir: activity.tanggalAkhir,
-      formatted: {
-        tanggalSK: format(activity.tanggalSK, "dd/MM/yyyy"),
-        tanggalMulai: format(activity.tanggalMulai, "dd/MM/yyyy"),
-        tanggalAkhir: format(activity.tanggalAkhir, "dd/MM/yyyy")
-      }
+    console.log('Editing activity with dates:', {
+      tanggalSK: format(activity.tanggalSK, "dd/MM/yyyy"),
+      tanggalMulai: format(activity.tanggalMulai, "dd/MM/yyyy"),
+      tanggalAkhir: format(activity.tanggalAkhir, "dd/MM/yyyy")
     });
     
-    // PERBAIKAN 1: Gunakan tanggal langsung dari database activity
+    setEditingActivity(activity);
+    
+    // PERBAIKAN: Gunakan tanggal dari database, bukan tanggal baru
     form.reset({
       namaKegiatan: activity.namaKegiatan || "",
       tanggalMulai: activity.tanggalMulai,
@@ -954,15 +985,14 @@ export default function EntriTarget() {
       const newWorkers: Worker[] = petugasAsWorkers
         .filter(worker => selectedWorkers[worker.id]?.selected)
         .map(worker => {
-          // PERBAIKAN 2: Gunakan data dari petugasAsWorkers yang sudah memiliki NIK unik
-          const petugasData = getPetugasByNik(worker.nip);
+          const petugasData = getPetugasByNamaAndNik(worker.nama, worker.nip);
           return {
             ...worker,
             target: selectedWorkers[worker.id].target || "0",
             realisasi: selectedWorkers[worker.id].realisasi || "0",
-            kecamatan: petugasData?.kecamatan || worker.kecamatan || '',
-            jabatan: petugasData?.pekerjaan || worker.jabatan || 'Petugas',
-            nip: worker.nip, // Pastikan NIK digunakan
+            kecamatan: petugasData?.kecamatan || '',
+            jabatan: petugasData?.pekerjaan || 'Petugas',
+            nip: worker.nip,
           };
         });
       
@@ -985,9 +1015,9 @@ export default function EntriTarget() {
         return;
       }
 
-      // PERBAIKAN 2: Cek duplikasi berdasarkan NIK saja, bukan nama
-      const existingWorkerNips = selectedActivityForWorkers.workers.map(w => w.nip);
-      const duplicates = newWorkers.filter(w => existingWorkerNips.includes(w.nip));
+      // PERBAIKAN UTAMA: Validasi berdasarkan Nama + NIK, bukan hanya NIK
+      const existingWorkerKeys = selectedActivityForWorkers.workers.map(w => `${w.nama}|${w.nip}`);
+      const duplicates = newWorkers.filter(w => existingWorkerKeys.includes(`${w.nama}|${w.nip}`));
       
       if (duplicates.length > 0) {
         toast({
@@ -1066,8 +1096,8 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // PERBAIKAN 2: Handle update worker dengan validasi berdasarkan NIK saja
-  const handleUpdateWorker = async (activityId: number, workerId: number, selectedValue: string, newTarget: string, newRealisasi: string) => {
+  // PERBAIKAN UTAMA: Handle update worker dengan validasi Nama + NIK
+  const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
         toast({
@@ -1079,30 +1109,26 @@ export default function EntriTarget() {
       }
 
       const activity = activities.find(a => a.id === activityId);
-      const currentWorker = activity?.workers.find(w => w.id === workerId);
       
-      if (!currentWorker) return;
-
-      // PERBAIKAN 2: Extract NIK dari value yang dipilih
-      const newNik = extractNikFromValue(selectedValue);
-      const newName = extractNameFromValue(selectedValue);
+      // PERBAIKAN: Izinkan nama yang sama asalkan NIK berbeda
+      const petugasData = getPetugasByNama(newName);
+      const newNik = petugasData?.nik || getNikByNama(newName);
       
-      // PERBAIKAN 2: Cek duplikasi berdasarkan NIK saja
+      // PERBAIKAN UTAMA: Cek duplikasi berdasarkan Nama + NIK, bukan hanya NIK
       const duplicateWorker = activity?.workers.find(w => 
-        w.id !== workerId && w.nip === newNik
+        w.id !== workerId && w.nama === newName && w.nip === newNik
       );
       
       if (duplicateWorker) {
         toast({
           title: "Petugas sudah terdaftar",
-          description: "Petugas dengan NIK yang sama sudah digunakan dalam kegiatan ini.",
+          description: `Petugas "${newName}" dengan NIK ${newNik} sudah digunakan dalam kegiatan ini.`,
           variant: "destructive",
         });
         return;
       }
 
-      const petugasData = getPetugasByNik(newNik);
-      const newKecamatan = petugasData?.kecamatan || '';
+      const newKecamatan = petugasData?.kecamatan || getKecamatanByNama(newName);
       const newJabatan = petugasData?.pekerjaan || 'Petugas';
 
       const updatedActivities = activities.map(activity => 
@@ -1166,7 +1192,7 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
-      // PERBAIKAN 2: Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
+      // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       // Simpan label komponen POK ke spreadsheet
@@ -1197,7 +1223,7 @@ export default function EntriTarget() {
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - PERBAIKAN 2: Pastikan semua NIK disimpan
+          nikList, // Kolom W untuk NIK
         ]
       ];
 
@@ -1219,7 +1245,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN 2: Update activity dengan mapping kolom yang benar dan pastikan semua NIK disimpan
+  // PERBAIKAN UTAMA: Update activity dengan mapping kolom yang benar
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1238,12 +1264,13 @@ export default function EntriTarget() {
         0
       );
 
-      // PERBAIKAN 2: Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
+      // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
+      // PERBAIKAN: Mapping kolom yang benar
       const rowData = [
         [
           (activity.spreadsheetRowIndex - 1).toString(),
@@ -1268,7 +1295,7 @@ export default function EntriTarget() {
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - PERBAIKAN 2: Pastikan semua NIK disimpan
+          nikList, // Kolom W untuk NIK
         ]
       ];
 
@@ -1330,33 +1357,33 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
-  // PERBAIKAN 2: Fungsi untuk mendapatkan available workers dengan grouping nama + NIK
+  // PERBAIKAN UTAMA: Fungsi untuk mendapatkan available workers dengan handling nama sama
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
-    const existingWorkerNips = activity.workers
+    // PERBAIKAN: Gunakan kombinasi Nama + NIK untuk validasi
+    const existingWorkerKeys = activity.workers
       .filter(w => w.id !== excludeWorkerId)
-      .map(w => w.nip);
+      .map(w => `${w.nama}|${w.nip}`);
     
     const availableWorkers = petugasAsWorkers
-      .filter(w => !existingWorkerNips.includes(w.nip));
+      .filter(w => !existingWorkerKeys.includes(`${w.nama}|${w.nip}`));
     
-    // Group by nama + NIK untuk menampilkan pilihan yang lebih jelas
+    // Group by nama untuk menampilkan pilihan yang lebih jelas dengan NIK
     const groupedWorkers = availableWorkers.map(w => ({
       value: `${w.nama}|${w.nip}`, // Gabungkan nama dan NIK sebagai value
-      label: `${w.nama} (${w.nip}) - ${w.kecamatan}`,
+      label: `${w.nama} (${w.kecamatan}) - ${w.nip}`,
       data: w
     }));
     
     return groupedWorkers;
   };
 
-  // PERBAIKAN 2: Extract nama dari value yang digabungkan
-  const extractNameFromValue = (value: string): string => {
-    return value.split('|')[0] || value;
-  };
-
-  // PERBAIKAN 2: Extract NIK dari value yang digabungkan  
-  const extractNikFromValue = (value: string): string => {
-    return value.split('|')[1] || '';
+  // PERBAIKAN: Fungsi untuk parse value dari combobox
+  const parseWorkerValue = (value: string) => {
+    const parts = value.split('|');
+    return {
+      nama: parts[0],
+      nip: parts[1] || ''
+    };
   };
 
   const filteredWorkers = useMemo(() => {
@@ -1654,9 +1681,10 @@ export default function EntriTarget() {
                               {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
                                 <Combobox
                                   options={getAvailableWorkers(activity, worker.id)}
-                                  value={`${worker.nama}|${worker.nip}`}
+                                  value={`${worker.nama}|${worker.nip}`} // PERBAIKAN: Gabungkan nama dan NIK
                                   onValueChange={(value) => {
-                                    handleUpdateWorker(activity.id, worker.id, value, worker.target, worker.realisasi);
+                                    const { nama, nip } = parseWorkerValue(value);
+                                    handleUpdateWorker(activity.id, worker.id, nama, worker.target, worker.realisasi);
                                   }}
                                   placeholder="Pilih petugas"
                                   searchPlaceholder="Cari nama petugas..."
@@ -1684,7 +1712,7 @@ export default function EntriTarget() {
                                     <Input
                                       type="number"
                                       defaultValue={worker.target}
-                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, e.target.value, worker.realisasi)}
+                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, worker.nama, e.target.value, worker.realisasi)}
                                       className="h-7 w-20"
                                     />
                                   </div>
@@ -1693,7 +1721,7 @@ export default function EntriTarget() {
                                     <Input
                                       type="number"
                                       defaultValue={worker.realisasi}
-                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, worker.target, e.target.value)}
+                                      onBlur={(e) => handleUpdateWorker(activity.id, worker.id, worker.nama, worker.target, e.target.value)}
                                       className="h-7 w-20"
                                     />
                                   </div>
@@ -2095,13 +2123,13 @@ export default function EntriTarget() {
                       <TableHead className="w-12">
                         <Checkbox
                           checked={filteredWorkers.length > 0 && filteredWorkers.every(w => {
-                            const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                            const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => `${aw.nama}|${aw.nip}` === `${w.nama}|${w.nip}`);
                             return isAlreadyAdded || selectedWorkers[w.id]?.selected;
                           })}
                           onCheckedChange={(checked) => {
                             const newSelected = {...selectedWorkers};
                             filteredWorkers.forEach(w => {
-                              const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                              const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => `${aw.nama}|${aw.nip}` === `${w.nama}|${w.nip}`);
                               if (!isAlreadyAdded) {
                                 newSelected[w.id] = { 
                                   selected: checked as boolean, 
@@ -2131,7 +2159,7 @@ export default function EntriTarget() {
                       </TableRow>
                     ) : (
                       filteredWorkers.map((petugas) => {
-                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.nip === petugas.nip);
+                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => `${w.nama}|${w.nip}` === `${petugas.nama}|${petugas.nip}`);
                         
                         return (
                           <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50 bg-muted/30" : ""}>
