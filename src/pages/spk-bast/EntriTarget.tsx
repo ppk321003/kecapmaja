@@ -137,6 +137,10 @@ const formSchema = z.object({
   path: ["satuanCustom"],
 });
 
+// Constants for spreadsheet IDs
+const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
+
 export default function EntriTarget() {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -195,7 +199,7 @@ export default function EntriTarget() {
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM',
+          spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: 'read',
           range: 'MASTER.MITRA',
         }
@@ -253,12 +257,18 @@ export default function EntriTarget() {
     return petugasFromSheet.map((petugas, index) => ({
       id: petugas.id,
       nama: petugas.nama,
-      nip: petugas.nik,
+      nip: petugas.nik, // Store NIK in nip field for matching
       jabatan: petugas.pekerjaan || 'Petugas',
       target: "0",
       realisasi: "0",
     }));
   }, [petugasFromSheet]);
+
+  // Get NIK from petugas data by name
+  const getNikByNama = (nama: string): string => {
+    const petugas = petugasFromSheet.find(p => p.nama === nama);
+    return petugas?.nik || '';
+  };
 
   // Calculate dynamic SPK data from activitiesByPeriod
   const dynamicSpkData = useMemo(() => {
@@ -495,7 +505,7 @@ export default function EntriTarget() {
       console.log('Loading data from spreadsheet...');
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'read',
           range: 'Sheet1',
         }
@@ -576,7 +586,7 @@ export default function EntriTarget() {
         const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => ({
           id: idx + 1,
           nama: nama,
-          nip: '',
+          nip: getNikByNama(nama), // Get NIK from petugas data
           jabatan: '',
           target: targetList[idx] || '0',
           realisasi: realisasiList[idx] || '0',
@@ -754,7 +764,7 @@ export default function EntriTarget() {
       
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'delete',
           rowIndex: rowIndex,
         }
@@ -954,7 +964,7 @@ export default function EntriTarget() {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'read',
           range: 'Sheet1!A:A',
         }
@@ -966,6 +976,9 @@ export default function EntriTarget() {
       const standardSatuans = ["BS", "Dokumen", "EA", "Lembaga","Rumahtangga", "Segmen", "SLS"];
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
+
+      // Prepare NIK data for column X (index 23)
+      const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const rowData = [
         [
@@ -990,12 +1003,16 @@ export default function EntriTarget() {
           "",
           activity.bebanAnggaran || "",
           "",
+          "", // Kolom U
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'append',
           range: 'Sheet1',
           values: rowData,
@@ -1036,6 +1053,9 @@ export default function EntriTarget() {
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
+      // Prepare NIK data for column X (index 23)
+      const nikList = activity.workers.map(w => w.nip).join(" | ");
+
       const rowData = [
         [
           activity.spreadsheetRowIndex - 1,
@@ -1059,12 +1079,16 @@ export default function EntriTarget() {
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
           "",
+          "", // Kolom U
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'update',
           range: 'Sheet1',
           rowIndex: activity.spreadsheetRowIndex,
@@ -1122,6 +1146,9 @@ export default function EntriTarget() {
       const satuanCustom = !standardSatuans.includes(activity.satuan) ? activity.satuan : "";
       const satuan = !standardSatuans.includes(activity.satuan) ? "Lainnya" : activity.satuan;
 
+      // Prepare NIK data for column X (index 23)
+      const nikList = activity.workers.map(w => w.nip).join(" | ");
+
       const rowData = [
         [
           activity.spreadsheetRowIndex - 1,
@@ -1145,12 +1172,16 @@ export default function EntriTarget() {
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
           "Kirim PPK",
+          "", // Kolom U
+          "", // Kolom V  
+          "", // Kolom W
+          nikList, // Kolom X (index 23) - NIK data
         ]
       ];
 
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA',
+          spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'update',
           range: 'Sheet1',
           rowIndex: activity.spreadsheetRowIndex,
