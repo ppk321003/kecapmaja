@@ -500,6 +500,14 @@ export default function EntriTarget() {
     }
   };
 
+  // PERBAIKAN: Format currency sesuai permintaan (850.000,-)
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value) + ',-';
+  };
+
   // Load data from spreadsheet on mount
   useEffect(() => {
     const loadInitialData = async () => {
@@ -688,15 +696,6 @@ export default function EntriTarget() {
   const handleJobTypeClick = (jobTypeName: string) => {
     setSelectedJobType(jobTypeName);
     setShowProposalsDialog(true);
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', { 
-      style: 'currency', 
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0 
-    }).format(value).replace('Rp', 'Rp ');
   };
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
@@ -1094,7 +1093,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK,
+          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK, bukan label
           "",
           "",
           "",
@@ -1133,6 +1132,8 @@ export default function EntriTarget() {
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      
+      // PERBAIKAN: Format nilai realisasi sesuai permintaan (850.000,-)
       const nilaiRealisasiList = activity.workers
         .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
         .join(" | ");
@@ -1159,12 +1160,12 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          activity.komponenPOK,
+          activity.komponenPOK, // PERBAIKAN: Simpan value komponen POK, bukan label
           namaPetugas,
           targetList,
           realisasiList,
-          nilaiRealisasiList,
-          formatCurrency(totalRealisasi),
+          nilaiRealisasiList, // Kolom Q: Nilai Realisasi per petugas
+          formatCurrency(totalRealisasi), // PERBAIKAN: Kolom R: Total Realisasi (digeser dari S ke R)
           activity.bebanAnggaran || "",
           "",
           "",
