@@ -407,7 +407,7 @@ export default function EntriTarget() {
   const calculateSentToPPK = (activities: Activity[]) => {
     return activities.filter(activity => {
       // Kolom 20 (T) berisi status "Kirim ke PPK"
-      return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim ke PPK");
+      return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim PPK");
     }).length;
   };
 
