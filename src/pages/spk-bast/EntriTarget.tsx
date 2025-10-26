@@ -15,6 +15,7 @@ import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "luc
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
 import { format, parse } from "date-fns";
+import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -133,6 +134,22 @@ const formSchema = z.object({
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 
+// Mapping bulan Indonesia ke Inggris
+const bulanMap: { [key: string]: string } = {
+  'januari': 'January',
+  'februari': 'February', 
+  'maret': 'March',
+  'april': 'April',
+  'mei': 'May',
+  'juni': 'June',
+  'juli': 'July',
+  'agustus': 'August',
+  'september': 'September',
+  'oktober': 'October',
+  'november': 'November',
+  'desember': 'December'
+};
+
 export default function EntriTarget() {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -189,7 +206,7 @@ export default function EntriTarget() {
     }).format(value) + ',-';
   };
 
-  // PERBAIKAN: Fungsi untuk parse tanggal dari spreadsheet dengan format dd/MM/yyyy yang lebih robust
+  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari format Indonesia
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       console.log('Empty date string, returning current date');
@@ -199,7 +216,32 @@ export default function EntriTarget() {
     const str = dateStr.toString().trim();
     console.log('Parsing date string:', str);
 
-    // Handle format "dd/mm/yyyy" - PRIORITAS UTAMA
+    // PERBAIKAN: Handle format Indonesia "13 Januari 2025"
+    if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
+      try {
+        const parts = str.split(' ');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const monthName = parts[1].toLowerCase();
+          const year = parseInt(parts[2]);
+          
+          const englishMonth = bulanMap[monthName];
+          if (englishMonth && !isNaN(day) && !isNaN(year)) {
+            const dateString = `${day} ${englishMonth} ${year}`;
+            const parsedDate = parse(dateString, 'd MMMM yyyy', new Date(), { locale: id });
+            
+            if (!isNaN(parsedDate.getTime())) {
+              console.log('Successfully parsed Indonesian date:', parsedDate);
+              return parsedDate;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse Indonesian date:', str, e);
+      }
+    }
+
+    // Handle format "dd/mm/yyyy"
     if (str.includes('/')) {
       try {
         const parts = str.split('/').map(part => part.trim());
@@ -209,7 +251,6 @@ export default function EntriTarget() {
           const year = parseInt(parts[2]);
           
           if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-            // Handle tahun 2 digit
             const fullYear = year < 100 ? 2000 + year : year;
             const parsedDate = new Date(fullYear, month, day);
             
@@ -653,7 +694,7 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // Parse tanggal dari spreadsheet dengan benar
+        // PERBAIKAN: Parse tanggal dari spreadsheet dengan benar
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
@@ -901,7 +942,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN UTAMA: Handle edit activity dengan menjaga tanggal yang ada
+  // PERBAIKAN: Handle edit activity dengan menjaga tanggal yang ada
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
@@ -917,8 +958,7 @@ export default function EntriTarget() {
       }
     });
     
-    // PERBAIKAN UTAMA: Gunakan setValue untuk setiap field, bukan reset()
-    // Ini menjaga nilai tanggal yang sudah ada
+    // PERBAIKAN: Gunakan setValue untuk setiap field, bukan reset()
     form.setValue("namaKegiatan", activity.namaKegiatan || "");
     form.setValue("tanggalMulai", activity.tanggalMulai);
     form.setValue("tanggalAkhir", activity.tanggalAkhir);
@@ -953,7 +993,6 @@ export default function EntriTarget() {
       const newWorkers: Worker[] = petugasAsWorkers
         .filter(worker => selectedWorkers[worker.id]?.selected)
         .map(worker => {
-          // Gunakan data dari petugasAsWorkers yang sudah memiliki NIK unik
           const petugasData = getPetugasByNik(worker.nip);
           return {
             ...worker,
@@ -961,7 +1000,7 @@ export default function EntriTarget() {
             realisasi: selectedWorkers[worker.id].realisasi || "0",
             kecamatan: petugasData?.kecamatan || worker.kecamatan || '',
             jabatan: petugasData?.pekerjaan || worker.jabatan || 'Petugas',
-            nip: worker.nip, // Pastikan NIK digunakan
+            nip: worker.nip,
           };
         });
       
@@ -984,7 +1023,6 @@ export default function EntriTarget() {
         return;
       }
 
-      // Cek duplikasi berdasarkan NIK saja, bukan nama
       const existingWorkerNips = selectedActivityForWorkers.workers.map(w => w.nip);
       const duplicates = newWorkers.filter(w => existingWorkerNips.includes(w.nip));
       
@@ -1065,7 +1103,6 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // Handle update worker dengan validasi berdasarkan NIK saja
   const handleUpdateWorker = async (activityId: number, workerId: number, selectedValue: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -1082,11 +1119,9 @@ export default function EntriTarget() {
       
       if (!currentWorker) return;
 
-      // Extract NIK dari value yang dipilih
       const newNik = extractNikFromValue(selectedValue);
       const newName = extractNameFromValue(selectedValue);
       
-      // Cek duplikasi berdasarkan NIK saja
       const duplicateWorker = activity?.workers.find(w => 
         w.id !== workerId && w.nip === newNik
       );
@@ -1165,10 +1200,8 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
-      // Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
       const rowData = [
@@ -1185,18 +1218,18 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          komponenPOKLabel, // Simpan label komponen POK ke spreadsheet
+          komponenPOKLabel,
           "",
           "",
           "",
           "",
           "",
           "",
-          activity.bebanAnggaran || "", // Kolom S untuk Beban Anggaran
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - Pastikan semua NIK disimpan
+          nikList,
         ]
       ];
 
@@ -1218,7 +1251,6 @@ export default function EntriTarget() {
     }
   };
 
-  // Update activity dengan mapping kolom yang benar dan pastikan semua NIK disimpan
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1227,7 +1259,6 @@ export default function EntriTarget() {
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
       
-      // Format nilai realisasi per petugas
       const nilaiRealisasiList = activity.workers
         .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
         .join(" | ");
@@ -1237,10 +1268,8 @@ export default function EntriTarget() {
         0
       );
 
-      // Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
       const rowData = [
@@ -1261,13 +1290,13 @@ export default function EntriTarget() {
           namaPetugas,
           targetList,
           realisasiList,
-          nilaiRealisasiList, // Kolom Q: Nilai Realisasi per petugas
-          formatCurrency(totalRealisasi), // Kolom R: Total Realisasi
-          activity.bebanAnggaran || "", // Kolom S: Beban Anggaran
+          nilaiRealisasiList,
+          formatCurrency(totalRealisasi),
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - Pastikan semua NIK disimpan
+          nikList,
         ]
       ];
 
@@ -1329,7 +1358,6 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
-  // Fungsi untuk mendapatkan available workers dengan grouping nama + NIK
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
     const existingWorkerNips = activity.workers
       .filter(w => w.id !== excludeWorkerId)
@@ -1338,9 +1366,8 @@ export default function EntriTarget() {
     const availableWorkers = petugasAsWorkers
       .filter(w => !existingWorkerNips.includes(w.nip));
     
-    // Group by nama + NIK untuk menampilkan pilihan yang lebih jelas
     const groupedWorkers = availableWorkers.map(w => ({
-      value: `${w.nama}|${w.nip}`, // Gabungkan nama dan NIK sebagai value
+      value: `${w.nama}|${w.nip}`,
       label: `${w.nama} (${w.nip}) - ${w.kecamatan}`,
       data: w
     }));
@@ -1348,12 +1375,10 @@ export default function EntriTarget() {
     return groupedWorkers;
   };
 
-  // Extract nama dari value yang digabungkan
   const extractNameFromValue = (value: string): string => {
     return value.split('|')[0] || value;
   };
 
-  // Extract NIK dari value yang digabungkan  
   const extractNikFromValue = (value: string): string => {
     return value.split('|')[1] || '';
   };
