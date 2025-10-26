@@ -969,8 +969,8 @@ export default function Dashboard() {
           const periode = row[2]?.toString() || "";
           const jenisPekerjaan = row[3]?.toString() || "";
           const namaKegiatan = row[4]?.toString() || "";
-          const namaPetugas = row[14]?.toString() || "";
-          const realisasiStr = row[16]?.toString() || ""; // Kolom realisasi quantity
+          const namaPetugas = row[13]?.toString() || "";
+          const realisasiStr = row[15]?.toString() || ""; // Kolom realisasi quantity
           const hargaSatuan = row[9]?.toString() || "0"; // Kolom harga satuan
 
           // Extract bulan dari periode
