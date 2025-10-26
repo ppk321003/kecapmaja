@@ -51,6 +51,7 @@ type Worker = {
   jabatan: string;
   target: string;
   realisasi: string;
+  kecamatan?: string;
 };
 
 type Activity = {
@@ -240,7 +241,7 @@ export default function EntriTarget() {
     }
   };
 
-  // Convert petugas from sheet to worker format
+  // Convert petugas from sheet to worker format with kecamatan
   const petugasAsWorkers = useMemo(() => {
     return petugasFromSheet.map((petugas, index) => ({
       id: petugas.id,
@@ -249,6 +250,7 @@ export default function EntriTarget() {
       jabatan: petugas.pekerjaan || 'Petugas',
       target: "0",
       realisasi: "0",
+      kecamatan: petugas.kecamatan || '',
     }));
   }, [petugasFromSheet]);
 
@@ -256,6 +258,12 @@ export default function EntriTarget() {
   const getNikByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.nik || '';
+  };
+
+  // Get kecamatan from petugas data by name
+  const getKecamatanByNama = (nama: string): string => {
+    const petugas = petugasFromSheet.find(p => p.nama === nama);
+    return petugas?.kecamatan || '';
   };
 
   // Calculate dynamic SPK data from activitiesByPeriod
@@ -565,19 +573,28 @@ export default function EntriTarget() {
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
         const realisasiStr = row[15] || '';
+        const nikListStr = row[22] || ''; // Kolom W untuk NIK
         
         const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
         const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
         const realisasiList = realisasiStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const nikList = nikListStr.split('|').map((s: string) => s.trim()).filter(Boolean);
 
-        const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => ({
-          id: idx + 1,
-          nama: nama,
-          nip: getNikByNama(nama),
-          jabatan: '',
-          target: targetList[idx] || '0',
-          realisasi: realisasiList[idx] || '0',
-        }));
+        const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => {
+          // Gunakan NIK dari spreadsheet jika tersedia, jika tidak cari dari data petugas
+          const nip = nikList[idx] || getNikByNama(nama);
+          const kecamatan = getKecamatanByNama(nama);
+          
+          return {
+            id: idx + 1,
+            nama: nama,
+            nip: nip,
+            jabatan: '',
+            target: targetList[idx] || '0',
+            realisasi: realisasiList[idx] || '0',
+            kecamatan: kecamatan,
+          };
+        });
 
         const activity: Activity = {
           id: activityIdCounter++,
@@ -596,7 +613,7 @@ export default function EntriTarget() {
           bebanAnggaran,
         };
 
-        const periodKey = `${periode}-${jenisPekerjaan}`;
+        const periodKey = `${periode} ${selectedYear}-${jenisPekerjaan}`;
         if (!activitiesMap[periodKey]) {
           activitiesMap[periodKey] = [];
         }
@@ -639,6 +656,7 @@ export default function EntriTarget() {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     if (editingActivity) {
+      // PERBAIKAN: Pertahankan nilai komponenPOK yang sudah ada saat edit
       const updatedActivities = activities.map(activity => 
         activity.id === editingActivity.id 
           ? {
@@ -648,7 +666,8 @@ export default function EntriTarget() {
               tanggalAkhir: data.tanggalAkhir,
               hargaSatuan: data.hargaSatuan,
               satuan: data.satuan,
-              komponenPOK: data.komponenPOK,
+              // Jangan timpa komponenPOK dengan nilai dari form, gunakan yang sudah ada
+              komponenPOK: activity.komponenPOK, 
               nomorSK: data.nomorSK,
               tanggalSK: data.tanggalSK,
               koordinator: data.koordinator,
@@ -769,13 +788,14 @@ export default function EntriTarget() {
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
+    // PERBAIKAN: Saat edit, form diisi dengan data yang ada termasuk komponenPOK
     form.reset({
       namaKegiatan: activity.namaKegiatan,
       tanggalMulai: activity.tanggalMulai,
       tanggalAkhir: activity.tanggalAkhir,
       hargaSatuan: activity.hargaSatuan,
       satuan: activity.satuan,
-      komponenPOK: activity.komponenPOK,
+      komponenPOK: activity.komponenPOK, // Pertahankan nilai komponenPOK yang sudah ada
       nomorSK: activity.nomorSK,
       tanggalSK: activity.tanggalSK,
       koordinator: activity.koordinator,
@@ -900,19 +920,27 @@ export default function EntriTarget() {
     }
 
     const activity = activities.find(a => a.id === activityId);
-    const duplicateWorker = activity?.workers.find(w => w.id !== workerId && w.nama === newName);
+    
+    // PERBAIKAN: Izinkan nama yang sama karena bisa ada perbedaan NIK
+    // Cek duplikasi hanya jika nama DAN NIK sama
+    const duplicateWorker = activity?.workers.find(w => 
+      w.id !== workerId && 
+      w.nama === newName && 
+      w.nip === getNikByNama(newName)
+    );
     
     if (duplicateWorker) {
       toast({
-        title: "Nama petugas sudah terdaftar",
-        description: "Nama petugas sudah digunakan dalam kegiatan ini.",
+        title: "Petugas sudah terdaftar",
+        description: "Petugas dengan nama dan NIK yang sama sudah terdaftar dalam kegiatan ini.",
         variant: "destructive",
       });
       return;
     }
 
-    // PERBAIKAN: Ambil NIK terbaru berdasarkan nama yang baru
+    // PERBAIKAN: Ambil NIK dan kecamatan terbaru berdasarkan nama yang baru
     const newNik = getNikByNama(newName);
+    const newKecamatan = getKecamatanByNama(newName);
 
     const updatedActivities = activities.map(activity => 
       activity.id === activityId 
@@ -923,9 +951,10 @@ export default function EntriTarget() {
                 ? { 
                     ...w, 
                     nama: newName, 
-                    nip: newNik, // PERBAIKAN: Update NIK berdasarkan nama baru
+                    nip: newNik, // Update NIK berdasarkan nama baru
                     target: newTarget, 
-                    realisasi: newRealisasi 
+                    realisasi: newRealisasi,
+                    kecamatan: newKecamatan // Update kecamatan
                   }
                 : w
             )
@@ -989,7 +1018,7 @@ export default function EntriTarget() {
           "",
           "", // Kolom T
           "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          nikList, // Kolom V (index 22) - NIK data
         ]
       ];
 
@@ -1059,7 +1088,7 @@ export default function EntriTarget() {
           "",
           "", // Kolom T
           "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          nikList, // Kolom V (index 22) - NIK data
         ]
       ];
 
@@ -1146,7 +1175,7 @@ export default function EntriTarget() {
           "Kirim PPK",
           "", // Kolom T
           "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          nikList, // Kolom V (index 22) - NIK data
         ]
       ];
 
@@ -1195,12 +1224,11 @@ export default function EntriTarget() {
     return petugasAsWorkers
       .filter(w => !existingWorkerIds.includes(w.id))
       .map(w => {
-        const petugasData = petugasFromSheet.find(p => p.id === w.id);
-        const kecamatan = petugasData?.kecamatan || '';
+        const kecamatan = w.kecamatan || '';
         
         return {
           value: w.nama,
-          label: `${w.nama} (${kecamatan})`,
+          label: `${w.nama} (${kecamatan}) - ${w.nip}`,
         };
       });
   };
@@ -1210,15 +1238,15 @@ export default function EntriTarget() {
     
     const lowerSearch = searchTerm.toLowerCase();
     return petugasAsWorkers.filter(w => {
-      const petugasData = petugasFromSheet.find(p => p.id === w.id);
-      const kecamatan = petugasData?.kecamatan || '';
+      const kecamatan = w.kecamatan || '';
       
       return (
         w.nama.toLowerCase().includes(lowerSearch) || 
-        kecamatan.toLowerCase().includes(lowerSearch)
+        kecamatan.toLowerCase().includes(lowerSearch) ||
+        w.nip.toLowerCase().includes(lowerSearch)
       );
     });
-  }, [searchTerm, petugasAsWorkers, petugasFromSheet]);
+  }, [searchTerm, petugasAsWorkers]);
 
   const filteredActivities = activities;
 
@@ -1498,7 +1526,7 @@ export default function EntriTarget() {
                                 />
                               ) : (
                                 <span className="text-sm">
-                                  {workerIndex + 1}. {worker.nama} ({worker.nip})
+                                  {workerIndex + 1}. {worker.nama} ({worker.kecamatan}) - NIK: {worker.nip}
                                   {hasTargetButNoRealisasi(worker) && (
                                     <span className="ml-2 text-xs text-yellow-600 font-medium">(Belum Realisasi)</span>
                                   )}
@@ -1854,7 +1882,11 @@ export default function EntriTarget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={editingActivity !== null} // PERBAIKAN: Nonaktifkan saat edit
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih komponen POK" />
@@ -1914,7 +1946,7 @@ export default function EntriTarget() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Cari nama atau kecamatan petugas..."
+                placeholder="Cari nama, kecamatan, atau NIK petugas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -1954,6 +1986,7 @@ export default function EntriTarget() {
                       </TableHead>
                       <TableHead>Nama Petugas</TableHead>
                       <TableHead>Kecamatan</TableHead>
+                      <TableHead>NIK</TableHead>
                       <TableHead>Pekerjaan</TableHead>
                       <TableHead className="w-28">Target</TableHead>
                       <TableHead className="w-28">Realisasi</TableHead>
@@ -1962,15 +1995,14 @@ export default function EntriTarget() {
                   <TableBody>
                     {filteredWorkers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredWorkers.map((petugas) => {
                         const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
-                        const petugasData = petugasFromSheet.find(p => p.id === petugas.id);
-                        const kecamatan = petugasData?.kecamatan || '';
+                        const kecamatan = petugas.kecamatan || '';
                         
                         return (
                           <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
@@ -1992,6 +2024,7 @@ export default function EntriTarget() {
                             </TableCell>
                             <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
                             <TableCell>{kecamatan}</TableCell>
+                            <TableCell>{petugas.nip}</TableCell>
                             <TableCell>{petugas.jabatan}</TableCell>
                             <TableCell>
                               <Input
