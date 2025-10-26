@@ -631,7 +631,6 @@ export default function EntriTarget() {
           return new Date();
         };
         
-        // PERBAIKAN: Parse tanggal dengan benar dari spreadsheet
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
@@ -1013,7 +1012,7 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // PERBAIKAN: Handle update worker dengan combobox yang lebih baik untuk nama yang sama
+  // PERBAIKAN: Handle update worker dengan izin nama sama asal NIK berbeda dan combobox yang lebih baik
   const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -1274,7 +1273,7 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan available workers dengan unique identifier untuk nama yang sama
+  // PERBAIKAN: Fungsi untuk mendapatkan available workers dengan grouping nama yang sama
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
     const existingWorkerNips = activity.workers
       .filter(w => w.id !== excludeWorkerId)
@@ -1283,24 +1282,14 @@ export default function EntriTarget() {
     const availableWorkers = petugasAsWorkers
       .filter(w => !existingWorkerNips.includes(w.nip));
     
-    // PERBAIKAN: Buat unique identifier untuk setiap petugas dengan nama yang sama
-    const groupedWorkers = availableWorkers.map(w => {
-      // Buat identifier unik dengan menggabungkan nama, NIK, dan kecamatan
-      const uniqueIdentifier = `${w.nama}|${w.nip}|${w.kecamatan}`;
-      return {
-        value: uniqueIdentifier, // PERBAIKAN: Gunakan identifier unik sebagai value
-        label: `${w.nama} (${w.kecamatan}) - ${w.nip}`,
-        data: w
-      };
-    });
+    // Group by nama untuk menampilkan pilihan yang lebih jelas
+    const groupedWorkers = availableWorkers.map(w => ({
+      value: w.nama,
+      label: `${w.nama} (${w.kecamatan}) - ${w.nip}`,
+      data: w
+    }));
     
     return groupedWorkers;
-  };
-
-  // PERBAIKAN: Fungsi untuk mendapatkan nama asli dari unique identifier
-  const getNamaFromUniqueIdentifier = (identifier: string): string => {
-    const parts = identifier.split('|');
-    return parts[0] || identifier; // Kembalikan bagian pertama (nama)
   };
 
   const filteredWorkers = useMemo(() => {
@@ -1598,11 +1587,8 @@ export default function EntriTarget() {
                               {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
                                 <Combobox
                                   options={getAvailableWorkers(activity, worker.id)}
-                                  value={`${worker.nama}|${worker.nip}|${worker.kecamatan}`} // PERBAIKAN: Gunakan unique identifier
-                                  onValueChange={(value) => {
-                                    const selectedNama = getNamaFromUniqueIdentifier(value);
-                                    handleUpdateWorker(activity.id, worker.id, selectedNama, worker.target, worker.realisasi);
-                                  }}
+                                  value={worker.nama}
+                                  onValueChange={(value) => handleUpdateWorker(activity.id, worker.id, value, worker.target, worker.realisasi)}
                                   placeholder="Pilih petugas"
                                   searchPlaceholder="Cari nama petugas..."
                                   className="h-8"
