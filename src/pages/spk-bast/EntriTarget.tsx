@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -181,7 +181,78 @@ export default function EntriTarget() {
     },
   });
 
-  // Load petugas data from MASTER.MITRA sheet
+  // Format currency sesuai permintaan (850.000,-)
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value) + ',-';
+  };
+
+  // Fungsi untuk parse tanggal dari spreadsheet dengan benar
+  const parseDateFromSpreadsheet = (dateStr: string): Date => {
+    if (!dateStr) return new Date();
+    
+    // Coba parse sebagai timestamp pertama
+    const timestamp = Date.parse(dateStr);
+    if (!isNaN(timestamp)) {
+      return new Date(timestamp);
+    }
+    
+    // Handle format "dd/mm/yyyy"
+    if (dateStr.includes('/')) {
+      try {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1;
+          const year = parseInt(parts[2]);
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            return new Date(year, month, day);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse date with / format:', dateStr);
+      }
+    }
+    
+    // Handle format "yyyy-mm-dd"
+    if (dateStr.includes('-')) {
+      try {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const year = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1;
+          const day = parseInt(parts[2]);
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            return new Date(year, month, day);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse date with - format:', dateStr);
+      }
+    }
+    
+    // Handle serial number Excel
+    if (/^\d+\.?\d*$/.test(dateStr)) {
+      try {
+        const excelDate = parseFloat(dateStr);
+        // Excel date starts from January 1, 1900 (with bug for 1900 being leap year)
+        const baseDate = new Date(1900, 0, 1);
+        const date = new Date(baseDate.getTime() + (excelDate - 1) * 24 * 60 * 60 * 1000);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Failed to parse Excel date:', dateStr);
+      }
+    }
+    
+    console.warn('Could not parse date, using current date:', dateStr);
+    return new Date();
+  };
+
+  // Load petugas data dari MASTER.MITRA sheet
   const loadPetugasFromSheet = async () => {
     try {
       setLoadingPetugas(true);
@@ -214,14 +285,16 @@ export default function EntriTarget() {
       const rows = data.values.slice(1);
       const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
         id: index + 1,
-        nama: row[2] || '',
-        nik: row[1] || '',
-        pekerjaan: row[3] || '',
-        alamat: row[4] || '',
-        bank: row[5] || '',
-        rekening: row[6] || '',
-        kecamatan: row[7] || '',
-      })).filter((petugas: PetugasFromSheet) => petugas.nama.trim() !== '' && petugas.nik.trim() !== '');
+        nama: row[2]?.toString().trim() || '',
+        nik: row[1]?.toString().trim() || '',
+        pekerjaan: row[3]?.toString().trim() || '',
+        alamat: row[4]?.toString().trim() || '',
+        bank: row[5]?.toString().trim() || '',
+        rekening: row[6]?.toString().trim() || '',
+        kecamatan: row[7]?.toString().trim() || '',
+      })).filter((petugas: PetugasFromSheet) => 
+        petugas.nama !== '' && petugas.nik !== ''
+      );
 
       setPetugasFromSheet(petugasData);
       console.log('Petugas data loaded:', petugasData.length, 'records');
@@ -268,13 +341,13 @@ export default function EntriTarget() {
     return petugasFromSheet.find(p => p.nama === nama);
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan value komponen POK dari label
+  // Fungsi untuk mendapatkan value komponen POK dari label
   const getKomponenPOKValueFromLabel = (label: string): string => {
     const option = komponenPOKOptions.find(opt => opt.label === label);
     return option ? option.value : label;
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan label komponen POK dari value
+  // Fungsi untuk mendapatkan label komponen POK dari value
   const getKomponenPOKLabelFromValue = (value: string): string => {
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
@@ -512,14 +585,6 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Format currency sesuai permintaan (850.000,-)
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value) + ',-';
-  };
-
   // Load data from spreadsheet on mount
   useEffect(() => {
     const loadInitialData = async () => {
@@ -580,72 +645,22 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // PERBAIKAN: Parse date dari spreadsheet dengan benar
-        const parseDateFromSpreadsheet = (dateStr: string) => {
-          if (!dateStr) return new Date();
-          
-          // Handle berbagai format tanggal
-          if (typeof dateStr === 'string') {
-            // Format "dd/mm/yyyy"
-            if (dateStr.includes('/')) {
-              const parts = dateStr.split('/');
-              if (parts.length === 3) {
-                const day = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1;
-                const year = parseInt(parts[2]);
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                  return new Date(year, month, day);
-                }
-              }
-            }
-            // Format "yyyy-mm-dd"
-            if (dateStr.includes('-')) {
-              const parts = dateStr.split('-');
-              if (parts.length === 3) {
-                const year = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1;
-                const day = parseInt(parts[2]);
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                  return new Date(year, month, day);
-                }
-              }
-            }
-            // Format serial number Excel
-            if (/^\d+$/.test(dateStr)) {
-              const excelDate = parseInt(dateStr);
-              // Excel date starts from January 1, 1900
-              const date = new Date(1900, 0, excelDate - 1);
-              if (!isNaN(date.getTime())) {
-                return date;
-              }
-            }
-          }
-          
-          // Try parsing as timestamp
-          const timestamp = Date.parse(dateStr);
-          if (!isNaN(timestamp)) {
-            return new Date(timestamp);
-          }
-          
-          console.warn('Could not parse date:', dateStr);
-          return new Date();
-        };
-        
+        // PERBAIKAN UTAMA: Parse tanggal dari spreadsheet dengan benar
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
+        
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
         const koordinator = row[11] || '';
         
-        // PERBAIKAN: Handle komponen POK dari spreadsheet - bisa berupa value atau label
+        // Handle komponen POK dari spreadsheet - bisa berupa value atau label
         let komponenPOK = row[12] || '';
-        // Jika komponen POK berisi tanda "-", berarti ini adalah label, konversi ke value
         if (komponenPOK.includes('-')) {
           komponenPOK = getKomponenPOKValueFromLabel(komponenPOK);
         }
         
-        const bebanAnggaran = row[17] || '';
+        const bebanAnggaran = row[18] || ''; // Kolom S untuk Beban Anggaran
         
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
@@ -658,7 +673,6 @@ export default function EntriTarget() {
         const nikList = nikListStr.split('|').map((s: string) => s.trim()).filter(Boolean);
 
         const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => {
-          // Cari NIK dari berbagai sumber
           let nip = '';
           if (nikList[idx]) {
             nip = nikList[idx];
@@ -861,20 +875,20 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Handle edit activity dengan tanggal dari database dan komponen POK yang benar
+  // PERBAIKAN UTAMA: Handle edit activity dengan tanggal dari database
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
-    // PERBAIKAN: Pastikan semua data terisi dengan benar termasuk tanggal dari database
+    // PERBAIKAN: Gunakan tanggal dari database, bukan tanggal baru
     form.reset({
       namaKegiatan: activity.namaKegiatan || "",
       tanggalMulai: activity.tanggalMulai ? new Date(activity.tanggalMulai) : new Date(),
       tanggalAkhir: activity.tanggalAkhir ? new Date(activity.tanggalAkhir) : new Date(),
       hargaSatuan: activity.hargaSatuan || "0",
       satuan: activity.satuan || "",
-      komponenPOK: activity.komponenPOK || "", // PERBAIKAN: Simpan value komponen POK
+      komponenPOK: activity.komponenPOK || "",
       nomorSK: activity.nomorSK || "",
-      tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(),
+      tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(), // TANGgal dari database
       koordinator: activity.koordinator || "",
     });
     
@@ -1012,7 +1026,7 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // PERBAIKAN: Handle update worker dengan izin nama sama asal NIK berbeda dan combobox yang lebih baik
+  // PERBAIKAN UTAMA: Handle update worker dengan izin nama sama asal NIK berbeda
   const handleUpdateWorker = async (activityId: number, workerId: number, newName: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -1027,7 +1041,6 @@ export default function EntriTarget() {
       const activity = activities.find(a => a.id === activityId);
       
       // PERBAIKAN: Izinkan nama yang sama asalkan NIK berbeda
-      // Cari petugas berdasarkan nama untuk mendapatkan NIK yang baru
       const petugasData = getPetugasByNama(newName);
       const newNik = petugasData?.nik || getNikByNama(newName);
       
@@ -1045,7 +1058,6 @@ export default function EntriTarget() {
         return;
       }
 
-      // PERBAIKAN: Ambil semua data petugas dari database
       const newKecamatan = petugasData?.kecamatan || getKecamatanByNama(newName);
       const newJabatan = petugasData?.pekerjaan || 'Petugas';
 
@@ -1096,7 +1108,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Save activity dengan komponen POK yang benar (label, bukan value)
+  // Save activity dengan komponen POK yang benar (label, bukan value)
   const saveActivityToSpreadsheet = async (activity: Activity): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1113,7 +1125,7 @@ export default function EntriTarget() {
       // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
       const rowData = [
@@ -1130,13 +1142,14 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          komponenPOKLabel, // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+          komponenPOKLabel, // Simpan label komponen POK ke spreadsheet
           "",
           "",
           "",
           "",
           "",
-          activity.bebanAnggaran || "",
+          "",
+          activity.bebanAnggaran || "", // Kolom S untuk Beban Anggaran
           "",
           "",
           "",
@@ -1162,7 +1175,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Update activity dengan komponen POK yang benar (label, bukan value)
+  // PERBAIKAN UTAMA: Update activity dengan mapping kolom yang benar
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1171,7 +1184,7 @@ export default function EntriTarget() {
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
       
-      // PERBAIKAN: Format nilai realisasi sesuai permintaan (850.000,-)
+      // Format nilai realisasi per petugas
       const nilaiRealisasiList = activity.workers
         .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
         .join(" | ");
@@ -1184,9 +1197,10 @@ export default function EntriTarget() {
       // Prepare NIK data for column W
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
+      // PERBAIKAN: Mapping kolom yang benar
       const rowData = [
         [
           (activity.spreadsheetRowIndex - 1).toString(),
@@ -1201,13 +1215,13 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          komponenPOKLabel, // PERBAIKAN: Simpan label komponen POK ke spreadsheet
+          komponenPOKLabel,
           namaPetugas,
           targetList,
           realisasiList,
           nilaiRealisasiList, // Kolom Q: Nilai Realisasi per petugas
-          formatCurrency(totalRealisasi), // PERBAIKAN: Kolom R: Total Realisasi (digeser dari S ke R)
-          activity.bebanAnggaran || "",
+          formatCurrency(totalRealisasi), // Kolom R: Total Realisasi
+          activity.bebanAnggaran || "", // Kolom S: Beban Anggaran
           "",
           "",
           "",
@@ -1273,7 +1287,7 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan available workers dengan grouping nama yang sama
+  // Fungsi untuk mendapatkan available workers dengan grouping nama yang sama
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
     const existingWorkerNips = activity.workers
       .filter(w => w.id !== excludeWorkerId)
