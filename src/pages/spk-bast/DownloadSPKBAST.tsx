@@ -716,9 +716,9 @@ export default function DownloadSPKBAST() {
       </Card>
 
       {/* Informasi tambahan */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-orange-50 border-orange-200">
         <CardContent className="p-4">
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-orange-700">
             <strong>Catatan:</strong> Data menampilkan semua bulan dalam tahun {selectedTahun}.
             Pastikan koneksi internet tersedia untuk melihat data terbaru.
           </p>
