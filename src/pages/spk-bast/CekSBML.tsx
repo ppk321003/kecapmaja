@@ -529,8 +529,8 @@ export default function CekSBML() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
-                    <TableHead className="min-w-[150px]">Nama Mitra</TableHead>
-                    <TableHead className="min-w-[120px]">NIK</TableHead>
+                    <TableHead className="min-w-[150px]">Nama Mitra Statistik</TableHead>
+                    <TableHead className="min-w-[120px]">Kecamatan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
@@ -541,10 +541,10 @@ export default function CekSBML() {
                 </TableHeader>
                 <TableBody>
                   {data.map((row, index) => (
-                    <TableRow key={`${row.namaMitra}_${row.nik}`} className={row.isExceeded ? "bg-red-50" : ""}>
+                    <TableRow key={`${row.namaMitra}_${row.kecamatan}`} className={row.isExceeded ? "bg-red-50" : ""}>
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
-                      <TableCell className="font-mono text-xs min-w-[120px]">{row.nik || "-"}</TableCell>
+                      <TableCell className="font-mono text-xs min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
                       {/* Kolom Pendataan dengan Tooltip */}
                       <TableCell className="text-right">
