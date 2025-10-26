@@ -580,7 +580,7 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // PERBAIKAN: Parse date dari spreadsheet dengan benar - tidak otomatis ke hari ini
+        // PERBAIKAN: Parse date dari spreadsheet dengan benar
         const parseDateFromSpreadsheet = (dateStr: string) => {
           if (!dateStr) return new Date();
           
@@ -628,7 +628,7 @@ export default function EntriTarget() {
           }
           
           console.warn('Could not parse date:', dateStr);
-          return new Date(); // Fallback ke tanggal hari ini hanya jika parsing gagal
+          return new Date();
         };
         
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
@@ -645,7 +645,7 @@ export default function EntriTarget() {
           komponenPOK = getKomponenPOKValueFromLabel(komponenPOK);
         }
         
-        const bebanAnggaran = row[18] || ''; // PERBAIKAN: Kolom S untuk Beban Anggaran
+        const bebanAnggaran = row[17] || '';
         
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
@@ -874,7 +874,7 @@ export default function EntriTarget() {
       satuan: activity.satuan || "",
       komponenPOK: activity.komponenPOK || "", // PERBAIKAN: Simpan value komponen POK
       nomorSK: activity.nomorSK || "",
-      tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(), // PERBAIKAN: Gunakan tanggal dari database
+      tanggalSK: activity.tanggalSK ? new Date(activity.tanggalSK) : new Date(),
       koordinator: activity.koordinator || "",
     });
     
@@ -1031,7 +1031,7 @@ export default function EntriTarget() {
       const petugasData = getPetugasByNama(newName);
       const newNik = petugasData?.nik || getNikByNama(newName);
       
-      // PERBAIKAN: Cek duplikasi berdasarkan NIK, bukan nama
+      // Cek duplikasi berdasarkan NIK, bukan nama
       const duplicateWorker = activity?.workers.find(w => 
         w.id !== workerId && w.nip === newNik
       );
@@ -1136,8 +1136,7 @@ export default function EntriTarget() {
           "",
           "",
           "",
-          "",
-          activity.bebanAnggaran || "", // PERBAIKAN: Kolom S untuk Beban Anggaran
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
@@ -1163,7 +1162,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Update activity dengan komponen POK yang benar (label, bukan value) dan perbaikan mapping kolom
+  // PERBAIKAN: Update activity dengan komponen POK yang benar (label, bukan value)
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1188,7 +1187,6 @@ export default function EntriTarget() {
       // PERBAIKAN: Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
-      // PERBAIKAN: Perbaikan mapping kolom - Total Realisasi di kolom R, Beban Anggaran di kolom S
       const rowData = [
         [
           (activity.spreadsheetRowIndex - 1).toString(),
@@ -1209,7 +1207,7 @@ export default function EntriTarget() {
           realisasiList,
           nilaiRealisasiList, // Kolom Q: Nilai Realisasi per petugas
           formatCurrency(totalRealisasi), // PERBAIKAN: Kolom R: Total Realisasi (digeser dari S ke R)
-          activity.bebanAnggaran || "", // PERBAIKAN: Kolom S: Beban Anggaran (tetap di S)
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
