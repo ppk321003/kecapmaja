@@ -14,6 +14,7 @@ import {
 interface SPKData {
   no: number;
   periode: string;
+  jumlahSPK: number;
   nilaiPerjanjian: number;
   nilaiRealisasi: number;
   persentaseRealisasi: number;
@@ -68,6 +69,7 @@ export default function DownloadSPKBAST() {
         completeData.push({
           no: index + 1,
           periode: periode,
+          jumlahSPK: 0,
           nilaiPerjanjian: 0,
           nilaiRealisasi: 0,
           persentaseRealisasi: 0,
@@ -91,11 +93,11 @@ export default function DownloadSPKBAST() {
 
       // Coba beberapa range yang mungkin
       const rangesToTry = [
-        "OUTPUT!A:F",  // Range spesifik dengan sheet OUTPUT
-        "OUTPUT!A1:F100", // Range dengan batas
+        "OUTPUT!A:G",  // Range spesifik dengan sheet OUTPUT (7 kolom sekarang)
+        "OUTPUT!A1:G100", // Range dengan batas
         "OUTPUT",      // Hanya nama sheet
-        "Sheet1!A:F",  // Mungkin nama sheet berbeda
-        "A:F",         // Range global
+        "Sheet1!A:G",  // Mungkin nama sheet berbeda
+        "A:G",         // Range global
       ];
 
       let sheetData: any[] = [];
@@ -149,8 +151,8 @@ export default function DownloadSPKBAST() {
       // Cari baris pertama yang memiliki data numerik di kolom nilai
       for (let i = 1; i < sheetData.length; i++) {
         const row = sheetData[i];
-        if (row && row.length >= 3) {
-          const nilaiStr = row[2]?.toString() || '';
+        if (row && row.length >= 4) {
+          const nilaiStr = row[3]?.toString() || '';
           // Cek jika mengandung angka (nilai perjanjian)
           if (/\d/.test(nilaiStr)) {
             dataStartIndex = i;
@@ -165,14 +167,15 @@ export default function DownloadSPKBAST() {
       
       for (let i = dataStartIndex; i < sheetData.length; i++) {
         const row = sheetData[i];
-        if (!row || row.length < 3) continue;
+        if (!row || row.length < 4) continue;
 
         try {
           const periode = row[1]?.toString()?.trim() || '';
-          const nilaiPerjanjianStr = row[2]?.toString()?.trim() || '0';
-          const nilaiRealisasiStr = row[3]?.toString()?.trim() || '0';
-          const persentaseStr = row[4]?.toString()?.trim() || '0';
-          const link = row[5]?.toString()?.trim() || '';
+          const jumlahSPKStr = row[2]?.toString()?.trim() || '0';
+          const nilaiPerjanjianStr = row[3]?.toString()?.trim() || '0';
+          const nilaiRealisasiStr = row[4]?.toString()?.trim() || '0';
+          const persentaseStr = row[5]?.toString()?.trim() || '0';
+          const link = row[6]?.toString()?.trim() || '';
 
           // Parse nilai dengan berbagai format
           const parseNilai = (str: string): number => {
@@ -191,6 +194,12 @@ export default function DownloadSPKBAST() {
             return isNaN(parsed) ? 0 : parsed;
           };
 
+          const parseJumlahSPK = (str: string): number => {
+            if (!str) return 0;
+            const parsed = parseInt(str);
+            return isNaN(parsed) ? 0 : parsed;
+          };
+
           const parsePersentase = (str: string): number => {
             if (!str) return 0;
             
@@ -199,6 +208,7 @@ export default function DownloadSPKBAST() {
             return isNaN(parsed) ? 0 : parsed;
           };
 
+          const jumlahSPK = parseJumlahSPK(jumlahSPKStr);
           const nilaiPerjanjian = parseNilai(nilaiPerjanjianStr);
           const nilaiRealisasi = parseNilai(nilaiRealisasiStr);
           const persentaseRealisasi = parsePersentase(persentaseStr);
@@ -221,10 +231,11 @@ export default function DownloadSPKBAST() {
           }
 
           // Validasi data - hanya tambahkan jika ada data yang meaningful
-          if (periode || nilaiPerjanjian > 0 || nilaiRealisasi > 0) {
+          if (periode || jumlahSPK > 0 || nilaiPerjanjian > 0 || nilaiRealisasi > 0) {
             parsedData.push({
               no: 0, // Akan diisi ulang saat generate complete data
               periode,
+              jumlahSPK,
               nilaiPerjanjian,
               nilaiRealisasi,
               persentaseRealisasi,
@@ -280,32 +291,112 @@ export default function DownloadSPKBAST() {
       {
         no: 0,
         periode: "Januari 2025",
+        jumlahSPK: 60,
         nilaiPerjanjian: 57688000,
         nilaiRealisasi: 57688000,
         persentaseRealisasi: 100.00,
-        link: "",
+        link: "https://drive.google.com/drive/folders/17uw-Buqts9-y6nhnZ9t5scuCO8W81Jrx",
         tahun: 2025,
         bulan: "Januari"
       },
       {
         no: 0,
         periode: "Februari 2025",
+        jumlahSPK: 125,
         nilaiPerjanjian: 247088000,
         nilaiRealisasi: 246960000,
         persentaseRealisasi: 99.95,
-        link: "",
+        link: "https://drive.google.com/drive/folders/1sGgsfiL56h_naiQXt1U29Qd-qMuOVO-e",
         tahun: 2025,
         bulan: "Februari"
       },
       {
         no: 0,
         periode: "Maret 2025",
+        jumlahSPK: 63,
         nilaiPerjanjian: 82135000,
         nilaiRealisasi: 82109000,
         persentaseRealisasi: 99.97,
-        link: "",
+        link: "https://drive.google.com/drive/folders/1z5wS1mKJc9OOOXrY0yaTJh2VLd8og4CP",
         tahun: 2025,
         bulan: "Maret"
+      },
+      {
+        no: 0,
+        periode: "April 2025",
+        jumlahSPK: 58,
+        nilaiPerjanjian: 75798000,
+        nilaiRealisasi: 75798000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1xHJa-MVJGOO_X0pvAsixGaBy1dI59IN6",
+        tahun: 2025,
+        bulan: "April"
+      },
+      {
+        no: 0,
+        periode: "Mei 2025",
+        jumlahSPK: 59,
+        nilaiPerjanjian: 75660000,
+        nilaiRealisasi: 75660000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1u3jpApJOqJfi2kpecXolLDaC7bnWlFwT",
+        tahun: 2025,
+        bulan: "Mei"
+      },
+      {
+        no: 0,
+        periode: "Juni 2025",
+        jumlahSPK: 117,
+        nilaiPerjanjian: 198356000,
+        nilaiRealisasi: 198356000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1_1zujGiti7BVBSCn-9Ww3Qmp3NimDOGG",
+        tahun: 2025,
+        bulan: "Juni"
+      },
+      {
+        no: 0,
+        periode: "Juli 2025",
+        jumlahSPK: 87,
+        nilaiPerjanjian: 152428000,
+        nilaiRealisasi: 152428000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1zjRgSMwWAYi0EJOedcK2VDQXNX1bdzL1",
+        tahun: 2025,
+        bulan: "Juli"
+      },
+      {
+        no: 0,
+        periode: "Agustus 2025",
+        jumlahSPK: 56,
+        nilaiPerjanjian: 99307000,
+        nilaiRealisasi: 99307000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1rBeIMikKn9GE0q9UBcrnIinSLNMLtb2z",
+        tahun: 2025,
+        bulan: "Agustus"
+      },
+      {
+        no: 0,
+        periode: "September 2025",
+        jumlahSPK: 90,
+        nilaiPerjanjian: 154009000,
+        nilaiRealisasi: 154009000,
+        persentaseRealisasi: 100.00,
+        link: "https://drive.google.com/drive/folders/1E-vxHhzN_35VPbPjKOrH22vZylIykj1T",
+        tahun: 2025,
+        bulan: "September"
+      },
+      {
+        no: 0,
+        periode: "Oktober 2025",
+        jumlahSPK: 12,
+        nilaiPerjanjian: 7196000,
+        nilaiRealisasi: 7196000,
+        persentaseRealisasi: 100.00,
+        link: "",
+        tahun: 2025,
+        bulan: "Oktober"
       }
     ];
 
@@ -360,6 +451,7 @@ export default function DownloadSPKBAST() {
   };
 
   // Hitung total berdasarkan data yang difilter
+  const totalJumlahSPK = filteredData.reduce((sum, item) => sum + item.jumlahSPK, 0);
   const totalNilaiPerjanjian = filteredData.reduce((sum, item) => sum + item.nilaiPerjanjian, 0);
   const totalNilaiRealisasi = filteredData.reduce((sum, item) => sum + item.nilaiRealisasi, 0);
   const totalPersentaseRealisasi = totalNilaiPerjanjian > 0 
@@ -481,6 +573,9 @@ export default function DownloadSPKBAST() {
                         Periode (Bulan) SPK
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        Jumlah SPK
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
                         Nilai Perjanjian Rp.
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700">
@@ -505,6 +600,9 @@ export default function DownloadSPKBAST() {
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
                           {item.periode}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center">
+                          {item.jumlahSPK > 0 ? item.jumlahSPK : "-"}
                         </td>
                         <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-right">
                           {item.nilaiPerjanjian > 0 ? formatRupiah(item.nilaiPerjanjian) : "-"}
@@ -544,6 +642,9 @@ export default function DownloadSPKBAST() {
                       <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center" colSpan={2}>
                         TOTAL ({filteredData.filter(item => item.nilaiPerjanjian > 0).length} data berisi nilai)
                       </td>
+                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-center">
+                        {totalJumlahSPK}
+                      </td>
                       <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900 text-right">
                         {formatRupiah(totalNilaiPerjanjian)}
                       </td>
@@ -567,7 +668,13 @@ export default function DownloadSPKBAST() {
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="text-sm text-blue-600 font-medium">Total Jumlah SPK</div>
+                    <div className="text-2xl font-bold text-blue-700">{totalJumlahSPK}</div>
+                  </CardContent>
+                </Card>
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-4">
                     <div className="text-sm text-blue-600 font-medium">Total Nilai Perjanjian</div>
