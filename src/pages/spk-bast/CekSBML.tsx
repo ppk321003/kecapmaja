@@ -243,14 +243,14 @@ export default function CekSBML() {
       // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk menyimpan detail dan NIK
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 22) continue; // Diperbarui untuk mengakomodasi kolom NIK (index 21)
+        if (!row || row.length < 23) continue; // Diperbarui untuk mengakomodasi kolom NIK (index 21)
 
         const periode = row[2]?.toString() || "";
         const role = row[3]?.toString() || "";
         const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
         const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
         const nilaiRealisasi = row[16]?.toString() || ""; // Kolom Q: Nilai Realisasi
-        const nikPetugas = row[21]?.toString() || ""; // Kolom V: NIK (kolom terakhir)
+        const nikPetugas = row[22]?.toString() || ""; // Kolom V: NIK (kolom terakhir)
 
         if (periode === periodeFilter && namaPetugas && nilaiRealisasi) {
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, nilaiRealisasi);
