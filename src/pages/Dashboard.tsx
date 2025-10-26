@@ -29,6 +29,17 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
+const MASTER_MITRA_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+// PERBAIKAN UTAMA: Interface untuk data master mitra
+interface MasterMitra {
+  nik: string;
+  nama: string;
+  kecamatan: string;
+}
+
+// PERBAIKAN UTAMA: Map untuk menyimpan data kecamatan
+const kecamatanMap = new Map<string, string>();
 
 const bulanList = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -171,17 +182,28 @@ const extractDisplayName = (namaNik: string): string => {
   return parts[0].trim();
 };
 
+// PERBAIKAN UTAMA: Fungsi untuk mendapatkan kecamatan dari NIK
+const getKecamatanFromNIK = (nik: string): string => {
+  return kecamatanMap.get(nik) || 'Tidak Diketahui';
+};
+
 // FUNGSI BARU: Untuk format tampilan "Nama | Kecamatan" di Risk Assessment
 const formatDisplayNameWithKecamatan = (namaNik: string): string => {
   // Jika tidak mengandung pipe, kembalikan string asli
   if (!namaNik.includes('|')) return namaNik;
   
-  // Split dan format menjadi "Nama | Kecamatan"
+  // Split dan ambil nama dan NIK
   const parts = namaNik.split('|');
   const nama = parts[0].trim();
-  const kecamatan = parts[1] ? parts[1].trim() : '';
+  const nik = parts[1] ? parts[1].trim() : '';
   
-  return kecamatan ? `${nama} | ${kecamatan}` : nama;
+  // Jika tidak ada NIK, kembalikan hanya nama
+  if (!nik) return nama;
+  
+  // Dapatkan kecamatan dari NIK
+  const kecamatan = getKecamatanFromNIK(nik);
+  
+  return `${nama} | ${kecamatan}`;
 };
 
 // Komponen RiskTooltip untuk hover di risk matrix - POSISI DI SAMPING BARIS
@@ -678,8 +700,49 @@ const createPetugasIdentifier = (nama: string, nik: string): string => {
   return `${namaTrimmed}|${nikTrimmed}`;
 };
 
+// PERBAIKAN UTAMA: Fungsi untuk load data master mitra
+const loadMasterMitraData = async (): Promise<void> => {
+  try {
+    const { data: masterResponse, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: MASTER_MITRA_SPREADSHEET_ID,
+        operation: "read",
+        range: "MASTER.MITRA",
+      },
+    });
+
+    if (error) throw error;
+
+    const rows = masterResponse?.values || [];
+    console.log("Total rows from MASTER.MITRA:", rows.length);
+
+    // Skip header row (row 0)
+    const dataRows = rows.slice(1);
+    
+    dataRows.forEach((row: any[]) => {
+      const nik = row[1]?.toString()?.trim() || ''; // Kolom NIK
+      const kecamatan = row[6]?.toString()?.trim() || ''; // Kolom Kecamatan (index 6)
+      
+      if (nik && kecamatan) {
+        kecamatanMap.set(nik, kecamatan);
+      }
+    });
+
+    console.log("Kecamatan map loaded:", kecamatanMap.size, "entries");
+    
+    // Log beberapa contoh data
+    Array.from(kecamatanMap.entries()).slice(0, 5).forEach(([nik, kecamatan]) => {
+      console.log(`NIK: ${nik} -> Kecamatan: ${kecamatan}`);
+    });
+
+  } catch (error) {
+    console.error("Error loading master mitra data:", error);
+  }
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
@@ -955,6 +1018,23 @@ export default function Dashboard() {
         );
       })
     : riskData; // Gunakan top 10 jika tidak ada search
+
+  // PERBAIKAN UTAMA: Load master data terlebih dahulu
+  useEffect(() => {
+    const loadData = async () => {
+      await loadMasterMitraData();
+      setMasterDataLoaded(true);
+    };
+    
+    loadData();
+  }, []);
+
+  // PERBAIKAN UTAMA: Fetch data dashboard setelah master data loaded
+  useEffect(() => {
+    if (masterDataLoaded) {
+      fetchDashboardData();
+    }
+  }, [filterTahun, masterDataLoaded]);
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
@@ -1444,10 +1524,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [filterTahun]);
 
   // Cleanup timeout saat component unmount
   useEffect(() => {
