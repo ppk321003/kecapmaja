@@ -51,6 +51,7 @@ type Worker = {
   jabatan: string;
   target: string;
   realisasi: string;
+  kecamatan?: string;
 };
 
 type Activity = {
@@ -68,6 +69,7 @@ type Activity = {
   jobType: string;
   spreadsheetRowIndex?: number;
   bebanAnggaran?: string;
+  statusPPK?: string;
 };
 
 type PetugasFromSheet = {
@@ -154,6 +156,7 @@ export default function EntriTarget() {
   const [koordinatorOptions, setKoordinatorOptions] = useState<KoordinatorOption[]>([]);
   const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
   const [bebanAnggaran, setBebanAnggaran] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
   
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
   let activities = activitiesByPeriod[periodKey] || [];
@@ -189,7 +192,7 @@ export default function EntriTarget() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: 'read',
-          range: 'MASTER.MITRA',
+          range: 'MASTER.MITRA!A:H',
         }
       });
 
@@ -203,6 +206,8 @@ export default function EntriTarget() {
         return;
       }
 
+      console.log('Raw petugas data from sheet:', data);
+
       if (!data?.values || data.values.length <= 1) {
         console.log('No petugas data in spreadsheet');
         setPetugasFromSheet([]);
@@ -210,24 +215,22 @@ export default function EntriTarget() {
       }
 
       const rows = data.values.slice(1);
-      const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
-        id: index + 1,
-        nama: row[2] || '',
-        nik: row[1] || '',
-        pekerjaan: row[3] || '',
-        alamat: row[4] || '',
-        bank: row[5] || '',
-        rekening: row[6] || '',
-        kecamatan: row[7] || '',
-      })).filter((petugas: PetugasFromSheet) => petugas.nama.trim() !== '');
+      const petugasData: PetugasFromSheet[] = rows
+        .map((row: any[], index: number) => ({
+          id: index + 1,
+          nama: row[2]?.toString().trim() || '',
+          nik: row[1]?.toString().trim() || '',
+          pekerjaan: row[3]?.toString().trim() || '',
+          alamat: row[4]?.toString().trim() || '',
+          bank: row[5]?.toString().trim() || '',
+          rekening: row[6]?.toString().trim() || '',
+          kecamatan: row[7]?.toString().trim() || '',
+        }))
+        .filter((petugas: PetugasFromSheet) => petugas.nama && petugas.nama !== '');
 
+      console.log('Processed petugas data:', petugasData);
       setPetugasFromSheet(petugasData);
-      console.log('Petugas data parsed:', petugasData);
       
-      toast({
-        title: "Data petugas dimuat",
-        description: `${petugasData.length} petugas berhasil dimuat dari MASTER.MITRA`,
-      });
     } catch (error) {
       console.error('Error loading petugas:', error);
       toast({
@@ -249,6 +252,7 @@ export default function EntriTarget() {
       jabatan: petugas.pekerjaan || 'Petugas',
       target: "0",
       realisasi: "0",
+      kecamatan: petugas.kecamatan,
     }));
   }, [petugasFromSheet]);
 
@@ -256,6 +260,201 @@ export default function EntriTarget() {
   const getNikByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.nik || '';
+  };
+
+  // Load data from spreadsheet on mount
+  useEffect(() => {
+    const initializeData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          loadDataFromSpreadsheet(),
+          loadPetugasFromSheet(),
+          loadActivityOptions(),
+          loadKoordinatorOptions()
+        ]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeData();
+  }, [user?.role]);
+
+  const loadDataFromSpreadsheet = async () => {
+    try {
+      console.log('Loading data from spreadsheet...');
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: DATA_SPREADSHEET_ID,
+          operation: 'read',
+          range: 'Sheet1!A:Z',
+        }
+      });
+
+      if (error) {
+        console.error('Error loading from spreadsheet:', error);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data dari spreadsheet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Raw data from spreadsheet:', data);
+
+      if (!data?.values || data.values.length <= 1) {
+        console.log('No data in spreadsheet or only header row');
+        setActivitiesByPeriod({});
+        return;
+      }
+
+      const rows = data.values.slice(1);
+      const activitiesMap: {[key: string]: Activity[]} = {};
+      let activityIdCounter = 1;
+
+      console.log('Processing rows:', rows.length);
+
+      rows.forEach((row: any[], rowIndex: number) => {
+        if (!row[0] && !row[2] && !row[3] && !row[4]) {
+          console.log('Skipping empty row:', rowIndex);
+          return;
+        }
+
+        const periode = row[2]?.toString().trim() || '';
+        const jenisPekerjaan = row[3]?.toString().trim() || '';
+        const namaKegiatan = row[4]?.toString().trim() || '';
+        const nomorSK = row[5]?.toString().trim() || '';
+        
+        console.log(`Processing row ${rowIndex}:`, { periode, jenisPekerjaan, namaKegiatan });
+
+        if (!periode || !jenisPekerjaan || !namaKegiatan) {
+          console.log('Skipping row with missing essential data:', rowIndex);
+          return;
+        }
+
+        const parseDateFromSpreadsheet = (dateStr: string) => {
+          if (!dateStr) return new Date();
+          
+          try {
+            if (typeof dateStr === 'string' && dateStr.includes('/')) {
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1;
+                const year = parseInt(parts[2]);
+                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                  return new Date(year, month, day);
+                }
+              }
+            }
+            
+            const serialNumber = parseFloat(dateStr);
+            if (!isNaN(serialNumber)) {
+              const date = new Date((serialNumber - 25569) * 86400 * 1000);
+              if (!isNaN(date.getTime())) {
+                return date;
+              }
+            }
+            
+            return new Date();
+          } catch (error) {
+            console.error('Error parsing date:', dateStr, error);
+            return new Date();
+          }
+        };
+        
+        const tanggalSK = parseDateFromSpreadsheet(row[6] || '');
+        const tanggalMulai = parseDateFromSpreadsheet(row[7] || '');
+        const tanggalAkhir = parseDateFromSpreadsheet(row[8] || '');
+        const hargaSatuan = row[9]?.toString().trim() || '0';
+        const satuan = row[10]?.toString().trim() || '';
+        const koordinator = row[11]?.toString().trim() || '';
+        const komponenPOK = row[12]?.toString().trim() || '';
+        const bebanAnggaran = row[17]?.toString().trim() || '';
+        const statusPPK = row[18]?.toString().trim() || '';
+        
+        const namaPetugasStr = row[13]?.toString().trim() || '';
+        const targetStr = row[14]?.toString().trim() || '';
+        const realisasiStr = row[15]?.toString().trim() || '';
+        const nikListStr = row[22]?.toString().trim() || '';
+        
+        console.log(`Row ${rowIndex} worker data:`, {
+          namaPetugasStr,
+          targetStr,
+          realisasiStr,
+          nikListStr
+        });
+
+        const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const realisasiList = realisasiStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        const nikList = nikListStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+
+        const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => {
+          const nik = nikList[idx] || getNikByNama(nama);
+          const petugasData = petugasFromSheet.find(p => p.nama === nama);
+          
+          return {
+            id: idx + 1,
+            nama: nama,
+            nip: nik,
+            jabatan: petugasData?.pekerjaan || '',
+            target: targetList[idx] || '0',
+            realisasi: realisasiList[idx] || '0',
+            kecamatan: petugasData?.kecamatan || '',
+          };
+        });
+
+        const activity: Activity = {
+          id: activityIdCounter++,
+          namaKegiatan,
+          tanggalMulai,
+          tanggalAkhir,
+          hargaSatuan,
+          satuan: satuan,
+          komponenPOK,
+          nomorSK,
+          tanggalSK,
+          koordinator,
+          workers,
+          jobType: jenisPekerjaan,
+          spreadsheetRowIndex: rowIndex + 2,
+          bebanAnggaran,
+          statusPPK,
+        };
+
+        const periodKey = `${periode}-${jenisPekerjaan}`;
+        console.log(`Adding activity to period key: ${periodKey}`, activity);
+        
+        if (!activitiesMap[periodKey]) {
+          activitiesMap[periodKey] = [];
+        }
+        activitiesMap[periodKey].push(activity);
+      });
+
+      console.log('Final activities map:', activitiesMap);
+      setActivitiesByPeriod(activitiesMap);
+      
+      toast({
+        title: "Data dimuat",
+        description: `Berhasil memuat data dari spreadsheet (${Object.values(activitiesMap).flat().length} kegiatan)`,
+      });
+    } catch (error) {
+      console.error('Error loading from spreadsheet:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data dari spreadsheet",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Calculate dynamic SPK data from activitiesByPeriod
@@ -275,7 +474,9 @@ export default function EntriTarget() {
         totalActivities += monthActivities.length;
         
         monthActivities.forEach(activity => {
-          activity.workers.forEach(worker => uniqueWorkers.add(worker.nama));
+          activity.workers.forEach(worker => {
+            if (worker.nama) uniqueWorkers.add(worker.nama);
+          });
           
           const activityTarget = activity.workers.reduce((sum, w) => {
             return sum + parseFloat(w.target || '0');
@@ -295,6 +496,10 @@ export default function EntriTarget() {
             return sum + (realisasi * hargaSatuan);
           }, 0);
           totalRealisasi += activityRealisasi;
+
+          if (activity.statusPPK === "Kirim PPK") {
+            totalSent += 1;
+          }
         });
       });
 
@@ -309,12 +514,13 @@ export default function EntriTarget() {
       };
     });
 
+    console.log('Calculated SPK data:', monthlyData);
     return monthlyData;
   }, [activitiesByPeriod, selectedYear]);
 
   // Calculate totals for the summary row
   const summaryData = useMemo(() => {
-    return dynamicSpkData.reduce((acc, month) => {
+    const summary = dynamicSpkData.reduce((acc, month) => {
       return {
         activities: acc.activities + month.activities,
         workers: acc.workers + month.workers,
@@ -331,28 +537,38 @@ export default function EntriTarget() {
       realisasi: 0,
       sent: 0,
     });
+
+    console.log('Summary data:', summary);
+    return summary;
   }, [dynamicSpkData]);
 
   // Calculate dynamic job types data for selected period
   const dynamicJobTypes = useMemo(() => {
-    return jobTypes.map(jobType => {
+    if (!selectedPeriod) return jobTypes;
+
+    const jobTypesData = jobTypes.map(jobType => {
       const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
       const jobActivities = activitiesByPeriod[key] || [];
       
       let totalTarget = 0;
       let totalValue = 0;
       let totalRealisasi = 0;
+      let totalSent = 0;
       const uniqueWorkers = new Set<string>();
       
       jobActivities.forEach(activity => {
         activity.workers.forEach(worker => {
-          uniqueWorkers.add(worker.nama);
+          if (worker.nama) uniqueWorkers.add(worker.nama);
           totalTarget += parseFloat(worker.target || '0');
           
           const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
           totalValue += parseFloat(worker.target || '0') * hargaSatuan;
           totalRealisasi += parseFloat(worker.realisasi || '0') * hargaSatuan;
         });
+
+        if (activity.statusPPK === "Kirim PPK") {
+          totalSent += 1;
+        }
       });
       
       return {
@@ -362,9 +578,12 @@ export default function EntriTarget() {
         target: totalTarget,
         value: totalValue,
         realisasi: totalRealisasi,
-        sent: 0,
+        sent: totalSent,
       };
     });
+
+    console.log('Dynamic job types:', jobTypesData);
+    return jobTypesData;
   }, [activitiesByPeriod, selectedPeriod, selectedYear]);
 
   // Load activity options from spreadsheet based on user role
@@ -379,7 +598,7 @@ export default function EntriTarget() {
         body: {
           spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
           operation: 'read',
-          range: 'Sheet1',
+          range: 'Sheet1!A:D',
         }
       });
 
@@ -387,6 +606,8 @@ export default function EntriTarget() {
         console.error('Error loading activity options:', error);
         return;
       }
+
+      console.log('Raw activity options:', data);
 
       if (!data?.values || data.values.length <= 1) {
         console.log('No activity options in spreadsheet');
@@ -398,18 +619,18 @@ export default function EntriTarget() {
       const options: ActivityOption[] = rows
         .map((row: any[], index: number) => ({
           no: parseInt(row[0]) || index + 1,
-          role: row[1] || '',
-          namaKegiatan: row[2] || '',
-          bebanAnggaran: row[3] || '',
+          role: row[1]?.toString().trim() || '',
+          namaKegiatan: row[2]?.toString().trim() || '',
+          bebanAnggaran: row[3]?.toString().trim() || '',
         }))
         .filter((option: ActivityOption) => {
-          if (!option.namaKegiatan.trim()) return false;
+          if (!option.namaKegiatan) return false;
           const roles = option.role.split('|').map(r => r.trim());
           return roles.includes(user.role);
         });
 
+      console.log('Filtered activity options:', options);
       setActivityOptions(options);
-      console.log('Activity options filtered for role:', options);
       
     } catch (error) {
       console.error('Error loading activity options:', error);
@@ -430,7 +651,7 @@ export default function EntriTarget() {
         body: {
           spreadsheetId: '1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU',
           operation: 'read',
-          range: 'Sheet1',
+          range: 'Sheet1!A:D',
         }
       });
 
@@ -438,6 +659,8 @@ export default function EntriTarget() {
         console.error('Error loading koordinator options:', error);
         return;
       }
+
+      console.log('Raw koordinator options:', data);
 
       if (!data?.values || data.values.length <= 1) {
         console.log('No koordinator options in spreadsheet');
@@ -448,16 +671,16 @@ export default function EntriTarget() {
       const rows = data.values.slice(1);
       const options: KoordinatorOption[] = rows
         .map((row: any[]) => ({
-          nama: row[1] || '',
-          jabatan: row[3] || '',
+          nama: row[1]?.toString().trim() || '',
+          jabatan: row[3]?.toString().trim() || '',
         }))
         .filter((option: KoordinatorOption) => {
-          if (!option.nama.trim()) return false;
+          if (!option.nama) return false;
           return option.jabatan === user.role;
         });
 
+      console.log('Filtered koordinator options:', options);
       setKoordinatorOptions(options);
-      console.log('Koordinator options filtered for role:', options);
       
     } catch (error) {
       console.error('Error loading koordinator options:', error);
@@ -480,146 +703,6 @@ export default function EntriTarget() {
     }
   };
 
-  // Load data from spreadsheet on mount
-  useEffect(() => {
-    loadDataFromSpreadsheet();
-    loadPetugasFromSheet();
-    loadActivityOptions();
-    loadKoordinatorOptions();
-  }, [user?.role]);
-
-  const loadDataFromSpreadsheet = async () => {
-    try {
-      console.log('Loading data from spreadsheet...');
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
-          operation: 'read',
-          range: 'Sheet1',
-        }
-      });
-
-      if (error) {
-        console.error('Error loading from spreadsheet:', error);
-        return;
-      }
-
-      if (!data?.values || data.values.length <= 1) {
-        console.log('No data in spreadsheet');
-        return;
-      }
-
-      const rows = data.values.slice(1);
-      const activitiesMap: {[key: string]: Activity[]} = {};
-      let activityIdCounter = 1;
-
-      rows.forEach((row: any[], rowIndex: number) => {
-        if (!row[0]) return;
-
-        const periode = row[2] || '';
-        const jenisPekerjaan = row[3] || '';
-        const namaKegiatan = row[4] || '';
-        const nomorSK = row[5] || '';
-        
-        const parseDateFromSpreadsheet = (dateStr: string) => {
-          if (!dateStr) return new Date();
-          
-          const monthNames: {[key: string]: number} = {
-            'januari': 0, 'februari': 1, 'maret': 2, 'april': 3,
-            'mei': 4, 'juni': 5, 'juli': 6, 'agustus': 7,
-            'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
-          };
-          
-          const numericParts = dateStr.split(/[\/\s-]/);
-          if (numericParts.length >= 3 && !isNaN(parseInt(numericParts[0])) && !isNaN(parseInt(numericParts[1]))) {
-            const day = parseInt(numericParts[0]);
-            const month = parseInt(numericParts[1]) - 1;
-            const year = parseInt(numericParts[2]);
-            return new Date(year, month, day);
-          }
-          
-          const parts = dateStr.toLowerCase().split(/\s+/);
-          if (parts.length >= 3) {
-            const day = parseInt(parts[0]);
-            const monthName = parts[1];
-            const year = parseInt(parts[2]);
-            const month = monthNames[monthName];
-            
-            if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-              return new Date(year, month, day);
-            }
-          }
-          
-          return new Date();
-        };
-        
-        const tanggalSK = parseDateFromSpreadsheet(row[6]);
-        const tanggalMulai = parseDateFromSpreadsheet(row[7]);
-        const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
-        const hargaSatuan = row[9] || '0';
-        const satuan = row[10] || '';
-        const koordinator = row[11] || '';
-        const komponenPOK = row[12] || '';
-        const bebanAnggaran = row[17] || '';
-        
-        const namaPetugasStr = row[13] || '';
-        const targetStr = row[14] || '';
-        const realisasiStr = row[15] || '';
-        
-        const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-        const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-        const realisasiList = realisasiStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-
-        const workers: Worker[] = namaPetugasList.map((nama: string, idx: number) => ({
-          id: idx + 1,
-          nama: nama,
-          nip: getNikByNama(nama),
-          jabatan: '',
-          target: targetList[idx] || '0',
-          realisasi: realisasiList[idx] || '0',
-        }));
-
-        const activity: Activity = {
-          id: activityIdCounter++,
-          namaKegiatan,
-          tanggalMulai,
-          tanggalAkhir,
-          hargaSatuan,
-          satuan: satuan,
-          komponenPOK,
-          nomorSK,
-          tanggalSK,
-          koordinator,
-          workers,
-          jobType: jenisPekerjaan,
-          spreadsheetRowIndex: rowIndex + 2,
-          bebanAnggaran,
-        };
-
-        const periodKey = `${periode}-${jenisPekerjaan}`;
-        if (!activitiesMap[periodKey]) {
-          activitiesMap[periodKey] = [];
-        }
-        activitiesMap[periodKey].push(activity);
-      });
-
-      setActivitiesByPeriod(activitiesMap);
-      console.log('Activities loaded from spreadsheet:', activitiesMap);
-      
-      toast({
-        title: "Data dimuat",
-        description: "Data berhasil dimuat dari spreadsheet",
-      });
-    } catch (error) {
-      console.error('Error loading from spreadsheet:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data dari spreadsheet",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleActionClick = (month: string) => {
     setSelectedPeriod(month);
     setShowJobTypesDialog(true);
@@ -638,75 +721,84 @@ export default function EntriTarget() {
   };
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    if (editingActivity) {
-      const updatedActivities = activities.map(activity => 
-        activity.id === editingActivity.id 
-          ? {
-              ...activity,
-              namaKegiatan: data.namaKegiatan,
-              tanggalMulai: data.tanggalMulai,
-              tanggalAkhir: data.tanggalAkhir,
-              hargaSatuan: data.hargaSatuan,
-              satuan: data.satuan,
-              komponenPOK: data.komponenPOK,
-              nomorSK: data.nomorSK,
-              tanggalSK: data.tanggalSK,
-              koordinator: data.koordinator,
-              bebanAnggaran: bebanAnggaran,
-            }
-          : activity
-      );
-      setActivitiesByPeriod({
-        ...activitiesByPeriod,
-        [periodKey]: updatedActivities
-      });
-      
-      const updatedActivity = updatedActivities.find(a => a.id === editingActivity.id);
-      if (updatedActivity?.spreadsheetRowIndex) {
-        await updateActivityInSpreadsheet(updatedActivity);
+    try {
+      if (editingActivity) {
+        const updatedActivities = activities.map(activity => 
+          activity.id === editingActivity.id 
+            ? {
+                ...activity,
+                namaKegiatan: data.namaKegiatan,
+                tanggalMulai: data.tanggalMulai,
+                tanggalAkhir: data.tanggalAkhir,
+                hargaSatuan: data.hargaSatuan,
+                satuan: data.satuan,
+                komponenPOK: data.komponenPOK,
+                nomorSK: data.nomorSK,
+                tanggalSK: data.tanggalSK,
+                koordinator: data.koordinator,
+                bebanAnggaran: bebanAnggaran,
+              }
+            : activity
+        );
+        setActivitiesByPeriod({
+          ...activitiesByPeriod,
+          [periodKey]: updatedActivities
+        });
+        
+        const updatedActivity = updatedActivities.find(a => a.id === editingActivity.id);
+        if (updatedActivity?.spreadsheetRowIndex) {
+          await updateActivityInSpreadsheet(updatedActivity);
+        }
+        
+        toast({
+          title: "Kegiatan berhasil diperbarui",
+          description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`,
+        });
+        setEditingActivity(null);
+      } else {
+        const newActivity: Activity = {
+          id: Date.now(),
+          namaKegiatan: data.namaKegiatan,
+          tanggalMulai: data.tanggalMulai,
+          tanggalAkhir: data.tanggalAkhir,
+          hargaSatuan: data.hargaSatuan,
+          satuan: data.satuan,
+          komponenPOK: data.komponenPOK,
+          nomorSK: data.nomorSK,
+          tanggalSK: data.tanggalSK,
+          koordinator: data.koordinator,
+          workers: [],
+          jobType: selectedJobType || "",
+          bebanAnggaran: bebanAnggaran,
+        };
+        
+        const rowIndex = await saveActivityToSpreadsheet(newActivity);
+        if (rowIndex) {
+          newActivity.spreadsheetRowIndex = rowIndex;
+        }
+        
+        setActivitiesByPeriod(prev => ({
+          ...prev,
+          [periodKey]: [...(prev[periodKey] || []), newActivity]
+        }));
+        
+        toast({
+          title: "Kegiatan berhasil ditambahkan",
+          description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`,
+        });
       }
       
+      setShowAddActivityDialog(false);
+      form.reset();
+      setBebanAnggaran("");
+    } catch (error) {
+      console.error('Error in onSubmit:', error);
       toast({
-        title: "Kegiatan berhasil diperbarui",
-        description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`,
-      });
-      setEditingActivity(null);
-    } else {
-      const newActivity: Activity = {
-        id: activities.length + 1,
-        namaKegiatan: data.namaKegiatan,
-        tanggalMulai: data.tanggalMulai,
-        tanggalAkhir: data.tanggalAkhir,
-        hargaSatuan: data.hargaSatuan,
-        satuan: data.satuan,
-        komponenPOK: data.komponenPOK,
-        nomorSK: data.nomorSK,
-        tanggalSK: data.tanggalSK,
-        koordinator: data.koordinator,
-        workers: [],
-        jobType: selectedJobType || "",
-        bebanAnggaran: bebanAnggaran,
-      };
-      
-      const rowIndex = await saveActivityToSpreadsheet(newActivity);
-      if (rowIndex) {
-        newActivity.spreadsheetRowIndex = rowIndex;
-      }
-      
-      setActivitiesByPeriod({
-        ...activitiesByPeriod,
-        [periodKey]: [...activities, newActivity]
-      });
-      
-      toast({
-        title: "Kegiatan berhasil ditambahkan",
-        description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan dan disimpan ke spreadsheet.`,
+        title: "Error",
+        description: "Terjadi kesalahan saat menyimpan data",
+        variant: "destructive",
       });
     }
-    
-    setShowAddActivityDialog(false);
-    form.reset();
-    setBebanAnggaran("");
   };
 
   const handleDeleteActivity = async (id: number) => {
@@ -900,19 +992,22 @@ export default function EntriTarget() {
     }
 
     const activity = activities.find(a => a.id === activityId);
-    const duplicateWorker = activity?.workers.find(w => w.id !== workerId && w.nama === newName);
+    
+    const duplicateWorker = activity?.workers.find(w => 
+      w.id !== workerId && w.nama === newName && w.nip === getNikByNama(newName)
+    );
     
     if (duplicateWorker) {
       toast({
-        title: "Nama petugas sudah terdaftar",
-        description: "Nama petugas sudah digunakan dalam kegiatan ini.",
+        title: "Petugas sudah terdaftar",
+        description: "Petugas dengan nama dan NIK yang sama sudah terdaftar dalam kegiatan ini.",
         variant: "destructive",
       });
       return;
     }
 
-    // PERBAIKAN: Ambil NIK terbaru berdasarkan nama yang baru
     const newNik = getNikByNama(newName);
+    const petugasData = petugasFromSheet.find(p => p.nama === newName);
 
     const updatedActivities = activities.map(activity => 
       activity.id === activityId 
@@ -923,7 +1018,9 @@ export default function EntriTarget() {
                 ? { 
                     ...w, 
                     nama: newName, 
-                    nip: newNik, // PERBAIKAN: Update NIK berdasarkan nama baru
+                    nip: newNik,
+                    jabatan: petugasData?.pekerjaan || w.jabatan,
+                    kecamatan: petugasData?.kecamatan || w.kecamatan,
                     target: newTarget, 
                     realisasi: newRealisasi 
                   }
@@ -962,7 +1059,6 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
-      // Prepare NIK data for column W (index 22)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const rowData = [
@@ -979,7 +1075,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          getKomponenPOKLabel(activity.komponenPOK),
+          activity.komponenPOK,
           "",
           "",
           "",
@@ -987,9 +1083,9 @@ export default function EntriTarget() {
           "",
           activity.bebanAnggaran || "",
           "",
-          "", // Kolom T
-          "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          "",
+          "",
+          nikList,
         ]
       ];
 
@@ -1032,7 +1128,6 @@ export default function EntriTarget() {
         0
       );
 
-      // Prepare NIK data for column W (index 22)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const rowData = [
@@ -1049,17 +1144,17 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          getKomponenPOKLabel(activity.komponenPOK),
+          activity.komponenPOK,
           namaPetugas,
           targetList,
           realisasiList,
           nilaiRealisasiList,
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
+          activity.statusPPK || "",
           "",
-          "", // Kolom T
-          "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          "",
+          nikList,
         ]
       ];
 
@@ -1119,7 +1214,6 @@ export default function EntriTarget() {
         0
       );
 
-      // Prepare NIK data for column W (index 22)
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const rowData = [
@@ -1136,7 +1230,7 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          getKomponenPOKLabel(activity.komponenPOK),
+          activity.komponenPOK,
           namaPetugas,
           targetList,
           realisasiList,
@@ -1144,9 +1238,9 @@ export default function EntriTarget() {
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
           "Kirim PPK",
-          "", // Kolom T
-          "", // Kolom U  
-          nikList, // Kolom V (index 22) - NIK data (dari index 23 ke 22)
+          "",
+          "",
+          nikList,
         ]
       ];
 
@@ -1162,10 +1256,23 @@ export default function EntriTarget() {
 
       if (error) throw error;
 
+      const updatedActivities = activities.map(a => 
+        a.id === activityId 
+          ? { ...a, statusPPK: "Kirim PPK" }
+          : a
+      );
+      
+      setActivitiesByPeriod({
+        ...activitiesByPeriod,
+        [periodKey]: updatedActivities
+      });
+
       toast({
         title: "Berhasil dikirim ke PPK",
         description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`,
       });
+
+      await loadDataFromSpreadsheet();
     } catch (error) {
       console.error('Error sending to PPK:', error);
       toast({
@@ -1195,12 +1302,11 @@ export default function EntriTarget() {
     return petugasAsWorkers
       .filter(w => !existingWorkerIds.includes(w.id))
       .map(w => {
-        const petugasData = petugasFromSheet.find(p => p.id === w.id);
-        const kecamatan = petugasData?.kecamatan || '';
+        const kecamatan = w.kecamatan || '';
         
         return {
           value: w.nama,
-          label: `${w.nama} (${kecamatan})`,
+          label: `${w.nama} (${kecamatan}) - ${w.nip}`,
         };
       });
   };
@@ -1210,15 +1316,15 @@ export default function EntriTarget() {
     
     const lowerSearch = searchTerm.toLowerCase();
     return petugasAsWorkers.filter(w => {
-      const petugasData = petugasFromSheet.find(p => p.id === w.id);
-      const kecamatan = petugasData?.kecamatan || '';
+      const kecamatan = w.kecamatan || '';
       
       return (
         w.nama.toLowerCase().includes(lowerSearch) || 
-        kecamatan.toLowerCase().includes(lowerSearch)
+        kecamatan.toLowerCase().includes(lowerSearch) ||
+        w.nip.toLowerCase().includes(lowerSearch)
       );
     });
-  }, [searchTerm, petugasAsWorkers, petugasFromSheet]);
+  }, [searchTerm, petugasAsWorkers]);
 
   const filteredActivities = activities;
 
@@ -1234,6 +1340,25 @@ export default function EntriTarget() {
         return { color: "bg-muted", label: "Entri Kegiatan" };
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Entri Kegiatan</h1>
+          <p className="text-muted-foreground mt-2">Memuat data...</p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Memuat data dari spreadsheet...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1486,7 +1611,7 @@ export default function EntriTarget() {
                             )}
                           >
                             <TableCell></TableCell>
-                             <TableCell colSpan={2} className="pl-8">
+                            <TableCell colSpan={2} className="pl-8">
                               {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
                                 <Combobox
                                   options={getAvailableWorkers(activity, worker.id)}
@@ -1498,7 +1623,7 @@ export default function EntriTarget() {
                                 />
                               ) : (
                                 <span className="text-sm">
-                                  {workerIndex + 1}. {worker.nama} ({worker.nip})
+                                  {workerIndex + 1}. {worker.nama} ({worker.nip}) {worker.kecamatan && `- ${worker.kecamatan}`}
                                   {hasTargetButNoRealisasi(worker) && (
                                     <span className="ml-2 text-xs text-yellow-600 font-medium">(Belum Realisasi)</span>
                                   )}
@@ -1897,7 +2022,7 @@ export default function EntriTarget() {
       </Dialog>
 
       <Dialog open={showAddWorkerDialog} onOpenChange={setShowAddWorkerDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle className="text-2xl">Tambah Nama Petugas</DialogTitle>
           </DialogHeader>
@@ -1914,7 +2039,7 @@ export default function EntriTarget() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Cari nama atau kecamatan petugas..."
+                placeholder="Cari nama, NIK, atau kecamatan petugas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -1953,6 +2078,7 @@ export default function EntriTarget() {
                         />
                       </TableHead>
                       <TableHead>Nama Petugas</TableHead>
+                      <TableHead>NIK</TableHead>
                       <TableHead>Kecamatan</TableHead>
                       <TableHead>Pekerjaan</TableHead>
                       <TableHead className="w-28">Target</TableHead>
@@ -1962,15 +2088,14 @@ export default function EntriTarget() {
                   <TableBody>
                     {filteredWorkers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredWorkers.map((petugas) => {
                         const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.id === petugas.id);
-                        const petugasData = petugasFromSheet.find(p => p.id === petugas.id);
-                        const kecamatan = petugasData?.kecamatan || '';
+                        const kecamatan = petugas.kecamatan || '';
                         
                         return (
                           <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50" : ""}>
@@ -1991,6 +2116,7 @@ export default function EntriTarget() {
                               />
                             </TableCell>
                             <TableCell>{petugas.nama} {isAlreadyAdded && "(Sudah terdaftar)"}</TableCell>
+                            <TableCell>{petugas.nip}</TableCell>
                             <TableCell>{kecamatan}</TableCell>
                             <TableCell>{petugas.jabatan}</TableCell>
                             <TableCell>
