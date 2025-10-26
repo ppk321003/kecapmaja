@@ -721,7 +721,7 @@ const loadMasterMitraData = async (): Promise<void> => {
     
     dataRows.forEach((row: any[]) => {
       const nik = row[1]?.toString()?.trim() || ''; // Kolom NIK
-      const kecamatan = row[6]?.toString()?.trim() || ''; // Kolom Kecamatan (index 6)
+      const kecamatan = row[7]?.toString()?.trim() || ''; // Kolom Kecamatan (index 7)
       
       if (nik && kecamatan) {
         kecamatanMap.set(nik, kecamatan);
