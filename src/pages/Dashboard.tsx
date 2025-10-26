@@ -161,6 +161,29 @@ const RoleTooltip = ({ data, position }: { data: RoleTooltipData, position: { x:
   );
 };
 
+// PERBAIKAN UTAMA: Fungsi untuk mengekstrak nama dari kombinasi nama + NIK untuk tampilan UI
+const extractDisplayName = (namaNik: string): string => {
+  // Jika tidak mengandung pipe, kembalikan string asli
+  if (!namaNik.includes('|')) return namaNik;
+  
+  // Split dan ambil bagian nama saja (sebelum pipe pertama)
+  const parts = namaNik.split('|');
+  return parts[0].trim();
+};
+
+// FUNGSI BARU: Untuk format tampilan "Nama | Kecamatan" di Risk Assessment
+const formatDisplayNameWithKecamatan = (namaNik: string): string => {
+  // Jika tidak mengandung pipe, kembalikan string asli
+  if (!namaNik.includes('|')) return namaNik;
+  
+  // Split dan format menjadi "Nama | Kecamatan"
+  const parts = namaNik.split('|');
+  const nama = parts[0].trim();
+  const kecamatan = parts[1] ? parts[1].trim() : '';
+  
+  return kecamatan ? `${nama} | ${kecamatan}` : nama;
+};
+
 // Komponen RiskTooltip untuk hover di risk matrix - POSISI DI SAMPING BARIS
 const RiskTooltip = ({ 
   data, 
@@ -185,7 +208,8 @@ const RiskTooltip = ({
       <div className="space-y-2 text-xs">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Mitra:</span>
-          <span className="font-medium">{data.petugas}</span>
+          {/* PERUBAHAN: Format tampilan menjadi "Nama | Kecamatan" */}
+          <span className="font-medium">{formatDisplayNameWithKecamatan(data.petugas)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Jumlah Kegiatan:</span>
@@ -361,7 +385,8 @@ const RiskItem = ({
       onMouseLeave={handleMouseLeave}
     >
       <div className="flex-1">
-        <h4 className="font-semibold">{item.name}</h4>
+        {/* PERUBAHAN: Format tampilan menjadi "Nama | Kecamatan" */}
+        <h4 className="font-semibold">{formatDisplayNameWithKecamatan(item.name)}</h4>
         <div className="flex gap-4 text-sm text-muted-foreground mt-1">
           <span>{item.kegiatan} jenis kegiatan</span>
           <span>Rp {item.anggaran.toLocaleString('id-ID')}</span>
@@ -552,9 +577,15 @@ const RiskMatrix = ({
 }) => {
   // PERBAIKAN: Filter data berdasarkan search query dari data lengkap
   const filteredData = searchQuery 
-    ? data.filter(item => 
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? data.filter(item => {
+        const displayName = extractDisplayName(item.name);
+        const displayNameWithKecamatan = formatDisplayNameWithKecamatan(item.name);
+        return (
+          displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          displayNameWithKecamatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      })
     : data.slice(0, 10); // Tampilkan top 10 jika tidak ada search
 
   if (!data || data.length === 0) {
@@ -635,16 +666,6 @@ const calculateRealisasiLikeEntri = (hargaSatuanStr: string, realisasiQuantitySt
   const hargaSatuan = parseFloat(hargaSatuanStr) || 0;
   const realisasiQuantity = parseFloat(realisasiQuantityStr) || 0;
   return Math.round(hargaSatuan * realisasiQuantity);
-};
-
-// PERBAIKAN UTAMA: Fungsi untuk mengekstrak nama dari kombinasi nama + NIK untuk tampilan UI
-const extractDisplayName = (namaNik: string): string => {
-  // Jika tidak mengandung pipe, kembalikan string asli
-  if (!namaNik.includes('|')) return namaNik;
-  
-  // Split dan ambil bagian nama saja (sebelum pipe pertama)
-  const parts = namaNik.split('|');
-  return parts[0].trim();
 };
 
 // PERBAIKAN UTAMA: Fungsi untuk membuat identifier unik nama + NIK
@@ -913,8 +934,10 @@ export default function Dashboard() {
   const searchedWorkloadData = workloadSearchQuery 
     ? filteredWorkloadData.filter(item => {
         const displayName = extractDisplayName(item.petugas);
+        const displayNameWithKecamatan = formatDisplayNameWithKecamatan(item.petugas);
         return (
           displayName.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
+          displayNameWithKecamatan.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
           item.petugas.toLowerCase().includes(workloadSearchQuery.toLowerCase()) ||
           item.roles.some(role => role.toLowerCase().includes(workloadSearchQuery.toLowerCase()))
         );
@@ -924,8 +947,10 @@ export default function Dashboard() {
   const searchedRiskData = riskSearchQuery 
     ? filteredRiskData.filter(item => {
         const displayName = extractDisplayName(item.name);
+        const displayNameWithKecamatan = formatDisplayNameWithKecamatan(item.name);
         return (
           displayName.toLowerCase().includes(riskSearchQuery.toLowerCase()) ||
+          displayNameWithKecamatan.toLowerCase().includes(riskSearchQuery.toLowerCase()) ||
           item.name.toLowerCase().includes(riskSearchQuery.toLowerCase())
         );
       })
