@@ -538,7 +538,7 @@ export default function CekSBML() {
                     <TableRow key={`${row.namaMitra}_${row.kecamatan}`} className={row.isExceeded ? "bg-red-50" : ""}>
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
-                      <TableCell className="text-xs min-w-[120px]">{row.kecamatan || "-"}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">{row.kecamatan || "-"}</TableCell>
                       
                       {/* Kolom Pendataan dengan Tooltip */}
                       <TableCell className="text-right">
