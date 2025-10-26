@@ -573,7 +573,7 @@ export default function DownloadSPKBAST() {
                         Periode (Bulan) SPK
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
-                        Jumlah SPK
+                        Jumlah SPK/BAST
                       </th>
                       <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-700">
                         Nilai Perjanjian
