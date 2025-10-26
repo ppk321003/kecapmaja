@@ -523,12 +523,12 @@ export default function CekSBML() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
-                    <TableHead className="min-w-[150px]">Nama Mitra Statistik</TableHead>
+                    <TableHead className="min-w-[160px]">Nama Mitra Statistik</TableHead>
                     <TableHead className="min-w-[120px]">Kecamatan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pekerjaan Provinsi</TableHead>
                     <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
                     <TableHead className="w-20 text-center">Status</TableHead>
                   </TableRow>
