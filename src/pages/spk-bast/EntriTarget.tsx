@@ -70,6 +70,7 @@ type Activity = {
   jobType: string;
   spreadsheetRowIndex?: number;
   bebanAnggaran?: string;
+  dikirimKePPK?: string; // Kolom 20 (T) untuk status "Kirim ke PPK"
 };
 
 type PetugasFromSheet = {
@@ -241,7 +242,7 @@ export default function EntriTarget() {
       }
     }
 
-    // Handle format "dd/mm/yyyy"
+    // Handle format "dd/mm/yyyy" - PERBAIKAN: Prioritaskan format Indonesia
     if (str.includes('/')) {
       try {
         const parts = str.split('/').map(part => part.trim());
@@ -402,12 +403,11 @@ export default function EntriTarget() {
     return option ? option.label : value;
   };
 
-  // PERBAIKAN 2: Hitung kolom "Dikirim ke PPK" dari kolom 19 (S)
+  // PERBAIKAN 2: Hitung kolom "Dikirim ke PPK" dari kolom 20 (T)
   const calculateSentToPPK = (activities: Activity[]) => {
     return activities.filter(activity => {
-      // Asumsikan kolom 19 (S) berisi status "Kirim PPK" atau sejenisnya
-      // Untuk sekarang, kita hitung kegiatan yang memiliki minimal 1 petugas
-      return activity.workers.length > 0;
+      // Kolom 20 (T) berisi status "Kirim ke PPK"
+      return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim ke PPK");
     }).length;
   };
 
@@ -448,7 +448,7 @@ export default function EntriTarget() {
             totalRealisasi += activityRealisasi;
           });
 
-          // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk bulan ini
+          // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk bulan ini dari kolom 20 (T)
           totalSent += calculateSentToPPK(monthActivities);
         }
       });
@@ -511,7 +511,7 @@ export default function EntriTarget() {
         });
       });
 
-      // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk job type ini
+      // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk job type ini dari kolom 20 (T)
       totalSent = calculateSentToPPK(jobActivities);
       
       return {
@@ -724,6 +724,7 @@ export default function EntriTarget() {
         }
         
         const bebanAnggaran = row[18] || ''; // Kolom S untuk Beban Anggaran
+        const dikirimKePPK = row[19] || ''; // Kolom 20 (T) untuk status "Kirim ke PPK"
         
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
@@ -780,6 +781,7 @@ export default function EntriTarget() {
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2,
           bebanAnggaran,
+          dikirimKePPK, // Simpan status dari kolom 20 (T)
         };
 
         const periodKey = `${periode}-${jenisPekerjaan}`;
@@ -964,6 +966,7 @@ export default function EntriTarget() {
     });
     
     // PERBAIKAN 1: Gunakan setValue untuk setiap field dengan tanggal dari database
+    // JANGAN reset form, langsung set value untuk setiap field
     form.setValue("namaKegiatan", activity.namaKegiatan || "");
     form.setValue("tanggalMulai", activity.tanggalMulai);
     form.setValue("tanggalAkhir", activity.tanggalAkhir);
@@ -971,7 +974,7 @@ export default function EntriTarget() {
     form.setValue("satuan", activity.satuan || "");
     form.setValue("komponenPOK", activity.komponenPOK || "");
     form.setValue("nomorSK", activity.nomorSK || "");
-    form.setValue("tanggalSK", activity.tanggalSK); // TANGGAL DARI DATABASE
+    form.setValue("tanggalSK", activity.tanggalSK); // TANGGAL DARI DATABASE - TIDAK BERUBAH
     form.setValue("koordinator", activity.koordinator || "");
     
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
@@ -1231,7 +1234,7 @@ export default function EntriTarget() {
           "",
           "",
           activity.bebanAnggaran || "",
-          "",
+          "", // Kolom 20 (T) - Dikirim ke PPK, kosongkan untuk data baru
           "",
           "",
           nikList,
@@ -1298,7 +1301,7 @@ export default function EntriTarget() {
           nilaiRealisasiList,
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
-          "",
+          activity.dikirimKePPK || "", // Kolom 20 (T) - Pertahankan status "Kirim ke PPK"
           "",
           "",
           nikList,
@@ -1336,7 +1339,22 @@ export default function EntriTarget() {
     }
 
     try {
-      await updateActivityInSpreadsheet(activity);
+      // Update status "Kirim ke PPK" di kolom 20 (T)
+      const updatedActivities = activities.map(a => 
+        a.id === activityId 
+          ? { ...a, dikirimKePPK: "Kirim ke PPK" }
+          : a
+      );
+      
+      setActivitiesByPeriod(prev => ({
+        ...prev,
+        [periodKey]: updatedActivities
+      }));
+
+      const updatedActivity = updatedActivities.find(a => a.id === activityId);
+      if (updatedActivity) {
+        await updateActivityInSpreadsheet(updatedActivity);
+      }
       
       toast({
         title: "Berhasil dikirim ke PPK",
@@ -1653,7 +1671,7 @@ export default function EntriTarget() {
                                 className="h-8 w-8 text-green-600 hover:text-green-600 hover:bg-green-600/10"
                                 onClick={() => handleSendToPPK(activity.id)}
                                 title="Kirim ke PPK"
-                                disabled={activity.workers.length === 0}
+                                disabled={activity.workers.length === 0 || activity.dikirimKePPK?.includes("Kirim ke PPK")}
                               >
                                 <Send className="h-4 w-4" />
                               </Button>
@@ -1667,6 +1685,11 @@ export default function EntriTarget() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
+                            {activity.dikirimKePPK?.includes("Kirim ke PPK") && (
+                              <div className="text-xs text-green-600 font-medium mt-1">
+                                ✓ Sudah dikirim ke PPK
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                         {activity.workers.map((worker, workerIndex) => (
