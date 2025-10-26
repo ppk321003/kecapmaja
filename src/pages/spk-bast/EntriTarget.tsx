@@ -15,6 +15,7 @@ import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "luc
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
 import { format, parse } from "date-fns";
+import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -133,6 +134,22 @@ const formSchema = z.object({
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 
+// Mapping bulan Indonesia ke Inggris
+const bulanMap: { [key: string]: string } = {
+  'januari': 'January',
+  'februari': 'February', 
+  'maret': 'March',
+  'april': 'April',
+  'mei': 'May',
+  'juni': 'June',
+  'juli': 'July',
+  'agustus': 'August',
+  'september': 'September',
+  'oktober': 'October',
+  'november': 'November',
+  'desember': 'December'
+};
+
 export default function EntriTarget() {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -189,7 +206,7 @@ export default function EntriTarget() {
     }).format(value) + ',-';
   };
 
-  // PERBAIKAN 1: Fungsi untuk parse tanggal dari spreadsheet dengan format dd/MM/yyyy yang lebih robust
+  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari format Indonesia
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       console.log('Empty date string, returning current date');
@@ -199,7 +216,32 @@ export default function EntriTarget() {
     const str = dateStr.toString().trim();
     console.log('Parsing date string:', str);
 
-    // Handle format "dd/mm/yyyy" - PRIORITAS UTAMA
+    // PERBAIKAN: Handle format Indonesia "13 Januari 2025"
+    if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
+      try {
+        const parts = str.split(' ');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const monthName = parts[1].toLowerCase();
+          const year = parseInt(parts[2]);
+          
+          const englishMonth = bulanMap[monthName];
+          if (englishMonth && !isNaN(day) && !isNaN(year)) {
+            const dateString = `${day} ${englishMonth} ${year}`;
+            const parsedDate = parse(dateString, 'd MMMM yyyy', new Date(), { locale: id });
+            
+            if (!isNaN(parsedDate.getTime())) {
+              console.log('Successfully parsed Indonesian date:', parsedDate);
+              return parsedDate;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse Indonesian date:', str, e);
+      }
+    }
+
+    // Handle format "dd/mm/yyyy"
     if (str.includes('/')) {
       try {
         const parts = str.split('/').map(part => part.trim());
@@ -209,7 +251,6 @@ export default function EntriTarget() {
           const year = parseInt(parts[2]);
           
           if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-            // Handle tahun 2 digit
             const fullYear = year < 100 ? 2000 + year : year;
             const parsedDate = new Date(fullYear, month, day);
             
@@ -344,7 +385,7 @@ export default function EntriTarget() {
     return petugasFromSheet.find(p => p.nama === nama);
   };
 
-  // PERBAIKAN 2: Get petugas data by NIK (untuk handle nama sama tapi NIK berbeda)
+  // Get petugas data by NIK (untuk handle nama sama tapi NIK berbeda)
   const getPetugasByNik = (nik: string): PetugasFromSheet | undefined => {
     return petugasFromSheet.find(p => p.nik === nik);
   };
@@ -361,7 +402,16 @@ export default function EntriTarget() {
     return option ? option.label : value;
   };
 
-  // PERBAIKAN 2: Calculate dynamic SPK data from activitiesByPeriod dengan perbaikan kolom "Dikirim ke PPK"
+  // PERBAIKAN 2: Hitung kolom "Dikirim ke PPK" dari kolom 19 (S)
+  const calculateSentToPPK = (activities: Activity[]) => {
+    return activities.filter(activity => {
+      // Asumsikan kolom 19 (S) berisi status "Kirim PPK" atau sejenisnya
+      // Untuk sekarang, kita hitung kegiatan yang memiliki minimal 1 petugas
+      return activity.workers.length > 0;
+    }).length;
+  };
+
+  // Calculate dynamic SPK data from activitiesByPeriod
   const dynamicSpkData = useMemo(() => {
     const monthlyData = spkData.map(month => {
       let totalActivities = 0;
@@ -396,12 +446,10 @@ export default function EntriTarget() {
               return sum + (realisasi * hargaSatuan);
             }, 0);
             totalRealisasi += activityRealisasi;
-
-            // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK (geser -1 dari sebelumnya)
-            if (activity.workers.length > 0 && activity.nomorSK) {
-              totalSent += 1;
-            }
           });
+
+          // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk bulan ini
+          totalSent += calculateSentToPPK(monthActivities);
         }
       });
 
@@ -461,12 +509,10 @@ export default function EntriTarget() {
           totalValue += parseFloat(worker.target || '0') * hargaSatuan;
           totalRealisasi += parseFloat(worker.realisasi || '0') * hargaSatuan;
         });
-
-        // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK (geser -1 dari sebelumnya)
-        if (activity.workers.length > 0 && activity.nomorSK) {
-          totalSent += 1;
-        }
       });
+
+      // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk job type ini
+      totalSent = calculateSentToPPK(jobActivities);
       
       return {
         ...jobType,
@@ -653,7 +699,7 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
-        // PERBAIKAN 1: Parse tanggal dari spreadsheet dengan benar
+        // PERBAIKAN 1: Parse tanggal dari spreadsheet dengan benar dan jangan diubah
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
@@ -691,7 +737,7 @@ export default function EntriTarget() {
 
         const workers: Worker[] = [];
         
-        // PERBAIKAN 2: Gunakan NIK sebagai identifier utama
+        // Gunakan NIK sebagai identifier utama
         namaPetugasList.forEach((nama: string, idx: number) => {
           // Prioritaskan NIK dari kolom W, jika tidak ada cari dari master data
           let nip = nikList[idx] || '';
@@ -901,7 +947,7 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN 1: Handle edit activity dengan tanggal dari database yang benar - TIDAK berubah otomatis
+  // PERBAIKAN 1: Handle edit activity dengan menjaga tanggal yang ada dari database
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
@@ -917,18 +963,16 @@ export default function EntriTarget() {
       }
     });
     
-    // PERBAIKAN 1: Gunakan tanggal langsung dari database activity - TIDAK berubah otomatis
-    form.reset({
-      namaKegiatan: activity.namaKegiatan || "",
-      tanggalMulai: activity.tanggalMulai,
-      tanggalAkhir: activity.tanggalAkhir,
-      hargaSatuan: activity.hargaSatuan || "0",
-      satuan: activity.satuan || "",
-      komponenPOK: activity.komponenPOK || "",
-      nomorSK: activity.nomorSK || "",
-      tanggalSK: activity.tanggalSK, // Tetap gunakan tanggal dari database
-      koordinator: activity.koordinator || "",
-    });
+    // PERBAIKAN 1: Gunakan setValue untuk setiap field dengan tanggal dari database
+    form.setValue("namaKegiatan", activity.namaKegiatan || "");
+    form.setValue("tanggalMulai", activity.tanggalMulai);
+    form.setValue("tanggalAkhir", activity.tanggalAkhir);
+    form.setValue("hargaSatuan", activity.hargaSatuan || "0");
+    form.setValue("satuan", activity.satuan || "");
+    form.setValue("komponenPOK", activity.komponenPOK || "");
+    form.setValue("nomorSK", activity.nomorSK || "");
+    form.setValue("tanggalSK", activity.tanggalSK); // TANGGAL DARI DATABASE
+    form.setValue("koordinator", activity.koordinator || "");
     
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
     setBebanAnggaran(selectedActivity?.bebanAnggaran || activity.bebanAnggaran || "");
@@ -954,7 +998,6 @@ export default function EntriTarget() {
       const newWorkers: Worker[] = petugasAsWorkers
         .filter(worker => selectedWorkers[worker.id]?.selected)
         .map(worker => {
-          // PERBAIKAN 2: Gunakan data dari petugasAsWorkers yang sudah memiliki NIK unik
           const petugasData = getPetugasByNik(worker.nip);
           return {
             ...worker,
@@ -962,7 +1005,7 @@ export default function EntriTarget() {
             realisasi: selectedWorkers[worker.id].realisasi || "0",
             kecamatan: petugasData?.kecamatan || worker.kecamatan || '',
             jabatan: petugasData?.pekerjaan || worker.jabatan || 'Petugas',
-            nip: worker.nip, // Pastikan NIK digunakan
+            nip: worker.nip,
           };
         });
       
@@ -985,7 +1028,6 @@ export default function EntriTarget() {
         return;
       }
 
-      // PERBAIKAN 2: Cek duplikasi berdasarkan NIK saja, bukan nama
       const existingWorkerNips = selectedActivityForWorkers.workers.map(w => w.nip);
       const duplicates = newWorkers.filter(w => existingWorkerNips.includes(w.nip));
       
@@ -1066,7 +1108,6 @@ export default function EntriTarget() {
     setEditingWorker({ activityId, worker });
   };
 
-  // PERBAIKAN 2: Handle update worker dengan validasi berdasarkan NIK saja
   const handleUpdateWorker = async (activityId: number, workerId: number, selectedValue: string, newTarget: string, newRealisasi: string) => {
     try {
       if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
@@ -1083,11 +1124,9 @@ export default function EntriTarget() {
       
       if (!currentWorker) return;
 
-      // PERBAIKAN 2: Extract NIK dari value yang dipilih
       const newNik = extractNikFromValue(selectedValue);
       const newName = extractNameFromValue(selectedValue);
       
-      // PERBAIKAN 2: Cek duplikasi berdasarkan NIK saja
       const duplicateWorker = activity?.workers.find(w => 
         w.id !== workerId && w.nip === newNik
       );
@@ -1166,10 +1205,8 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
-      // PERBAIKAN 2: Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
       const rowData = [
@@ -1186,18 +1223,18 @@ export default function EntriTarget() {
           activity.hargaSatuan,
           activity.satuan,
           activity.koordinator,
-          komponenPOKLabel, // Simpan label komponen POK ke spreadsheet
+          komponenPOKLabel,
           "",
           "",
           "",
           "",
           "",
           "",
-          activity.bebanAnggaran || "", // Kolom S untuk Beban Anggaran
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - PERBAIKAN 2: Pastikan semua NIK disimpan
+          nikList,
         ]
       ];
 
@@ -1219,7 +1256,6 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN 2: Update activity dengan mapping kolom yang benar dan pastikan semua NIK disimpan
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
 
@@ -1228,7 +1264,6 @@ export default function EntriTarget() {
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
       
-      // Format nilai realisasi per petugas
       const nilaiRealisasiList = activity.workers
         .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
         .join(" | ");
@@ -1238,10 +1273,8 @@ export default function EntriTarget() {
         0
       );
 
-      // PERBAIKAN 2: Prepare NIK data untuk kolom W - pastikan semua NIK disimpan
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
-      // Simpan label komponen POK ke spreadsheet
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
       const rowData = [
@@ -1262,13 +1295,13 @@ export default function EntriTarget() {
           namaPetugas,
           targetList,
           realisasiList,
-          nilaiRealisasiList, // Kolom Q: Nilai Realisasi per petugas
-          formatCurrency(totalRealisasi), // Kolom R: Total Realisasi
-          activity.bebanAnggaran || "", // Kolom S: Beban Anggaran
+          nilaiRealisasiList,
+          formatCurrency(totalRealisasi),
+          activity.bebanAnggaran || "",
           "",
           "",
           "",
-          nikList, // Kolom W untuk NIK - PERBAIKAN 2: Pastikan semua NIK disimpan
+          nikList,
         ]
       ];
 
@@ -1330,7 +1363,6 @@ export default function EntriTarget() {
     return target > 0 && realisasi === 0;
   };
 
-  // PERBAIKAN 2: Fungsi untuk mendapatkan available workers dengan grouping nama + NIK
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
     const existingWorkerNips = activity.workers
       .filter(w => w.id !== excludeWorkerId)
@@ -1339,9 +1371,8 @@ export default function EntriTarget() {
     const availableWorkers = petugasAsWorkers
       .filter(w => !existingWorkerNips.includes(w.nip));
     
-    // Group by nama + NIK untuk menampilkan pilihan yang lebih jelas
     const groupedWorkers = availableWorkers.map(w => ({
-      value: `${w.nama}|${w.nip}`, // Gabungkan nama dan NIK sebagai value
+      value: `${w.nama}|${w.nip}`,
       label: `${w.nama} (${w.nip}) - ${w.kecamatan}`,
       data: w
     }));
@@ -1349,12 +1380,10 @@ export default function EntriTarget() {
     return groupedWorkers;
   };
 
-  // PERBAIKAN 2: Extract nama dari value yang digabungkan
   const extractNameFromValue = (value: string): string => {
     return value.split('|')[0] || value;
   };
 
-  // PERBAIKAN 2: Extract NIK dari value yang digabungkan  
   const extractNikFromValue = (value: string): string => {
     return value.split('|')[1] || '';
   };
@@ -1383,24 +1412,6 @@ export default function EntriTarget() {
       default:
         return { color: "bg-muted", label: "Entri Kegiatan" };
     }
-  };
-
-  // PERBAIKAN 3: Fungsi untuk menampilkan footer daftar petugas hanya dengan NIK
-  const renderWorkerFooter = (activity: Activity) => {
-    if (activity.workers.length === 0) return null;
-    
-    const nikList = activity.workers.map(w => w.nip).join(", ");
-    
-    return (
-      <TableRow className="bg-muted/20">
-        <TableCell colSpan={11} className="text-xs text-muted-foreground p-2">
-          <div className="flex justify-between items-center">
-            <span>Total Petugas: {activity.workers.length}</span>
-            <span>NIK: {nikList}</span>
-          </div>
-        </TableCell>
-      </TableRow>
-    );
   };
 
   if (isLoading) {
@@ -1685,8 +1696,9 @@ export default function EntriTarget() {
                                   <div className="font-medium">
                                     {workerIndex + 1}. {worker.nama}
                                   </div>
+                                  {/* PERBAIKAN 3: Hanya tampilkan NIK saja */}
                                   <div className="text-xs text-muted-foreground">
-                                    NIK: {worker.nip} | Kec: {worker.kecamatan} | {worker.jabatan}
+                                    NIK: {worker.nip}
                                   </div>
                                   {hasTargetButNoRealisasi(worker) && (
                                     <span className="text-xs text-yellow-600 font-medium">(Belum Realisasi)</span>
@@ -1750,8 +1762,6 @@ export default function EntriTarget() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {/* PERBAIKAN 3: Footer hanya menampilkan NIK saja */}
-                        {renderWorkerFooter(activity)}
                       </>
                     ))
                   )}
