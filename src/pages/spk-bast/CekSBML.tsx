@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle, Search, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -71,12 +71,17 @@ interface CekSBMLRow {
   detailPengolahan: { namaKegiatan: string; nilaiRealisasi: string }[];
 }
 
+type SortField = 'namaMitra' | 'jumlah';
+type SortDirection = 'asc' | 'desc';
+
 export default function CekSBML() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CekSBMLRow[]>([]);
   const [filterBulan, setFilterBulan] = useState("");
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [sbmlData, setSbmlData] = useState<SBMLData | null>(null);
+  const [sortField, setSortField] = useState<SortField>('namaMitra');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { toast } = useToast();
 
   const formatRupiah = useCallback((amount: number) => {
@@ -409,6 +414,41 @@ export default function CekSBML() {
     });
   }, [sbmlData, validateRow]);
 
+  const handleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField, sortDirection]);
+
+  const sortedData = useMemo(() => {
+    if (!data.length) return [];
+
+    return [...data].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      if (sortField === 'namaMitra') {
+        aValue = a.namaMitra.toLowerCase();
+        bValue = b.namaMitra.toLowerCase();
+      } else {
+        aValue = a.jumlah;
+        bValue = b.jumlah;
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    }).map((item, index) => ({
+      ...item,
+      no: index + 1
+    }));
+  }, [data, sortField, sortDirection]);
+
   useEffect(() => {
     if (filterTahun) {
       fetchSBMLData(filterTahun);
@@ -556,19 +596,44 @@ export default function CekSBML() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">No</TableHead>
-                    <TableHead className="min-w-[160px]">Nama Mitra Statistik</TableHead>
+                    <TableHead className="min-w-[160px]">
+                      <button
+                        className="flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                        onClick={() => handleSort('namaMitra')}
+                      >
+                        Nama Mitra Statistik
+                        <ArrowUpDown className="h-4 w-4" />
+                        {sortField === 'namaMitra' && (
+                          <span className="text-xs">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </button>
+                    </TableHead>
                     <TableHead className="min-w-[120px]">Kecamatan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
                     <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
-                    {/* PERBAIKAN: Lebar kolom Pekerjaan Provinsi disamakan dengan kolom lainnya */}
                     <TableHead className="text-right min-w-[150px] px-4">Pekerjaan Provinsi</TableHead>
-                    <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
+                    <TableHead className="text-right min-w-[120px]">
+                      <button
+                        className="flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded transition-colors ml-auto"
+                        onClick={() => handleSort('jumlah')}
+                      >
+                        Jumlah
+                        <ArrowUpDown className="h-4 w-4" />
+                        {sortField === 'jumlah' && (
+                          <span className="text-xs">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </button>
+                    </TableHead>
                     <TableHead className="w-16 text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.map((row, index) => (
+                  {sortedData.map((row, index) => (
                     <TableRow key={`${row.namaMitra}_${row.nik}`} className={row.isExceeded ? "bg-red-50" : ""}>
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
@@ -613,7 +678,6 @@ export default function CekSBML() {
                         </HonorTooltip>
                       </TableCell>
                       
-                      {/* PERBAIKAN: Penempatan field Pekerjaan Provinsi yang lebih proporsional */}
                       <TableCell className="px-4 min-w-[150px]">
                         <div className="flex justify-end">
                           <Input
