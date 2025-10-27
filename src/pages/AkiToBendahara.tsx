@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
 interface DataRow {
@@ -20,6 +21,8 @@ interface DataRow {
   jumlah: number;
   [key: string]: string | number;
 }
+
+const SPREADSHEET_ID = "1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
 
 export default function AkiToBendahara() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -37,65 +40,11 @@ export default function AkiToBendahara() {
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
 
-  // Data dummy untuk testing - ganti dengan data real nanti
-  const dummyData: DataRow[] = [
-    {
-      no: 1,
-      bulan: "Januari",
-      tahun: 2024,
-      namaPetugas: "Ahmad Susanto",
-      namaBank: "BCA",
-      noRekening: "1234567890",
-      jumlah: 2500000,
-      "Sensus Pertanian": 1500000,
-      "Survei Sosial": 1000000,
-    },
-    {
-      no: 2,
-      bulan: "Januari",
-      tahun: 2024,
-      namaPetugas: "Siti Rahayu",
-      namaBank: "BRI",
-      noRekening: "0987654321",
-      jumlah: 3000000,
-      "Sensus Pertanian": 2000000,
-      "Pengolahan Data": 1000000,
-    },
-    {
-      no: 3,
-      bulan: "Februari",
-      tahun: 2024,
-      namaPetugas: "Budi Santoso",
-      namaBank: "BNI",
-      noRekening: "1122334455",
-      jumlah: 2750000,
-      "Survei Sosial": 1750000,
-      "Pelatihan Mitra": 1000000,
-    },
-    {
-      no: 4,
-      bulan: "Februari",
-      tahun: 2024,
-      namaPetugas: "Maya Sari",
-      namaBank: "Mandiri",
-      noRekening: "5566778899",
-      jumlah: 3200000,
-      "Sensus Pertanian": 1200000,
-      "Pengolahan Data": 1500000,
-      "Koordinasi Lapangan": 500000,
-    }
-  ];
-
-  // Fetch data - menggunakan dummy data dulu
-  const fetchData = async () => {
+  // Fetch data dari Google Sheets menggunakan Supabase function
+  const fetchDataFromSheets = async () => {
     try {
       setIsLoading(true);
       
-      // Simulasi loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Untuk production, gunakan kode ini:
-      /*
       const { data: sheetData, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -135,11 +84,7 @@ export default function AkiToBendahara() {
 
         return rowData;
       });
-      */
 
-      // Untuk sekarang gunakan dummy data
-      const processedData = dummyData;
-      
       setData(processedData);
       setFilteredData(processedData);
       
@@ -154,21 +99,16 @@ export default function AkiToBendahara() {
       console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: error.message || "Gagal memuat data",
+        description: error.message || "Gagal memuat data dari Google Sheets",
         variant: "destructive",
       });
-      
-      // Fallback ke dummy data jika error
-      setData(dummyData);
-      setFilteredData(dummyData);
-      setAvailableKegiatan(["Sensus Pertanian", "Survei Sosial", "Pengolahan Data", "Pelatihan Mitra", "Koordinasi Lapangan"]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchDataFromSheets();
   }, []);
 
   // Extract tahun unik dari data untuk filter
@@ -176,16 +116,14 @@ export default function AkiToBendahara() {
     .filter(tahun => tahun !== "0")
     .sort((a, b) => parseInt(b) - parseInt(a));
 
-  // Filter data berdasarkan search, bulan, tahun
+  // Filter data berdasarkan search, bulan, tahun, dan kegiatan
   useEffect(() => {
     let result = data;
 
     // Filter berdasarkan search term
     if (searchTerm) {
       result = result.filter(item =>
-        item.namaPetugas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.namaBank.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.noRekening.toLowerCase().includes(searchTerm.toLowerCase())
+        item.namaPetugas.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -200,6 +138,31 @@ export default function AkiToBendahara() {
     }
 
     setFilteredData(result);
+
+    // Update available kegiatan berdasarkan data yang terfilter
+    if (result.length > 0) {
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      
+      // Dapatkan kegiatan yang memiliki nilai (tidak semua 0) pada data terfilter
+      const relevantKegiatan = availableKegiatan.filter(kegiatan => {
+        return result.some(item => {
+          const value = item[kegiatan];
+          return typeof value === 'number' && value > 0;
+        });
+      });
+
+      setAvailableKegiatan(relevantKegiatan);
+      
+      // Hapus selectedKegiatan yang tidak relevan lagi
+      if (selectedKegiatan.length > 0) {
+        const filteredSelectedKegiatan = selectedKegiatan.filter(kegiatan => 
+          relevantKegiatan.includes(kegiatan)
+        );
+        if (filteredSelectedKegiatan.length !== selectedKegiatan.length) {
+          setSelectedKegiatan(filteredSelectedKegiatan);
+        }
+      }
+    }
   }, [searchTerm, selectedBulan, selectedTahun, data]);
 
   // Reset semua filter
@@ -210,9 +173,23 @@ export default function AkiToBendahara() {
     setSelectedKegiatan([]);
   };
 
+  // Reset hanya filter kegiatan
+  const resetKegiatanFilter = () => {
+    setSelectedKegiatan([]);
+  };
+
+  // Toggle kegiatan selection
+  const toggleKegiatan = (kegiatan: string) => {
+    setSelectedKegiatan(prev => 
+      prev.includes(kegiatan) 
+        ? prev.filter(k => k !== kegiatan)
+        : [...prev, kegiatan]
+    );
+  };
+
   // Get kolom yang akan ditampilkan di table
   const getDisplayedColumns = () => {
-    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening'];
+    const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
     
     // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
     if (selectedKegiatan.length === 0) {
@@ -223,50 +200,27 @@ export default function AkiToBendahara() {
     return [...baseColumns, ...selectedKegiatan];
   };
 
-  const formatNumber = (amount: number) => {
-    return new Intl.NumberFormat('id-ID').format(amount);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
-  // Hitung total untuk setiap kolom
-  const calculateTotals = () => {
-    const totals: { [key: string]: number } = {};
-    
-    getDisplayedColumns().forEach(column => {
-      if (column !== 'no' && column !== 'namaPetugas' && column !== 'namaBank' && column !== 'noRekening') {
-        totals[column] = filteredData.reduce((sum, item) => {
-          const value = item[column];
-          return sum + (typeof value === 'number' ? value : 0);
-        }, 0);
-      }
-    });
-    
-    return totals;
-  };
+  const totalJumlah = filteredData.reduce((sum, item) => sum + item.jumlah, 0);
 
   const handleExport = () => {
     toast({
-      title: "Export Berhasil",
-      description: "Data berhasil di-export ke Excel",
+      title: "Fitur Export",
+      description: "Fitur export Excel akan segera tersedia",
     });
   };
 
   const displayedColumns = getDisplayedColumns();
-  const totals = calculateTotals();
-
-  // Dapatkan judul tabel berdasarkan filter
-  const getTableTitle = () => {
-    let title = "Rekap Honor";
-    if (selectedBulan || selectedTahun) {
-      title += " - ";
-      if (selectedBulan) title += selectedBulan;
-      if (selectedBulan && selectedTahun) title += " ";
-      if (selectedTahun) title += selectedTahun;
-    }
-    return title;
-  };
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -333,63 +287,52 @@ export default function AkiToBendahara() {
             </Button>
           </div>
 
-          {/* Filter Kegiatan - Dropdown */}
+          {/* Filter Kegiatan */}
           <div className="border-t pt-4">
-            <label className="text-sm font-medium mb-2 block">
-              Pilih Kegiatan yang Ditampilkan:
-            </label>
-            <Select 
-              value="" 
-              onValueChange={(value) => {
-                if (value && !selectedKegiatan.includes(value)) {
-                  setSelectedKegiatan([...selectedKegiatan, value]);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kegiatan untuk ditampilkan" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableKegiatan.length === 0 ? (
-                  <SelectItem value="" disabled>
-                    {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
-                  </SelectItem>
-                ) : (
-                  availableKegiatan
-                    .filter(kegiatan => !selectedKegiatan.includes(kegiatan))
-                    .map((kegiatan) => (
-                      <SelectItem key={kegiatan} value={kegiatan}>
-                        {kegiatan}
-                      </SelectItem>
-                    ))
-                )}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium">Pilih Kegiatan yang Ditampilkan:</label>
+              {selectedKegiatan.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetKegiatanFilter} className="h-8">
+                  <X className="h-3 w-3 mr-1" />
+                  Hapus Semua
+                </Button>
+              )}
+            </div>
             
-            {/* Tampilkan kegiatan yang sudah dipilih */}
+            <div className="flex flex-wrap gap-2 min-h-[40px]">
+              {availableKegiatan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
+                </p>
+              ) : (
+                availableKegiatan.map((kegiatan) => (
+                  <Badge
+                    key={kegiatan}
+                    variant={selectedKegiatan.includes(kegiatan) ? "default" : "outline"}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => toggleKegiatan(kegiatan)}
+                  >
+                    {kegiatan}
+                  </Badge>
+                ))
+              )}
+            </div>
+            
             {selectedKegiatan.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-muted-foreground mb-2">
                   Kegiatan yang dipilih ({selectedKegiatan.length}):
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1">
                   {selectedKegiatan.map((kegiatan) => (
-                    <Badge key={kegiatan} variant="secondary" className="px-3 py-1 flex items-center gap-1">
+                    <Badge key={kegiatan} variant="secondary" className="px-2 py-0 text-xs">
                       {kegiatan}
                       <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => setSelectedKegiatan(selectedKegiatan.filter(k => k !== kegiatan))}
+                        className="h-3 w-3 ml-1 cursor-pointer" 
+                        onClick={() => toggleKegiatan(kegiatan)}
                       />
                     </Badge>
                   ))}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setSelectedKegiatan([])} 
-                    className="h-6 text-xs"
-                  >
-                    Hapus Semua
-                  </Button>
                 </div>
               </div>
             )}
@@ -403,10 +346,10 @@ export default function AkiToBendahara() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
-              <CardTitle>{getTableTitle()}</CardTitle>
+              <CardTitle>Rekap Honor</CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total: {filteredData.length} petugas
+              Total: {filteredData.length} petugas • {formatCurrency(totalJumlah)}
               {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
             </div>
           </div>
@@ -419,7 +362,7 @@ export default function AkiToBendahara() {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                <p className="text-muted-foreground mt-2">Memuat data...</p>
+                <p className="text-muted-foreground mt-2">Memuat data dari Google Sheets...</p>
               </div>
             </div>
           ) : filteredData.length === 0 ? (
@@ -433,33 +376,31 @@ export default function AkiToBendahara() {
                   <TableHeader className="bg-muted">
                     <TableRow>
                       {displayedColumns.map((column, index) => {
-                        const isSticky = index < 4; // Kolom no sampai noRekening sticky
+                        const isSticky = index < 6; // Kolom no sampai noRekening sticky
+                        const stickyWidths = [
+                          '50px', '100px', '80px', '200px', '150px', '150px'
+                        ];
                         
                         return (
                           <TableHead 
                             key={column}
                             className={`
                               ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
-                              font-medium whitespace-nowrap
-                              ${column === 'no' ? 'w-16' : ''}
-                              ${column === 'namaPetugas' ? 'min-w-48' : ''}
-                              ${column === 'namaBank' ? 'min-w-32' : ''}
-                              ${column === 'noRekening' ? 'min-w-40' : ''}
-                              ${availableKegiatan.includes(column) ? 'text-right min-w-40' : ''}
+                              min-w-${isSticky ? `[${stickyWidths[index]}]` : '[200px]'}
                             `}
                             style={
                               isSticky ? { 
-                                left: index === 0 ? 0 : 
-                                  index === 1 ? '4rem' : 
-                                  index === 2 ? 'calc(4rem + 12rem)' : 
-                                  'calc(4rem + 12rem + 8rem)'
+                                left: index === 0 ? 0 : `calc(${stickyWidths.slice(0, index).reduce((sum, width) => sum + parseInt(width), 0)}px)`
                               } : {}
                             }
                           >
                             {column === 'no' ? 'No' : 
+                             column === 'bulan' ? 'Bulan' :
+                             column === 'tahun' ? 'Tahun' :
                              column === 'namaPetugas' ? 'Nama Petugas' :
                              column === 'namaBank' ? 'Nama Bank' :
-                             column === 'noRekening' ? 'No Rekening' : column}
+                             column === 'noRekening' ? 'No Rekening' :
+                             column === 'jumlah' ? 'Jumlah' : column}
                           </TableHead>
                         );
                       })}
@@ -469,31 +410,26 @@ export default function AkiToBendahara() {
                     {filteredData.map((row, rowIndex) => (
                       <TableRow key={row.no} className="hover:bg-muted/50">
                         {displayedColumns.map((column, colIndex) => {
-                          const isSticky = colIndex < 4;
+                          const isSticky = colIndex < 6;
+                          const stickyWidths = [
+                            '50px', '100px', '80px', '200px', '150px', '150px'
+                          ];
                           
                           return (
                             <TableCell 
                               key={column}
                               className={`
                                 ${isSticky ? 'sticky bg-background border-r' : ''}
-                                ${availableKegiatan.includes(column) ? 'text-right' : ''}
-                                whitespace-nowrap
-                                ${column === 'no' ? 'w-16' : ''}
-                                ${column === 'namaPetugas' ? 'min-w-48' : ''}
-                                ${column === 'namaBank' ? 'min-w-32' : ''}
-                                ${column === 'noRekening' ? 'min-w-40' : ''}
+                                ${column === 'jumlah' ? 'font-medium' : ''}
                               `}
                               style={
                                 isSticky ? { 
-                                  left: colIndex === 0 ? 0 : 
-                                    colIndex === 1 ? '4rem' : 
-                                    colIndex === 2 ? 'calc(4rem + 12rem)' : 
-                                    'calc(4rem + 12rem + 8rem)'
+                                  left: colIndex === 0 ? 0 : `calc(${stickyWidths.slice(0, colIndex).reduce((sum, width) => sum + parseInt(width), 0)}px)`
                                 } : {}
                               }
                             >
-                              {availableKegiatan.includes(column) && typeof row[column] === 'number' 
-                                ? formatNumber(Number(row[column]))
+                              {column === 'jumlah' || (availableKegiatan.includes(column) && typeof row[column] === 'number') 
+                                ? formatCurrency(Number(row[column]))
                                 : row[column]
                               }
                             </TableCell>
@@ -501,42 +437,6 @@ export default function AkiToBendahara() {
                         })}
                       </TableRow>
                     ))}
-                    
-                    {/* Baris Total */}
-                    <TableRow className="bg-muted/50 font-medium">
-                      {displayedColumns.map((column, colIndex) => {
-                        const isSticky = colIndex < 4;
-                        
-                        return (
-                          <TableCell 
-                            key={column}
-                            className={`
-                              ${isSticky ? 'sticky bg-muted border-r z-10' : ''}
-                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
-                              font-bold whitespace-nowrap
-                              ${column === 'no' ? 'w-16' : ''}
-                              ${column === 'namaPetugas' ? 'min-w-48' : ''}
-                              ${column === 'namaBank' ? 'min-w-32' : ''}
-                              ${column === 'noRekening' ? 'min-w-40' : ''}
-                            `}
-                            style={
-                              isSticky ? { 
-                                left: colIndex === 0 ? 0 : 
-                                  colIndex === 1 ? '4rem' : 
-                                  colIndex === 2 ? 'calc(4rem + 12rem)' : 
-                                  'calc(4rem + 12rem + 8rem)'
-                              } : {}
-                            }
-                          >
-                            {column === 'no' ? 'Total' : 
-                             column === 'namaPetugas' ? '' :
-                             column === 'namaBank' ? '' :
-                             column === 'noRekening' ? '' : 
-                             availableKegiatan.includes(column) ? formatNumber(totals[column] || 0) : ''}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
