@@ -31,6 +31,7 @@ export default function AkiToBendahara() {
   const [selectedTahun, setSelectedTahun] = useState("");
   const [selectedKegiatan, setSelectedKegiatan] = useState<string[]>([]);
   const [availableKegiatan, setAvailableKegiatan] = useState<string[]>([]);
+  const [allKegiatan, setAllKegiatan] = useState<string[]>([]);
   const [kegiatanSearchTerm, setKegiatanSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -44,8 +45,8 @@ export default function AkiToBendahara() {
   // Generate tahun options dari 2024 sampai 2030
   const tahunOptions = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
 
-  // Filter kegiatan berdasarkan search term
-  const filteredKegiatan = availableKegiatan.filter(kegiatan =>
+  // Filter kegiatan berdasarkan search term dari semua kegiatan
+  const filteredKegiatan = allKegiatan.filter(kegiatan =>
     kegiatan.toLowerCase().includes(kegiatanSearchTerm.toLowerCase())
   );
 
@@ -100,16 +101,22 @@ export default function AkiToBendahara() {
 
       setData(processedData);
       
-      // Extract available kegiatan dari semua data yang memiliki nilai > 0
+      // Extract semua kegiatan yang pernah ada (tidak peduli nilai)
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
-      const allKegiatan = [...new Set(processedData.flatMap(item => 
+      const semuaKegiatan = [...new Set(processedData.flatMap(item => 
+        Object.keys(item).filter(key => !baseColumns.includes(key))
+      ))];
+      setAllKegiatan(semuaKegiatan);
+
+      // Extract available kegiatan dari semua data yang memiliki nilai > 0
+      const kegiatanDenganNilai = [...new Set(processedData.flatMap(item => 
         Object.keys(item).filter(key => 
           !baseColumns.includes(key) && 
           typeof item[key] === 'number' && 
           item[key] > 0
         )
       ))];
-      setAvailableKegiatan(allKegiatan);
+      setAvailableKegiatan(kegiatanDenganNilai);
 
       toast({
         title: "Data berhasil dimuat",
@@ -142,6 +149,12 @@ export default function AkiToBendahara() {
   // Filter data berdasarkan search, bulan, tahun, dan kegiatan
   useEffect(() => {
     let result = data;
+
+    // Validasi: jika bulan dipilih, tahun harus dipilih
+    if (selectedBulan && !selectedTahun) {
+      setFilteredData([]);
+      return;
+    }
 
     // Filter berdasarkan search term
     if (searchTerm) {
@@ -201,16 +214,6 @@ export default function AkiToBendahara() {
       ))];
 
       setAvailableKegiatan(relevantKegiatan);
-      
-      // Hapus selectedKegiatan yang tidak relevan lagi
-      if (selectedKegiatan.length > 0) {
-        const filteredSelectedKegiatan = selectedKegiatan.filter(kegiatan => 
-          relevantKegiatan.includes(kegiatan)
-        );
-        if (filteredSelectedKegiatan.length !== selectedKegiatan.length) {
-          setSelectedKegiatan(filteredSelectedKegiatan);
-        }
-      }
     } else {
       setAvailableKegiatan([]);
     }
@@ -290,23 +293,24 @@ export default function AkiToBendahara() {
     .filter(column => availableKegiatan.includes(column))
     .reduce((sum, column) => sum + totals[column], 0);
 
-  // Dapatkan judul tabel berdasarkan filter dengan warna kontras
+  // Dapatkan judul tabel berdasarkan filter dengan warna merah untuk bulan dan tahun
   const getTableTitle = () => {
     let title = "Rekap Honor";
     let hasFilter = false;
+    let bulanTahunText = "";
     
     if (selectedBulan && selectedTahun) {
-      title += ` ${selectedBulan} ${selectedTahun}`;
+      bulanTahunText = ` ${selectedBulan} ${selectedTahun}`;
       hasFilter = true;
     } else if (selectedBulan) {
-      title += ` ${selectedBulan}`;
+      bulanTahunText = ` ${selectedBulan}`;
       hasFilter = true;
     } else if (selectedTahun) {
-      title += ` ${selectedTahun}`;
+      bulanTahunText = ` ${selectedTahun}`;
       hasFilter = true;
     }
     
-    return { title, hasFilter };
+    return { title, bulanTahunText, hasFilter };
   };
 
   const tableTitle = getTableTitle();
@@ -352,6 +356,11 @@ export default function AkiToBendahara() {
             <Filter className="h-5 w-5 text-primary" />
             Filter Data
           </CardTitle>
+          {selectedBulan && !selectedTahun && (
+            <p className="text-sm text-red-500 font-medium">
+              Pilih tahun terlebih dahulu untuk menampilkan data
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Filter Basic */}
@@ -421,7 +430,7 @@ export default function AkiToBendahara() {
             </div>
             
             <div className="flex flex-wrap gap-2 min-h-[40px] max-h-32 overflow-y-auto p-1">
-              {availableKegiatan.length === 0 ? (
+              {allKegiatan.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
                 </p>
@@ -471,8 +480,11 @@ export default function AkiToBendahara() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
-              <CardTitle className={tableTitle.hasFilter ? "text-primary" : ""}>
+              <CardTitle>
                 {tableTitle.title}
+                {tableTitle.hasFilter && (
+                  <span className="text-red-500 ml-1">{tableTitle.bulanTahunText}</span>
+                )}
               </CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
@@ -485,7 +497,11 @@ export default function AkiToBendahara() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {selectedBulan && !selectedTahun ? (
+            <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
+              <p className="text-muted-foreground">Pilih tahun terlebih dahulu untuk menampilkan data</p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
