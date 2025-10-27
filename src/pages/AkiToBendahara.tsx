@@ -72,7 +72,6 @@ export default function AkiToBendahara() {
           namaPetugas: row[3] || '',
           namaBank: row[4] || '',
           noRekening: row[5] || '',
-          // Kolom jumlah diabaikan (row[6] tidak diproses)
         };
 
         // Tambahkan kolom kegiatan dinamis (mulai dari kolom 7)
@@ -84,12 +83,22 @@ export default function AkiToBendahara() {
         return rowData;
       });
 
-      setData(processedData);
-      setFilteredData(processedData);
+      // Filter data: hanya simpan baris yang memiliki setidaknya satu kegiatan dengan nilai > 0
+      const filteredProcessedData = processedData.filter(item => {
+        const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
+        const kegiatanColumns = Object.keys(item).filter(key => !baseColumns.includes(key));
+        
+        return kegiatanColumns.some(kegiatan => 
+          typeof item[kegiatan] === 'number' && item[kegiatan] > 0
+        );
+      });
+
+      setData(filteredProcessedData);
+      setFilteredData(filteredProcessedData);
       
       // Extract available kegiatan dari semua data yang memiliki nilai > 0
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
-      const allKegiatan = [...new Set(processedData.flatMap(item => 
+      const allKegiatan = [...new Set(filteredProcessedData.flatMap(item => 
         Object.keys(item).filter(key => 
           !baseColumns.includes(key) && 
           typeof item[key] === 'number' && 
@@ -141,6 +150,7 @@ export default function AkiToBendahara() {
     }
 
     // Filter hanya data yang memiliki setidaknya satu kegiatan dengan nilai > 0
+    // (data sudah difilter di awal, tapi perlu difilter ulang berdasarkan availableKegiatan)
     result = result.filter(item => {
       return availableKegiatan.some(kegiatan => 
         typeof item[kegiatan] === 'number' && item[kegiatan] > 0
@@ -172,6 +182,8 @@ export default function AkiToBendahara() {
           setSelectedKegiatan(filteredSelectedKegiatan);
         }
       }
+    } else {
+      setAvailableKegiatan([]);
     }
   }, [searchTerm, selectedBulan, selectedTahun, data, availableKegiatan]);
 
