@@ -617,7 +617,7 @@ export default function CekSBML() {
                     <TableHead className="text-right min-w-[110px]">Pendataan</TableHead>
                     <TableHead className="text-right min-w-[110px]">Pemeriksaan</TableHead>
                     <TableHead className="text-right min-w-[110px]">Pengolahan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[140px]">Pekerjaan Provinsi</TableHead>
                     <TableHead className="text-right min-w-[110px]">Jumlah</TableHead>
                     <TableHead className="w-16 text-center">Status</TableHead>
                   </TableRow>
