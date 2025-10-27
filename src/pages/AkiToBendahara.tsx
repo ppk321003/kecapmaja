@@ -88,10 +88,14 @@ export default function AkiToBendahara() {
       setData(processedData);
       setFilteredData(processedData);
       
-      // Extract available kegiatan dari semua data
+      // Extract available kegiatan dari semua data yang memiliki nilai > 0
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
       const allKegiatan = [...new Set(processedData.flatMap(item => 
-        Object.keys(item).filter(key => !baseColumns.includes(key))
+        Object.keys(item).filter(key => 
+          !baseColumns.includes(key) && 
+          typeof item[key] === 'number' && 
+          item[key] > 0
+        )
       ))];
       setAvailableKegiatan(allKegiatan);
       
@@ -137,13 +141,26 @@ export default function AkiToBendahara() {
       result = result.filter(item => item.tahun.toString() === selectedTahun);
     }
 
+    // Filter hanya data yang memiliki jumlah > 0 atau kegiatan dengan nilai > 0
+    result = result.filter(item => {
+      // Jika ada jumlah > 0, tampilkan
+      if (item.jumlah > 0) return true;
+      
+      // Jika tidak ada jumlah > 0, cek apakah ada kegiatan dengan nilai > 0
+      const hasKegiatanWithValue = availableKegiatan.some(kegiatan => 
+        typeof item[kegiatan] === 'number' && item[kegiatan] > 0
+      );
+      
+      return hasKegiatanWithValue;
+    });
+
     setFilteredData(result);
 
     // Update available kegiatan berdasarkan data yang terfilter
     if (result.length > 0) {
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
       
-      // Dapatkan kegiatan yang memiliki nilai (tidak semua 0) pada data terfilter
+      // Dapatkan kegiatan yang memiliki nilai > 0 pada data terfilter
       const relevantKegiatan = availableKegiatan.filter(kegiatan => {
         return result.some(item => {
           const value = item[kegiatan];
@@ -189,7 +206,13 @@ export default function AkiToBendahara() {
 
   // Get kolom yang akan ditampilkan di table
   const getDisplayedColumns = () => {
-    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening'];
+    
+    // Tambahkan kolom jumlah hanya jika ada data dengan jumlah > 0
+    const hasJumlahData = filteredData.some(item => item.jumlah > 0);
+    if (hasJumlahData) {
+      baseColumns.push('jumlah');
+    }
     
     // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
     if (selectedKegiatan.length === 0) {
@@ -380,7 +403,8 @@ export default function AkiToBendahara() {
               <CardTitle>{getTableTitle()}</CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total: {filteredData.length} petugas • {formatNumber(totalJumlah)}
+              Total: {filteredData.length} petugas
+              {filteredData.some(item => item.jumlah > 0) && ` • ${formatNumber(totalJumlah)}`}
               {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
             </div>
           </div>
@@ -416,6 +440,7 @@ export default function AkiToBendahara() {
                             className={`
                               ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
                               font-bold
+                              ${column === 'jumlah' || availableKegiatan.includes(column) ? 'text-right' : ''}
                             `}
                             style={
                               isSticky ? { 
