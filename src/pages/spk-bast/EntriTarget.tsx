@@ -70,7 +70,7 @@ type Activity = {
   jobType: string;
   spreadsheetRowIndex?: number;
   bebanAnggaran?: string;
-  dikirimKePPK?: string;
+  dikirimKePPK?: string; // Kolom 20 (T) untuk status "Kirim ke PPK"
 };
 
 type PetugasFromSheet = {
@@ -131,9 +131,11 @@ const formSchema = z.object({
   path: ["tanggalAkhir"],
 });
 
+// Constants for spreadsheet IDs
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 
+// Mapping bulan Indonesia ke Inggris
 const bulanMap: { [key: string]: string } = {
   'januari': 'January',
   'februari': 'February', 
@@ -197,6 +199,7 @@ export default function EntriTarget() {
     },
   });
 
+  // Format currency sesuai permintaan (850.000,-)
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
       minimumFractionDigits: 0,
@@ -204,13 +207,17 @@ export default function EntriTarget() {
     }).format(value) + ',-';
   };
 
+  // PERBAIKAN UTAMA: Fungsi untuk parse tanggal dari format Indonesia
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
+      console.log('Empty date string, returning current date');
       return new Date();
     }
 
     const str = dateStr.toString().trim();
+    console.log('Parsing date string:', str);
 
+    // PERBAIKAN: Handle format Indonesia "13 Januari 2025"
     if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
       try {
         const parts = str.split(' ');
@@ -221,9 +228,11 @@ export default function EntriTarget() {
           
           const englishMonth = bulanMap[monthName];
           if (englishMonth && !isNaN(day) && !isNaN(year)) {
+            const dateString = `${day} ${englishMonth} ${year}`;
             const parsedDate = parse(str, 'd MMMM yyyy', new Date(), { locale: id });
             
             if (!isNaN(parsedDate.getTime())) {
+              console.log('Successfully parsed Indonesian date:', parsedDate);
               return parsedDate;
             }
           }
@@ -233,6 +242,7 @@ export default function EntriTarget() {
       }
     }
 
+    // Handle format "dd/mm/yyyy" - PERBAIKAN: Prioritaskan format Indonesia
     if (str.includes('/')) {
       try {
         const parts = str.split('/').map(part => part.trim());
@@ -246,6 +256,7 @@ export default function EntriTarget() {
             const parsedDate = new Date(fullYear, month, day);
             
             if (!isNaN(parsedDate.getTime())) {
+              console.log('Successfully parsed date with / format:', parsedDate);
               return parsedDate;
             }
           }
@@ -255,12 +266,15 @@ export default function EntriTarget() {
       }
     }
 
+    // Handle format Excel serial number (angka)
     if (/^\d+\.?\d*$/.test(str)) {
       try {
         const excelDate = parseFloat(str);
+        // Excel date starts from January 1, 1900 (with bug for 1900 being leap year)
         const baseDate = new Date(1900, 0, 1);
         const date = new Date(baseDate.getTime() + (excelDate - 1) * 24 * 60 * 60 * 1000);
         if (!isNaN(date.getTime())) {
+          console.log('Successfully parsed Excel date:', date);
           return date;
         }
       } catch (e) {
@@ -268,21 +282,26 @@ export default function EntriTarget() {
       }
     }
 
+    // Handle format ISO string atau format lain
     try {
       const parsed = new Date(str);
       if (!isNaN(parsed.getTime())) {
+        console.log('Successfully parsed as Date object:', parsed);
         return parsed;
       }
     } catch (e) {
       console.warn('Failed to parse as Date object:', str, e);
     }
 
+    console.warn('Could not parse date, using current date:', str);
     return new Date();
   };
 
+  // Load petugas data dari MASTER.MITRA sheet
   const loadPetugasFromSheet = async () => {
     try {
       setLoadingPetugas(true);
+      console.log('Loading petugas data from MASTER.MITRA...');
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
@@ -303,6 +322,7 @@ export default function EntriTarget() {
       }
 
       if (!data?.values || data.values.length <= 1) {
+        console.log('No petugas data in spreadsheet');
         setPetugasFromSheet([]);
         return;
       }
@@ -322,6 +342,7 @@ export default function EntriTarget() {
       );
 
       setPetugasFromSheet(petugasData);
+      console.log('Petugas data loaded:', petugasData.length, 'records');
       
     } catch (error) {
       console.error('Error loading petugas:', error);
@@ -335,6 +356,7 @@ export default function EntriTarget() {
     }
   };
 
+  // Convert petugas from sheet to worker format with kecamatan
   const petugasAsWorkers = useMemo(() => {
     return petugasFromSheet.map((petugas, index) => ({
       id: index + 1,
@@ -347,40 +369,49 @@ export default function EntriTarget() {
     }));
   }, [petugasFromSheet]);
 
+  // Get NIK from petugas data by name
   const getNikByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.nik || '';
   };
 
+  // Get kecamatan from petugas data by name
   const getKecamatanByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.kecamatan || '';
   };
 
+  // Get all petugas data by name
   const getPetugasByNama = (nama: string): PetugasFromSheet | undefined => {
     return petugasFromSheet.find(p => p.nama === nama);
   };
 
+  // Get petugas data by NIK (untuk handle nama sama tapi NIK berbeda)
   const getPetugasByNik = (nik: string): PetugasFromSheet | undefined => {
     return petugasFromSheet.find(p => p.nik === nik);
   };
 
+  // Fungsi untuk mendapatkan value komponen POK dari label
   const getKomponenPOKValueFromLabel = (label: string): string => {
     const option = komponenPOKOptions.find(opt => opt.label === label);
     return option ? option.value : label;
   };
 
+  // Fungsi untuk mendapatkan label komponen POK dari value
   const getKomponenPOKLabelFromValue = (value: string): string => {
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
   };
 
+  // PERBAIKAN 2: Hitung kolom "Dikirim ke PPK" dari kolom 20 (T)
   const calculateSentToPPK = (activities: Activity[]) => {
     return activities.filter(activity => {
+      // Kolom 20 (T) berisi status "Kirim ke PPK"
       return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim ke PPK");
     }).length;
   };
 
+  // Calculate dynamic SPK data from activitiesByPeriod
   const dynamicSpkData = useMemo(() => {
     const monthlyData = spkData.map(month => {
       let totalActivities = 0;
@@ -417,6 +448,7 @@ export default function EntriTarget() {
             totalRealisasi += activityRealisasi;
           });
 
+          // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk bulan ini dari kolom 20 (T)
           totalSent += calculateSentToPPK(monthActivities);
         }
       });
@@ -435,6 +467,7 @@ export default function EntriTarget() {
     return monthlyData;
   }, [activitiesByPeriod, selectedYear]);
 
+  // Calculate totals for the summary row
   const summaryData = useMemo(() => {
     return dynamicSpkData.reduce((acc, month) => {
       return {
@@ -455,6 +488,7 @@ export default function EntriTarget() {
     });
   }, [dynamicSpkData]);
 
+  // Calculate dynamic job types data for selected period
   const dynamicJobTypes = useMemo(() => {
     return jobTypes.map(jobType => {
       const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
@@ -477,6 +511,7 @@ export default function EntriTarget() {
         });
       });
 
+      // PERBAIKAN 2: Hitung kegiatan yang dikirim ke PPK untuk job type ini dari kolom 20 (T)
       totalSent = calculateSentToPPK(jobActivities);
       
       return {
@@ -491,11 +526,13 @@ export default function EntriTarget() {
     });
   }, [activitiesByPeriod, selectedPeriod, selectedYear]);
 
+  // Load activity options from spreadsheet based on user role
   const loadActivityOptions = async () => {
     if (!user?.role) return;
     
     try {
       setLoadingActivityOptions(true);
+      console.log('Loading activity options for role:', user.role);
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
@@ -511,6 +548,7 @@ export default function EntriTarget() {
       }
 
       if (!data?.values || data.values.length <= 1) {
+        console.log('No activity options in spreadsheet');
         setActivityOptions([]);
         return;
       }
@@ -530,6 +568,7 @@ export default function EntriTarget() {
         });
 
       setActivityOptions(options);
+      console.log('Activity options loaded:', options.length, 'options');
       
     } catch (error) {
       console.error('Error loading activity options:', error);
@@ -538,11 +577,13 @@ export default function EntriTarget() {
     }
   };
 
+  // Load koordinator options from pengelola spreadsheet based on user role
   const loadKoordinatorOptions = async () => {
     if (!user?.role) return;
     
     try {
       setLoadingKoordinatorOptions(true);
+      console.log('Loading koordinator options for role:', user.role);
       
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
@@ -558,6 +599,7 @@ export default function EntriTarget() {
       }
 
       if (!data?.values || data.values.length <= 1) {
+        console.log('No koordinator options in spreadsheet');
         setKoordinatorOptions([]);
         return;
       }
@@ -574,6 +616,7 @@ export default function EntriTarget() {
         });
 
       setKoordinatorOptions(options);
+      console.log('Koordinator options loaded:', options.length, 'options');
       
     } catch (error) {
       console.error('Error loading koordinator options:', error);
@@ -582,6 +625,7 @@ export default function EntriTarget() {
     }
   };
 
+  // Handle perubahan nama kegiatan dan mengambil beban anggaran
   const handleNamaKegiatanChange = (selectedKegiatan: string) => {
     form.setValue("namaKegiatan", selectedKegiatan);
     
@@ -589,11 +633,13 @@ export default function EntriTarget() {
     
     if (selectedActivity) {
       setBebanAnggaran(selectedActivity.bebanAnggaran);
+      console.log('Beban Anggaran untuk', selectedKegiatan, ':', selectedActivity.bebanAnggaran);
     } else {
       setBebanAnggaran("");
     }
   };
 
+  // Load data from spreadsheet on mount
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
@@ -616,6 +662,7 @@ export default function EntriTarget() {
 
   const loadDataFromSpreadsheet = async () => {
     try {
+      console.log('Loading data from spreadsheet...');
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
@@ -635,6 +682,7 @@ export default function EntriTarget() {
       }
 
       if (!data?.values || data.values.length <= 1) {
+        console.log('No data in spreadsheet');
         setActivitiesByPeriod({});
         return;
       }
@@ -651,26 +699,37 @@ export default function EntriTarget() {
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
         
+        // PERBAIKAN 1: Parse tanggal dari spreadsheet dengan benar dan jangan diubah
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
+        
+        console.log(`Activity ${namaKegiatan}:`, {
+          tanggalSKRaw: row[6],
+          tanggalSK: format(tanggalSK, "dd/MM/yyyy"),
+          tanggalMulaiRaw: row[7],
+          tanggalMulai: format(tanggalMulai, "dd/MM/yyyy"),
+          tanggalAkhirRaw: row[8],
+          tanggalAkhir: format(tanggalAkhir, "dd/MM/yyyy")
+        });
         
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
         const koordinator = row[11] || '';
         
+        // Handle komponen POK dari spreadsheet - bisa berupa value atau label
         let komponenPOK = row[12] || '';
         if (komponenPOK.includes('-')) {
           komponenPOK = getKomponenPOKValueFromLabel(komponenPOK);
         }
         
-        const bebanAnggaran = row[18] || '';
-        const dikirimKePPK = row[19] || '';
+        const bebanAnggaran = row[18] || ''; // Kolom S untuk Beban Anggaran
+        const dikirimKePPK = row[19] || ''; // Kolom 20 (T) untuk status "Kirim ke PPK"
         
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
         const realisasiStr = row[15] || '';
-        const nikListStr = row[22] || '';
+        const nikListStr = row[22] || ''; // Kolom W untuk NIK
         
         const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
         const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
@@ -679,10 +738,13 @@ export default function EntriTarget() {
 
         const workers: Worker[] = [];
         
+        // Gunakan NIK sebagai identifier utama
         namaPetugasList.forEach((nama: string, idx: number) => {
+          // Prioritaskan NIK dari kolom W, jika tidak ada cari dari master data
           let nip = nikList[idx] || '';
           
           if (!nip) {
+            // Jika tidak ada NIK di kolom W, cari berdasarkan nama
             const allMatchingPetugas = petugasFromSheet.filter(p => p.nama === nama);
             if (allMatchingPetugas.length > 0) {
               nip = allMatchingPetugas[0].nik;
@@ -719,7 +781,7 @@ export default function EntriTarget() {
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2,
           bebanAnggaran,
-          dikirimKePPK,
+          dikirimKePPK, // Simpan status dari kolom 20 (T)
         };
 
         const periodKey = `${periode}-${jenisPekerjaan}`;
@@ -730,6 +792,7 @@ export default function EntriTarget() {
       });
 
       setActivitiesByPeriod(activitiesMap);
+      console.log('Activities loaded from spreadsheet:', Object.keys(activitiesMap).length, 'periods');
       
     } catch (error) {
       console.error('Error loading from spreadsheet:', error);
@@ -867,6 +930,8 @@ export default function EntriTarget() {
 
   const deleteActivityFromSpreadsheet = async (rowIndex: number) => {
     try {
+      console.log('Deleting row from spreadsheet:', rowIndex);
+      
       const { error } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
@@ -876,15 +941,32 @@ export default function EntriTarget() {
       });
 
       if (error) throw error;
+
+      console.log('Successfully deleted row from spreadsheet');
     } catch (error) {
       console.error('Error in deleteActivityFromSpreadsheet:', error);
       throw error;
     }
   };
 
+  // PERBAIKAN 1: Handle edit activity dengan menjaga tanggal yang ada dari database
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
     
+    console.log('Editing activity with dates from database:', {
+      namaKegiatan: activity.namaKegiatan,
+      tanggalSK: activity.tanggalSK,
+      tanggalMulai: activity.tanggalMulai,
+      tanggalAkhir: activity.tanggalAkhir,
+      formatted: {
+        tanggalSK: format(activity.tanggalSK, "dd/MM/yyyy"),
+        tanggalMulai: format(activity.tanggalMulai, "dd/MM/yyyy"),
+        tanggalAkhir: format(activity.tanggalAkhir, "dd/MM/yyyy")
+      }
+    });
+    
+    // PERBAIKAN 1: Gunakan setValue untuk setiap field dengan tanggal dari database
+    // JANGAN reset form, langsung set value untuk setiap field
     form.setValue("namaKegiatan", activity.namaKegiatan || "");
     form.setValue("tanggalMulai", activity.tanggalMulai);
     form.setValue("tanggalAkhir", activity.tanggalAkhir);
@@ -892,7 +974,7 @@ export default function EntriTarget() {
     form.setValue("satuan", activity.satuan || "");
     form.setValue("komponenPOK", activity.komponenPOK || "");
     form.setValue("nomorSK", activity.nomorSK || "");
-    form.setValue("tanggalSK", activity.tanggalSK);
+    form.setValue("tanggalSK", activity.tanggalSK); // TANGGAL DARI DATABASE - TIDAK BERUBAH
     form.setValue("koordinator", activity.koordinator || "");
     
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
@@ -1112,6 +1194,7 @@ export default function EntriTarget() {
     }
   };
 
+  // Save activity dengan komponen POK yang benar (label, bukan value)
   const saveActivityToSpreadsheet = async (activity: Activity): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1151,7 +1234,7 @@ export default function EntriTarget() {
           "",
           activity.bebanAnggaran || "",
           "",
-          "",
+          "", // Kolom 20 (T) - Dikirim ke PPK, kosongkan untuk data baru
           "",
           "",
           nikList,
@@ -1218,7 +1301,7 @@ export default function EntriTarget() {
           nilaiRealisasiList,
           formatCurrency(totalRealisasi),
           activity.bebanAnggaran || "",
-          activity.dikirimKePPK || "",
+          activity.dikirimKePPK || "", // Kolom 20 (T) - Pertahankan status "Kirim ke PPK"
           "",
           "",
           nikList,
@@ -1256,6 +1339,7 @@ export default function EntriTarget() {
     }
 
     try {
+      // Update status "Kirim ke PPK" di kolom 20 (T)
       const updatedActivities = activities.map(a => 
         a.id === activityId 
           ? { ...a, dikirimKePPK: "Kirim ke PPK" }
@@ -1635,6 +1719,7 @@ export default function EntriTarget() {
                                   <div className="font-medium">
                                     {workerIndex + 1}. {worker.nama}
                                   </div>
+                                  {/* PERBAIKAN 3: Hanya tampilkan NIK saja */}
                                   <div className="text-xs text-muted-foreground">
                                     NIK: {worker.nip}
                                   </div>
@@ -1703,21 +1788,6 @@ export default function EntriTarget() {
                       </>
                     ))
                   )}
-                  
-                  {/* BARIS TOTAL DITAMBAHKAN DI SINI */}
-                  {filteredActivities.length > 0 && (
-                    <TableRow className="bg-primary/10 font-semibold">
-                      <TableCell colSpan={2} className="text-center font-bold">TOTAL</TableCell>
-                      <TableCell colSpan={8}></TableCell>
-                      <TableCell className="text-center font-bold">
-                        <div className="flex flex-col gap-1 text-xs">
-                          <div>Petugas: {filteredActivities.reduce((sum, activity) => sum + activity.workers.length, 0)}</div>
-                          <div>Target: {filteredActivities.reduce((sum, activity) => sum + activity.workers.reduce((workerSum, worker) => workerSum + parseFloat(worker.target || '0'), 0), 0)}</div>
-                          <div>Realisasi: {filteredActivities.reduce((sum, activity) => sum + activity.workers.reduce((workerSum, worker) => workerSum + parseFloat(worker.realisasi || '0'), 0), 0)}</div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </div>
@@ -1725,7 +1795,6 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog lainnya tetap sama */}
       <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
         setShowAddActivityDialog(open);
         if (!open) {
@@ -1751,7 +1820,6 @@ export default function EntriTarget() {
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Form fields tetap sama */}
               <FormField
                 control={form.control}
                 name="namaKegiatan"
