@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Search, Filter, Download, Loader2, X, RefreshCw } from "lucide-react";
+import { BookOpen, Search, Filter, Loader2, X, RefreshCw, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,11 @@ export default function AkiToBendahara() {
   const filteredKegiatan = availableKegiatan.filter(kegiatan =>
     kegiatan.toLowerCase().includes(kegiatanSearchTerm.toLowerCase())
   );
+
+  // Fungsi untuk membuka spreadsheet
+  const openSpreadsheet = () => {
+    window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`, '_blank');
+  };
 
   // Fetch data dari Google Sheets menggunakan Supabase function
   const fetchDataFromSheets = async () => {
@@ -285,20 +290,26 @@ export default function AkiToBendahara() {
     .filter(column => availableKegiatan.includes(column))
     .reduce((sum, column) => sum + totals[column], 0);
 
-  // Dapatkan judul tabel berdasarkan filter
+  // Dapatkan judul tabel berdasarkan filter dengan warna kontras
   const getTableTitle = () => {
     let title = "Rekap Honor";
+    let hasFilter = false;
     
     if (selectedBulan && selectedTahun) {
       title += ` ${selectedBulan} ${selectedTahun}`;
+      hasFilter = true;
     } else if (selectedBulan) {
       title += ` ${selectedBulan}`;
+      hasFilter = true;
     } else if (selectedTahun) {
       title += ` ${selectedTahun}`;
+      hasFilter = true;
     }
     
-    return title;
+    return { title, hasFilter };
   };
+
+  const tableTitle = getTableTitle();
 
   return (
     <div className="space-y-6">
@@ -310,18 +321,28 @@ export default function AkiToBendahara() {
             Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
           </p>
         </div>
-        <Button 
-          onClick={handleRefresh} 
-          disabled={isRefreshing}
-          className="mt-4 sm:mt-0"
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          {isRefreshing ? "Memuat..." : "Refresh"}
-        </Button>
+        <div className="flex gap-2 mt-4 sm:mt-0">
+          <Button 
+            variant="outline"
+            onClick={openSpreadsheet}
+            className="flex items-center gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Buka Spreadsheet
+          </Button>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {isRefreshing ? "Memuat..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {/* Filter Section */}
@@ -450,7 +471,9 @@ export default function AkiToBendahara() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
-              <CardTitle>{getTableTitle()}</CardTitle>
+              <CardTitle className={tableTitle.hasFilter ? "text-primary" : ""}>
+                {tableTitle.title}
+              </CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
               Total: {filteredData.length} petugas
