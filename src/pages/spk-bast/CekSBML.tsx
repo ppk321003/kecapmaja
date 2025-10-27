@@ -676,7 +676,7 @@ export default function CekSBML() {
                           type="text"
                           value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
                           onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right w-20 h-8 text-sm"
+                          className="text-right w-28 h-8 text-sm"
                           placeholder="0"
                         />
                       </TableCell>
