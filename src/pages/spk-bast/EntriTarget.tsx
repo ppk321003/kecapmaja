@@ -1912,7 +1912,7 @@ export default function EntriTarget() {
                 {getJobTypeInfo(selectedJobType).label}
               </AlertDescription>
             </Alert>
-          );
+          )}
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
