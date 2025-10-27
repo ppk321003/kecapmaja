@@ -18,7 +18,6 @@ interface DataRow {
   namaPetugas: string;
   namaBank: string;
   noRekening: string;
-  jumlah: number;
   [key: string]: string | number;
 }
 
@@ -73,10 +72,10 @@ export default function AkiToBendahara() {
           namaPetugas: row[3] || '',
           namaBank: row[4] || '',
           noRekening: row[5] || '',
-          jumlah: parseInt(row[6]) || 0,
+          // Kolom jumlah diabaikan (row[6] tidak diproses)
         };
 
-        // Tambahkan kolom kegiatan dinamis
+        // Tambahkan kolom kegiatan dinamis (mulai dari kolom 7)
         headers.slice(7).forEach((header: string, colIndex: number) => {
           const value = row[7 + colIndex];
           rowData[header] = value ? parseInt(value) : 0;
@@ -89,7 +88,7 @@ export default function AkiToBendahara() {
       setFilteredData(processedData);
       
       // Extract available kegiatan dari semua data yang memiliki nilai > 0
-      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
       const allKegiatan = [...new Set(processedData.flatMap(item => 
         Object.keys(item).filter(key => 
           !baseColumns.includes(key) && 
@@ -141,24 +140,18 @@ export default function AkiToBendahara() {
       result = result.filter(item => item.tahun.toString() === selectedTahun);
     }
 
-    // Filter hanya data yang memiliki jumlah > 0 atau kegiatan dengan nilai > 0
+    // Filter hanya data yang memiliki setidaknya satu kegiatan dengan nilai > 0
     result = result.filter(item => {
-      // Jika ada jumlah > 0, tampilkan
-      if (item.jumlah > 0) return true;
-      
-      // Jika tidak ada jumlah > 0, cek apakah ada kegiatan dengan nilai > 0
-      const hasKegiatanWithValue = availableKegiatan.some(kegiatan => 
+      return availableKegiatan.some(kegiatan => 
         typeof item[kegiatan] === 'number' && item[kegiatan] > 0
       );
-      
-      return hasKegiatanWithValue;
     });
 
     setFilteredData(result);
 
     // Update available kegiatan berdasarkan data yang terfilter
     if (result.length > 0) {
-      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
       
       // Dapatkan kegiatan yang memiliki nilai > 0 pada data terfilter
       const relevantKegiatan = availableKegiatan.filter(kegiatan => {
@@ -180,7 +173,7 @@ export default function AkiToBendahara() {
         }
       }
     }
-  }, [searchTerm, selectedBulan, selectedTahun, data]);
+  }, [searchTerm, selectedBulan, selectedTahun, data, availableKegiatan]);
 
   // Reset semua filter
   const resetFilters = () => {
@@ -207,12 +200,6 @@ export default function AkiToBendahara() {
   // Get kolom yang akan ditampilkan di table
   const getDisplayedColumns = () => {
     const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening'];
-    
-    // Tambahkan kolom jumlah hanya jika ada data dengan jumlah > 0
-    const hasJumlahData = filteredData.some(item => item.jumlah > 0);
-    if (hasJumlahData) {
-      baseColumns.push('jumlah');
-    }
     
     // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
     if (selectedKegiatan.length === 0) {
@@ -247,9 +234,13 @@ export default function AkiToBendahara() {
     return totals;
   };
 
-  const totalJumlah = filteredData.reduce((sum, item) => sum + item.jumlah, 0);
   const displayedColumns = getDisplayedColumns();
   const totals = calculateTotals();
+
+  // Hitung total keseluruhan dari semua kolom kegiatan
+  const totalKeseluruhan = displayedColumns
+    .filter(column => availableKegiatan.includes(column))
+    .reduce((sum, column) => sum + totals[column], 0);
 
   // Dapatkan judul tabel berdasarkan filter
   const getTableTitle = () => {
@@ -404,8 +395,7 @@ export default function AkiToBendahara() {
             </div>
             <div className="text-sm text-muted-foreground">
               Total: {filteredData.length} petugas
-              {filteredData.some(item => item.jumlah > 0) && ` • ${formatNumber(totalJumlah)}`}
-              {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
+              {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan • ${formatNumber(totalKeseluruhan)}`}
             </div>
           </div>
           <CardDescription>
@@ -440,7 +430,7 @@ export default function AkiToBendahara() {
                             className={`
                               ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
                               font-bold
-                              ${column === 'jumlah' || availableKegiatan.includes(column) ? 'text-right' : ''}
+                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
                             `}
                             style={
                               isSticky ? { 
@@ -451,8 +441,7 @@ export default function AkiToBendahara() {
                             {column === 'no' ? 'No' : 
                              column === 'namaPetugas' ? 'Nama Petugas' :
                              column === 'namaBank' ? 'Nama Bank' :
-                             column === 'noRekening' ? 'No Rekening' :
-                             column === 'jumlah' ? 'Jumlah' : column}
+                             column === 'noRekening' ? 'No Rekening' : column}
                           </TableHead>
                         );
                       })}
@@ -470,7 +459,7 @@ export default function AkiToBendahara() {
                               key={column}
                               className={`
                                 ${isSticky ? 'sticky bg-background border-r' : ''}
-                                ${column === 'jumlah' || availableKegiatan.includes(column) ? 'font-medium text-right' : ''}
+                                ${availableKegiatan.includes(column) ? 'font-medium text-right' : ''}
                               `}
                               style={
                                 isSticky ? { 
@@ -479,7 +468,7 @@ export default function AkiToBendahara() {
                               }
                             >
                               {column === 'no' ? row[column] :
-                               column === 'jumlah' || (availableKegiatan.includes(column) && typeof row[column] === 'number') 
+                               availableKegiatan.includes(column) && typeof row[column] === 'number'
                                 ? formatNumber(Number(row[column]))
                                 : row[column]
                               }
@@ -500,7 +489,7 @@ export default function AkiToBendahara() {
                             key={`total-${column}`}
                             className={`
                               ${isSticky ? 'sticky bg-muted border-r z-10' : ''}
-                              ${column === 'jumlah' || availableKegiatan.includes(column) ? 'text-right' : ''}
+                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
                             `}
                             style={
                               isSticky ? { 
@@ -511,7 +500,7 @@ export default function AkiToBendahara() {
                             {column === 'no' ? 'Total' :
                              column === 'namaPetugas' ? `${filteredData.length} Petugas` :
                              column === 'namaBank' || column === 'noRekening' ? '' :
-                             column === 'jumlah' || availableKegiatan.includes(column) 
+                             availableKegiatan.includes(column) 
                                ? formatNumber(totals[column])
                                : ''
                             }
