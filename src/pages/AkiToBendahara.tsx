@@ -45,8 +45,8 @@ export default function AkiToBendahara() {
   // Generate tahun options dari 2024 sampai 2030
   const tahunOptions = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
 
-  // Filter kegiatan berdasarkan search term dari semua kegiatan
-  const filteredKegiatan = allKegiatan.filter(kegiatan =>
+  // Filter kegiatan berdasarkan search term dari available kegiatan
+  const filteredKegiatan = availableKegiatan.filter(kegiatan =>
     kegiatan.toLowerCase().includes(kegiatanSearchTerm.toLowerCase())
   );
 
@@ -108,7 +108,7 @@ export default function AkiToBendahara() {
       ))];
       setAllKegiatan(semuaKegiatan);
 
-      // Extract available kegiatan dari semua data yang memiliki nilai > 0
+      // Set available kegiatan awal dari semua data yang memiliki nilai > 0
       const kegiatanDenganNilai = [...new Set(processedData.flatMap(item => 
         Object.keys(item).filter(key => 
           !baseColumns.includes(key) && 
@@ -145,6 +145,50 @@ export default function AkiToBendahara() {
   useEffect(() => {
     fetchDataFromSheets();
   }, []);
+
+  // Update available kegiatan berdasarkan bulan dan tahun yang dipilih
+  useEffect(() => {
+    if (data.length === 0) return;
+
+    let filteredByBulanTahun = data;
+
+    // Filter berdasarkan bulan jika dipilih
+    if (selectedBulan) {
+      filteredByBulanTahun = filteredByBulanTahun.filter(item => item.bulan === selectedBulan);
+    }
+
+    // Filter berdasarkan tahun jika dipilih
+    if (selectedTahun) {
+      filteredByBulanTahun = filteredByBulanTahun.filter(item => item.tahun.toString() === selectedTahun);
+    }
+
+    // Jika tidak ada filter bulan dan tahun, gunakan semua data
+    if (!selectedBulan && !selectedTahun) {
+      filteredByBulanTahun = data;
+    }
+
+    // Dapatkan kegiatan yang memiliki nilai > 0 pada data yang sudah difilter bulan/tahun
+    const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
+    const relevantKegiatan = [...new Set(filteredByBulanTahun.flatMap(item => 
+      Object.keys(item).filter(key => 
+        !baseColumns.includes(key) && 
+        typeof item[key] === 'number' && 
+        item[key] > 0
+      )
+    ))];
+
+    setAvailableKegiatan(relevantKegiatan);
+
+    // Hapus selectedKegiatan yang tidak relevan lagi dengan filter bulan/tahun
+    if (selectedKegiatan.length > 0) {
+      const filteredSelectedKegiatan = selectedKegiatan.filter(kegiatan => 
+        relevantKegiatan.includes(kegiatan)
+      );
+      if (filteredSelectedKegiatan.length !== selectedKegiatan.length) {
+        setSelectedKegiatan(filteredSelectedKegiatan);
+      }
+    }
+  }, [selectedBulan, selectedTahun, data, selectedKegiatan]);
 
   // Filter data berdasarkan search, bulan, tahun, dan kegiatan
   useEffect(() => {
@@ -200,23 +244,6 @@ export default function AkiToBendahara() {
 
     setFilteredData(resultWithDynamicNo);
 
-    // Update available kegiatan berdasarkan data yang terfilter
-    if (result.length > 0) {
-      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
-      
-      // Dapatkan kegiatan yang memiliki nilai > 0 pada data terfilter
-      const relevantKegiatan = [...new Set(result.flatMap(item => 
-        Object.keys(item).filter(key => 
-          !baseColumns.includes(key) && 
-          typeof item[key] === 'number' && 
-          item[key] > 0
-        )
-      ))];
-
-      setAvailableKegiatan(relevantKegiatan);
-    } else {
-      setAvailableKegiatan([]);
-    }
   }, [searchTerm, selectedBulan, selectedTahun, selectedKegiatan, data]);
 
   // Reset semua filter
@@ -430,9 +457,9 @@ export default function AkiToBendahara() {
             </div>
             
             <div className="flex flex-wrap gap-2 min-h-[40px] max-h-32 overflow-y-auto p-1">
-              {allKegiatan.length === 0 ? (
+              {availableKegiatan.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
+                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia untuk filter yang dipilih"}
                 </p>
               ) : filteredKegiatan.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
