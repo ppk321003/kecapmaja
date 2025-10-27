@@ -138,6 +138,31 @@ export default function AkiToBendahara() {
     }
 
     setFilteredData(result);
+
+    // Update available kegiatan berdasarkan data yang terfilter
+    if (result.length > 0) {
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      
+      // Dapatkan kegiatan yang memiliki nilai (tidak semua 0) pada data terfilter
+      const relevantKegiatan = availableKegiatan.filter(kegiatan => {
+        return result.some(item => {
+          const value = item[kegiatan];
+          return typeof value === 'number' && value > 0;
+        });
+      });
+
+      setAvailableKegiatan(relevantKegiatan);
+      
+      // Hapus selectedKegiatan yang tidak relevan lagi
+      if (selectedKegiatan.length > 0) {
+        const filteredSelectedKegiatan = selectedKegiatan.filter(kegiatan => 
+          relevantKegiatan.includes(kegiatan)
+        );
+        if (filteredSelectedKegiatan.length !== selectedKegiatan.length) {
+          setSelectedKegiatan(filteredSelectedKegiatan);
+        }
+      }
+    }
   }, [searchTerm, selectedBulan, selectedTahun, data]);
 
   // Reset semua filter
@@ -148,9 +173,23 @@ export default function AkiToBendahara() {
     setSelectedKegiatan([]);
   };
 
+  // Reset hanya filter kegiatan
+  const resetKegiatanFilter = () => {
+    setSelectedKegiatan([]);
+  };
+
+  // Toggle kegiatan selection
+  const toggleKegiatan = (kegiatan: string) => {
+    setSelectedKegiatan(prev => 
+      prev.includes(kegiatan) 
+        ? prev.filter(k => k !== kegiatan)
+        : [...prev, kegiatan]
+    );
+  };
+
   // Get kolom yang akan ditampilkan di table
   const getDisplayedColumns = () => {
-    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+    const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
     
     // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
     if (selectedKegiatan.length === 0) {
@@ -161,28 +200,15 @@ export default function AkiToBendahara() {
     return [...baseColumns, ...selectedKegiatan];
   };
 
-  const formatNumber = (amount: number) => {
-    return new Intl.NumberFormat('id-ID').format(amount);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
-  // Hitung total untuk setiap kolom
-  const calculateTotals = () => {
-    const totals: { [key: string]: number } = {};
-    const displayedColumns = getDisplayedColumns();
-
-    displayedColumns.forEach(column => {
-      if (column === 'no' || column === 'namaPetugas' || column === 'namaBank' || column === 'noRekening') {
-        totals[column] = 0;
-      } else {
-        totals[column] = filteredData.reduce((sum, item) => {
-          const value = item[column];
-          return sum + (typeof value === 'number' ? value : 0);
-        }, 0);
-      }
-    });
-
-    return totals;
-  };
+  const totalJumlah = filteredData.reduce((sum, item) => sum + item.jumlah, 0);
 
   const handleExport = () => {
     toast({
@@ -192,20 +218,6 @@ export default function AkiToBendahara() {
   };
 
   const displayedColumns = getDisplayedColumns();
-  const totals = calculateTotals();
-
-  // Dapatkan judul tabel berdasarkan filter
-  const getTableTitle = () => {
-    let title = "Rekap Honor";
-    if (selectedBulan && selectedTahun) {
-      title += ` ${selectedBulan} ${selectedTahun}`;
-    } else if (selectedBulan) {
-      title += ` ${selectedBulan}`;
-    } else if (selectedTahun) {
-      title += ` ${selectedTahun}`;
-    }
-    return title;
-  };
 
   return (
     <div className="space-y-6">
@@ -275,47 +287,36 @@ export default function AkiToBendahara() {
             </Button>
           </div>
 
-          {/* Filter Kegiatan - Dropdown */}
+          {/* Filter Kegiatan */}
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium">Pilih Kegiatan yang Ditampilkan:</label>
               {selectedKegiatan.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedKegiatan([])} className="h-8">
+                <Button variant="ghost" size="sm" onClick={resetKegiatanFilter} className="h-8">
                   <X className="h-3 w-3 mr-1" />
                   Hapus Semua
                 </Button>
               )}
             </div>
             
-            <Select 
-              value="" 
-              onValueChange={(value) => {
-                if (value && !selectedKegiatan.includes(value)) {
-                  setSelectedKegiatan([...selectedKegiatan, value]);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kegiatan untuk ditampilkan" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableKegiatan.length === 0 ? (
-                  <SelectItem value="" disabled>
-                    {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
-                  </SelectItem>
-                ) : (
-                  availableKegiatan.map((kegiatan) => (
-                    <SelectItem 
-                      key={kegiatan} 
-                      value={kegiatan}
-                      disabled={selectedKegiatan.includes(kegiatan)}
-                    >
-                      {kegiatan}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2 min-h-[40px]">
+              {availableKegiatan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
+                </p>
+              ) : (
+                availableKegiatan.map((kegiatan) => (
+                  <Badge
+                    key={kegiatan}
+                    variant={selectedKegiatan.includes(kegiatan) ? "default" : "outline"}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => toggleKegiatan(kegiatan)}
+                  >
+                    {kegiatan}
+                  </Badge>
+                ))
+              )}
+            </div>
             
             {selectedKegiatan.length > 0 && (
               <div className="mt-3">
@@ -328,7 +329,7 @@ export default function AkiToBendahara() {
                       {kegiatan}
                       <X 
                         className="h-3 w-3 ml-1 cursor-pointer" 
-                        onClick={() => setSelectedKegiatan(selectedKegiatan.filter(k => k !== kegiatan))}
+                        onClick={() => toggleKegiatan(kegiatan)}
                       />
                     </Badge>
                   ))}
@@ -345,10 +346,10 @@ export default function AkiToBendahara() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
-              <CardTitle>{getTableTitle()}</CardTitle>
+              <CardTitle>Rekap Honor</CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total: {filteredData.length} petugas • {formatNumber(totals.jumlah)}
+              Total: {filteredData.length} petugas • {formatCurrency(totalJumlah)}
               {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
             </div>
           </div>
@@ -375,15 +376,17 @@ export default function AkiToBendahara() {
                   <TableHeader className="bg-muted">
                     <TableRow>
                       {displayedColumns.map((column, index) => {
-                        const isSticky = index < 4; // Kolom no sampai noRekening sticky
-                        const stickyWidths = ['50px', '200px', '150px', '150px'];
+                        const isSticky = index < 6; // Kolom no sampai noRekening sticky
+                        const stickyWidths = [
+                          '50px', '100px', '80px', '200px', '150px', '150px'
+                        ];
                         
                         return (
                           <TableHead 
                             key={column}
                             className={`
                               ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
-                              font-semibold
+                              min-w-${isSticky ? `[${stickyWidths[index]}]` : '[200px]'}
                             `}
                             style={
                               isSticky ? { 
@@ -392,6 +395,8 @@ export default function AkiToBendahara() {
                             }
                           >
                             {column === 'no' ? 'No' : 
+                             column === 'bulan' ? 'Bulan' :
+                             column === 'tahun' ? 'Tahun' :
                              column === 'namaPetugas' ? 'Nama Petugas' :
                              column === 'namaBank' ? 'Nama Bank' :
                              column === 'noRekening' ? 'No Rekening' :
@@ -405,15 +410,17 @@ export default function AkiToBendahara() {
                     {filteredData.map((row, rowIndex) => (
                       <TableRow key={row.no} className="hover:bg-muted/50">
                         {displayedColumns.map((column, colIndex) => {
-                          const isSticky = colIndex < 4;
-                          const stickyWidths = ['50px', '200px', '150px', '150px'];
+                          const isSticky = colIndex < 6;
+                          const stickyWidths = [
+                            '50px', '100px', '80px', '200px', '150px', '150px'
+                          ];
                           
                           return (
                             <TableCell 
                               key={column}
                               className={`
                                 ${isSticky ? 'sticky bg-background border-r' : ''}
-                                ${column === 'jumlah' || availableKegiatan.includes(column) ? 'font-mono text-right' : ''}
+                                ${column === 'jumlah' ? 'font-medium' : ''}
                               `}
                               style={
                                 isSticky ? { 
@@ -422,7 +429,7 @@ export default function AkiToBendahara() {
                               }
                             >
                               {column === 'jumlah' || (availableKegiatan.includes(column) && typeof row[column] === 'number') 
-                                ? formatNumber(Number(row[column]))
+                                ? formatCurrency(Number(row[column]))
                                 : row[column]
                               }
                             </TableCell>
@@ -430,33 +437,6 @@ export default function AkiToBendahara() {
                         })}
                       </TableRow>
                     ))}
-                    
-                    {/* Baris Total */}
-                    <TableRow className="bg-muted/50 font-semibold">
-                      {displayedColumns.map((column, colIndex) => {
-                        const isSticky = colIndex < 4;
-                        const stickyWidths = ['50px', '200px', '150px', '150px'];
-                        
-                        return (
-                          <TableCell 
-                            key={column}
-                            className={`
-                              ${isSticky ? 'sticky bg-muted border-r z-10' : ''}
-                              ${column === 'jumlah' || availableKegiatan.includes(column) ? 'font-mono text-right' : ''}
-                            `}
-                            style={
-                              isSticky ? { 
-                                left: colIndex === 0 ? 0 : `calc(${stickyWidths.slice(0, colIndex).reduce((sum, width) => sum + parseInt(width), 0)}px)`
-                              } : {}
-                            }
-                          >
-                            {column === 'no' ? 'Total' : 
-                             column === 'namaPetugas' || column === 'namaBank' || column === 'noRekening' ? '' :
-                             formatNumber(totals[column])}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
