@@ -83,22 +83,11 @@ export default function AkiToBendahara() {
         return rowData;
       });
 
-      // Filter data: hanya simpan baris yang memiliki setidaknya satu kegiatan dengan nilai > 0
-      const filteredProcessedData = processedData.filter(item => {
-        const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
-        const kegiatanColumns = Object.keys(item).filter(key => !baseColumns.includes(key));
-        
-        return kegiatanColumns.some(kegiatan => 
-          typeof item[kegiatan] === 'number' && item[kegiatan] > 0
-        );
-      });
-
-      setData(filteredProcessedData);
-      setFilteredData(filteredProcessedData);
+      setData(processedData);
       
       // Extract available kegiatan dari semua data yang memiliki nilai > 0
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
-      const allKegiatan = [...new Set(filteredProcessedData.flatMap(item => 
+      const allKegiatan = [...new Set(processedData.flatMap(item => 
         Object.keys(item).filter(key => 
           !baseColumns.includes(key) && 
           typeof item[key] === 'number' && 
@@ -149,27 +138,45 @@ export default function AkiToBendahara() {
       result = result.filter(item => item.tahun.toString() === selectedTahun);
     }
 
-    // Filter hanya data yang memiliki setidaknya satu kegiatan dengan nilai > 0
-    // (data sudah difilter di awal, tapi perlu difilter ulang berdasarkan availableKegiatan)
-    result = result.filter(item => {
-      return availableKegiatan.some(kegiatan => 
-        typeof item[kegiatan] === 'number' && item[kegiatan] > 0
-      );
-    });
+    // Filter data berdasarkan kegiatan yang dipilih
+    if (selectedKegiatan.length > 0) {
+      // Hanya tampilkan baris yang memiliki nilai > 0 pada minimal satu kegiatan yang dipilih
+      result = result.filter(item => {
+        return selectedKegiatan.some(kegiatan => 
+          typeof item[kegiatan] === 'number' && item[kegiatan] > 0
+        );
+      });
+    } else {
+      // Jika tidak ada kegiatan yang dipilih, tampilkan semua data yang memiliki minimal satu kegiatan dengan nilai > 0
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
+      result = result.filter(item => {
+        const kegiatanColumns = Object.keys(item).filter(key => !baseColumns.includes(key));
+        return kegiatanColumns.some(kegiatan => 
+          typeof item[kegiatan] === 'number' && item[kegiatan] > 0
+        );
+      });
+    }
 
-    setFilteredData(result);
+    // Update nomor urut secara dinamis
+    const resultWithDynamicNo = result.map((item, index) => ({
+      ...item,
+      no: index + 1
+    }));
+
+    setFilteredData(resultWithDynamicNo);
 
     // Update available kegiatan berdasarkan data yang terfilter
     if (result.length > 0) {
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
       
       // Dapatkan kegiatan yang memiliki nilai > 0 pada data terfilter
-      const relevantKegiatan = availableKegiatan.filter(kegiatan => {
-        return result.some(item => {
-          const value = item[kegiatan];
-          return typeof value === 'number' && value > 0;
-        });
-      });
+      const relevantKegiatan = [...new Set(result.flatMap(item => 
+        Object.keys(item).filter(key => 
+          !baseColumns.includes(key) && 
+          typeof item[key] === 'number' && 
+          item[key] > 0
+        )
+      ))];
 
       setAvailableKegiatan(relevantKegiatan);
       
@@ -185,7 +192,7 @@ export default function AkiToBendahara() {
     } else {
       setAvailableKegiatan([]);
     }
-  }, [searchTerm, selectedBulan, selectedTahun, data, availableKegiatan]);
+  }, [searchTerm, selectedBulan, selectedTahun, selectedKegiatan, data]);
 
   // Reset semua filter
   const resetFilters = () => {
@@ -432,93 +439,53 @@ export default function AkiToBendahara() {
                 <Table>
                   <TableHeader className="bg-muted">
                     <TableRow>
-                      {displayedColumns.map((column, index) => {
-                        const isSticky = index < 4; // Kolom no sampai noRekening sticky
-                        const stickyWidths = ['50px', '200px', '150px', '150px'];
-                        
-                        return (
-                          <TableHead 
-                            key={column}
-                            className={`
-                              ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
-                              font-bold
-                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
-                            `}
-                            style={
-                              isSticky ? { 
-                                left: index === 0 ? 0 : `calc(${stickyWidths.slice(0, index).reduce((sum, width) => sum + parseInt(width), 0)}px)`
-                              } : {}
-                            }
-                          >
-                            {column === 'no' ? 'No' : 
-                             column === 'namaPetugas' ? 'Nama Petugas' :
-                             column === 'namaBank' ? 'Nama Bank' :
-                             column === 'noRekening' ? 'No Rekening' : column}
-                          </TableHead>
-                        );
-                      })}
+                      {displayedColumns.map((column) => (
+                        <TableHead 
+                          key={column}
+                          className={`font-bold ${availableKegiatan.includes(column) ? 'text-right' : ''}`}
+                        >
+                          {column === 'no' ? 'No' : 
+                           column === 'namaPetugas' ? 'Nama Petugas' :
+                           column === 'namaBank' ? 'Nama Bank' :
+                           column === 'noRekening' ? 'No Rekening' : column}
+                        </TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredData.map((row, rowIndex) => (
+                    {filteredData.map((row) => (
                       <TableRow key={row.no} className="hover:bg-muted/50">
-                        {displayedColumns.map((column, colIndex) => {
-                          const isSticky = colIndex < 4;
-                          const stickyWidths = ['50px', '200px', '150px', '150px'];
-                          
-                          return (
-                            <TableCell 
-                              key={column}
-                              className={`
-                                ${isSticky ? 'sticky bg-background border-r' : ''}
-                                ${availableKegiatan.includes(column) ? 'font-medium text-right' : ''}
-                              `}
-                              style={
-                                isSticky ? { 
-                                  left: colIndex === 0 ? 0 : `calc(${stickyWidths.slice(0, colIndex).reduce((sum, width) => sum + parseInt(width), 0)}px)`
-                                } : {}
-                              }
-                            >
-                              {column === 'no' ? row[column] :
-                               availableKegiatan.includes(column) && typeof row[column] === 'number'
-                                ? formatNumber(Number(row[column]))
-                                : row[column]
-                              }
-                            </TableCell>
-                          );
-                        })}
+                        {displayedColumns.map((column) => (
+                          <TableCell 
+                            key={column}
+                            className={availableKegiatan.includes(column) ? 'font-medium text-right' : ''}
+                          >
+                            {column === 'no' ? row[column] :
+                             availableKegiatan.includes(column) && typeof row[column] === 'number'
+                              ? formatNumber(Number(row[column]))
+                              : row[column]
+                            }
+                          </TableCell>
+                        ))}
                       </TableRow>
                     ))}
                     
                     {/* Baris Total */}
                     <TableRow className="bg-muted/50 font-bold">
-                      {displayedColumns.map((column, colIndex) => {
-                        const isSticky = colIndex < 4;
-                        const stickyWidths = ['50px', '200px', '150px', '150px'];
-                        
-                        return (
-                          <TableCell 
-                            key={`total-${column}`}
-                            className={`
-                              ${isSticky ? 'sticky bg-muted border-r z-10' : ''}
-                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
-                            `}
-                            style={
-                              isSticky ? { 
-                                left: colIndex === 0 ? 0 : `calc(${stickyWidths.slice(0, colIndex).reduce((sum, width) => sum + parseInt(width), 0)}px)`
-                              } : {}
-                            }
-                          >
-                            {column === 'no' ? 'Total' :
-                             column === 'namaPetugas' ? `${filteredData.length} Petugas` :
-                             column === 'namaBank' || column === 'noRekening' ? '' :
-                             availableKegiatan.includes(column) 
-                               ? formatNumber(totals[column])
-                               : ''
-                            }
-                          </TableCell>
-                        );
-                      })}
+                      {displayedColumns.map((column) => (
+                        <TableCell 
+                          key={`total-${column}`}
+                          className={availableKegiatan.includes(column) ? 'text-right' : ''}
+                        >
+                          {column === 'no' ? 'Total' :
+                           column === 'namaPetugas' ? `${filteredData.length} Petugas` :
+                           column === 'namaBank' || column === 'noRekening' ? '' :
+                           availableKegiatan.includes(column) 
+                             ? formatNumber(totals[column])
+                             : ''
+                          }
+                        </TableCell>
+                      ))}
                     </TableRow>
                   </TableBody>
                 </Table>
