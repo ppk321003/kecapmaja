@@ -229,7 +229,7 @@ export default function EntriTarget() {
           const englishMonth = bulanMap[monthName];
           if (englishMonth && !isNaN(day) && !isNaN(year)) {
             const dateString = `${day} ${englishMonth} ${year}`;
-            const parsedDate = parse(dateString, 'd MMMM yyyy', new Date(), { locale: id });
+            const parsedDate = parse(str, 'd MMMM yyyy', new Date(), { locale: id });
             console.log('Print:', dateString);
             console.log('Print2:', parsedDate);
             console.log('Print3:', "------------");
