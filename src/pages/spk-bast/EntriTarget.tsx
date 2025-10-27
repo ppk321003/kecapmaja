@@ -1563,7 +1563,7 @@ export default function EntriTarget() {
                             <TableCell className="font-medium">
                               <div>
                                 {activity.namaKegiatan}
-                                <div className="text-sm text-muted-foreground font-normal">
+                                <div className="text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded-md inline-block mt-1">
                                   Total Nilai: {formatCurrency(totalNilaiRealisasi)}
                                 </div>
                               </div>
