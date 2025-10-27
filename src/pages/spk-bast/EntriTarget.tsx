@@ -1746,15 +1746,6 @@ export default function EntriTarget() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10"
-                                  onClick={() => handleDuplicateActivity(activity)}
-                                  title="Duplikat Kegiatan"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
                                   className="h-8 w-8 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10"
                                   onClick={() => handleEditActivity(activity)}
                                   title="Edit Kegiatan"
@@ -1779,6 +1770,15 @@ export default function EntriTarget() {
                                   title="Hapus Kegiatan"
                                 >
                                   <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10"
+                                  onClick={() => handleDuplicateActivity(activity)}
+                                  title="Duplikat Kegiatan"
+                                >
+                                  <Copy className="h-4 w-4" />
                                 </Button>
                               </div>
                               {activity.dikirimKePPK?.includes("Kirim ke PPK") && (
