@@ -66,7 +66,6 @@ interface CekSBMLRow {
   jumlah: number;
   isExceeded: boolean;
   warnings: string[];
-  // Tambahan untuk detail tooltips
   detailPendataan: { namaKegiatan: string; nilaiRealisasi: string }[];
   detailPemeriksaan: { namaKegiatan: string; nilaiRealisasi: string }[];
   detailPengolahan: { namaKegiatan: string; nilaiRealisasi: string }[];
@@ -80,7 +79,6 @@ export default function CekSBML() {
   const [sbmlData, setSbmlData] = useState<SBMLData | null>(null);
   const { toast } = useToast();
 
-  // Format currency helper - dioptimalkan dengan useCallback
   const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -89,34 +87,25 @@ export default function CekSBML() {
     }).format(amount);
   }, []);
 
-  // Parse honor dari string format "704.000,-" - dioptimalkan
   const parseHonor = useCallback((honorStr: string): number => {
     if (!honorStr) return 0;
     const cleaned = honorStr.replace(/[^\d]/g, '');
     return parseInt(cleaned) || 0;
   }, []);
 
-  // Fungsi untuk menghitung honor berdasarkan Harga Satuan × Realisasi
   const calculateHonor = useCallback((hargaSatuanStr: string, realisasiStr: string): number => {
-    // Parse harga satuan (format Rupiah: "704.000,-" atau "500000")
     const hargaSatuan = parseHonor(hargaSatuanStr);
     
-    // Parse realisasi (format angka: "1" atau "1.5" atau "2,5")
     let realisasi = 0;
     if (realisasiStr) {
-      // Ganti koma dengan titik untuk format desimal Indonesia
       const cleanedRealisasi = realisasiStr.replace(',', '.');
       realisasi = parseFloat(cleanedRealisasi) || 0;
     }
     
     const result = hargaSatuan * realisasi;
-    
-    console.log(`   💰 calculateHonor: "${hargaSatuanStr}" × "${realisasiStr}" = ${hargaSatuan} × ${realisasi} = ${result}`);
-    
     return result;
   }, [parseHonor]);
 
-  // Fetch data SBML untuk validasi - dioptimalkan
   const fetchSBMLData = useCallback(async (tahun: string) => {
     try {
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
@@ -155,7 +144,6 @@ export default function CekSBML() {
     }
   }, [parseHonor]);
 
-  // Fungsi validasi yang dioptimalkan
   const validateRow = useCallback((item: CekSBMLRow, sbml: SBMLData) => {
     const warnings: string[] = [];
     
@@ -175,25 +163,15 @@ export default function CekSBML() {
     return warnings;
   }, [formatRupiah]);
 
-  // Fungsi untuk membersihkan dan memformat periode
   const cleanPeriode = useCallback((periode: string): string => {
     if (!periode) return '';
-    
-    // Hapus spasi berlebih dan format konsisten
     return periode.trim().replace(/\s+/g, ' ');
   }, []);
 
-  // Fungsi untuk memproses data petugas dengan NIK dan mendapatkan kecamatan
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
-
-    console.log(`🔢 Debug processPetugasData:`);
-    console.log(`   Nama: ${namaList}`);
-    console.log(`   NIK: ${nikList}`);
-    console.log(`   Harga Satuan: ${hargaSatuan}`); // Harga satuan TIDAK dipisah, jadi langsung string
-    console.log(`   Realisasi: ${realisasiList}`);
 
     const result: { nama: string; nik: string; kecamatan: string; honor: number; nilaiRealisasi: string }[] = [];
 
@@ -203,19 +181,14 @@ export default function CekSBML() {
         const nik = nikList[j] || "";
         const realisasiItem = realisasiList[j] || "0";
         
-        // Gunakan harga satuan yang SAMA untuk semua petugas dalam baris ini
         const honor = calculateHonor(hargaSatuan, realisasiItem);
         const nilaiRealisasi = formatRupiah(honor);
         
-        console.log(`   🧮 Perhitungan untuk ${nama}: ${hargaSatuan} × ${realisasiItem} = ${honor}`);
-        
-        // Cari kecamatan dari master data berdasarkan nama + nik
         let kecamatan = "";
         const masterKey = `${nama.toLowerCase()}_${nik}`;
         if (masterMap.has(masterKey)) {
           kecamatan = masterMap.get(masterKey)!.kecamatan;
         } else {
-          // Fallback: cari berdasarkan nama saja
           for (const [key, value] of masterMap.entries()) {
             if (key.toLowerCase().startsWith(nama.toLowerCase() + '_')) {
               kecamatan = value.kecamatan;
@@ -237,7 +210,6 @@ export default function CekSBML() {
     return result;
   }, [calculateHonor, formatRupiah]);
 
-  // Fetch data petugas bertugas - dioptimalkan dengan Promise.all
   const fetchData = useCallback(async () => {
     if (!filterBulan || !filterTahun) {
       toast({
@@ -254,9 +226,6 @@ export default function CekSBML() {
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
 
-      console.log(`🔍 Mencari data untuk periode: "${cleanedPeriodeFilter}"`);
-
-      // Paralel fetching untuk performa lebih baik
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
           body: {
@@ -280,20 +249,14 @@ export default function CekSBML() {
       const tugasRows = tugasResult.data?.values || [];
       const masterRows = masterResult.data?.values || [];
 
-      console.log(`📊 Total baris data tugas: ${tugasRows.length}`);
-      console.log(`📊 Total baris data master: ${masterRows.length}`);
-
-      // Process data dengan optimasi
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
-      // Build master petugas map dengan NIK sebagai key tambahan
       for (let i = 1; i < masterRows.length; i++) {
         const row = masterRows[i];
         if (row && row[2]) {
           const nama = row[2].toString().trim();
           const nik = row[1]?.toString() || "";
-          // Simpan dengan key nama_nik untuk pencarian yang lebih akurat
           const key = `${nama.toLowerCase()}_${nik}`;
           masterPetugas.set(key, {
             nama: nama,
@@ -307,9 +270,6 @@ export default function CekSBML() {
         }
       }
 
-      console.log(`👥 Total master petugas: ${masterPetugas.size}`);
-
-      // PROCESS TUGAS DATA dengan optimasi - DIMODIFIKASI untuk perhitungan honor yang benar
       let matchCount = 0;
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
@@ -317,18 +277,13 @@ export default function CekSBML() {
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";
-        const namaKegiatan = row[4]?.toString() || ""; // Kolom E: Nama Kegiatan
-        const namaPetugas = row[13]?.toString() || ""; // Kolom N: Nama Petugas
-        const hargaSatuan = row[9]?.toString() || ""; // Kolom J: Harga Satuan (TIDAK dipisah)
-        const realisasi = row[15]?.toString() || ""; // Kolom P: Realisasi (dipisah dengan |)
-        const nikPetugas = row[22]?.toString() || ""; // Kolom W: NIK (kolom terakhir)
+        const namaKegiatan = row[4]?.toString() || "";
+        const namaPetugas = row[13]?.toString() || "";
+        const hargaSatuan = row[9]?.toString() || "";
+        const realisasi = row[15]?.toString() || "";
+        const nikPetugas = row[22]?.toString() || "";
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
-          console.log(`📋 Baris ${i}: ${namaKegiatan}`);
-          console.log(`   👥 Nama: ${namaPetugas}`);
-          console.log(`   💵 Harga Satuan: ${hargaSatuan}`);
-          console.log(`   📊 Realisasi: ${realisasi}`);
-          
           matchCount++;
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, masterPetugas);
 
@@ -347,14 +302,9 @@ export default function CekSBML() {
         }
       }
 
-      console.log(`✅ Baris yang match dengan periode: ${matchCount}`);
-      console.log(`👥 Total petugas tugas: ${petugasTugas.length}`);
-
-      // Transform to CekSBMLRow format - DIMODIFIKASI untuk menggunakan Nama + NIK sebagai key
       const groupedData = new Map<string, CekSBMLRow>();
 
       for (const petugas of petugasTugas) {
-        // Gunakan kombinasi nama dan NIK sebagai key unik
         const key = `${petugas.nama.toLowerCase()}_${petugas.nik}`;
         
         if (!groupedData.has(key)) {
@@ -379,7 +329,6 @@ export default function CekSBML() {
         const existing = groupedData.get(key)!;
         const roleLower = petugas.role.toLowerCase();
         
-        // Tambahkan detail ke array yang sesuai
         const detailItem = {
           namaKegiatan: petugas.namaKegiatan,
           nilaiRealisasi: petugas.nilaiRealisasi
@@ -397,7 +346,6 @@ export default function CekSBML() {
         }
       }
 
-      // Calculate totals and validate
       const finalData = Array.from(groupedData.values()).map(item => {
         item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan + item.pekerjaanProvinsi;
         
@@ -420,7 +368,7 @@ export default function CekSBML() {
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Pastikan format periode sesuai (Contoh: "Januari 2024")`,
+          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}`,
           variant: "destructive",
         });
       }
@@ -437,7 +385,6 @@ export default function CekSBML() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
 
-  // Handle input manual perubahan - dioptimalkan
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
     const numericValue = parseInt(value.replace(/[^\d]/g, '')) || 0;
     
@@ -462,7 +409,6 @@ export default function CekSBML() {
     });
   }, [sbmlData, validateRow]);
 
-  // Update SBML ketika tahun berubah
   useEffect(() => {
     if (filterTahun) {
       fetchSBMLData(filterTahun);
@@ -473,7 +419,6 @@ export default function CekSBML() {
     fetchData();
   };
 
-  // SBML badge content yang dioptimalkan dengan 3 baris dan warna berbeda
   const sbmlBadgeContent = useMemo(() => {
     if (!sbmlData) return null;
     
@@ -497,7 +442,6 @@ export default function CekSBML() {
     );
   }, [sbmlData, formatRupiah]);
 
-  // Hitung total untuk setiap kolom
   const totals = useMemo(() => {
     if (data.length === 0) return null;
     
@@ -614,11 +558,12 @@ export default function CekSBML() {
                     <TableHead className="w-12">No</TableHead>
                     <TableHead className="min-w-[160px]">Nama Mitra Statistik</TableHead>
                     <TableHead className="min-w-[120px]">Kecamatan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pendataan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pemeriksaan</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Pengolahan</TableHead>
-                    <TableHead className="text-right min-w-[140px]">Pekerjaan Provinsi</TableHead>
-                    <TableHead className="text-right min-w-[110px]">Jumlah</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pendataan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pemeriksaan</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Pengolahan</TableHead>
+                    {/* PERBAIKAN: Lebar kolom Pekerjaan Provinsi disamakan dengan kolom lainnya */}
+                    <TableHead className="text-right min-w-[150px] px-4">Pekerjaan Provinsi</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Jumlah</TableHead>
                     <TableHead className="w-16 text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -629,7 +574,6 @@ export default function CekSBML() {
                       <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
                       <TableCell className="min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
-                      {/* Kolom Pendataan dengan Tooltip */}
                       <TableCell className="text-right">
                         <HonorTooltip 
                           details={row.detailPendataan} 
@@ -643,7 +587,6 @@ export default function CekSBML() {
                         </HonorTooltip>
                       </TableCell>
                       
-                      {/* Kolom Pemeriksaan dengan Tooltip */}
                       <TableCell className="text-right">
                         <HonorTooltip 
                           details={row.detailPemeriksaan} 
@@ -657,7 +600,6 @@ export default function CekSBML() {
                         </HonorTooltip>
                       </TableCell>
                       
-                      {/* Kolom Pengolahan dengan Tooltip */}
                       <TableCell className="text-right">
                         <HonorTooltip 
                           details={row.detailPengolahan} 
@@ -671,14 +613,17 @@ export default function CekSBML() {
                         </HonorTooltip>
                       </TableCell>
                       
-                      <TableCell className="px-2">
-                        <Input
-                          type="text"
-                          value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
-                          onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
-                          className="text-right w-28 h-8 text-sm"
-                          placeholder="0"
-                        />
+                      {/* PERBAIKAN: Penempatan field Pekerjaan Provinsi yang lebih proporsional */}
+                      <TableCell className="px-4 min-w-[150px]">
+                        <div className="flex justify-end">
+                          <Input
+                            type="text"
+                            value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')}
+                            onChange={(e) => handlePekerjaanProvinsiChange(index, e.target.value)}
+                            className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500"
+                            placeholder="0"
+                          />
+                        </div>
                       </TableCell>
                       
                       <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
@@ -701,7 +646,6 @@ export default function CekSBML() {
                     </TableRow>
                   ))}
                   
-                  {/* Baris Total */}
                   {totals && (
                     <TableRow className="bg-gray-50 font-semibold border-t-2 border-gray-300">
                       <TableCell colSpan={3} className="text-right font-bold">
