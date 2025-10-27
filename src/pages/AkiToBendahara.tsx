@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Search, Filter, Download, Loader2, X } from "lucide-react";
+import { BookOpen, Search, Filter, Download, Loader2, X, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export default function AkiToBendahara() {
   const [availableKegiatan, setAvailableKegiatan] = useState<string[]>([]);
   const [kegiatanSearchTerm, setKegiatanSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   const bulanOptions = [
@@ -104,6 +105,11 @@ export default function AkiToBendahara() {
         )
       ))];
       setAvailableKegiatan(allKegiatan);
+
+      toast({
+        title: "Data berhasil dimuat",
+        description: `Berhasil memuat ${processedData.length} data dari Google Sheets`,
+      });
       
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -114,7 +120,14 @@ export default function AkiToBendahara() {
       });
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  // Fungsi refresh data
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchDataFromSheets();
   };
 
   useEffect(() => {
@@ -287,13 +300,6 @@ export default function AkiToBendahara() {
     return title;
   };
 
-  const handleExport = () => {
-    toast({
-      title: "Fitur Export",
-      description: "Fitur export Excel akan segera tersedia",
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -304,9 +310,17 @@ export default function AkiToBendahara() {
             Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
           </p>
         </div>
-        <Button onClick={handleExport} className="mt-4 sm:mt-0">
-          <Download className="h-4 w-4 mr-2" />
-          Export Excel
+        <Button 
+          onClick={handleRefresh} 
+          disabled={isRefreshing}
+          className="mt-4 sm:mt-0"
+        >
+          {isRefreshing ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          {isRefreshing ? "Memuat..." : "Refresh"}
         </Button>
       </div>
 
