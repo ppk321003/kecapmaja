@@ -1232,8 +1232,8 @@ export default function EntriTarget() {
           "",
           "",
           "",
-          "",
           activity.bebanAnggaran || "",
+          "",
           "", // Kolom 20 (T) - Dikirim ke PPK, kosongkan untuk data baru
           "",
           "",
