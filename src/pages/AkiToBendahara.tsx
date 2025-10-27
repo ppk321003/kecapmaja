@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Search, Filter, Download, Loader2 } from "lucide-react";
+import { BookOpen, Search, Filter, Download, Loader2, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface DataRow {
   no: number;
@@ -29,6 +30,8 @@ export default function AkiToBendahara() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBulan, setSelectedBulan] = useState("");
   const [selectedTahun, setSelectedTahun] = useState("");
+  const [selectedKegiatan, setSelectedKegiatan] = useState<string[]>([]);
+  const [availableKegiatan, setAvailableKegiatan] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -59,18 +62,18 @@ export default function AkiToBendahara() {
       }
 
       // Process data dari Google Sheets
-      const headers = rows[0]; // Baris pertama sebagai header
-      const dataRows = rows.slice(1); // Data dimulai dari baris kedua
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
 
       const processedData: DataRow[] = dataRows.map((row: any[], index: number) => {
         const rowData: DataRow = {
-          no: parseInt(row[0]) || index + 1, // Kolom A - No
-          bulan: row[1] || '', // Kolom B - Bulan
-          tahun: parseInt(row[2]) || 0, // Kolom C - Tahun
-          namaPetugas: row[3] || '', // Kolom D - Nama Petugas
-          namaBank: row[4] || '', // Kolom E - Nama Bank
-          noRekening: row[5] || '', // Kolom F - No Rekening
-          jumlah: parseInt(row[6]) || 0, // Kolom G - Jumlah
+          no: parseInt(row[0]) || index + 1,
+          bulan: row[1] || '',
+          tahun: parseInt(row[2]) || 0,
+          namaPetugas: row[3] || '',
+          namaBank: row[4] || '',
+          noRekening: row[5] || '',
+          jumlah: parseInt(row[6]) || 0,
         };
 
         // Tambahkan kolom kegiatan dinamis
@@ -84,6 +87,13 @@ export default function AkiToBendahara() {
 
       setData(processedData);
       setFilteredData(processedData);
+      
+      // Extract available kegiatan dari semua data
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      const allKegiatan = [...new Set(processedData.flatMap(item => 
+        Object.keys(item).filter(key => !baseColumns.includes(key))
+      ))];
+      setAvailableKegiatan(allKegiatan);
       
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -106,31 +116,88 @@ export default function AkiToBendahara() {
     .filter(tahun => tahun !== "0")
     .sort((a, b) => parseInt(b) - parseInt(a));
 
-  // Filter data
+  // Filter data berdasarkan search, bulan, tahun, dan kegiatan
   useEffect(() => {
     let result = data;
 
+    // Filter berdasarkan search term
     if (searchTerm) {
       result = result.filter(item =>
         item.namaPetugas.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
+    // Filter berdasarkan bulan
     if (selectedBulan) {
       result = result.filter(item => item.bulan === selectedBulan);
     }
 
+    // Filter berdasarkan tahun
     if (selectedTahun) {
       result = result.filter(item => item.tahun.toString() === selectedTahun);
     }
 
     setFilteredData(result);
+
+    // Update available kegiatan berdasarkan data yang terfilter
+    if (result.length > 0) {
+      const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+      
+      // Dapatkan kegiatan yang memiliki nilai (tidak semua 0) pada data terfilter
+      const relevantKegiatan = availableKegiatan.filter(kegiatan => {
+        return result.some(item => {
+          const value = item[kegiatan];
+          return typeof value === 'number' && value > 0;
+        });
+      });
+
+      setAvailableKegiatan(relevantKegiatan);
+      
+      // Hapus selectedKegiatan yang tidak relevan lagi
+      if (selectedKegiatan.length > 0) {
+        const filteredSelectedKegiatan = selectedKegiatan.filter(kegiatan => 
+          relevantKegiatan.includes(kegiatan)
+        );
+        if (filteredSelectedKegiatan.length !== selectedKegiatan.length) {
+          setSelectedKegiatan(filteredSelectedKegiatan);
+        }
+      }
+    }
   }, [searchTerm, selectedBulan, selectedTahun, data]);
 
+  // Reset semua filter
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedBulan("");
     setSelectedTahun("");
+    setSelectedKegiatan([]);
+  };
+
+  // Reset hanya filter kegiatan
+  const resetKegiatanFilter = () => {
+    setSelectedKegiatan([]);
+  };
+
+  // Toggle kegiatan selection
+  const toggleKegiatan = (kegiatan: string) => {
+    setSelectedKegiatan(prev => 
+      prev.includes(kegiatan) 
+        ? prev.filter(k => k !== kegiatan)
+        : [...prev, kegiatan]
+    );
+  };
+
+  // Get kolom yang akan ditampilkan di table
+  const getDisplayedColumns = () => {
+    const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
+    
+    // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
+    if (selectedKegiatan.length === 0) {
+      return baseColumns;
+    }
+    
+    // Tampilkan kolom dasar + kegiatan yang dipilih
+    return [...baseColumns, ...selectedKegiatan];
   };
 
   const formatCurrency = (amount: number) => {
@@ -143,16 +210,14 @@ export default function AkiToBendahara() {
 
   const totalJumlah = filteredData.reduce((sum, item) => sum + item.jumlah, 0);
 
-  // Get kegiatan columns (semua kolom selain kolom dasar)
-  const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
-  const kegiatanColumns = data.length > 0 ? Object.keys(data[0]).filter(key => !baseColumns.includes(key)) : [];
-
   const handleExport = () => {
     toast({
       title: "Fitur Export",
       description: "Fitur export Excel akan segera tersedia",
     });
   };
+
+  const displayedColumns = getDisplayedColumns();
 
   return (
     <div className="space-y-6">
@@ -178,7 +243,8 @@ export default function AkiToBendahara() {
             Filter Data
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Filter Basic */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -217,8 +283,59 @@ export default function AkiToBendahara() {
             </Select>
 
             <Button variant="outline" onClick={resetFilters}>
-              Reset Filter
+              Reset Semua
             </Button>
+          </div>
+
+          {/* Filter Kegiatan */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium">Pilih Kegiatan yang Ditampilkan:</label>
+              {selectedKegiatan.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetKegiatanFilter} className="h-8">
+                  <X className="h-3 w-3 mr-1" />
+                  Hapus Semua
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-2 min-h-[40px]">
+              {availableKegiatan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
+                </p>
+              ) : (
+                availableKegiatan.map((kegiatan) => (
+                  <Badge
+                    key={kegiatan}
+                    variant={selectedKegiatan.includes(kegiatan) ? "default" : "outline"}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => toggleKegiatan(kegiatan)}
+                  >
+                    {kegiatan}
+                  </Badge>
+                ))
+              )}
+            </div>
+            
+            {selectedKegiatan.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Kegiatan yang dipilih ({selectedKegiatan.length}):
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedKegiatan.map((kegiatan) => (
+                    <Badge key={kegiatan} variant="secondary" className="px-2 py-0 text-xs">
+                      {kegiatan}
+                      <X 
+                        className="h-3 w-3 ml-1 cursor-pointer" 
+                        onClick={() => toggleKegiatan(kegiatan)}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -233,6 +350,7 @@ export default function AkiToBendahara() {
             </div>
             <div className="text-sm text-muted-foreground">
               Total: {filteredData.length} petugas • {formatCurrency(totalJumlah)}
+              {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
             </div>
           </div>
           <CardDescription>
@@ -257,35 +375,66 @@ export default function AkiToBendahara() {
                 <Table>
                   <TableHeader className="bg-muted">
                     <TableRow>
-                      <TableHead className="sticky left-0 bg-muted z-10 min-w-[50px] border-r">No</TableHead>
-                      <TableHead className="sticky left-[50px] bg-muted z-10 min-w-[100px] border-r">Bulan</TableHead>
-                      <TableHead className="sticky left-[150px] bg-muted z-10 min-w-[80px] border-r">Tahun</TableHead>
-                      <TableHead className="sticky left-[230px] bg-muted z-10 min-w-[200px] border-r">Nama Petugas</TableHead>
-                      <TableHead className="sticky left-[430px] bg-muted z-10 min-w-[150px] border-r">Nama Bank</TableHead>
-                      <TableHead className="sticky left-[580px] bg-muted z-10 min-w-[150px] border-r">No Rekening</TableHead>
-                      <TableHead className="min-w-[120px] border-r">Jumlah</TableHead>
-                      {kegiatanColumns.map((column) => (
-                        <TableHead key={column} className="min-w-[200px]">
-                          {column}
-                        </TableHead>
-                      ))}
+                      {displayedColumns.map((column, index) => {
+                        const isSticky = index < 6; // Kolom no sampai noRekening sticky
+                        const stickyWidths = [
+                          '50px', '100px', '80px', '200px', '150px', '150px'
+                        ];
+                        
+                        return (
+                          <TableHead 
+                            key={column}
+                            className={`
+                              ${isSticky ? 'sticky bg-muted z-10 border-r' : ''}
+                              min-w-${isSticky ? `[${stickyWidths[index]}]` : '[200px]'}
+                            `}
+                            style={
+                              isSticky ? { 
+                                left: index === 0 ? 0 : `calc(${stickyWidths.slice(0, index).reduce((sum, width) => sum + parseInt(width), 0)}px)`
+                              } : {}
+                            }
+                          >
+                            {column === 'no' ? 'No' : 
+                             column === 'bulan' ? 'Bulan' :
+                             column === 'tahun' ? 'Tahun' :
+                             column === 'namaPetugas' ? 'Nama Petugas' :
+                             column === 'namaBank' ? 'Nama Bank' :
+                             column === 'noRekening' ? 'No Rekening' :
+                             column === 'jumlah' ? 'Jumlah' : column}
+                          </TableHead>
+                        );
+                      })}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredData.map((row) => (
+                    {filteredData.map((row, rowIndex) => (
                       <TableRow key={row.no} className="hover:bg-muted/50">
-                        <TableCell className="sticky left-0 bg-background border-r font-medium">{row.no}</TableCell>
-                        <TableCell className="sticky left-[50px] bg-background border-r">{row.bulan}</TableCell>
-                        <TableCell className="sticky left-[150px] bg-background border-r">{row.tahun}</TableCell>
-                        <TableCell className="sticky left-[230px] bg-background border-r">{row.namaPetugas}</TableCell>
-                        <TableCell className="sticky left-[430px] bg-background border-r">{row.namaBank}</TableCell>
-                        <TableCell className="sticky left-[580px] bg-background border-r">{row.noRekening}</TableCell>
-                        <TableCell className="border-r font-medium">{formatCurrency(row.jumlah)}</TableCell>
-                        {kegiatanColumns.map(column => (
-                          <TableCell key={column}>
-                            {row[column] ? formatCurrency(Number(row[column])) : '-'}
-                          </TableCell>
-                        ))}
+                        {displayedColumns.map((column, colIndex) => {
+                          const isSticky = colIndex < 6;
+                          const stickyWidths = [
+                            '50px', '100px', '80px', '200px', '150px', '150px'
+                          ];
+                          
+                          return (
+                            <TableCell 
+                              key={column}
+                              className={`
+                                ${isSticky ? 'sticky bg-background border-r' : ''}
+                                ${column === 'jumlah' ? 'font-medium' : ''}
+                              `}
+                              style={
+                                isSticky ? { 
+                                  left: colIndex === 0 ? 0 : `calc(${stickyWidths.slice(0, colIndex).reduce((sum, width) => sum + parseInt(width), 0)}px)`
+                                } : {}
+                              }
+                            >
+                              {column === 'jumlah' || (availableKegiatan.includes(column) && typeof row[column] === 'number') 
+                                ? formatCurrency(Number(row[column]))
+                                : row[column]
+                              }
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
