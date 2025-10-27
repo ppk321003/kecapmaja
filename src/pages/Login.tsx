@@ -22,7 +22,7 @@ export default function Login() {
     if (login(username, password)) {
       toast({
         title: "Login berhasil",
-        description: "Selamat datang"
+        description: "Selamat datang di aplikasi Aki Maja BPS3210"
       });
       navigate('/');
     } else {

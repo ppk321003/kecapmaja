@@ -9,6 +9,7 @@ import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import AkiToBendahara from "./pages/AkiToBendahara";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-petugas" element={<ProtectedRoute><Layout><EntriPetugas /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-realisasi" element={<ProtectedRoute><Layout><EntriRealisasi /></Layout></ProtectedRoute>} />
