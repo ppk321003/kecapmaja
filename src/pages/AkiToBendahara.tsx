@@ -88,18 +88,11 @@ export default function AkiToBendahara() {
       setData(processedData);
       setFilteredData(processedData);
       
-      // Extract available kegiatan dari semua data (hanya yang bernilai > 0)
+      // Extract available kegiatan dari semua data
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
-      const allKegiatan = [...new Set(
-        processedData.flatMap(item => 
-          Object.keys(item)
-            .filter(key => !baseColumns.includes(key))
-            .filter(key => {
-              const value = item[key];
-              return typeof value === 'number' && value > 0;
-            })
-        )
-      )];
+      const allKegiatan = [...new Set(processedData.flatMap(item => 
+        Object.keys(item).filter(key => !baseColumns.includes(key))
+      ))];
       setAvailableKegiatan(allKegiatan);
       
     } catch (error: any) {
@@ -150,7 +143,7 @@ export default function AkiToBendahara() {
     if (result.length > 0) {
       const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
       
-      // Dapatkan kegiatan yang memiliki nilai > 0 pada data terfilter
+      // Dapatkan kegiatan yang memiliki nilai (tidak semua 0) pada data terfilter
       const relevantKegiatan = availableKegiatan.filter(kegiatan => {
         return result.some(item => {
           const value = item[kegiatan];
@@ -180,13 +173,27 @@ export default function AkiToBendahara() {
     setSelectedKegiatan([]);
   };
 
+  // Reset hanya filter kegiatan
+  const resetKegiatanFilter = () => {
+    setSelectedKegiatan([]);
+  };
+
+  // Toggle kegiatan selection
+  const toggleKegiatan = (kegiatan: string) => {
+    setSelectedKegiatan(prev => 
+      prev.includes(kegiatan) 
+        ? prev.filter(k => k !== kegiatan)
+        : [...prev, kegiatan]
+    );
+  };
+
   // Get kolom yang akan ditampilkan di table
   const getDisplayedColumns = () => {
-    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening'];
+    const baseColumns = ['no', 'namaPetugas', 'namaBank', 'noRekening', 'jumlah'];
     
-    // Jika tidak ada kegiatan yang dipilih, tampilkan semua kegiatan yang tersedia
+    // Jika tidak ada kegiatan yang dipilih, hanya tampilkan kolom dasar
     if (selectedKegiatan.length === 0) {
-      return [...baseColumns, ...availableKegiatan];
+      return baseColumns;
     }
     
     // Tampilkan kolom dasar + kegiatan yang dipilih
@@ -200,41 +207,47 @@ export default function AkiToBendahara() {
   // Hitung total untuk setiap kolom
   const calculateTotals = () => {
     const totals: { [key: string]: number } = {};
-    const displayedColumns = getDisplayedColumns();
     
     displayedColumns.forEach(column => {
-      if (column !== 'no' && column !== 'namaPetugas' && column !== 'namaBank' && column !== 'noRekening') {
+      if (column === 'no') {
+        totals[column] = filteredData.length;
+      } else if (column !== 'namaPetugas' && column !== 'namaBank' && column !== 'noRekening') {
         totals[column] = filteredData.reduce((sum, item) => {
           const value = item[column];
           return sum + (typeof value === 'number' ? value : 0);
         }, 0);
+      } else {
+        totals[column] = 0;
       }
     });
     
     return totals;
   };
 
-  const totals = calculateTotals();
+  const totalJumlah = filteredData.reduce((sum, item) => sum + item.jumlah, 0);
   const displayedColumns = getDisplayedColumns();
+  const totals = calculateTotals();
+
+  // Dapatkan judul tabel berdasarkan filter
+  const getTableTitle = () => {
+    let title = "Rekap Honor";
+    
+    if (selectedBulan && selectedTahun) {
+      title += ` ${selectedBulan} ${selectedTahun}`;
+    } else if (selectedBulan) {
+      title += ` ${selectedBulan}`;
+    } else if (selectedTahun) {
+      title += ` ${selectedTahun}`;
+    }
+    
+    return title;
+  };
 
   const handleExport = () => {
     toast({
       title: "Fitur Export",
       description: "Fitur export Excel akan segera tersedia",
     });
-  };
-
-  // Dapatkan judul tabel berdasarkan filter
-  const getTableTitle = () => {
-    let title = "Rekap Honor";
-    if (selectedBulan && selectedTahun) {
-      title += ` ${selectedBulan} ${selectedTahun}`;
-    } else if (selectedBulan) {
-      title += ` ${selectedBulan}`;
-    } else if (selectedTahun) {
-      title += ` Tahun ${selectedTahun}`;
-    }
-    return title;
   };
 
   return (
@@ -305,42 +318,41 @@ export default function AkiToBendahara() {
             </Button>
           </div>
 
-          {/* Filter Kegiatan - Dropdown */}
+          {/* Filter Kegiatan */}
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium">Pilih Kegiatan yang Ditampilkan:</label>
+              {selectedKegiatan.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetKegiatanFilter} className="h-8">
+                  <X className="h-3 w-3 mr-1" />
+                  Hapus Semua
+                </Button>
+              )}
             </div>
             
-            <Select 
-              value={selectedKegiatan.join(',')} 
-              onValueChange={(value) => {
-                if (value === 'all') {
-                  setSelectedKegiatan([]);
-                } else if (value === 'none') {
-                  setSelectedKegiatan([]);
-                } else {
-                  setSelectedKegiatan([value]);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih Kegiatan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kegiatan</SelectItem>
-                <SelectItem value="none">Tampilkan Semua</SelectItem>
-                {availableKegiatan.map((kegiatan) => (
-                  <SelectItem key={kegiatan} value={kegiatan}>
+            <div className="flex flex-wrap gap-2 min-h-[40px]">
+              {availableKegiatan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
+                </p>
+              ) : (
+                availableKegiatan.map((kegiatan) => (
+                  <Badge
+                    key={kegiatan}
+                    variant={selectedKegiatan.includes(kegiatan) ? "default" : "outline"}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => toggleKegiatan(kegiatan)}
+                  >
                     {kegiatan}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  </Badge>
+                ))
+              )}
+            </div>
             
             {selectedKegiatan.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-muted-foreground mb-2">
-                  Kegiatan yang dipilih:
+                  Kegiatan yang dipilih ({selectedKegiatan.length}):
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {selectedKegiatan.map((kegiatan) => (
@@ -348,7 +360,7 @@ export default function AkiToBendahara() {
                       {kegiatan}
                       <X 
                         className="h-3 w-3 ml-1 cursor-pointer" 
-                        onClick={() => setSelectedKegiatan([])}
+                        onClick={() => toggleKegiatan(kegiatan)}
                       />
                     </Badge>
                   ))}
@@ -368,7 +380,7 @@ export default function AkiToBendahara() {
               <CardTitle>{getTableTitle()}</CardTitle>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total: {filteredData.length} petugas
+              Total: {filteredData.length} petugas • {formatNumber(totalJumlah)}
               {selectedKegiatan.length > 0 && ` • ${selectedKegiatan.length} kegiatan`}
             </div>
           </div>
@@ -414,7 +426,8 @@ export default function AkiToBendahara() {
                             {column === 'no' ? 'No' : 
                              column === 'namaPetugas' ? 'Nama Petugas' :
                              column === 'namaBank' ? 'Nama Bank' :
-                             column === 'noRekening' ? 'No Rekening' : column}
+                             column === 'noRekening' ? 'No Rekening' :
+                             column === 'jumlah' ? 'Jumlah' : column}
                           </TableHead>
                         );
                       })}
@@ -432,7 +445,7 @@ export default function AkiToBendahara() {
                               key={column}
                               className={`
                                 ${isSticky ? 'sticky bg-background border-r' : ''}
-                                ${availableKegiatan.includes(column) ? 'text-right' : ''}
+                                ${column === 'jumlah' || availableKegiatan.includes(column) ? 'font-medium text-right' : ''}
                               `}
                               style={
                                 isSticky ? { 
@@ -440,7 +453,8 @@ export default function AkiToBendahara() {
                                 } : {}
                               }
                             >
-                              {availableKegiatan.includes(column) && typeof row[column] === 'number' 
+                              {column === 'no' ? row[column] :
+                               column === 'jumlah' || (availableKegiatan.includes(column) && typeof row[column] === 'number') 
                                 ? formatNumber(Number(row[column]))
                                 : row[column]
                               }
@@ -458,10 +472,10 @@ export default function AkiToBendahara() {
                         
                         return (
                           <TableCell 
-                            key={column}
+                            key={`total-${column}`}
                             className={`
-                              ${isSticky ? 'sticky bg-muted border-r' : ''}
-                              ${availableKegiatan.includes(column) ? 'text-right' : ''}
+                              ${isSticky ? 'sticky bg-muted border-r z-10' : ''}
+                              ${column === 'jumlah' || availableKegiatan.includes(column) ? 'text-right' : ''}
                             `}
                             style={
                               isSticky ? { 
@@ -469,8 +483,13 @@ export default function AkiToBendahara() {
                               } : {}
                             }
                           >
-                            {colIndex === 0 ? 'Total' : 
-                             availableKegiatan.includes(column) ? formatNumber(totals[column] || 0) : ''}
+                            {column === 'no' ? 'Total' :
+                             column === 'namaPetugas' ? `${filteredData.length} Petugas` :
+                             column === 'namaBank' || column === 'noRekening' ? '' :
+                             column === 'jumlah' || availableKegiatan.includes(column) 
+                               ? formatNumber(totals[column])
+                               : ''
+                            }
                           </TableCell>
                         );
                       })}
