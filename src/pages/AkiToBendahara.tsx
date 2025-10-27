@@ -31,6 +31,7 @@ export default function AkiToBendahara() {
   const [selectedTahun, setSelectedTahun] = useState("");
   const [selectedKegiatan, setSelectedKegiatan] = useState<string[]>([]);
   const [availableKegiatan, setAvailableKegiatan] = useState<string[]>([]);
+  const [kegiatanSearchTerm, setKegiatanSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -38,6 +39,14 @@ export default function AkiToBendahara() {
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
   ];
+
+  // Generate tahun options dari 2024 sampai 2030
+  const tahunOptions = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
+
+  // Filter kegiatan berdasarkan search term
+  const filteredKegiatan = availableKegiatan.filter(kegiatan =>
+    kegiatan.toLowerCase().includes(kegiatanSearchTerm.toLowerCase())
+  );
 
   // Fetch data dari Google Sheets menggunakan Supabase function
   const fetchDataFromSheets = async () => {
@@ -111,11 +120,6 @@ export default function AkiToBendahara() {
   useEffect(() => {
     fetchDataFromSheets();
   }, []);
-
-  // Extract tahun unik dari data untuk filter
-  const tahunOptions = [...new Set(data.map(item => item.tahun.toString()))]
-    .filter(tahun => tahun !== "0")
-    .sort((a, b) => parseInt(b) - parseInt(a));
 
   // Filter data berdasarkan search, bulan, tahun, dan kegiatan
   useEffect(() => {
@@ -200,11 +204,13 @@ export default function AkiToBendahara() {
     setSelectedBulan("");
     setSelectedTahun("");
     setSelectedKegiatan([]);
+    setKegiatanSearchTerm("");
   };
 
   // Reset hanya filter kegiatan
   const resetKegiatanFilter = () => {
     setSelectedKegiatan([]);
+    setKegiatanSearchTerm("");
   };
 
   // Toggle kegiatan selection
@@ -231,6 +237,11 @@ export default function AkiToBendahara() {
 
   const formatNumber = (amount: number) => {
     return new Intl.NumberFormat('id-ID').format(amount);
+  };
+
+  // Format untuk baris data (tanpa pemisah ribuan)
+  const formatPlainNumber = (amount: number) => {
+    return amount.toString();
   };
 
   // Hitung total untuk setiap kolom
@@ -362,14 +373,29 @@ export default function AkiToBendahara() {
                 </Button>
               )}
             </div>
+
+            {/* Search untuk Kegiatan */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari kegiatan..."
+                value={kegiatanSearchTerm}
+                onChange={(e) => setKegiatanSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             
-            <div className="flex flex-wrap gap-2 min-h-[40px]">
+            <div className="flex flex-wrap gap-2 min-h-[40px] max-h-32 overflow-y-auto p-1">
               {availableKegiatan.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {isLoading ? "Memuat kegiatan..." : "Tidak ada kegiatan tersedia"}
                 </p>
+              ) : filteredKegiatan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Tidak ada kegiatan yang cocok dengan pencarian
+                </p>
               ) : (
-                availableKegiatan.map((kegiatan) => (
+                filteredKegiatan.map((kegiatan) => (
                   <Badge
                     key={kegiatan}
                     variant={selectedKegiatan.includes(kegiatan) ? "default" : "outline"}
@@ -462,7 +488,7 @@ export default function AkiToBendahara() {
                           >
                             {column === 'no' ? row[column] :
                              availableKegiatan.includes(column) && typeof row[column] === 'number'
-                              ? formatNumber(Number(row[column]))
+                              ? formatPlainNumber(Number(row[column])) // Format plain untuk baris data
                               : row[column]
                             }
                           </TableCell>
@@ -481,7 +507,7 @@ export default function AkiToBendahara() {
                            column === 'namaPetugas' ? `${filteredData.length} Petugas` :
                            column === 'namaBank' || column === 'noRekening' ? '' :
                            availableKegiatan.includes(column) 
-                             ? formatNumber(totals[column])
+                             ? formatNumber(totals[column]) // Format dengan pemisah ribuan untuk total
                              : ''
                           }
                         </TableCell>
