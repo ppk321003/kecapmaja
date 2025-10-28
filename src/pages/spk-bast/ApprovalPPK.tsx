@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isSameMonth, isSameYear } from "date-fns";
@@ -96,6 +96,9 @@ export default function BlockTanggal() {
     if (userData) {
       const user = JSON.parse(userData);
       setUserRole(user.role || "User");
+      console.log('👤 User role loaded:', user.role);
+    } else {
+      console.log('⚠️ No user data found in localStorage');
     }
     loadMasterMitra();
     loadMasterOrganik();
@@ -248,17 +251,20 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN UTAMA: Format yang sesuai dengan function
+  // PERBAIKAN: Format yang sesuai dengan function dan perbaikan delete
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      
+      // PERBAIKAN: Hanya simpan nama kegiatan tanpa tanggal di kolom kegiatan
+      const kegiatanOnly = data.kegiatan.split(' (')[0];
       
       // Format data sesuai dengan header spreadsheet
       const rowData = [
         data.no.toString(),                    // A: No
         tahun.toString(),                      // B: Tahun  
         bulan,                                 // C: Bulan
-        data.kegiatan || "",                   // D: Kegiatan
+        kegiatanOnly,                          // D: Kegiatan (hanya nama kegiatan)
         data.nama,                             // E: Nama Pelaksana
         data.nik,                              // F: NIP/NIK
         dates,                                 // G: Tanggal
@@ -268,7 +274,8 @@ export default function BlockTanggal() {
       console.log('🔄 Menyimpan ke spreadsheet:', { 
         operation, 
         rowData,
-        rowIndex: data.spreadsheetRowIndex 
+        rowIndex: data.spreadsheetRowIndex,
+        userRole 
       });
 
       let requestBody;
@@ -290,7 +297,7 @@ export default function BlockTanggal() {
           values: [rowData]
         };
       } else if (operation === 'delete' && data.spreadsheetRowIndex) {
-        // FORMAT DELETE: delete dengan rowIndex
+        // PERBAIKAN DELETE: Pastikan rowIndex benar
         requestBody = {
           spreadsheetId: SPREADSHEET_ID,
           operation: "delete",
@@ -484,6 +491,9 @@ export default function BlockTanggal() {
       setShowDeleteDataDialog(false);
       setDataToDelete(null);
 
+      // Refresh data untuk memastikan sinkronisasi
+      await loadExistingData();
+
       toast({
         title: "Sukses",
         description: "Data berhasil dihapus",
@@ -582,12 +592,12 @@ export default function BlockTanggal() {
       });
 
       const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
-      const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
       
+      // PERBAIKAN: Format kegiatan hanya nama kegiatan, tanggal disimpan di kolom terpisah
       if (editMode) {
-        data.kegiatan = kegiatanEntry;
+        data.kegiatan = kegiatanInput;
       } else {
-        data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
+        data.kegiatan = data.kegiatan ? `${data.kegiatan}` : kegiatanInput;
       }
 
       data.penanggungJawab = userRole;
@@ -596,7 +606,8 @@ export default function BlockTanggal() {
         nama: data.nama,
         kegiatan: data.kegiatan,
         dates: tanggalStrings,
-        editMode
+        editMode,
+        userRole
       });
 
       await saveToSpreadsheet(data, 'update');
@@ -631,10 +642,16 @@ export default function BlockTanggal() {
 
   const getKegiatanDisplay = (data: DataRow) => {
     if (!data.kegiatan) return "Belum ada kegiatan";
+    
+    // Tampilkan nama kegiatan dan tanggal yang diblokir
+    const blockedDates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b));
+    if (blockedDates.length > 0) {
+      return `${data.kegiatan} (${blockedDates.join(',')})`;
+    }
     return data.kegiatan;
   };
 
-  // Fungsi untuk mendapatkan tanggal yang diblokir oleh data tertentu saja
+  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh data tertentu saja
   const getBlockedDatesForData = (data: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return Object.keys(data.blocks)
@@ -642,7 +659,7 @@ export default function BlockTanggal() {
       .filter(isDateInSelectedMonth);
   };
 
-  // Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain
+  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain (untuk edit mode)
   const getBlockedDatesByOthers = (currentData: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     const allBlockedDates: Date[] = [];
@@ -656,6 +673,23 @@ export default function BlockTanggal() {
           }
         });
       }
+    });
+    
+    return allBlockedDates;
+  };
+
+  // Fungsi untuk mendapatkan semua tanggal yang diblokir (untuk tambah mode)
+  const getAllBlockedDates = (): Date[] => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const allBlockedDates: Date[] = [];
+    
+    dataRows.forEach(data => {
+      Object.keys(data.blocks).forEach(tanggal => {
+        const date = new Date(tahun, monthIndex, parseInt(tanggal));
+        if (isDateInSelectedMonth(date)) {
+          allBlockedDates.push(date);
+        }
+      });
     });
     
     return allBlockedDates;
@@ -701,6 +735,10 @@ export default function BlockTanggal() {
           <p className="text-muted-foreground mt-2">
             Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik Kabupaten Majalengka
           </p>
+          <div className="flex items-center gap-2 mt-2">
+            <UserCheck className="h-4 w-4 text-blue-600" />
+            <span className="text-sm text-muted-foreground">Login sebagai: <strong>{userRole}</strong></span>
+          </div>
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
           <Select value={bulan} onValueChange={setBulan}>
@@ -812,7 +850,7 @@ export default function BlockTanggal() {
                   <TableHead className="min-w-40">Kegiatan</TableHead>
                   <TableHead className="min-w-32">Penanggung Jawab</TableHead>
                   <TableHead className="text-center min-w-24">Jumlah</TableHead>
-                  <TableHead className="text-center min-w-24">Aksi</TableHead>
+                  <TableHead className="text-center min-w-32">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -856,6 +894,9 @@ export default function BlockTanggal() {
                             <div className="space-y-1">
                               <p className="font-semibold">Detail Kegiatan:</p>
                               <p>{getKegiatanDisplay(data)}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Penanggung Jawab: {data.penanggungJawab}
+                              </p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -870,14 +911,20 @@ export default function BlockTanggal() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-2">
+                        {/* Tombol Tambah Tanggal - ICON BARU */}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button variant="outline" size="icon" onClick={() => openDatePicker(index, false)}>
-                                    <Plus className="h-4 w-4" />
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="h-9 w-9 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
+                                    onClick={() => openDatePicker(index, false)}
+                                  >
+                                    <Clock className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-4" align="start">
@@ -891,6 +938,7 @@ export default function BlockTanggal() {
                                       locale={id}
                                       month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
+                                        // PERBAIKAN: Untuk tambah, hanya tampilkan yang sudah diblokir orang ini
                                         blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
@@ -912,11 +960,11 @@ export default function BlockTanggal() {
                                     </div>
                                     <Button 
                                       onClick={saveDates}
-                                      className="w-full"
+                                      className="w-full bg-green-600 hover:bg-green-700"
                                       disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
                                     >
                                       <Save className="h-4 w-4 mr-2" />
-                                      Simpan
+                                      Simpan Tanggal
                                     </Button>
                                   </div>
                                 </PopoverContent>
@@ -928,13 +976,19 @@ export default function BlockTanggal() {
                           </Tooltip>
                         </TooltipProvider>
 
+                        {/* Tombol Edit Tanggal - ICON BARU */}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button variant="outline" size="icon" onClick={() => openDatePicker(index, true)}>
-                                    <Edit className="h-4 w-4" />
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="h-9 w-9 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
+                                    onClick={() => openDatePicker(index, true)}
+                                  >
+                                    <Tag className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-4" align="start">
@@ -948,6 +1002,7 @@ export default function BlockTanggal() {
                                       locale={id}
                                       month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
+                                        // PERBAIKAN: Untuk edit, hanya tampilkan yang diblokir orang lain
                                         blocked: getBlockedDatesByOthers(data)
                                       }}
                                       modifiersStyles={{
@@ -969,11 +1024,11 @@ export default function BlockTanggal() {
                                     </div>
                                     <Button 
                                       onClick={saveDates}
-                                      className="w-full"
+                                      className="w-full bg-blue-600 hover:bg-blue-700"
                                       disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
                                     >
                                       <Save className="h-4 w-4 mr-2" />
-                                      Update
+                                      Update Tanggal
                                     </Button>
                                   </div>
                                 </PopoverContent>
@@ -985,12 +1040,14 @@ export default function BlockTanggal() {
                           </Tooltip>
                         </TooltipProvider>
 
+                        {/* Tombol Hapus Data - ICON BARU */}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="icon"
+                                className="h-9 w-9 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
                                 onClick={() => requestDeleteData(index)}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1025,7 +1082,8 @@ export default function BlockTanggal() {
               Batal
             </Button>
             <Button variant="destructive" onClick={deleteData}>
-              Hapus
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus Data
             </Button>
           </DialogFooter>
         </DialogContent>
