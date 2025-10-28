@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -32,7 +32,7 @@ interface BlockData {
   [key: string]: string; // tanggal -> kegiatan
 }
 
-interface MitraRow {
+interface DataRow {
   no: number;
   nama: string;
   nik: string;
@@ -53,7 +53,7 @@ export default function BlockTanggal() {
   const [availableOrganik, setAvailableOrganik] = useState<Organik[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string>("");
   const [selectedOrganik, setSelectedOrganik] = useState<string>("");
-  const [matrixData, setMatrixData] = useState<MitraRow[]>([]);
+  const [dataRows, setDataRows] = useState<DataRow[]>([]);
   const [bulan, setBulan] = useState<string>(new Date().toLocaleString('id-ID', { month: 'long' }));
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
   const [userRole, setUserRole] = useState<string>("");
@@ -61,10 +61,10 @@ export default function BlockTanggal() {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showDeleteMitraDialog, setShowDeleteMitraDialog] = useState(false);
-  const [mitraToDelete, setMitraToDelete] = useState<number | null>(null);
-  const [blockToDelete, setBlockToDelete] = useState<{ mitraIndex: number; tanggal: string } | null>(null);
-  const [selectedMitraForDates, setSelectedMitraForDates] = useState<number | null>(null);
+  const [showDeleteDataDialog, setShowDeleteDataDialog] = useState(false);
+  const [dataToDelete, setDataToDelete] = useState<number | null>(null);
+  const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
+  const [editMode, setEditMode] = useState<boolean>(false);
 
   const { toast } = useToast();
 
@@ -134,9 +134,9 @@ export default function BlockTanggal() {
 
       const rows = data.values || [];
       const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
-        nama: row[3] || "", // Kolom D - Nama
-        nip: row[2] || "",  // Kolom C - NIP
-        jabatan: row[4] || "", // Kolom E - Jabatan
+        nama: row[3] || "",
+        nip: row[2] || "",
+        jabatan: row[4] || "",
       }));
 
       setOrganikList(organikData);
@@ -166,20 +166,19 @@ export default function BlockTanggal() {
         row[1] === tahun.toString() && row[2] === bulan
       );
 
-      const matrix: MitraRow[] = [];
+      const newDataRows: DataRow[] = [];
       
       currentData.forEach((row: any[]) => {
-        const namaMitra = row[4] || "";
-        const nikMitra = row[5] || "";
+        const nama = row[4] || "";
+        const nik = row[5] || "";
         const kegiatan = row[3] || "";
         const tanggal = row[6] ? row[6].split(',').map((t: string) => t.trim()) : [];
         const penanggungJawab = row[7] || "";
 
-        // Cek apakah ini organik atau mitra
-        const isOrganik = organikList.some(org => org.nama === namaMitra);
+        const isOrganik = organikList.some(org => org.nama === nama);
         
-        const existingIndex = matrix.findIndex(m => 
-          m.nik === nikMitra && m.kegiatan === kegiatan && m.isOrganik === isOrganik
+        const existingIndex = newDataRows.findIndex(item => 
+          item.nik === nik && item.isOrganik === isOrganik
         );
         
         if (existingIndex === -1) {
@@ -188,27 +187,46 @@ export default function BlockTanggal() {
             blocks[t] = kegiatan;
           });
 
-          matrix.push({
-            no: matrix.length + 1,
-            nama: namaMitra,
-            nik: nikMitra,
+          newDataRows.push({
+            no: newDataRows.length + 1,
+            nama: nama,
+            nik: nik,
             kecamatan: isOrganik ? 
-              organikList.find(org => org.nama === namaMitra)?.jabatan || "" : 
-              mitraList.find(m => m.nik === nikMitra)?.kecamatan || "",
+              organikList.find(org => org.nama === nama)?.jabatan || "" : 
+              mitraList.find(m => m.nik === nik)?.kecamatan || "",
             kegiatan: kegiatan,
             penanggungJawab: penanggungJawab,
             blocks,
             isOrganik
           });
         } else {
+          // Merge kegiatan dan blocks untuk orang yang sama
+          const existing = newDataRows[existingIndex];
+          const newKegiatan = existing.kegiatan ? `${existing.kegiatan} - ${kegiatan}` : kegiatan;
+          
           tanggal.forEach((t: string) => {
-            matrix[existingIndex].blocks[t] = kegiatan;
+            existing.blocks[t] = kegiatan;
           });
+          
+          existing.kegiatan = newKegiatan;
         }
       });
 
-      setMatrixData(matrix);
-      updateAvailableData(matrix);
+      // Auto sort: organik diatas, kemudian sort by nama
+      const sortedData = newDataRows.sort((a, b) => {
+        if (a.isOrganik !== b.isOrganik) {
+          return a.isOrganik ? -1 : 1;
+        }
+        return a.nama.localeCompare(b.nama);
+      });
+
+      // Update nomor urut setelah sorting
+      sortedData.forEach((item, index) => {
+        item.no = index + 1;
+      });
+
+      setDataRows(sortedData);
+      updateAvailableData(sortedData);
       setIsLoading(false);
     } catch (error: any) {
       toast({
@@ -220,9 +238,9 @@ export default function BlockTanggal() {
     }
   };
 
-  const updateAvailableData = (currentMatrix: MitraRow[]) => {
-    const usedNiks = currentMatrix.map(m => m.nik);
-    const usedOrganikNames = currentMatrix.filter(m => m.isOrganik).map(m => m.nama);
+  const updateAvailableData = (currentData: DataRow[]) => {
+    const usedNiks = currentData.map(item => item.nik);
+    const usedOrganikNames = currentData.filter(item => item.isOrganik).map(item => item.nama);
     
     const availableMitraData = mitraList.filter(mitra => !usedNiks.includes(mitra.nik));
     const availableOrganikData = organikList.filter(org => !usedOrganikNames.includes(org.nama));
@@ -244,8 +262,8 @@ export default function BlockTanggal() {
     const selected = availableMitra.find(m => m.nama === selectedMitra);
     if (!selected) return;
 
-    const newRow: MitraRow = {
-      no: matrixData.length + 1,
+    const newRow: DataRow = {
+      no: dataRows.length + 1,
       nama: selected.nama,
       nik: selected.nik,
       kecamatan: selected.kecamatan,
@@ -255,7 +273,9 @@ export default function BlockTanggal() {
       isOrganik: false
     };
 
-    setMatrixData([...matrixData, newRow]);
+    const newData = [...dataRows, newRow];
+    const sortedData = sortData(newData);
+    setDataRows(sortedData);
     setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
     setSelectedMitra("");
   };
@@ -273,8 +293,8 @@ export default function BlockTanggal() {
     const selected = availableOrganik.find(org => org.nama === selectedOrganik);
     if (!selected) return;
 
-    const newRow: MitraRow = {
-      no: matrixData.length + 1,
+    const newRow: DataRow = {
+      no: dataRows.length + 1,
       nama: selected.nama,
       nik: selected.nip,
       kecamatan: selected.jabatan,
@@ -284,56 +304,81 @@ export default function BlockTanggal() {
       isOrganik: true
     };
 
-    setMatrixData([...matrixData, newRow]);
+    const newData = [...dataRows, newRow];
+    const sortedData = sortData(newData);
+    setDataRows(sortedData);
     setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
     setSelectedOrganik("");
   };
 
-  const requestDeleteMitra = (mitraIndex: number) => {
-    setMitraToDelete(mitraIndex);
-    setShowDeleteMitraDialog(true);
-  };
-
-  const deleteMitra = () => {
-    if (mitraToDelete === null) return;
-
-    const mitra = matrixData[mitraToDelete];
-    
-    const newData = [...matrixData];
-    newData.splice(mitraToDelete, 1);
-    
-    // Update nomor urut
-    newData.forEach((mitra, index) => {
-      mitra.no = index + 1;
+  const sortData = (data: DataRow[]): DataRow[] => {
+    const sorted = data.sort((a, b) => {
+      if (a.isOrganik !== b.isOrganik) {
+        return a.isOrganik ? -1 : 1;
+      }
+      return a.nama.localeCompare(b.nama);
     });
 
-    setMatrixData(newData);
-    
-    // Kembalikan ke available list
-    if (mitra.isOrganik) {
-      setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === mitra.nama)!]);
-    } else {
-      setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === mitra.nik)!]);
-    }
-    
-    setShowDeleteMitraDialog(false);
-    setMitraToDelete(null);
-
-    // Hapus dari spreadsheet
-    deleteFromSheet(mitra);
+    // Update nomor urut
+    return sorted.map((item, index) => ({
+      ...item,
+      no: index + 1
+    }));
   };
 
-  const openDatePicker = (mitraIndex: number) => {
-    setSelectedMitraForDates(mitraIndex);
-    setSelectedDates([]);
-    setKegiatanInput("");
+  const requestDeleteData = (dataIndex: number) => {
+    setDataToDelete(dataIndex);
+    setShowDeleteDataDialog(true);
+  };
+
+  const deleteData = () => {
+    if (dataToDelete === null) return;
+
+    const data = dataRows[dataToDelete];
+    
+    const newData = [...dataRows];
+    newData.splice(dataToDelete, 1);
+    
+    const sortedData = sortData(newData);
+    setDataRows(sortedData);
+    
+    // Kembalikan ke available list
+    if (data.isOrganik) {
+      setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+    } else {
+      setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+    }
+    
+    setShowDeleteDataDialog(false);
+    setDataToDelete(null);
+
+    deleteFromSheet(data);
+  };
+
+  const openDatePicker = (dataIndex: number, edit: boolean = false) => {
+    setSelectedDataForDates(dataIndex);
+    setEditMode(edit);
+    
+    if (edit) {
+      const data = dataRows[dataIndex];
+      // Pre-fill existing dates
+      const dates = Object.keys(data.blocks).map(tanggal => {
+        const monthIndex = bulanOptions.indexOf(bulan);
+        return new Date(tahun, monthIndex, parseInt(tanggal));
+      });
+      setSelectedDates(dates);
+      setKegiatanInput(data.kegiatan.split(' (')[0]); // Ambil bagian sebelum tanggal
+    } else {
+      setSelectedDates([]);
+      setKegiatanInput("");
+    }
   };
 
   const saveDates = async () => {
-    if (selectedMitraForDates === null) {
+    if (selectedDataForDates === null) {
       toast({
         title: "Error",
-        description: "Tidak ada mitra yang dipilih",
+        description: "Tidak ada data yang dipilih",
         variant: "destructive",
       });
       return;
@@ -357,49 +402,67 @@ export default function BlockTanggal() {
       return;
     }
 
-    const newData = [...matrixData];
-    const mitraIndex = selectedMitraForDates;
+    const newData = [...dataRows];
+    const dataIndex = selectedDataForDates;
+    const data = newData[dataIndex];
     
-    // Tambahkan blocks untuk setiap tanggal yang dipilih
-    selectedDates.forEach(date => {
-      const tanggal = date.getDate().toString();
-      newData[mitraIndex].blocks[tanggal] = kegiatanInput;
-    });
-
-    // Update kegiatan dengan format yang diinginkan
-    const existingKegiatan = newData[mitraIndex].kegiatan;
-    const newKegiatanEntry = `${kegiatanInput} (${selectedDates.map(d => d.getDate()).sort((a, b) => a - b).join(',')})`;
+    // Cek untuk tanggal duplikat
+    const tanggalStrings = selectedDates.map(date => date.getDate().toString());
+    const duplicateDates = tanggalStrings.filter(tanggal => data.blocks[tanggal]);
     
-    if (existingKegiatan) {
-      newData[mitraIndex].kegiatan = `${existingKegiatan} - ${newKegiatanEntry}`;
-    } else {
-      newData[mitraIndex].kegiatan = newKegiatanEntry;
+    if (duplicateDates.length > 0 && !editMode) {
+      toast({
+        title: "Error",
+        description: `Tanggal ${duplicateDates.join(', ')} sudah ada untuk ${data.nama}`,
+        variant: "destructive",
+      });
+      return;
     }
 
-    newData[mitraIndex].penanggungJawab = userRole;
+    if (editMode) {
+      // Clear existing blocks untuk edit mode
+      data.blocks = {};
+    }
 
-    setMatrixData(newData);
+    // Tambahkan blocks untuk setiap tanggal yang dipilih
+    tanggalStrings.forEach(tanggal => {
+      data.blocks[tanggal] = kegiatanInput;
+    });
+
+    // Format kegiatan
+    const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
+    const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
+    
+    if (editMode) {
+      data.kegiatan = kegiatanEntry;
+    } else {
+      data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
+    }
+
+    data.penanggungJawab = userRole;
+
+    const sortedData = sortData(newData);
+    setDataRows(sortedData);
     setKegiatanInput("");
     setSelectedDates([]);
-    setSelectedMitraForDates(null);
+    setSelectedDataForDates(null);
+    setEditMode(false);
 
-    await saveToSheet(newData[mitraIndex]);
+    await saveToSheet(data);
   };
 
-  const getBlockedDatesCount = (mitra: MitraRow) => {
-    return Object.keys(mitra.blocks).length;
+  const getBlockedDatesCount = (data: DataRow) => {
+    return Object.keys(data.blocks).length;
   };
 
-  const getKegiatanDisplay = (mitra: MitraRow) => {
-    if (!mitra.kegiatan) return "Belum ada kegiatan";
-    
-    // Format: "Rapat evaluasi (2,3,5) - Pendataan sakernas (4,10)"
-    return mitra.kegiatan;
+  const getKegiatanDisplay = (data: DataRow) => {
+    if (!data.kegiatan) return "Belum ada kegiatan";
+    return data.kegiatan;
   };
 
-  const saveToSheet = async (mitra: MitraRow) => {
+  const saveToSheet = async (data: DataRow) => {
     try {
-      const dates = Object.keys(mitra.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
       
       // Cek apakah data sudah ada
       const { data: existingData, error: checkError } = await supabase.functions.invoke("google-sheets", {
@@ -416,19 +479,19 @@ export default function BlockTanggal() {
       const existingRowIndex = rows.findIndex((row: any[]) => 
         row[1] === tahun.toString() && 
         row[2] === bulan && 
-        row[4] === mitra.nama && 
-        row[5] === mitra.nik
+        row[4] === data.nama && 
+        row[5] === data.nik
       );
 
       const newRow = [
         (existingRowIndex === -1 ? rows.length + 1 : existingRowIndex + 1).toString(),
         tahun.toString(),
         bulan,
-        mitra.kegiatan,
-        mitra.nama,
-        mitra.nik,
+        data.kegiatan,
+        data.nama,
+        data.nik,
         dates,
-        userRole // Role yang melakukan block - TEREKAM
+        userRole // Role pengentri TEREKAM
       ];
 
       let error;
@@ -472,7 +535,7 @@ export default function BlockTanggal() {
     }
   };
 
-  const deleteFromSheet = async (mitra: MitraRow) => {
+  const deleteFromSheet = async (data: DataRow) => {
     try {
       const { data: existingData, error: checkError } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -488,8 +551,8 @@ export default function BlockTanggal() {
       const rowIndex = rows.findIndex((row: any[]) => 
         row[1] === tahun.toString() && 
         row[2] === bulan && 
-        row[4] === mitra.nama && 
-        row[5] === mitra.nik
+        row[4] === data.nama && 
+        row[5] === data.nik
       );
 
       if (rowIndex !== -1) {
@@ -532,9 +595,9 @@ export default function BlockTanggal() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Block Tanggal Mitra</h1>
+          <h1 className="text-3xl font-bold text-foreground">Block Tanggal Perjalanan Dinas</h1>
           <p className="text-muted-foreground mt-2">
-            Sistem tagging tanggal transport lokal untuk mitra statistik
+            Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik Kabupaten Majalengka
           </p>
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
@@ -569,34 +632,11 @@ export default function BlockTanggal() {
             Tambah Data
           </CardTitle>
           <CardDescription>
-            Pilih mitra atau organik untuk ditambahkan ke daftar
+            Pilih organik atau mitra untuk ditambahkan ke daftar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Tambah Mitra */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tambah Mitra</label>
-              <div className="flex gap-2">
-                <Select value={selectedMitra} onValueChange={setSelectedMitra}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Pilih Mitra..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableMitra.map((mitra) => (
-                      <SelectItem key={mitra.nik} value={mitra.nama}>
-                        {mitra.nama} - {mitra.kecamatan}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button onClick={addMitra} disabled={!selectedMitra}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
-              </div>
-            </div>
-
             {/* Tambah Organik */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tambah Organik</label>
@@ -619,6 +659,29 @@ export default function BlockTanggal() {
                 </Button>
               </div>
             </div>
+
+            {/* Tambah Mitra */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tambah Mitra</label>
+              <div className="flex gap-2">
+                <Select value={selectedMitra} onValueChange={setSelectedMitra}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Pilih Mitra..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMitra.map((mitra) => (
+                      <SelectItem key={mitra.nik} value={mitra.nama}>
+                        {mitra.nama} - {mitra.kecamatan}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={addMitra} disabled={!selectedMitra}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -629,11 +692,11 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar <span className="text-black">Mitra</span> - <span className="text-red-500">{bulan} {tahun}</span>
+              Daftar <span className="text-black">Perjalanan Dinas</span> - <span className="text-red-500">{bulan} {tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
-            Kelola tanggal block untuk setiap mitra dan organik
+            Kelola tanggal block perjalanan dinas untuk organik dan mitra
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -643,24 +706,33 @@ export default function BlockTanggal() {
                 <TableRow>
                   <TableHead className="w-12">No</TableHead>
                   <TableHead className="min-w-48">Nama</TableHead>
-                  <TableHead className="min-w-32">{matrixData.some(m => m.isOrganik) ? "Jabatan/Kecamatan" : "Kecamatan"}</TableHead>
+                  <TableHead className="min-w-32">Jabatan/Kecamatan</TableHead>
                   <TableHead className="min-w-40">Kegiatan</TableHead>
                   <TableHead className="min-w-32">Penanggung Jawab</TableHead>
                   <TableHead className="min-w-24">Jumlah</TableHead>
-                  <TableHead className="min-w-32">Aksi</TableHead>
+                  <TableHead className="min-w-40">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {matrixData.map((data, index) => (
+                {dataRows.map((data, index) => (
                   <TableRow key={`${data.nik}-${data.isOrganik}`}>
                     <TableCell className="font-medium">
                       {data.no}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
+                        {data.isOrganik ? (
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                        ) : (
+                          <MapPin className="h-4 w-4 text-green-600" />
+                        )}
                         <div>
-                          <div>{data.nama}</div>
+                          <div className="flex items-center gap-1">
+                            {data.nama}
+                            {data.isOrganik && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Organik</span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             {data.isOrganik ? `NIP: ${data.nik}` : `NIK: ${data.nik}`}
                           </div>
@@ -699,14 +771,14 @@ export default function BlockTanggal() {
                       <div className="flex items-center gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => openDatePicker(index)}>
+                            <Button variant="outline" size="sm" onClick={() => openDatePicker(index, false)}>
                               <CalendarIcon className="h-4 w-4 mr-1" />
-                              Pilih Tanggal
+                              Tambah
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-4" align="start">
                             <div className="space-y-4">
-                              <div className="text-sm font-medium">Pilih Tanggal untuk {data.nama}</div>
+                              <div className="text-sm font-medium">Tambah Tanggal untuk {data.nama}</div>
                               <CalendarComponent
                                 mode="multiple"
                                 selected={selectedDates}
@@ -732,11 +804,47 @@ export default function BlockTanggal() {
                             </div>
                           </PopoverContent>
                         </Popover>
+
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => openDatePicker(index, true)}>
+                              <CalendarIcon className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-4" align="start">
+                            <div className="space-y-4">
+                              <div className="text-sm font-medium">Edit Tanggal untuk {data.nama}</div>
+                              <CalendarComponent
+                                mode="multiple"
+                                selected={selectedDates}
+                                onSelect={setSelectedDates}
+                                className="rounded-md border"
+                                locale={id}
+                              />
+                              <Input
+                                placeholder="Nama kegiatan"
+                                value={kegiatanInput}
+                                onChange={(e) => setKegiatanInput(e.target.value)}
+                              />
+                              <div className="text-xs text-muted-foreground">
+                                Tanggal terpilih: {selectedDates.map(d => d.getDate()).join(', ')}
+                              </div>
+                              <Button 
+                                onClick={saveDates}
+                                className="w-full"
+                                disabled={selectedDates.length === 0 || !kegiatanInput.trim()}
+                              >
+                                Update Tanggal
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => requestDeleteMitra(index)}
+                          onClick={() => requestDeleteData(index)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -750,8 +858,8 @@ export default function BlockTanggal() {
         </CardContent>
       </Card>
 
-      {/* Delete Mitra Confirmation Dialog */}
-      <Dialog open={showDeleteMitraDialog} onOpenChange={setShowDeleteMitraDialog}>
+      {/* Delete Data Confirmation Dialog */}
+      <Dialog open={showDeleteDataDialog} onOpenChange={setShowDeleteDataDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Hapus Data</DialogTitle>
@@ -760,10 +868,10 @@ export default function BlockTanggal() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteMitraDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDataDialog(false)}>
               Batal
             </Button>
-            <Button variant="destructive" onClick={deleteMitra}>
+            <Button variant="destructive" onClick={deleteData}>
               Hapus
             </Button>
           </DialogFooter>
