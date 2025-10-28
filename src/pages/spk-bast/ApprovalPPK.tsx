@@ -248,7 +248,7 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN UTAMA: Fungsi simpan yang lebih robust
+  // PERBAIKAN UTAMA: Format data yang sesuai dengan Supabase Function
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
@@ -273,11 +273,12 @@ export default function BlockTanggal() {
 
       let result;
 
+      // PERBAIKAN: Gunakan format yang lebih sederhana dan kompatibel
       if (operation === 'create') {
         result = await supabase.functions.invoke("google-sheets", {
           body: {
+            action: "append",
             spreadsheetId: SPREADSHEET_ID,
-            operation: "append",
             range: "Sheet1",
             values: [rowData],
           },
@@ -285,8 +286,8 @@ export default function BlockTanggal() {
       } else if (operation === 'update' && data.spreadsheetRowIndex) {
         result = await supabase.functions.invoke("google-sheets", {
           body: {
+            action: "update",
             spreadsheetId: SPREADSHEET_ID,
-            operation: "update",
             range: `Sheet1!A${data.spreadsheetRowIndex}:H${data.spreadsheetRowIndex}`,
             values: [rowData],
           },
@@ -294,8 +295,8 @@ export default function BlockTanggal() {
       } else if (operation === 'delete' && data.spreadsheetRowIndex) {
         result = await supabase.functions.invoke("google-sheets", {
           body: {
+            action: "delete",
             spreadsheetId: SPREADSHEET_ID,
-            operation: "delete",
             range: `Sheet1!A${data.spreadsheetRowIndex}:H${data.spreadsheetRowIndex}`,
           },
         });
@@ -314,13 +315,89 @@ export default function BlockTanggal() {
     }
   };
 
+  // PERBAIKAN: Coba pendekatan alternatif untuk create
+  const createNewRow = async (data: DataRow) => {
+    try {
+      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      
+      const rowData = [
+        data.no.toString(),
+        tahun.toString(),  
+        bulan,
+        data.kegiatan || "",
+        data.nama,
+        data.nik,
+        dates,
+        userRole
+      ];
+
+      console.log('➕ Membuat row baru:', rowData);
+
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: {
+          action: "append",
+          spreadsheetId: SPREADSHEET_ID,
+          sheetName: "Sheet1",
+          data: rowData,
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data;
+    } catch (error: any) {
+      console.error('❌ Error createNewRow:', error);
+      throw error;
+    }
+  };
+
+  // PERBAIKAN: Coba pendekatan alternatif untuk update
+  const updateExistingRow = async (data: DataRow) => {
+    try {
+      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      
+      const rowData = [
+        data.no.toString(),
+        tahun.toString(),  
+        bulan,
+        data.kegiatan || "",
+        data.nama,
+        data.nik,
+        dates,
+        userRole
+      ];
+
+      console.log('✏️ Update row:', { rowIndex: data.spreadsheetRowIndex, rowData });
+
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: {
+          action: "update",
+          spreadsheetId: SPREADSHEET_ID,
+          range: `Sheet1!A${data.spreadsheetRowIndex}:H${data.spreadsheetRowIndex}`,
+          data: rowData,
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data;
+    } catch (error: any) {
+      console.error('❌ Error updateExistingRow:', error);
+      throw error;
+    }
+  };
+
   // Fungsi untuk mendapatkan row index baru
   const getNextRowIndex = async (): Promise<number> => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
+          action: "read",
           spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
           range: "Sheet1!A:A",
         },
       });
@@ -364,7 +441,9 @@ export default function BlockTanggal() {
 
     try {
       console.log('➕ Menambah mitra:', newRow);
-      await saveToSpreadsheet(newRow, 'create');
+      
+      // COBA PENDEKATAN ALTERNATIF
+      await createNewRow(newRow);
       
       const newData = [...dataRows, newRow];
       const sortedData = sortData(newData);
@@ -414,7 +493,9 @@ export default function BlockTanggal() {
 
     try {
       console.log('➕ Menambah organik:', newRow);
-      await saveToSpreadsheet(newRow, 'create');
+      
+      // COBA PENDEKATAN ALTERNATIF
+      await createNewRow(newRow);
       
       const newData = [...dataRows, newRow];
       const sortedData = sortData(newData);
@@ -600,8 +681,8 @@ export default function BlockTanggal() {
         editMode
       });
 
-      // PERBAIKAN: Pastikan update ke spreadsheet
-      await saveToSpreadsheet(data, 'update');
+      // PERBAIKAN: Gunakan pendekatan alternatif untuk update
+      await updateExistingRow(data);
       
       const sortedData = sortData(newData);
       setDataRows(sortedData);
