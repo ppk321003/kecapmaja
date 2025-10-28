@@ -22,6 +22,12 @@ interface Mitra {
   kecamatan: string;
 }
 
+interface Organik {
+  nama: string;
+  nip: string;
+  jabatan: string;
+}
+
 interface BlockData {
   [key: string]: string; // tanggal -> kegiatan
 }
@@ -32,26 +38,21 @@ interface MitraRow {
   nik: string;
   kecamatan: string;
   kegiatan: string;
+  penanggungJawab: string;
   blocks: BlockData;
+  isOrganik: boolean;
 }
 
 const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
 const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
-const fungsiColors: { [key: string]: string } = {
-  "Fungsi Sosial": "bg-blue-100 border-blue-400 hover:bg-blue-200",
-  "Fungsi Produksi": "bg-green-100 border-green-400 hover:bg-green-200",
-  "Fungsi Distribusi": "bg-orange-100 border-orange-400 hover:bg-orange-200",
-  "Fungsi Neraca": "bg-purple-100 border-purple-400 hover:bg-purple-200",
-  "Fungsi IPDS": "bg-yellow-100 border-yellow-400 hover:bg-yellow-200",
-  "Pejabat Pembuat Komitmen": "bg-red-100 border-red-400 hover:bg-red-200",
-  "Bendahara": "bg-gray-100 border-gray-400 hover:bg-gray-200"
-};
-
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
+  const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [availableMitra, setAvailableMitra] = useState<Mitra[]>([]);
+  const [availableOrganik, setAvailableOrganik] = useState<Organik[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string>("");
+  const [selectedOrganik, setSelectedOrganik] = useState<string>("");
   const [matrixData, setMatrixData] = useState<MitraRow[]>([]);
   const [bulan, setBulan] = useState<string>(new Date().toLocaleString('id-ID', { month: 'long' }));
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
@@ -81,13 +82,14 @@ export default function BlockTanggal() {
       setUserRole(user.role || "");
     }
     loadMasterMitra();
+    loadMasterOrganik();
   }, []);
 
   useEffect(() => {
-    if (mitraList.length > 0) {
+    if (mitraList.length > 0 || organikList.length > 0) {
       loadExistingData();
     }
-  }, [bulan, tahun, mitraList]);
+  }, [bulan, tahun, mitraList, organikList]);
 
   const loadMasterMitra = async () => {
     try {
@@ -118,6 +120,35 @@ export default function BlockTanggal() {
     }
   };
 
+  const loadMasterOrganik = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_MITRA_SHEET_ID,
+          operation: "read",
+          range: "MASTER.ORGANIK",
+        },
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
+        nama: row[3] || "", // Kolom D - Nama
+        nip: row[2] || "",  // Kolom C - NIP
+        jabatan: row[4] || "", // Kolom E - Jabatan
+      }));
+
+      setOrganikList(organikData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal memuat data master organik",
+        variant: "destructive",
+      });
+    }
+  };
+
   const loadExistingData = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -142,8 +173,14 @@ export default function BlockTanggal() {
         const nikMitra = row[5] || "";
         const kegiatan = row[3] || "";
         const tanggal = row[6] ? row[6].split(',').map((t: string) => t.trim()) : [];
+        const penanggungJawab = row[7] || "";
 
-        const existingIndex = matrix.findIndex(m => m.nik === nikMitra && m.kegiatan === kegiatan);
+        // Cek apakah ini organik atau mitra
+        const isOrganik = organikList.some(org => org.nama === namaMitra);
+        
+        const existingIndex = matrix.findIndex(m => 
+          m.nik === nikMitra && m.kegiatan === kegiatan && m.isOrganik === isOrganik
+        );
         
         if (existingIndex === -1) {
           const blocks: BlockData = {};
@@ -155,9 +192,13 @@ export default function BlockTanggal() {
             no: matrix.length + 1,
             nama: namaMitra,
             nik: nikMitra,
-            kecamatan: mitraList.find(m => m.nik === nikMitra)?.kecamatan || "",
+            kecamatan: isOrganik ? 
+              organikList.find(org => org.nama === namaMitra)?.jabatan || "" : 
+              mitraList.find(m => m.nik === nikMitra)?.kecamatan || "",
             kegiatan: kegiatan,
-            blocks
+            penanggungJawab: penanggungJawab,
+            blocks,
+            isOrganik
           });
         } else {
           tanggal.forEach((t: string) => {
@@ -167,7 +208,7 @@ export default function BlockTanggal() {
       });
 
       setMatrixData(matrix);
-      updateAvailableMitra(matrix);
+      updateAvailableData(matrix);
       setIsLoading(false);
     } catch (error: any) {
       toast({
@@ -179,10 +220,15 @@ export default function BlockTanggal() {
     }
   };
 
-  const updateAvailableMitra = (currentMatrix: MitraRow[]) => {
+  const updateAvailableData = (currentMatrix: MitraRow[]) => {
     const usedNiks = currentMatrix.map(m => m.nik);
-    const available = mitraList.filter(mitra => !usedNiks.includes(mitra.nik));
-    setAvailableMitra(available);
+    const usedOrganikNames = currentMatrix.filter(m => m.isOrganik).map(m => m.nama);
+    
+    const availableMitraData = mitraList.filter(mitra => !usedNiks.includes(mitra.nik));
+    const availableOrganikData = organikList.filter(org => !usedOrganikNames.includes(org.nama));
+    
+    setAvailableMitra(availableMitraData);
+    setAvailableOrganik(availableOrganikData);
   };
 
   const addMitra = () => {
@@ -203,13 +249,44 @@ export default function BlockTanggal() {
       nama: selected.nama,
       nik: selected.nik,
       kecamatan: selected.kecamatan,
-      kegiatan: "", // Akan diisi saat memilih tanggal
-      blocks: {}
+      kegiatan: "",
+      penanggungJawab: userRole,
+      blocks: {},
+      isOrganik: false
     };
 
     setMatrixData([...matrixData, newRow]);
     setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
     setSelectedMitra("");
+  };
+
+  const addOrganik = () => {
+    if (!selectedOrganik) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih organik terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selected = availableOrganik.find(org => org.nama === selectedOrganik);
+    if (!selected) return;
+
+    const newRow: MitraRow = {
+      no: matrixData.length + 1,
+      nama: selected.nama,
+      nik: selected.nip,
+      kecamatan: selected.jabatan,
+      kegiatan: "",
+      penanggungJawab: userRole,
+      blocks: {},
+      isOrganik: true
+    };
+
+    setMatrixData([...matrixData, newRow]);
+    setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
+    setSelectedOrganik("");
   };
 
   const requestDeleteMitra = (mitraIndex: number) => {
@@ -231,7 +308,14 @@ export default function BlockTanggal() {
     });
 
     setMatrixData(newData);
-    setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === mitra.nik)!]);
+    
+    // Kembalikan ke available list
+    if (mitra.isOrganik) {
+      setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === mitra.nama)!]);
+    } else {
+      setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === mitra.nik)!]);
+    }
+    
     setShowDeleteMitraDialog(false);
     setMitraToDelete(null);
 
@@ -242,13 +326,14 @@ export default function BlockTanggal() {
   const openDatePicker = (mitraIndex: number) => {
     setSelectedMitraForDates(mitraIndex);
     setSelectedDates([]);
+    setKegiatanInput("");
   };
 
   const saveDates = async () => {
-    if (selectedMitraForDates === null || !kegiatanInput.trim()) {
+    if (selectedMitraForDates === null) {
       toast({
-        title: "Peringatan",
-        description: "Pilih tanggal dan isi nama kegiatan terlebih dahulu",
+        title: "Error",
+        description: "Tidak ada mitra yang dipilih",
         variant: "destructive",
       });
       return;
@@ -256,8 +341,17 @@ export default function BlockTanggal() {
 
     if (selectedDates.length === 0) {
       toast({
-        title: "Peringatan",
+        title: "Error",
         description: "Pilih minimal satu tanggal",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!kegiatanInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Masukkan nama kegiatan",
         variant: "destructive",
       });
       return;
@@ -266,14 +360,23 @@ export default function BlockTanggal() {
     const newData = [...matrixData];
     const mitraIndex = selectedMitraForDates;
     
-    // Set kegiatan untuk mitra
-    newData[mitraIndex].kegiatan = kegiatanInput;
-
     // Tambahkan blocks untuk setiap tanggal yang dipilih
     selectedDates.forEach(date => {
       const tanggal = date.getDate().toString();
       newData[mitraIndex].blocks[tanggal] = kegiatanInput;
     });
+
+    // Update kegiatan dengan format yang diinginkan
+    const existingKegiatan = newData[mitraIndex].kegiatan;
+    const newKegiatanEntry = `${kegiatanInput} (${selectedDates.map(d => d.getDate()).sort((a, b) => a - b).join(',')})`;
+    
+    if (existingKegiatan) {
+      newData[mitraIndex].kegiatan = `${existingKegiatan} - ${newKegiatanEntry}`;
+    } else {
+      newData[mitraIndex].kegiatan = newKegiatanEntry;
+    }
+
+    newData[mitraIndex].penanggungJawab = userRole;
 
     setMatrixData(newData);
     setKegiatanInput("");
@@ -283,25 +386,15 @@ export default function BlockTanggal() {
     await saveToSheet(newData[mitraIndex]);
   };
 
-  const requestDeleteBlock = (mitraIndex: number, tanggal: string) => {
-    setBlockToDelete({ mitraIndex, tanggal });
-    setShowDeleteDialog(true);
+  const getBlockedDatesCount = (mitra: MitraRow) => {
+    return Object.keys(mitra.blocks).length;
   };
 
-  const deleteBlock = async () => {
-    if (!blockToDelete) return;
-
-    const { mitraIndex, tanggal } = blockToDelete;
-    const mitra = matrixData[mitraIndex];
-
-    const newData = [...matrixData];
-    delete newData[mitraIndex].blocks[tanggal];
-
-    setMatrixData(newData);
-    setShowDeleteDialog(false);
-    setBlockToDelete(null);
-
-    await saveToSheet(mitra);
+  const getKegiatanDisplay = (mitra: MitraRow) => {
+    if (!mitra.kegiatan) return "Belum ada kegiatan";
+    
+    // Format: "Rapat evaluasi (2,3,5) - Pendataan sakernas (4,10)"
+    return mitra.kegiatan;
   };
 
   const saveToSheet = async (mitra: MitraRow) => {
@@ -324,8 +417,7 @@ export default function BlockTanggal() {
         row[1] === tahun.toString() && 
         row[2] === bulan && 
         row[4] === mitra.nama && 
-        row[5] === mitra.nik &&
-        row[3] === mitra.kegiatan
+        row[5] === mitra.nik
       );
 
       const newRow = [
@@ -371,6 +463,7 @@ export default function BlockTanggal() {
         description: "Data berhasil disimpan",
       });
     } catch (error: any) {
+      console.error('Save error:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan data",
@@ -413,7 +506,7 @@ export default function BlockTanggal() {
 
       toast({
         title: "Sukses",
-        description: "Data mitra berhasil dihapus",
+        description: "Data berhasil dihapus",
       });
     } catch (error: any) {
       toast({
@@ -422,15 +515,6 @@ export default function BlockTanggal() {
         variant: "destructive",
       });
     }
-  };
-
-  const getBlockedDatesCount = (mitra: MitraRow) => {
-    return Object.keys(mitra.blocks).length;
-  };
-
-  const getBlockedDatesPreview = (mitra: MitraRow) => {
-    const dates = Object.keys(mitra.blocks).sort((a, b) => parseInt(a) - parseInt(b));
-    return dates.length > 0 ? dates.join(', ') : 'Belum ada tanggal';
   };
 
   if (isLoading) {
@@ -477,48 +561,79 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* Add Mitra Section */}
+      {/* Add Data Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            Tambah Mitra
+            Tambah Data
           </CardTitle>
           <CardDescription>
-            Pilih mitra untuk ditambahkan ke daftar
+            Pilih mitra atau organik untuk ditambahkan ke daftar
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Select value={selectedMitra} onValueChange={setSelectedMitra}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Pilih Mitra..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableMitra.map((mitra) => (
-                  <SelectItem key={mitra.nik} value={mitra.nama}>
-                    {mitra.nama} - {mitra.kecamatan}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={addMitra} disabled={!selectedMitra}>
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Tambah Mitra */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tambah Mitra</label>
+              <div className="flex gap-2">
+                <Select value={selectedMitra} onValueChange={setSelectedMitra}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Pilih Mitra..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMitra.map((mitra) => (
+                      <SelectItem key={mitra.nik} value={mitra.nama}>
+                        {mitra.nama} - {mitra.kecamatan}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={addMitra} disabled={!selectedMitra}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah
+                </Button>
+              </div>
+            </div>
+
+            {/* Tambah Organik */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tambah Organik</label>
+              <div className="flex gap-2">
+                <Select value={selectedOrganik} onValueChange={setSelectedOrganik}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Pilih Organik..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableOrganik.map((organik) => (
+                      <SelectItem key={organik.nip} value={organik.nama}>
+                        {organik.nama} - {organik.nip}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={addOrganik} disabled={!selectedOrganik}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Matrix Table */}
+      {/* Data Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Daftar Mitra - {bulan} {tahun}
-          </CardTitle>
+            <CardTitle>
+              Daftar <span className="text-black">Mitra</span> - <span className="text-red-500">{bulan} {tahun}</span>
+            </CardTitle>
+          </div>
           <CardDescription>
-            Kelola tanggal block untuk setiap mitra
+            Kelola tanggal block untuk setiap mitra dan organik
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -527,66 +642,71 @@ export default function BlockTanggal() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">No</TableHead>
-                  <TableHead className="min-w-48">Nama Mitra</TableHead>
-                  <TableHead className="min-w-32">Kecamatan</TableHead>
-                  <TableHead className="min-w-40">Tanggal Block</TableHead>
-                  <TableHead className="min-w-32">Jumlah</TableHead>
+                  <TableHead className="min-w-48">Nama</TableHead>
+                  <TableHead className="min-w-32">{matrixData.some(m => m.isOrganik) ? "Jabatan/Kecamatan" : "Kecamatan"}</TableHead>
+                  <TableHead className="min-w-40">Kegiatan</TableHead>
+                  <TableHead className="min-w-32">Penanggung Jawab</TableHead>
+                  <TableHead className="min-w-24">Jumlah</TableHead>
                   <TableHead className="min-w-32">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {matrixData.map((mitra, mitraIndex) => (
-                  <TableRow key={`${mitra.nik}-${mitra.kegiatan}`}>
+                {matrixData.map((data, index) => (
+                  <TableRow key={`${data.nik}-${data.isOrganik}`}>
                     <TableCell className="font-medium">
-                      {mitra.no}
+                      {data.no}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        {mitra.nama}
+                        <div>
+                          <div>{data.nama}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {data.isOrganik ? `NIP: ${data.nik}` : `NIK: ${data.nik}`}
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {mitra.kecamatan}
+                      {data.kecamatan}
                     </TableCell>
                     <TableCell>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="max-w-[200px] truncate">
-                              {getBlockedDatesPreview(mitra)}
+                            <div className="max-w-[300px] truncate">
+                              {getKegiatanDisplay(data)}
                             </div>
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[300px]">
+                          <TooltipContent side="top" className="max-w-[400px]">
                             <div className="space-y-1">
-                              <p className="font-semibold">Kegiatan: {mitra.kegiatan || 'Belum diisi'}</p>
-                              <p>Tanggal: {getBlockedDatesPreview(mitra)}</p>
-                              {mitra.kegiatan && (
-                                <p className="text-xs text-muted-foreground">
-                                  Role: {userRole}
-                                </p>
-                              )}
+                              <p className="font-semibold">Detail Kegiatan:</p>
+                              <p>{getKegiatanDisplay(data)}</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </TableCell>
                     <TableCell>
+                      <span className="text-sm font-medium">{data.penanggungJawab}</span>
+                    </TableCell>
+                    <TableCell>
                       <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
-                        {getBlockedDatesCount(mitra)}
+                        {getBlockedDatesCount(data)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => openDatePicker(index)}>
                               <CalendarIcon className="h-4 w-4 mr-1" />
                               Pilih Tanggal
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-4" align="start">
                             <div className="space-y-4">
+                              <div className="text-sm font-medium">Pilih Tanggal untuk {data.nama}</div>
                               <CalendarComponent
                                 mode="multiple"
                                 selected={selectedDates}
@@ -599,6 +719,9 @@ export default function BlockTanggal() {
                                 value={kegiatanInput}
                                 onChange={(e) => setKegiatanInput(e.target.value)}
                               />
+                              <div className="text-xs text-muted-foreground">
+                                Tanggal terpilih: {selectedDates.map(d => d.getDate()).join(', ')}
+                              </div>
                               <Button 
                                 onClick={saveDates}
                                 className="w-full"
@@ -613,7 +736,7 @@ export default function BlockTanggal() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => requestDeleteMitra(mitraIndex)}
+                          onClick={() => requestDeleteMitra(index)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -627,33 +750,13 @@ export default function BlockTanggal() {
         </CardContent>
       </Card>
 
-      {/* Delete Block Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Block Tanggal</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus block tanggal ini?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={deleteBlock}>
-              Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Mitra Confirmation Dialog */}
       <Dialog open={showDeleteMitraDialog} onOpenChange={setShowDeleteMitraDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Mitra</DialogTitle>
+            <DialogTitle>Hapus Data</DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus mitra ini? Semua data tanggal block akan ikut terhapus.
+              Apakah Anda yakin ingin menghapus data ini? Semua data tanggal block akan ikut terhapus.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
