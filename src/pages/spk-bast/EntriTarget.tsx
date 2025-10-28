@@ -397,24 +397,23 @@ export default function EntriTarget() {
           monthActivities.forEach(activity => {
             activity.workers.forEach(worker => uniqueWorkers.add(worker.nip));
             
+            // PERBAIKAN: Hitung target per kegiatan
             const activityTarget = activity.workers.reduce((sum, w) => {
               return sum + parseFloat(w.target || '0');
             }, 0);
             totalTarget += activityTarget;
             
-            const activityValue = activity.workers.reduce((sum, w) => {
-              const target = parseFloat(w.target || '0');
-              const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
-              return sum + (target * hargaSatuan);
-            }, 0);
-            totalValue += activityValue;
+            // PERBAIKAN: Hitung nilai perjanjian (target × harga satuan)
+            const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+            const nilaiPerjanjian = activityTarget * hargaSatuan;
+            totalValue += nilaiPerjanjian;
             
+            // PERBAIKAN: Hitung nilai realisasi (realisasi × harga satuan)
             const activityRealisasi = activity.workers.reduce((sum, w) => {
-              const realisasi = parseFloat(w.realisasi || '0');
-              const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
-              return sum + (realisasi * hargaSatuan);
+              return sum + parseFloat(w.realisasi || '0');
             }, 0);
-            totalRealisasi += activityRealisasi;
+            const nilaiRealisasi = activityRealisasi * hargaSatuan;
+            totalRealisasi += nilaiRealisasi;
           });
 
           totalSent += calculateSentToPPK(monthActivities);
@@ -467,14 +466,21 @@ export default function EntriTarget() {
       const uniqueWorkers = new Set<string>();
       
       jobActivities.forEach(activity => {
-        activity.workers.forEach(worker => {
+        const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+        
+        // PERBAIKAN: Hitung total target dan realisasi untuk kegiatan ini
+        const activityTarget = activity.workers.reduce((sum, worker) => {
           uniqueWorkers.add(worker.nip);
-          totalTarget += parseFloat(worker.target || '0');
-          
-          const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
-          totalValue += parseFloat(worker.target || '0') * hargaSatuan;
-          totalRealisasi += parseFloat(worker.realisasi || '0') * hargaSatuan;
-        });
+          return sum + parseFloat(worker.target || '0');
+        }, 0);
+        
+        const activityRealisasi = activity.workers.reduce((sum, worker) => {
+          return sum + parseFloat(worker.realisasi || '0');
+        }, 0);
+        
+        totalTarget += activityTarget;
+        totalValue += activityTarget * hargaSatuan; // PERBAIKAN: Nilai Perjanjian
+        totalRealisasi += activityRealisasi * hargaSatuan; // PERBAIKAN: Nilai Realisasi
       });
 
       totalSent = calculateSentToPPK(jobActivities);
