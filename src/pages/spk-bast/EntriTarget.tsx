@@ -373,6 +373,17 @@ export default function EntriTarget() {
     setDuplicateTargetYear("");
   };
 
+  // Fungsi konfirmasi delete dengan sweet alert
+  const confirmDelete = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (window.confirm(message)) {
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  };
+
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       return new Date();
@@ -1012,7 +1023,8 @@ export default function EntriTarget() {
     const activityToDelete = activities.find(activity => activity.id === id);
     if (!activityToDelete) return;
 
-    if (!confirm(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`)) return;
+    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`);
+    if (!confirmed) return;
 
     try {
       if (activityToDelete.spreadsheetRowIndex) {
@@ -1169,6 +1181,14 @@ export default function EntriTarget() {
   };
 
   const handleDeleteWorker = async (activityId: number, workerId: number) => {
+    const activity = activities.find(a => a.id === activityId);
+    const workerToDelete = activity?.workers.find(w => w.id === workerId);
+    
+    if (!workerToDelete) return;
+
+    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus petugas "${workerToDelete.nama}" dari kegiatan ini?`);
+    if (!confirmed) return;
+
     try {
       const updatedActivities = activities.map(activity => 
         activity.id === activityId 
@@ -1448,9 +1468,12 @@ export default function EntriTarget() {
     }
 
     try {
+      // Toggle status - jika sudah dikirim, kembalikan ke blank
+      const newStatus = activity.dikirimKePPK?.includes("Kirim ke PPK") ? "" : "Kirim ke PPK";
+      
       const updatedActivities = activities.map(a => 
         a.id === activityId 
-          ? { ...a, dikirimKePPK: "Kirim ke PPK" }
+          ? { ...a, dikirimKePPK: newStatus }
           : a
       );
       
@@ -1464,15 +1487,22 @@ export default function EntriTarget() {
         await updateActivityInSpreadsheet(updatedActivity);
       }
       
-      toast({
-        title: "Berhasil dikirim ke PPK",
-        description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`,
-      });
+      if (newStatus === "Kirim ke PPK") {
+        toast({
+          title: "Berhasil dikirim ke PPK",
+          description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`,
+        });
+      } else {
+        toast({
+          title: "Status direset",
+          description: `Kegiatan "${activity.namaKegiatan}" tidak lagi dikirim ke PPK.`,
+        });
+      }
     } catch (error) {
       console.error('Error sending to PPK:', error);
       toast({
-        title: "Gagal mengirim",
-        description: "Terjadi kesalahan saat mengirim ke PPK.",
+        title: "Gagal mengubah status",
+        description: "Terjadi kesalahan saat mengubah status PPK.",
         variant: "destructive",
       });
     }
@@ -1788,6 +1818,30 @@ export default function EntriTarget() {
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    "h-8 w-8 hover:bg-green-600/10",
+                                    activity.dikirimKePPK?.includes("Kirim ke PPK") 
+                                      ? "text-green-600 hover:text-green-600" 
+                                      : "text-green-400 hover:text-green-600"
+                                  )}
+                                  onClick={() => handleSendToPPK(activity.id)}
+                                  title={activity.dikirimKePPK?.includes("Kirim ke PPK") ? "Batalkan Kirim ke PPK" : "Kirim ke PPK"}
+                                  disabled={activity.workers.length === 0}
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteActivity(activity.id)}
+                                  title="Hapus Kegiatan"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                                 <Popover open={showDuplicatePopover && duplicatingActivity?.id === activity.id} onOpenChange={(open) => {
                                   if (!open) resetDuplicateState();
                                 }}>
@@ -1862,25 +1916,6 @@ export default function EntriTarget() {
                                     </div>
                                   </PopoverContent>
                                 </Popover>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-green-600 hover:text-green-600 hover:bg-green-600/10"
-                                  onClick={() => handleSendToPPK(activity.id)}
-                                  title="Kirim ke PPK"
-                                  disabled={activity.workers.length === 0 || activity.dikirimKePPK?.includes("Kirim ke PPK")}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleDeleteActivity(activity.id)}
-                                  title="Hapus Kegiatan"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
                               </div>
                               {activity.dikirimKePPK?.includes("Kirim ke PPK") && (
                                 <div className="text-xs text-green-600 font-medium mt-1">
