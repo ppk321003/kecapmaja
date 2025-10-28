@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Search, Filter, Loader2, X, RefreshCw, ExternalLink } from "lucide-react";
+import { BookOpen, Search, Filter, Loader2, X, RefreshCw, ExternalLink, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { utils, writeFile } from 'xlsx';
 
 interface DataRow {
   no: number;
@@ -53,6 +54,127 @@ export default function AkiToBendahara() {
   // Fungsi untuk membuka spreadsheet
   const openSpreadsheet = () => {
     window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`, '_blank');
+  };
+
+  // Fungsi untuk download data yang ditampilkan dalam format Excel
+  const downloadFilteredData = () => {
+    if (filteredData.length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Tidak ada data yang bisa diunduh",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Buat judul berdasarkan filter
+      let judul = "Rekap Honor";
+      if (selectedBulan && selectedTahun) {
+        judul += ` ${selectedBulan} ${selectedTahun}`;
+      } else if (selectedBulan) {
+        judul += ` ${selectedBulan}`;
+      } else if (selectedTahun) {
+        judul += ` ${selectedTahun}`;
+      }
+
+      // Siapkan data untuk Excel
+      const excelData = [];
+
+      // Baris judul
+      const titleRow = [judul];
+      excelData.push(titleRow);
+
+      // Baris kosong setelah judul
+      excelData.push([]);
+
+      // Header kolom
+      const headers = displayedColumns.map(col => {
+        if (col === 'no') return 'No';
+        if (col === 'namaPetugas') return 'Nama Petugas';
+        if (col === 'namaBank') return 'Nama Bank';
+        if (col === 'noRekening') return 'No Rekening';
+        return col;
+      });
+      excelData.push(headers);
+
+      // Data rows
+      filteredData.forEach(row => {
+        const dataRow = displayedColumns.map(col => {
+          const value = row[col];
+          if (availableKegiatan.includes(col) && typeof value === 'number') {
+            return Number(value);
+          }
+          return value;
+        });
+        excelData.push(dataRow);
+      });
+
+      // Baris total
+      const totalRow = displayedColumns.map(col => {
+        if (col === 'no') return 'Total';
+        if (col === 'namaPetugas') return `${filteredData.length} Petugas`;
+        if (col === 'namaBank' || col === 'noRekening') return '';
+        if (availableKegiatan.includes(col)) {
+          return Number(totals[col]);
+        }
+        return '';
+      });
+      excelData.push(totalRow);
+
+      // Buat worksheet
+      const worksheet = utils.aoa_to_sheet(excelData);
+
+      // Atur lebar kolom
+      const colWidths = displayedColumns.map(() => ({ width: 15 }));
+      worksheet['!cols'] = colWidths;
+
+      // Merge cell untuk judul
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      worksheet['!merges'].push({
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: displayedColumns.length - 1 }
+      });
+
+      // Style untuk judul (center alignment)
+      if (!worksheet['A1'].s) {
+        worksheet['A1'].s = {
+          alignment: { horizontal: 'center' },
+          font: { bold: true, sz: 14 }
+        };
+      }
+
+      // Buat workbook
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, 'Rekap Honor');
+
+      // Generate nama file
+      const bulanTahun = selectedBulan && selectedTahun 
+        ? `${selectedBulan}_${selectedTahun}` 
+        : 'semua_data';
+      
+      const kegiatanSuffix = selectedKegiatan.length > 0 
+        ? `_${selectedKegiatan.length}_kegiatan` 
+        : '';
+      
+      const fileName = `rekap_honor_${bulanTahun}${kegiatanSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Download file
+      writeFile(workbook, fileName);
+
+      toast({
+        title: "Download berhasil",
+        description: `Data ${filteredData.length} petugas berhasil diunduh sebagai Excel`,
+      });
+
+    } catch (error) {
+      console.error('Error downloading data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengunduh data",
+        variant: "destructive",
+      });
+    }
   };
 
   // Fetch data dari Google Sheets menggunakan Supabase function
@@ -360,6 +482,15 @@ export default function AkiToBendahara() {
           >
             <ExternalLink className="h-4 w-4" />
             Buka Spreadsheet
+          </Button>
+          <Button 
+            onClick={downloadFilteredData}
+            disabled={filteredData.length === 0 || isLoading}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download Excel
           </Button>
           <Button 
             onClick={handleRefresh} 
