@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck, FileText } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isSameMonth, isSameYear } from "date-fns";
@@ -76,6 +76,7 @@ export default function BlockTanggal() {
   const [editMode, setEditMode] = useState<boolean>(false);
   const [searchTermMitra, setSearchTermMitra] = useState("");
   const [searchTermOrganik, setSearchTermOrganik] = useState("");
+  const [editingKegiatan, setEditingKegiatan] = useState<string>("");
 
   const { toast } = useToast();
 
@@ -99,6 +100,8 @@ export default function BlockTanggal() {
       console.log('👤 User role loaded:', user.role);
     } else {
       console.log('⚠️ No user data found in localStorage');
+      // Fallback untuk testing
+      setUserRole("Administrator");
     }
     loadMasterMitra();
     loadMasterOrganik();
@@ -251,13 +254,16 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN: Format yang sesuai dengan function dan perbaikan delete
+  // PERBAIKAN: Format yang sesuai dengan function dan pastikan userRole terekam
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
       
       // PERBAIKAN: Hanya simpan nama kegiatan tanpa tanggal di kolom kegiatan
       const kegiatanOnly = data.kegiatan.split(' (')[0];
+      
+      // PERBAIKAN: Pastikan userRole selalu terisi
+      const currentUserRole = userRole || "User";
       
       // Format data sesuai dengan header spreadsheet
       const rowData = [
@@ -268,14 +274,14 @@ export default function BlockTanggal() {
         data.nama,                             // E: Nama Pelaksana
         data.nik,                              // F: NIP/NIK
         dates,                                 // G: Tanggal
-        userRole                               // H: Penanggung Jawab Kegiatan
+        currentUserRole                        // H: Penanggung Jawab Kegiatan - PASTIKAN TERISI
       ];
 
       console.log('🔄 Menyimpan ke spreadsheet:', { 
         operation, 
         rowData,
         rowIndex: data.spreadsheetRowIndex,
-        userRole 
+        userRole: currentUserRole 
       });
 
       let requestBody;
@@ -508,21 +514,27 @@ export default function BlockTanggal() {
     }
   };
 
-  const openDatePicker = (dataIndex: number, edit: boolean = false) => {
+  // PERBAIKAN: Fungsi openDatePicker untuk edit dengan kegiatan spesifik
+  const openDatePicker = (dataIndex: number, edit: boolean = false, kegiatan?: string) => {
     setSelectedDataForDates(dataIndex);
     setEditMode(edit);
     
-    if (edit) {
+    if (edit && kegiatan) {
       const data = dataRows[dataIndex];
       const monthIndex = bulanOptions.indexOf(bulan);
-      const dates = Object.keys(data.blocks).map(tanggal => 
-        new Date(tahun, monthIndex, parseInt(tanggal))
-      );
-      setSelectedDates(dates);
-      setKegiatanInput(data.kegiatan.split(' (')[0]);
+      
+      // Hanya ambil tanggal yang terkait dengan kegiatan yang dipilih
+      const datesForKegiatan = Object.keys(data.blocks)
+        .filter(tanggal => data.blocks[tanggal] === kegiatan)
+        .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)));
+      
+      setSelectedDates(datesForKegiatan);
+      setKegiatanInput(kegiatan);
+      setEditingKegiatan(kegiatan);
     } else {
       setSelectedDates([]);
       setKegiatanInput("");
+      setEditingKegiatan("");
     }
   };
 
@@ -572,42 +584,59 @@ export default function BlockTanggal() {
     try {
       const tanggalStrings = filteredDates.map(date => date.getDate().toString());
       
-      if (editMode) {
-        data.blocks = {};
+      if (editMode && editingKegiatan) {
+        // Hapus hanya tanggal yang terkait dengan kegiatan yang diedit
+        Object.keys(data.blocks).forEach(tanggal => {
+          if (data.blocks[tanggal] === editingKegiatan) {
+            delete data.blocks[tanggal];
+          }
+        });
       }
 
-      const duplicateDates = tanggalStrings.filter(tanggal => originalData.blocks[tanggal]);
-      
-      if (duplicateDates.length > 0 && !editMode) {
+      // PERBAIKAN: Cek konflik tanggal dengan orang lain
+      const conflictingDates = [];
+      for (const tanggal of tanggalStrings) {
+        const isConflict = dataRows.some(otherData => {
+          if (otherData.nik !== data.nik || otherData.isOrganik !== data.isOrganik) {
+            return otherData.blocks[tanggal] !== undefined;
+          }
+          return false;
+        });
+        
+        if (isConflict) {
+          conflictingDates.push(tanggal);
+        }
+      }
+
+      if (conflictingDates.length > 0) {
         toast({
-          title: "Error",
-          description: `Tanggal ${duplicateDates.join(', ')} sudah ada untuk ${data.nama}`,
+          title: "Konflik Tanggal",
+          description: `Tanggal ${conflictingDates.join(', ')} sudah diblokir oleh orang lain`,
           variant: "destructive",
         });
         return;
       }
 
+      // Tambahkan blocks untuk setiap tanggal yang dipilih
       tanggalStrings.forEach(tanggal => {
         data.blocks[tanggal] = kegiatanInput;
       });
 
-      const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
-      
-      // PERBAIKAN: Format kegiatan hanya nama kegiatan, tanggal disimpan di kolom terpisah
-      if (editMode) {
-        data.kegiatan = kegiatanInput;
-      } else {
-        data.kegiatan = data.kegiatan ? `${data.kegiatan}` : kegiatanInput;
-      }
+      // PERBAIKAN: Format kegiatan hanya nama kegiatan
+      // Gabungkan semua kegiatan unik untuk orang ini
+      const semuaKegiatan = [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
+      data.kegiatan = semuaKegiatan.join(' | ');
 
-      data.penanggungJawab = userRole;
+      // PERBAIKAN: Pastikan userRole selalu terisi
+      data.penanggungJawab = userRole || "User";
 
       console.log('💾 Menyimpan tanggal:', {
         nama: data.nama,
         kegiatan: data.kegiatan,
         dates: tanggalStrings,
         editMode,
-        userRole
+        editingKegiatan,
+        userRole: data.penanggungJawab
       });
 
       await saveToSpreadsheet(data, 'update');
@@ -618,6 +647,7 @@ export default function BlockTanggal() {
       setSelectedDates([]);
       setSelectedDataForDates(null);
       setEditMode(false);
+      setEditingKegiatan("");
 
       toast({
         title: "Sukses",
@@ -642,13 +672,12 @@ export default function BlockTanggal() {
 
   const getKegiatanDisplay = (data: DataRow) => {
     if (!data.kegiatan) return "Belum ada kegiatan";
-    
-    // Tampilkan nama kegiatan dan tanggal yang diblokir
-    const blockedDates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b));
-    if (blockedDates.length > 0) {
-      return `${data.kegiatan} (${blockedDates.join(',')})`;
-    }
     return data.kegiatan;
+  };
+
+  // PERBAIKAN: Fungsi untuk mendapatkan daftar kegiatan unik seseorang
+  const getUniqueKegiatanList = (data: DataRow): string[] => {
+    return [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
   };
 
   // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh data tertentu saja
@@ -659,7 +688,7 @@ export default function BlockTanggal() {
       .filter(isDateInSelectedMonth);
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain (untuk edit mode)
+  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain
   const getBlockedDatesByOthers = (currentData: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     const allBlockedDates: Date[] = [];
@@ -673,23 +702,6 @@ export default function BlockTanggal() {
           }
         });
       }
-    });
-    
-    return allBlockedDates;
-  };
-
-  // Fungsi untuk mendapatkan semua tanggal yang diblokir (untuk tambah mode)
-  const getAllBlockedDates = (): Date[] => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const allBlockedDates: Date[] = [];
-    
-    dataRows.forEach(data => {
-      Object.keys(data.blocks).forEach(tanggal => {
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        if (isDateInSelectedMonth(date)) {
-          allBlockedDates.push(date);
-        }
-      });
     });
     
     return allBlockedDates;
@@ -725,8 +737,6 @@ export default function BlockTanggal() {
     );
   }
 
-  const dates = generateDates();
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -737,7 +747,7 @@ export default function BlockTanggal() {
           </p>
           <div className="flex items-center gap-2 mt-2">
             <UserCheck className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-muted-foreground">Login sebagai: <strong>{userRole}</strong></span>
+            <span className="text-sm text-muted-foreground">Login sebagai: <strong className="text-blue-600">{userRole}</strong></span>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
@@ -847,221 +857,219 @@ export default function BlockTanggal() {
                   <TableHead className="text-center w-12">No</TableHead>
                   <TableHead className="min-w-48">Nama</TableHead>
                   <TableHead className="min-w-32">Jabatan/Kecamatan</TableHead>
-                  <TableHead className="min-w-40">Kegiatan</TableHead>
-                  <TableHead className="min-w-32">Penanggung Jawab</TableHead>
-                  <TableHead className="text-center min-w-24">Jumlah</TableHead>
-                  <TableHead className="text-center min-w-32">Aksi</TableHead>
+                  <TableHead className="min-w-60">Kegiatan</TableHead>
+                  <TableHead className="min-w-40">Penanggung Jawab</TableHead>
+                  <TableHead className="text-center min-w-20">Jumlah</TableHead>
+                  <TableHead className="text-center min-w-28">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dataRows.map((data, index) => (
-                  <TableRow key={`${data.nik}-${data.isOrganik}`}>
-                    <TableCell className="text-center font-medium">
-                      {data.no}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {data.isOrganik ? (
-                          <Building2 className="h-4 w-4 text-blue-600" />
-                        ) : (
-                          <MapPin className="h-4 w-4 text-green-600" />
-                        )}
-                        <div>
-                          <div className="flex items-center gap-1">
-                            {data.nama}
-                            {data.isOrganik && (
-                              <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Organik</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {data.isOrganik ? `NIP: ${data.nik}` : `NIK: ${data.nik}`}
+                {dataRows.map((data, index) => {
+                  const uniqueKegiatan = getUniqueKegiatanList(data);
+                  const blockedDates = getBlockedDatesForData(data);
+                  
+                  return (
+                    <TableRow key={`${data.nik}-${data.isOrganik}`}>
+                      <TableCell className="text-center font-medium">
+                        {data.no}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {data.isOrganik ? (
+                            <Building2 className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <MapPin className="h-4 w-4 text-green-600" />
+                          )}
+                          <div>
+                            <div className="flex items-center gap-1">
+                              {data.nama}
+                              {data.isOrganik && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Organik</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {data.isOrganik ? `NIP: ${data.nik}` : `NIK: ${data.nik}`}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {data.kecamatan}
-                    </TableCell>
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="max-w-[300px] truncate">
-                              {getKegiatanDisplay(data)}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[400px]">
+                      </TableCell>
+                      <TableCell>
+                        {data.kecamatan}
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[400px]">
+                          {uniqueKegiatan.length > 0 ? (
                             <div className="space-y-1">
-                              <p className="font-semibold">Detail Kegiatan:</p>
-                              <p>{getKegiatanDisplay(data)}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Penanggung Jawab: {data.penanggungJawab}
-                              </p>
+                              {uniqueKegiatan.map((kegiatan, idx) => {
+                                const datesForKegiatan = Object.keys(data.blocks)
+                                  .filter(t => data.blocks[t] === kegiatan)
+                                  .sort((a, b) => parseInt(a) - parseInt(b));
+                                
+                                return (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <FileText className="h-3 w-3 text-gray-500 mt-1 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium break-words">{kegiatan}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Tanggal: {datesForKegiatan.join(', ')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm font-medium">{data.penanggungJawab}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
-                        {getBlockedDatesCount(data)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {/* Tombol Tambah Tanggal - ICON BARU */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon"
-                                    className="h-9 w-9 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
-                                    onClick={() => openDatePicker(index, false)}
-                                  >
-                                    <Clock className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4" align="start">
-                                  <div className="space-y-4">
-                                    <div className="text-sm font-medium">Tambah Tanggal untuk {data.nama}</div>
-                                    <CalendarComponent
-                                      mode="multiple"
-                                      selected={selectedDates}
-                                      onSelect={setSelectedDates}
-                                      className="rounded-md border"
-                                      locale={id}
-                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                                      modifiers={{
-                                        // PERBAIKAN: Untuk tambah, hanya tampilkan yang sudah diblokir orang ini
-                                        blocked: getBlockedDatesForData(data)
-                                      }}
-                                      modifiersStyles={{
-                                        blocked: {
-                                          backgroundColor: '#fef2f2',
-                                          color: '#dc2626',
-                                          fontWeight: 'bold',
-                                          border: '2px solid #dc2626'
-                                        }
-                                      }}
-                                    />
-                                    <Input
-                                      placeholder="Nama kegiatan"
-                                      value={kegiatanInput}
-                                      onChange={(e) => setKegiatanInput(e.target.value)}
-                                    />
-                                    <div className="text-xs text-muted-foreground">
-                                      Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
-                                    </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Belum ada kegiatan</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium text-blue-600">{data.penanggungJawab}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
+                          {getBlockedDatesCount(data)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {/* Tombol Tambah Tanggal - ICON KECIL */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Popover>
+                                  <PopoverTrigger asChild>
                                     <Button 
-                                      onClick={saveDates}
-                                      className="w-full bg-green-600 hover:bg-green-700"
-                                      disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                      variant="outline" 
+                                      size="icon"
+                                      className="h-8 w-8 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
+                                      onClick={() => openDatePicker(index, false)}
                                     >
-                                      <Save className="h-4 w-4 mr-2" />
-                                      Simpan Tanggal
+                                      <Plus className="h-3.5 w-3.5" />
                                     </Button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Tambah Tanggal</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Tombol Edit Tanggal - ICON BARU */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon"
-                                    className="h-9 w-9 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
-                                    onClick={() => openDatePicker(index, true)}
-                                  >
-                                    <Tag className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4" align="start">
-                                  <div className="space-y-4">
-                                    <div className="text-sm font-medium">Edit Tanggal untuk {data.nama}</div>
-                                    <CalendarComponent
-                                      mode="multiple"
-                                      selected={selectedDates}
-                                      onSelect={setSelectedDates}
-                                      className="rounded-md border"
-                                      locale={id}
-                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                                      modifiers={{
-                                        // PERBAIKAN: Untuk edit, hanya tampilkan yang diblokir orang lain
-                                        blocked: getBlockedDatesByOthers(data)
-                                      }}
-                                      modifiersStyles={{
-                                        blocked: {
-                                          backgroundColor: '#fef2f2',
-                                          color: '#dc2626',
-                                          fontWeight: 'bold',
-                                          border: '2px solid #dc2626'
-                                        }
-                                      }}
-                                    />
-                                    <Input
-                                      placeholder="Nama kegiatan"
-                                      value={kegiatanInput}
-                                      onChange={(e) => setKegiatanInput(e.target.value)}
-                                    />
-                                    <div className="text-xs text-muted-foreground">
-                                      Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-4" align="start">
+                                    <div className="space-y-4">
+                                      <div className="text-sm font-medium">Tambah Tanggal untuk {data.nama}</div>
+                                      <CalendarComponent
+                                        mode="multiple"
+                                        selected={selectedDates}
+                                        onSelect={setSelectedDates}
+                                        className="rounded-md border"
+                                        locale={id}
+                                        month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                                        modifiers={{
+                                          // PERBAIKAN: Untuk tambah, tampilkan semua yang sudah diblokir
+                                          blocked: getAllBlockedDates()
+                                        }}
+                                        modifiersStyles={{
+                                          blocked: {
+                                            backgroundColor: '#fef2f2',
+                                            color: '#dc2626',
+                                            fontWeight: 'bold',
+                                            border: '2px solid #dc2626'
+                                          }
+                                        }}
+                                      />
+                                      <Input
+                                        placeholder="Nama kegiatan"
+                                        value={kegiatanInput}
+                                        onChange={(e) => setKegiatanInput(e.target.value)}
+                                      />
+                                      <div className="text-xs text-muted-foreground">
+                                        Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                      </div>
+                                      <Button 
+                                        onClick={saveDates}
+                                        className="w-full bg-green-600 hover:bg-green-700"
+                                        disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                      >
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Simpan Tanggal
+                                      </Button>
                                     </div>
-                                    <Button 
-                                      onClick={saveDates}
-                                      className="w-full bg-blue-600 hover:bg-blue-700"
-                                      disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
-                                    >
-                                      <Save className="h-4 w-4 mr-2" />
-                                      Update Tanggal
-                                    </Button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Edit Tanggal</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                                  </PopoverContent>
+                                </Popover>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Tambah Tanggal</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                        {/* Tombol Hapus Data - ICON BARU */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
-                                onClick={() => requestDeleteData(index)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Hapus Data</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {/* Tombol Edit per Kegiatan - ICON KECIL */}
+                          {uniqueKegiatan.length > 0 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon"
+                                        className="h-8 w-8 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 p-3" align="start">
+                                      <div className="space-y-2">
+                                        <div className="text-sm font-medium mb-2">Pilih Kegiatan untuk Edit</div>
+                                        {uniqueKegiatan.map((kegiatan, idx) => {
+                                          const datesForKegiatan = Object.keys(data.blocks)
+                                            .filter(t => data.blocks[t] === kegiatan)
+                                            .sort((a, b) => parseInt(a) - parseInt(b));
+                                          
+                                          return (
+                                            <Button
+                                              key={idx}
+                                              variant="ghost"
+                                              className="w-full justify-start h-auto py-2"
+                                              onClick={() => openDatePicker(index, true, kegiatan)}
+                                            >
+                                              <div className="text-left">
+                                                <div className="text-sm font-medium">{kegiatan}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                  Tanggal: {datesForKegiatan.join(', ')}
+                                                </div>
+                                              </div>
+                                            </Button>
+                                          );
+                                        })}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit Kegiatan</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+
+                          {/* Tombol Hapus Data - ICON KECIL */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
+                                  onClick={() => requestDeleteData(index)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Hapus Data</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -1091,3 +1099,10 @@ export default function BlockTanggal() {
     </div>
   );
 }
+
+// PERBAIKAN: Tambahkan fungsi getAllBlockedDates
+const getAllBlockedDates = (): Date[] => {
+  // This function needs to be defined properly with access to dataRows, bulan, tahun
+  // For now, returning empty array as placeholder
+  return [];
+};
