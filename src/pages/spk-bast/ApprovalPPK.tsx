@@ -248,22 +248,25 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // FUNGSI SIMPAN YANG DIBAHAS SESUAI DENGAN SKRIP SUKSES
+  // PERBAIKAN: Fungsi simpan yang sesuai dengan format header spreadsheet
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
       
-      // FORMAT KONSISTEN SESUAI DENGAN SKRIP SUKSES
+      // SESUAIKAN DENGAN HEADER SPREADSHEET:
+      // No | Tahun | Bulan | Kegiatan | Nama Pelaksana | NIP/NIK | Tanggal | Penanggung Jawab Kegiatan
       const rowData = [
-        data.no.toString(),
-        tahun.toString(),
-        bulan,
-        data.kegiatan || "",
-        data.nama,
-        data.nik,
-        dates,
-        userRole // PASTIKAN role terekam
+        data.no.toString(),                    // No
+        tahun.toString(),                      // Tahun  
+        bulan,                                 // Bulan
+        data.kegiatan || "",                   // Kegiatan
+        data.nama,                             // Nama Pelaksana
+        data.nik,                              // NIP/NIK
+        dates,                                 // Tanggal
+        userRole                               // Penanggung Jawab Kegiatan
       ];
+
+      console.log('Saving to spreadsheet:', { operation, rowData });
 
       let result;
 
@@ -296,14 +299,35 @@ export default function BlockTanggal() {
       }
 
       if (result?.error) {
-        console.error('Spreadsheet error:', result.error);
+        console.error('Spreadsheet error details:', result.error);
         throw new Error(result.error.message || 'Gagal menyimpan ke spreadsheet');
       }
 
+      console.log('Save successful:', result?.data);
       return result?.data;
     } catch (error: any) {
       console.error('Error in saveToSpreadsheet:', error);
       throw error;
+    }
+  };
+
+  // PERBAIKAN: Fungsi untuk mendapatkan row index baru
+  const getNextRowIndex = async (): Promise<number> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1!A:A",
+        },
+      });
+
+      if (error) throw error;
+
+      return data?.values ? data.values.length + 1 : 2;
+    } catch (error) {
+      console.error('Error getting next row index:', error);
+      return dataRows.length + 2; // Fallback
     }
   };
 
@@ -320,6 +344,7 @@ export default function BlockTanggal() {
     const selected = availableMitra.find(m => m.nama === selectedMitra);
     if (!selected) return;
 
+    const nextRowIndex = await getNextRowIndex();
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
@@ -328,7 +353,8 @@ export default function BlockTanggal() {
       kegiatan: "",
       penanggungJawab: userRole,
       blocks: {},
-      isOrganik: false
+      isOrganik: false,
+      spreadsheetRowIndex: nextRowIndex
     };
 
     try {
@@ -345,6 +371,7 @@ export default function BlockTanggal() {
         description: "Mitra berhasil ditambahkan",
       });
     } catch (error: any) {
+      console.error('Error adding mitra:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan mitra: " + error.message,
@@ -366,6 +393,7 @@ export default function BlockTanggal() {
     const selected = availableOrganik.find(org => org.nama === selectedOrganik);
     if (!selected) return;
 
+    const nextRowIndex = await getNextRowIndex();
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
@@ -374,7 +402,8 @@ export default function BlockTanggal() {
       kegiatan: "",
       penanggungJawab: userRole,
       blocks: {},
-      isOrganik: true
+      isOrganik: true,
+      spreadsheetRowIndex: nextRowIndex
     };
 
     try {
@@ -391,6 +420,7 @@ export default function BlockTanggal() {
         description: "Organik berhasil ditambahkan",
       });
     } catch (error: any) {
+      console.error('Error adding organik:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan organik: " + error.message,
@@ -527,29 +557,33 @@ export default function BlockTanggal() {
       return;
     }
 
-    if (editMode) {
-      // Dalam mode edit, hapus semua blocks dan buat ulang
-      data.blocks = {};
-    }
-
-    // Tambahkan blocks untuk setiap tanggal yang dipilih
-    tanggalStrings.forEach(tanggal => {
-      data.blocks[tanggal] = kegiatanInput;
-    });
-
-    // Format kegiatan
-    const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
-    const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
-    
-    if (editMode) {
-      data.kegiatan = kegiatanEntry;
-    } else {
-      data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
-    }
-
-    data.penanggungJawab = userRole;
+    // Simpan data sebelum perubahan untuk rollback jika perlu
+    const originalData = { ...data };
 
     try {
+      if (editMode) {
+        // Dalam mode edit, hapus semua blocks dan buat ulang
+        data.blocks = {};
+      }
+
+      // Tambahkan blocks untuk setiap tanggal yang dipilih
+      tanggalStrings.forEach(tanggal => {
+        data.blocks[tanggal] = kegiatanInput;
+      });
+
+      // Format kegiatan
+      const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
+      const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
+      
+      if (editMode) {
+        data.kegiatan = kegiatanEntry;
+      } else {
+        data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
+      }
+
+      data.penanggungJawab = userRole;
+
+      // PERBAIKAN: Pastikan update ke spreadsheet
       await saveToSpreadsheet(data, 'update');
       
       const sortedData = sortData(newData);
@@ -564,6 +598,11 @@ export default function BlockTanggal() {
         description: "Tanggal berhasil disimpan",
       });
     } catch (error: any) {
+      // Rollback jika gagal
+      newData[dataIndex] = originalData;
+      setDataRows([...newData]);
+      
+      console.error('Error saving dates:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan tanggal: " + error.message,
@@ -581,7 +620,7 @@ export default function BlockTanggal() {
     return data.kegiatan;
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir - hanya yang dalam bulan dipilih
+  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh data tertentu saja
   const getBlockedDatesForData = (data: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return Object.keys(data.blocks)
@@ -589,18 +628,20 @@ export default function BlockTanggal() {
       .filter(isDateInSelectedMonth);
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh semua data
-  const getAllBlockedDates = (): Date[] => {
+  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain (untuk edit mode)
+  const getBlockedDatesByOthers = (currentData: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     const allBlockedDates: Date[] = [];
     
     dataRows.forEach(data => {
-      Object.keys(data.blocks).forEach(tanggal => {
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        if (isDateInSelectedMonth(date)) {
-          allBlockedDates.push(date);
-        }
-      });
+      if (data.nik !== currentData.nik || data.isOrganik !== currentData.isOrganik) {
+        Object.keys(data.blocks).forEach(tanggal => {
+          const date = new Date(tahun, monthIndex, parseInt(tanggal));
+          if (isDateInSelectedMonth(date)) {
+            allBlockedDates.push(date);
+          }
+        });
+      }
     });
     
     return allBlockedDates;
@@ -836,7 +877,8 @@ export default function BlockTanggal() {
                                       locale={id}
                                       month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
-                                        blocked: getAllBlockedDates()
+                                        // PERBAIKAN: Hanya tampilkan yang sudah diblokir oleh orang ini
+                                        blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
                                         blocked: {
@@ -893,11 +935,8 @@ export default function BlockTanggal() {
                                       locale={id}
                                       month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
-                                        blocked: getAllBlockedDates().filter(date => 
-                                          !getBlockedDatesForData(data).some(d => 
-                                            d.getTime() === date.getTime()
-                                          )
-                                        )
+                                        // PERBAIKAN: Untuk edit, hanya tampilkan yang diblokir orang lain
+                                        blocked: getBlockedDatesByOthers(data)
                                       }}
                                       modifiersStyles={{
                                         blocked: {
