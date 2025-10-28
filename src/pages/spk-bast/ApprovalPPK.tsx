@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, isSameMonth, isSameYear } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
@@ -57,6 +57,40 @@ const fungsiColors: { [key: string]: string } = {
   "Bendahara": "bg-gray-100 border-gray-400"
 };
 
+// ADOPSI: Fungsi untuk parse date dari spreadsheet
+const parseDateFromSpreadsheet = (dateStr: string): Date => {
+  if (!dateStr || dateStr.toString().trim() === '') {
+    return new Date();
+  }
+
+  const str = dateStr.toString().trim();
+
+  // Coba parse format Indonesia
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+    try {
+      const [day, month, year] = str.split('/').map(part => parseInt(part));
+      const parsedDate = new Date(year, month - 1, day);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    } catch (e) {
+      console.warn('Failed to parse date with / format:', str, e);
+    }
+  }
+
+  // Fallback ke Date constructor
+  try {
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to parse as Date object:', str, e);
+  }
+
+  return new Date();
+};
+
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
   const [organikList, setOrganikList] = useState<Organik[]>([]);
@@ -76,6 +110,8 @@ export default function BlockTanggal() {
   const [dataToDelete, setDataToDelete] = useState<number | null>(null);
   const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
+  const [searchMitra, setSearchMitra] = useState("");
+  const [searchOrganik, setSearchOrganik] = useState("");
 
   const { toast } = useToast();
 
@@ -85,6 +121,27 @@ export default function BlockTanggal() {
   ];
 
   const tahunOptions = [2024, 2025, 2026];
+
+  // ADOPSI: Filter dropdown dengan search
+  const filteredAvailableMitra = useMemo(() => {
+    if (!searchMitra) return availableMitra;
+    const searchLower = searchMitra.toLowerCase();
+    return availableMitra.filter(mitra =>
+      mitra.nama.toLowerCase().includes(searchLower) ||
+      mitra.kecamatan.toLowerCase().includes(searchLower) ||
+      mitra.nik.toLowerCase().includes(searchLower)
+    );
+  }, [availableMitra, searchMitra]);
+
+  const filteredAvailableOrganik = useMemo(() => {
+    if (!searchOrganik) return availableOrganik;
+    const searchLower = searchOrganik.toLowerCase();
+    return availableOrganik.filter(organik =>
+      organik.nama.toLowerCase().includes(searchLower) ||
+      organik.jabatan.toLowerCase().includes(searchLower) ||
+      organik.nip.toLowerCase().includes(searchLower)
+    );
+  }, [availableOrganik, searchOrganik]);
 
   // Get days in month dynamically
   const getDaysInMonth = () => {
@@ -172,31 +229,38 @@ export default function BlockTanggal() {
     }
   };
 
+  // ADOPSI: Load data dengan pattern yang sama dari skrip sukses
   const loadExistingData = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1",
+          range: "Sheet1!A:H",
         },
       });
 
       if (error) throw error;
 
       const rows = data.values || [];
-      const currentData = rows.filter((row: any[]) => 
-        row[1] === tahun.toString() && row[2] === bulan
-      );
-
+      const currentMonthIndex = bulanOptions.indexOf(bulan);
+      
       const newDataRows: DataRow[] = [];
       
-      currentData.forEach((row: any[], rowIndex: number) => {
+      rows.slice(1).forEach((row: any[], rowIndex: number) => {
+        // Filter berdasarkan bulan dan tahun
+        const rowTahun = row[1];
+        const rowBulan = row[2];
+        
+        if (rowTahun !== tahun.toString() || rowBulan !== bulan) {
+          return;
+        }
+
         const nama = row[4] || "";
         const nik = row[5] || "";
         const kegiatan = row[3] || "";
         const tanggal = row[6] ? row[6].split(',').map((t: string) => t.trim()) : [];
-        const penanggungJawab = row[7] || "";
+        const penanggungJawab = row[7] || userRole; // Gunakan userRole jika tidak ada di spreadsheet
 
         const isOrganik = organikList.some(org => org.nama === nama);
         
@@ -255,7 +319,7 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // ADOPSI DARI SKIP SUKSES: Format penyimpanan yang konsisten
+  // ADOPSI: Fungsi save yang lebih robust seperti di skrip sukses
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
@@ -270,6 +334,8 @@ export default function BlockTanggal() {
         dates,
         userRole // PASTIKAN role terekam
       ];
+
+      console.log('Saving to spreadsheet:', { operation, rowData, spreadsheetRowIndex: data.spreadsheetRowIndex });
 
       let result;
 
@@ -338,14 +404,26 @@ export default function BlockTanggal() {
     };
 
     try {
-      // Simpan langsung ke spreadsheet meskipun belum ada tanggal
-      await saveToSpreadsheet(newRow, 'create');
+      const result = await saveToSpreadsheet(newRow, 'create');
+      
+      // Update row index dari response
+      if (result) {
+        const { data: existingData } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "read",
+            range: "Sheet1!A:A",
+          },
+        });
+        newRow.spreadsheetRowIndex = existingData?.values ? existingData.values.length : dataRows.length + 2;
+      }
       
       const newData = [...dataRows, newRow];
       const sortedData = sortData(newData);
       setDataRows(sortedData);
       setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
       setSelectedMitra("");
+      setSearchMitra("");
 
       toast({
         title: "Sukses",
@@ -385,14 +463,26 @@ export default function BlockTanggal() {
     };
 
     try {
-      // Simpan langsung ke spreadsheet meskipun belum ada tanggal
-      await saveToSpreadsheet(newRow, 'create');
+      const result = await saveToSpreadsheet(newRow, 'create');
+      
+      // Update row index dari response
+      if (result) {
+        const { data: existingData } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "read",
+            range: "Sheet1!A:A",
+          },
+        });
+        newRow.spreadsheetRowIndex = existingData?.values ? existingData.values.length : dataRows.length + 2;
+      }
       
       const newData = [...dataRows, newRow];
       const sortedData = sortData(newData);
       setDataRows(sortedData);
       setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
       setSelectedOrganik("");
+      setSearchOrganik("");
 
       toast({
         title: "Sukses",
@@ -466,12 +556,14 @@ export default function BlockTanggal() {
     setSelectedDataForDates(dataIndex);
     setEditMode(edit);
     
-    if (edit) {
-      const data = dataRows[dataIndex];
-      const monthIndex = bulanOptions.indexOf(bulan);
-      const dates = Object.keys(data.blocks).map(tanggal => 
-        new Date(tahun, monthIndex, parseInt(tanggal))
-      );
+    const data = dataRows[dataIndex];
+    const monthIndex = bulanOptions.indexOf(bulan);
+    
+    if (edit && data.blocks) {
+      // Hanya tampilkan tanggal yang sesuai dengan bulan dan tahun yang dipilih
+      const dates = Object.keys(data.blocks)
+        .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)))
+        .filter(date => isSameMonth(date, new Date(tahun, monthIndex)) && isSameYear(date, new Date(tahun)));
       setSelectedDates(dates);
       setKegiatanInput(data.kegiatan.split(' (')[0]);
     } else {
@@ -512,8 +604,25 @@ export default function BlockTanggal() {
     const dataIndex = selectedDataForDates;
     const data = newData[dataIndex];
     
+    // Filter hanya tanggal yang sesuai dengan bulan dan tahun
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const filteredDates = selectedDates.filter(date => 
+      isSameMonth(date, new Date(tahun, monthIndex)) && 
+      isSameYear(date, new Date(tahun))
+    );
+
+    if (filteredDates.length === 0) {
+      toast({
+        title: "Error",
+        description: "Pilih tanggal dalam bulan " + bulan + " " + tahun,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const tanggalStrings = filteredDates.map(date => date.getDate().toString());
+    
     // Cek untuk tanggal duplikat pada orang yang sama
-    const tanggalStrings = selectedDates.map(date => date.getDate().toString());
     const duplicateDates = tanggalStrings.filter(tanggal => data.blocks[tanggal]);
     
     if (duplicateDates.length > 0 && !editMode) {
@@ -526,6 +635,7 @@ export default function BlockTanggal() {
     }
 
     if (editMode) {
+      // Clear existing blocks untuk edit mode
       data.blocks = {};
     }
 
@@ -584,6 +694,20 @@ export default function BlockTanggal() {
     return Object.keys(data.blocks).map(tanggal => 
       new Date(tahun, monthIndex, parseInt(tanggal))
     );
+  };
+
+  // Fungsi untuk menangani perubahan tanggal di calendar
+  const handleDateSelect = (dates: Date[] | undefined) => {
+    if (!dates) return;
+    
+    // Filter hanya tanggal yang sesuai dengan bulan dan tahun
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const filteredDates = dates.filter(date => 
+      isSameMonth(date, new Date(tahun, monthIndex)) && 
+      isSameYear(date, new Date(tahun))
+    );
+    
+    setSelectedDates(filteredDates);
   };
 
   if (isLoading) {
@@ -648,46 +772,68 @@ export default function BlockTanggal() {
             {/* Tambah Organik */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tambah Organik</label>
-              <div className="flex gap-2">
-                <Select value={selectedOrganik} onValueChange={setSelectedOrganik}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Pilih Organik..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableOrganik.map((organik) => (
-                      <SelectItem key={organik.nip} value={organik.nama}>
-                        {organik.nama} - {organik.nip}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button onClick={addOrganik} disabled={!selectedOrganik}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari organik..."
+                    value={searchOrganik}
+                    onChange={(e) => setSearchOrganik(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedOrganik} onValueChange={setSelectedOrganik}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Pilih Organik..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAvailableOrganik.map((organik) => (
+                        <SelectItem key={organik.nip} value={organik.nama}>
+                          {organik.nama} - {organik.nip}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addOrganik} disabled={!selectedOrganik}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Tambah Mitra */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tambah Mitra</label>
-              <div className="flex gap-2">
-                <Select value={selectedMitra} onValueChange={setSelectedMitra}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Pilih Mitra..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableMitra.map((mitra) => (
-                      <SelectItem key={mitra.nik} value={mitra.nama}>
-                        {mitra.nama} - {mitra.kecamatan}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button onClick={addMitra} disabled={!selectedMitra}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari mitra..."
+                    value={searchMitra}
+                    onChange={(e) => setSearchMitra(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedMitra} onValueChange={setSelectedMitra}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Pilih Mitra..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAvailableMitra.map((mitra) => (
+                        <SelectItem key={mitra.nik} value={mitra.nama}>
+                          {mitra.nama} - {mitra.kecamatan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addMitra} disabled={!selectedMitra}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -747,14 +893,14 @@ export default function BlockTanggal() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell>
                       {data.kecamatan}
                     </TableCell>
                     <TableCell>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="max-w-[300px] truncate text-center">
+                            <div className="max-w-[300px] truncate">
                               {getKegiatanDisplay(data)}
                             </div>
                           </TooltipTrigger>
@@ -767,7 +913,7 @@ export default function BlockTanggal() {
                         </Tooltip>
                       </TooltipProvider>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell>
                       <span className="text-sm font-medium">{data.penanggungJawab}</span>
                     </TableCell>
                     <TableCell className="text-center">
@@ -792,7 +938,7 @@ export default function BlockTanggal() {
                                     <CalendarComponent
                                       mode="multiple"
                                       selected={selectedDates}
-                                      onSelect={setSelectedDates}
+                                      onSelect={handleDateSelect}
                                       className="rounded-md border"
                                       locale={id}
                                       modifiers={{
@@ -806,6 +952,7 @@ export default function BlockTanggal() {
                                           border: '2px solid #dc2626'
                                         }
                                       }}
+                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                     />
                                     <Input
                                       placeholder="Nama kegiatan"
@@ -848,7 +995,7 @@ export default function BlockTanggal() {
                                     <CalendarComponent
                                       mode="multiple"
                                       selected={selectedDates}
-                                      onSelect={setSelectedDates}
+                                      onSelect={handleDateSelect}
                                       className="rounded-md border"
                                       locale={id}
                                       modifiers={{
@@ -862,6 +1009,7 @@ export default function BlockTanggal() {
                                           border: '2px solid #dc2626'
                                         }
                                       }}
+                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                     />
                                     <Input
                                       placeholder="Nama kegiatan"
