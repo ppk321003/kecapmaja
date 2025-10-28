@@ -7,10 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface Mitra {
   nama: string;
@@ -53,9 +57,13 @@ export default function BlockTanggal() {
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
   const [userRole, setUserRole] = useState<string>("");
   const [kegiatanInput, setKegiatanInput] = useState("");
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteMitraDialog, setShowDeleteMitraDialog] = useState(false);
+  const [mitraToDelete, setMitraToDelete] = useState<number | null>(null);
   const [blockToDelete, setBlockToDelete] = useState<{ mitraIndex: number; tanggal: string } | null>(null);
+  const [selectedMitraForDates, setSelectedMitraForDates] = useState<number | null>(null);
 
   const { toast } = useToast();
 
@@ -65,18 +73,6 @@ export default function BlockTanggal() {
   ];
 
   const tahunOptions = [2024, 2025, 2026];
-
-  // Get days in month dynamically
-  const getDaysInMonth = () => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const date = new Date(tahun, monthIndex + 1, 0);
-    return date.getDate();
-  };
-
-  const generateDates = () => {
-    const daysInMonth = getDaysInMonth();
-    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
-  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -190,10 +186,10 @@ export default function BlockTanggal() {
   };
 
   const addMitra = () => {
-    if (!selectedMitra || !kegiatanInput.trim()) {
+    if (!selectedMitra) {
       toast({
         title: "Peringatan",
-        description: "Pilih mitra dan isi kegiatan terlebih dahulu",
+        description: "Pilih mitra terlebih dahulu",
         variant: "destructive",
       });
       return;
@@ -207,7 +203,7 @@ export default function BlockTanggal() {
       nama: selected.nama,
       nik: selected.nik,
       kecamatan: selected.kecamatan,
-      kegiatan: kegiatanInput,
+      kegiatan: "", // Akan diisi saat memilih tanggal
       blocks: {}
     };
 
@@ -216,23 +212,75 @@ export default function BlockTanggal() {
     setSelectedMitra("");
   };
 
-  const addBlock = async (mitraIndex: number, tanggal: string) => {
-    const mitra = matrixData[mitraIndex];
+  const requestDeleteMitra = (mitraIndex: number) => {
+    setMitraToDelete(mitraIndex);
+    setShowDeleteMitraDialog(true);
+  };
+
+  const deleteMitra = () => {
+    if (mitraToDelete === null) return;
+
+    const mitra = matrixData[mitraToDelete];
     
-    if (mitra.blocks[tanggal]) {
+    const newData = [...matrixData];
+    newData.splice(mitraToDelete, 1);
+    
+    // Update nomor urut
+    newData.forEach((mitra, index) => {
+      mitra.no = index + 1;
+    });
+
+    setMatrixData(newData);
+    setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === mitra.nik)!]);
+    setShowDeleteMitraDialog(false);
+    setMitraToDelete(null);
+
+    // Hapus dari spreadsheet
+    deleteFromSheet(mitra);
+  };
+
+  const openDatePicker = (mitraIndex: number) => {
+    setSelectedMitraForDates(mitraIndex);
+    setSelectedDates([]);
+  };
+
+  const saveDates = async () => {
+    if (selectedMitraForDates === null || !kegiatanInput.trim()) {
       toast({
         title: "Peringatan",
-        description: "Tanggal ini sudah diblok untuk mitra tersebut",
+        description: "Pilih tanggal dan isi nama kegiatan terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedDates.length === 0) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih minimal satu tanggal",
         variant: "destructive",
       });
       return;
     }
 
     const newData = [...matrixData];
-    newData[mitraIndex].blocks[tanggal] = mitra.kegiatan;
-    setMatrixData(newData);
+    const mitraIndex = selectedMitraForDates;
+    
+    // Set kegiatan untuk mitra
+    newData[mitraIndex].kegiatan = kegiatanInput;
 
-    await saveToSheet(mitra);
+    // Tambahkan blocks untuk setiap tanggal yang dipilih
+    selectedDates.forEach(date => {
+      const tanggal = date.getDate().toString();
+      newData[mitraIndex].blocks[tanggal] = kegiatanInput;
+    });
+
+    setMatrixData(newData);
+    setKegiatanInput("");
+    setSelectedDates([]);
+    setSelectedMitraForDates(null);
+
+    await saveToSheet(newData[mitraIndex]);
   };
 
   const requestDeleteBlock = (mitraIndex: number, tanggal: string) => {
@@ -249,24 +297,11 @@ export default function BlockTanggal() {
     const newData = [...matrixData];
     delete newData[mitraIndex].blocks[tanggal];
 
-    // Jika tidak ada block lagi, hapus mitra dari matrix
-    if (Object.keys(newData[mitraIndex].blocks).length === 0) {
-      newData.splice(mitraIndex, 1);
-      newData.forEach((mitra, index) => {
-        mitra.no = index + 1;
-      });
-      setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === mitra.nik)!]);
-    }
-
     setMatrixData(newData);
     setShowDeleteDialog(false);
     setBlockToDelete(null);
 
-    if (Object.keys(newData[mitraIndex]?.blocks || {}).length > 0) {
-      await saveToSheet(mitra);
-    } else {
-      await deleteFromSheet(mitra);
-    }
+    await saveToSheet(mitra);
   };
 
   const saveToSheet = async (mitra: MitraRow) => {
@@ -301,7 +336,7 @@ export default function BlockTanggal() {
         mitra.nama,
         mitra.nik,
         dates,
-        userRole // Role yang melakukan block
+        userRole // Role yang melakukan block - TEREKAM
       ];
 
       let error;
@@ -361,8 +396,7 @@ export default function BlockTanggal() {
         row[1] === tahun.toString() && 
         row[2] === bulan && 
         row[4] === mitra.nama && 
-        row[5] === mitra.nik &&
-        row[3] === mitra.kegiatan
+        row[5] === mitra.nik
       );
 
       if (rowIndex !== -1) {
@@ -379,7 +413,7 @@ export default function BlockTanggal() {
 
       toast({
         title: "Sukses",
-        description: "Data berhasil dihapus",
+        description: "Data mitra berhasil dihapus",
       });
     } catch (error: any) {
       toast({
@@ -388,6 +422,15 @@ export default function BlockTanggal() {
         variant: "destructive",
       });
     }
+  };
+
+  const getBlockedDatesCount = (mitra: MitraRow) => {
+    return Object.keys(mitra.blocks).length;
+  };
+
+  const getBlockedDatesPreview = (mitra: MitraRow) => {
+    const dates = Object.keys(mitra.blocks).sort((a, b) => parseInt(a) - parseInt(b));
+    return dates.length > 0 ? dates.join(', ') : 'Belum ada tanggal';
   };
 
   if (isLoading) {
@@ -400,8 +443,6 @@ export default function BlockTanggal() {
       </div>
     );
   }
-
-  const dates = generateDates();
 
   return (
     <div className="space-y-6">
@@ -436,7 +477,7 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* Input Section */}
+      {/* Add Mitra Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -444,17 +485,10 @@ export default function BlockTanggal() {
             Tambah Mitra
           </CardTitle>
           <CardDescription>
-            Masukkan nama kegiatan dan pilih mitra untuk ditambahkan
+            Pilih mitra untuk ditambahkan ke daftar
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Input
-              placeholder="Masukkan nama kegiatan..."
-              value={kegiatanInput}
-              onChange={(e) => setKegiatanInput(e.target.value)}
-            />
-          </div>
+        <CardContent>
           <div className="flex gap-4">
             <Select value={selectedMitra} onValueChange={setSelectedMitra}>
               <SelectTrigger className="flex-1">
@@ -468,7 +502,7 @@ export default function BlockTanggal() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={addMitra} disabled={!kegiatanInput.trim() || !selectedMitra}>
+            <Button onClick={addMitra} disabled={!selectedMitra}>
               <Plus className="h-4 w-4 mr-2" />
               Tambah
             </Button>
@@ -481,10 +515,10 @@ export default function BlockTanggal() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Matrix Block Tanggal - {bulan} {tahun} ({dates.length} hari)
+            Daftar Mitra - {bulan} {tahun}
           </CardTitle>
           <CardDescription>
-            Klik + untuk memblok tanggal, klik ✓ untuk menghapus
+            Kelola tanggal block untuk setiap mitra
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -492,71 +526,99 @@ export default function BlockTanggal() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-background border-r w-12">No</TableHead>
-                  <TableHead className="sticky left-12 bg-background border-r min-w-48">Nama Mitra</TableHead>
-                  <TableHead className="sticky left-60 bg-background border-r min-w-32">Kecamatan</TableHead>
-                  <TableHead className="sticky left-92 bg-background border-r min-w-40">Kegiatan</TableHead>
-                  {dates.map((date) => (
-                    <TableHead key={date} className="text-center w-12 p-2 border-l">
-                      {date}
-                    </TableHead>
-                  ))}
+                  <TableHead className="w-12">No</TableHead>
+                  <TableHead className="min-w-48">Nama Mitra</TableHead>
+                  <TableHead className="min-w-32">Kecamatan</TableHead>
+                  <TableHead className="min-w-40">Tanggal Block</TableHead>
+                  <TableHead className="min-w-32">Jumlah</TableHead>
+                  <TableHead className="min-w-32">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {matrixData.map((mitra, mitraIndex) => (
                   <TableRow key={`${mitra.nik}-${mitra.kegiatan}`}>
-                    <TableCell className="sticky left-0 bg-background border-r font-medium">
+                    <TableCell className="font-medium">
                       {mitra.no}
                     </TableCell>
-                    <TableCell className="sticky left-12 bg-background border-r">
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
                         {mitra.nama}
                       </div>
                     </TableCell>
-                    <TableCell className="sticky left-60 bg-background border-r">
+                    <TableCell>
                       {mitra.kecamatan}
                     </TableCell>
-                    <TableCell className="sticky left-92 bg-background border-r text-sm">
-                      {mitra.kegiatan}
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="max-w-[200px] truncate">
+                              {getBlockedDatesPreview(mitra)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[300px]">
+                            <div className="space-y-1">
+                              <p className="font-semibold">Kegiatan: {mitra.kegiatan || 'Belum diisi'}</p>
+                              <p>Tanggal: {getBlockedDatesPreview(mitra)}</p>
+                              {mitra.kegiatan && (
+                                <p className="text-xs text-muted-foreground">
+                                  Role: {userRole}
+                                </p>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
-                    {dates.map((date) => {
-                      const hasBlock = mitra.blocks[date];
-                      return (
-                        <TableCell key={date} className="p-1 border-l text-center">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                {hasBlock ? (
-                                  <Button
-                                    variant="ghost"
-                                    className={`w-8 h-8 p-0 border-2 ${
-                                      fungsiColors[userRole] || "bg-gray-100 border-gray-400"
-                                    } hover:opacity-80 transition-all`}
-                                    onClick={() => requestDeleteBlock(mitraIndex, date)}
-                                  >
-                                    <span className="text-xs font-bold">✓</span>
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground border-dashed"
-                                    onClick={() => addBlock(mitraIndex, date)}
-                                  >
-                                    +
-                                  </Button>
-                                )}
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{hasBlock ? `Hapus block tanggal ${date}` : `Tambah block tanggal ${date}`}</p>
-                                {hasBlock && <p className="text-xs">{mitra.kegiatan}</p>}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                      );
-                    })}
+                    <TableCell>
+                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
+                        {getBlockedDatesCount(mitra)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <CalendarIcon className="h-4 w-4 mr-1" />
+                              Pilih Tanggal
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-4" align="start">
+                            <div className="space-y-4">
+                              <CalendarComponent
+                                mode="multiple"
+                                selected={selectedDates}
+                                onSelect={setSelectedDates}
+                                className="rounded-md border"
+                                locale={id}
+                              />
+                              <Input
+                                placeholder="Nama kegiatan"
+                                value={kegiatanInput}
+                                onChange={(e) => setKegiatanInput(e.target.value)}
+                              />
+                              <Button 
+                                onClick={saveDates}
+                                className="w-full"
+                                disabled={selectedDates.length === 0 || !kegiatanInput.trim()}
+                              >
+                                Simpan Tanggal
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => requestDeleteMitra(mitraIndex)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -565,7 +627,7 @@ export default function BlockTanggal() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Block Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
@@ -579,6 +641,26 @@ export default function BlockTanggal() {
               Batal
             </Button>
             <Button variant="destructive" onClick={deleteBlock}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Mitra Confirmation Dialog */}
+      <Dialog open={showDeleteMitraDialog} onOpenChange={setShowDeleteMitraDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Mitra</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus mitra ini? Semua data tanggal block akan ikut terhapus.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteMitraDialog(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={deleteMitra}>
               Hapus
             </Button>
           </DialogFooter>
