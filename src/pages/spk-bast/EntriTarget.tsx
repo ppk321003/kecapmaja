@@ -1287,6 +1287,7 @@ export default function EntriTarget() {
     }
   };
 
+  // PERBAIKAN: Fungsi saveActivityToSpreadsheet yang sudah diperbaiki
   const saveActivityToSpreadsheet = async (activity: Activity, targetPeriod: string, targetYear: string): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1300,36 +1301,52 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
+      // Siapkan data petugas untuk duplikat
+      const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
+      const targetList = activity.workers.map(w => w.target).join(" | ");
+      const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      
+      // Hitung nilai realisasi per petugas
+      const nilaiRealisasiList = activity.workers
+        .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
+        .join(" | ");
+      
+      // Hitung total realisasi
+      const totalRealisasi = activity.workers.reduce(
+        (sum, w) => sum + (parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)),
+        0
+      );
+
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
+      // PERBAIKAN: Struktur kolom yang sesuai dengan format yang sudah berfungsi
       const rowData = [
         [
-          nextNo.toString(),
-          user?.role || "User",
-          `${targetPeriod} ${targetYear}`,
-          selectedJobType || "",
-          activity.namaKegiatan,
-          activity.nomorSK,
-          format(activity.tanggalSK, "dd/MM/yyyy"),
-          format(activity.tanggalMulai, "dd/MM/yyyy"),
-          format(activity.tanggalAkhir, "dd/MM/yyyy"),
-          activity.hargaSatuan,
-          activity.satuan,
-          activity.koordinator,
-          komponenPOKLabel,
-          "",
-          "",
-          "",
-          "",
-          "",
-          activity.bebanAnggaran || "",
-          "",
-          "",
-          "",
-          "",
-          nikList,
+          nextNo.toString(), // A: No
+          user?.role || "User", // B: Role User
+          `${targetPeriod} ${targetYear}`, // C: Periode
+          selectedJobType || "", // D: Jenis Pekerjaan
+          activity.namaKegiatan, // E: Nama Kegiatan
+          activity.nomorSK, // F: Nomor SK
+          format(activity.tanggalSK, "dd/MM/yyyy"), // G: Tanggal SK
+          format(activity.tanggalMulai, "dd/MM/yyyy"), // H: Tanggal Mulai
+          format(activity.tanggalAkhir, "dd/MM/yyyy"), // I: Tanggal Akhir
+          activity.hargaSatuan, // J: Harga Satuan
+          activity.satuan, // K: Satuan
+          activity.koordinator, // L: Koordinator
+          komponenPOKLabel, // M: Komponen POK
+          namaPetugas, // N: Nama Petugas (DIPERBAIKI)
+          targetList, // O: Target (DIPERBAIKI)
+          realisasiList, // P: Realisasi (DIPERBAIKI)
+          nilaiRealisasiList, // Q: Nilai Realisasi (DIPERBAIKI)
+          formatCurrency(totalRealisasi), // R: Total Realisasi (DIPERBAIKI)
+          activity.bebanAnggaran || "", // S: Beban Anggaran
+          activity.dikirimKePPK || "", // T: Dikirim ke PPK
+          "", // U: (Kosong)
+          "", // V: (Kosong)
+          nikList, // W: NIK List (DIPERBAIKI - posisi yang benar)
         ]
       ];
 
