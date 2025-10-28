@@ -12,10 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isSameMonth, isSameYear } from "date-fns";
+import { format, isSameMonth, isSameYear, getDate } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Combobox } from "@/components/ui/combobox";
 
 interface Mitra {
   nama: string;
@@ -30,7 +29,7 @@ interface Organik {
 }
 
 interface BlockData {
-  [key: string]: string;
+  [key: string]: string; // tanggal -> kegiatan
 }
 
 interface DataRow {
@@ -47,13 +46,6 @@ interface DataRow {
 
 const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
 const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-
-const bulanOptions = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-];
-
-const tahunOptions = [2024, 2025, 2026];
 
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
@@ -74,28 +66,44 @@ export default function BlockTanggal() {
   const [dataToDelete, setDataToDelete] = useState<number | null>(null);
   const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
-  const [searchTermMitra, setSearchTermMitra] = useState("");
-  const [searchTermOrganik, setSearchTermOrganik] = useState("");
+  const [searchMitra, setSearchMitra] = useState("");
+  const [searchOrganik, setSearchOrganik] = useState("");
 
   const { toast } = useToast();
 
-  // Get days in month dynamically
-  const getDaysInMonth = () => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const date = new Date(tahun, monthIndex + 1, 0);
-    return date.getDate();
-  };
+  const bulanOptions = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
 
-  const generateDates = () => {
-    const daysInMonth = getDaysInMonth();
-    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
-  };
+  const tahunOptions = [2024, 2025, 2026];
+
+  // ADOPSI: Filter dropdown dengan search
+  const filteredAvailableMitra = useMemo(() => {
+    if (!searchMitra) return availableMitra;
+    const searchLower = searchMitra.toLowerCase();
+    return availableMitra.filter(mitra =>
+      mitra.nama.toLowerCase().includes(searchLower) ||
+      mitra.kecamatan.toLowerCase().includes(searchLower) ||
+      mitra.nik.toLowerCase().includes(searchLower)
+    );
+  }, [availableMitra, searchMitra]);
+
+  const filteredAvailableOrganik = useMemo(() => {
+    if (!searchOrganik) return availableOrganik;
+    const searchLower = searchOrganik.toLowerCase();
+    return availableOrganik.filter(organik =>
+      organik.nama.toLowerCase().includes(searchLower) ||
+      organik.jabatan.toLowerCase().includes(searchLower) ||
+      organik.nip.toLowerCase().includes(searchLower)
+    );
+  }, [availableOrganik, searchOrganik]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
-      setUserRole(user.role || "User");
+      setUserRole(user.role || "");
     }
     loadMasterMitra();
     loadMasterOrganik();
@@ -165,26 +173,35 @@ export default function BlockTanggal() {
     }
   };
 
+  // ADOPSI: Load data dengan pattern yang sama dari skrip sukses
   const loadExistingData = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1",
+          range: "Sheet1!A:H",
         },
       });
 
       if (error) throw error;
 
       const rows = data.values || [];
-      const currentData = rows.filter((row: any[]) => 
-        row[1] === tahun.toString() && row[2] === bulan
-      );
-
       const newDataRows: DataRow[] = [];
       
-      currentData.forEach((row: any[], rowIndex: number) => {
+      // Skip header row (index 0)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        
+        // Filter berdasarkan bulan dan tahun
+        const rowTahun = row[1];
+        const rowBulan = row[2];
+        
+        if (rowTahun !== tahun.toString() || rowBulan !== bulan) {
+          continue;
+        }
+
+        const no = parseInt(row[0]) || i;
         const nama = row[4] || "";
         const nik = row[5] || "";
         const kegiatan = row[3] || "";
@@ -204,7 +221,7 @@ export default function BlockTanggal() {
           });
 
           newDataRows.push({
-            no: newDataRows.length + 1,
+            no: no,
             nama: nama,
             nik: nik,
             kecamatan: isOrganik ? 
@@ -214,14 +231,15 @@ export default function BlockTanggal() {
             penanggungJawab: penanggungJawab,
             blocks,
             isOrganik,
-            spreadsheetRowIndex: rowIndex + 2
+            spreadsheetRowIndex: i + 1 // +1 karena header row
           });
         } else {
+          // Merge blocks untuk orang yang sama
           tanggal.forEach((t: string) => {
             newDataRows[existingIndex].blocks[t] = kegiatan;
           });
         }
-      });
+      }
 
       const sortedData = sortData(newDataRows);
       setDataRows(sortedData);
@@ -248,29 +266,29 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN: Fungsi simpan yang sesuai dengan format header spreadsheet
+  // ADOPSI: Fungsi save yang lebih robust seperti di skrip sukses
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
       
-      // SESUAIKAN DENGAN HEADER SPREADSHEET:
-      // No | Tahun | Bulan | Kegiatan | Nama Pelaksana | NIP/NIK | Tanggal | Penanggung Jawab Kegiatan
+      // Format sesuai header yang diminta
       const rowData = [
-        data.no.toString(),                    // No
-        tahun.toString(),                      // Tahun  
-        bulan,                                 // Bulan
-        data.kegiatan || "",                   // Kegiatan
-        data.nama,                             // Nama Pelaksana
-        data.nik,                              // NIP/NIK
-        dates,                                 // Tanggal
-        userRole                               // Penanggung Jawab Kegiatan
+        data.no.toString(),           // No
+        tahun.toString(),            // Tahun
+        bulan,                       // Bulan
+        data.kegiatan || "",         // Kegiatan
+        data.nama,                   // Nama Pelaksana
+        data.nik,                    // NIP/NIK
+        dates,                       // Tanggal
+        userRole                     // Penanggung Jawab Kegiatan
       ];
 
-      console.log('Saving to spreadsheet:', { operation, rowData });
+      console.log('Saving to spreadsheet:', { operation, rowData, spreadsheetRowIndex: data.spreadsheetRowIndex });
 
       let result;
 
       if (operation === 'create') {
+        // Untuk create, selalu append ke akhir
         result = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: SPREADSHEET_ID,
@@ -279,7 +297,21 @@ export default function BlockTanggal() {
             values: [rowData],
           },
         });
+
+        // Setelah append, update row index
+        if (!result.error) {
+          const { data: allData } = await supabase.functions.invoke("google-sheets", {
+            body: {
+              spreadsheetId: SPREADSHEET_ID,
+              operation: "read",
+              range: "Sheet1!A:A",
+            },
+          });
+          data.spreadsheetRowIndex = allData?.values ? allData.values.length : dataRows.length + 2;
+        }
+
       } else if (operation === 'update' && data.spreadsheetRowIndex) {
+        // Untuk update, gunakan row index yang tepat
         result = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: SPREADSHEET_ID,
@@ -300,34 +332,13 @@ export default function BlockTanggal() {
 
       if (result?.error) {
         console.error('Spreadsheet error details:', result.error);
-        throw new Error(result.error.message || 'Gagal menyimpan ke spreadsheet');
+        throw new Error(result.error.message || `Gagal ${operation} data ke spreadsheet`);
       }
 
-      console.log('Save successful:', result?.data);
       return result?.data;
     } catch (error: any) {
       console.error('Error in saveToSpreadsheet:', error);
       throw error;
-    }
-  };
-
-  // PERBAIKAN: Fungsi untuk mendapatkan row index baru
-  const getNextRowIndex = async (): Promise<number> => {
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1!A:A",
-        },
-      });
-
-      if (error) throw error;
-
-      return data?.values ? data.values.length + 1 : 2;
-    } catch (error) {
-      console.error('Error getting next row index:', error);
-      return dataRows.length + 2; // Fallback
     }
   };
 
@@ -344,7 +355,6 @@ export default function BlockTanggal() {
     const selected = availableMitra.find(m => m.nama === selectedMitra);
     if (!selected) return;
 
-    const nextRowIndex = await getNextRowIndex();
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
@@ -353,8 +363,7 @@ export default function BlockTanggal() {
       kegiatan: "",
       penanggungJawab: userRole,
       blocks: {},
-      isOrganik: false,
-      spreadsheetRowIndex: nextRowIndex
+      isOrganik: false
     };
 
     try {
@@ -365,13 +374,13 @@ export default function BlockTanggal() {
       setDataRows(sortedData);
       setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
       setSelectedMitra("");
+      setSearchMitra("");
 
       toast({
         title: "Sukses",
         description: "Mitra berhasil ditambahkan",
       });
     } catch (error: any) {
-      console.error('Error adding mitra:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan mitra: " + error.message,
@@ -393,7 +402,6 @@ export default function BlockTanggal() {
     const selected = availableOrganik.find(org => org.nama === selectedOrganik);
     if (!selected) return;
 
-    const nextRowIndex = await getNextRowIndex();
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
@@ -402,8 +410,7 @@ export default function BlockTanggal() {
       kegiatan: "",
       penanggungJawab: userRole,
       blocks: {},
-      isOrganik: true,
-      spreadsheetRowIndex: nextRowIndex
+      isOrganik: true
     };
 
     try {
@@ -414,13 +421,13 @@ export default function BlockTanggal() {
       setDataRows(sortedData);
       setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
       setSelectedOrganik("");
+      setSearchOrganik("");
 
       toast({
         title: "Sukses",
         description: "Organik berhasil ditambahkan",
       });
     } catch (error: any) {
-      console.error('Error adding organik:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan organik: " + error.message,
@@ -437,6 +444,7 @@ export default function BlockTanggal() {
       return a.nama.localeCompare(b.nama);
     });
 
+    // Update nomor urut setelah sorting
     return sorted.map((item, index) => ({
       ...item,
       no: index + 1
@@ -488,25 +496,20 @@ export default function BlockTanggal() {
     setSelectedDataForDates(dataIndex);
     setEditMode(edit);
     
-    if (edit) {
-      const data = dataRows[dataIndex];
-      const monthIndex = bulanOptions.indexOf(bulan);
-      const dates = Object.keys(data.blocks).map(tanggal => 
-        new Date(tahun, monthIndex, parseInt(tanggal))
-      );
+    const data = dataRows[dataIndex];
+    const monthIndex = bulanOptions.indexOf(bulan);
+    
+    if (edit && data.blocks) {
+      // Hanya tampilkan tanggal yang sesuai dengan bulan dan tahun yang dipilih
+      const dates = Object.keys(data.blocks)
+        .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)))
+        .filter(date => isSameMonth(date, new Date(tahun, monthIndex)) && isSameYear(date, new Date(tahun)));
       setSelectedDates(dates);
-      setKegiatanInput(data.kegiatan.split(' (')[0]);
+      setKegiatanInput(data.kegiatan.split(' (')[0] || "");
     } else {
       setSelectedDates([]);
       setKegiatanInput("");
     }
-  };
-
-  // PERBAIKAN: Filter tanggal hanya untuk bulan yang dipilih
-  const isDateInSelectedMonth = (date: Date) => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    return isSameMonth(date, new Date(tahun, monthIndex)) && 
-           isSameYear(date, new Date(tahun, monthIndex));
   };
 
   const saveDates = async () => {
@@ -519,13 +522,10 @@ export default function BlockTanggal() {
       return;
     }
 
-    // Filter hanya tanggal dalam bulan yang dipilih
-    const filteredDates = selectedDates.filter(isDateInSelectedMonth);
-
-    if (filteredDates.length === 0) {
+    if (selectedDates.length === 0) {
       toast({
         title: "Error",
-        description: "Pilih minimal satu tanggal dalam bulan " + bulan,
+        description: "Pilih minimal satu tanggal",
         variant: "destructive",
       });
       return;
@@ -544,8 +544,25 @@ export default function BlockTanggal() {
     const dataIndex = selectedDataForDates;
     const data = newData[dataIndex];
     
-    // Cek untuk tanggal duplikat pada orang yang sama
+    // Filter hanya tanggal yang sesuai dengan bulan dan tahun
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const filteredDates = selectedDates.filter(date => 
+      isSameMonth(date, new Date(tahun, monthIndex)) && 
+      isSameYear(date, new Date(tahun))
+    );
+
+    if (filteredDates.length === 0) {
+      toast({
+        title: "Error",
+        description: "Pilih tanggal dalam bulan " + bulan + " " + tahun,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const tanggalStrings = filteredDates.map(date => date.getDate().toString());
+    
+    // Cek untuk tanggal duplikat pada orang yang sama
     const duplicateDates = tanggalStrings.filter(tanggal => data.blocks[tanggal]);
     
     if (duplicateDates.length > 0 && !editMode) {
@@ -557,33 +574,29 @@ export default function BlockTanggal() {
       return;
     }
 
-    // Simpan data sebelum perubahan untuk rollback jika perlu
-    const originalData = { ...data };
+    if (editMode) {
+      // Clear existing blocks untuk edit mode
+      data.blocks = {};
+    }
+
+    // Tambahkan blocks untuk setiap tanggal yang dipilih
+    tanggalStrings.forEach(tanggal => {
+      data.blocks[tanggal] = kegiatanInput;
+    });
+
+    // Format kegiatan
+    const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
+    const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
+    
+    if (editMode) {
+      data.kegiatan = kegiatanEntry;
+    } else {
+      data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
+    }
+
+    data.penanggungJawab = userRole;
 
     try {
-      if (editMode) {
-        // Dalam mode edit, hapus semua blocks dan buat ulang
-        data.blocks = {};
-      }
-
-      // Tambahkan blocks untuk setiap tanggal yang dipilih
-      tanggalStrings.forEach(tanggal => {
-        data.blocks[tanggal] = kegiatanInput;
-      });
-
-      // Format kegiatan
-      const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
-      const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
-      
-      if (editMode) {
-        data.kegiatan = kegiatanEntry;
-      } else {
-        data.kegiatan = data.kegiatan ? `${data.kegiatan} - ${kegiatanEntry}` : kegiatanEntry;
-      }
-
-      data.penanggungJawab = userRole;
-
-      // PERBAIKAN: Pastikan update ke spreadsheet
       await saveToSpreadsheet(data, 'update');
       
       const sortedData = sortData(newData);
@@ -598,11 +611,6 @@ export default function BlockTanggal() {
         description: "Tanggal berhasil disimpan",
       });
     } catch (error: any) {
-      // Rollback jika gagal
-      newData[dataIndex] = originalData;
-      setDataRows([...newData]);
-      
-      console.error('Error saving dates:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan tanggal: " + error.message,
@@ -620,51 +628,33 @@ export default function BlockTanggal() {
     return data.kegiatan;
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh data tertentu saja
+  // Fungsi untuk mendapatkan tanggal yang sudah diblokir oleh data tertentu
   const getBlockedDatesForData = (data: DataRow): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
-    return Object.keys(data.blocks)
-      .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)))
-      .filter(isDateInSelectedMonth);
+    return Object.keys(data.blocks).map(tanggal => 
+      new Date(tahun, monthIndex, parseInt(tanggal))
+    );
   };
 
-  // PERBAIKAN: Fungsi untuk mendapatkan tanggal yang diblokir oleh orang lain (untuk edit mode)
-  const getBlockedDatesByOthers = (currentData: DataRow): Date[] => {
+  // Fungsi untuk menangani perubahan tanggal di calendar
+  const handleDateSelect = (dates: Date[] | undefined) => {
+    if (!dates) return;
+    
+    // Filter hanya tanggal yang sesuai dengan bulan dan tahun
     const monthIndex = bulanOptions.indexOf(bulan);
-    const allBlockedDates: Date[] = [];
+    const filteredDates = dates.filter(date => 
+      isSameMonth(date, new Date(tahun, monthIndex)) && 
+      isSameYear(date, new Date(tahun))
+    );
     
-    dataRows.forEach(data => {
-      if (data.nik !== currentData.nik || data.isOrganik !== currentData.isOrganik) {
-        Object.keys(data.blocks).forEach(tanggal => {
-          const date = new Date(tahun, monthIndex, parseInt(tanggal));
-          if (isDateInSelectedMonth(date)) {
-            allBlockedDates.push(date);
-          }
-        });
-      }
-    });
-    
-    return allBlockedDates;
+    setSelectedDates(filteredDates);
   };
 
-  // Fungsi untuk dropdown dengan search
-  const filteredAvailableMitra = useMemo(() => {
-    if (!searchTermMitra) return availableMitra;
-    return availableMitra.filter(mitra =>
-      mitra.nama.toLowerCase().includes(searchTermMitra.toLowerCase()) ||
-      mitra.kecamatan.toLowerCase().includes(searchTermMitra.toLowerCase()) ||
-      mitra.nik.toLowerCase().includes(searchTermMitra.toLowerCase())
-    );
-  }, [availableMitra, searchTermMitra]);
-
-  const filteredAvailableOrganik = useMemo(() => {
-    if (!searchTermOrganik) return availableOrganik;
-    return availableOrganik.filter(organik =>
-      organik.nama.toLowerCase().includes(searchTermOrganik.toLowerCase()) ||
-      organik.jabatan.toLowerCase().includes(searchTermOrganik.toLowerCase()) ||
-      organik.nip.toLowerCase().includes(searchTermOrganik.toLowerCase())
-    );
-  }, [availableOrganik, searchTermOrganik]);
+  // Fungsi untuk menentukan disabled days di calendar
+  const isDateDisabled = (date: Date) => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    return !isSameMonth(date, new Date(tahun, monthIndex)) || !isSameYear(date, new Date(tahun));
+  };
 
   if (isLoading) {
     return (
@@ -676,8 +666,6 @@ export default function BlockTanggal() {
       </div>
     );
   }
-
-  const dates = generateDates();
 
   return (
     <div className="space-y-6">
@@ -728,46 +716,68 @@ export default function BlockTanggal() {
             {/* Tambah Organik */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tambah Organik</label>
-              <div className="flex gap-2">
-                <Combobox
-                  options={filteredAvailableOrganik.map(org => ({
-                    value: org.nama,
-                    label: `${org.nama} - ${org.nip}`
-                  }))}
-                  value={selectedOrganik}
-                  onValueChange={setSelectedOrganik}
-                  placeholder="Pilih atau cari organik..."
-                  searchPlaceholder="Cari nama organik..."
-                  emptyMessage="Tidak ada organik tersedia"
-                  onSearchChange={setSearchTermOrganik}
-                />
-                <Button onClick={addOrganik} disabled={!selectedOrganik}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari organik..."
+                    value={searchOrganik}
+                    onChange={(e) => setSearchOrganik(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedOrganik} onValueChange={setSelectedOrganik}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Pilih Organik..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAvailableOrganik.map((organik) => (
+                        <SelectItem key={organik.nip} value={organik.nama}>
+                          {organik.nama} - {organik.nip}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addOrganik} disabled={!selectedOrganik}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Tambah Mitra */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tambah Mitra</label>
-              <div className="flex gap-2">
-                <Combobox
-                  options={filteredAvailableMitra.map(mitra => ({
-                    value: mitra.nama,
-                    label: `${mitra.nama} - ${mitra.kecamatan}`
-                  }))}
-                  value={selectedMitra}
-                  onValueChange={setSelectedMitra}
-                  placeholder="Pilih atau cari mitra..."
-                  searchPlaceholder="Cari nama mitra..."
-                  emptyMessage="Tidak ada mitra tersedia"
-                  onSearchChange={setSearchTermMitra}
-                />
-                <Button onClick={addMitra} disabled={!selectedMitra}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari mitra..."
+                    value={searchMitra}
+                    onChange={(e) => setSearchMitra(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedMitra} onValueChange={setSelectedMitra}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Pilih Mitra..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAvailableMitra.map((mitra) => (
+                        <SelectItem key={mitra.nik} value={mitra.nama}>
+                          {mitra.nama} - {mitra.kecamatan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addMitra} disabled={!selectedMitra}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -793,10 +803,10 @@ export default function BlockTanggal() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-center w-12">No</TableHead>
-                  <TableHead className="min-w-48">Nama</TableHead>
-                  <TableHead className="min-w-32">Jabatan/Kecamatan</TableHead>
-                  <TableHead className="min-w-40">Kegiatan</TableHead>
-                  <TableHead className="min-w-32">Penanggung Jawab</TableHead>
+                  <TableHead className="text-center min-w-48">Nama</TableHead>
+                  <TableHead className="text-center min-w-32">Jabatan/Kecamatan</TableHead>
+                  <TableHead className="text-center min-w-40">Kegiatan</TableHead>
+                  <TableHead className="text-center min-w-32">Penanggung Jawab</TableHead>
                   <TableHead className="text-center min-w-24">Jumlah</TableHead>
                   <TableHead className="text-center min-w-24">Aksi</TableHead>
                 </TableRow>
@@ -872,12 +882,10 @@ export default function BlockTanggal() {
                                     <CalendarComponent
                                       mode="multiple"
                                       selected={selectedDates}
-                                      onSelect={setSelectedDates}
+                                      onSelect={handleDateSelect}
                                       className="rounded-md border"
                                       locale={id}
-                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
-                                        // PERBAIKAN: Hanya tampilkan yang sudah diblokir oleh orang ini
                                         blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
@@ -888,6 +896,8 @@ export default function BlockTanggal() {
                                           border: '2px solid #dc2626'
                                         }
                                       }}
+                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                                      disabled={isDateDisabled}
                                     />
                                     <Input
                                       placeholder="Nama kegiatan"
@@ -895,12 +905,12 @@ export default function BlockTanggal() {
                                       onChange={(e) => setKegiatanInput(e.target.value)}
                                     />
                                     <div className="text-xs text-muted-foreground">
-                                      Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                      Tanggal terpilih: {selectedDates.map(d => d.getDate()).join(', ')}
                                     </div>
                                     <Button 
                                       onClick={saveDates}
                                       className="w-full"
-                                      disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                      disabled={selectedDates.length === 0 || !kegiatanInput.trim()}
                                     >
                                       <Save className="h-4 w-4 mr-2" />
                                       Simpan
@@ -930,13 +940,11 @@ export default function BlockTanggal() {
                                     <CalendarComponent
                                       mode="multiple"
                                       selected={selectedDates}
-                                      onSelect={setSelectedDates}
+                                      onSelect={handleDateSelect}
                                       className="rounded-md border"
                                       locale={id}
-                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                       modifiers={{
-                                        // PERBAIKAN: Untuk edit, hanya tampilkan yang diblokir orang lain
-                                        blocked: getBlockedDatesByOthers(data)
+                                        blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
                                         blocked: {
@@ -946,6 +954,8 @@ export default function BlockTanggal() {
                                           border: '2px solid #dc2626'
                                         }
                                       }}
+                                      month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                                      disabled={isDateDisabled}
                                     />
                                     <Input
                                       placeholder="Nama kegiatan"
@@ -953,12 +963,12 @@ export default function BlockTanggal() {
                                       onChange={(e) => setKegiatanInput(e.target.value)}
                                     />
                                     <div className="text-xs text-muted-foreground">
-                                      Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                      Tanggal terpilih: {selectedDates.map(d => d.getDate()).join(', ')}
                                     </div>
                                     <Button 
                                       onClick={saveDates}
                                       className="w-full"
-                                      disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                      disabled={selectedDates.length === 0 || !kegiatanInput.trim()}
                                     >
                                       <Save className="h-4 w-4 mr-2" />
                                       Update
