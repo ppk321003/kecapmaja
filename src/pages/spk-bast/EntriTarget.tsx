@@ -1922,6 +1922,11 @@ export default function EntriTarget() {
                                   ✓ Sudah dikirim ke PPK
                                 </div>
                               )}
+                              {!activity.dikirimKePPK?.includes("Kirim ke PPK") && (
+                                <div className="text-xs text-red-600 font-medium mt-1">
+                                  Belum kirim ke PPK
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                           {activity.workers.map((worker, workerIndex) => (
