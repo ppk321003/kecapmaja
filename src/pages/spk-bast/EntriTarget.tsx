@@ -11,10 +11,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "lucide-react";
+import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search, Copy } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
-import { format, parse } from "date-fns";
+import { format, parse, addMonths, endOfMonth } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -149,6 +149,11 @@ const bulanMap: { [key: string]: string } = {
   'desember': 'December'
 };
 
+const bulanOptions = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
 export default function EntriTarget() {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -158,7 +163,9 @@ export default function EntriTarget() {
   const [showProposalsDialog, setShowProposalsDialog] = useState(false);
   const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
   const [showAddWorkerDialog, setShowAddWorkerDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [duplicatingActivity, setDuplicatingActivity] = useState<Activity | null>(null);
   const [selectedActivityForWorkers, setSelectedActivityForWorkers] = useState<Activity | null>(null);
   const [activitiesByPeriod, setActivitiesByPeriod] = useState<{[key: string]: Activity[]}>({});
   const [selectedWorkers, setSelectedWorkers] = useState<{[key: number]: {selected: boolean, target: string, realisasi: string}}>({});
@@ -172,6 +179,8 @@ export default function EntriTarget() {
   const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
   const [bebanAnggaran, setBebanAnggaran] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [duplicateTargetMonth, setDuplicateTargetMonth] = useState<string>("");
+  const [duplicateTargetYear, setDuplicateTargetYear] = useState<string>("");
   
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
   let activities = activitiesByPeriod[periodKey] || [];
@@ -185,6 +194,7 @@ export default function EntriTarget() {
     activities = activities.filter(act => allowedActivityNames.includes(act.namaKegiatan));
   }
 
+  // Inisialisasi form dengan default values yang proper
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -194,6 +204,7 @@ export default function EntriTarget() {
       komponenPOK: "",
       nomorSK: "",
       koordinator: "",
+      // Tidak menyertakan tanggal di default values, biarkan undefined
     },
   });
 
@@ -202,6 +213,33 @@ export default function EntriTarget() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value) + ',-';
+  };
+
+  // Fungsi untuk mendapatkan bulan yang diizinkan untuk duplikat
+  const getAllowedMonths = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    // Ambil 2 bulan terakhir + semua bulan di masa depan
+    const allowedMonths = bulanOptions.filter((_, index) => {
+      const monthIndex = index + 1; // Januari = 1, Desember = 12
+      const targetDate = new Date(currentYear, monthIndex - 1);
+      
+      // Jika tahun target lebih besar dari tahun sekarang, semua bulan diizinkan
+      if (parseInt(duplicateTargetYear) > currentYear) {
+        return true;
+      }
+      
+      // Jika tahun target sama dengan tahun sekarang, hanya bulan yang >= (currentMonth - 1)
+      if (parseInt(duplicateTargetYear) === currentYear) {
+        return monthIndex >= (currentMonth - 1);
+      }
+      
+      return false;
+    });
+    
+    return allowedMonths;
   };
 
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
@@ -907,6 +945,98 @@ export default function EntriTarget() {
     setShowAddActivityDialog(true);
   };
 
+  // Fungsi untuk menangani duplikat kegiatan
+  const handleDuplicateActivity = (activity: Activity) => {
+    setDuplicatingActivity(activity);
+    setDuplicateTargetMonth("");
+    setDuplicateTargetYear(selectedYear);
+    setShowDuplicateDialog(true);
+  };
+
+  // Fungsi untuk menjalankan duplikasi
+  const handleExecuteDuplicate = async () => {
+    if (!duplicatingActivity || !duplicateTargetMonth || !duplicateTargetYear) {
+      toast({
+        title: "Data tidak lengkap",
+        description: "Harap pilih bulan dan tahun tujuan",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validasi: tidak bisa duplikat ke periode yang sama
+    if (duplicateTargetMonth === selectedPeriod && duplicateTargetYear === selectedYear) {
+      toast({
+        title: "Tidak dapat menduplikasi",
+        description: "Tidak dapat menduplikasi ke periode yang sama",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Hitung selisih bulan antara periode asal dan tujuan
+      const sourceMonthIndex = bulanOptions.indexOf(selectedPeriod || "");
+      const targetMonthIndex = bulanOptions.indexOf(duplicateTargetMonth);
+      const sourceYear = parseInt(selectedYear);
+      const targetYear = parseInt(duplicateTargetYear);
+      
+      const monthDiff = (targetYear - sourceYear) * 12 + (targetMonthIndex - sourceMonthIndex);
+
+      // Buat salinan kegiatan dengan penyesuaian tanggal
+      const duplicatedActivity: Activity = {
+        ...duplicatingActivity,
+        id: Date.now(), // ID baru
+        tanggalSK: duplicatingActivity.tanggalSK, // Tanggal SK tetap sama
+        tanggalMulai: adjustDateForMonth(duplicatingActivity.tanggalMulai, monthDiff),
+        tanggalAkhir: adjustDateForMonth(duplicatingActivity.tanggalAkhir, monthDiff),
+        dikirimKePPK: "", // Reset status PPK
+        spreadsheetRowIndex: undefined, // Row index baru akan dibuat saat save
+      };
+
+      // Simpan ke spreadsheet
+      const rowIndex = await saveActivityToSpreadsheet(duplicatedActivity);
+      if (rowIndex) {
+        duplicatedActivity.spreadsheetRowIndex = rowIndex;
+      }
+
+      // Update state
+      const targetPeriodKey = `${duplicateTargetMonth} ${duplicateTargetYear}-${selectedJobType}`;
+      setActivitiesByPeriod(prev => ({
+        ...prev,
+        [targetPeriodKey]: [...(prev[targetPeriodKey] || []), duplicatedActivity]
+      }));
+
+      toast({
+        title: "Kegiatan berhasil diduplikasi",
+        description: `Kegiatan "${duplicatingActivity.namaKegiatan}" telah diduplikasi ke ${duplicateTargetMonth} ${duplicateTargetYear}.`,
+      });
+
+      setShowDuplicateDialog(false);
+      setDuplicatingActivity(null);
+      
+    } catch (error) {
+      console.error('Error duplicating activity:', error);
+      toast({
+        title: "Gagal menduplikasi kegiatan",
+        description: "Terjadi kesalahan saat menduplikasi kegiatan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fungsi untuk menyesuaikan tanggal berdasarkan selisih bulan
+  const adjustDateForMonth = (originalDate: Date, monthDiff: number): Date => {
+    let adjustedDate = addMonths(originalDate, monthDiff);
+    
+    // Jika tanggal tidak valid (misal: 31 Februari), bulatkan ke akhir bulan
+    if (adjustedDate.getMonth() !== (originalDate.getMonth() + monthDiff) % 12) {
+      adjustedDate = endOfMonth(adjustedDate);
+    }
+    
+    return adjustedDate;
+  };
+
   const handleAddWorker = (activity: Activity) => {
     setSelectedActivityForWorkers(activity);
     const initialWorkers: {[key: number]: {selected: boolean, target: string, realisasi: string}} = {};
@@ -1135,12 +1265,16 @@ export default function EntriTarget() {
 
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
+      // Tentukan periode berdasarkan jobType atau dari activity
+      const activityPeriod = activity.jobType === selectedJobType ? `${selectedPeriod} ${selectedYear}` : 
+                           `${duplicateTargetMonth} ${duplicateTargetYear}`;
+
       const rowData = [
         [
           nextNo.toString(),
           user?.role || "User",
-          `${selectedPeriod} ${selectedYear}`,
-          selectedJobType || "",
+          activityPeriod,
+          activity.jobType || selectedJobType || "",
           activity.namaKegiatan,
           activity.nomorSK,
           format(activity.tanggalSK, "dd/MM/yyyy"),
@@ -1605,6 +1739,15 @@ export default function EntriTarget() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10"
+                                  onClick={() => handleDuplicateActivity(activity)}
+                                  title="Duplikat Kegiatan"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="h-8 w-8 text-green-600 hover:text-green-600 hover:bg-green-600/10"
                                   onClick={() => handleSendToPPK(activity.id)}
                                   title="Kirim ke PPK"
@@ -1732,7 +1875,104 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog lainnya tetap sama */}
+      {/* Dialog Duplikat */}
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Duplikat Kegiatan</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-muted/30 p-4 rounded-lg">
+              <div className="text-sm">
+                <div className="mb-1"><span className="font-semibold">Kegiatan:</span> {duplicatingActivity?.namaKegiatan}</div>
+                <div className="text-muted-foreground">Nomor SK: {duplicatingActivity?.nomorSK}</div>
+                <div className="text-muted-foreground">Periode Asal: {selectedPeriod} {selectedYear}</div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <FormLabel>Tahun Tujuan <span className="text-destructive">*</span></FormLabel>
+                <Select value={duplicateTargetYear} onValueChange={setDuplicateTargetYear}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Tahun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2024">2024</SelectItem>
+                    <SelectItem value="2025">2025</SelectItem>
+                    <SelectItem value="2026">2026</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <FormLabel>Bulan Tujuan <span className="text-destructive">*</span></FormLabel>
+                <Select 
+                  value={duplicateTargetMonth} 
+                  onValueChange={setDuplicateTargetMonth}
+                  disabled={!duplicateTargetYear}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Bulan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAllowedMonths().map((month) => (
+                      <SelectItem key={month} value={month}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Hanya menampilkan 2 bulan terakhir dan bulan-bulan di masa depan
+                </p>
+              </div>
+
+              {duplicateTargetMonth && duplicateTargetYear && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-blue-800">
+                    <div className="font-semibold">Ringkasan Perubahan Tanggal:</div>
+                    <div className="text-sm mt-1">
+                      <div>• Tanggal SK: Tetap {format(duplicatingActivity?.tanggalSK || new Date(), "dd/MM/yyyy")}</div>
+                      <div>• Tanggal Mulai: {format(adjustDateForMonth(duplicatingActivity?.tanggalMulai || new Date(), 
+                        (parseInt(duplicateTargetYear) - parseInt(selectedYear)) * 12 + 
+                        (bulanOptions.indexOf(duplicateTargetMonth) - bulanOptions.indexOf(selectedPeriod || ""))
+                      ), "dd/MM/yyyy")}</div>
+                      <div>• Tanggal Akhir: {format(adjustDateForMonth(duplicatingActivity?.tanggalAkhir || new Date(), 
+                        (parseInt(duplicateTargetYear) - parseInt(selectedYear)) * 12 + 
+                        (bulanOptions.indexOf(duplicateTargetMonth) - bulanOptions.indexOf(selectedPeriod || ""))
+                      ), "dd/MM/yyyy")}</div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowDuplicateDialog(false);
+                setDuplicatingActivity(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={handleExecuteDuplicate}
+              disabled={!duplicateTargetMonth || !duplicateTargetYear}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Duplikat Kegiatan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Tambah/Edit Kegiatan */}
       <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
         setShowAddActivityDialog(open);
         if (!open) {
