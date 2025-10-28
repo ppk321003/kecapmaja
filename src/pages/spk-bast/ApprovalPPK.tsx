@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -41,10 +41,21 @@ interface DataRow {
   penanggungJawab: string;
   blocks: BlockData;
   isOrganik: boolean;
+  spreadsheetRowIndex?: number;
 }
 
 const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
 const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+const fungsiColors: { [key: string]: string } = {
+  "Fungsi Sosial": "bg-blue-100 border-blue-400",
+  "Fungsi Produksi": "bg-green-100 border-green-400",
+  "Fungsi Distribusi": "bg-orange-100 border-orange-400",
+  "Fungsi Neraca": "bg-purple-100 border-purple-400",
+  "Fungsi IPDS": "bg-yellow-100 border-yellow-400",
+  "Pejabat Pembuat Komitmen": "bg-red-100 border-red-400",
+  "Bendahara": "bg-gray-100 border-gray-400"
+};
 
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
@@ -65,7 +76,6 @@ export default function BlockTanggal() {
   const [dataToDelete, setDataToDelete] = useState<number | null>(null);
   const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
   const [editMode, setEditMode] = useState<boolean>(false);
-  const [allBlockedDates, setAllBlockedDates] = useState<Date[]>([]);
 
   const { toast } = useToast();
 
@@ -75,6 +85,18 @@ export default function BlockTanggal() {
   ];
 
   const tahunOptions = [2024, 2025, 2026];
+
+  // Get days in month dynamically
+  const getDaysInMonth = () => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const date = new Date(tahun, monthIndex + 1, 0);
+    return date.getDate();
+  };
+
+  const generateDates = () => {
+    const daysInMonth = getDaysInMonth();
+    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -91,24 +113,6 @@ export default function BlockTanggal() {
       loadExistingData();
     }
   }, [bulan, tahun, mitraList, organikList]);
-
-  useEffect(() => {
-    updateAllBlockedDates();
-  }, [dataRows, bulan, tahun]);
-
-  const updateAllBlockedDates = () => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const blockedDates: Date[] = [];
-    
-    dataRows.forEach(data => {
-      Object.keys(data.blocks).forEach(tanggal => {
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        blockedDates.push(date);
-      });
-    });
-    
-    setAllBlockedDates(blockedDates);
-  };
 
   const loadMasterMitra = async () => {
     try {
@@ -187,7 +191,7 @@ export default function BlockTanggal() {
 
       const newDataRows: DataRow[] = [];
       
-      currentData.forEach((row: any[]) => {
+      currentData.forEach((row: any[], rowIndex: number) => {
         const nama = row[4] || "";
         const nik = row[5] || "";
         const kegiatan = row[3] || "";
@@ -216,18 +220,13 @@ export default function BlockTanggal() {
             kegiatan: kegiatan,
             penanggungJawab: penanggungJawab,
             blocks,
-            isOrganik
+            isOrganik,
+            spreadsheetRowIndex: rowIndex + 2
           });
         } else {
-          // Merge kegiatan dan blocks untuk orang yang sama
-          const existing = newDataRows[existingIndex];
-          const newKegiatan = existing.kegiatan ? `${existing.kegiatan} - ${kegiatan}` : kegiatan;
-          
           tanggal.forEach((t: string) => {
-            existing.blocks[t] = kegiatan;
+            newDataRows[existingIndex].blocks[t] = kegiatan;
           });
-          
-          existing.kegiatan = newKegiatan;
         }
       });
 
@@ -256,6 +255,64 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
+  // ADOPSI DARI SKIP SUKSES: Format penyimpanan yang konsisten
+  const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
+    try {
+      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      
+      const rowData = [
+        data.no.toString(),
+        tahun.toString(),
+        bulan,
+        data.kegiatan || "",
+        data.nama,
+        data.nik,
+        dates,
+        userRole // PASTIKAN role terekam
+      ];
+
+      let result;
+
+      if (operation === 'create') {
+        result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "append",
+            range: "Sheet1",
+            values: [rowData],
+          },
+        });
+      } else if (operation === 'update' && data.spreadsheetRowIndex) {
+        result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "update",
+            range: `Sheet1!A${data.spreadsheetRowIndex}:H${data.spreadsheetRowIndex}`,
+            values: [rowData],
+          },
+        });
+      } else if (operation === 'delete' && data.spreadsheetRowIndex) {
+        result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "delete",
+            range: `Sheet1!A${data.spreadsheetRowIndex}:H${data.spreadsheetRowIndex}`,
+          },
+        });
+      }
+
+      if (result?.error) {
+        console.error('Spreadsheet error:', result.error);
+        throw new Error(result.error.message || 'Gagal menyimpan ke spreadsheet');
+      }
+
+      return result?.data;
+    } catch (error: any) {
+      console.error('Error in saveToSpreadsheet:', error);
+      throw error;
+    }
+  };
+
   const addMitra = async () => {
     if (!selectedMitra) {
       toast({
@@ -280,14 +337,27 @@ export default function BlockTanggal() {
       isOrganik: false
     };
 
-    const newData = [...dataRows, newRow];
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
-    setSelectedMitra("");
+    try {
+      // Simpan langsung ke spreadsheet meskipun belum ada tanggal
+      await saveToSpreadsheet(newRow, 'create');
+      
+      const newData = [...dataRows, newRow];
+      const sortedData = sortData(newData);
+      setDataRows(sortedData);
+      setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
+      setSelectedMitra("");
 
-    // Simpan ke spreadsheet meskipun belum ada tanggal
-    await saveToSheet(newRow);
+      toast({
+        title: "Sukses",
+        description: "Mitra berhasil ditambahkan",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan mitra: " + error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const addOrganik = async () => {
@@ -314,14 +384,27 @@ export default function BlockTanggal() {
       isOrganik: true
     };
 
-    const newData = [...dataRows, newRow];
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
-    setSelectedOrganik("");
+    try {
+      // Simpan langsung ke spreadsheet meskipun belum ada tanggal
+      await saveToSpreadsheet(newRow, 'create');
+      
+      const newData = [...dataRows, newRow];
+      const sortedData = sortData(newData);
+      setDataRows(sortedData);
+      setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
+      setSelectedOrganik("");
 
-    // Simpan ke spreadsheet meskipun belum ada tanggal
-    await saveToSheet(newRow);
+      toast({
+        title: "Sukses",
+        description: "Organik berhasil ditambahkan",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan organik: " + error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const sortData = (data: DataRow[]): DataRow[] => {
@@ -348,22 +431,35 @@ export default function BlockTanggal() {
 
     const data = dataRows[dataToDelete];
     
-    const newData = [...dataRows];
-    newData.splice(dataToDelete, 1);
-    
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    
-    if (data.isOrganik) {
-      setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
-    } else {
-      setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
-    }
-    
-    setShowDeleteDataDialog(false);
-    setDataToDelete(null);
+    try {
+      await saveToSpreadsheet(data, 'delete');
+      
+      const newData = [...dataRows];
+      newData.splice(dataToDelete, 1);
+      
+      const sortedData = sortData(newData);
+      setDataRows(sortedData);
+      
+      if (data.isOrganik) {
+        setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+      } else {
+        setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+      }
+      
+      setShowDeleteDataDialog(false);
+      setDataToDelete(null);
 
-    await deleteFromSheet(data);
+      toast({
+        title: "Sukses",
+        description: "Data berhasil dihapus",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal menghapus data: " + error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const openDatePicker = (dataIndex: number, edit: boolean = false) => {
@@ -416,7 +512,7 @@ export default function BlockTanggal() {
     const dataIndex = selectedDataForDates;
     const data = newData[dataIndex];
     
-    // Cek untuk tanggal duplikat
+    // Cek untuk tanggal duplikat pada orang yang sama
     const tanggalStrings = selectedDates.map(date => date.getDate().toString());
     const duplicateDates = tanggalStrings.filter(tanggal => data.blocks[tanggal]);
     
@@ -433,10 +529,12 @@ export default function BlockTanggal() {
       data.blocks = {};
     }
 
+    // Tambahkan blocks untuk setiap tanggal yang dipilih
     tanggalStrings.forEach(tanggal => {
       data.blocks[tanggal] = kegiatanInput;
     });
 
+    // Format kegiatan
     const sortedDates = tanggalStrings.sort((a, b) => parseInt(a) - parseInt(b));
     const kegiatanEntry = `${kegiatanInput} (${sortedDates.join(',')})`;
     
@@ -448,14 +546,27 @@ export default function BlockTanggal() {
 
     data.penanggungJawab = userRole;
 
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    setKegiatanInput("");
-    setSelectedDates([]);
-    setSelectedDataForDates(null);
-    setEditMode(false);
+    try {
+      await saveToSpreadsheet(data, 'update');
+      
+      const sortedData = sortData(newData);
+      setDataRows(sortedData);
+      setKegiatanInput("");
+      setSelectedDates([]);
+      setSelectedDataForDates(null);
+      setEditMode(false);
 
-    await saveToSheet(data);
+      toast({
+        title: "Sukses",
+        description: "Tanggal berhasil disimpan",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan tanggal: " + error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const getBlockedDatesCount = (data: DataRow) => {
@@ -467,126 +578,11 @@ export default function BlockTanggal() {
     return data.kegiatan;
   };
 
-  const saveToSheet = async (data: DataRow) => {
-    try {
-      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
-      
-      const { data: existingData, error: checkError } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1",
-        },
-      });
-
-      if (checkError) throw checkError;
-
-      const rows = existingData.values || [];
-      
-      // Cari row yang sesuai berdasarkan NIK dan bulan/tahun
-      const existingRowIndex = rows.findIndex((row: any[]) => 
-        row[1] === tahun.toString() && 
-        row[2] === bulan && 
-        row[5] === data.nik
-      );
-
-      const newRow = [
-        (existingRowIndex === -1 ? rows.length + 1 : existingRowIndex + 1).toString(),
-        tahun.toString(),
-        bulan,
-        data.kegiatan || "", // Pastikan tidak undefined
-        data.nama,
-        data.nik,
-        dates,
-        userRole
-      ];
-
-      let result;
-      if (existingRowIndex === -1) {
-        result = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: SPREADSHEET_ID,
-            operation: "append",
-            range: "Sheet1",
-            values: [newRow],
-          },
-        });
-      } else {
-        result = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: SPREADSHEET_ID,
-            operation: "update",
-            range: `Sheet1!A${existingRowIndex + 1}:H${existingRowIndex + 1}`,
-            values: [newRow],
-          },
-        });
-      }
-
-      if (result.error) throw result.error;
-
-      toast({
-        title: "Sukses",
-        description: "Data berhasil disimpan",
-      });
-    } catch (error: any) {
-      console.error('Save error:', error);
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan data: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteFromSheet = async (data: DataRow) => {
-    try {
-      const { data: existingData, error: checkError } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1",
-        },
-      });
-
-      if (checkError) throw checkError;
-
-      const rows = existingData.values || [];
-      const rowIndex = rows.findIndex((row: any[]) => 
-        row[1] === tahun.toString() && 
-        row[2] === bulan && 
-        row[5] === data.nik
-      );
-
-      if (rowIndex !== -1) {
-        const { error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: SPREADSHEET_ID,
-            operation: "delete",
-            range: `Sheet1!A${rowIndex + 1}:H${rowIndex + 1}`,
-          },
-        });
-
-        if (error) throw error;
-      }
-
-      toast({
-        title: "Sukses",
-        description: "Data berhasil dihapus",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Gagal menghapus data: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const isDateBlocked = (date: Date) => {
-    return allBlockedDates.some(blockedDate => 
-      blockedDate.getDate() === date.getDate() &&
-      blockedDate.getMonth() === date.getMonth() &&
-      blockedDate.getFullYear() === date.getFullYear()
+  // Fungsi untuk mendapatkan tanggal yang sudah diblokir oleh data tertentu
+  const getBlockedDatesForData = (data: DataRow): Date[] => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    return Object.keys(data.blocks).map(tanggal => 
+      new Date(tahun, monthIndex, parseInt(tanggal))
     );
   };
 
@@ -600,6 +596,8 @@ export default function BlockTanggal() {
       </div>
     );
   }
+
+  const dates = generateDates();
 
   return (
     <div className="space-y-6">
@@ -714,19 +712,19 @@ export default function BlockTanggal() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">No</TableHead>
-                  <TableHead className="min-w-48">Nama</TableHead>
-                  <TableHead className="min-w-32">Jabatan/Kecamatan</TableHead>
-                  <TableHead className="min-w-40">Kegiatan</TableHead>
-                  <TableHead className="min-w-32">Penanggung Jawab</TableHead>
-                  <TableHead className="min-w-24">Jumlah</TableHead>
-                  <TableHead className="min-w-24">Aksi</TableHead>
+                  <TableHead className="text-center w-12">No</TableHead>
+                  <TableHead className="text-center min-w-48">Nama</TableHead>
+                  <TableHead className="text-center min-w-32">Jabatan/Kecamatan</TableHead>
+                  <TableHead className="text-center min-w-40">Kegiatan</TableHead>
+                  <TableHead className="text-center min-w-32">Penanggung Jawab</TableHead>
+                  <TableHead className="text-center min-w-24">Jumlah</TableHead>
+                  <TableHead className="text-center min-w-24">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {dataRows.map((data, index) => (
                   <TableRow key={`${data.nik}-${data.isOrganik}`}>
-                    <TableCell className="font-medium">
+                    <TableCell className="text-center font-medium">
                       {data.no}
                     </TableCell>
                     <TableCell>
@@ -749,14 +747,14 @@ export default function BlockTanggal() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {data.kecamatan}
                     </TableCell>
                     <TableCell>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="max-w-[300px] truncate">
+                            <div className="max-w-[300px] truncate text-center">
                               {getKegiatanDisplay(data)}
                             </div>
                           </TooltipTrigger>
@@ -769,16 +767,16 @@ export default function BlockTanggal() {
                         </Tooltip>
                       </TooltipProvider>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <span className="text-sm font-medium">{data.penanggungJawab}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
                         {getBlockedDatesCount(data)}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -798,13 +796,14 @@ export default function BlockTanggal() {
                                       className="rounded-md border"
                                       locale={id}
                                       modifiers={{
-                                        blocked: allBlockedDates
+                                        blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
                                         blocked: {
                                           backgroundColor: '#fef2f2',
                                           color: '#dc2626',
-                                          fontWeight: 'bold'
+                                          fontWeight: 'bold',
+                                          border: '2px solid #dc2626'
                                         }
                                       }}
                                     />
@@ -853,13 +852,14 @@ export default function BlockTanggal() {
                                       className="rounded-md border"
                                       locale={id}
                                       modifiers={{
-                                        blocked: allBlockedDates
+                                        blocked: getBlockedDatesForData(data)
                                       }}
                                       modifiersStyles={{
                                         blocked: {
                                           backgroundColor: '#fef2f2',
                                           color: '#dc2626',
-                                          fontWeight: 'bold'
+                                          fontWeight: 'bold',
+                                          border: '2px solid #dc2626'
                                         }
                                       }}
                                     />
