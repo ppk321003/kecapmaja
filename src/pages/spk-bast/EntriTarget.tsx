@@ -11,10 +11,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search, Copy } from "lucide-react";
+import { Trash2, CalendarIcon, UserPlus, Pencil, Send, LogIn, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
-import { format, parse, addMonths, endOfMonth } from "date-fns";
+import { format, parse } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -149,21 +149,6 @@ const bulanMap: { [key: string]: string } = {
   'desember': 'December'
 };
 
-const bulanOptions = [
-  { value: "Januari", label: "Januari" },
-  { value: "Februari", label: "Februari" },
-  { value: "Maret", label: "Maret" },
-  { value: "April", label: "April" },
-  { value: "Mei", label: "Mei" },
-  { value: "Juni", label: "Juni" },
-  { value: "Juli", label: "Juli" },
-  { value: "Agustus", label: "Agustus" },
-  { value: "September", label: "September" },
-  { value: "Oktober", label: "Oktober" },
-  { value: "November", label: "November" },
-  { value: "Desember", label: "Desember" },
-];
-
 export default function EntriTarget() {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -173,10 +158,8 @@ export default function EntriTarget() {
   const [showProposalsDialog, setShowProposalsDialog] = useState(false);
   const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
   const [showAddWorkerDialog, setShowAddWorkerDialog] = useState(false);
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [selectedActivityForWorkers, setSelectedActivityForWorkers] = useState<Activity | null>(null);
-  const [activityToDuplicate, setActivityToDuplicate] = useState<Activity | null>(null);
   const [activitiesByPeriod, setActivitiesByPeriod] = useState<{[key: string]: Activity[]}>({});
   const [selectedWorkers, setSelectedWorkers] = useState<{[key: number]: {selected: boolean, target: string, realisasi: string}}>({});
   const [editingWorker, setEditingWorker] = useState<{activityId: number, worker: Worker} | null>(null);
@@ -189,8 +172,6 @@ export default function EntriTarget() {
   const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
   const [bebanAnggaran, setBebanAnggaran] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [duplicateTargetMonth, setDuplicateTargetMonth] = useState<string>("");
-  const [duplicateTargetYear, setDuplicateTargetYear] = useState<string>("");
   
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
   let activities = activitiesByPeriod[periodKey] || [];
@@ -215,41 +196,6 @@ export default function EntriTarget() {
       koordinator: "",
     },
   });
-
-  // Fungsi untuk mendapatkan daftar bulan yang diizinkan (2 bulan terakhir + masa depan)
-  const getAvailableMonths = () => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth(); // 0-based
-    
-    return bulanOptions.filter((bulan, index) => {
-      const monthIndex = index; // Januari = 0, Desember = 11
-      const year = parseInt(selectedYear);
-      
-      // Jika tahun sama dengan tahun saat ini
-      if (year === currentYear) {
-        return monthIndex >= currentMonth - 2; // 2 bulan terakhir + masa depan
-      }
-      // Jika tahun lebih besar dari tahun saat ini (masa depan)
-      else if (year > currentYear) {
-        return true;
-      }
-      // Jika tahun lebih kecil dari tahun saat ini (masa lalu)
-      else {
-        return monthIndex >= 10; // Hanya November & Desember untuk tahun sebelumnya
-      }
-    });
-  };
-
-  // Fungsi untuk mendapatkan daftar tahun yang diizinkan
-  const getAvailableYears = () => {
-    const currentYear = new Date().getFullYear();
-    return [
-      (currentYear - 1).toString(),
-      currentYear.toString(),
-      (currentYear + 1).toString()
-    ];
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -961,104 +907,6 @@ export default function EntriTarget() {
     setShowAddActivityDialog(true);
   };
 
-  // Fungsi untuk menangani duplikat kegiatan
-  const handleDuplicateActivity = (activity: Activity) => {
-    setActivityToDuplicate(activity);
-    setDuplicateTargetMonth("");
-    setDuplicateTargetYear(selectedYear);
-    setShowDuplicateDialog(true);
-  };
-
-  // Fungsi untuk memproses duplikat kegiatan
-  const processDuplicateActivity = async () => {
-    if (!activityToDuplicate || !duplicateTargetMonth || !duplicateTargetYear) {
-      toast({
-        title: "Error",
-        description: "Pilih bulan dan tahun tujuan duplikat",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validasi: tidak bisa duplikat ke periode yang sama
-    if (duplicateTargetMonth === selectedPeriod && duplicateTargetYear === selectedYear) {
-      toast({
-        title: "Error",
-        description: "Tidak dapat menduplikat ke periode yang sama",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Hitung selisih bulan antara periode asal dan tujuan
-      const asalBulanIndex = bulanOptions.findIndex(b => b.value === selectedPeriod);
-      const tujuanBulanIndex = bulanOptions.findIndex(b => b.value === duplicateTargetMonth);
-      
-      const asalTahun = parseInt(selectedYear);
-      const tujuanTahun = parseInt(duplicateTargetYear);
-      
-      const selisihBulan = (tujuanTahun - asalTahun) * 12 + (tujuanBulanIndex - asalBulanIndex);
-
-      // Buat salinan kegiatan dengan ID baru
-      const duplicatedActivity: Activity = {
-        ...activityToDuplicate,
-        id: Date.now(),
-        // Geser tanggal mulai dan akhir
-        tanggalMulai: adjustDateByMonths(activityToDuplicate.tanggalMulai, selisihBulan),
-        tanggalAkhir: adjustDateByMonths(activityToDuplicate.tanggalAkhir, selisihBulan),
-        // Reset status PPK
-        dikirimKePPK: "",
-        // Salinan petugas dengan ID baru
-        workers: activityToDuplicate.workers.map(worker => ({
-          ...worker,
-          id: Date.now() + Math.random() // ID baru untuk petugas
-        }))
-      };
-
-      // Simpan ke spreadsheet
-      const rowIndex = await saveActivityToSpreadsheet(duplicatedActivity);
-      if (rowIndex) {
-        duplicatedActivity.spreadsheetRowIndex = rowIndex;
-      }
-
-      // Update state
-      const newPeriodKey = `${duplicateTargetMonth} ${duplicateTargetYear}-${selectedJobType}`;
-      setActivitiesByPeriod(prev => ({
-        ...prev,
-        [newPeriodKey]: [...(prev[newPeriodKey] || []), duplicatedActivity]
-      }));
-
-      toast({
-        title: "Kegiatan berhasil diduplikat",
-        description: `Kegiatan "${activityToDuplicate.namaKegiatan}" berhasil diduplikat ke bulan ${duplicateTargetMonth} tahun ${duplicateTargetYear}.`,
-      });
-
-      setShowDuplicateDialog(false);
-      setActivityToDuplicate(null);
-      
-    } catch (error) {
-      console.error('Error duplicating activity:', error);
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat menduplikat kegiatan",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fungsi untuk menyesuaikan tanggal dengan pergeseran bulan
-  const adjustDateByMonths = (date: Date, months: number): Date => {
-    const newDate = addMonths(date, months);
-    
-    // Jika tanggal hasil pergeseran tidak valid (misal: 31 Februari), bulatkan ke akhir bulan
-    if (newDate.getMonth() !== (date.getMonth() + months) % 12) {
-      return endOfMonth(newDate);
-    }
-    
-    return newDate;
-  };
-
   const handleAddWorker = (activity: Activity) => {
     setSelectedActivityForWorkers(activity);
     const initialWorkers: {[key: number]: {selected: boolean, target: string, realisasi: string}} = {};
@@ -1757,15 +1605,6 @@ export default function EntriTarget() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10"
-                                  onClick={() => handleDuplicateActivity(activity)}
-                                  title="Duplikat Kegiatan"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
                                   className="h-8 w-8 text-green-600 hover:text-green-600 hover:bg-green-600/10"
                                   onClick={() => handleSendToPPK(activity.id)}
                                   title="Kirim ke PPK"
@@ -1893,90 +1732,6 @@ export default function EntriTarget() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Duplikat Kegiatan */}
-      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Duplikat Kegiatan</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="bg-muted/30 p-4 rounded-lg">
-              <div className="text-sm">
-                <div className="mb-1"><span className="font-semibold">Kegiatan:</span> {activityToDuplicate?.namaKegiatan}</div>
-                <div className="text-muted-foreground">Nomor SK: {activityToDuplicate?.nomorSK}</div>
-                <div className="text-muted-foreground">Periode Asal: {selectedPeriod} {selectedYear}</div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <FormLabel>Pilih Tahun Tujuan <span className="text-destructive">*</span></FormLabel>
-                <Select value={duplicateTargetYear} onValueChange={setDuplicateTargetYear}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Tahun" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableYears().map(year => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <FormLabel>Pilih Bulan Tujuan <span className="text-destructive">*</span></FormLabel>
-                <Select value={duplicateTargetMonth} onValueChange={setDuplicateTargetMonth}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Bulan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableMonths().map(bulan => (
-                      <SelectItem key={bulan.value} value={bulan.value}>
-                        {bulan.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {duplicateTargetMonth && duplicateTargetYear && (
-                <Alert className="bg-blue-50 border-blue-200">
-                  <AlertDescription className="text-blue-800">
-                    Kegiatan akan diduplikat ke: <strong>{duplicateTargetMonth} {duplicateTargetYear}</strong>
-                    <br />
-                    <span className="text-sm">
-                      Tanggal mulai dan akhir akan disesuaikan dengan periode baru.
-                    </span>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowDuplicateDialog(false);
-                setActivityToDuplicate(null);
-              }}
-            >
-              Batal
-            </Button>
-            <Button 
-              onClick={processDuplicateActivity}
-              disabled={!duplicateTargetMonth || !duplicateTargetYear}
-            >
-              Duplikat Kegiatan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Dialog lainnya tetap sama */}
       <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
         setShowAddActivityDialog(open);
@@ -2003,8 +1758,292 @@ export default function EntriTarget() {
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Form fields tetap sama seperti sebelumnya */}
-              {/* ... kode form fields yang sama ... */}
+              <FormField
+                control={form.control}
+                name="namaKegiatan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Kegiatan <span className="text-destructive">*</span></FormLabel>
+                    <Combobox
+                      options={activityOptions.map(option => ({
+                        value: option.namaKegiatan,
+                        label: option.namaKegiatan
+                      }))}
+                      value={field.value}
+                      onValueChange={handleNamaKegiatanChange}
+                      placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"}
+                      searchPlaceholder="Cari nama kegiatan..."
+                      disabled={loadingActivityOptions}
+                      emptyMessage={
+                        loadingActivityOptions 
+                          ? "Memuat..." 
+                          : "Tidak ada kegiatan untuk role Anda"
+                      }
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {bebanAnggaran && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-blue-800">
+                    <strong>Beban Anggaran:</strong> {bebanAnggaran}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="nomorSK"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nomor SK <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="Masukkan nomor SK" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tanggalSK"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal SK <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="tanggalMulai"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal Mulai <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tanggalAkhir"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal Akhir <span className="text-destructive">*</span></FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="hargaSatuan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Harga Satuan <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="Masukkan harga satuan" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="satuan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Satuan <span className="text-destructive">*</span></FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih satuan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="BS">BS</SelectItem>
+                          <SelectItem value="Dokumen">Dokumen</SelectItem>
+                          <SelectItem value="EA">EA</SelectItem>
+                          <SelectItem value="Lembaga">Lembaga</SelectItem>
+                          <SelectItem value="Rumahtangga">Rumahtangga</SelectItem>
+                          <SelectItem value="Segmen">Segmen</SelectItem>
+                          <SelectItem value="SLS">SLS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="koordinator"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Koordinator <span className="text-destructive">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={loadingKoordinatorOptions}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={loadingKoordinatorOptions ? "Memuat koordinator..." : "Pilih koordinator"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {koordinatorOptions.length > 0 ? (
+                            koordinatorOptions.map((option, index) => (
+                              <SelectItem key={index} value={option.nama}>
+                                {option.nama}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              {loadingKoordinatorOptions ? "Memuat..." : "Tidak ada koordinator untuk role Anda"}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="komponenPOK"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih komponen POK" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {komponenPOKOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddActivityDialog(false);
+                    setEditingActivity(null);
+                    form.reset();
+                    setBebanAnggaran("");
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button type="submit">
+                  {editingActivity ? "Perbarui Kegiatan" : "Simpan Kegiatan"}
+                </Button>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>
@@ -2016,8 +2055,169 @@ export default function EntriTarget() {
             <DialogTitle className="text-2xl">Tambah Petugas</DialogTitle>
           </DialogHeader>
           
-          {/* Dialog tambah petugas tetap sama */}
-          {/* ... kode dialog tambah petugas yang sama ... */}
+          <div className="space-y-4">
+            <div className="bg-muted/30 p-4 rounded-lg">
+              <div className="text-sm">
+                <div className="mb-1"><span className="font-semibold">Kegiatan:</span> {selectedActivityForWorkers?.namaKegiatan}</div>
+                <div className="text-muted-foreground">Nomor SK: {selectedActivityForWorkers?.nomorSK}</div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Cari nama, kecamatan, atau NIK petugas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {loadingPetugas ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Memuat data petugas...
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={filteredWorkers.length > 0 && filteredWorkers.every(w => {
+                            const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                            return isAlreadyAdded || selectedWorkers[w.id]?.selected;
+                          })}
+                          onCheckedChange={(checked) => {
+                            const newSelected = {...selectedWorkers};
+                            filteredWorkers.forEach(w => {
+                              const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                              if (!isAlreadyAdded) {
+                                newSelected[w.id] = { 
+                                  selected: checked as boolean, 
+                                  target: newSelected[w.id]?.target || "0",
+                                  realisasi: newSelected[w.id]?.realisasi || "0"
+                                };
+                              }
+                            });
+                            setSelectedWorkers(newSelected);
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Nama Petugas</TableHead>
+                      <TableHead>Kecamatan</TableHead>
+                      <TableHead>NIK</TableHead>
+                      <TableHead>Pekerjaan</TableHead>
+                      <TableHead className="w-28">Target</TableHead>
+                      <TableHead className="w-28">Realisasi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredWorkers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredWorkers.map((petugas) => {
+                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.nip === petugas.nip);
+                        
+                        return (
+                          <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50 bg-muted/30" : ""}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedWorkers[petugas.id]?.selected || false}
+                                disabled={isAlreadyAdded}
+                                onCheckedChange={(checked) => {
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: checked as boolean,
+                                      target: selectedWorkers[petugas.id]?.target || "0",
+                                      realisasi: selectedWorkers[petugas.id]?.realisasi || "0",
+                                    }
+                                  });
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {petugas.nama} 
+                              {isAlreadyAdded && <span className="text-xs text-muted-foreground ml-2">(Sudah terdaftar)</span>}
+                            </TableCell>
+                            <TableCell>{petugas.kecamatan}</TableCell>
+                            <TableCell className="font-mono text-sm">{petugas.nip}</TableCell>
+                            <TableCell>{petugas.jabatan}</TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={selectedWorkers[petugas.id]?.target || ""}
+                                onChange={(e) => {
+                                  const newTarget = e.target.value;
+                                  const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "0";
+                                  
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: selectedWorkers[petugas.id]?.selected || false,
+                                      target: newTarget,
+                                      realisasi: currentRealisasi,
+                                    }
+                                  });
+                                }}
+                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={selectedWorkers[petugas.id]?.realisasi || ""}
+                                onChange={(e) => {
+                                  const newRealisasi = e.target.value;
+                                  const currentTarget = selectedWorkers[petugas.id]?.target || "0";
+                                  
+                                  setSelectedWorkers({
+                                    ...selectedWorkers,
+                                    [petugas.id]: {
+                                      selected: selectedWorkers[petugas.id]?.selected || false,
+                                      target: currentTarget,
+                                      realisasi: newRealisasi,
+                                    }
+                                  });
+                                }}
+                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
+                                className="h-8"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddWorkerDialog(false);
+                setSelectedActivityForWorkers(null);
+              }}
+            >
+              Tutup
+            </Button>
+            <Button onClick={handleSaveWorker}>
+              Simpan Petugas
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
