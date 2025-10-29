@@ -641,7 +641,7 @@ export default function AkiToBendahara() {
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
                 <p>
-                  Anda login sebagai <strong>{currentUser.role}</strong>. Role ini hanya dapat melihat data rekap honor. Untuk mengakses fitur spreadsheet/download excel, hubungi PPK, Bendahara, atau Pejabat Pengadaan.
+                  Anda login sebagai <strong>{currentUser.role}</strong>. Untuk mengakses fitur spreadsheet/download excel, hubungi PPK, Bendahara, atau Pejabat Pengadaan.
                 </p>
               </div>
             </div>
