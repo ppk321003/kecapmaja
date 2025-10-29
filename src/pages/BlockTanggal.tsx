@@ -496,6 +496,83 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
+  // FUNGSI SIMPAN YANG DIPERBAIKI - khusus untuk edit
+  const saveEditToSpreadsheet = async (data: DataRow, kegiatan: string, tanggalStrings: string[]) => {
+    try {
+      if (!canUserTag) {
+        throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
+      }
+
+      const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
+      if (!roleMapping) {
+        throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
+      }
+
+      // Baca data existing terlebih dahulu untuk menjaga data role lain
+      const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `Sheet1!A${data.spreadsheetRowIndex}:S${data.spreadsheetRowIndex}`,
+        },
+      });
+
+      let existingRow = new Array(19).fill("");
+      if (!readError && existingData?.values?.[0]) {
+        existingRow = [...existingData.values[0]];
+        while (existingRow.length < 19) {
+          existingRow.push("");
+        }
+      }
+
+      const rowData = [...existingRow];
+
+      // Update data untuk role yang sedang login
+      rowData[roleMapping.kegiatanCol] = kegiatan;
+      rowData[roleMapping.tanggalCol] = tanggalStrings.join(',');
+
+      // Update penanggung jawab - pastikan role user ada
+      let penanggungJawab = rowData[17] || data.penanggungJawab;
+      const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
+      if (!currentPJ.includes(userRole)) {
+        currentPJ.push(userRole);
+      }
+      penanggungJawab = currentPJ.join(', ');
+      rowData[17] = penanggungJawab;
+
+      // Update jumlah tanggal terpakai
+      const totalBlocks = Object.keys(data.blocks).length;
+      rowData[18] = totalBlocks.toString();
+
+      console.log('💾 Saving edit to spreadsheet:', { 
+        rowData,
+        userRole,
+        kegiatan,
+        tanggalStrings
+      });
+
+      const requestBody = {
+        spreadsheetId: SPREADSHEET_ID,
+        operation: "update",
+        rowIndex: data.spreadsheetRowIndex,
+        values: [rowData]
+      };
+
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: requestBody
+      });
+
+      if (result?.error) {
+        throw new Error(result.error.message || `Gagal update data`);
+      }
+
+      return result?.data;
+    } catch (error: any) {
+      console.error('❌ Error saving edit to spreadsheet:', error);
+      throw error;
+    }
+  };
+
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
       if (!canUserTag && operation !== 'delete') {
@@ -887,7 +964,8 @@ export default function BlockTanggal() {
       }
       data.kegiatan = kegiatanList.join(' | ');
 
-      await saveToSpreadsheet(data, 'update');
+      // GUNAKAN FUNGSI SIMPAN EDIT KHUSUS
+      await saveEditToSpreadsheet(data, kegiatan, tanggalStrings);
       
       const sortedData = sortData(newData);
       setDataRows(sortedData);
@@ -1263,7 +1341,7 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar Perjalanan Dinas - {bulan} {tahun}
+              Daftar Perjalanan Dinas - <span className="text-black">Oktober</span> <span className="text-red-500">{tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
@@ -1330,8 +1408,8 @@ export default function BlockTanggal() {
                                     key={idx} 
                                     className={`p-2 rounded-lg border ${borderColor} ${bgColor}`}
                                   >
-                                    <div className="flex items-start gap-2">
-                                      <FileText className={`h-3 w-3 mt-1 flex-shrink-0 ${kegiatanColor}`} />
+                                    <div className="flex items-center gap-2">
+                                      <FileText className={`h-3 w-3 flex-shrink-0 ${kegiatanColor}`} />
                                       <div className="flex-1 min-w-0">
                                         <div className={`text-sm font-medium break-words ${kegiatanColor}`}>
                                           {item.kegiatan} <span className="text-xs font-normal opacity-75">({item.role})</span>
