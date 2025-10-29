@@ -854,7 +854,7 @@ export default function InputPengadaan() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <ClipboardList className="h-8 w-8" />
-            Input Data Pengadaan Barang/Jasa
+            Input Data Pengadaan
           </h1>
           <p className="text-muted-foreground mt-2">
             Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
@@ -985,7 +985,7 @@ export default function InputPengadaan() {
           <Card>
             <CardHeader>
               <CardTitle>
-                Data Pengadaan Barang/Jasa -{" "}
+                Data Pengadaan -{" "}
                 <span className="text-red-500">
                   {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)} {getTahunName()}
                   {filterStatus !== "all" && ` • ${getStatusName(filterStatus)}`}
@@ -1675,10 +1675,7 @@ export default function InputPengadaan() {
                     <div>
                       <Label className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
                       <div className="mt-1 p-2 bg-gray-50 rounded border text-sm break-words">
-                        {dataToView.kerangkaAcuanKerjaKAK ? (
-                          <a href={dataToView.kerangkaAcuanKerjaKAK} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                            {dataToView.kerangkaAcuanKerjaKAK}
-                          </a>
+                        {renderKAKLink(dataToView.kerangkaAcuanKerjaKAK)}
                       </div>
                     </div>
                     <div>
