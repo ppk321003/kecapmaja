@@ -1288,7 +1288,7 @@ export default function InputPengadaan() {
 
                   <div className="space-y-2">
                     <Label htmlFor="rencanaAnggaranRAB" className="flex items-center gap-1">
-                      Rencana Pembelanjaan / (RAB) <span className="text-red-500">*</span>
+                      Rencana Pembelanjaan / Rencana Anggaran Belanja (RAB) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={formData.rencanaAnggaranRAB}
@@ -1605,7 +1605,7 @@ export default function InputPengadaan() {
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium">Rencana Pembelanjaan / Rencana Anggaran Belanja (RAB)</Label>
+                      <Label className="text-sm font-medium">Rencana Pembelanjaan / (RAB)</Label>
                       <div className="mt-1 p-2 bg-green-50 rounded border text-sm font-bold text-green-800">
                         {formatCurrency(dataToView.rencanaAnggaranRAB)}
                       </div>
