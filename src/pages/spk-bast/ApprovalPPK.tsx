@@ -124,51 +124,38 @@ export default function InputPengadaan() {
     { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
 
-  // Load data dari spreadsheet - DIPERBAIKI
+  // Load data dari spreadsheet - VERSI DIFFERBAIKI
   const loadPengadaanData = async () => {
     try {
       setLoading(true);
       
-      console.log('Loading pengadaan data...');
+      console.log('🔄 Loading pengadaan data...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:U" // Sesuai dengan jumlah kolom header
+          range: "Sheet1!A:U"
         },
       });
 
       if (error) {
-        console.error('Error invoking function:', error);
+        console.error('❌ Error invoking function:', error);
         throw error;
       }
 
-      console.log('Raw data from function:', data);
+      console.log('📊 Raw data from function:', data);
 
       const rows = data.values || [];
-      console.log('Total rows:', rows.length);
+      console.log('📈 Total rows from spreadsheet:', rows.length);
       
-      if (rows.length > 0) {
+      if (rows.length > 1) {
+        // Ada data (header + minimal 1 data)
         const headers = rows[0];
-        console.log('Headers from spreadsheet:', headers);
+        console.log('📋 Headers:', headers);
         
-        // Pastikan headers sesuai
-        const expectedHeaders = [
-          "No", "id", "Tanggal Usulan", "Nama Produk Barang/Jasa", "Jenis Pengadaan",
-          "Nama Kegiatan/Detil POK", "Kode POK", "Rencana Anggaran (RAB)", "Nilai Realisasi",
-          "Form Permintaan (FP)", "Kerangka Acuan Kerja (KAK)", "Jenis Dokumen Pengadaan",
-          "Nomor Dokumen Pengadaan", "Tanggal Dokumen Pengadaan", "Nama Penyedia / Mitra",
-          "Link E-Purchasing / E-Katalog", "Tanggal Pembayaran", "Nomor Bukti Pembayaran",
-          "Status Pengadaan", "Keterangan / Catatan", "Tahun Anggaran"
-        ];
-
-        console.log('Expected headers:', expectedHeaders);
-        console.log('Actual headers match:', JSON.stringify(headers) === JSON.stringify(expectedHeaders));
-
         const dataRows = rows.slice(1)
           .filter((row: any[]) => row && row.length > 0)
           .map((row: any[], index: number) => {
-            // Mapping berdasarkan urutan header yang sesuai
             return {
               no: parseInt(row[0]) || index + 1,
               id: row[1] || `PGD-${index + 1}`,
@@ -194,14 +181,19 @@ export default function InputPengadaan() {
             } as PengadaanData;
           });
           
-        console.log('Mapped data rows:', dataRows);
+        console.log('✅ Mapped data rows:', dataRows);
         setPengadaanData(dataRows);
+      } else if (rows.length === 1) {
+        // Hanya header, tidak ada data
+        console.log('ℹ️ Only headers found, no data rows');
+        setPengadaanData([]);
       } else {
-        console.log('No data found in spreadsheet');
+        // Spreadsheet benar-benar kosong
+        console.log('ℹ️ Spreadsheet is completely empty');
         setPengadaanData([]);
       }
     } catch (error: any) {
-      console.error("Error loading data:", error);
+      console.error("❌ Error loading data:", error);
       toast({
         title: "Error",
         description: `Gagal memuat data pengadaan: ${error.message}`,
@@ -263,7 +255,7 @@ export default function InputPengadaan() {
     return null;
   };
 
-  // Simpan data - DIPERBAIKI sesuai urutan header
+  // Simpan data - VERSI DIFFERBAIKI dengan error handling lebih baik
   const simpanData = async (isUsulanOnly: boolean = false) => {
     try {
       setSaving(true);
@@ -310,11 +302,11 @@ export default function InputPengadaan() {
         formData.tahunAnggaran // Tahun Anggaran (20)
       ];
 
-      console.log('Data to save (length):', dataToSave.length);
-      console.log('Data to save:', dataToSave);
+      console.log('💾 Data to save (length):', dataToSave.length);
+      console.log('💾 Data to save:', dataToSave);
 
-      // Test connection dulu
-      console.log('Testing connection before save...');
+      // Test koneksi dulu dengan operasi read
+      console.log('🔍 Testing connection before save...');
       const testResult = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -324,12 +316,14 @@ export default function InputPengadaan() {
       });
 
       if (testResult.error) {
-        throw new Error(`Connection test failed: ${testResult.error.message}`);
+        console.error('❌ Connection test failed:', testResult.error);
+        throw new Error(`Koneksi gagal: ${testResult.error.message}`);
       }
 
-      console.log('Connection test successful, proceeding with save...');
+      console.log('✅ Connection test successful, proceeding with save...');
 
       // Simpan ke spreadsheet
+      console.log('🚀 Sending data to Google Sheets...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -340,11 +334,18 @@ export default function InputPengadaan() {
       });
 
       if (error) {
-        console.error('Error from supabase:', error);
+        console.error('❌ Error from supabase:', error);
+        
+        // Coba dengan approach yang berbeda jika error
+        if (error.message?.includes("500")) {
+          console.log('🔄 Trying alternative approach...');
+          throw new Error("Server error. Coba lagi dalam beberapa saat.");
+        }
+        
         throw error;
       }
 
-      console.log('Save response:', data);
+      console.log('✅ Save response:', data);
 
       toast({
         title: "Berhasil! 🎉",
@@ -356,23 +357,31 @@ export default function InputPengadaan() {
       setShowForm(false);
 
     } catch (error: any) {
-      console.error('Error saving data:', error);
+      console.error('❌ Error saving data:', error);
       
       let errorMessage = "Gagal menyimpan data pengadaan";
+      let errorDetails = error.message;
       
       if (error.message?.includes("400")) {
-        errorMessage = "Bad Request - Periksa data yang dikirim";
-      } else if (error.message?.includes("401")) {
-        errorMessage = "Unauthorized - Periksa kredensial Google Sheets";
-      } else if (error.message?.includes("403")) {
-        errorMessage = "Forbidden - Periksa izin akses spreadsheet";
+        errorMessage = "Data tidak valid";
+        errorDetails = "Periksa format data yang dikirim";
+      } else if (error.message?.includes("401") || error.message?.includes("403")) {
+        errorMessage = "Akses ditolak";
+        errorDetails = "Periksa kredensial Google Sheets";
       } else if (error.message?.includes("404")) {
         errorMessage = "Spreadsheet tidak ditemukan";
+        errorDetails = "Periksa ID spreadsheet";
+      } else if (error.message?.includes("500")) {
+        errorMessage = "Error server";
+        errorDetails = "Coba lagi dalam beberapa saat";
+      } else if (error.message?.includes("Koneksi gagal")) {
+        errorMessage = "Koneksi gagal";
+        errorDetails = "Periksa koneksi internet dan kredensial";
       }
       
       toast({
-        title: "Error",
-        description: `${errorMessage}: ${error.message}`,
+        title: errorMessage,
+        description: errorDetails,
         variant: "destructive",
       });
     } finally {
@@ -444,7 +453,7 @@ export default function InputPengadaan() {
   const totalRealisasi = filteredData.reduce((sum, item) => {
     const value = parseInt(item.nilaiRealisasi || "0");
     return isNaN(value) ? sum : sum + value;
-  }, 0 );
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -532,6 +541,7 @@ export default function InputPengadaan() {
               <CardTitle>Data Pengadaan</CardTitle>
               <CardDescription>
                 Total {filteredData.length} data pengadaan ditemukan
+                {pengadaanData.length === 0 && " - Spreadsheet kosong atau hanya berisi header"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -601,7 +611,15 @@ export default function InputPengadaan() {
                   </Table>
                   {filteredData.length === 0 && !loading && (
                     <div className="text-center py-8 text-muted-foreground">
-                      Tidak ada data pengadaan ditemukan
+                      <p>Tidak ada data pengadaan ditemukan</p>
+                      <p className="text-sm mt-2">Spreadsheet mungkin kosong atau hanya berisi header</p>
+                      <Button 
+                        onClick={() => setShowForm(true)} 
+                        className="mt-4 flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Tambah Data Pertama
+                      </Button>
                     </div>
                   )}
                 </div>
