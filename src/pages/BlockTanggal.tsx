@@ -58,6 +58,7 @@ const bulanOptions = [
 
 const tahunOptions = [2024, 2025, 2026];
 
+// Mapping role ke kolom spreadsheet - DIPERBARUI SESUAI PERMINTAAN WARNA
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': { 
     kegiatanCol: 5,
@@ -106,6 +107,7 @@ const ROLE_MAPPING = {
 const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
 const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
 
+// Komponen Editor untuk Edit Tanggal
 function EditTanggalModal({ 
   isOpen, 
   onClose, 
@@ -126,6 +128,7 @@ function EditTanggalModal({
 
   useEffect(() => {
     if (isOpen) {
+      // Load existing dates hanya untuk role yang sedang login
       const monthIndex = bulanOptions.indexOf(bulan);
       const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
       
@@ -136,6 +139,7 @@ function EditTanggalModal({
       
       setSelectedDates(datesForUserRole);
       
+      // Set kegiatan input dari kegiatan user role yang pertama
       const userRoleKegiatan = Object.values(data.blocks)
         .find(block => block.role === userRole)?.kegiatan || "";
       setKegiatanInput(userRoleKegiatan);
@@ -148,6 +152,7 @@ function EditTanggalModal({
            isSameYear(date, new Date(tahun, monthIndex));
   };
 
+  // Dapatkan tanggal yang diblokir oleh role lain (untuk disabled dates)
   const getBlockedByOtherRoles = (): Date[] => {
     const monthIndex = bulanOptions.indexOf(bulan);
     const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
@@ -228,7 +233,7 @@ function EditTanggalModal({
                 className="rounded-md"
                 locale={id}
                 month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                disabled={blockedByOthers}
+                disabled={blockedByOthers} // Non-user role dates are disabled
                 modifiers={{
                   blocked: blockedByOthers
                 }}
@@ -491,6 +496,7 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
+  // FUNGSI SIMPAN YANG DIPERBAIKI - khusus untuk edit
   const saveEditToSpreadsheet = async (data: DataRow, kegiatan: string, tanggalStrings: string[]) => {
     try {
       if (!canUserTag) {
@@ -502,6 +508,7 @@ export default function BlockTanggal() {
         throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
       }
 
+      // Baca data existing terlebih dahulu untuk menjaga data role lain
       const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -520,9 +527,11 @@ export default function BlockTanggal() {
 
       const rowData = [...existingRow];
 
+      // Update data untuk role yang sedang login
       rowData[roleMapping.kegiatanCol] = kegiatan;
       rowData[roleMapping.tanggalCol] = tanggalStrings.join(',');
 
+      // Update penanggung jawab - pastikan role user ada
       let penanggungJawab = rowData[17] || data.penanggungJawab;
       const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
       if (!currentPJ.includes(userRole)) {
@@ -531,6 +540,7 @@ export default function BlockTanggal() {
       penanggungJawab = currentPJ.join(', ');
       rowData[17] = penanggungJawab;
 
+      // Update jumlah tanggal terpakai
       const totalBlocks = Object.keys(data.blocks).length;
       rowData[18] = totalBlocks.toString();
 
@@ -671,12 +681,14 @@ export default function BlockTanggal() {
     }
   };
 
+  // FUNGSI DELETE YANG DIPERBAIKI - Conditional Delete
   const deleteUserRoleData = async (data: DataRow) => {
     try {
       if (!canUserTag) {
         throw new Error(`Role ${userRole} tidak diperbolehkan melakukan delete`);
       }
 
+      // Cek apakah user ini satu-satunya role yang men-tag orang ini
       const rolesInData = new Set();
       Object.values(data.blocks).forEach(block => {
         rolesInData.add(block.role);
@@ -685,12 +697,15 @@ export default function BlockTanggal() {
       const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
 
       if (isOnlyRole) {
+        // CASE 1: User adalah satu-satunya role → DELETE SELURUH BARIS
         console.log('🗑️ Deleting entire row - user is the only role');
         await saveToSpreadsheet(data, 'delete');
         return 'delete';
       } else {
+        // CASE 2: Ada multiple roles → HAPUS HANYA DATA ROLE USER SAJA
         console.log('🗑️ Deleting only user role data - multiple roles exist');
 
+        // Baca data existing
         const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: SPREADSHEET_ID,
@@ -711,22 +726,26 @@ export default function BlockTanggal() {
 
         const rowData = [...existingRow];
 
+        // Hapus data role user dari spreadsheet
         const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
         if (roleMapping) {
           rowData[roleMapping.kegiatanCol] = "";
           rowData[roleMapping.tanggalCol] = "";
         }
 
+        // Hapus user role dari penanggung jawab
         let penanggungJawab = rowData[17] || "";
         const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
         penanggungJawab = currentPJ.join(', ');
         rowData[17] = penanggungJawab;
 
+        // Update jumlah tanggal terpakai (setelah hapus role user)
         const remainingBlocks = Object.keys(data.blocks).filter(tanggal => 
           data.blocks[tanggal].role !== userRole
         ).length;
         rowData[18] = remainingBlocks.toString();
 
+        // Update spreadsheet
         const requestBody = {
           spreadsheetId: SPREADSHEET_ID,
           operation: "update",
@@ -930,6 +949,7 @@ export default function BlockTanggal() {
       const deleteResult = await deleteUserRoleData(data);
       
       if (deleteResult === 'delete') {
+        // CASE 1: Delete seluruh baris
         const newData = [...dataRows];
         newData.splice(dataToDelete, 1);
         
@@ -947,6 +967,7 @@ export default function BlockTanggal() {
           description: "Data berhasil dihapus (seluruh baris)",
         });
       } else {
+        // CASE 2: Hanya hapus role user, reload data untuk mendapatkan state terbaru
         await loadExistingData();
         toast({
           title: "Sukses",
@@ -1013,12 +1034,14 @@ export default function BlockTanggal() {
       const monthIndex = bulanOptions.indexOf(bulan);
       const tanggalStrings = selectedDates.map(date => date.getDate().toString());
 
+      // Hapus semua tanggal yang dimiliki oleh user ini
       Object.keys(data.blocks).forEach(tanggal => {
         if (data.blocks[tanggal].role === userRole) {
           delete data.blocks[tanggal];
         }
       });
 
+      // Tambahkan tanggal baru
       tanggalStrings.forEach(tanggal => {
         data.blocks[tanggal] = {
           kegiatan: kegiatan,
@@ -1026,7 +1049,9 @@ export default function BlockTanggal() {
         };
       });
 
+      // Update kegiatan - hapus kegiatan lama user dan tambahkan yang baru
       const kegiatanList = data.kegiatan.split(' | ').filter(k => {
+        // Keep only kegiatan from other roles
         const isFromOtherRole = !Object.values(data.blocks).some(block => 
           block.kegiatan === k && block.role === userRole
         );
@@ -1038,6 +1063,7 @@ export default function BlockTanggal() {
       }
       data.kegiatan = kegiatanList.join(' | ');
 
+      // GUNAKAN FUNGSI SIMPAN EDIT KHUSUS
       await saveEditToSpreadsheet(data, kegiatan, tanggalStrings);
       
       const sortedData = sortData(newData);
@@ -1296,7 +1322,7 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* PERBAIKAN BAGIAN TAMBAH DATA - LEBIH RESPONSIF */}
+      {/* Add Data Section - SEMUA DALAM 1 BARIS */}
       {canUserTag && (
         <Card>
           <CardHeader>
@@ -1309,11 +1335,9 @@ export default function BlockTanggal() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Layout responsif dengan grid yang menyesuaikan layar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-              
-              {/* Input Kegiatan - mengambil full width di mobile, 2 kolom di tablet, 1 kolom di desktop */}
-              <div className="md:col-span-2 lg:col-span-1 space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
+              {/* Input Kegiatan */}
+              <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-orange-500" />
                   Nama Kegiatan
@@ -1323,56 +1347,59 @@ export default function BlockTanggal() {
                   value={kegiatanInput}
                   onChange={(e) => setKegiatanInput(e.target.value)}
                   placeholder="Masukkan nama kegiatan..."
-                  className="border-orange-200 focus:border-orange-400 w-full"
+                  className="border-orange-200 focus:border-orange-400"
                 />
               </div>
 
               {/* Tambah Organik */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tambah Organik</label>
-                <Combobox
-                  options={filteredAvailableOrganik.map(org => ({
-                    value: org.nama,
-                    label: `${org.nama} - ${org.nip}`
-                  }))}
-                  value={selectedOrganik}
-                  onValueChange={setSelectedOrganik}
-                  placeholder="Pilih organik..."
-                  searchPlaceholder="Cari organik..."
-                  emptyMessage="Tidak ada organik tersedia"
-                  onSearchChange={setSearchTermOrganik}
-                />
+                <div className="flex gap-2">
+                  <Combobox
+                    options={filteredAvailableOrganik.map(org => ({
+                      value: org.nama,
+                      label: `${org.nama} - ${org.nip}`
+                    }))}
+                    value={selectedOrganik}
+                    onValueChange={setSelectedOrganik}
+                    placeholder="Pilih organik..."
+                    searchPlaceholder="Cari organik..."
+                    emptyMessage="Tidak ada organik tersedia"
+                    onSearchChange={setSearchTermOrganik}
+                  />
+                </div>
               </div>
 
               {/* Tambah Mitra */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tambah Mitra</label>
-                <Combobox
-                  options={filteredAvailableMitra.map(mitra => ({
-                    value: mitra.nama,
-                    label: `${mitra.nama} - ${mitra.kecamatan}`
-                  }))}
-                  value={selectedMitra}
-                  onValueChange={setSelectedMitra}
-                  placeholder="Pilih mitra..."
-                  searchPlaceholder="Cari mitra..."
-                  emptyMessage="Tidak ada mitra tersedia"
-                  onSearchChange={setSearchTermMitra}
-                />
+                <div className="flex gap-2">
+                  <Combobox
+                    options={filteredAvailableMitra.map(mitra => ({
+                      value: mitra.nama,
+                      label: `${mitra.nama} - ${mitra.kecamatan}`
+                    }))}
+                    value={selectedMitra}
+                    onValueChange={setSelectedMitra}
+                    placeholder="Pilih mitra..."
+                    searchPlaceholder="Cari mitra..."
+                    emptyMessage="Tidak ada mitra tersedia"
+                    onSearchChange={setSearchTermMitra}
+                  />
+                </div>
               </div>
 
               {/* Tombol Aksi */}
               <div className="space-y-2">
                 <label className="text-sm font-medium invisible">Aksi</label>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex gap-2">
                   <Button 
                     onClick={addOrganik} 
                     disabled={!selectedOrganik || !kegiatanInput.trim()}
                     className="bg-orange-600 hover:bg-orange-700 flex-1"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Tambah Organik</span>
-                    <span className="sm:hidden">Organik</span>
+                    Tambah Organik
                   </Button>
                   <Button 
                     onClick={addMitra} 
@@ -1380,8 +1407,7 @@ export default function BlockTanggal() {
                     className="bg-orange-600 hover:bg-orange-700 flex-1"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Tambah Mitra</span>
-                    <span className="sm:hidden">Mitra</span>
+                    Tambah Mitra
                   </Button>
                 </div>
               </div>
@@ -1408,7 +1434,7 @@ export default function BlockTanggal() {
         </Card>
       )}
 
-      {/* Data Table */}
+      {/* Data Table - DENGAN FORMAT GRID HORIZONTAL UNTUK KEGIATAN */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -1467,7 +1493,7 @@ export default function BlockTanggal() {
                       <TableCell>
                         <div className="max-w-[600px]">
                           {uniqueKegiatan.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {uniqueKegiatan.map((item, idx) => {
                                 const datesForKegiatan = Object.keys(data.blocks)
                                   .filter(t => data.blocks[t].kegiatan === item.kegiatan && data.blocks[t].role === item.role)
@@ -1506,6 +1532,7 @@ export default function BlockTanggal() {
                       {canUserTag && (
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {/* Tombol Tambah Tanggal */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1568,6 +1595,7 @@ export default function BlockTanggal() {
                               </Tooltip>
                             </TooltipProvider>
 
+                            {/* Tombol Edit Tanggal */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1587,6 +1615,7 @@ export default function BlockTanggal() {
                               </Tooltip>
                             </TooltipProvider>
 
+                            {/* Tombol Hapus Data */}
                             {canEditThisData && (
                               <TooltipProvider>
                                 <Tooltip>
