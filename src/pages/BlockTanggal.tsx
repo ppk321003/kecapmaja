@@ -681,6 +681,94 @@ export default function BlockTanggal() {
     }
   };
 
+  // FUNGSI DELETE YANG DIPERBAIKI - Conditional Delete
+  const deleteUserRoleData = async (data: DataRow) => {
+    try {
+      if (!canUserTag) {
+        throw new Error(`Role ${userRole} tidak diperbolehkan melakukan delete`);
+      }
+
+      // Cek apakah user ini satu-satunya role yang men-tag orang ini
+      const rolesInData = new Set();
+      Object.values(data.blocks).forEach(block => {
+        rolesInData.add(block.role);
+      });
+
+      const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
+
+      if (isOnlyRole) {
+        // CASE 1: User adalah satu-satunya role → DELETE SELURUH BARIS
+        console.log('🗑️ Deleting entire row - user is the only role');
+        await saveToSpreadsheet(data, 'delete');
+        return 'delete';
+      } else {
+        // CASE 2: Ada multiple roles → HAPUS HANYA DATA ROLE USER SAJA
+        console.log('🗑️ Deleting only user role data - multiple roles exist');
+
+        // Baca data existing
+        const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "read",
+            range: `Sheet1!A${data.spreadsheetRowIndex}:S${data.spreadsheetRowIndex}`,
+          },
+        });
+
+        if (readError) throw readError;
+
+        let existingRow = new Array(19).fill("");
+        if (existingData?.values?.[0]) {
+          existingRow = [...existingData.values[0]];
+          while (existingRow.length < 19) {
+            existingRow.push("");
+          }
+        }
+
+        const rowData = [...existingRow];
+
+        // Hapus data role user dari spreadsheet
+        const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
+        if (roleMapping) {
+          rowData[roleMapping.kegiatanCol] = "";
+          rowData[roleMapping.tanggalCol] = "";
+        }
+
+        // Hapus user role dari penanggung jawab
+        let penanggungJawab = rowData[17] || "";
+        const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
+        penanggungJawab = currentPJ.join(', ');
+        rowData[17] = penanggungJawab;
+
+        // Update jumlah tanggal terpakai (setelah hapus role user)
+        const remainingBlocks = Object.keys(data.blocks).filter(tanggal => 
+          data.blocks[tanggal].role !== userRole
+        ).length;
+        rowData[18] = remainingBlocks.toString();
+
+        // Update spreadsheet
+        const requestBody = {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          rowIndex: data.spreadsheetRowIndex,
+          values: [rowData]
+        };
+
+        const result = await supabase.functions.invoke("google-sheets", {
+          body: requestBody
+        });
+
+        if (result?.error) {
+          throw new Error(result.error.message || `Gagal update data setelah delete`);
+        }
+
+        return 'update';
+      }
+    } catch (error: any) {
+      console.error('❌ Error in deleteUserRoleData:', error);
+      throw error;
+    }
+  };
+
   const getNextRowIndex = async (): Promise<number> => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -858,27 +946,38 @@ export default function BlockTanggal() {
     }
     
     try {
-      await saveToSpreadsheet(data, 'delete');
+      const deleteResult = await deleteUserRoleData(data);
       
-      const newData = [...dataRows];
-      newData.splice(dataToDelete, 1);
-      
-      const sortedData = sortData(newData);
-      setDataRows(sortedData);
-      
-      if (data.isOrganik) {
-        setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+      if (deleteResult === 'delete') {
+        // CASE 1: Delete seluruh baris
+        const newData = [...dataRows];
+        newData.splice(dataToDelete, 1);
+        
+        const sortedData = sortData(newData);
+        setDataRows(sortedData);
+        
+        if (data.isOrganik) {
+          setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+        } else {
+          setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+        }
+        
+        toast({
+          title: "Sukses",
+          description: "Data berhasil dihapus (seluruh baris)",
+        });
       } else {
-        setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+        // CASE 2: Hanya hapus role user, reload data untuk mendapatkan state terbaru
+        await loadExistingData();
+        toast({
+          title: "Sukses",
+          description: "Data role Anda berhasil dihapus",
+        });
       }
       
       setShowDeleteDataDialog(false);
       setDataToDelete(null);
 
-      toast({
-        title: "Sukses",
-        description: "Data berhasil dihapus",
-      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1567,7 +1666,24 @@ export default function BlockTanggal() {
           <DialogHeader>
             <DialogTitle>Hapus Data</DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus data ini? Semua data tanggal block akan ikut terhapus.
+              Apakah Anda yakin ingin menghapus data ini? 
+              {dataToDelete !== null && dataRows[dataToDelete] && (
+                <>
+                  {" "}
+                  {(() => {
+                    const data = dataRows[dataToDelete];
+                    const rolesInData = new Set();
+                    Object.values(data.blocks).forEach(block => {
+                      rolesInData.add(block.role);
+                    });
+                    const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
+                    
+                    return isOnlyRole 
+                      ? "Seluruh data akan dihapus dari sistem." 
+                      : "Hanya data dari role Anda yang akan dihapus, data dari role lain tetap dipertahankan.";
+                  })()}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
