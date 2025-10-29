@@ -1675,7 +1675,10 @@ export default function InputPengadaan() {
                     <div>
                       <Label className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
                       <div className="mt-1 p-2 bg-gray-50 rounded border text-sm break-words">
-                        {renderKAKLink(dataToView.kerangkaAcuanKerjaKAK)}
+                        {dataToView.kerangkaAcuanKerjaKAK ? (
+                          <a href={dataToView.kerangkaAcuanKerjaKAK} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {dataToView.kerangkaAcuanKerjaKAK}
+                          </a>
                       </div>
                     </div>
                     <div>
