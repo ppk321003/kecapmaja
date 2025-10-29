@@ -1634,7 +1634,7 @@ export default function InputPengadaan() {
                       <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.formPermintaanFP || '-'}</div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium">Kerangka Acuan Kerja (KAK)</Label>
+                      <Label className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
                       <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
                     </div>
                     <div>
