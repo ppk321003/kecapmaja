@@ -22,7 +22,7 @@ interface DataRow {
   [key: string]: string | number;
 }
 
-const SPREADSHEET_ID = "1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
+const SPREADSHEET_ID = "1XtWKO61yo5WbhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
 
 export default function AkiToBendahara() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -37,6 +37,23 @@ export default function AkiToBendahara() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+
+  // Get user role from localStorage
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  useEffect(() => {
+    const userData = localStorage.getItem('simaja_user');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Fungsi untuk mengecek apakah user memiliki akses ke fitur spreadsheet dan download
+  const canAccessSpreadsheetAndDownload = () => {
+    if (!currentUser) return false;
+    const allowedRoles = ['Pejabat Pembuat Komitmen', 'Bendahara', 'Pejabat Pengadaan'];
+    return allowedRoles.includes(currentUser.role);
+  };
 
   const bulanOptions = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -53,11 +70,31 @@ export default function AkiToBendahara() {
 
   // Fungsi untuk membuka spreadsheet
   const openSpreadsheet = () => {
+    // Check if user has permission
+    if (!canAccessSpreadsheetAndDownload()) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${currentUser?.role} tidak memiliki izin untuk membuka spreadsheet`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`, '_blank');
   };
 
   // Fungsi untuk download data yang ditampilkan dalam format Excel
   const downloadFilteredData = () => {
+    // Check if user has permission
+    if (!canAccessSpreadsheetAndDownload()) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${currentUser?.role} tidak memiliki izin untuk mendownload data Excel`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (filteredData.length === 0) {
       toast({
         title: "Tidak ada data",
@@ -472,6 +509,12 @@ export default function AkiToBendahara() {
           <h1 className="text-3xl font-bold text-foreground">Aki to Bendahara</h1>
           <p className="text-muted-foreground mt-2">
             Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
+            {currentUser && (
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
+                Login sebagai: {currentUser.role}
+                {!canAccessSpreadsheetAndDownload() && " (Tidak bisa akses spreadsheet/download)"}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
@@ -479,18 +522,21 @@ export default function AkiToBendahara() {
             variant="outline"
             onClick={openSpreadsheet}
             className="flex items-center gap-2"
+            disabled={!canAccessSpreadsheetAndDownload()}
           >
             <ExternalLink className="h-4 w-4" />
             Buka Spreadsheet
+            {!canAccessSpreadsheetAndDownload() && " (Restricted)"}
           </Button>
           <Button 
             onClick={downloadFilteredData}
-            disabled={filteredData.length === 0 || isLoading}
+            disabled={filteredData.length === 0 || isLoading || !canAccessSpreadsheetAndDownload()}
             variant="outline"
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
             Download Excel
+            {!canAccessSpreadsheetAndDownload() && " (Restricted)"}
           </Button>
           <Button 
             onClick={handleRefresh} 
@@ -506,6 +552,39 @@ export default function AkiToBendahara() {
           </Button>
         </div>
       </div>
+
+      {/* Informasi Akses untuk Role yang Tidak Bisa Akses Spreadsheet/Download */}
+      {!canAccessSpreadsheetAndDownload() && currentUser && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                Informasi Akses Terbatas
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>
+                  Anda login sebagai <strong>{currentUser.role}</strong>. Role ini hanya dapat melihat data rekap honor.
+                </p>
+                <p className="mt-1">
+                  <strong>Fitur yang tidak dapat diakses:</strong>
+                </p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Buka Spreadsheet</li>
+                  <li>Download Excel</li>
+                </ul>
+                <p className="mt-2">
+                  Untuk mengakses fitur tersebut, hubungi PPK, Bendahara, atau Pejabat Pengadaan.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Section */}
       <Card>
