@@ -58,49 +58,49 @@ const bulanOptions = [
 
 const tahunOptions = [2024, 2025, 2026];
 
-// Mapping role ke kolom spreadsheet
+// Mapping role ke kolom spreadsheet - DIPERBARUI SESUAI PERMINTAAN WARNA
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': { 
     kegiatanCol: 5,
     tanggalCol: 11,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-200'
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-100',
+    borderColor: 'border-gray-200'
   },
   'Fungsi Neraca': { 
     kegiatanCol: 6,
     tanggalCol: 12,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-200'
-  },
-  'Fungsi Distribusi': { 
-    kegiatanCol: 7,
-    tanggalCol: 13,
     color: 'text-purple-600',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-200'
   },
-  'Fungsi Produksi': { 
-    kegiatanCol: 8,
-    tanggalCol: 14,
+  'Fungsi Distribusi': { 
+    kegiatanCol: 7,
+    tanggalCol: 13,
     color: 'text-orange-600',
     bgColor: 'bg-orange-100',
     borderColor: 'border-orange-200'
   },
+  'Fungsi Produksi': { 
+    kegiatanCol: 8,
+    tanggalCol: 14,
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
+    borderColor: 'border-green-200'
+  },
   'Fungsi Sosial': { 
     kegiatanCol: 9,
     tanggalCol: 15,
-    color: 'text-pink-600',
-    bgColor: 'bg-pink-100',
-    borderColor: 'border-pink-200'
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+    borderColor: 'border-blue-200'
   },
   'Fungsi IPDS': { 
     kegiatanCol: 10,
     tanggalCol: 16,
-    color: 'text-teal-600',
-    bgColor: 'bg-teal-100',
-    borderColor: 'border-teal-200'
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-100',
+    borderColor: 'border-yellow-200'
   },
 };
 
@@ -1341,7 +1341,7 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar Perjalanan Dinas - <span className="text-red-500">{bulan}</span> <span className="text-red-500">{tahun}</span>
+              Daftar Perjalanan Dinas - <span className="text-black">{bulan}</span> <span className="text-red-500">{tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
@@ -1408,16 +1408,12 @@ export default function BlockTanggal() {
                                     key={idx} 
                                     className={`p-2 rounded-lg border ${borderColor} ${bgColor}`}
                                   >
-                                    <div className="flex items-start gap-2">
-                                      <FileText className={`h-3 w-3 flex-shrink-0 mt-0.5 ${kegiatanColor}`} />
-                                      <div className="flex-1 min-w-0">
-                                        <div className={`text-xs font-medium break-words ${kegiatanColor}`}>
-                                          {item.kegiatan}
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground mt-1">
-                                          <div>{item.role}</div>
-                                          <div><strong>Tanggal:</strong> {datesForKegiatan.join(', ')}</div>
-                                        </div>
+                                    <div className="space-y-1">
+                                      <div className={`text-xs font-medium break-words ${kegiatanColor}`}>
+                                        {item.kegiatan}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        <span className="font-medium">{item.role}</span> - Tanggal: {datesForKegiatan.join(', ')}
                                       </div>
                                     </div>
                                   </div>
