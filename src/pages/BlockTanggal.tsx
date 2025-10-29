@@ -128,14 +128,21 @@ function EditTanggalModal({
 
   useEffect(() => {
     if (isOpen) {
-      // Load existing dates for this person in current month
+      // Load existing dates hanya untuk role yang sedang login
       const monthIndex = bulanOptions.indexOf(bulan);
-      const datesForPerson = Object.keys(data.blocks)
+      const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
+      
+      const datesForUserRole = Object.keys(data.blocks)
+        .filter(tanggal => data.blocks[tanggal].role === userRole)
         .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)))
         .filter(date => isSameMonth(date, new Date(tahun, monthIndex)));
       
-      setSelectedDates(datesForPerson);
-      setKegiatanInput(data.kegiatan.split(' | ')[0] || "");
+      setSelectedDates(datesForUserRole);
+      
+      // Set kegiatan input dari kegiatan user role yang pertama
+      const userRoleKegiatan = Object.values(data.blocks)
+        .find(block => block.role === userRole)?.kegiatan || "";
+      setKegiatanInput(userRoleKegiatan);
     }
   }, [isOpen, data, bulan, tahun]);
 
@@ -143,6 +150,26 @@ function EditTanggalModal({
     const monthIndex = bulanOptions.indexOf(bulan);
     return isSameMonth(date, new Date(tahun, monthIndex)) && 
            isSameYear(date, new Date(tahun, monthIndex));
+  };
+
+  // Dapatkan tanggal yang diblokir oleh role lain (untuk disabled dates)
+  const getBlockedByOtherRoles = (): Date[] => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
+    
+    const blockedDates: Date[] = [];
+    
+    Object.keys(data.blocks).forEach(tanggal => {
+      const block = data.blocks[tanggal];
+      if (block.role !== userRole) {
+        const date = new Date(tahun, monthIndex, parseInt(tanggal));
+        if (isDateInSelectedMonth(date)) {
+          blockedDates.push(date);
+        }
+      }
+    });
+    
+    return blockedDates;
   };
 
   const handleSave = () => {
@@ -170,6 +197,8 @@ function EditTanggalModal({
     onClose();
   };
 
+  const blockedByOthers = getBlockedByOtherRoles();
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -179,7 +208,7 @@ function EditTanggalModal({
             Edit Tanggal untuk {data.nama}
           </DialogTitle>
           <DialogDescription>
-            Pilih atau batalkan pilihan tanggal. Tanggal yang terpilih akan ditandai.
+            Edit tanggal yang Anda miliki. Tanggal yang sudah di-block oleh role lain tidak dapat diubah.
           </DialogDescription>
         </DialogHeader>
         
@@ -195,7 +224,7 @@ function EditTanggalModal({
           </div>
 
           <div>
-            <label className="text-sm font-medium">Pilih atau Batalkan Tanggal</label>
+            <label className="text-sm font-medium">Pilih atau Batalkan Tanggal Anda</label>
             <div className="border rounded-lg mt-1">
               <CalendarComponent
                 mode="multiple"
@@ -204,10 +233,26 @@ function EditTanggalModal({
                 className="rounded-md"
                 locale={id}
                 month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                disabled={blockedByOthers} // Non-user role dates are disabled
+                modifiers={{
+                  blocked: blockedByOthers
+                }}
+                modifiersStyles={{
+                  blocked: {
+                    backgroundColor: '#f3f4f6',
+                    color: '#9ca3af',
+                    textDecoration: 'line-through',
+                    cursor: 'not-allowed'
+                  }
+                }}
               />
             </div>
             <div className="text-xs text-muted-foreground mt-2">
-              Klik tanggal untuk memilih, klik lagi untuk membatalkan. Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+              • Klik tanggal untuk memilih/membatalkan (hanya tanggal Anda)
+              <br/>
+              • Tanggal abu-abu sudah di-block oleh role lain dan tidak dapat diubah
+              <br/>
+              • Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
             </div>
           </div>
         </div>
@@ -828,8 +873,15 @@ export default function BlockTanggal() {
         };
       });
 
-      // Update kegiatan
-      const kegiatanList = data.kegiatan.split(' | ').filter(k => k.trim() !== "" && k !== dataToEdit.kegiatan.split(' | ')[0]);
+      // Update kegiatan - hapus kegiatan lama user dan tambahkan yang baru
+      const kegiatanList = data.kegiatan.split(' | ').filter(k => {
+        // Keep only kegiatan from other roles
+        const isFromOtherRole = !Object.values(data.blocks).some(block => 
+          block.kegiatan === k && block.role === userRole
+        );
+        return isFromOtherRole;
+      });
+      
       if (kegiatan && !kegiatanList.includes(kegiatan)) {
         kegiatanList.push(kegiatan);
       }
@@ -1282,13 +1334,10 @@ export default function BlockTanggal() {
                                       <FileText className={`h-3 w-3 mt-1 flex-shrink-0 ${kegiatanColor}`} />
                                       <div className="flex-1 min-w-0">
                                         <div className={`text-sm font-medium break-words ${kegiatanColor}`}>
-                                          {item.kegiatan}
+                                          {item.kegiatan} <span className="text-xs font-normal opacity-75">({item.role})</span>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">
                                           <span className="font-medium">Tanggal:</span> {datesForKegiatan.join(', ')}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          <span className="font-medium">Oleh:</span> {item.role}
                                         </div>
                                       </div>
                                     </div>
