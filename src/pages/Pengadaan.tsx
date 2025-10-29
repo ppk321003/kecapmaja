@@ -149,7 +149,7 @@ export default function InputPengadaan() {
   const JENIS_DOKUMEN = [
     { value: "invoice", label: "Invoice / Tagihan" },
     { value: "bukti", label: "Bukti Bayar" },
-    { value: "kuitansi", label: "BKuitansi" },
+    { value: "kuitansi", label: "Kuitansi" },
     { value: "spk", label: "SPK (Surat Perintah Kerja)" },
     { value: "kontrak", label: "Kontrak" },
     { value: "po", label: "Purchase Order (PO)" },
@@ -496,15 +496,26 @@ export default function InputPengadaan() {
 
       // Get all data to find the correct row
       const allData = await getAllData();
-      const rowIndex = allData.findIndex((row: any[]) => 
-        row[1] === editingData.id
-      );
+      
+      // PERBAIKAN: Cari row index yang tepat dengan mempertimbangkan header
+      let rowIndex = -1;
+      
+      // Cari berdasarkan ID di semua baris data (termasuk baris pertama setelah header)
+      for (let i = 1; i < allData.length; i++) {
+        const row = allData[i];
+        if (row && row.length > 1 && row[1] === editingData.id) {
+          rowIndex = i;
+          console.log(`✅ Found data at row index: ${rowIndex}`);
+          break;
+        }
+      }
 
       if (rowIndex === -1) {
         throw new Error("Data tidak ditemukan di spreadsheet");
       }
 
-      const rowNumber = rowIndex + 2; // +2 karena header dan index 0-based
+      // PERBAIKAN: Row number dihitung dengan benar (+2 karena header + index 0-based)
+      const rowNumber = rowIndex + 1; // +1 karena Google Sheets dimulai dari 1, dan rowIndex sudah termasuk offset header
 
       const dataToUpdate = [
         editingData.no.toString(),
@@ -589,7 +600,6 @@ export default function InputPengadaan() {
     }
   };
 
-  // FUNGSI DELETE YANG DIPERBAIKI - Menangani baris pertama dengan benar
   const deleteData = async (data: PengadaanData) => {
     try {
       setSaving(true);
@@ -608,10 +618,9 @@ export default function InputPengadaan() {
       const allData = await getAllData();
       console.log('📋 All data for deletion:', allData);
       
-      // Cari row index berdasarkan ID - PERBAIKAN: Gunakan pendekatan yang lebih robust
+      // PERBAIKAN: Cari row index yang tepat
       let rowIndex = -1;
       
-      // Coba beberapa pendekatan untuk menemukan row yang benar
       for (let i = 1; i < allData.length; i++) {
         const row = allData[i];
         console.log(`🔍 Checking row ${i}:`, row);
@@ -624,7 +633,7 @@ export default function InputPengadaan() {
       }
 
       if (rowIndex === -1) {
-        // Fallback: coba berdasarkan nomor urut
+        // Fallback: cari berdasarkan nomor urut
         for (let i = 1; i < allData.length; i++) {
           const row = allData[i];
           if (row && row.length > 0 && parseInt(row[0]) === data.no) {
@@ -639,7 +648,8 @@ export default function InputPengadaan() {
         throw new Error("Data tidak ditemukan di spreadsheet");
       }
 
-      const rowNumber = rowIndex + 1; // +1 karena array dimulai dari 0, tapi Google Sheets dimulai dari 1
+      // PERBAIKAN: Row number dihitung dengan benar
+      const rowNumber = rowIndex + 1;
       console.log(`🗑️ Deleting data at row: ${rowNumber}`);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -805,6 +815,36 @@ export default function InputPengadaan() {
     if (!value) return "-";
     const numeric = parseInt(value);
     return isNaN(numeric) ? value : `Rp ${numeric.toLocaleString('id-ID')}`;
+  };
+
+  // PERBAIKAN: Fungsi untuk mengecek apakah string adalah URL valid
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // PERBAIKAN: Fungsi untuk menampilkan link KAK yang bisa diklik
+  const renderKAKLink = (kakValue: string) => {
+    if (!kakValue) return '-';
+    
+    if (isValidUrl(kakValue)) {
+      return (
+        <a 
+          href={kakValue} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 hover:underline break-words"
+        >
+          {kakValue}
+        </a>
+      );
+    } else {
+      return kakValue;
+    }
   };
 
   return (
@@ -1068,7 +1108,6 @@ export default function InputPengadaan() {
                           ? `Tidak ada hasil untuk pencarian "${searchTerm}"` 
                           : "Spreadsheet kosong. Gunakan tombol 'Tambah Pengadaan' untuk menambah data."}
                       </p>
-                      {/* Tombol "Tambah Data Pertama" dihapus sesuai permintaan */}
                     </div>
                   )}
 
@@ -1346,7 +1385,7 @@ export default function InputPengadaan() {
                     <Input
                       value={formData.kerangkaAcuanKerjaKAK}
                       onChange={(e) => handleInputChange("kerangkaAcuanKerjaKAK", e.target.value)}
-                      placeholder="Contoh: KAK/2024/001"
+                      placeholder="Contoh: https://drive.google.com/... atau KAK/2024/001"
                     />
                   </div>
 
@@ -1542,7 +1581,7 @@ export default function InputPengadaan() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Data Dialog - VERSI LEBIH SEDERHANA */}
+      {/* View Data Dialog - DENGAN PERBAIKAN LINK KAK */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
@@ -1635,7 +1674,9 @@ export default function InputPengadaan() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
+                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm break-words">
+                        {renderKAKLink(dataToView.kerangkaAcuanKerjaKAK)}
+                      </div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Jenis Dokumen Pengadaan</Label>
