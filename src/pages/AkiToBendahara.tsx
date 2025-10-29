@@ -38,6 +38,23 @@ export default function AkiToBendahara() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
+  // Get user role from localStorage
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  useEffect(() => {
+    const userData = localStorage.getItem('simaja_user');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Fungsi untuk mengecek apakah user memiliki akses ke fitur spreadsheet dan download
+  const canAccessSpreadsheetAndDownload = () => {
+    if (!currentUser) return false;
+    const allowedRoles = ['Pejabat Pembuat Komitmen', 'Bendahara', 'Pejabat Pengadaan'];
+    return allowedRoles.includes(currentUser.role);
+  };
+
   const bulanOptions = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
@@ -53,11 +70,31 @@ export default function AkiToBendahara() {
 
   // Fungsi untuk membuka spreadsheet
   const openSpreadsheet = () => {
+    // Check if user has permission
+    if (!canAccessSpreadsheetAndDownload()) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${currentUser?.role} tidak memiliki izin untuk membuka spreadsheet`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`, '_blank');
   };
 
   // Fungsi untuk download data yang ditampilkan dalam format Excel
   const downloadFilteredData = () => {
+    // Check if user has permission
+    if (!canAccessSpreadsheetAndDownload()) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${currentUser?.role} tidak memiliki izin untuk mendownload data Excel`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (filteredData.length === 0) {
       toast({
         title: "Tidak ada data",
@@ -177,50 +214,121 @@ export default function AkiToBendahara() {
     }
   };
 
-  // Fetch data dari Google Sheets menggunakan Supabase function
+  // Fetch data dari Google Sheets menggunakan Supabase function - DIPERBAIKI
   const fetchDataFromSheets = async () => {
     try {
       setIsLoading(true);
+      console.log('🔄 Memulai fetch data dari Google Sheets...');
       
-      const { data: sheetData, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "All-In",
-        },
-      });
+      // Coba beberapa range yang mungkin
+      const rangesToTry = [
+        "All-In!A:Z",  // Range spesifik worksheet All-In
+        "A:Z",         // Range umum worksheet pertama
+        "Sheet1!A:Z",  // Range worksheet Sheet1
+        "All-In"       // Nama worksheet saja
+      ];
 
-      if (error) throw error;
+      let sheetData = null;
+      let error = null;
+
+      // Coba setiap range sampai berhasil
+      for (const range of rangesToTry) {
+        console.log(`🔍 Mencoba range: ${range}`);
+        const result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "read",
+            range: range,
+          },
+        });
+
+        if (!result.error && result.data?.values) {
+          sheetData = result.data;
+          console.log(`✅ Berhasil dengan range: ${range}`);
+          break;
+        } else {
+          error = result.error;
+          console.log(`❌ Gagal dengan range: ${range}`, result.error);
+        }
+      }
+
+      if (!sheetData) {
+        throw error || new Error('Tidak ada data ditemukan di spreadsheet dengan range yang dicoba');
+      }
 
       const rows = sheetData.values || [];
+      console.log('📊 Data mentah dari Google Sheets:', rows);
       
       if (rows.length === 0) {
         throw new Error('Tidak ada data ditemukan di spreadsheet');
       }
 
-      // Process data dari Google Sheets
+      // Debug: Tampilkan headers untuk memastikan struktur
+      console.log('📋 Headers:', rows[0]);
+      console.log('📈 Jumlah baris data:', rows.length - 1);
+
+      // Process data dari Google Sheets dengan handling yang lebih robust
       const headers = rows[0];
       const dataRows = rows.slice(1);
 
-      const processedData: DataRow[] = dataRows.map((row: any[], index: number) => {
-        const rowData: DataRow = {
-          no: parseInt(row[0]) || index + 1,
-          bulan: row[1] || '',
-          tahun: parseInt(row[2]) || 0,
-          namaPetugas: row[3] || '',
-          namaBank: row[4] || '',
-          noRekening: row[5] || '',
-        };
+      const processedData: DataRow[] = dataRows
+        .filter((row: any[]) => row && row.length > 0) // Filter baris kosong
+        .map((row: any[], index: number) => {
+          console.log(`📝 Processing row ${index}:`, row);
+          
+          // Cari index kolom secara dinamis berdasarkan header
+          const getColumnIndex = (possibleHeaders: string[]) => {
+            for (const header of possibleHeaders) {
+              const index = headers.findIndex((h: string) => 
+                h && h.toString().toLowerCase().includes(header.toLowerCase())
+              );
+              if (index !== -1) return index;
+            }
+            return -1;
+          };
 
-        // Tambahkan kolom kegiatan dinamis (mulai dari kolom 7)
-        headers.slice(7).forEach((header: string, colIndex: number) => {
-          const value = row[7 + colIndex];
-          rowData[header] = value ? parseInt(value) : 0;
+          const noIndex = getColumnIndex(['no', 'nomor']) || 0;
+          const bulanIndex = getColumnIndex(['bulan']) || 1;
+          const tahunIndex = getColumnIndex(['tahun']) || 2;
+          const namaIndex = getColumnIndex(['nama', 'petugas', 'nama petugas']) || 3;
+          const bankIndex = getColumnIndex(['bank', 'nama bank']) || 4;
+          const rekeningIndex = getColumnIndex(['rekening', 'no rekening', 'norek']) || 5;
+
+          const rowData: DataRow = {
+            no: parseInt(row[noIndex]) || index + 1,
+            bulan: row[bulanIndex] || '',
+            tahun: parseInt(row[tahunIndex]) || new Date().getFullYear(),
+            namaPetugas: row[namaIndex] || '',
+            namaBank: row[bankIndex] || '',
+            noRekening: row[rekeningIndex] || '',
+          };
+
+          // Tambahkan kolom kegiatan dinamis (mulai dari kolom 6 atau setelah no rekening)
+          const startKegiatanIndex = Math.max(rekeningIndex + 1, 6);
+          headers.slice(startKegiatanIndex).forEach((header: string, colIndex: number) => {
+            if (header && header.trim() !== '') {
+              const value = row[startKegiatanIndex + colIndex];
+              // Handle berbagai format nilai
+              if (value) {
+                if (typeof value === 'number') {
+                  rowData[header] = value;
+                } else if (typeof value === 'string') {
+                  const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+                  rowData[header] = isNaN(numericValue) ? 0 : numericValue;
+                } else {
+                  rowData[header] = 0;
+                }
+              } else {
+                rowData[header] = 0;
+              }
+            }
+          });
+
+          console.log(`✅ Processed row ${index}:`, rowData);
+          return rowData;
         });
 
-        return rowData;
-      });
-
+      console.log('🎉 Data berhasil diproses:', processedData);
       setData(processedData);
       
       // Extract semua kegiatan yang pernah ada (tidak peduli nilai)
@@ -229,6 +337,7 @@ export default function AkiToBendahara() {
         Object.keys(item).filter(key => !baseColumns.includes(key))
       ))];
       setAllKegiatan(semuaKegiatan);
+      console.log('📋 Semua kegiatan:', semuaKegiatan);
 
       // Set available kegiatan awal dari semua data yang memiliki nilai > 0
       const kegiatanDenganNilai = [...new Set(processedData.flatMap(item => 
@@ -239,6 +348,7 @@ export default function AkiToBendahara() {
         )
       ))];
       setAvailableKegiatan(kegiatanDenganNilai);
+      console.log('✅ Kegiatan dengan nilai:', kegiatanDenganNilai);
 
       toast({
         title: "Data berhasil dimuat",
@@ -246,7 +356,7 @@ export default function AkiToBendahara() {
       });
       
     } catch (error: any) {
-      console.error('Error fetching data:', error);
+      console.error('❌ Error fetching data:', error);
       toast({
         title: "Error",
         description: error.message || "Gagal memuat data dari Google Sheets",
@@ -472,6 +582,12 @@ export default function AkiToBendahara() {
           <h1 className="text-3xl font-bold text-foreground">Aki to Bendahara</h1>
           <p className="text-muted-foreground mt-2">
             Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
+            {currentUser && (
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
+                Login sebagai: {currentUser.role}
+                {!canAccessSpreadsheetAndDownload() && " (Tidak bisa akses spreadsheet/download)"}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
@@ -479,18 +595,21 @@ export default function AkiToBendahara() {
             variant="outline"
             onClick={openSpreadsheet}
             className="flex items-center gap-2"
+            disabled={!canAccessSpreadsheetAndDownload()}
           >
             <ExternalLink className="h-4 w-4" />
             Buka Spreadsheet
+            {!canAccessSpreadsheetAndDownload() && " (Restricted)"}
           </Button>
           <Button 
             onClick={downloadFilteredData}
-            disabled={filteredData.length === 0 || isLoading}
+            disabled={filteredData.length === 0 || isLoading || !canAccessSpreadsheetAndDownload()}
             variant="outline"
             className="flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
             Download Excel
+            {!canAccessSpreadsheetAndDownload() && " (Restricted)"}
           </Button>
           <Button 
             onClick={handleRefresh} 
@@ -506,6 +625,39 @@ export default function AkiToBendahara() {
           </Button>
         </div>
       </div>
+
+      {/* Informasi Akses untuk Role yang Tidak Bisa Akses Spreadsheet/Download */}
+      {!canAccessSpreadsheetAndDownload() && currentUser && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                Informasi Akses Terbatas
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>
+                  Anda login sebagai <strong>{currentUser.role}</strong>. Role ini hanya dapat melihat data rekap honor.
+                </p>
+                <p className="mt-1">
+                  <strong>Fitur yang tidak dapat diakses:</strong>
+                </p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Buka Spreadsheet</li>
+                  <li>Download Excel</li>
+                </ul>
+                <p className="mt-2">
+                  Untuk mengakses fitur tersebut, hubungi PPK, Bendahara, atau Pejabat Pengadaan.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Section */}
       <Card>
