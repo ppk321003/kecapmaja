@@ -1074,7 +1074,7 @@ export default function BlockTanggal() {
       if (conflictingDates.length > 0) {
         toast({
           title: "Konflik Tanggal",
-          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan untuk orang ini`,
+          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan. Silakan pilih tanggal lain`,
           variant: "destructive",
         });
         return;
@@ -1335,13 +1335,13 @@ export default function BlockTanggal() {
         </Card>
       )}
 
-      {/* Data Table - TANPA KOLOM PENANGGUNG JAWAB */}
+      {/* Data Table - DENGAN FORMAT GRID HORIZONTAL UNTUK KEGIATAN */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar Perjalanan Dinas - <span className="text-black">Oktober</span> <span className="text-red-500">{tahun}</span>
+              Daftar Perjalanan Dinas - <span className="text-red-500">{bulan}</span> <span className="text-red-500">{tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
@@ -1394,7 +1394,7 @@ export default function BlockTanggal() {
                       <TableCell>
                         <div className="max-w-[600px]">
                           {uniqueKegiatan.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {uniqueKegiatan.map((item, idx) => {
                                 const datesForKegiatan = Object.keys(data.blocks)
                                   .filter(t => data.blocks[t].kegiatan === item.kegiatan && data.blocks[t].role === item.role)
@@ -1408,14 +1408,15 @@ export default function BlockTanggal() {
                                     key={idx} 
                                     className={`p-2 rounded-lg border ${borderColor} ${bgColor}`}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <FileText className={`h-3 w-3 flex-shrink-0 ${kegiatanColor}`} />
+                                    <div className="flex items-start gap-2">
+                                      <FileText className={`h-3 w-3 flex-shrink-0 mt-0.5 ${kegiatanColor}`} />
                                       <div className="flex-1 min-w-0">
-                                        <div className={`text-sm font-medium break-words ${kegiatanColor}`}>
-                                          {item.kegiatan} <span className="text-xs font-normal opacity-75">({item.role})</span>
+                                        <div className={`text-xs font-medium break-words ${kegiatanColor}`}>
+                                          {item.kegiatan}
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                          <span className="font-medium">Tanggal:</span> {datesForKegiatan.join(', ')}
+                                        <div className="text-[10px] text-muted-foreground mt-1">
+                                          <div>{item.role}</div>
+                                          <div><strong>Tanggal:</strong> {datesForKegiatan.join(', ')}</div>
                                         </div>
                                       </div>
                                     </div>
