@@ -53,6 +53,7 @@ export default function InputPengadaan() {
   const [saving, setSaving] = useState(false);
   const [filterBulan, setFilterBulan] = useState("all");
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
+  const [filterStatus, setFilterStatus] = useState("all");
   const [editingData, setEditingData] = useState<PengadaanData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dataToDelete, setDataToDelete] = useState<PengadaanData | null>(null);
@@ -126,6 +127,16 @@ export default function InputPengadaan() {
     { value: "2028", label: "2028" },
     { value: "2029", label: "2029" },
     { value: "2030", label: "2030" }
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: "Semua Status" },
+    { value: "Draft", label: "Draft" },
+    { value: "Usulan", label: "Usulan" },
+    { value: "Proses", label: "Proses" },
+    { value: "Kontrak", label: "Kontrak" },
+    { value: "Selesai", label: "Selesai" },
+    { value: "Batal", label: "Batal" }
   ];
 
   const JENIS_PENGADAAN = [
@@ -695,6 +706,9 @@ export default function InputPengadaan() {
       }
     }
     
+    // Filter by status
+    if (filterStatus !== "all" && item.statusPengadaan !== filterStatus) return false;
+    
     // Filter by search term
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -742,6 +756,10 @@ export default function InputPengadaan() {
 
   const getTahunName = () => {
     return filterTahun;
+  };
+
+  const getStatusName = (value: string) => {
+    return STATUS_OPTIONS.find(status => status.value === value)?.label || "Semua Status";
   };
 
   const formatDate = (dateString: string) => {
@@ -802,7 +820,7 @@ export default function InputPengadaan() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <Label>Bulan</Label>
                   <Select value={filterBulan} onValueChange={(value) => { setFilterBulan(value); setCurrentPage(1); }}>
@@ -828,6 +846,21 @@ export default function InputPengadaan() {
                       {TAHUN_OPTIONS.map((tahun) => (
                         <SelectItem key={tahun.value} value={tahun.value}>
                           {tahun.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={filterStatus} onValueChange={(value) => { setFilterStatus(value); setCurrentPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Semua Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -886,6 +919,7 @@ export default function InputPengadaan() {
                 Data Pengadaan -{" "}
                 <span className="text-red-500">
                   {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)} {getTahunName()}
+                  {filterStatus !== "all" && ` • ${getStatusName(filterStatus)}`}
                 </span>
               </CardTitle>
               <CardDescription>
