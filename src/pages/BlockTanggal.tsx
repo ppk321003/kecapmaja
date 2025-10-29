@@ -1440,7 +1440,7 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar Perjalanan Dinas - <span className="text-black">{bulan}</span> <span className="text-red-500">{tahun}</span>
+              Daftar Perjalanan Dinas - <span className="text-red-500">{bulan}</span> <span className="text-red-500">{tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
@@ -1508,10 +1508,10 @@ export default function BlockTanggal() {
                                     className={`p-2 rounded-lg border ${borderColor} ${bgColor}`}
                                   >
                                     <div className="space-y-1">
-                                      <div className={`text-xs font-medium break-words ${kegiatanColor}`}>
+                                      <div className={`text-sm font-medium break-words ${kegiatanColor}`}>
                                         {item.kegiatan}
                                       </div>
-                                      <div className="text-[10px] text-muted-foreground">
+                                      <div className="text-xs text-muted-foreground">
                                         <span className="font-medium">{item.role}</span> - Tanggal: {datesForKegiatan.join(', ')}
                                       </div>
                                     </div>
