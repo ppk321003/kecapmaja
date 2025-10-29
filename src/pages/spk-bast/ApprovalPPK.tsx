@@ -143,6 +143,8 @@ export default function InputPengadaan() {
       if (error) throw error;
 
       const rows = data.values || [];
+      console.log('Data loaded from spreadsheet:', rows);
+      
       if (rows.length > 0) {
         const headers = rows[0];
         const dataRows = rows.slice(1).map((row: any[], index: number) => {
@@ -186,7 +188,14 @@ export default function InputPengadaan() {
   };
 
   const parseRupiah = (value: string) => {
-    return value.replace(/\D/g, "");
+    return value.replace(/\D/g, "") || "0";
+  };
+
+  // Fungsi untuk mendapatkan nomor urut berikutnya
+  const getNextNumber = () => {
+    if (pengadaanData.length === 0) return 1;
+    const maxNo = Math.max(...pengadaanData.map(item => item.no));
+    return maxNo + 1;
   };
 
   // Simpan data tahap usulan
@@ -204,29 +213,34 @@ export default function InputPengadaan() {
 
       // Generate ID Pengadaan otomatis
       const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const nextNo = getNextNumber();
       
-      const dataToSave = {
-        id: idPengadaan,
-        "Tanggal Usulan": format(formData.tanggalUsulan, 'yyyy-MM-dd'),
-        "Nama Produk Barang/Jasa": formData.namaProdukBarangJasa,
-        "Jenis Pengadaan": JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
-        "Nama Kegiatan/Detil POK": formData.namaKegiatanDetilPOK,
-        "Kode POK": formData.kodePOK,
-        "Rencana Anggaran (RAB)": parseRupiah(formData.rencanaAnggaranRAB),
-        "Nilai Realisasi": "",
-        "Form Permintaan (FP)": "",
-        "Kerangka Acuan Kerja (KAK)": "",
-        "Jenis Dokumen Pengadaan": "",
-        "Nomor Dokumen Pengadaan": "",
-        "Tanggal Dokumen Pengadaan": "",
-        "Nama Penyedia / Mitra": "",
-        "Link E-Purchasing / E-Katalog": "",
-        "Tanggal Pembayaran": "",
-        "Nomor Bukti Pembayaran": "",
-        "Status Pengadaan": STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft",
-        "Keterangan / Catatan": "",
-        "Tahun Anggaran": formData.tahunAnggaran
-      };
+      // Siapkan data sesuai urutan header spreadsheet
+      const dataToSave = [
+        nextNo.toString(), // No
+        idPengadaan, // id
+        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
+        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
+        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
+        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
+        formData.kodePOK, // Kode POK
+        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
+        "", // Nilai Realisasi (kosong untuk usulan)
+        "", // Form Permintaan (FP) (kosong)
+        "", // Kerangka Acuan Kerja (KAK) (kosong)
+        "", // Jenis Dokumen Pengadaan (kosong)
+        "", // Nomor Dokumen Pengadaan (kosong)
+        "", // Tanggal Dokumen Pengadaan (kosong)
+        "", // Nama Penyedia / Mitra (kosong)
+        "", // Link E-Purchasing / E-Katalog (kosong)
+        "", // Tanggal Pembayaran (kosong)
+        "", // Nomor Bukti Pembayaran (kosong)
+        STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft", // Status Pengadaan
+        "", // Keterangan / Catatan (kosong)
+        formData.tahunAnggaran // Tahun Anggaran
+      ];
+
+      console.log('Data to save (usulan):', dataToSave);
 
       // Simpan ke spreadsheet
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -234,11 +248,16 @@ export default function InputPengadaan() {
           spreadsheetId: SPREADSHEET_ID,
           operation: "append",
           range: "Sheet1",
-          values: [Object.values(dataToSave)]
+          values: [dataToSave]
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from supabase:', error);
+        throw error;
+      }
+
+      console.log('Save response:', data);
 
       toast({
         title: "Berhasil! 🎉",
@@ -254,7 +273,7 @@ export default function InputPengadaan() {
       console.error('Error saving data:', error);
       toast({
         title: "Error",
-        description: "Gagal menyimpan data pengadaan",
+        description: `Gagal menyimpan data pengadaan: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -275,29 +294,34 @@ export default function InputPengadaan() {
 
       // Generate ID Pengadaan otomatis
       const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const nextNo = getNextNumber();
       
-      const dataToSave = {
-        id: idPengadaan,
-        "Tanggal Usulan": format(formData.tanggalUsulan, 'yyyy-MM-dd'),
-        "Nama Produk Barang/Jasa": formData.namaProdukBarangJasa,
-        "Jenis Pengadaan": JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
-        "Nama Kegiatan/Detil POK": formData.namaKegiatanDetilPOK,
-        "Kode POK": formData.kodePOK,
-        "Rencana Anggaran (RAB)": parseRupiah(formData.rencanaAnggaranRAB),
-        "Nilai Realisasi": parseRupiah(formData.nilaiRealisasi),
-        "Form Permintaan (FP)": formData.formPermintaanFP,
-        "Kerangka Acuan Kerja (KAK)": formData.kerangkaAcuanKerjaKAK,
-        "Jenis Dokumen Pengadaan": JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan,
-        "Nomor Dokumen Pengadaan": formData.nomorDokumenPengadaan,
-        "Tanggal Dokumen Pengadaan": formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : "",
-        "Nama Penyedia / Mitra": formData.namaPenyediaMitra,
-        "Link E-Purchasing / E-Katalog": formData.linkEPurchasingEKatalog,
-        "Tanggal Pembayaran": formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : "",
-        "Nomor Bukti Pembayaran": formData.nomorBuktiPembayaran,
-        "Status Pengadaan": STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft",
-        "Keterangan / Catatan": formData.keteranganCatatan,
-        "Tahun Anggaran": formData.tahunAnggaran
-      };
+      // Siapkan data lengkap sesuai urutan header spreadsheet
+      const dataToSave = [
+        nextNo.toString(), // No
+        idPengadaan, // id
+        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
+        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
+        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
+        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
+        formData.kodePOK, // Kode POK
+        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
+        parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
+        formData.formPermintaanFP, // Form Permintaan (FP)
+        formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
+        JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan, // Jenis Dokumen Pengadaan
+        formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
+        formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : "", // Tanggal Dokumen Pengadaan
+        formData.namaPenyediaMitra, // Nama Penyedia / Mitra
+        formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
+        formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : "", // Tanggal Pembayaran
+        formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
+        STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft", // Status Pengadaan
+        formData.keteranganCatatan, // Keterangan / Catatan
+        formData.tahunAnggaran // Tahun Anggaran
+      ];
+
+      console.log('Data to save (lengkap):', dataToSave);
 
       // Simpan ke spreadsheet
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -305,11 +329,16 @@ export default function InputPengadaan() {
           spreadsheetId: SPREADSHEET_ID,
           operation: "append",
           range: "Sheet1",
-          values: [Object.values(dataToSave)]
+          values: [dataToSave]
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from supabase:', error);
+        throw error;
+      }
+
+      console.log('Save response:', data);
 
       toast({
         title: "Berhasil! 🎉",
@@ -325,7 +354,7 @@ export default function InputPengadaan() {
       console.error('Error saving data:', error);
       toast({
         title: "Error",
-        description: "Gagal menyimpan data pengadaan",
+        description: `Gagal menyimpan data pengadaan: ${error.message}`,
         variant: "destructive",
       });
     }
