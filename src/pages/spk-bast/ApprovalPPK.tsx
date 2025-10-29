@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X, RefreshCw, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X, RefreshCw, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -41,6 +41,7 @@ interface PengadaanData {
   statusPengadaan: string;
   keteranganCatatan: string;
   tahunAnggaran: string;
+  spreadsheetRowIndex?: number;
 }
 
 const SPREADSHEET_ID = "1rvJUdX0rc6kEneTUwGK6p-qyPV66PKcYuP5BL58Bc2M";
@@ -185,7 +186,8 @@ export default function InputPengadaan() {
               nomorBuktiPembayaran: row[17] || "",
               statusPengadaan: row[18] || "Draft",
               keteranganCatatan: row[19] || "",
-              tahunAnggaran: row[20] || new Date().getFullYear().toString()
+              tahunAnggaran: row[20] || new Date().getFullYear().toString(),
+              spreadsheetRowIndex: index + 2 // +2 karena header dan index 0-based
             } as PengadaanData;
           });
           
@@ -417,7 +419,7 @@ export default function InputPengadaan() {
     setShowForm(true);
   };
 
-  // FUNGSI UPDATE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
+  // FUNGSI UPDATE YANG DIPERBAIKI - Update existing row tanpa duplikasi
   const updateData = async () => {
     try {
       setSaving(true);
@@ -434,17 +436,12 @@ export default function InputPengadaan() {
 
       if (!editingData) return;
 
-      // Get all data to find the correct row
-      const allData = await getAllData();
-      const rowIndex = allData.findIndex((row: any[]) => 
-        row[1] === editingData.id
-      );
+      // Gunakan spreadsheetRowIndex yang sudah tersimpan
+      const rowNumber = editingData.spreadsheetRowIndex;
 
-      if (rowIndex === -1) {
-        throw new Error("Data tidak ditemukan di spreadsheet");
+      if (!rowNumber) {
+        throw new Error("Row number tidak ditemukan untuk data ini");
       }
-
-      const rowNumber = rowIndex + 2; // +2 karena header dan index 0-based
 
       const dataToUpdate = [
         editingData.no.toString(),
@@ -477,7 +474,7 @@ export default function InputPengadaan() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "update",
-          rowIndex: rowNumber,
+          range: `Sheet1!A${rowNumber}:U${rowNumber}`,
           values: [dataToUpdate]
         },
       });
@@ -511,48 +508,25 @@ export default function InputPengadaan() {
     }
   };
 
-  const getAllData = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1!A:U"
-        },
-      });
-
-      if (error) throw error;
-      return data.values || [];
-    } catch (error) {
-      console.error('Error getting all data:', error);
-      return [];
-    }
-  };
-
-  // FUNGSI DELETE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
+  // FUNGSI DELETE YANG DIPERBAIKI - Handle semua baris termasuk baris pertama
   const deleteData = async (data: PengadaanData) => {
     try {
       setSaving(true);
 
-      // Get all data to find the correct row
-      const allData = await getAllData();
-      const rowIndex = allData.findIndex((row: any[]) => 
-        row[1] === data.id
-      );
+      // Gunakan spreadsheetRowIndex yang sudah tersimpan
+      const rowNumber = data.spreadsheetRowIndex;
 
-      if (rowIndex === -1) {
-        throw new Error("Data tidak ditemukan di spreadsheet");
+      if (!rowNumber) {
+        throw new Error("Row number tidak ditemukan untuk data ini");
       }
-
-      const rowNumber = rowIndex + 2; // +2 karena header dan index 0-based
 
       console.log('🗑️ Deleting data at row:', rowNumber);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "delete",
-          rowIndex: rowNumber
+          operation: "deleteRow",
+          rowNumber: rowNumber
         },
       });
 
@@ -694,6 +668,15 @@ export default function InputPengadaan() {
     if (!value) return "-";
     const numeric = parseInt(value);
     return isNaN(numeric) ? value : `Rp ${numeric.toLocaleString('id-ID')}`;
+  };
+
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
   };
 
   return (
@@ -1390,196 +1373,177 @@ export default function InputPengadaan() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Data Dialog */}
+      {/* View Data Dialog - SIMPLIFIED VERSION */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg p-6 -m-6 mb-6">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
             <DialogTitle className="flex items-center gap-2 text-white text-xl">
               <Eye className="h-6 w-6" />
               Detail Data Pengadaan
             </DialogTitle>
             <DialogDescription className="text-blue-100">
-              Informasi lengkap data pengadaan - {dataToView?.namaProdukBarangJasa}
+              Informasi lengkap data pengadaan
             </DialogDescription>
           </DialogHeader>
           
           {dataToView && (
             <div className="space-y-6">
-              {/* Informasi Utama */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="text-center">
+              {/* Header Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-sm text-blue-600 font-semibold">ID Pengadaan</div>
-                  <div className="text-lg font-bold text-blue-800">{dataToView.id}</div>
+                  <div className="text-base font-bold text-blue-800 truncate">{dataToView.id}</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-sm text-blue-600 font-semibold">Status</div>
-                  <Badge className={`${getStatusColor(dataToView.statusPengadaan)} text-base py-1 px-3`}>
+                  <Badge className={`${getStatusColor(dataToView.statusPengadaan)} text-sm py-1 px-2`}>
                     {dataToView.statusPengadaan}
                   </Badge>
                 </div>
-                <div className="text-center">
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-sm text-blue-600 font-semibold">Tahun Anggaran</div>
-                  <div className="text-lg font-bold text-blue-800">{dataToView.tahunAnggaran}</div>
+                  <div className="text-base font-bold text-blue-800">{dataToView.tahunAnggaran}</div>
                 </div>
               </div>
 
+              {/* Main Content */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Kolom 1 - Data Usulan */}
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardHeader className="bg-blue-50 pb-3">
-                    <CardTitle className="text-blue-700 text-lg flex items-center gap-2">
-                      <BookOpen className="h-5 w-5" />
-                      Data Usulan
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Tanggal Usulan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalUsulan)}</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nama Produk Barang/Jasa</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaProdukBarangJasa}</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Jenis Pengadaan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisPengadaan}</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nama Kegiatan/Detil POK</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaKegiatanDetilPOK}</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Kode POK</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border font-mono">{dataToView.kodePOK}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Kolom 2 - Anggaran */}
-                <Card className="border-l-4 border-l-green-500">
-                  <CardHeader className="bg-green-50 pb-3">
-                    <CardTitle className="text-green-700 text-lg flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Informasi Anggaran
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Rencana Anggaran (RAB)</Label>
-                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
-                        {formatCurrency(dataToView.rencanaAnggaranRAB)}
+                {/* Left Column */}
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        Informasi Usulan
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium">Tanggal Usulan</Label>
+                        <div className="text-sm mt-1">{formatDate(dataToView.tanggalUsulan)}</div>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nilai Realisasi</Label>
-                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
-                        {formatCurrency(dataToView.nilaiRealisasi)}
+                      <div>
+                        <Label className="text-sm font-medium">Nama Produk Barang/Jasa</Label>
+                        <div className="text-sm mt-1">{dataToView.namaProdukBarangJasa}</div>
                       </div>
-                    </div>
+                      <div>
+                        <Label className="text-sm font-medium">Jenis Pengadaan</Label>
+                        <div className="text-sm mt-1">{dataToView.jenisPengadaan}</div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Kegiatan/Detil POK</Label>
+                        <div className="text-sm mt-1">{dataToView.namaKegiatanDetilPOK}</div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Kode POK</Label>
+                        <div className="text-sm font-mono mt-1">{dataToView.kodePOK}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-sm text-blue-600">Selisih</div>
-                        <div className={`text-lg font-bold ${
-                          parseInt(dataToView.nilaiRealisasi || "0") > parseInt(dataToView.rencanaAnggaranRAB || "0") 
-                            ? "text-red-600" 
-                            : "text-green-600"
-                        }`}>
-                          {formatCurrency(
-                            (parseInt(dataToView.nilaiRealisasi || "0") - parseInt(dataToView.rencanaAnggaranRAB || "0")).toString()
-                          )}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Informasi Anggaran
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium">Rencana Anggaran (RAB)</Label>
+                        <div className="text-sm font-bold text-green-700 mt-1">
+                          {formatCurrency(dataToView.rencanaAnggaranRAB)}
                         </div>
                       </div>
-                      <div className="text-center p-3 bg-purple-50 rounded-lg">
-                        <div className="text-sm text-purple-600">Efisiensi</div>
-                        <div className="text-lg font-bold text-purple-600">
-                          {((parseInt(dataToView.rencanaAnggaranRAB || "0") - parseInt(dataToView.nilaiRealisasi || "0")) / parseInt(dataToView.rencanaAnggaranRAB || "1") * 100).toFixed(1)}%
+                      <div>
+                        <Label className="text-sm font-medium">Nilai Realisasi</Label>
+                        <div className="text-sm font-bold text-green-700 mt-1">
+                          {formatCurrency(dataToView.nilaiRealisasi)}
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                {/* Kolom 3 - Dokumen */}
-                <Card className="border-l-4 border-l-orange-500 md:col-span-2">
-                  <CardHeader className="bg-orange-50 pb-3">
-                    <CardTitle className="text-orange-700 text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Dokumen dan Realisasi
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Form Permintaan (FP)</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.formPermintaanFP || '-'}</div>
+                {/* Right Column */}
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Dokumen & Realisasi
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Form Permintaan (FP)</Label>
+                          <div className="text-sm mt-1">{dataToView.formPermintaanFP || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Kerangka Acuan Kerja (KAK)</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Kerangka Acuan Kerja (KAK)</Label>
+                          <div className="text-sm mt-1">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Jenis Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisDokumenPengadaan || '-'}</div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Jenis Dokumen</Label>
+                          <div className="text-sm mt-1">{dataToView.jenisDokumenPengadaan || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nomor Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorDokumenPengadaan || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Nomor Dokumen</Label>
+                          <div className="text-sm mt-1">{dataToView.nomorDokumenPengadaan || '-'}</div>
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Tanggal Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
-                        </div>
+                      <div>
+                        <Label className="text-sm font-medium">Tanggal Dokumen</Label>
+                        <div className="text-sm mt-1">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nama Penyedia / Mitra</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaPenyediaMitra || '-'}</div>
-                        </div>
+                      <div>
+                        <Label className="text-sm font-medium">Nama Penyedia / Mitra</Label>
+                        <div className="text-sm mt-1">{dataToView.namaPenyediaMitra || '-'}</div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Link E-Purchasing / E-Katalog</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border break-words">
-                            {dataToView.linkEPurchasingEKatalog ? (
-                              <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                {dataToView.linkEPurchasingEKatalog}
-                              </a>
-                            ) : '-'}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Tanggal Pembayaran</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalPembayaran)}</div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nomor Bukti Pembayaran</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                      <div>
+                        <Label className="text-sm font-medium">Link E-Purchasing / E-Katalog</Label>
+                        <div className="text-sm mt-1">
+                          {dataToView.linkEPurchasingEKatalog ? (
+                            <a 
+                              href={dataToView.linkEPurchasingEKatalog} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            >
+                              {dataToView.linkEPurchasingEKatalog}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : '-'}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-4 space-y-2">
-                      <Label className="font-semibold text-sm">Keterangan / Catatan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border min-h-[80px]">
-                        {dataToView.keteranganCatatan || '-'}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">Tanggal Pembayaran</Label>
+                          <div className="text-sm mt-1">{formatDate(dataToView.tanggalPembayaran)}</div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">Nomor Bukti Pembayaran</Label>
+                          <div className="text-sm mt-1">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+
+                      <div>
+                        <Label className="text-sm font-medium">Keterangan / Catatan</Label>
+                        <div className="text-sm mt-1 bg-gray-50 p-2 rounded border min-h-[60px]">
+                          {dataToView.keteranganCatatan || '-'}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           )}
