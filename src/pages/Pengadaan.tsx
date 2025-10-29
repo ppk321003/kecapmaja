@@ -147,6 +147,9 @@ export default function InputPengadaan() {
   ];
 
   const JENIS_DOKUMEN = [
+    { value: "invoice", label: "Invoice / Tagihan" },
+    { value: "bukti", label: "Bukti Bayar" },
+    { value: "kuitansi", label: "BKuitansi" },
     { value: "spk", label: "SPK (Surat Perintah Kerja)" },
     { value: "kontrak", label: "Kontrak" },
     { value: "po", label: "Purchase Order (PO)" },
