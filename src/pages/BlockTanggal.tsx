@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck, FileText } from "lucide-react";
+import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck, FileText, Ban } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isSameMonth, isSameYear } from "date-fns";
@@ -63,6 +63,19 @@ const bulanOptions = [
 ];
 
 const tahunOptions = [2024, 2025, 2026];
+
+// Mapping role ke kolom spreadsheet
+const ROLE_MAPPING = {
+  'Pejabat Pembuat Komitmen': { kegiatanCol: 5, tanggalCol: 11 }, // Kolom 6 & 12 (index 5 & 11)
+  'Fungsi Neraca': { kegiatanCol: 6, tanggalCol: 12 }, // Kolom 7 & 13
+  'Fungsi Distribusi': { kegiatanCol: 7, tanggalCol: 13 }, // Kolom 8 & 14
+  'Fungsi Produksi': { kegiatanCol: 8, tanggalCol: 14 }, // Kolom 9 & 15
+  'Fungsi Sosial': { kegiatanCol: 9, tanggalCol: 15 }, // Kolom 10 & 16
+  'Fungsi IPDS': { kegiatanCol: 10, tanggalCol: 16 }, // Kolom 11 & 17
+};
+
+const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
+const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
 
 // KOMPONEN MODAL EDITOR KHUSUS
 function KegiatanEditor({ isOpen, onClose, data, kegiatan, onSave }: KegiatanEditorProps) {
@@ -121,14 +134,6 @@ function KegiatanEditor({ isOpen, onClose, data, kegiatan, onSave }: KegiatanEdi
     onSave(kegiatan, kegiatanInput, filteredDates);
     setShowConfirmDialog(false);
     onClose();
-  };
-
-  const getBlockedDatesByOthers = (): Date[] => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const allBlockedDates: Date[] = [];
-    
-    // This would need access to dataRows from parent - will be implemented in main component
-    return allBlockedDates;
   };
 
   return (
@@ -238,16 +243,26 @@ export default function BlockTanggal() {
 
   const { toast } = useToast();
 
+  // Fungsi untuk mengecek apakah user boleh melakukan tagging
+  const canUserTag = useMemo(() => {
+    return ALLOWED_ROLES.includes(userRole);
+  }, [userRole]);
+
+  // Fungsi untuk mengecek apakah user role disabled
+  const isUserRoleDisabled = useMemo(() => {
+    return DISABLED_ROLES.includes(userRole);
+  }, [userRole]);
+
   // PERBAIKAN 1: Ambil data user dari localStorage yang benar
   useEffect(() => {
-    const userData = localStorage.getItem("simaja_user"); // DIUBAH DARI "user" MENJADI "simaja_user"
+    const userData = localStorage.getItem("simaja_user");
     if (userData) {
       const user = JSON.parse(userData);
       setUserRole(user.role || "User");
       console.log('👤 User role loaded:', user.role);
     } else {
       console.log('⚠️ No user data found in localStorage');
-      setUserRole("User"); // DIUBAH DARI "Administrator" MENJADI "User"
+      setUserRole("User");
     }
     loadMasterMitra();
     loadMasterOrganik();
@@ -337,11 +352,11 @@ export default function BlockTanggal() {
       const newDataRows: DataRow[] = [];
       
       currentData.forEach((row: any[], rowIndex: number) => {
-        const nama = row[4] || "";
-        const nik = row[5] || "";
-        const kegiatan = row[3] || "";
-        const tanggal = row[6] ? row[6].split(',').map((t: string) => t.trim()) : [];
-        const penanggungJawab = row[7] || "";
+        const nama = row[3] || "";
+        const nik = row[4] || "";
+        const kegiatan = row[5] || ""; // Kolom kegiatan sekarang berdasarkan role
+        const tanggal = row[11] || ""; // Kolom tanggal sekarang berdasarkan role
+        const penanggungJawab = row[17] || ""; // Kolom penanggung jawab pindah
 
         const isOrganik = organikList.some(org => org.nama === nama);
         
@@ -351,9 +366,14 @@ export default function BlockTanggal() {
         
         if (existingIndex === -1) {
           const blocks: BlockData = {};
-          tanggal.forEach((t: string) => {
-            blocks[t] = kegiatan;
-          });
+          if (tanggal) {
+            tanggal.split(',').forEach((t: string) => {
+              const trimmedT = t.trim();
+              if (trimmedT) {
+                blocks[trimmedT] = kegiatan;
+              }
+            });
+          }
 
           newDataRows.push({
             no: newDataRows.length + 1,
@@ -369,9 +389,14 @@ export default function BlockTanggal() {
             spreadsheetRowIndex: rowIndex + 2
           });
         } else {
-          tanggal.forEach((t: string) => {
-            newDataRows[existingIndex].blocks[t] = kegiatan;
-          });
+          if (tanggal) {
+            tanggal.split(',').forEach((t: string) => {
+              const trimmedT = t.trim();
+              if (trimmedT) {
+                newDataRows[existingIndex].blocks[trimmedT] = kegiatan;
+              }
+            });
+          }
         }
       });
 
@@ -400,34 +425,50 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN 2: Format penyimpanan yang benar
+  // FUNGSI BARU: Format penyimpanan sesuai struktur kolom baru
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
-      const dates = Object.keys(data.blocks).sort((a, b) => parseInt(a) - parseInt(b)).join(',');
+      // Validasi role user
+      if (!ALLOWED_ROLES.includes(userRole) && operation !== 'delete') {
+        throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
+      }
+
+      const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
+      if (!roleMapping && operation !== 'delete') {
+        throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
+      }
+
+      const dates = Object.keys(data.blocks)
+        .sort((a, b) => parseInt(a) - parseInt(b))
+        .join(',');
       
-      // Hanya simpan nama kegiatan tanpa tanggal di kolom kegiatan
-      const kegiatanOnly = data.kegiatan.split(' (')[0];
+      // Hitung jumlah tanggal terpakai (unique dates)
+      const jumlahTanggalTerpakai = Object.keys(data.blocks).length.toString();
+
+      // Siapkan array untuk 18 kolom
+      const rowData = new Array(18).fill("");
+
+      // Isi data sesuai struktur kolom baru
+      rowData[0] = data.no.toString();                    // No
+      rowData[1] = tahun.toString();                      // Tahun  
+      rowData[2] = bulan;                                 // Bulan
+      rowData[3] = data.nama;                             // Nama Pelaksana
+      rowData[4] = data.nik;                              // NIP/NIK
       
-      // Pastikan userRole selalu terisi
-      const currentUserRole = userRole || "User";
+      // Kolom kegiatan dan tanggal berdasarkan role (hanya untuk operation create/update)
+      if (operation !== 'delete' && roleMapping) {
+        rowData[roleMapping.kegiatanCol] = kegiatanInput || data.kegiatan; // Kolom kegiatan berdasarkan role
+        rowData[roleMapping.tanggalCol] = dates;                          // Kolom tanggal berdasarkan role
+      }
       
-      // Format data sesuai dengan header spreadsheet
-      const rowData = [
-        data.no.toString(),                    // A: No
-        tahun.toString(),                      // B: Tahun  
-        bulan,                                 // C: Bulan
-        kegiatanOnly,                          // D: Kegiatan (hanya nama kegiatan)
-        data.nama,                             // E: Nama Pelaksana
-        data.nik,                              // F: NIP/NIK
-        dates,                                 // G: Tanggal
-        currentUserRole                        // H: Penanggung Jawab Kegiatan
-      ];
+      rowData[17] = jumlahTanggalTerpakai;                // Jumlah Tanggal Terpakai (kolom 18)
 
       console.log('🔄 Menyimpan ke spreadsheet:', { 
         operation, 
         rowData,
         rowIndex: data.spreadsheetRowIndex,
-        userRole: currentUserRole 
+        userRole,
+        roleMapping
       });
 
       let requestBody;
@@ -505,6 +546,15 @@ export default function BlockTanggal() {
       return;
     }
 
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selected = availableMitra.find(m => m.nama === selectedMitra);
     if (!selected) return;
 
@@ -550,6 +600,15 @@ export default function BlockTanggal() {
       toast({
         title: "Peringatan",
         description: "Pilih organik terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
         variant: "destructive",
       });
       return;
@@ -656,6 +715,15 @@ export default function BlockTanggal() {
 
   // PERBAIKAN 3: Fungsi untuk membuka modal editor
   const openKegiatanEditor = (dataIndex: number, kegiatan: string) => {
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedKegiatanData({
       data: dataRows[dataIndex],
       kegiatan: kegiatan
@@ -666,6 +734,15 @@ export default function BlockTanggal() {
   // PERBAIKAN 4: Fungsi untuk menyimpan perubahan dari modal editor
   const handleSaveKegiatan = async (originalKegiatan: string, updatedKegiatan: string, newDates: Date[]) => {
     if (!selectedKegiatanData) return;
+
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     const dataIndex = dataRows.findIndex(d => 
       d.nik === selectedKegiatanData.data.nik && 
@@ -748,6 +825,15 @@ export default function BlockTanggal() {
 
   // Fungsi existing untuk tambah tanggal (tetap dipertahankan)
   const openDatePicker = (dataIndex: number, edit: boolean = false, kegiatan?: string) => {
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedDataForDates(dataIndex);
     setEditMode(edit);
     
@@ -780,6 +866,15 @@ export default function BlockTanggal() {
       toast({
         title: "Error",
         description: "Tidak ada data yang dipilih",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
         variant: "destructive",
       });
       return;
@@ -855,7 +950,7 @@ export default function BlockTanggal() {
       const semuaKegiatan = [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
       data.kegiatan = semuaKegiatan.join(' | ');
 
-      data.penanggungJawab = userRole || "User";
+      data.penanggungJawab = userRole;
 
       console.log('💾 Menyimpan tanggal:', {
         nama: data.nama,
@@ -965,6 +1060,12 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2 mt-2">
             <UserCheck className="h-4 w-4 text-blue-600" />
             <span className="text-sm text-muted-foreground">Login sebagai: <strong className="text-blue-600">{userRole}</strong></span>
+            {!canUserTag && (
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md flex items-center gap-1">
+                <Ban className="h-3 w-3" />
+                Mode View Only
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
@@ -991,67 +1092,84 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* Add Data Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Tambah Data
-          </CardTitle>
-          <CardDescription>
-            Pilih organik atau mitra untuk ditambahkan ke daftar
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Tambah Organik */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tambah Organik</label>
-              <div className="flex gap-2">
-                <Combobox
-                  options={filteredAvailableOrganik.map(org => ({
-                    value: org.nama,
-                    label: `${org.nama} - ${org.nip}`
-                  }))}
-                  value={selectedOrganik}
-                  onValueChange={setSelectedOrganik}
-                  placeholder="Pilih atau cari organik..."
-                  searchPlaceholder="Cari nama organik..."
-                  emptyMessage="Tidak ada organik tersedia"
-                  onSearchChange={setSearchTermOrganik}
-                />
-                <Button onClick={addOrganik} disabled={!selectedOrganik}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+      {/* Add Data Section - Hanya tampil untuk role yang boleh tagging */}
+      {canUserTag && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Tambah Data
+            </CardTitle>
+            <CardDescription>
+              Pilih organik atau mitra untuk ditambahkan ke daftar
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tambah Organik */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tambah Organik</label>
+                <div className="flex gap-2">
+                  <Combobox
+                    options={filteredAvailableOrganik.map(org => ({
+                      value: org.nama,
+                      label: `${org.nama} - ${org.nip}`
+                    }))}
+                    value={selectedOrganik}
+                    onValueChange={setSelectedOrganik}
+                    placeholder="Pilih atau cari organik..."
+                    searchPlaceholder="Cari nama organik..."
+                    emptyMessage="Tidak ada organik tersedia"
+                    onSearchChange={setSearchTermOrganik}
+                  />
+                  <Button onClick={addOrganik} disabled={!selectedOrganik}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            {/* Tambah Mitra */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tambah Mitra</label>
-              <div className="flex gap-2">
-                <Combobox
-                  options={filteredAvailableMitra.map(mitra => ({
-                    value: mitra.nama,
-                    label: `${mitra.nama} - ${mitra.kecamatan}`
-                  }))}
-                  value={selectedMitra}
-                  onValueChange={setSelectedMitra}
-                  placeholder="Pilih atau cari mitra..."
-                  searchPlaceholder="Cari nama mitra..."
-                  emptyMessage="Tidak ada mitra tersedia"
-                  onSearchChange={setSearchTermMitra}
-                />
-                <Button onClick={addMitra} disabled={!selectedMitra}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
+              {/* Tambah Mitra */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tambah Mitra</label>
+                <div className="flex gap-2">
+                  <Combobox
+                    options={filteredAvailableMitra.map(mitra => ({
+                      value: mitra.nama,
+                      label: `${mitra.nama} - ${mitra.kecamatan}`
+                    }))}
+                    value={selectedMitra}
+                    onValueChange={setSelectedMitra}
+                    placeholder="Pilih atau cari mitra..."
+                    searchPlaceholder="Cari nama mitra..."
+                    emptyMessage="Tidak ada mitra tersedia"
+                    onSearchChange={setSearchTermMitra}
+                  />
+                  <Button onClick={addMitra} disabled={!selectedMitra}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Warning untuk role disabled */}
+      {isUserRoleDisabled && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 text-yellow-800">
+              <Ban className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Akses Terbatas</p>
+                <p className="text-sm">Role <strong>{userRole}</strong> hanya dapat melihat data tanpa dapat melakukan perubahan</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Data Table */}
       <Card>
@@ -1077,7 +1195,8 @@ export default function BlockTanggal() {
                   <TableHead className="min-w-60">Kegiatan</TableHead>
                   <TableHead className="min-w-40">Penanggung Jawab</TableHead>
                   <TableHead className="text-center min-w-20">Jumlah</TableHead>
-                  <TableHead className="text-center min-w-40">Aksi</TableHead>
+                  {/* Kolom Aksi hanya untuk role yang boleh tagging */}
+                  {canUserTag && <TableHead className="text-center min-w-40">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1148,121 +1267,124 @@ export default function BlockTanggal() {
                           {getBlockedDatesCount(data)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Tombol Tambah Tanggal */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button 
-                                      variant="outline" 
-                                      size="icon"
-                                      className="h-8 w-8 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
-                                      onClick={() => openDatePicker(index, false)}
-                                    >
-                                      <Plus className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-4" align="start">
-                                    <div className="space-y-4">
-                                      <div className="text-sm font-medium">Tambah Tanggal untuk {data.nama}</div>
-                                      <CalendarComponent
-                                        mode="multiple"
-                                        selected={selectedDates}
-                                        onSelect={setSelectedDates}
-                                        className="rounded-md border"
-                                        locale={id}
-                                        month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                                        modifiers={{
-                                          blocked: getAllBlockedDates()
-                                        }}
-                                        modifiersStyles={{
-                                          blocked: {
-                                            backgroundColor: '#fef2f2',
-                                            color: '#dc2626',
-                                            fontWeight: 'bold',
-                                            border: '2px solid #dc2626'
-                                          }
-                                        }}
-                                      />
-                                      <Input
-                                        placeholder="Nama kegiatan"
-                                        value={kegiatanInput}
-                                        onChange={(e) => setKegiatanInput(e.target.value)}
-                                      />
-                                      <div className="text-xs text-muted-foreground">
-                                        Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
-                                      </div>
-                                      <Button 
-                                        onClick={saveDates}
-                                        className="w-full bg-green-600 hover:bg-green-700"
-                                        disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
-                                      >
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Simpan Tanggal
-                                      </Button>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Tambah Tanggal</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-
-                          {/* Tombol Edit per Kegiatan - MENGGUNAKAN MODAL BARU */}
-                          {uniqueKegiatan.length > 0 && (
+                      {/* Kolom Aksi hanya untuk role yang boleh tagging */}
+                      {canUserTag && (
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {/* Tombol Tambah Tanggal */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon"
-                                    className="h-8 w-8 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
-                                    onClick={() => {
-                                      // Buka modal untuk pilih kegiatan
-                                      if (uniqueKegiatan.length === 1) {
-                                        // Jika hanya satu kegiatan, langsung buka editor
-                                        openKegiatanEditor(index, uniqueKegiatan[0]);
-                                      } else {
-                                        // Jika multiple, buka popover untuk pilih
-                                        openDatePicker(index, true);
-                                      }
-                                    }}
-                                  >
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon"
+                                        className="h-8 w-8 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
+                                        onClick={() => openDatePicker(index, false)}
+                                      >
+                                        <Plus className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                      <div className="space-y-4">
+                                        <div className="text-sm font-medium">Tambah Tanggal untuk {data.nama}</div>
+                                        <CalendarComponent
+                                          mode="multiple"
+                                          selected={selectedDates}
+                                          onSelect={setSelectedDates}
+                                          className="rounded-md border"
+                                          locale={id}
+                                          month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                                          modifiers={{
+                                            blocked: getAllBlockedDates()
+                                          }}
+                                          modifiersStyles={{
+                                            blocked: {
+                                              backgroundColor: '#fef2f2',
+                                              color: '#dc2626',
+                                              fontWeight: 'bold',
+                                              border: '2px solid #dc2626'
+                                            }
+                                          }}
+                                        />
+                                        <Input
+                                          placeholder="Nama kegiatan"
+                                          value={kegiatanInput}
+                                          onChange={(e) => setKegiatanInput(e.target.value)}
+                                        />
+                                        <div className="text-xs text-muted-foreground">
+                                          Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                        </div>
+                                        <Button 
+                                          onClick={saveDates}
+                                          className="w-full bg-green-600 hover:bg-green-700"
+                                          disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                        >
+                                          <Save className="h-4 w-4 mr-2" />
+                                          Simpan Tanggal
+                                        </Button>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Edit Kegiatan</p>
+                                  <p>Tambah Tanggal</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                          )}
 
-                          {/* Tombol Hapus Data */}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
-                                  onClick={() => requestDeleteData(index)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Hapus Data</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </TableCell>
+                            {/* Tombol Edit per Kegiatan - MENGGUNAKAN MODAL BARU */}
+                            {uniqueKegiatan.length > 0 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon"
+                                      className="h-8 w-8 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
+                                      onClick={() => {
+                                        // Buka modal untuk pilih kegiatan
+                                        if (uniqueKegiatan.length === 1) {
+                                          // Jika hanya satu kegiatan, langsung buka editor
+                                          openKegiatanEditor(index, uniqueKegiatan[0]);
+                                        } else {
+                                          // Jika multiple, buka popover untuk pilih
+                                          openDatePicker(index, true);
+                                        }
+                                      }}
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Edit Kegiatan</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+
+                            {/* Tombol Hapus Data */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
+                                    onClick={() => requestDeleteData(index)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Hapus Data</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
