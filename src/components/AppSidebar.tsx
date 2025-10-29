@@ -36,6 +36,7 @@ const mainMenuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
+  { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
 ];
 
 const spkBastSubItems = [
