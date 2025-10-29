@@ -1342,7 +1342,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="kerangkaAcuanKerjaKAK">Kerangka Acuan Kerja (KAK) (link dokumen)</Label>
+                    <Label htmlFor="kerangkaAcuanKerjaKAK">Link Kerangka Acuan Kerja (KAK)</Label>
                     <Input
                       value={formData.kerangkaAcuanKerjaKAK}
                       onChange={(e) => handleInputChange("kerangkaAcuanKerjaKAK", e.target.value)}
