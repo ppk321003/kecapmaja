@@ -64,6 +64,22 @@ export default function InputPengadaan() {
   
   const { toast } = useToast();
 
+  // Get user role from localStorage
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  useEffect(() => {
+    const userData = localStorage.getItem('simaja_user');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
+  }, []);
+
+  const canEdit = () => {
+    if (!currentUser) return false;
+    const allowedRoles = ['Pejabat Pembuat Komitmen', 'Bendahara', 'Pejabat Pengadaan'];
+    return allowedRoles.includes(currentUser.role);
+  };
+
   const [formData, setFormData] = useState({
     tanggalUsulan: new Date(),
     namaProdukBarangJasa: "",
@@ -265,6 +281,16 @@ export default function InputPengadaan() {
     try {
       setSaving(true);
 
+      // Check if user has permission to edit
+      if (!canEdit()) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Role Anda tidak memiliki izin untuk menambah data pengadaan",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const validationError = validateForm(isUsulanOnly);
       if (validationError) {
         toast({
@@ -392,6 +418,16 @@ export default function InputPengadaan() {
   };
 
   const editData = (data: PengadaanData) => {
+    // Check if user has permission to edit
+    if (!canEdit()) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Role Anda tidak memiliki izin untuk mengedit data pengadaan",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingData(data);
     setFormData({
       tanggalUsulan: new Date(data.tanggalUsulan || new Date()),
@@ -417,10 +453,19 @@ export default function InputPengadaan() {
     setShowForm(true);
   };
 
-  // FUNGSI UPDATE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
   const updateData = async () => {
     try {
       setSaving(true);
+
+      // Check if user has permission to edit
+      if (!canEdit()) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Role Anda tidak memiliki izin untuk mengedit data pengadaan",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const validationError = validateForm(false);
       if (validationError) {
@@ -529,10 +574,19 @@ export default function InputPengadaan() {
     }
   };
 
-  // FUNGSI DELETE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
   const deleteData = async (data: PengadaanData) => {
     try {
       setSaving(true);
+
+      // Check if user has permission to delete
+      if (!canEdit()) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Role Anda tidak memiliki izin untuk menghapus data pengadaan",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Get all data to find the correct row
       const allData = await getAllData();
@@ -583,6 +637,16 @@ export default function InputPengadaan() {
   };
 
   const confirmDelete = (data: PengadaanData) => {
+    // Check if user has permission to delete
+    if (!canEdit()) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Role Anda tidak memiliki izin untuk menghapus data pengadaan",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDataToDelete(data);
     setDeleteDialogOpen(true);
   };
@@ -707,6 +771,12 @@ export default function InputPengadaan() {
           </h1>
           <p className="text-muted-foreground mt-2">
             Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
+            {currentUser && (
+              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
+                Login sebagai: {currentUser.role}
+                {!canEdit() && " (Read Only)"}
+              </span>
+            )}
           </p>
         </div>
         <Button 
@@ -777,14 +847,35 @@ export default function InputPengadaan() {
                 </div>
                 <div className="space-y-2 flex items-end">
                   <Button 
-                    onClick={() => setShowForm(true)} 
+                    onClick={() => {
+                      if (!canEdit()) {
+                        toast({
+                          title: "Akses Ditolak",
+                          description: `Role ${currentUser?.role} tidak memiliki izin untuk menambah data pengadaan`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setShowForm(true);
+                    }} 
                     className="flex items-center gap-2 w-full"
+                    disabled={!canEdit()}
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Pengadaan
+                    {!canEdit() && " (Read Only)"}
                   </Button>
                 </div>
               </div>
+              {!canEdit() && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-yellow-800 text-sm">
+                    <strong>Info:</strong> Anda login sebagai <strong>{currentUser?.role}</strong>. 
+                    Role ini hanya dapat melihat data pengadaan. Untuk menambah/mengedit/hapus data, 
+                    hubungi PPK, Bendahara, atau Pejabat Pengadaan.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -869,24 +960,28 @@ export default function InputPengadaan() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => editData(item)}
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                title="Edit Data"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => confirmDelete(item)}
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Hapus Data"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {canEdit() && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => editData(item)}
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    title="Edit Data"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => confirmDelete(item)}
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Hapus Data"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -910,13 +1005,15 @@ export default function InputPengadaan() {
                           ? `Tidak ada hasil untuk pencarian "${searchTerm}"` 
                           : "Spreadsheet kosong. Tambah data pertama untuk memulai."}
                       </p>
-                      <Button 
-                        onClick={() => setShowForm(true)} 
-                        className="mt-4 flex items-center gap-2 mx-auto"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Tambah Data Pertama
-                      </Button>
+                      {canEdit() && (
+                        <Button 
+                          onClick={() => setShowForm(true)} 
+                          className="mt-4 flex items-center gap-2 mx-auto"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Tambah Data Pertama
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -1390,10 +1487,10 @@ export default function InputPengadaan() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Data Dialog */}
+      {/* View Data Dialog - SIMPLIFIED VERSION */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg p-6 -m-6 mb-6">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
             <DialogTitle className="flex items-center gap-2 text-white text-xl">
               <Eye className="h-6 w-6" />
               Detail Data Pengadaan
@@ -1405,7 +1502,7 @@ export default function InputPengadaan() {
           
           {dataToView && (
             <div className="space-y-6">
-              {/* Informasi Utama */}
+              {/* Header Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="text-center">
                   <div className="text-sm text-blue-600 font-semibold">ID Pengadaan</div>
@@ -1424,69 +1521,63 @@ export default function InputPengadaan() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Kolom 1 - Data Usulan */}
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardHeader className="bg-blue-50 pb-3">
-                    <CardTitle className="text-blue-700 text-lg flex items-center gap-2">
+                {/* Basic Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
                       <BookOpen className="h-5 w-5" />
-                      Data Usulan
+                      Informasi Dasar
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Tanggal Usulan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalUsulan)}</div>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Tanggal Usulan</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{formatDate(dataToView.tanggalUsulan)}</div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nama Produk Barang/Jasa</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaProdukBarangJasa}</div>
+                    <div>
+                      <Label className="text-sm font-medium">Nama Produk Barang/Jasa</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.namaProdukBarangJasa}</div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Jenis Pengadaan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisPengadaan}</div>
+                    <div>
+                      <Label className="text-sm font-medium">Jenis Pengadaan</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.jenisPengadaan}</div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nama Kegiatan/Detil POK</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaKegiatanDetilPOK}</div>
+                    <div>
+                      <Label className="text-sm font-medium">Nama Kegiatan/Detil POK</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.namaKegiatanDetilPOK}</div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Kode POK</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border font-mono">{dataToView.kodePOK}</div>
+                    <div>
+                      <Label className="text-sm font-medium">Kode POK</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm font-mono">{dataToView.kodePOK}</div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Kolom 2 - Anggaran */}
-                <Card className="border-l-4 border-l-green-500">
-                  <CardHeader className="bg-green-50 pb-3">
-                    <CardTitle className="text-green-700 text-lg flex items-center gap-2">
+                {/* Financial Information */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
-                      Informasi Anggaran
+                      Informasi Keuangan
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Rencana Anggaran (RAB)</Label>
-                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium">Rencana Anggaran (RAB)</Label>
+                      <div className="mt-1 p-2 bg-green-50 rounded-md border text-sm font-bold text-green-800">
                         {formatCurrency(dataToView.rencanaAnggaranRAB)}
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label className="font-semibold text-sm">Nilai Realisasi</Label>
-                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
+                    <div>
+                      <Label className="text-sm font-medium">Nilai Realisasi</Label>
+                      <div className="mt-1 p-2 bg-green-50 rounded-md border text-sm font-bold text-green-800">
                         {formatCurrency(dataToView.nilaiRealisasi)}
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-sm text-blue-600">Selisih</div>
-                        <div className={`text-lg font-bold ${
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2 bg-blue-50 rounded border">
+                        <div className="text-xs text-blue-600">Selisih</div>
+                        <div className={`text-sm font-bold ${
                           parseInt(dataToView.nilaiRealisasi || "0") > parseInt(dataToView.rencanaAnggaranRAB || "0") 
                             ? "text-red-600" 
                             : "text-green-600"
@@ -1496,9 +1587,9 @@ export default function InputPengadaan() {
                           )}
                         </div>
                       </div>
-                      <div className="text-center p-3 bg-purple-50 rounded-lg">
-                        <div className="text-sm text-purple-600">Efisiensi</div>
-                        <div className="text-lg font-bold text-purple-600">
+                      <div className="text-center p-2 bg-purple-50 rounded border">
+                        <div className="text-xs text-purple-600">Efisiensi</div>
+                        <div className="text-sm font-bold text-purple-600">
                           {((parseInt(dataToView.rencanaAnggaranRAB || "0") - parseInt(dataToView.nilaiRealisasi || "0")) / parseInt(dataToView.rencanaAnggaranRAB || "1") * 100).toFixed(1)}%
                         </div>
                       </div>
@@ -1506,75 +1597,66 @@ export default function InputPengadaan() {
                   </CardContent>
                 </Card>
 
-                {/* Kolom 3 - Dokumen */}
-                <Card className="border-l-4 border-l-orange-500 md:col-span-2">
-                  <CardHeader className="bg-orange-50 pb-3">
-                    <CardTitle className="text-orange-700 text-lg flex items-center gap-2">
+                {/* Dokumen dan Realisasi */}
+                <Card className="md:col-span-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      Dokumen dan Realisasi
+                      Dokumen & Realisasi
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Form Permintaan (FP)</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.formPermintaanFP || '-'}</div>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-sm font-medium">Form Permintaan (FP)</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.formPermintaanFP || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Kerangka Acuan Kerja (KAK)</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Kerangka Acuan Kerja (KAK)</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Jenis Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisDokumenPengadaan || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Jenis Dokumen Pengadaan</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.jenisDokumenPengadaan || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nomor Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorDokumenPengadaan || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Nomor Dokumen Pengadaan</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.nomorDokumenPengadaan || '-'}</div>
                         </div>
                       </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Tanggal Dokumen Pengadaan</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-sm font-medium">Tanggal Dokumen Pengadaan</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nama Penyedia / Mitra</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaPenyediaMitra || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Nama Penyedia / Mitra</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.namaPenyediaMitra || '-'}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Link E-Purchasing / E-Katalog</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border break-words">
-                            {dataToView.linkEPurchasingEKatalog ? (
-                              <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                {dataToView.linkEPurchasingEKatalog}
-                              </a>
-                            ) : '-'}
-                          </div>
+                        <div>
+                          <Label className="text-sm font-medium">Tanggal Pembayaran</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{formatDate(dataToView.tanggalPembayaran)}</div>
                         </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Tanggal Pembayaran</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalPembayaran)}</div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="font-semibold text-sm">Nomor Bukti Pembayaran</Label>
-                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                        <div>
+                          <Label className="text-sm font-medium">Nomor Bukti Pembayaran</Label>
+                          <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm">{dataToView.nomorBuktiPembayaran || '-'}</div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="mt-4 space-y-2">
-                      <Label className="font-semibold text-sm">Keterangan / Catatan</Label>
-                      <div className="p-3 bg-gray-50 rounded-md border min-h-[80px]">
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Link E-Purchasing / E-Katalog</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm break-words">
+                        {dataToView.linkEPurchasingEKatalog ? (
+                          <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {dataToView.linkEPurchasingEKatalog}
+                          </a>
+                        ) : '-'}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Keterangan / Catatan</Label>
+                      <div className="mt-1 p-2 bg-gray-50 rounded-md border text-sm min-h-[60px]">
                         {dataToView.keteranganCatatan || '-'}
                       </div>
                     </div>
