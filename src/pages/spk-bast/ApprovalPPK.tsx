@@ -18,8 +18,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PengadaanData {
-  id: string;
   no: number;
+  id: string;
   tanggalUsulan: string;
   namaProdukBarangJasa: string;
   jenisPengadaan: string;
@@ -124,7 +124,7 @@ export default function InputPengadaan() {
     { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
 
-  // Load data dari spreadsheet
+  // Load data dari spreadsheet - DIPERBAIKI
   const loadPengadaanData = async () => {
     try {
       setLoading(true);
@@ -134,7 +134,7 @@ export default function InputPengadaan() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:U"
+          range: "Sheet1!A:U" // Sesuai dengan jumlah kolom header
         },
       });
 
@@ -146,43 +146,51 @@ export default function InputPengadaan() {
       console.log('Raw data from function:', data);
 
       const rows = data.values || [];
-      console.log('Processed rows:', rows);
+      console.log('Total rows:', rows.length);
       
       if (rows.length > 0) {
         const headers = rows[0];
-        console.log('Headers:', headers);
+        console.log('Headers from spreadsheet:', headers);
         
+        // Pastikan headers sesuai
+        const expectedHeaders = [
+          "No", "id", "Tanggal Usulan", "Nama Produk Barang/Jasa", "Jenis Pengadaan",
+          "Nama Kegiatan/Detil POK", "Kode POK", "Rencana Anggaran (RAB)", "Nilai Realisasi",
+          "Form Permintaan (FP)", "Kerangka Acuan Kerja (KAK)", "Jenis Dokumen Pengadaan",
+          "Nomor Dokumen Pengadaan", "Tanggal Dokumen Pengadaan", "Nama Penyedia / Mitra",
+          "Link E-Purchasing / E-Katalog", "Tanggal Pembayaran", "Nomor Bukti Pembayaran",
+          "Status Pengadaan", "Keterangan / Catatan", "Tahun Anggaran"
+        ];
+
+        console.log('Expected headers:', expectedHeaders);
+        console.log('Actual headers match:', JSON.stringify(headers) === JSON.stringify(expectedHeaders));
+
         const dataRows = rows.slice(1)
           .filter((row: any[]) => row && row.length > 0)
           .map((row: any[], index: number) => {
-            const rowData: any = {};
-            headers.forEach((header: string, colIndex: number) => {
-              rowData[header] = row[colIndex] || "";
-            });
-            
-            // Map to our interface with proper fallbacks
+            // Mapping berdasarkan urutan header yang sesuai
             return {
-              id: rowData.id || rowData.ID || `PGD-${index + 1}`,
-              no: parseInt(rowData.no || rowData.No || (index + 1)),
-              tanggalUsulan: rowData.tanggalUsulan || rowData["Tanggal Usulan"] || "",
-              namaProdukBarangJasa: rowData.namaProdukBarangJasa || rowData["Nama Produk Barang/Jasa"] || "",
-              jenisPengadaan: rowData.jenisPengadaan || rowData["Jenis Pengadaan"] || "",
-              namaKegiatanDetilPOK: rowData.namaKegiatanDetilPOK || rowData["Nama Kegiatan/Detil POK"] || "",
-              kodePOK: rowData.kodePOK || rowData["Kode POK"] || "",
-              rencanaAnggaranRAB: rowData.rencanaAnggaranRAB || rowData["Rencana Anggaran (RAB)"] || "",
-              nilaiRealisasi: rowData.nilaiRealisasi || rowData["Nilai Realisasi"] || "",
-              formPermintaanFP: rowData.formPermintaanFP || rowData["Form Permintaan (FP)"] || "",
-              kerangkaAcuanKerjaKAK: rowData.kerangkaAcuanKerjaKAK || rowData["Kerangka Acuan Kerja (KAK)"] || "",
-              jenisDokumenPengadaan: rowData.jenisDokumenPengadaan || rowData["Jenis Dokumen Pengadaan"] || "",
-              nomorDokumenPengadaan: rowData.nomorDokumenPengadaan || rowData["Nomor Dokumen Pengadaan"] || "",
-              tanggalDokumenPengadaan: rowData.tanggalDokumenPengadaan || rowData["Tanggal Dokumen Pengadaan"] || "",
-              namaPenyediaMitra: rowData.namaPenyediaMitra || rowData["Nama Penyedia / Mitra"] || "",
-              linkEPurchasingEKatalog: rowData.linkEPurchasingEKatalog || rowData["Link E-Purchasing / E-Katalog"] || "",
-              tanggalPembayaran: rowData.tanggalPembayaran || rowData["Tanggal Pembayaran"] || "",
-              nomorBuktiPembayaran: rowData.nomorBuktiPembayaran || rowData["Nomor Bukti Pembayaran"] || "",
-              statusPengadaan: rowData.statusPengadaan || rowData["Status Pengadaan"] || "Draft",
-              keteranganCatatan: rowData.keteranganCatatan || rowData["Keterangan / Catatan"] || "",
-              tahunAnggaran: rowData.tahunAnggaran || rowData["Tahun Anggaran"] || new Date().getFullYear().toString()
+              no: parseInt(row[0]) || index + 1,
+              id: row[1] || `PGD-${index + 1}`,
+              tanggalUsulan: row[2] || "",
+              namaProdukBarangJasa: row[3] || "",
+              jenisPengadaan: row[4] || "",
+              namaKegiatanDetilPOK: row[5] || "",
+              kodePOK: row[6] || "",
+              rencanaAnggaranRAB: row[7] || "",
+              nilaiRealisasi: row[8] || "",
+              formPermintaanFP: row[9] || "",
+              kerangkaAcuanKerjaKAK: row[10] || "",
+              jenisDokumenPengadaan: row[11] || "",
+              nomorDokumenPengadaan: row[12] || "",
+              tanggalDokumenPengadaan: row[13] || "",
+              namaPenyediaMitra: row[14] || "",
+              linkEPurchasingEKatalog: row[15] || "",
+              tanggalPembayaran: row[16] || "",
+              nomorBuktiPembayaran: row[17] || "",
+              statusPengadaan: row[18] || "Draft",
+              keteranganCatatan: row[19] || "",
+              tahunAnggaran: row[20] || new Date().getFullYear().toString()
             } as PengadaanData;
           });
           
@@ -255,6 +263,7 @@ export default function InputPengadaan() {
     return null;
   };
 
+  // Simpan data - DIPERBAIKI sesuai urutan header
   const simpanData = async (isUsulanOnly: boolean = false) => {
     try {
       setSaving(true);
@@ -276,32 +285,49 @@ export default function InputPengadaan() {
       
       const nextNo = getNextNumber();
       
-      // Siapkan data untuk spreadsheet - sesuai urutan kolom
+      // Siapkan data SESUAI URUTAN HEADER
       const dataToSave = [
-        nextNo.toString(), // No
-        idPengadaan, // ID
-        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
-        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
-        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
-        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
-        formData.kodePOK, // Kode POK
-        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
-        isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
-        isUsulanOnly ? "" : formData.formPermintaanFP, // Form Permintaan (FP)
-        isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
-        isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan), // Jenis Dokumen Pengadaan
-        isUsulanOnly ? "" : formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
-        isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""), // Tanggal Dokumen Pengadaan
-        isUsulanOnly ? "" : formData.namaPenyediaMitra, // Nama Penyedia / Mitra
-        isUsulanOnly ? "" : formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
-        isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""), // Tanggal Pembayaran
-        isUsulanOnly ? "" : formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
-        isUsulanOnly ? "Usulan" : (STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft"), // Status Pengadaan
-        isUsulanOnly ? "" : formData.keteranganCatatan, // Keterangan / Catatan
-        formData.tahunAnggaran // Tahun Anggaran
+        nextNo.toString(), // No (0)
+        idPengadaan, // id (1)
+        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan (2)
+        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa (3)
+        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan (4)
+        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK (5)
+        formData.kodePOK, // Kode POK (6)
+        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB) (7)
+        isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi (8)
+        isUsulanOnly ? "" : formData.formPermintaanFP, // Form Permintaan (FP) (9)
+        isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK) (10)
+        isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan), // Jenis Dokumen Pengadaan (11)
+        isUsulanOnly ? "" : formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan (12)
+        isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""), // Tanggal Dokumen Pengadaan (13)
+        isUsulanOnly ? "" : formData.namaPenyediaMitra, // Nama Penyedia / Mitra (14)
+        isUsulanOnly ? "" : formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog (15)
+        isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""), // Tanggal Pembayaran (16)
+        isUsulanOnly ? "" : formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran (17)
+        isUsulanOnly ? "Usulan" : (STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft"), // Status Pengadaan (18)
+        isUsulanOnly ? "" : formData.keteranganCatatan, // Keterangan / Catatan (19)
+        formData.tahunAnggaran // Tahun Anggaran (20)
       ];
 
+      console.log('Data to save (length):', dataToSave.length);
       console.log('Data to save:', dataToSave);
+
+      // Test connection dulu
+      console.log('Testing connection before save...');
+      const testResult = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1!A1:A1"
+        },
+      });
+
+      if (testResult.error) {
+        throw new Error(`Connection test failed: ${testResult.error.message}`);
+      }
+
+      console.log('Connection test successful, proceeding with save...');
 
       // Simpan ke spreadsheet
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -418,7 +444,7 @@ export default function InputPengadaan() {
   const totalRealisasi = filteredData.reduce((sum, item) => {
     const value = parseInt(item.nilaiRealisasi || "0");
     return isNaN(value) ? sum : sum + value;
-  }, 0);
+  }, 0 );
 
   return (
     <div className="space-y-6">
@@ -584,7 +610,7 @@ export default function InputPengadaan() {
           </Card>
         </>
       ) : (
-        /* TAMPILAN FORM INPUT */
+        /* TAMPILAN FORM INPUT - SAMA DENGAN SEBELUMNYA */
         <>
           <Card>
             <CardContent className="pt-6">
