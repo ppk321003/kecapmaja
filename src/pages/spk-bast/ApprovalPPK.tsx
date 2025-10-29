@@ -55,7 +55,6 @@ export default function InputPengadaan() {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    // Tahap 1: Data Usulan
     tanggalUsulan: new Date(),
     namaProdukBarangJasa: "",
     jenisPengadaan: "",
@@ -63,8 +62,6 @@ export default function InputPengadaan() {
     kodePOK: "",
     rencanaAnggaranRAB: "",
     tahunAnggaran: new Date().getFullYear().toString(),
-    
-    // Tahap 2: Dokumen & Pelaksanaan
     formPermintaanFP: "",
     kerangkaAcuanKerjaKAK: "",
     jenisDokumenPengadaan: "",
@@ -72,8 +69,6 @@ export default function InputPengadaan() {
     tanggalDokumenPengadaan: null as Date | null,
     namaPenyediaMitra: "",
     linkEPurchasingEKatalog: "",
-    
-    // Tahap 3: Realisasi & Penyelesaian
     nilaiRealisasi: "",
     tanggalPembayaran: null as Date | null,
     nomorBuktiPembayaran: "",
@@ -129,67 +124,72 @@ export default function InputPengadaan() {
     { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
 
-  // Test connection to Google Sheets function - DIPERBAIKI
-  const testConnection = async () => {
-    try {
-      console.log('Testing Google Sheets connection...');
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "test", // Operation test untuk testing connection
-        },
-      });
-
-      if (error) {
-        console.error('Connection test failed:', error);
-        throw error;
-      }
-
-      console.log('Connection test successful:', data);
-      return true;
-    } catch (error: any) {
-      console.error('Connection test error:', error);
-      throw error;
-    }
-  };
-
-  // Load data dari spreadsheet - DIPERBAIKI
+  // Load data dari spreadsheet
   const loadPengadaanData = async () => {
     try {
       setLoading(true);
       
-      // Test connection first
-      await testConnection();
-      
+      console.log('Loading pengadaan data...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:U", // Range yang lebih spesifik
+          range: "Sheet1!A:U"
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error invoking function:', error);
+        throw error;
+      }
+
+      console.log('Raw data from function:', data);
 
       const rows = data.values || [];
-      console.log('Data loaded from spreadsheet:', rows);
+      console.log('Processed rows:', rows);
       
       if (rows.length > 0) {
         const headers = rows[0];
+        console.log('Headers:', headers);
+        
         const dataRows = rows.slice(1)
-          .filter((row: any[]) => row && row.length > 0) // Filter baris kosong
+          .filter((row: any[]) => row && row.length > 0)
           .map((row: any[], index: number) => {
             const rowData: any = {};
             headers.forEach((header: string, colIndex: number) => {
               rowData[header] = row[colIndex] || "";
             });
+            
+            // Map to our interface with proper fallbacks
             return {
-              ...rowData,
-              no: index + 1
-            };
+              id: rowData.id || rowData.ID || `PGD-${index + 1}`,
+              no: parseInt(rowData.no || rowData.No || (index + 1)),
+              tanggalUsulan: rowData.tanggalUsulan || rowData["Tanggal Usulan"] || "",
+              namaProdukBarangJasa: rowData.namaProdukBarangJasa || rowData["Nama Produk Barang/Jasa"] || "",
+              jenisPengadaan: rowData.jenisPengadaan || rowData["Jenis Pengadaan"] || "",
+              namaKegiatanDetilPOK: rowData.namaKegiatanDetilPOK || rowData["Nama Kegiatan/Detil POK"] || "",
+              kodePOK: rowData.kodePOK || rowData["Kode POK"] || "",
+              rencanaAnggaranRAB: rowData.rencanaAnggaranRAB || rowData["Rencana Anggaran (RAB)"] || "",
+              nilaiRealisasi: rowData.nilaiRealisasi || rowData["Nilai Realisasi"] || "",
+              formPermintaanFP: rowData.formPermintaanFP || rowData["Form Permintaan (FP)"] || "",
+              kerangkaAcuanKerjaKAK: rowData.kerangkaAcuanKerjaKAK || rowData["Kerangka Acuan Kerja (KAK)"] || "",
+              jenisDokumenPengadaan: rowData.jenisDokumenPengadaan || rowData["Jenis Dokumen Pengadaan"] || "",
+              nomorDokumenPengadaan: rowData.nomorDokumenPengadaan || rowData["Nomor Dokumen Pengadaan"] || "",
+              tanggalDokumenPengadaan: rowData.tanggalDokumenPengadaan || rowData["Tanggal Dokumen Pengadaan"] || "",
+              namaPenyediaMitra: rowData.namaPenyediaMitra || rowData["Nama Penyedia / Mitra"] || "",
+              linkEPurchasingEKatalog: rowData.linkEPurchasingEKatalog || rowData["Link E-Purchasing / E-Katalog"] || "",
+              tanggalPembayaran: rowData.tanggalPembayaran || rowData["Tanggal Pembayaran"] || "",
+              nomorBuktiPembayaran: rowData.nomorBuktiPembayaran || rowData["Nomor Bukti Pembayaran"] || "",
+              statusPengadaan: rowData.statusPengadaan || rowData["Status Pengadaan"] || "Draft",
+              keteranganCatatan: rowData.keteranganCatatan || rowData["Keterangan / Catatan"] || "",
+              tahunAnggaran: rowData.tahunAnggaran || rowData["Tahun Anggaran"] || new Date().getFullYear().toString()
+            } as PengadaanData;
           });
+          
+        console.log('Mapped data rows:', dataRows);
         setPengadaanData(dataRows);
       } else {
+        console.log('No data found in spreadsheet');
         setPengadaanData([]);
       }
     } catch (error: any) {
@@ -224,7 +224,6 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
-  // Fungsi untuk mendapatkan nomor urut berikutnya - DIPERBAIKI
   const getNextNumber = () => {
     if (pengadaanData.length === 0) return 1;
     const numbers = pengadaanData.map(item => item.no).filter(no => !isNaN(no));
@@ -233,38 +232,33 @@ export default function InputPengadaan() {
     return maxNo + 1;
   };
 
-  // Validasi form - DITAMBAHKAN
-  const validateForm = (isUsulanOnly: boolean = false) => {
+  const validateForm = (isUsulanOnly: boolean = false): string | null => {
     const requiredFields = [
       'namaProdukBarangJasa',
       'jenisPengadaan', 
       'namaKegiatanDetilPOK',
-      'kodePOK',
-      'rencanaAnggaranRAB'
+      'kodePOK'
     ];
 
     for (const field of requiredFields) {
       if (!formData[field as keyof typeof formData]) {
-        return `Field ${field} harus diisi`;
-      }
-    }
-
-    if (!isUsulanOnly) {
-      // Validasi tambahan untuk data lengkap
-      if (formData.nilaiRealisasi && !formData.tanggalPembayaran) {
-        return "Tanggal pembayaran harus diisi jika nilai realisasi diisi";
+        const fieldNames: { [key: string]: string } = {
+          'namaProdukBarangJasa': 'Nama Produk Barang/Jasa',
+          'jenisPengadaan': 'Jenis Pengadaan',
+          'namaKegiatanDetilPOK': 'Nama Kegiatan/Detil POK',
+          'kodePOK': 'Kode POK'
+        };
+        return `${fieldNames[field]} harus diisi`;
       }
     }
 
     return null;
   };
 
-  // Simpan data ke spreadsheet - DIPERBAIKI
   const simpanData = async (isUsulanOnly: boolean = false) => {
     try {
       setSaving(true);
 
-      // Validasi data wajib - DIPERBAIKI
       const validationError = validateForm(isUsulanOnly);
       if (validationError) {
         toast({
@@ -275,56 +269,53 @@ export default function InputPengadaan() {
         return;
       }
 
-      // Test connection sebelum simpan
-      await testConnection();
-
-      // Generate ID Pengadaan otomatis - DIPERBAIKI
+      // Generate ID Pengadaan
       const timestamp = new Date().getTime().toString(36);
       const randomStr = Math.random().toString(36).substr(2, 4).toUpperCase();
       const idPengadaan = `PGD-${formData.tahunAnggaran}-${timestamp}-${randomStr}`;
       
       const nextNo = getNextNumber();
       
-      // Siapkan data sesuai urutan header spreadsheet - DIPERBAIKI
-      const dataToSave = {
-        no: nextNo.toString(),
-        id: idPengadaan,
-        tanggalUsulan: format(formData.tanggalUsulan, 'yyyy-MM-dd'),
-        namaProdukBarangJasa: formData.namaProdukBarangJasa,
-        jenisPengadaan: JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
-        namaKegiatanDetilPOK: formData.namaKegiatanDetilPOK,
-        kodePOK: formData.kodePOK,
-        rencanaAnggaranRAB: parseRupiah(formData.rencanaAnggaranRAB),
-        nilaiRealisasi: isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi),
-        formPermintaanFP: isUsulanOnly ? "" : formData.formPermintaanFP,
-        kerangkaAcuanKerjaKAK: isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK,
-        jenisDokumenPengadaan: isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan),
-        nomorDokumenPengadaan: isUsulanOnly ? "" : formData.nomorDokumenPengadaan,
-        tanggalDokumenPengadaan: isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""),
-        namaPenyediaMitra: isUsulanOnly ? "" : formData.namaPenyediaMitra,
-        linkEPurchasingEKatalog: isUsulanOnly ? "" : formData.linkEPurchasingEKatalog,
-        tanggalPembayaran: isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""),
-        nomorBuktiPembayaran: isUsulanOnly ? "" : formData.nomorBuktiPembayaran,
-        statusPengadaan: isUsulanOnly ? "Usulan" : (STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft"),
-        keteranganCatatan: isUsulanOnly ? "" : formData.keteranganCatatan,
-        tahunAnggaran: formData.tahunAnggaran
-      };
+      // Siapkan data untuk spreadsheet - sesuai urutan kolom
+      const dataToSave = [
+        nextNo.toString(), // No
+        idPengadaan, // ID
+        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
+        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
+        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
+        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
+        formData.kodePOK, // Kode POK
+        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
+        isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
+        isUsulanOnly ? "" : formData.formPermintaanFP, // Form Permintaan (FP)
+        isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
+        isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan), // Jenis Dokumen Pengadaan
+        isUsulanOnly ? "" : formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
+        isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""), // Tanggal Dokumen Pengadaan
+        isUsulanOnly ? "" : formData.namaPenyediaMitra, // Nama Penyedia / Mitra
+        isUsulanOnly ? "" : formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
+        isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""), // Tanggal Pembayaran
+        isUsulanOnly ? "" : formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
+        isUsulanOnly ? "Usulan" : (STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft"), // Status Pengadaan
+        isUsulanOnly ? "" : formData.keteranganCatatan, // Keterangan / Catatan
+        formData.tahunAnggaran // Tahun Anggaran
+      ];
 
       console.log('Data to save:', dataToSave);
 
-      // Simpan ke spreadsheet - DIPERBAIKI
+      // Simpan ke spreadsheet
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "append",
           range: "Sheet1",
-          values: [Object.values(dataToSave)]
+          values: [dataToSave]
         },
       });
 
       if (error) {
         console.error('Error from supabase:', error);
-        throw new Error(`Function error: ${error.message}`);
+        throw error;
       }
 
       console.log('Save response:', data);
@@ -334,7 +325,6 @@ export default function InputPengadaan() {
         description: `Data pengadaan ${idPengadaan} berhasil disimpan`,
       });
 
-      // Reset form dan reload data
       resetForm();
       await loadPengadaanData();
       setShowForm(false);
@@ -344,12 +334,14 @@ export default function InputPengadaan() {
       
       let errorMessage = "Gagal menyimpan data pengadaan";
       
-      if (error.message.includes("Function error")) {
-        errorMessage = "Error dari function server. Periksa konfigurasi Google Sheets API.";
-      } else if (error.message.includes("network") || error.message.includes("fetch")) {
-        errorMessage = "Koneksi jaringan bermasalah. Periksa koneksi internet Anda.";
-      } else if (error.message.includes("500")) {
-        errorMessage = "Server error. Periksa logs Edge Function untuk detail lebih lanjut.";
+      if (error.message?.includes("400")) {
+        errorMessage = "Bad Request - Periksa data yang dikirim";
+      } else if (error.message?.includes("401")) {
+        errorMessage = "Unauthorized - Periksa kredensial Google Sheets";
+      } else if (error.message?.includes("403")) {
+        errorMessage = "Forbidden - Periksa izin akses spreadsheet";
+      } else if (error.message?.includes("404")) {
+        errorMessage = "Spreadsheet tidak ditemukan";
       }
       
       toast({
@@ -404,7 +396,6 @@ export default function InputPengadaan() {
     </div>
   );
 
-  // Filter data berdasarkan bulan dan tahun - DIPERBAIKI
   const filteredData = pengadaanData.filter(item => {
     if (filterTahun !== "all" && item.tahunAnggaran !== filterTahun) return false;
     if (filterBulan !== "all") {
@@ -419,7 +410,6 @@ export default function InputPengadaan() {
     return true;
   });
 
-  // Hitung total RAB dan Realisasi - DIPERBAIKI
   const totalRAB = filteredData.reduce((sum, item) => {
     const value = parseInt(item.rencanaAnggaranRAB || "0");
     return isNaN(value) ? sum : sum + value;
@@ -501,7 +491,6 @@ export default function InputPengadaan() {
                   <Button 
                     onClick={() => setShowForm(true)} 
                     className="flex items-center gap-2"
-                    disabled={saving}
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Pengadaan
@@ -574,7 +563,6 @@ export default function InputPengadaan() {
                           <TableCell>{item.tahunAnggaran || '-'}</TableCell>
                         </TableRow>
                       ))}
-                      {/* Total Row */}
                       {filteredData.length > 0 && (
                         <TableRow className="bg-muted/50 font-bold">
                           <TableCell colSpan={6} className="text-right">TOTAL:</TableCell>
@@ -585,7 +573,7 @@ export default function InputPengadaan() {
                       )}
                     </TableBody>
                   </Table>
-                  {filteredData.length === 0 && (
+                  {filteredData.length === 0 && !loading && (
                     <div className="text-center py-8 text-muted-foreground">
                       Tidak ada data pengadaan ditemukan
                     </div>
