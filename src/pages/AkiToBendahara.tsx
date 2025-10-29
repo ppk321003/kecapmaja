@@ -580,15 +580,6 @@ export default function AkiToBendahara() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Aki to Bendahara</h1>
-          <p className="text-muted-foreground mt-2">
-            Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
-            {currentUser && (
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
-                Login sebagai: {currentUser.role}
-                {!canAccessSpreadsheetAndDownload() && " (Tidak bisa akses spreadsheet/download)"}
-              </span>
-            )}
-          </p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
           <Button 
