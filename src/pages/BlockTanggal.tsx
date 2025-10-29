@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, User, Users, X, CalendarIcon, Building2, MapPin, Edit, Save, Search, Clock, Tag, UserCheck, FileText, Ban } from "lucide-react";
+import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isSameMonth, isSameYear } from "date-fns";
+import { isSameMonth, isSameYear } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Combobox } from "@/components/ui/combobox";
@@ -45,15 +45,6 @@ interface DataRow {
   spreadsheetRowIndex?: number;
 }
 
-// MODAL EDITOR KHUSUS - OPSI B
-interface KegiatanEditorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  data: DataRow;
-  kegiatan: string;
-  onSave: (originalKegiatan: string, updatedKegiatan: string, newDates: Date[]) => void;
-}
-
 const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
 const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -64,155 +55,48 @@ const bulanOptions = [
 
 const tahunOptions = [2024, 2025, 2026];
 
-// Mapping role ke kolom spreadsheet
+// Mapping role ke kolom spreadsheet - DIPERBAIKI
 const ROLE_MAPPING = {
-  'Pejabat Pembuat Komitmen': { kegiatanCol: 5, tanggalCol: 11 }, // Kolom 6 & 12 (index 5 & 11)
-  'Fungsi Neraca': { kegiatanCol: 6, tanggalCol: 12 }, // Kolom 7 & 13
-  'Fungsi Distribusi': { kegiatanCol: 7, tanggalCol: 13 }, // Kolom 8 & 14
-  'Fungsi Produksi': { kegiatanCol: 8, tanggalCol: 14 }, // Kolom 9 & 15
-  'Fungsi Sosial': { kegiatanCol: 9, tanggalCol: 15 }, // Kolom 10 & 16
-  'Fungsi IPDS': { kegiatanCol: 10, tanggalCol: 16 }, // Kolom 11 & 17
+  'Pejabat Pembuat Komitmen': { 
+    kegiatanCol: 5,  // Kolom 6: Kegiatan Pejabat Pembuat Komitmen
+    tanggalCol: 11,  // Kolom 12: Tanggal Pejabat Pembuat Komitmen
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100'
+  },
+  'Fungsi Neraca': { 
+    kegiatanCol: 6,  // Kolom 7: Kegiatan Fungsi Neraca
+    tanggalCol: 12,  // Kolom 13: Tanggal Fungsi Neraca
+    color: 'text-green-600',
+    bgColor: 'bg-green-100'
+  },
+  'Fungsi Distribusi': { 
+    kegiatanCol: 7,  // Kolom 8: Kegiatan Fungsi Distribusi
+    tanggalCol: 13,  // Kolom 14: Tanggal Fungsi Distribusi
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100'
+  },
+  'Fungsi Produksi': { 
+    kegiatanCol: 8,  // Kolom 9: Kegiatan Fungsi Produksi
+    tanggalCol: 14,  // Kolom 15: Tanggal Fungsi Produksi
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100'
+  },
+  'Fungsi Sosial': { 
+    kegiatanCol: 9,  // Kolom 10: Kegiatan Fungsi Sosial
+    tanggalCol: 15,  // Kolom 16: Tanggal Fungsi Sosial
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-100'
+  },
+  'Fungsi IPDS': { 
+    kegiatanCol: 10, // Kolom 11: Kegiatan Fungsi IPDS
+    tanggalCol: 16,  // Kolom 17: Tanggal Fungsi IPDS
+    color: 'text-teal-600',
+    bgColor: 'bg-teal-100'
+  },
 };
 
 const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
 const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
-
-// KOMPONEN MODAL EDITOR KHUSUS
-function KegiatanEditor({ isOpen, onClose, data, kegiatan, onSave }: KegiatanEditorProps) {
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [kegiatanInput, setKegiatanInput] = useState(kegiatan);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const { toast } = useToast();
-
-  const bulan = new Date().toLocaleString('id-ID', { month: 'long' });
-  const tahun = new Date().getFullYear();
-
-  useEffect(() => {
-    if (isOpen) {
-      // Load existing dates for this kegiatan
-      const monthIndex = bulanOptions.indexOf(bulan);
-      const datesForKegiatan = Object.keys(data.blocks)
-        .filter(tanggal => data.blocks[tanggal] === kegiatan)
-        .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)));
-      
-      setSelectedDates(datesForKegiatan);
-      setKegiatanInput(kegiatan);
-    }
-  }, [isOpen, data, kegiatan, bulan, tahun]);
-
-  const isDateInSelectedMonth = (date: Date) => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    return isSameMonth(date, new Date(tahun, monthIndex)) && 
-           isSameYear(date, new Date(tahun, monthIndex));
-  };
-
-  const handleSave = () => {
-    setShowConfirmDialog(true);
-  };
-
-  const confirmSave = () => {
-    const filteredDates = selectedDates.filter(isDateInSelectedMonth);
-    
-    if (filteredDates.length === 0) {
-      toast({
-        title: "Error",
-        description: "Pilih minimal satu tanggal dalam bulan " + bulan,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!kegiatanInput.trim()) {
-      toast({
-        title: "Error",
-        description: "Masukkan nama kegiatan",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onSave(kegiatan, kegiatanInput, filteredDates);
-    setShowConfirmDialog(false);
-    onClose();
-  };
-
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />
-              Edit Kegiatan - {data.nama}
-            </DialogTitle>
-            <DialogDescription>
-              Edit tanggal dan nama kegiatan untuk {kegiatan}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Nama Kegiatan</label>
-              <Input
-                value={kegiatanInput}
-                onChange={(e) => setKegiatanInput(e.target.value)}
-                placeholder="Masukkan nama kegiatan"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Pilih Tanggal</label>
-              <div className="border rounded-lg mt-1">
-                <CalendarComponent
-                  mode="multiple"
-                  selected={selectedDates}
-                  onSelect={setSelectedDates}
-                  className="rounded-md"
-                  locale={id}
-                  month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              Batal
-            </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Simpan Perubahan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Konfirmasi Perubahan</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menyimpan perubahan pada kegiatan ini?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Batal
-            </Button>
-            <Button onClick={confirmSave}>
-              Ya, Simpan Perubahan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
@@ -228,7 +112,6 @@ export default function BlockTanggal() {
   const [kegiatanInput, setKegiatanInput] = useState("");
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteDataDialog, setShowDeleteDataDialog] = useState(false);
   const [dataToDelete, setDataToDelete] = useState<number | null>(null);
   const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
@@ -237,10 +120,6 @@ export default function BlockTanggal() {
   const [searchTermOrganik, setSearchTermOrganik] = useState("");
   const [editingKegiatan, setEditingKegiatan] = useState<string>("");
   
-  // STATE BARU UNTUK MODAL EDITOR
-  const [showKegiatanEditor, setShowKegiatanEditor] = useState(false);
-  const [selectedKegiatanData, setSelectedKegiatanData] = useState<{data: DataRow, kegiatan: string} | null>(null);
-
   const { toast } = useToast();
 
   // Fungsi untuk mengecek apakah user boleh melakukan tagging
@@ -253,16 +132,18 @@ export default function BlockTanggal() {
     return DISABLED_ROLES.includes(userRole);
   }, [userRole]);
 
-  // PERBAIKAN 1: Ambil data user dari localStorage yang benar
+  // Fungsi untuk mengecek apakah user boleh edit data tertentu
+  const canUserEditData = (data: DataRow): boolean => {
+    if (!canUserTag) return false;
+    const penanggungJawabList = data.penanggungJawab.split(',').map(pj => pj.trim());
+    return penanggungJawabList.includes(userRole);
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("simaja_user");
     if (userData) {
       const user = JSON.parse(userData);
       setUserRole(user.role || "User");
-      console.log('👤 User role loaded:', user.role);
-    } else {
-      console.log('⚠️ No user data found in localStorage');
-      setUserRole("User");
     }
     loadMasterMitra();
     loadMasterOrganik();
@@ -345,58 +226,88 @@ export default function BlockTanggal() {
       if (error) throw error;
 
       const rows = data.values || [];
+      console.log("📊 Data loaded from spreadsheet:", rows.length, "rows");
+      
+      // Filter data berdasarkan bulan dan tahun
       const currentData = rows.filter((row: any[]) => 
         row[1] === tahun.toString() && row[2] === bulan
       );
 
+      console.log("📊 Current month data:", currentData.length, "rows");
+
       const newDataRows: DataRow[] = [];
       
       currentData.forEach((row: any[], rowIndex: number) => {
+        const no = row[0] || "";
         const nama = row[3] || "";
         const nik = row[4] || "";
-        const kegiatan = row[5] || ""; // Kolom kegiatan sekarang berdasarkan role
-        const tanggal = row[11] || ""; // Kolom tanggal sekarang berdasarkan role
-        const penanggungJawab = row[17] || ""; // Kolom penanggung jawab pindah
+        const penanggungJawab = row[17] || ""; // Kolom 18: Penanggung Jawab
+
+        console.log(`📊 Processing row ${rowIndex}:`, { nama, nik, penanggungJawab });
 
         const isOrganik = organikList.some(org => org.nama === nama);
         
+        // Cari data yang sudah ada
         const existingIndex = newDataRows.findIndex(item => 
-          item.nik === nik && item.isOrganik === isOrganik
+          item.nama === nama && item.nik === nik
         );
-        
-        if (existingIndex === -1) {
-          const blocks: BlockData = {};
-          if (tanggal) {
+
+        const blocks: BlockData = {};
+        let kegiatanText = "";
+
+        // Process kegiatan dan tanggal berdasarkan role mapping
+        Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
+          const kegiatan = row[mapping.kegiatanCol] || "";
+          const tanggal = row[mapping.tanggalCol] || "";
+
+          if (kegiatan && tanggal) {
+            // Split tanggal dan tambahkan ke blocks
             tanggal.split(',').forEach((t: string) => {
               const trimmedT = t.trim();
               if (trimmedT) {
                 blocks[trimmedT] = kegiatan;
               }
             });
-          }
 
+            // Tambahkan ke text kegiatan
+            if (kegiatanText) {
+              kegiatanText += " | ";
+            }
+            kegiatanText += kegiatan;
+          }
+        });
+
+        if (existingIndex === -1) {
+          // Data baru
           newDataRows.push({
             no: newDataRows.length + 1,
-            nama: nama,
-            nik: nik,
+            nama,
+            nik,
             kecamatan: isOrganik ? 
               organikList.find(org => org.nama === nama)?.jabatan || "" : 
               mitraList.find(m => m.nik === nik)?.kecamatan || "",
-            kegiatan: kegiatan,
-            penanggungJawab: penanggungJawab,
+            kegiatan: kegiatanText,
+            penanggungJawab,
             blocks,
             isOrganik,
-            spreadsheetRowIndex: rowIndex + 2
+            spreadsheetRowIndex: rowIndex + 2 // +2 karena header dan 1-based index
           });
         } else {
-          if (tanggal) {
-            tanggal.split(',').forEach((t: string) => {
-              const trimmedT = t.trim();
-              if (trimmedT) {
-                newDataRows[existingIndex].blocks[trimmedT] = kegiatan;
-              }
-            });
+          // Update data yang sudah ada - gabungkan blocks
+          Object.assign(newDataRows[existingIndex].blocks, blocks);
+          
+          // Update kegiatan text
+          const existingKegiatan = newDataRows[existingIndex].kegiatan;
+          if (kegiatanText && !existingKegiatan.includes(kegiatanText)) {
+            newDataRows[existingIndex].kegiatan = existingKegiatan ? 
+              `${existingKegiatan} | ${kegiatanText}` : kegiatanText;
           }
+
+          // Update penanggung jawab
+          const existingPJ = newDataRows[existingIndex].penanggungJawab.split(',').map(pj => pj.trim());
+          const newPJ = penanggungJawab.split(',').map(pj => pj.trim());
+          const combinedPJ = [...new Set([...existingPJ, ...newPJ])].join(', ');
+          newDataRows[existingIndex].penanggungJawab = combinedPJ;
         }
       });
 
@@ -404,7 +315,10 @@ export default function BlockTanggal() {
       setDataRows(sortedData);
       updateAvailableData(sortedData);
       setIsLoading(false);
+      
+      console.log("✅ Data processing completed:", sortedData.length, "processed rows");
     } catch (error: any) {
+      console.error("❌ Error loading data:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data existing",
@@ -425,11 +339,10 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // FUNGSI BARU: Format penyimpanan sesuai struktur kolom baru
+  // FUNGSI SIMPAN YANG DISEDERHANAKAN
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete') => {
     try {
-      // Validasi role user
-      if (!ALLOWED_ROLES.includes(userRole) && operation !== 'delete') {
+      if (!canUserTag && operation !== 'delete') {
         throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
       }
 
@@ -438,37 +351,42 @@ export default function BlockTanggal() {
         throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
       }
 
-      const dates = Object.keys(data.blocks)
-        .sort((a, b) => parseInt(a) - parseInt(b))
-        .join(',');
-      
-      // Hitung jumlah tanggal terpakai (unique dates)
-      const jumlahTanggalTerpakai = Object.keys(data.blocks).length.toString();
+      // Siapkan data untuk spreadsheet (19 kolom)
+      const rowData = new Array(19).fill("");
 
-      // Siapkan array untuk 18 kolom
-      const rowData = new Array(18).fill("");
+      // Data dasar
+      rowData[0] = data.no.toString();          // No
+      rowData[1] = tahun.toString();            // Tahun
+      rowData[2] = bulan;                       // Bulan
+      rowData[3] = data.nama;                   // Nama Pelaksana
+      rowData[4] = data.nik;                    // NIP/NIK
 
-      // Isi data sesuai struktur kolom baru
-      rowData[0] = data.no.toString();                    // No
-      rowData[1] = tahun.toString();                      // Tahun  
-      rowData[2] = bulan;                                 // Bulan
-      rowData[3] = data.nama;                             // Nama Pelaksana
-      rowData[4] = data.nik;                              // NIP/NIK
-      
-      // Kolom kegiatan dan tanggal berdasarkan role (hanya untuk operation create/update)
+      // Untuk create/update, isi kolom berdasarkan role
       if (operation !== 'delete' && roleMapping) {
-        rowData[roleMapping.kegiatanCol] = kegiatanInput || data.kegiatan; // Kolom kegiatan berdasarkan role
-        rowData[roleMapping.tanggalCol] = dates;                          // Kolom tanggal berdasarkan role
+        rowData[roleMapping.kegiatanCol] = kegiatanInput || data.kegiatan;
+        
+        // Ambil tanggal yang relevan untuk role ini
+        const relevantDates = Object.keys(data.blocks)
+          .filter(tanggal => data.blocks[tanggal] === (kegiatanInput || data.kegiatan))
+          .sort((a, b) => parseInt(a) - parseInt(b))
+          .join(',');
+        rowData[roleMapping.tanggalCol] = relevantDates;
       }
-      
-      rowData[17] = jumlahTanggalTerpakai;                // Jumlah Tanggal Terpakai (kolom 18)
 
-      console.log('🔄 Menyimpan ke spreadsheet:', { 
+      // Penanggung Jawab - gabungkan yang sudah ada dengan role baru
+      let penanggungJawab = data.penanggungJawab;
+      if (operation !== 'delete' && !penanggungJawab.includes(userRole)) {
+        penanggungJawab = penanggungJawab ? `${penanggungJawab}, ${userRole}` : userRole;
+      }
+      rowData[17] = penanggungJawab; // Kolom 18: Penanggung Jawab
+
+      // Jumlah Tanggal Terpakai
+      rowData[18] = Object.keys(data.blocks).length.toString(); // Kolom 19: Jumlah Tanggal Terpakai
+
+      console.log('💾 Saving to spreadsheet:', { 
         operation, 
         rowData,
-        rowIndex: data.spreadsheetRowIndex,
-        userRole,
-        roleMapping
+        userRole 
       });
 
       let requestBody;
@@ -502,19 +420,16 @@ export default function BlockTanggal() {
       });
 
       if (result?.error) {
-        console.error('❌ Error spreadsheet:', result.error);
-        throw new Error(result.error.message || `Gagal ${operation} data ke spreadsheet`);
+        throw new Error(result.error.message || `Gagal ${operation} data`);
       }
 
-      console.log('✅ Simpan berhasil:', result?.data);
       return result?.data;
     } catch (error: any) {
-      console.error('❌ Error dalam saveToSpreadsheet:', error);
+      console.error('❌ Error saving to spreadsheet:', error);
       throw error;
     }
   };
 
-  // Fungsi untuk mendapatkan row index baru
   const getNextRowIndex = async (): Promise<number> => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -526,10 +441,7 @@ export default function BlockTanggal() {
       });
 
       if (error) throw error;
-
-      const nextIndex = data?.values ? data.values.length + 1 : 2;
-      console.log('📊 Next row index:', nextIndex);
-      return nextIndex;
+      return data?.values ? data.values.length + 1 : 2;
     } catch (error) {
       console.error('Error getting next row index:', error);
       return dataRows.length + 2;
@@ -537,10 +449,10 @@ export default function BlockTanggal() {
   };
 
   const addMitra = async () => {
-    if (!selectedMitra) {
+    if (!selectedMitra || !kegiatanInput.trim()) {
       toast({
         title: "Peringatan",
-        description: "Pilih mitra terlebih dahulu",
+        description: "Pilih mitra dan isi nama kegiatan",
         variant: "destructive",
       });
       return;
@@ -564,7 +476,7 @@ export default function BlockTanggal() {
       nama: selected.nama,
       nik: selected.nik,
       kecamatan: selected.kecamatan,
-      kegiatan: "",
+      kegiatan: kegiatanInput,
       penanggungJawab: userRole,
       blocks: {},
       isOrganik: false,
@@ -572,7 +484,6 @@ export default function BlockTanggal() {
     };
 
     try {
-      console.log('➕ Menambah mitra:', newRow);
       await saveToSpreadsheet(newRow, 'create');
       
       const newData = [...dataRows, newRow];
@@ -580,13 +491,13 @@ export default function BlockTanggal() {
       setDataRows(sortedData);
       setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
       setSelectedMitra("");
+      setKegiatanInput("");
 
       toast({
         title: "Sukses",
         description: "Mitra berhasil ditambahkan",
       });
     } catch (error: any) {
-      console.error('❌ Error adding mitra:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan mitra: " + error.message,
@@ -596,10 +507,10 @@ export default function BlockTanggal() {
   };
 
   const addOrganik = async () => {
-    if (!selectedOrganik) {
+    if (!selectedOrganik || !kegiatanInput.trim()) {
       toast({
         title: "Peringatan",
-        description: "Pilih organik terlebih dahulu",
+        description: "Pilih organik dan isi nama kegiatan",
         variant: "destructive",
       });
       return;
@@ -623,7 +534,7 @@ export default function BlockTanggal() {
       nama: selected.nama,
       nik: selected.nip,
       kecamatan: selected.jabatan,
-      kegiatan: "",
+      kegiatan: kegiatanInput,
       penanggungJawab: userRole,
       blocks: {},
       isOrganik: true,
@@ -631,7 +542,6 @@ export default function BlockTanggal() {
     };
 
     try {
-      console.log('➕ Menambah organik:', newRow);
       await saveToSpreadsheet(newRow, 'create');
       
       const newData = [...dataRows, newRow];
@@ -639,13 +549,13 @@ export default function BlockTanggal() {
       setDataRows(sortedData);
       setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
       setSelectedOrganik("");
+      setKegiatanInput("");
 
       toast({
         title: "Sukses",
         description: "Organik berhasil ditambahkan",
       });
     } catch (error: any) {
-      console.error('❌ Error adding organik:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan organik: " + error.message,
@@ -669,6 +579,17 @@ export default function BlockTanggal() {
   };
 
   const requestDeleteData = (dataIndex: number) => {
+    const data = dataRows[dataIndex];
+    
+    if (!canUserEditData(data)) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki akses untuk menghapus data ini",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDataToDelete(dataIndex);
     setShowDeleteDataDialog(true);
   };
@@ -678,8 +599,16 @@ export default function BlockTanggal() {
 
     const data = dataRows[dataToDelete];
     
+    if (!canUserEditData(data)) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki akses untuk menghapus data ini",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      console.log('🗑️ Menghapus data:', data);
       await saveToSpreadsheet(data, 'delete');
       
       const newData = [...dataRows];
@@ -697,14 +626,11 @@ export default function BlockTanggal() {
       setShowDeleteDataDialog(false);
       setDataToDelete(null);
 
-      await loadExistingData();
-
       toast({
         title: "Sukses",
         description: "Data berhasil dihapus",
       });
     } catch (error: any) {
-      console.error('❌ Error deleting data:', error);
       toast({
         title: "Error",
         description: "Gagal menghapus data: " + error.message,
@@ -713,118 +639,9 @@ export default function BlockTanggal() {
     }
   };
 
-  // PERBAIKAN 3: Fungsi untuk membuka modal editor
-  const openKegiatanEditor = (dataIndex: number, kegiatan: string) => {
-    if (!canUserTag) {
-      toast({
-        title: "Akses Ditolak",
-        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedKegiatanData({
-      data: dataRows[dataIndex],
-      kegiatan: kegiatan
-    });
-    setShowKegiatanEditor(true);
-  };
-
-  // PERBAIKAN 4: Fungsi untuk menyimpan perubahan dari modal editor
-  const handleSaveKegiatan = async (originalKegiatan: string, updatedKegiatan: string, newDates: Date[]) => {
-    if (!selectedKegiatanData) return;
-
-    if (!canUserTag) {
-      toast({
-        title: "Akses Ditolak",
-        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const dataIndex = dataRows.findIndex(d => 
-      d.nik === selectedKegiatanData.data.nik && 
-      d.isOrganik === selectedKegiatanData.data.isOrganik
-    );
-
-    if (dataIndex === -1) return;
-
-    const newData = [...dataRows];
-    const data = newData[dataIndex];
-    const originalData = { ...data, blocks: { ...data.blocks } };
-
-    try {
-      const monthIndex = bulanOptions.indexOf(bulan);
-      const tanggalStrings = newDates.map(date => date.getDate().toString());
-
-      // Hapus semua tanggal untuk kegiatan lama
-      Object.keys(data.blocks).forEach(tanggal => {
-        if (data.blocks[tanggal] === originalKegiatan) {
-          delete data.blocks[tanggal];
-        }
-      });
-
-      // PERBAIKAN 5: Cek konflik hanya untuk orang yang sama
-      const conflictingDates = [];
-      for (const tanggal of tanggalStrings) {
-        const isConflict = dataRows.some(otherData => {
-          // HANYA cek konflik untuk orang YANG SAMA
-          if (otherData.nik === data.nik && otherData.isOrganik === data.isOrganik) {
-            return otherData.blocks[tanggal] !== undefined && 
-                   otherData.blocks[tanggal] !== originalKegiatan; // Kecuali kegiatan yang sedang diedit
-          }
-          return false; // Orang LAIN BOLEH pakai tanggal yang sama
-        });
-        
-        if (isConflict) {
-          conflictingDates.push(tanggal);
-        }
-      }
-
-      if (conflictingDates.length > 0) {
-        toast({
-          title: "Konflik Tanggal",
-          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan oleh kegiatan lain untuk orang yang sama`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Tambahkan tanggal baru untuk kegiatan yang diupdate
-      tanggalStrings.forEach(tanggal => {
-        data.blocks[tanggal] = updatedKegiatan;
-      });
-
-      // Update kegiatan string
-      const semuaKegiatan = [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
-      data.kegiatan = semuaKegiatan.join(' | ');
-
-      await saveToSpreadsheet(data, 'update');
-      
-      const sortedData = sortData(newData);
-      setDataRows(sortedData);
-
-      toast({
-        title: "Sukses",
-        description: "Kegiatan berhasil diperbarui",
-      });
-    } catch (error: any) {
-      newData[dataIndex] = originalData;
-      setDataRows([...newData]);
-      
-      console.error('❌ Error updating kegiatan:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memperbarui kegiatan: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fungsi existing untuk tambah tanggal (tetap dipertahankan)
-  const openDatePicker = (dataIndex: number, edit: boolean = false, kegiatan?: string) => {
+  const openDatePicker = (dataIndex: number) => {
+    const data = dataRows[dataIndex];
+    
     if (!canUserTag) {
       toast({
         title: "Akses Ditolak",
@@ -835,30 +652,33 @@ export default function BlockTanggal() {
     }
 
     setSelectedDataForDates(dataIndex);
-    setEditMode(edit);
-    
-    if (edit && kegiatan) {
-      const data = dataRows[dataIndex];
-      const monthIndex = bulanOptions.indexOf(bulan);
-      
-      const datesForKegiatan = Object.keys(data.blocks)
-        .filter(tanggal => data.blocks[tanggal] === kegiatan)
-        .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)));
-      
-      setSelectedDates(datesForKegiatan);
-      setKegiatanInput(kegiatan);
-      setEditingKegiatan(kegiatan);
-    } else {
-      setSelectedDates([]);
-      setKegiatanInput("");
-      setEditingKegiatan("");
-    }
+    setSelectedDates([]);
+    setKegiatanInput("");
   };
 
   const isDateInSelectedMonth = (date: Date) => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return isSameMonth(date, new Date(tahun, monthIndex)) && 
            isSameYear(date, new Date(tahun, monthIndex));
+  };
+
+  const getBlockedDatesForCurrentUser = (): Date[] => {
+    const monthIndex = bulanOptions.indexOf(bulan);
+    const userBlockedDates: Date[] = [];
+    
+    dataRows.forEach(data => {
+      const penanggungJawabList = data.penanggungJawab.split(',').map(pj => pj.trim());
+      if (penanggungJawabList.includes(userRole)) {
+        Object.keys(data.blocks).forEach(tanggal => {
+          const date = new Date(tahun, monthIndex, parseInt(tanggal));
+          if (isDateInSelectedMonth(date)) {
+            userBlockedDates.push(date);
+          }
+        });
+      }
+    });
+    
+    return userBlockedDates;
   };
 
   const saveDates = async () => {
@@ -908,28 +728,11 @@ export default function BlockTanggal() {
 
     try {
       const tanggalStrings = filteredDates.map(date => date.getDate().toString());
-      
-      if (editMode && editingKegiatan) {
-        Object.keys(data.blocks).forEach(tanggal => {
-          if (data.blocks[tanggal] === editingKegiatan) {
-            delete data.blocks[tanggal];
-          }
-        });
-      }
 
-      // PERBAIKAN 6: Cek konflik hanya untuk orang yang sama
+      // Cek konflik tanggal untuk orang yang sama
       const conflictingDates = [];
       for (const tanggal of tanggalStrings) {
-        const isConflict = dataRows.some(otherData => {
-          // HANYA cek konflik untuk orang YANG SAMA
-          if (otherData.nik === data.nik && otherData.isOrganik === data.isOrganik) {
-            return otherData.blocks[tanggal] !== undefined && 
-                   otherData.blocks[tanggal] !== editingKegiatan;
-          }
-          return false; // Orang LAIN BOLEH pakai tanggal yang sama
-        });
-        
-        if (isConflict) {
+        if (data.blocks[tanggal]) {
           conflictingDates.push(tanggal);
         }
       }
@@ -937,29 +740,27 @@ export default function BlockTanggal() {
       if (conflictingDates.length > 0) {
         toast({
           title: "Konflik Tanggal",
-          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan oleh kegiatan lain untuk orang yang sama`,
+          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan untuk orang ini`,
           variant: "destructive",
         });
         return;
       }
 
+      // Tambahkan tanggal baru
       tanggalStrings.forEach(tanggal => {
         data.blocks[tanggal] = kegiatanInput;
       });
 
+      // Update kegiatan
       const semuaKegiatan = [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
       data.kegiatan = semuaKegiatan.join(' | ');
 
-      data.penanggungJawab = userRole;
-
-      console.log('💾 Menyimpan tanggal:', {
-        nama: data.nama,
-        kegiatan: data.kegiatan,
-        dates: tanggalStrings,
-        editMode,
-        editingKegiatan,
-        userRole: data.penanggungJawab
-      });
+      // Update penanggung jawab
+      const currentPJ = data.penanggungJawab.split(',').map(pj => pj.trim());
+      if (!currentPJ.includes(userRole)) {
+        currentPJ.push(userRole);
+      }
+      data.penanggungJawab = currentPJ.filter(pj => pj).join(', ');
 
       await saveToSpreadsheet(data, 'update');
       
@@ -968,8 +769,6 @@ export default function BlockTanggal() {
       setKegiatanInput("");
       setSelectedDates([]);
       setSelectedDataForDates(null);
-      setEditMode(false);
-      setEditingKegiatan("");
 
       toast({
         title: "Sukses",
@@ -979,7 +778,6 @@ export default function BlockTanggal() {
       newData[dataIndex] = originalData;
       setDataRows([...newData]);
       
-      console.error('❌ Error saving dates:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan tanggal: " + error.message,
@@ -996,28 +794,11 @@ export default function BlockTanggal() {
     return [...new Set(Object.values(data.blocks))].filter(k => k.trim() !== "");
   };
 
-  const getBlockedDatesForData = (data: DataRow): Date[] => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    return Object.keys(data.blocks)
-      .map(tanggal => new Date(tahun, monthIndex, parseInt(tanggal)))
-      .filter(isDateInSelectedMonth);
-  };
-
-  // Fungsi untuk mendapatkan semua tanggal yang diblokir (untuk calendar)
-  const getAllBlockedDates = (): Date[] => {
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const allBlockedDates: Date[] = [];
-    
-    dataRows.forEach(data => {
-      Object.keys(data.blocks).forEach(tanggal => {
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        if (isDateInSelectedMonth(date)) {
-          allBlockedDates.push(date);
-        }
-      });
-    });
-    
-    return allBlockedDates;
+  const getKegiatanColor = (kegiatan: string, data: DataRow): string => {
+    const rolesInPenanggungJawab = data.penanggungJawab.split(',').map(r => r.trim());
+    const primaryRole = rolesInPenanggungJawab[0];
+    const mapping = ROLE_MAPPING[primaryRole as keyof typeof ROLE_MAPPING];
+    return mapping?.color || 'text-gray-600';
   };
 
   const filteredAvailableMitra = useMemo(() => {
@@ -1092,12 +873,12 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* Add Data Section - Hanya tampil untuk role yang boleh tagging */}
+      {/* Add Data Section */}
       {canUserTag && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
+              <UserCheck className="h-5 w-5 text-primary" />
               Tambah Data
             </CardTitle>
             <CardDescription>
@@ -1105,51 +886,67 @@ export default function BlockTanggal() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tambah Organik */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tambah Organik</label>
-                <div className="flex gap-2">
-                  <Combobox
-                    options={filteredAvailableOrganik.map(org => ({
-                      value: org.nama,
-                      label: `${org.nama} - ${org.nip}`
-                    }))}
-                    value={selectedOrganik}
-                    onValueChange={setSelectedOrganik}
-                    placeholder="Pilih atau cari organik..."
-                    searchPlaceholder="Cari nama organik..."
-                    emptyMessage="Tidak ada organik tersedia"
-                    onSearchChange={setSearchTermOrganik}
-                  />
-                  <Button onClick={addOrganik} disabled={!selectedOrganik}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah
-                  </Button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Tambah Organik */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tambah Organik</label>
+                  <div className="flex gap-2">
+                    <Combobox
+                      options={filteredAvailableOrganik.map(org => ({
+                        value: org.nama,
+                        label: `${org.nama} - ${org.nip}`
+                      }))}
+                      value={selectedOrganik}
+                      onValueChange={setSelectedOrganik}
+                      placeholder="Pilih atau cari organik..."
+                      searchPlaceholder="Cari nama organik..."
+                      emptyMessage="Tidak ada organik tersedia"
+                      onSearchChange={setSearchTermOrganik}
+                    />
+                    <Button onClick={addOrganik} disabled={!selectedOrganik || !kegiatanInput.trim()}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tambah Mitra */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tambah Mitra</label>
+                  <div className="flex gap-2">
+                    <Combobox
+                      options={filteredAvailableMitra.map(mitra => ({
+                        value: mitra.nama,
+                        label: `${mitra.nama} - ${mitra.kecamatan}`
+                      }))}
+                      value={selectedMitra}
+                      onValueChange={setSelectedMitra}
+                      placeholder="Pilih atau cari mitra..."
+                      searchPlaceholder="Cari nama mitra..."
+                      emptyMessage="Tidak ada mitra tersedia"
+                      onSearchChange={setSearchTermMitra}
+                    />
+                    <Button onClick={addMitra} disabled={!selectedMitra || !kegiatanInput.trim()}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              {/* Tambah Mitra */}
+              
+              {/* Input Kegiatan */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tambah Mitra</label>
-                <div className="flex gap-2">
-                  <Combobox
-                    options={filteredAvailableMitra.map(mitra => ({
-                      value: mitra.nama,
-                      label: `${mitra.nama} - ${mitra.kecamatan}`
-                    }))}
-                    value={selectedMitra}
-                    onValueChange={setSelectedMitra}
-                    placeholder="Pilih atau cari mitra..."
-                    searchPlaceholder="Cari nama mitra..."
-                    emptyMessage="Tidak ada mitra tersedia"
-                    onSearchChange={setSearchTermMitra}
-                  />
-                  <Button onClick={addMitra} disabled={!selectedMitra}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah
-                  </Button>
-                </div>
+                <label className="text-sm font-medium">Nama Kegiatan</label>
+                <Input
+                  value={kegiatanInput}
+                  onChange={(e) => setKegiatanInput(e.target.value)}
+                  placeholder="Masukkan nama kegiatan"
+                  className="max-w-md"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Kegiatan akan disimpan di kolom <strong>{userRole}</strong>
+                </p>
               </div>
             </div>
           </CardContent>
@@ -1177,7 +974,7 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar <span className="text-black">Perjalanan Dinas</span> - <span className="text-red-500">{bulan} {tahun}</span>
+              Daftar Perjalanan Dinas - {bulan} {tahun}
             </CardTitle>
           </div>
           <CardDescription>
@@ -1195,14 +992,13 @@ export default function BlockTanggal() {
                   <TableHead className="min-w-60">Kegiatan</TableHead>
                   <TableHead className="min-w-40">Penanggung Jawab</TableHead>
                   <TableHead className="text-center min-w-20">Jumlah</TableHead>
-                  {/* Kolom Aksi hanya untuk role yang boleh tagging */}
                   {canUserTag && <TableHead className="text-center min-w-40">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {dataRows.map((data, index) => {
                   const uniqueKegiatan = getUniqueKegiatanList(data);
-                  const blockedDates = getBlockedDatesForData(data);
+                  const canEditThisData = canUserEditData(data);
                   
                   return (
                     <TableRow key={`${data.nik}-${data.isOrganik}`}>
@@ -1240,12 +1036,15 @@ export default function BlockTanggal() {
                                 const datesForKegiatan = Object.keys(data.blocks)
                                   .filter(t => data.blocks[t] === kegiatan)
                                   .sort((a, b) => parseInt(a) - parseInt(b));
+                                const kegiatanColor = getKegiatanColor(kegiatan, data);
                                 
                                 return (
                                   <div key={idx} className="flex items-start gap-2">
-                                    <FileText className="h-3 w-3 text-gray-500 mt-1 flex-shrink-0" />
+                                    <FileText className={`h-3 w-3 mt-1 flex-shrink-0 ${kegiatanColor}`} />
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-medium break-words">{kegiatan}</div>
+                                      <div className={`text-sm font-medium break-words ${kegiatanColor}`}>
+                                        {kegiatan}
+                                      </div>
                                       <div className="text-xs text-muted-foreground">
                                         Tanggal: {datesForKegiatan.join(', ')}
                                       </div>
@@ -1260,14 +1059,27 @@ export default function BlockTanggal() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-medium text-blue-600">{data.penanggungJawab}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {data.penanggungJawab.split(',').map((pj, idx) => {
+                            const trimmedPj = pj.trim();
+                            const mapping = ROLE_MAPPING[trimmedPj as keyof typeof ROLE_MAPPING];
+                            
+                            return (
+                              <span 
+                                key={idx} 
+                                className={`text-xs px-2 py-1 rounded-md border ${mapping?.bgColor || 'bg-gray-100'} ${mapping?.color || 'text-gray-600'}`}
+                              >
+                                {trimmedPj}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
                           {getBlockedDatesCount(data)}
                         </span>
                       </TableCell>
-                      {/* Kolom Aksi hanya untuk role yang boleh tagging */}
                       {canUserTag && (
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -1281,7 +1093,7 @@ export default function BlockTanggal() {
                                         variant="outline" 
                                         size="icon"
                                         className="h-8 w-8 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700"
-                                        onClick={() => openDatePicker(index, false)}
+                                        onClick={() => openDatePicker(index)}
                                       >
                                         <Plus className="h-3.5 w-3.5" />
                                       </Button>
@@ -1297,7 +1109,7 @@ export default function BlockTanggal() {
                                           locale={id}
                                           month={new Date(tahun, bulanOptions.indexOf(bulan))}
                                           modifiers={{
-                                            blocked: getAllBlockedDates()
+                                            blocked: getBlockedDatesForCurrentUser()
                                           }}
                                           modifiersStyles={{
                                             blocked: {
@@ -1334,54 +1146,26 @@ export default function BlockTanggal() {
                               </Tooltip>
                             </TooltipProvider>
 
-                            {/* Tombol Edit per Kegiatan - MENGGUNAKAN MODAL BARU */}
-                            {uniqueKegiatan.length > 0 && (
+                            {/* Tombol Hapus Data */}
+                            {canEditThisData && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline" 
+                                    <Button
+                                      variant="outline"
                                       size="icon"
-                                      className="h-8 w-8 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700"
-                                      onClick={() => {
-                                        // Buka modal untuk pilih kegiatan
-                                        if (uniqueKegiatan.length === 1) {
-                                          // Jika hanya satu kegiatan, langsung buka editor
-                                          openKegiatanEditor(index, uniqueKegiatan[0]);
-                                        } else {
-                                          // Jika multiple, buka popover untuk pilih
-                                          openDatePicker(index, true);
-                                        }
-                                      }}
+                                      className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
+                                      onClick={() => requestDeleteData(index)}
                                     >
-                                      <Edit className="h-3.5 w-3.5" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Edit Kegiatan</p>
+                                    <p>Hapus Data</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             )}
-
-                            {/* Tombol Hapus Data */}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700"
-                                    onClick={() => requestDeleteData(index)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Hapus Data</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
                           </div>
                         </TableCell>
                       )}
@@ -1393,53 +1177,6 @@ export default function BlockTanggal() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Modal Editor Khusus */}
-      {selectedKegiatanData && (
-        <KegiatanEditor
-          isOpen={showKegiatanEditor}
-          onClose={() => {
-            setShowKegiatanEditor(false);
-            setSelectedKegiatanData(null);
-          }}
-          data={selectedKegiatanData.data}
-          kegiatan={selectedKegiatanData.kegiatan}
-          onSave={handleSaveKegiatan}
-        />
-      )}
-
-      {/* Popover untuk pilih kegiatan (jika multiple) */}
-      <Popover>
-        <PopoverContent className="w-64 p-3" align="start">
-          <div className="space-y-2">
-            <div className="text-sm font-medium mb-2">Pilih Kegiatan untuk Edit</div>
-            {selectedDataForDates !== null && getUniqueKegiatanList(dataRows[selectedDataForDates]).map((kegiatan, idx) => {
-              const datesForKegiatan = Object.keys(dataRows[selectedDataForDates].blocks)
-                .filter(t => dataRows[selectedDataForDates].blocks[t] === kegiatan)
-                .sort((a, b) => parseInt(a) - parseInt(b));
-              
-              return (
-                <Button
-                  key={idx}
-                  variant="ghost"
-                  className="w-full justify-start h-auto py-2"
-                  onClick={() => {
-                    openKegiatanEditor(selectedDataForDates, kegiatan);
-                    setSelectedDataForDates(null);
-                  }}
-                >
-                  <div className="text-left">
-                    <div className="text-sm font-medium">{kegiatan}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Tanggal: {datesForKegiatan.join(', ')}
-                    </div>
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
-        </PopoverContent>
-      </Popover>
 
       {/* Delete Data Confirmation Dialog */}
       <Dialog open={showDeleteDataDialog} onOpenChange={setShowDeleteDataDialog}>
