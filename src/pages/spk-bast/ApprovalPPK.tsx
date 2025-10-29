@@ -60,6 +60,7 @@ export default function InputPengadaan() {
   const [dataToView, setDataToView] = useState<PengadaanData | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(15);
+  const [searchTerm, setSearchTerm] = useState("");
   
   const { toast } = useToast();
 
@@ -127,7 +128,7 @@ export default function InputPengadaan() {
   const STATUS_PENGADAAN = [
     { value: "draft", label: "Draft", color: "bg-gray-100 text-gray-800 border-gray-300" },
     { value: "usulan", label: "Usulan", color: "bg-blue-50 text-blue-700 border-blue-200" },
-    { value: "proses", label: "Proses Pengadaan", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+    { value: "proses", label: "Proses", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
     { value: "kontrak", label: "Kontrak", color: "bg-orange-50 text-orange-700 border-orange-200" },
     { value: "selesai", label: "Selesai", color: "bg-green-50 text-green-700 border-green-200" },
     { value: "batal", label: "Batal", color: "bg-red-50 text-red-700 border-red-200" }
@@ -432,7 +433,7 @@ export default function InputPengadaan() {
 
       if (!editingData) return;
 
-      // Cari row number berdasarkan ID yang sama
+      // Get all data to find the correct row
       const allData = await getAllData();
       const rowIndex = allData.findIndex((row: any[]) => 
         row[1] === editingData.id
@@ -474,9 +475,9 @@ export default function InputPengadaan() {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "update",
+          operation: "updateRow",
           range: `Sheet1!A${rowNumber}:U${rowNumber}`,
-          values: [dataToUpdate]
+          values: dataToUpdate
         },
       });
 
@@ -501,7 +502,7 @@ export default function InputPengadaan() {
       console.error('❌ Error updating data:', error);
       toast({
         title: "Gagal Memperbarui Data",
-        description: error.message,
+        description: error.message || "Terjadi kesalahan saat memperbarui data",
         variant: "destructive",
       });
     } finally {
@@ -531,7 +532,7 @@ export default function InputPengadaan() {
     try {
       setSaving(true);
 
-      // Cari row number berdasarkan ID yang sama
+      // Get all data to find the correct row
       const allData = await getAllData();
       const rowIndex = allData.findIndex((row: any[]) => 
         row[1] === data.id
@@ -541,15 +542,15 @@ export default function InputPengadaan() {
         throw new Error("Data tidak ditemukan di spreadsheet");
       }
 
-      const rowNumber = rowIndex + 1; // +1 karena header
+      const rowNumber = rowIndex + 2; // +2 karena header dan index 0-based
 
       console.log('🗑️ Deleting data at row:', rowNumber);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "delete",
-          range: `Sheet1!A${rowNumber}:U${rowNumber}`
+          operation: "deleteRow",
+          rowNumber: rowNumber
         },
       });
 
@@ -571,7 +572,7 @@ export default function InputPengadaan() {
       console.error('❌ Error deleting data:', error);
       toast({
         title: "Gagal Menghapus Data",
-        description: error.message,
+        description: error.message || "Terjadi kesalahan saat menghapus data",
         variant: "destructive",
       });
     } finally {
@@ -616,6 +617,7 @@ export default function InputPengadaan() {
   };
 
   const filteredData = pengadaanData.filter(item => {
+    // Filter by bulan and tahun
     if (filterTahun !== "all" && item.tahunAnggaran !== filterTahun) return false;
     if (filterBulan !== "all") {
       try {
@@ -626,6 +628,17 @@ export default function InputPengadaan() {
         return false;
       }
     }
+    
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        item.namaProdukBarangJasa?.toLowerCase().includes(searchLower) ||
+        item.namaKegiatanDetilPOK?.toLowerCase().includes(searchLower) ||
+        item.kodePOK?.toLowerCase().includes(searchLower)
+      );
+    }
+    
     return true;
   });
 
@@ -675,6 +688,12 @@ export default function InputPengadaan() {
     }
   };
 
+  const formatCurrency = (value: string) => {
+    if (!value) return "-";
+    const numeric = parseInt(value);
+    return isNaN(numeric) ? value : `Rp ${numeric.toLocaleString('id-ID')}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -711,8 +730,8 @@ export default function InputPengadaan() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="space-y-2 flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
                   <Label>Bulan</Label>
                   <Select value={filterBulan} onValueChange={(value) => { setFilterBulan(value); setCurrentPage(1); }}>
                     <SelectTrigger>
@@ -727,7 +746,7 @@ export default function InputPengadaan() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 flex-1">
+                <div className="space-y-2">
                   <Label>Tahun Anggaran</Label>
                   <Select value={filterTahun} onValueChange={(value) => { setFilterTahun(value); setCurrentPage(1); }}>
                     <SelectTrigger>
@@ -742,10 +761,22 @@ export default function InputPengadaan() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Cari Data</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Cari nama produk, detil POK, kode POK..."
+                      value={searchTerm}
+                      onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2 flex items-end">
                   <Button 
                     onClick={() => setShowForm(true)} 
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full"
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Pengadaan
@@ -766,6 +797,7 @@ export default function InputPengadaan() {
               </CardTitle>
               <CardDescription>
                 Menampilkan {currentItems.length} dari {filteredData.length} data pengadaan
+                {searchTerm && ` untuk pencarian "${searchTerm}"`}
                 {pengadaanData.length === 0 && " - Spreadsheet kosong"}
               </CardDescription>
             </CardHeader>
@@ -782,15 +814,15 @@ export default function InputPengadaan() {
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="font-semibold text-foreground">No</TableHead>
-                        <TableHead className="font-semibold text-foreground">Tanggal Usulan</TableHead>
+                        <TableHead className="font-semibold text-foreground w-16">No</TableHead>
+                        <TableHead className="font-semibold text-foreground w-32">Tanggal Usulan</TableHead>
                         <TableHead className="font-semibold text-foreground">Nama Produk</TableHead>
-                        <TableHead className="font-semibold text-foreground">Jenis</TableHead>
-                        <TableHead className="font-semibold text-foreground">Kegiatan</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right">RAB</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right">Realisasi</TableHead>
-                        <TableHead className="font-semibold text-foreground">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground text-center">Aksi</TableHead>
+                        <TableHead className="font-semibold text-foreground">Detil POK</TableHead>
+                        <TableHead className="font-semibold text-foreground w-48">Kode POK</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-40">RAB</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-40">Realisasi</TableHead>
+                        <TableHead className="font-semibold text-foreground text-center w-28">Status</TableHead>
+                        <TableHead className="font-semibold text-foreground text-center w-32">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -798,29 +830,27 @@ export default function InputPengadaan() {
                         <TableRow key={item.id || index} className="hover:bg-muted/30 transition-colors">
                           <TableCell className="font-medium">{item.no || index + 1 + indexOfFirstItem}</TableCell>
                           <TableCell className="whitespace-nowrap">{formatDate(item.tanggalUsulan)}</TableCell>
-                          <TableCell className="max-w-xs">
+                          <TableCell>
                             <div className="line-clamp-2" title={item.namaProdukBarangJasa}>
                               {item.namaProdukBarangJasa || '-'}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                              {item.jenisPengadaan || '-'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-xs">
                             <div className="line-clamp-2" title={item.namaKegiatanDetilPOK}>
                               {item.namaKegiatanDetilPOK || '-'}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {item.rencanaAnggaranRAB ? `Rp ${parseInt(item.rencanaAnggaranRAB).toLocaleString('id-ID')}` : '-'}
+                          <TableCell className="font-mono text-sm">
+                            {item.kodePOK || '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {item.nilaiRealisasi ? `Rp ${parseInt(item.nilaiRealisasi).toLocaleString('id-ID')}` : '-'}
+                            {formatCurrency(item.rencanaAnggaranRAB)}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`${getStatusColor(item.statusPengadaan)} border`}>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(item.nilaiRealisasi)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className={`${getStatusColor(item.statusPengadaan)} border text-xs`}>
                               {item.statusPengadaan || 'Draft'}
                             </Badge>
                           </TableCell>
@@ -871,7 +901,11 @@ export default function InputPengadaan() {
                     <div className="text-center py-12 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-lg font-medium">Tidak ada data pengadaan ditemukan</p>
-                      <p className="text-sm mt-2">Spreadsheet kosong. Tambah data pertama untuk memulai.</p>
+                      <p className="text-sm mt-2">
+                        {searchTerm 
+                          ? `Tidak ada hasil untuk pencarian "${searchTerm}"` 
+                          : "Spreadsheet kosong. Tambah data pertama untuk memulai."}
+                      </p>
                       <Button 
                         onClick={() => setShowForm(true)} 
                         className="mt-4 flex items-center gap-2 mx-auto"
@@ -895,6 +929,7 @@ export default function InputPengadaan() {
                           onClick={goToFirstPage}
                           disabled={currentPage === 1}
                           className="h-8 w-8 p-0"
+                          title="Awal"
                         >
                           <ChevronsLeft className="h-4 w-4" />
                         </Button>
@@ -904,6 +939,7 @@ export default function InputPengadaan() {
                           onClick={goToPrevPage}
                           disabled={currentPage === 1}
                           className="h-8 w-8 p-0"
+                          title="Sebelumnya"
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -916,6 +952,7 @@ export default function InputPengadaan() {
                           onClick={goToNextPage}
                           disabled={currentPage === totalPages}
                           className="h-8 w-8 p-0"
+                          title="Berikutnya"
                         >
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -925,6 +962,7 @@ export default function InputPengadaan() {
                           onClick={goToLastPage}
                           disabled={currentPage === totalPages}
                           className="h-8 w-8 p-0"
+                          title="Akhir"
                         >
                           <ChevronsRight className="h-4 w-4" />
                         </Button>
@@ -1350,144 +1388,194 @@ export default function InputPengadaan() {
 
       {/* View Data Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg p-6 -m-6 mb-6">
+            <DialogTitle className="flex items-center gap-2 text-white text-xl">
+              <Eye className="h-6 w-6" />
               Detail Data Pengadaan
             </DialogTitle>
-            <DialogDescription>
-              Informasi lengkap data pengadaan
+            <DialogDescription className="text-blue-100">
+              Informasi lengkap data pengadaan - {dataToView?.namaProdukBarangJasa}
             </DialogDescription>
           </DialogHeader>
           
           {dataToView && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Kolom 1 */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="font-semibold">ID Pengadaan</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.id}</div>
+            <div className="space-y-6">
+              {/* Informasi Utama */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-center">
+                  <div className="text-sm text-blue-600 font-semibold">ID Pengadaan</div>
+                  <div className="text-lg font-bold text-blue-800">{dataToView.id}</div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Tanggal Usulan</Label>
-                  <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalUsulan)}</div>
+                <div className="text-center">
+                  <div className="text-sm text-blue-600 font-semibold">Status</div>
+                  <Badge className={`${getStatusColor(dataToView.statusPengadaan)} text-base py-1 px-3`}>
+                    {dataToView.statusPengadaan}
+                  </Badge>
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Nama Produk Barang/Jasa</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.namaProdukBarangJasa}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Jenis Pengadaan</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.jenisPengadaan}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Nama Kegiatan/Detil POK</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.namaKegiatanDetilPOK}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Kode POK</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.kodePOK}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Rencana Anggaran (RAB)</Label>
-                  <div className="p-2 bg-muted rounded-md font-medium">
-                    {dataToView.rencanaAnggaranRAB ? `Rp ${parseInt(dataToView.rencanaAnggaranRAB).toLocaleString('id-ID')}` : '-'}
-                  </div>
+                <div className="text-center">
+                  <div className="text-sm text-blue-600 font-semibold">Tahun Anggaran</div>
+                  <div className="text-lg font-bold text-blue-800">{dataToView.tahunAnggaran}</div>
                 </div>
               </div>
 
-              {/* Kolom 2 */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="font-semibold">Nilai Realisasi</Label>
-                  <div className="p-2 bg-muted rounded-md font-medium">
-                    {dataToView.nilaiRealisasi ? `Rp ${parseInt(dataToView.nilaiRealisasi).toLocaleString('id-ID')}` : '-'}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Form Permintaan (FP)</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.formPermintaanFP || '-'}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Kerangka Acuan Kerja (KAK)</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Jenis Dokumen Pengadaan</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.jenisDokumenPengadaan || '-'}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Nomor Dokumen Pengadaan</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.nomorDokumenPengadaan || '-'}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Tanggal Dokumen Pengadaan</Label>
-                  <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold">Nama Penyedia / Mitra</Label>
-                  <div className="p-2 bg-muted rounded-md">{dataToView.namaPenyediaMitra || '-'}</div>
-                </div>
-              </div>
-
-              {/* Kolom 3 */}
-              <div className="space-y-4 md:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Link E-Purchasing / E-Katalog</Label>
-                    <div className="p-2 bg-muted rounded-md break-words">
-                      {dataToView.linkEPurchasingEKatalog ? (
-                        <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {dataToView.linkEPurchasingEKatalog}
-                        </a>
-                      ) : '-'}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Kolom 1 - Data Usulan */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="bg-blue-50 pb-3">
+                    <CardTitle className="text-blue-700 text-lg flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Data Usulan
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Tanggal Usulan</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalUsulan)}</div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Tanggal Pembayaran</Label>
-                    <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalPembayaran)}</div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Nomor Bukti Pembayaran</Label>
-                    <div className="p-2 bg-muted rounded-md">{dataToView.nomorBuktiPembayaran || '-'}</div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Status Pengadaan</Label>
-                    <div className="p-2">
-                      <Badge variant="outline" className={`${getStatusColor(dataToView.statusPengadaan)} border`}>
-                        {dataToView.statusPengadaan || 'Draft'}
-                      </Badge>
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Nama Produk Barang/Jasa</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaProdukBarangJasa}</div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="font-semibold">Keterangan / Catatan</Label>
-                    <div className="p-2 bg-muted rounded-md min-h-[80px]">
-                      {dataToView.keteranganCatatan || '-'}
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Jenis Pengadaan</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisPengadaan}</div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Tahun Anggaran</Label>
-                    <div className="p-2 bg-muted rounded-md">{dataToView.tahunAnggaran}</div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Nama Kegiatan/Detil POK</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaKegiatanDetilPOK}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Kode POK</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border font-mono">{dataToView.kodePOK}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Kolom 2 - Anggaran */}
+                <Card className="border-l-4 border-l-green-500">
+                  <CardHeader className="bg-green-50 pb-3">
+                    <CardTitle className="text-green-700 text-lg flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Informasi Anggaran
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Rencana Anggaran (RAB)</Label>
+                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
+                        {formatCurrency(dataToView.rencanaAnggaranRAB)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Nilai Realisasi</Label>
+                      <div className="p-3 bg-green-50 rounded-md border font-bold text-green-800 text-lg">
+                        {formatCurrency(dataToView.nilaiRealisasi)}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="text-sm text-blue-600">Selisih</div>
+                        <div className={`text-lg font-bold ${
+                          parseInt(dataToView.nilaiRealisasi || "0") > parseInt(dataToView.rencanaAnggaranRAB || "0") 
+                            ? "text-red-600" 
+                            : "text-green-600"
+                        }`}>
+                          {formatCurrency(
+                            (parseInt(dataToView.nilaiRealisasi || "0") - parseInt(dataToView.rencanaAnggaranRAB || "0")).toString()
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-center p-3 bg-purple-50 rounded-lg">
+                        <div className="text-sm text-purple-600">Efisiensi</div>
+                        <div className="text-lg font-bold text-purple-600">
+                          {((parseInt(dataToView.rencanaAnggaranRAB || "0") - parseInt(dataToView.nilaiRealisasi || "0")) / parseInt(dataToView.rencanaAnggaranRAB || "1") * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Kolom 3 - Dokumen */}
+                <Card className="border-l-4 border-l-orange-500 md:col-span-2">
+                  <CardHeader className="bg-orange-50 pb-3">
+                    <CardTitle className="text-orange-700 text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Dokumen dan Realisasi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Form Permintaan (FP)</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.formPermintaanFP || '-'}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Kerangka Acuan Kerja (KAK)</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Jenis Dokumen Pengadaan</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.jenisDokumenPengadaan || '-'}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Nomor Dokumen Pengadaan</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorDokumenPengadaan || '-'}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Tanggal Dokumen Pengadaan</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Nama Penyedia / Mitra</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.namaPenyediaMitra || '-'}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Link E-Purchasing / E-Katalog</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border break-words">
+                            {dataToView.linkEPurchasingEKatalog ? (
+                              <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {dataToView.linkEPurchasingEKatalog}
+                              </a>
+                            ) : '-'}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Tanggal Pembayaran</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{formatDate(dataToView.tanggalPembayaran)}</div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-sm">Nomor Bukti Pembayaran</Label>
+                          <div className="p-3 bg-gray-50 rounded-md border">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <Label className="font-semibold text-sm">Keterangan / Catatan</Label>
+                      <div className="p-3 bg-gray-50 rounded-md border min-h-[80px]">
+                        {dataToView.keteranganCatatan || '-'}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}
