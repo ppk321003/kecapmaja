@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X } from "lucide-react";
+import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X, RefreshCw } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -48,6 +48,7 @@ export default function InputPengadaan() {
   const [activeTab, setActiveTab] = useState("usulan");
   const [pengadaanData, setPengadaanData] = useState<PengadaanData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [filterBulan, setFilterBulan] = useState("all");
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   
@@ -128,10 +129,39 @@ export default function InputPengadaan() {
     { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
 
+  // Test connection to Google Sheets function
+  const testConnection = async () => {
+    try {
+      console.log('Testing Google Sheets connection...');
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1!A1:A1", // Test dengan range kecil
+        },
+      });
+
+      if (error) {
+        console.error('Connection test failed:', error);
+        throw error;
+      }
+
+      console.log('Connection test successful:', data);
+      return true;
+    } catch (error: any) {
+      console.error('Connection test error:', error);
+      throw error;
+    }
+  };
+
   // Load data dari spreadsheet
   const loadPengadaanData = async () => {
     try {
       setLoading(true);
+      
+      // Test connection first
+      await testConnection();
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -158,12 +188,15 @@ export default function InputPengadaan() {
           };
         });
         setPengadaanData(dataRows);
+      } else {
+        // Jika spreadsheet kosong, set data kosong
+        setPengadaanData([]);
       }
     } catch (error: any) {
       console.error("Error loading data:", error);
       toast({
         title: "Error",
-        description: "Gagal memuat data pengadaan",
+        description: `Gagal memuat data pengadaan: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -198,9 +231,11 @@ export default function InputPengadaan() {
     return maxNo + 1;
   };
 
-  // Simpan data tahap usulan
-  const simpanDataUsulan = async () => {
+  // Simpan data ke spreadsheet
+  const simpanData = async (isUsulanOnly: boolean = false) => {
     try {
+      setSaving(true);
+
       // Validasi data wajib
       if (!formData.namaProdukBarangJasa || !formData.jenisPengadaan || !formData.namaKegiatanDetilPOK || !formData.kodePOK) {
         toast({
@@ -210,6 +245,9 @@ export default function InputPengadaan() {
         });
         return;
       }
+
+      // Test connection sebelum simpan
+      await testConnection();
 
       // Generate ID Pengadaan otomatis
       const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
@@ -225,22 +263,22 @@ export default function InputPengadaan() {
         formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
         formData.kodePOK, // Kode POK
         parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
-        "", // Nilai Realisasi (kosong untuk usulan)
-        "", // Form Permintaan (FP) (kosong)
-        "", // Kerangka Acuan Kerja (KAK) (kosong)
-        "", // Jenis Dokumen Pengadaan (kosong)
-        "", // Nomor Dokumen Pengadaan (kosong)
-        "", // Tanggal Dokumen Pengadaan (kosong)
-        "", // Nama Penyedia / Mitra (kosong)
-        "", // Link E-Purchasing / E-Katalog (kosong)
-        "", // Tanggal Pembayaran (kosong)
-        "", // Nomor Bukti Pembayaran (kosong)
+        isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
+        isUsulanOnly ? "" : formData.formPermintaanFP, // Form Permintaan (FP)
+        isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
+        isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan), // Jenis Dokumen Pengadaan
+        isUsulanOnly ? "" : formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
+        isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""), // Tanggal Dokumen Pengadaan
+        isUsulanOnly ? "" : formData.namaPenyediaMitra, // Nama Penyedia / Mitra
+        isUsulanOnly ? "" : formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
+        isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""), // Tanggal Pembayaran
+        isUsulanOnly ? "" : formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
         STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft", // Status Pengadaan
-        "", // Keterangan / Catatan (kosong)
+        isUsulanOnly ? "" : formData.keteranganCatatan, // Keterangan / Catatan
         formData.tahunAnggaran // Tahun Anggaran
       ];
 
-      console.log('Data to save (usulan):', dataToSave);
+      console.log('Data to save:', dataToSave);
 
       // Simpan ke spreadsheet
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -254,88 +292,7 @@ export default function InputPengadaan() {
 
       if (error) {
         console.error('Error from supabase:', error);
-        throw error;
-      }
-
-      console.log('Save response:', data);
-
-      toast({
-        title: "Berhasil! 🎉",
-        description: `Data usulan pengadaan ${idPengadaan} berhasil disimpan`,
-      });
-
-      // Reset form dan reload data
-      resetForm();
-      loadPengadaanData();
-      setShowForm(false);
-
-    } catch (error: any) {
-      console.error('Error saving data:', error);
-      toast({
-        title: "Error",
-        description: `Gagal menyimpan data pengadaan: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Simpan data lengkap (semua tahapan)
-  const simpanDataLengkap = async () => {
-    try {
-      // Validasi data wajib
-      if (!formData.namaProdukBarangJasa || !formData.jenisPengadaan || !formData.namaKegiatanDetilPOK || !formData.kodePOK) {
-        toast({
-          title: "Data Belum Lengkap",
-          description: "Harap isi semua field yang wajib diisi pada tahap usulan",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Generate ID Pengadaan otomatis
-      const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-      const nextNo = getNextNumber();
-      
-      // Siapkan data lengkap sesuai urutan header spreadsheet
-      const dataToSave = [
-        nextNo.toString(), // No
-        idPengadaan, // id
-        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
-        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
-        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
-        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
-        formData.kodePOK, // Kode POK
-        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
-        parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
-        formData.formPermintaanFP, // Form Permintaan (FP)
-        formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
-        JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan, // Jenis Dokumen Pengadaan
-        formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
-        formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : "", // Tanggal Dokumen Pengadaan
-        formData.namaPenyediaMitra, // Nama Penyedia / Mitra
-        formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
-        formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : "", // Tanggal Pembayaran
-        formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
-        STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft", // Status Pengadaan
-        formData.keteranganCatatan, // Keterangan / Catatan
-        formData.tahunAnggaran // Tahun Anggaran
-      ];
-
-      console.log('Data to save (lengkap):', dataToSave);
-
-      // Simpan ke spreadsheet
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "append",
-          range: "Sheet1",
-          values: [dataToSave]
-        },
-      });
-
-      if (error) {
-        console.error('Error from supabase:', error);
-        throw error;
+        throw new Error(`Function error: ${error.message}`);
       }
 
       console.log('Save response:', data);
@@ -347,16 +304,27 @@ export default function InputPengadaan() {
 
       // Reset form dan reload data
       resetForm();
-      loadPengadaanData();
+      await loadPengadaanData();
       setShowForm(false);
 
     } catch (error: any) {
       console.error('Error saving data:', error);
+      
+      let errorMessage = "Gagal menyimpan data pengadaan";
+      
+      if (error.message.includes("Function error")) {
+        errorMessage = "Error dari function server. Periksa environment variables Google Sheets.";
+      } else if (error.message.includes("network") || error.message.includes("fetch")) {
+        errorMessage = "Koneksi jaringan bermasalah. Periksa koneksi internet Anda.";
+      }
+      
       toast({
         title: "Error",
-        description: `Gagal menyimpan data pengadaan: ${error.message}`,
+        description: `${errorMessage}: ${error.message}`,
         variant: "destructive",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -431,14 +399,25 @@ export default function InputPengadaan() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-          <ClipboardList className="h-8 w-8" />
-          Input Data Pengadaan
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <ClipboardList className="h-8 w-8" />
+            Input Data Pengadaan
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={loadPengadaanData} 
+          disabled={loading}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {!showForm ? (
@@ -485,7 +464,11 @@ export default function InputPengadaan() {
                   </Select>
                 </div>
                 <div className="space-y-2 flex items-end">
-                  <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => setShowForm(true)} 
+                    className="flex items-center gap-2"
+                    disabled={saving}
+                  >
                     <Plus className="h-4 w-4" />
                     Tambah Pengadaan
                   </Button>
@@ -604,7 +587,7 @@ export default function InputPengadaan() {
                   Isi data pengadaan sesuai dengan tahapan yang tersedia
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>
+              <Button variant="outline" size="sm" onClick={() => setShowForm(false)} disabled={saving}>
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
@@ -709,15 +692,24 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="flex justify-between pt-4">
-                    <Button variant="outline" onClick={() => setShowForm(false)}>
+                    <Button variant="outline" onClick={() => setShowForm(false)} disabled={saving}>
                       Kembali ke Tabel
                     </Button>
                     <div className="flex gap-2">
-                      <Button onClick={simpanDataUsulan} variant="outline" className="flex items-center gap-2">
-                        <Save className="h-4 w-4" />
-                        Simpan Usulan Saja
+                      <Button 
+                        onClick={() => simpanData(true)} 
+                        variant="outline" 
+                        className="flex items-center gap-2"
+                        disabled={saving}
+                      >
+                        {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {saving ? "Menyimpan..." : "Simpan Usulan Saja"}
                       </Button>
-                      <Button onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2">
+                      <Button 
+                        onClick={() => setActiveTab("dokumen")} 
+                        className="flex items-center gap-2"
+                        disabled={saving}
+                      >
                         Lanjut ke Dokumen
                         <ArrowRight className="h-4 w-4" />
                       </Button>
@@ -814,11 +806,11 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="flex justify-between pt-4">
-                    <Button variant="outline" onClick={() => setActiveTab("usulan")} className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setActiveTab("usulan")} className="flex items-center gap-2" disabled={saving}>
                       <ArrowLeft className="h-4 w-4" />
                       Kembali ke Usulan
                     </Button>
-                    <Button onClick={() => setActiveTab("realisasi")} className="flex items-center gap-2">
+                    <Button onClick={() => setActiveTab("realisasi")} className="flex items-center gap-2" disabled={saving}>
                       Lanjut ke Realisasi
                       <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -897,13 +889,17 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="flex justify-between pt-4">
-                    <Button variant="outline" onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2" disabled={saving}>
                       <ArrowLeft className="h-4 w-4" />
                       Kembali ke Dokumen
                     </Button>
-                    <Button onClick={simpanDataLengkap} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-                      <Save className="h-4 w-4" />
-                      Simpan Semua Data
+                    <Button 
+                      onClick={() => simpanData(false)} 
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                      disabled={saving}
+                    >
+                      {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {saving ? "Menyimpan..." : "Simpan Semua Data"}
                     </Button>
                   </div>
                 </div>
