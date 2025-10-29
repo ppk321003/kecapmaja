@@ -142,7 +142,8 @@ export default function InputPengadaan() {
   const JENIS_PENGADAAN = [
     { value: "barang", label: "Barang" },
     { value: "jasa", label: "Jasa" },
-    { value: "konsultan", label: "Jasa Konsultan" }
+    { value: "konsultan", label: "Jasa Konsultan" },
+    { value: "lainnya", label: "Jasa Lainnya" }
   ];
 
   const JENIS_DOKUMEN = [
@@ -1287,7 +1288,7 @@ export default function InputPengadaan() {
 
                   <div className="space-y-2">
                     <Label htmlFor="rencanaAnggaranRAB" className="flex items-center gap-1">
-                      Rencana Pembelanjaan / Rencana Anggaran Belanja (RAB) <span className="text-red-500">*</span>
+                      Rencana Pembelanjaan / (RAB) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={formData.rencanaAnggaranRAB}
