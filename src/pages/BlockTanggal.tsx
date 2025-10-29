@@ -1346,7 +1346,7 @@ export default function BlockTanggal() {
                 value={kegiatanInput}
                 onChange={(e) => setKegiatanInput(e.target.value)}
                 placeholder="Masukkan nama kegiatan..."
-                className="border-orange-200 focus:border-orange-400 w-full"
+                className="border-blue-200 focus:border-blue-400 w-full"
               />
             </div>
 
@@ -1392,7 +1392,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addOrganik} 
                 disabled={!selectedOrganik || !kegiatanInput.trim()}
-                className="bg-blue-600 hover:bg-blue-500 flex-1"
+                className="bg-blue-600 hover:bg-blue-400 flex-1"
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1401,7 +1401,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addMitra} 
                 disabled={!selectedMitra || !kegiatanInput.trim()}
-                className="bg-blue-600 hover:bg-blue-500 flex-1"
+                className="bg-blue-600 hover:bg-blue-400 flex-1"
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
