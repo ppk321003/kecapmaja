@@ -83,18 +83,18 @@ export default function InputPengadaan() {
 
   const BULAN_OPTIONS = [
     { value: "all", label: "Semua Bulan" },
-    { value: "Januari", label: "Januari" },
-    { value: "Februari", label: "Februari" },
-    { value: "Maret", label: "Maret" },
-    { value: "April", label: "April" },
-    { value: "Mei", label: "Mei" },
-    { value: "Juni", label: "Juni" },
-    { value: "Juli", label: "Juli" },
-    { value: "Agustus", label: "Agustus" },
-    { value: "September", label: "September" },
-    { value: "Oktober", label: "Oktober" },
-    { value: "November", label: "November" },
-    { value: "Desember", label: "Desember" }
+    { value: "1", label: "Januari" },
+    { value: "2", label: "Februari" },
+    { value: "3", label: "Maret" },
+    { value: "4", label: "April" },
+    { value: "5", label: "Mei" },
+    { value: "6", label: "Juni" },
+    { value: "7", label: "Juli" },
+    { value: "8", label: "Agustus" },
+    { value: "9", label: "September" },
+    { value: "10", label: "Oktober" },
+    { value: "11", label: "November" },
+    { value: "12", label: "Desember" }
   ];
 
   const TAHUN_OPTIONS = [
@@ -129,15 +129,14 @@ export default function InputPengadaan() {
     { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
 
-  // Test connection to Google Sheets function
+  // Test connection to Google Sheets function - DIPERBAIKI
   const testConnection = async () => {
     try {
       console.log('Testing Google Sheets connection...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1!A1:A1", // Test dengan range kecil
+          operation: "test", // Operation test untuk testing connection
         },
       });
 
@@ -154,7 +153,7 @@ export default function InputPengadaan() {
     }
   };
 
-  // Load data dari spreadsheet
+  // Load data dari spreadsheet - DIPERBAIKI
   const loadPengadaanData = async () => {
     try {
       setLoading(true);
@@ -166,7 +165,7 @@ export default function InputPengadaan() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1",
+          range: "Sheet1!A:U", // Range yang lebih spesifik
         },
       });
 
@@ -177,19 +176,20 @@ export default function InputPengadaan() {
       
       if (rows.length > 0) {
         const headers = rows[0];
-        const dataRows = rows.slice(1).map((row: any[], index: number) => {
-          const rowData: any = {};
-          headers.forEach((header: string, colIndex: number) => {
-            rowData[header] = row[colIndex] || "";
+        const dataRows = rows.slice(1)
+          .filter((row: any[]) => row && row.length > 0) // Filter baris kosong
+          .map((row: any[], index: number) => {
+            const rowData: any = {};
+            headers.forEach((header: string, colIndex: number) => {
+              rowData[header] = row[colIndex] || "";
+            });
+            return {
+              ...rowData,
+              no: index + 1
+            };
           });
-          return {
-            ...rowData,
-            no: index + 1
-          };
-        });
         setPengadaanData(dataRows);
       } else {
-        // Jika spreadsheet kosong, set data kosong
         setPengadaanData([]);
       }
     } catch (error: any) {
@@ -224,23 +224,52 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
-  // Fungsi untuk mendapatkan nomor urut berikutnya
+  // Fungsi untuk mendapatkan nomor urut berikutnya - DIPERBAIKI
   const getNextNumber = () => {
     if (pengadaanData.length === 0) return 1;
-    const maxNo = Math.max(...pengadaanData.map(item => item.no));
+    const numbers = pengadaanData.map(item => item.no).filter(no => !isNaN(no));
+    if (numbers.length === 0) return 1;
+    const maxNo = Math.max(...numbers);
     return maxNo + 1;
   };
 
-  // Simpan data ke spreadsheet
+  // Validasi form - DITAMBAHKAN
+  const validateForm = (isUsulanOnly: boolean = false) => {
+    const requiredFields = [
+      'namaProdukBarangJasa',
+      'jenisPengadaan', 
+      'namaKegiatanDetilPOK',
+      'kodePOK',
+      'rencanaAnggaranRAB'
+    ];
+
+    for (const field of requiredFields) {
+      if (!formData[field as keyof typeof formData]) {
+        return `Field ${field} harus diisi`;
+      }
+    }
+
+    if (!isUsulanOnly) {
+      // Validasi tambahan untuk data lengkap
+      if (formData.nilaiRealisasi && !formData.tanggalPembayaran) {
+        return "Tanggal pembayaran harus diisi jika nilai realisasi diisi";
+      }
+    }
+
+    return null;
+  };
+
+  // Simpan data ke spreadsheet - DIPERBAIKI
   const simpanData = async (isUsulanOnly: boolean = false) => {
     try {
       setSaving(true);
 
-      // Validasi data wajib
-      if (!formData.namaProdukBarangJasa || !formData.jenisPengadaan || !formData.namaKegiatanDetilPOK || !formData.kodePOK) {
+      // Validasi data wajib - DIPERBAIKI
+      const validationError = validateForm(isUsulanOnly);
+      if (validationError) {
         toast({
           title: "Data Belum Lengkap",
-          description: "Harap isi semua field yang wajib diisi pada tahap usulan",
+          description: validationError,
           variant: "destructive",
         });
         return;
@@ -249,44 +278,47 @@ export default function InputPengadaan() {
       // Test connection sebelum simpan
       await testConnection();
 
-      // Generate ID Pengadaan otomatis
-      const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      // Generate ID Pengadaan otomatis - DIPERBAIKI
+      const timestamp = new Date().getTime().toString(36);
+      const randomStr = Math.random().toString(36).substr(2, 4).toUpperCase();
+      const idPengadaan = `PGD-${formData.tahunAnggaran}-${timestamp}-${randomStr}`;
+      
       const nextNo = getNextNumber();
       
-      // Siapkan data sesuai urutan header spreadsheet
-      const dataToSave = [
-        nextNo.toString(), // No
-        idPengadaan, // id
-        format(formData.tanggalUsulan, 'yyyy-MM-dd'), // Tanggal Usulan
-        formData.namaProdukBarangJasa, // Nama Produk Barang/Jasa
-        JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan, // Jenis Pengadaan
-        formData.namaKegiatanDetilPOK, // Nama Kegiatan/Detil POK
-        formData.kodePOK, // Kode POK
-        parseRupiah(formData.rencanaAnggaranRAB), // Rencana Anggaran (RAB)
-        isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi), // Nilai Realisasi
-        isUsulanOnly ? "" : formData.formPermintaanFP, // Form Permintaan (FP)
-        isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK, // Kerangka Acuan Kerja (KAK)
-        isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan), // Jenis Dokumen Pengadaan
-        isUsulanOnly ? "" : formData.nomorDokumenPengadaan, // Nomor Dokumen Pengadaan
-        isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""), // Tanggal Dokumen Pengadaan
-        isUsulanOnly ? "" : formData.namaPenyediaMitra, // Nama Penyedia / Mitra
-        isUsulanOnly ? "" : formData.linkEPurchasingEKatalog, // Link E-Purchasing / E-Katalog
-        isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""), // Tanggal Pembayaran
-        isUsulanOnly ? "" : formData.nomorBuktiPembayaran, // Nomor Bukti Pembayaran
-        STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft", // Status Pengadaan
-        isUsulanOnly ? "" : formData.keteranganCatatan, // Keterangan / Catatan
-        formData.tahunAnggaran // Tahun Anggaran
-      ];
+      // Siapkan data sesuai urutan header spreadsheet - DIPERBAIKI
+      const dataToSave = {
+        no: nextNo.toString(),
+        id: idPengadaan,
+        tanggalUsulan: format(formData.tanggalUsulan, 'yyyy-MM-dd'),
+        namaProdukBarangJasa: formData.namaProdukBarangJasa,
+        jenisPengadaan: JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
+        namaKegiatanDetilPOK: formData.namaKegiatanDetilPOK,
+        kodePOK: formData.kodePOK,
+        rencanaAnggaranRAB: parseRupiah(formData.rencanaAnggaranRAB),
+        nilaiRealisasi: isUsulanOnly ? "" : parseRupiah(formData.nilaiRealisasi),
+        formPermintaanFP: isUsulanOnly ? "" : formData.formPermintaanFP,
+        kerangkaAcuanKerjaKAK: isUsulanOnly ? "" : formData.kerangkaAcuanKerjaKAK,
+        jenisDokumenPengadaan: isUsulanOnly ? "" : (JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan),
+        nomorDokumenPengadaan: isUsulanOnly ? "" : formData.nomorDokumenPengadaan,
+        tanggalDokumenPengadaan: isUsulanOnly ? "" : (formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : ""),
+        namaPenyediaMitra: isUsulanOnly ? "" : formData.namaPenyediaMitra,
+        linkEPurchasingEKatalog: isUsulanOnly ? "" : formData.linkEPurchasingEKatalog,
+        tanggalPembayaran: isUsulanOnly ? "" : (formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : ""),
+        nomorBuktiPembayaran: isUsulanOnly ? "" : formData.nomorBuktiPembayaran,
+        statusPengadaan: isUsulanOnly ? "Usulan" : (STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft"),
+        keteranganCatatan: isUsulanOnly ? "" : formData.keteranganCatatan,
+        tahunAnggaran: formData.tahunAnggaran
+      };
 
       console.log('Data to save:', dataToSave);
 
-      // Simpan ke spreadsheet
+      // Simpan ke spreadsheet - DIPERBAIKI
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "append",
           range: "Sheet1",
-          values: [dataToSave]
+          values: [Object.values(dataToSave)]
         },
       });
 
@@ -313,9 +345,11 @@ export default function InputPengadaan() {
       let errorMessage = "Gagal menyimpan data pengadaan";
       
       if (error.message.includes("Function error")) {
-        errorMessage = "Error dari function server. Periksa environment variables Google Sheets.";
+        errorMessage = "Error dari function server. Periksa konfigurasi Google Sheets API.";
       } else if (error.message.includes("network") || error.message.includes("fetch")) {
         errorMessage = "Koneksi jaringan bermasalah. Periksa koneksi internet Anda.";
+      } else if (error.message.includes("500")) {
+        errorMessage = "Server error. Periksa logs Edge Function untuk detail lebih lanjut.";
       }
       
       toast({
@@ -370,14 +404,14 @@ export default function InputPengadaan() {
     </div>
   );
 
-  // Filter data berdasarkan bulan dan tahun
+  // Filter data berdasarkan bulan dan tahun - DIPERBAIKI
   const filteredData = pengadaanData.filter(item => {
-    if (filterTahun !== "all" && item["Tahun Anggaran"] !== filterTahun) return false;
+    if (filterTahun !== "all" && item.tahunAnggaran !== filterTahun) return false;
     if (filterBulan !== "all") {
       try {
-        const date = new Date(item["Tanggal Usulan"]);
-        const monthName = date.toLocaleString('id-ID', { month: 'long' });
-        return monthName.toLowerCase() === filterBulan.toLowerCase();
+        const date = new Date(item.tanggalUsulan);
+        const month = (date.getMonth() + 1).toString();
+        return month === filterBulan;
       } catch {
         return false;
       }
@@ -385,14 +419,14 @@ export default function InputPengadaan() {
     return true;
   });
 
-  // Hitung total RAB dan Realisasi
+  // Hitung total RAB dan Realisasi - DIPERBAIKI
   const totalRAB = filteredData.reduce((sum, item) => {
-    const value = parseInt(item["Rencana Anggaran (RAB)"] || "0");
+    const value = parseInt(item.rencanaAnggaranRAB || "0");
     return isNaN(value) ? sum : sum + value;
   }, 0);
   
   const totalRealisasi = filteredData.reduce((sum, item) => {
-    const value = parseInt(item["Nilai Realisasi"] || "0");
+    const value = parseInt(item.nilaiRealisasi || "0");
     return isNaN(value) ? sum : sum + value;
   }, 0);
 
@@ -513,31 +547,31 @@ export default function InputPengadaan() {
                     <TableBody>
                       {filteredData.map((item, index) => (
                         <TableRow key={item.id || index}>
-                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{item.no || index + 1}</TableCell>
                           <TableCell className="font-medium">{item.id || '-'}</TableCell>
-                          <TableCell>{item["Tanggal Usulan"] || '-'}</TableCell>
-                          <TableCell className="max-w-xs truncate">{item["Nama Produk Barang/Jasa"] || '-'}</TableCell>
+                          <TableCell>{item.tanggalUsulan || '-'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{item.namaProdukBarangJasa || '-'}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{item["Jenis Pengadaan"] || '-'}</Badge>
+                            <Badge variant="outline">{item.jenisPengadaan || '-'}</Badge>
                           </TableCell>
-                          <TableCell className="max-w-xs truncate">{item["Nama Kegiatan/Detil POK"] || '-'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{item.namaKegiatanDetilPOK || '-'}</TableCell>
                           <TableCell>
-                            {item["Rencana Anggaran (RAB)"] ? `Rp ${parseInt(item["Rencana Anggaran (RAB)"]).toLocaleString('id-ID')}` : '-'}
+                            {item.rencanaAnggaranRAB ? `Rp ${parseInt(item.rencanaAnggaranRAB).toLocaleString('id-ID')}` : '-'}
                           </TableCell>
                           <TableCell>
-                            {item["Nilai Realisasi"] ? `Rp ${parseInt(item["Nilai Realisasi"]).toLocaleString('id-ID')}` : '-'}
+                            {item.nilaiRealisasi ? `Rp ${parseInt(item.nilaiRealisasi).toLocaleString('id-ID')}` : '-'}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={
-                              item["Status Pengadaan"] === "Selesai" ? "bg-green-100 text-green-800" :
-                              item["Status Pengadaan"] === "Proses Pengadaan" ? "bg-yellow-100 text-yellow-800" :
-                              item["Status Pengadaan"] === "Batal" ? "bg-red-100 text-red-800" :
+                              item.statusPengadaan === "Selesai" ? "bg-green-100 text-green-800" :
+                              item.statusPengadaan === "Proses Pengadaan" ? "bg-yellow-100 text-yellow-800" :
+                              item.statusPengadaan === "Batal" ? "bg-red-100 text-red-800" :
                               "bg-blue-100 text-blue-800"
                             }>
-                              {item["Status Pengadaan"] || 'Draft'}
+                              {item.statusPengadaan || 'Draft'}
                             </Badge>
                           </TableCell>
-                          <TableCell>{item["Tahun Anggaran"] || '-'}</TableCell>
+                          <TableCell>{item.tahunAnggaran || '-'}</TableCell>
                         </TableRow>
                       ))}
                       {/* Total Row */}
@@ -621,11 +655,21 @@ export default function InputPengadaan() {
 
                     <div className="space-y-2">
                       <Label htmlFor="tahunAnggaran">Tahun Anggaran</Label>
-                      <Input
-                        value={formData.tahunAnggaran}
-                        onChange={(e) => handleInputChange("tahunAnggaran", e.target.value)}
-                        placeholder="2024"
-                      />
+                      <Select 
+                        value={formData.tahunAnggaran} 
+                        onValueChange={(value) => handleInputChange("tahunAnggaran", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TAHUN_OPTIONS.map((tahun) => (
+                            <SelectItem key={tahun.value} value={tahun.value}>
+                              {tahun.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
