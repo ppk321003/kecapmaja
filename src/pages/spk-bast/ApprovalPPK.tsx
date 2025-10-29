@@ -417,6 +417,7 @@ export default function InputPengadaan() {
     setShowForm(true);
   };
 
+  // FUNGSI UPDATE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
   const updateData = async () => {
     try {
       setSaving(true);
@@ -475,9 +476,9 @@ export default function InputPengadaan() {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "updateRow",
-          range: `Sheet1!A${rowNumber}:U${rowNumber}`,
-          values: dataToUpdate
+          operation: "update",
+          rowIndex: rowNumber,
+          values: [dataToUpdate]
         },
       });
 
@@ -528,6 +529,7 @@ export default function InputPengadaan() {
     }
   };
 
+  // FUNGSI DELETE YANG DIPERBAIKI - Mengadopsi dari kode block tanggal
   const deleteData = async (data: PengadaanData) => {
     try {
       setSaving(true);
@@ -549,8 +551,8 @@ export default function InputPengadaan() {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
-          operation: "deleteRow",
-          rowNumber: rowNumber
+          operation: "delete",
+          rowIndex: rowNumber
         },
       });
 
@@ -814,43 +816,45 @@ export default function InputPengadaan() {
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="font-semibold text-foreground w-16">No</TableHead>
+                        <TableHead className="font-semibold text-foreground w-16 text-center">No</TableHead>
                         <TableHead className="font-semibold text-foreground w-32">Tanggal Usulan</TableHead>
-                        <TableHead className="font-semibold text-foreground">Nama Produk</TableHead>
-                        <TableHead className="font-semibold text-foreground">Detil POK</TableHead>
+                        <TableHead className="font-semibold text-foreground w-64">Nama Produk</TableHead>
+                        <TableHead className="font-semibold text-foreground w-64">Detil POK</TableHead>
                         <TableHead className="font-semibold text-foreground w-48">Kode POK</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-40">RAB</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-40">Realisasi</TableHead>
-                        <TableHead className="font-semibold text-foreground text-center w-28">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground text-center w-32">Aksi</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-32">RAB</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-32">Realisasi</TableHead>
+                        <TableHead className="font-semibold text-foreground text-center w-24">Status</TableHead>
+                        <TableHead className="font-semibold text-foreground text-center w-28">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {currentItems.map((item, index) => (
                         <TableRow key={item.id || index} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-medium">{item.no || index + 1 + indexOfFirstItem}</TableCell>
-                          <TableCell className="whitespace-nowrap">{formatDate(item.tanggalUsulan)}</TableCell>
+                          <TableCell className="font-medium text-center">{item.no || index + 1 + indexOfFirstItem}</TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{formatDate(item.tanggalUsulan)}</TableCell>
                           <TableCell>
-                            <div className="line-clamp-2" title={item.namaProdukBarangJasa}>
+                            <div className="line-clamp-2 text-sm" title={item.namaProdukBarangJasa}>
                               {item.namaProdukBarangJasa || '-'}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="line-clamp-2" title={item.namaKegiatanDetilPOK}>
+                            <div className="line-clamp-2 text-sm" title={item.namaKegiatanDetilPOK}>
                               {item.namaKegiatanDetilPOK || '-'}
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {item.kodePOK || '-'}
+                          <TableCell className="font-mono text-xs">
+                            <div className="truncate" title={item.kodePOK}>
+                              {item.kodePOK || '-'}
+                            </div>
                           </TableCell>
-                          <TableCell className="text-right font-medium">
+                          <TableCell className="text-right font-medium text-sm">
                             {formatCurrency(item.rencanaAnggaranRAB)}
                           </TableCell>
-                          <TableCell className="text-right font-medium">
+                          <TableCell className="text-right font-medium text-sm">
                             {formatCurrency(item.nilaiRealisasi)}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className={`${getStatusColor(item.statusPengadaan)} border text-xs`}>
+                            <Badge variant="outline" className={`${getStatusColor(item.statusPengadaan)} border text-xs px-2 py-1`}>
                               {item.statusPengadaan || 'Draft'}
                             </Badge>
                           </TableCell>
