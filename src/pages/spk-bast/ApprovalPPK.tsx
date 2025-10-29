@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X, RefreshCw, Edit, Trash2, Eye } from "lucide-react";
+import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter, X, RefreshCw, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -17,6 +17,7 @@ import { id } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface PengadaanData {
   no: number;
@@ -55,6 +56,10 @@ export default function InputPengadaan() {
   const [editingData, setEditingData] = useState<PengadaanData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dataToDelete, setDataToDelete] = useState<PengadaanData | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [dataToView, setDataToView] = useState<PengadaanData | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
   
   const { toast } = useToast();
 
@@ -427,6 +432,18 @@ export default function InputPengadaan() {
 
       if (!editingData) return;
 
+      // Cari row number berdasarkan ID yang sama
+      const allData = await getAllData();
+      const rowIndex = allData.findIndex((row: any[]) => 
+        row[1] === editingData.id
+      );
+
+      if (rowIndex === -1) {
+        throw new Error("Data tidak ditemukan di spreadsheet");
+      }
+
+      const rowNumber = rowIndex + 2; // +2 karena header dan index 0-based
+
       const dataToUpdate = [
         editingData.no.toString(),
         editingData.id,
@@ -451,7 +468,8 @@ export default function InputPengadaan() {
         formData.tahunAnggaran
       ];
 
-      const rowNumber = editingData.no + 1;
+      console.log('🔄 Updating data at row:', rowNumber);
+      console.log('📝 Data to update:', dataToUpdate);
 
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -463,8 +481,11 @@ export default function InputPengadaan() {
       });
 
       if (error) {
+        console.error('❌ Update error:', error);
         throw error;
       }
+
+      console.log('✅ Update successful:', data);
 
       toast({
         title: "Berhasil! ✅",
@@ -488,11 +509,41 @@ export default function InputPengadaan() {
     }
   };
 
+  const getAllData = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1!A:U"
+        },
+      });
+
+      if (error) throw error;
+      return data.values || [];
+    } catch (error) {
+      console.error('Error getting all data:', error);
+      return [];
+    }
+  };
+
   const deleteData = async (data: PengadaanData) => {
     try {
       setSaving(true);
 
-      const rowNumber = data.no + 1;
+      // Cari row number berdasarkan ID yang sama
+      const allData = await getAllData();
+      const rowIndex = allData.findIndex((row: any[]) => 
+        row[1] === data.id
+      );
+
+      if (rowIndex === -1) {
+        throw new Error("Data tidak ditemukan di spreadsheet");
+      }
+
+      const rowNumber = rowIndex + 1; // +1 karena header
+
+      console.log('🗑️ Deleting data at row:', rowNumber);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -503,6 +554,7 @@ export default function InputPengadaan() {
       });
 
       if (error) {
+        console.error('❌ Delete error:', error);
         throw error;
       }
 
@@ -530,6 +582,11 @@ export default function InputPengadaan() {
   const confirmDelete = (data: PengadaanData) => {
     setDataToDelete(data);
     setDeleteDialogOpen(true);
+  };
+
+  const viewData = (data: PengadaanData) => {
+    setDataToView(data);
+    setViewDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -572,6 +629,19 @@ export default function InputPengadaan() {
     return true;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  const goToFirstPage = () => paginate(1);
+  const goToLastPage = () => paginate(totalPages);
+  const goToNextPage = () => currentPage < totalPages && paginate(currentPage + 1);
+  const goToPrevPage = () => currentPage > 1 && paginate(currentPage - 1);
+
   const totalRAB = filteredData.reduce((sum, item) => {
     const value = parseInt(item.rencanaAnggaranRAB || "0");
     return isNaN(value) ? sum : sum + value;
@@ -585,6 +655,24 @@ export default function InputPengadaan() {
   const getStatusColor = (status: string) => {
     const statusObj = STATUS_PENGADAAN.find(s => s.label === status);
     return statusObj?.color || "bg-gray-100 text-gray-800 border-gray-300";
+  };
+
+  const getBulanName = (value: string) => {
+    return BULAN_OPTIONS.find(bulan => bulan.value === value)?.label || "";
+  };
+
+  const getTahunName = () => {
+    return filterTahun;
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return format(date, "dd MMMM yyyy", { locale: id });
+    } catch {
+      return dateString;
+    }
   };
 
   return (
@@ -626,7 +714,7 @@ export default function InputPengadaan() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="space-y-2 flex-1">
                   <Label>Bulan</Label>
-                  <Select value={filterBulan} onValueChange={setFilterBulan}>
+                  <Select value={filterBulan} onValueChange={(value) => { setFilterBulan(value); setCurrentPage(1); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Semua Bulan" />
                     </SelectTrigger>
@@ -641,7 +729,7 @@ export default function InputPengadaan() {
                 </div>
                 <div className="space-y-2 flex-1">
                   <Label>Tahun Anggaran</Label>
-                  <Select value={filterTahun} onValueChange={setFilterTahun}>
+                  <Select value={filterTahun} onValueChange={(value) => { setFilterTahun(value); setCurrentPage(1); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Tahun" />
                     </SelectTrigger>
@@ -670,9 +758,14 @@ export default function InputPengadaan() {
           {/* Data Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Data Pengadaan</CardTitle>
+              <CardTitle>
+                Data Pengadaan -{" "}
+                <span className="text-red-500">
+                  {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)} {getTahunName()}
+                </span>
+              </CardTitle>
               <CardDescription>
-                Total {filteredData.length} data pengadaan ditemukan
+                Menampilkan {currentItems.length} dari {filteredData.length} data pengadaan
                 {pengadaanData.length === 0 && " - Spreadsheet kosong"}
               </CardDescription>
             </CardHeader>
@@ -697,15 +790,14 @@ export default function InputPengadaan() {
                         <TableHead className="font-semibold text-foreground text-right">RAB</TableHead>
                         <TableHead className="font-semibold text-foreground text-right">Realisasi</TableHead>
                         <TableHead className="font-semibold text-foreground">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground">Tahun</TableHead>
                         <TableHead className="font-semibold text-foreground text-center">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredData.map((item, index) => (
+                      {currentItems.map((item, index) => (
                         <TableRow key={item.id || index} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-medium">{item.no || index + 1}</TableCell>
-                          <TableCell className="whitespace-nowrap">{item.tanggalUsulan || '-'}</TableCell>
+                          <TableCell className="font-medium">{item.no || index + 1 + indexOfFirstItem}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatDate(item.tanggalUsulan)}</TableCell>
                           <TableCell className="max-w-xs">
                             <div className="line-clamp-2" title={item.namaProdukBarangJasa}>
                               {item.namaProdukBarangJasa || '-'}
@@ -733,12 +825,16 @@ export default function InputPengadaan() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className="bg-gray-100">
-                              {item.tahunAnggaran || '-'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-center space-x-2">
+                            <div className="flex justify-center space-x-1">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => viewData(item)}
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Lihat Detail"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="icon"
@@ -766,7 +862,7 @@ export default function InputPengadaan() {
                           <TableCell colSpan={5} className="text-right font-bold">TOTAL:</TableCell>
                           <TableCell className="text-right font-bold">Rp {totalRAB.toLocaleString('id-ID')}</TableCell>
                           <TableCell className="text-right font-bold">Rp {totalRealisasi.toLocaleString('id-ID')}</TableCell>
-                          <TableCell colSpan={3}></TableCell>
+                          <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -783,6 +879,56 @@ export default function InputPengadaan() {
                         <Plus className="h-4 w-4" />
                         Tambah Data Pertama
                       </Button>
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {filteredData.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Menampilkan {indexOfFirstItem + 1} sampai {Math.min(indexOfLastItem, filteredData.length)} dari {filteredData.length} data
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToFirstPage}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToPrevPage}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToNextPage}
+                          disabled={currentPage === totalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToLastPage}
+                          disabled={currentPage === totalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1201,6 +1347,152 @@ export default function InputPengadaan() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Data Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Detail Data Pengadaan
+            </DialogTitle>
+            <DialogDescription>
+              Informasi lengkap data pengadaan
+            </DialogDescription>
+          </DialogHeader>
+          
+          {dataToView && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Kolom 1 */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-semibold">ID Pengadaan</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.id}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Tanggal Usulan</Label>
+                  <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalUsulan)}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Nama Produk Barang/Jasa</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.namaProdukBarangJasa}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Jenis Pengadaan</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.jenisPengadaan}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Nama Kegiatan/Detil POK</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.namaKegiatanDetilPOK}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Kode POK</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.kodePOK}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Rencana Anggaran (RAB)</Label>
+                  <div className="p-2 bg-muted rounded-md font-medium">
+                    {dataToView.rencanaAnggaranRAB ? `Rp ${parseInt(dataToView.rencanaAnggaranRAB).toLocaleString('id-ID')}` : '-'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Kolom 2 */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-semibold">Nilai Realisasi</Label>
+                  <div className="p-2 bg-muted rounded-md font-medium">
+                    {dataToView.nilaiRealisasi ? `Rp ${parseInt(dataToView.nilaiRealisasi).toLocaleString('id-ID')}` : '-'}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Form Permintaan (FP)</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.formPermintaanFP || '-'}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Kerangka Acuan Kerja (KAK)</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.kerangkaAcuanKerjaKAK || '-'}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Jenis Dokumen Pengadaan</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.jenisDokumenPengadaan || '-'}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Nomor Dokumen Pengadaan</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.nomorDokumenPengadaan || '-'}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Tanggal Dokumen Pengadaan</Label>
+                  <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold">Nama Penyedia / Mitra</Label>
+                  <div className="p-2 bg-muted rounded-md">{dataToView.namaPenyediaMitra || '-'}</div>
+                </div>
+              </div>
+
+              {/* Kolom 3 */}
+              <div className="space-y-4 md:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Link E-Purchasing / E-Katalog</Label>
+                    <div className="p-2 bg-muted rounded-md break-words">
+                      {dataToView.linkEPurchasingEKatalog ? (
+                        <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {dataToView.linkEPurchasingEKatalog}
+                        </a>
+                      ) : '-'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Tanggal Pembayaran</Label>
+                    <div className="p-2 bg-muted rounded-md">{formatDate(dataToView.tanggalPembayaran)}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Nomor Bukti Pembayaran</Label>
+                    <div className="p-2 bg-muted rounded-md">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Status Pengadaan</Label>
+                    <div className="p-2">
+                      <Badge variant="outline" className={`${getStatusColor(dataToView.statusPengadaan)} border`}>
+                        {dataToView.statusPengadaan || 'Draft'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="font-semibold">Keterangan / Catatan</Label>
+                    <div className="p-2 bg-muted rounded-md min-h-[80px]">
+                      {dataToView.keteranganCatatan || '-'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Tahun Anggaran</Label>
+                    <div className="p-2 bg-muted rounded-md">{dataToView.tahunAnggaran}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
