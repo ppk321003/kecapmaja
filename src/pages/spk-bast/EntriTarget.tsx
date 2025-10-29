@@ -1622,7 +1622,7 @@ export default function EntriTarget() {
                     <TableHead className="text-right">Nilai Perjanjian</TableHead>
                     <TableHead className="text-right">Nilai Realisasi</TableHead>
                     <TableHead className="text-center">Dikirim ke PPK</TableHead>
-                    <TableHead className="text-center w-20">Aksi</TableHead>
+                    <TableHead className="text-center w-20">Entri</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1686,7 +1686,7 @@ export default function EntriTarget() {
                   <TableHead className="text-right">Nilai Perjanjian</TableHead>
                   <TableHead className="text-right">Nilai Realisasi</TableHead>
                   <TableHead className="text-center">Dikirim ke PPK</TableHead>
-                  <TableHead className="text-center w-20">Aksi</TableHead>
+                  <TableHead className="text-center w-20">Entri</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
