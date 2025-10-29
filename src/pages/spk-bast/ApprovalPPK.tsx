@@ -6,69 +6,154 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen } from "lucide-react";
+import { Calendar, Plus, Save, FileText, Building, DollarSign, CheckCircle, ArrowRight, ArrowLeft, ClipboardList, BookOpen, Search, Filter } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PengadaanData {
+  id: string;
+  no: number;
+  tanggalUsulan: string;
+  namaProdukBarangJasa: string;
+  jenisPengadaan: string;
+  namaKegiatanDetilPOK: string;
+  kodePOK: string;
+  rencanaAnggaranRAB: string;
+  nilaiRealisasi: string;
+  formPermintaanFP: string;
+  kerangkaAcuanKerjaKAK: string;
+  jenisDokumenPengadaan: string;
+  nomorDokumenPengadaan: string;
+  tanggalDokumenPengadaan: string;
+  namaPenyediaMitra: string;
+  linkEPurchasingEKatalog: string;
+  tanggalPembayaran: string;
+  nomorBuktiPembayaran: string;
+  statusPengadaan: string;
+  keteranganCatatan: string;
+  tahunAnggaran: string;
+}
+
+const SPREADSHEET_ID = "1rvJUdX0rc6kEneTUwGK6p-yPV66PKcYuP5BL58Bc2M";
 
 export default function InputPengadaan() {
+  const [showForm, setShowForm] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState("usulan");
+  const [pengadaanData, setPengadaanData] = useState<PengadaanData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filterBulan, setFilterBulan] = useState("");
+  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
+  
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     // Tahap 1: Data Usulan
     tanggalUsulan: new Date(),
-    namaProduk: "",
+    namaProdukBarangJasa: "",
     jenisPengadaan: "",
-    namaKegiatan: "",
+    namaKegiatanDetilPOK: "",
     kodePOK: "",
-    rencanaAnggaran: "",
+    rencanaAnggaranRAB: "",
     tahunAnggaran: new Date().getFullYear().toString(),
     
     // Tahap 2: Dokumen & Pelaksanaan
-    nomorFormPermintaan: "",
-    nomorKAK: "",
-    jenisDokumen: "",
-    nomorDokumen: "",
-    tanggalDokumen: null as Date | null,
-    namaPenyedia: "",
-    linkEPurchasing: "",
+    formPermintaanFP: "",
+    kerangkaAcuanKerjaKAK: "",
+    jenisDokumenPengadaan: "",
+    nomorDokumenPengadaan: "",
+    tanggalDokumenPengadaan: null as Date | null,
+    namaPenyediaMitra: "",
+    linkEPurchasingEKatalog: "",
     
     // Tahap 3: Realisasi & Penyelesaian
     nilaiRealisasi: "",
     tanggalPembayaran: null as Date | null,
     nomorBuktiPembayaran: "",
     statusPengadaan: "draft",
-    keterangan: ""
+    keteranganCatatan: ""
   });
 
+  const BULAN_OPTIONS = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+
+  const TAHUN_OPTIONS = ["2024", "2025", "2026", "2027", "2028", "2029", "2030"];
+
   const JENIS_PENGADAAN = [
-    { value: "barang", label: "🛒 Barang", color: "bg-blue-100 text-blue-800" },
-    { value: "jasa", label: "🔧 Jasa", color: "bg-green-100 text-green-800" },
-    { value: "konsultan", label: "💼 Jasa Konsultan", color: "bg-purple-100 text-purple-800" }
+    { value: "barang", label: "Barang" },
+    { value: "jasa", label: "Jasa" },
+    { value: "konsultan", label: "Jasa Konsultan" }
   ];
 
   const JENIS_DOKUMEN = [
-    { value: "spk", label: "📄 SPK (Surat Perintah Kerja)" },
-    { value: "kontrak", label: "📑 Kontrak" },
-    { value: "po", label: "🛍️ Purchase Order (PO)" },
-    { value: "purchase", label: "🖥️ E-Purchasing" }
+    { value: "spk", label: "SPK (Surat Perintah Kerja)" },
+    { value: "kontrak", label: "Kontrak" },
+    { value: "po", label: "Purchase Order (PO)" },
+    { value: "purchase", label: "E-Purchasing" }
   ];
 
   const STATUS_PENGADAAN = [
-    { value: "draft", label: "📝 Draft", color: "bg-gray-100 text-gray-800" },
-    { value: "usulan", label: "📤 Usulan", color: "bg-blue-100 text-blue-800" },
-    { value: "proses", label: "⏳ Proses Pengadaan", color: "bg-yellow-100 text-yellow-800" },
-    { value: "kontrak", label: "📋 Kontrak", color: "bg-orange-100 text-orange-800" },
-    { value: "selesai", label: "✅ Selesai", color: "bg-green-100 text-green-800" },
-    { value: "batal", label: "❌ Batal", color: "bg-red-100 text-red-800" }
+    { value: "draft", label: "Draft", color: "bg-gray-100 text-gray-800" },
+    { value: "usulan", label: "Usulan", color: "bg-blue-100 text-blue-800" },
+    { value: "proses", label: "Proses Pengadaan", color: "bg-yellow-100 text-yellow-800" },
+    { value: "kontrak", label: "Kontrak", color: "bg-orange-100 text-orange-800" },
+    { value: "selesai", label: "Selesai", color: "bg-green-100 text-green-800" },
+    { value: "batal", label: "Batal", color: "bg-red-100 text-red-800" }
   ];
+
+  // Load data dari spreadsheet
+  const loadPengadaanData = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1",
+        },
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      if (rows.length > 0) {
+        const headers = rows[0];
+        const dataRows = rows.slice(1).map((row: any[], index: number) => {
+          const rowData: any = {};
+          headers.forEach((header: string, colIndex: number) => {
+            rowData[header] = row[colIndex] || "";
+          });
+          return {
+            ...rowData,
+            no: index + 1
+          };
+        });
+        setPengadaanData(dataRows);
+      }
+    } catch (error: any) {
+      console.error("Error loading data:", error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data pengadaan",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPengadaanData();
+  }, []);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -86,10 +171,11 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "");
   };
 
-  const handleSubmit = async () => {
+  // Simpan data tahap usulan
+  const simpanDataUsulan = async () => {
     try {
       // Validasi data wajib
-      if (!formData.namaProduk || !formData.jenisPengadaan || !formData.namaKegiatan || !formData.kodePOK) {
+      if (!formData.namaProdukBarangJasa || !formData.jenisPengadaan || !formData.namaKegiatanDetilPOK || !formData.kodePOK) {
         toast({
           title: "Data Belum Lengkap",
           description: "Harap isi semua field yang wajib diisi pada tahap usulan",
@@ -101,56 +187,155 @@ export default function InputPengadaan() {
       // Generate ID Pengadaan otomatis
       const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
       
-      const finalData = {
-        ...formData,
-        idPengadaan,
-        tanggalUsulan: format(formData.tanggalUsulan, 'yyyy-MM-dd'),
-        tanggalDokumen: formData.tanggalDokumen ? format(formData.tanggalDokumen, 'yyyy-MM-dd') : "",
-        tanggalPembayaran: formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : "",
-        rencanaAnggaran: parseRupiah(formData.rencanaAnggaran),
-        nilaiRealisasi: parseRupiah(formData.nilaiRealisasi)
+      const dataToSave = {
+        id: idPengadaan,
+        "Tanggal Usulan": format(formData.tanggalUsulan, 'yyyy-MM-dd'),
+        "Nama Produk Barang/Jasa": formData.namaProdukBarangJasa,
+        "Jenis Pengadaan": JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
+        "Nama Kegiatan/Detil POK": formData.namaKegiatanDetilPOK,
+        "Kode POK": formData.kodePOK,
+        "Rencana Anggaran (RAB)": parseRupiah(formData.rencanaAnggaranRAB),
+        "Nilai Realisasi": "",
+        "Form Permintaan (FP)": "",
+        "Kerangka Acuan Kerja (KAK)": "",
+        "Jenis Dokumen Pengadaan": "",
+        "Nomor Dokumen Pengadaan": "",
+        "Tanggal Dokumen Pengadaan": "",
+        "Nama Penyedia / Mitra": "",
+        "Link E-Purchasing / E-Katalog": "",
+        "Tanggal Pembayaran": "",
+        "Nomor Bukti Pembayaran": "",
+        "Status Pengadaan": STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft",
+        "Keterangan / Catatan": "",
+        "Tahun Anggaran": formData.tahunAnggaran
       };
 
-      // Simulasi penyimpanan
-      console.log('Data pengadaan disimpan:', finalData);
-      
+      // Simpan ke spreadsheet
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "append",
+          range: "Sheet1",
+          values: [Object.values(dataToSave)]
+        },
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Berhasil! 🎉",
-        description: `Data pengadaan ${idPengadaan} berhasil disimpan`,
+        description: `Data usulan pengadaan ${idPengadaan} berhasil disimpan`,
       });
 
-      // Reset form
-      setFormData({
-        tanggalUsulan: new Date(),
-        namaProduk: "",
-        jenisPengadaan: "",
-        namaKegiatan: "",
-        kodePOK: "",
-        rencanaAnggaran: "",
-        tahunAnggaran: new Date().getFullYear().toString(),
-        nomorFormPermintaan: "",
-        nomorKAK: "",
-        jenisDokumen: "",
-        nomorDokumen: "",
-        tanggalDokumen: null,
-        namaPenyedia: "",
-        linkEPurchasing: "",
-        nilaiRealisasi: "",
-        tanggalPembayaran: null,
-        nomorBuktiPembayaran: "",
-        statusPengadaan: "draft",
-        keterangan: ""
-      });
+      // Reset form dan reload data
+      resetForm();
+      loadPengadaanData();
+      setShowForm(false);
 
-      setActiveTab("usulan");
-
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error saving data:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan data pengadaan",
         variant: "destructive",
       });
     }
+  };
+
+  // Simpan data lengkap (semua tahapan)
+  const simpanDataLengkap = async () => {
+    try {
+      // Validasi data wajib
+      if (!formData.namaProdukBarangJasa || !formData.jenisPengadaan || !formData.namaKegiatanDetilPOK || !formData.kodePOK) {
+        toast({
+          title: "Data Belum Lengkap",
+          description: "Harap isi semua field yang wajib diisi pada tahap usulan",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate ID Pengadaan otomatis
+      const idPengadaan = `PGD/${formData.tahunAnggaran}/${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      
+      const dataToSave = {
+        id: idPengadaan,
+        "Tanggal Usulan": format(formData.tanggalUsulan, 'yyyy-MM-dd'),
+        "Nama Produk Barang/Jasa": formData.namaProdukBarangJasa,
+        "Jenis Pengadaan": JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || formData.jenisPengadaan,
+        "Nama Kegiatan/Detil POK": formData.namaKegiatanDetilPOK,
+        "Kode POK": formData.kodePOK,
+        "Rencana Anggaran (RAB)": parseRupiah(formData.rencanaAnggaranRAB),
+        "Nilai Realisasi": parseRupiah(formData.nilaiRealisasi),
+        "Form Permintaan (FP)": formData.formPermintaanFP,
+        "Kerangka Acuan Kerja (KAK)": formData.kerangkaAcuanKerjaKAK,
+        "Jenis Dokumen Pengadaan": JENIS_DOKUMEN.find(j => j.value === formData.jenisDokumenPengadaan)?.label || formData.jenisDokumenPengadaan,
+        "Nomor Dokumen Pengadaan": formData.nomorDokumenPengadaan,
+        "Tanggal Dokumen Pengadaan": formData.tanggalDokumenPengadaan ? format(formData.tanggalDokumenPengadaan, 'yyyy-MM-dd') : "",
+        "Nama Penyedia / Mitra": formData.namaPenyediaMitra,
+        "Link E-Purchasing / E-Katalog": formData.linkEPurchasingEKatalog,
+        "Tanggal Pembayaran": formData.tanggalPembayaran ? format(formData.tanggalPembayaran, 'yyyy-MM-dd') : "",
+        "Nomor Bukti Pembayaran": formData.nomorBuktiPembayaran,
+        "Status Pengadaan": STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "Draft",
+        "Keterangan / Catatan": formData.keteranganCatatan,
+        "Tahun Anggaran": formData.tahunAnggaran
+      };
+
+      // Simpan ke spreadsheet
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "append",
+          range: "Sheet1",
+          values: [Object.values(dataToSave)]
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil! 🎉",
+        description: `Data pengadaan ${idPengadaan} berhasil disimpan`,
+      });
+
+      // Reset form dan reload data
+      resetForm();
+      loadPengadaanData();
+      setShowForm(false);
+
+    } catch (error: any) {
+      console.error('Error saving data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data pengadaan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      tanggalUsulan: new Date(),
+      namaProdukBarangJasa: "",
+      jenisPengadaan: "",
+      namaKegiatanDetilPOK: "",
+      kodePOK: "",
+      rencanaAnggaranRAB: "",
+      tahunAnggaran: new Date().getFullYear().toString(),
+      formPermintaanFP: "",
+      kerangkaAcuanKerjaKAK: "",
+      jenisDokumenPengadaan: "",
+      nomorDokumenPengadaan: "",
+      tanggalDokumenPengadaan: null,
+      namaPenyediaMitra: "",
+      linkEPurchasingEKatalog: "",
+      nilaiRealisasi: "",
+      tanggalPembayaran: null,
+      nomorBuktiPembayaran: "",
+      statusPengadaan: "draft",
+      keteranganCatatan: ""
+    });
+    setActiveTab("usulan");
   };
 
   const ProgressStep = ({ number, title, active, completed }: { number: number; title: string; active: boolean; completed: boolean }) => (
@@ -170,6 +355,21 @@ export default function InputPengadaan() {
     </div>
   );
 
+  // Filter data berdasarkan bulan dan tahun
+  const filteredData = pengadaanData.filter(item => {
+    if (filterTahun && item["Tahun Anggaran"] !== filterTahun) return false;
+    if (filterBulan) {
+      const date = new Date(item["Tanggal Usulan"]);
+      const monthName = date.toLocaleString('id-ID', { month: 'long' });
+      return monthName.toLowerCase() === filterBulan.toLowerCase();
+    }
+    return true;
+  });
+
+  // Hitung total RAB dan Realisasi
+  const totalRAB = filteredData.reduce((sum, item) => sum + parseInt(item["Rencana Anggaran (RAB)"] || "0"), 0);
+  const totalRealisasi = filteredData.reduce((sum, item) => sum + parseInt(item["Nilai Realisasi"] || "0"), 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -183,407 +383,306 @@ export default function InputPengadaan() {
         </p>
       </div>
 
-      {/* Progress Indicator */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <ProgressStep number={1} title="Data Usulan" active={activeTab === "usulan"} completed={activeTab !== "usulan"} />
-            <div className="flex-1 h-0.5 bg-gray-200 mx-4"></div>
-            <ProgressStep number={2} title="Dokumen" active={activeTab === "dokumen"} completed={activeTab === "realisasi"} />
-            <div className="flex-1 h-0.5 bg-gray-200 mx-4"></div>
-            <ProgressStep number={3} title="Realisasi" active={activeTab === "realisasi"} completed={false} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Form Input Pengadaan
-          </CardTitle>
-          <CardDescription>
-            Isi data pengadaan sesuai dengan tahapan yang tersedia
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="usulan" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Data Usulan
-              </TabsTrigger>
-              <TabsTrigger value="dokumen" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Dokumen
-              </TabsTrigger>
-              <TabsTrigger value="realisasi" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Realisasi
-              </TabsTrigger>
-            </TabsList>
-
-            {/* TAB 1: DATA USULAN */}
-            <TabsContent value="usulan" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Tanggal Usulan */}
-                <div className="space-y-2">
-                  <Label htmlFor="tanggalUsulan" className="flex items-center gap-1">
-                    Tanggal Usulan <span className="text-red-500">*</span>
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {formData.tanggalUsulan ? format(formData.tanggalUsulan, "PPP", { locale: id }) : "Pilih tanggal"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={formData.tanggalUsulan}
-                        onSelect={(date) => date && handleInputChange("tanggalUsulan", date)}
-                        initialFocus
-                        locale={id}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Tahun Anggaran */}
-                <div className="space-y-2">
-                  <Label htmlFor="tahunAnggaran">Tahun Anggaran</Label>
-                  <Input
-                    id="tahunAnggaran"
-                    value={formData.tahunAnggaran}
-                    onChange={(e) => handleInputChange("tahunAnggaran", e.target.value)}
-                    placeholder="2024"
-                  />
-                </div>
-
-                {/* Nama Produk */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="namaProduk" className="flex items-center gap-1">
-                    Nama Produk Barang/Jasa <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="namaProduk"
-                    value={formData.namaProduk}
-                    onChange={(e) => handleInputChange("namaProduk", e.target.value)}
-                    placeholder="Contoh: Pengadaan Komputer Workstation"
-                  />
-                </div>
-
-                {/* Jenis Pengadaan */}
-                <div className="space-y-2">
-                  <Label htmlFor="jenisPengadaan" className="flex items-center gap-1">
-                    Jenis Pengadaan <span className="text-red-500">*</span>
-                  </Label>
-                  <Select value={formData.jenisPengadaan} onValueChange={(value) => handleInputChange("jenisPengadaan", value)}>
+      {!showForm ? (
+        /* TAMPILAN TABEL DATA */
+        <>
+          {/* Filter Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filter Data
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="space-y-2 flex-1">
+                  <Label>Bulan</Label>
+                  <Select value={filterBulan} onValueChange={setFilterBulan}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis pengadaan" />
+                      <SelectValue placeholder="Semua Bulan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {JENIS_PENGADAAN.map((jenis) => (
-                        <SelectItem key={jenis.value} value={jenis.value}>
-                          {jenis.label}
-                        </SelectItem>
+                      <SelectItem value="">Semua Bulan</SelectItem>
+                      {BULAN_OPTIONS.map((bulan) => (
+                        <SelectItem key={bulan} value={bulan}>{bulan}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Kode POK */}
-                <div className="space-y-2">
-                  <Label htmlFor="kodePOK" className="flex items-center gap-1">
-                    Kode POK <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="kodePOK"
-                    value={formData.kodePOK}
-                    onChange={(e) => handleInputChange("kodePOK", e.target.value)}
-                    placeholder="Contoh: 054.01.06.XXXX.XXX.052.001.A"
-                  />
-                </div>
-
-                {/* Nama Kegiatan */}
-                <div className="space-y-2">
-                  <Label htmlFor="namaKegiatan" className="flex items-center gap-1">
-                    Nama Kegiatan <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="namaKegiatan"
-                    value={formData.namaKegiatan}
-                    onChange={(e) => handleInputChange("namaKegiatan", e.target.value)}
-                    placeholder="Contoh: Pengadaan Sarana Prasarana Kantor"
-                  />
-                </div>
-
-                {/* Rencana Anggaran */}
-                <div className="space-y-2">
-                  <Label htmlFor="rencanaAnggaran" className="flex items-center gap-1">
-                    Rencana Anggaran (RAB) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="rencanaAnggaran"
-                    value={formData.rencanaAnggaran}
-                    onChange={(e) => handleInputChange("rencanaAnggaran", formatRupiah(e.target.value))}
-                    placeholder="Rp 0"
-                  />
-                </div>
-              </div>
-
-              {/* Navigation */}
-              <div className="flex justify-end pt-4">
-                <Button onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2">
-                  Lanjut ke Dokumen
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* TAB 2: DOKUMEN */}
-            <TabsContent value="dokumen" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Nomor Form Permintaan */}
-                <div className="space-y-2">
-                  <Label htmlFor="nomorFormPermintaan">Nomor Form Permintaan (FP)</Label>
-                  <Input
-                    id="nomorFormPermintaan"
-                    value={formData.nomorFormPermintaan}
-                    onChange={(e) => handleInputChange("nomorFormPermintaan", e.target.value)}
-                    placeholder="Contoh: FP/2024/001"
-                  />
-                </div>
-
-                {/* Nomor KAK */}
-                <div className="space-y-2">
-                  <Label htmlFor="nomorKAK">Nomor KAK</Label>
-                  <Input
-                    id="nomorKAK"
-                    value={formData.nomorKAK}
-                    onChange={(e) => handleInputChange("nomorKAK", e.target.value)}
-                    placeholder="Contoh: KAK/2024/001"
-                  />
-                </div>
-
-                {/* Jenis Dokumen */}
-                <div className="space-y-2">
-                  <Label htmlFor="jenisDokumen">Jenis Dokumen Pengadaan</Label>
-                  <Select value={formData.jenisDokumen} onValueChange={(value) => handleInputChange("jenisDokumen", value)}>
+                <div className="space-y-2 flex-1">
+                  <Label>Tahun Anggaran</Label>
+                  <Select value={filterTahun} onValueChange={setFilterTahun}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis dokumen" />
+                      <SelectValue placeholder="Pilih Tahun" />
                     </SelectTrigger>
                     <SelectContent>
-                      {JENIS_DOKUMEN.map((dokumen) => (
-                        <SelectItem key={dokumen.value} value={dokumen.value}>
-                          {dokumen.label}
-                        </SelectItem>
+                      {TAHUN_OPTIONS.map((tahun) => (
+                        <SelectItem key={tahun} value={tahun}>{tahun}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Nomor Dokumen */}
-                <div className="space-y-2">
-                  <Label htmlFor="nomorDokumen">Nomor Dokumen Pengadaan</Label>
-                  <Input
-                    id="nomorDokumen"
-                    value={formData.nomorDokumen}
-                    onChange={(e) => handleInputChange("nomorDokumen", e.target.value)}
-                    placeholder="Contoh: SPK/2024/001"
-                  />
-                </div>
-
-                {/* Tanggal Dokumen */}
-                <div className="space-y-2">
-                  <Label htmlFor="tanggalDokumen">Tanggal Dokumen Pengadaan</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {formData.tanggalDokumen ? format(formData.tanggalDokumen, "PPP", { locale: id }) : "Pilih tanggal"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={formData.tanggalDokumen || undefined}
-                        onSelect={(date) => handleInputChange("tanggalDokumen", date)}
-                        initialFocus
-                        locale={id}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Nama Penyedia */}
-                <div className="space-y-2">
-                  <Label htmlFor="namaPenyedia">Nama Penyedia / Mitra</Label>
-                  <Input
-                    id="namaPenyedia"
-                    value={formData.namaPenyedia}
-                    onChange={(e) => handleInputChange("namaPenyedia", e.target.value)}
-                    placeholder="Nama perusahaan/kontraktor"
-                  />
-                </div>
-
-                {/* Link E-Purchasing */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="linkEPurchasing">Link E-Purchasing / E-Katalog</Label>
-                  <Input
-                    id="linkEPurchasing"
-                    value={formData.linkEPurchasing}
-                    onChange={(e) => handleInputChange("linkEPurchasing", e.target.value)}
-                    placeholder="https://..."
-                  />
+                <div className="space-y-2 flex items-end">
+                  <Button onClick={() => setShowForm(true)} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Tambah Pengadaan
+                  </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Navigation */}
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setActiveTab("usulan")} className="flex items-center gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Kembali ke Usulan
-                </Button>
-                <Button onClick={() => setActiveTab("realisasi")} className="flex items-center gap-2">
-                  Lanjut ke Realisasi
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* TAB 3: REALISASI */}
-            <TabsContent value="realisasi" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Nilai Realisasi */}
-                <div className="space-y-2">
-                  <Label htmlFor="nilaiRealisasi">Nilai Realisasi</Label>
-                  <Input
-                    id="nilaiRealisasi"
-                    value={formData.nilaiRealisasi}
-                    onChange={(e) => handleInputChange("nilaiRealisasi", formatRupiah(e.target.value))}
-                    placeholder="Rp 0"
-                  />
+          {/* Data Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Pengadaan</CardTitle>
+              <CardDescription>
+                Total {filteredData.length} data pengadaan ditemukan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-muted-foreground mt-2">Memuat data...</p>
+                  </div>
                 </div>
-
-                {/* Tanggal Pembayaran */}
-                <div className="space-y-2">
-                  <Label htmlFor="tanggalPembayaran">Tanggal Pembayaran</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {formData.tanggalPembayaran ? format(formData.tanggalPembayaran, "PPP", { locale: id }) : "Pilih tanggal"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={formData.tanggalPembayaran || undefined}
-                        onSelect={(date) => handleInputChange("tanggalPembayaran", date)}
-                        initialFocus
-                        locale={id}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Nomor Bukti Pembayaran */}
-                <div className="space-y-2">
-                  <Label htmlFor="nomorBuktiPembayaran">Nomor Bukti Pembayaran</Label>
-                  <Input
-                    id="nomorBuktiPembayaran"
-                    value={formData.nomorBuktiPembayaran}
-                    onChange={(e) => handleInputChange("nomorBuktiPembayaran", e.target.value)}
-                    placeholder="Contoh: KWT/2024/001"
-                  />
-                </div>
-
-                {/* Status Pengadaan */}
-                <div className="space-y-2">
-                  <Label htmlFor="statusPengadaan">Status Pengadaan</Label>
-                  <Select value={formData.statusPengadaan} onValueChange={(value) => handleInputChange("statusPengadaan", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_PENGADAAN.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Tanggal Usulan</TableHead>
+                        <TableHead>Nama Produk</TableHead>
+                        <TableHead>Jenis</TableHead>
+                        <TableHead>Kegiatan</TableHead>
+                        <TableHead>RAB</TableHead>
+                        <TableHead>Realisasi</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tahun</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.map((item, index) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell className="font-medium">{item.id}</TableCell>
+                          <TableCell>{item["Tanggal Usulan"]}</TableCell>
+                          <TableCell className="max-w-xs truncate">{item["Nama Produk Barang/Jasa"]}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{item["Jenis Pengadaan"]}</Badge>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{item["Nama Kegiatan/Detil POK"]}</TableCell>
+                          <TableCell>
+                            {item["Rencana Anggaran (RAB)"] ? `Rp ${parseInt(item["Rencana Anggaran (RAB)"]).toLocaleString('id-ID')}` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {item["Nilai Realisasi"] ? `Rp ${parseInt(item["Nilai Realisasi"]).toLocaleString('id-ID')}` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              item["Status Pengadaan"] === "Selesai" ? "bg-green-100 text-green-800" :
+                              item["Status Pengadaan"] === "Proses Pengadaan" ? "bg-yellow-100 text-yellow-800" :
+                              item["Status Pengadaan"] === "Batal" ? "bg-red-100 text-red-800" :
+                              "bg-blue-100 text-blue-800"
+                            }>
+                              {item["Status Pengadaan"]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{item["Tahun Anggaran"]}</TableCell>
+                        </TableRow>
                       ))}
-                    </SelectContent>
-                  </Select>
+                      {/* Total Row */}
+                      {filteredData.length > 0 && (
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell colSpan={6} className="text-right">TOTAL:</TableCell>
+                          <TableCell>Rp {totalRAB.toLocaleString('id-ID')}</TableCell>
+                          <TableCell>Rp {totalRealisasi.toLocaleString('id-ID')}</TableCell>
+                          <TableCell colSpan={2}></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  {filteredData.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada data pengadaan ditemukan
+                    </div>
+                  )}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        /* TAMPILAN FORM INPUT */
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <ProgressStep number={1} title="Data Usulan" active={activeTab === "usulan"} completed={activeTab !== "usulan"} />
+                <div className="flex-1 h-0.5 bg-gray-200 mx-4"></div>
+                <ProgressStep number={2} title="Dokumen" active={activeTab === "dokumen"} completed={activeTab === "realisasi"} />
+                <div className="flex-1 h-0.5 bg-gray-200 mx-4"></div>
+                <ProgressStep number={3} title="Realisasi" active={activeTab === "realisasi"} completed={false} />
+              </div>
+            </CardContent>
+          </Card>
 
-                {/* Keterangan */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="keterangan">Keterangan / Catatan</Label>
-                  <Textarea
-                    id="keterangan"
-                    value={formData.keterangan}
-                    onChange={(e) => handleInputChange("keterangan", e.target.value)}
-                    placeholder="Catatan tambahan mengenai pengadaan..."
-                    rows={3}
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Form Input Pengadaan
+              </CardTitle>
+              <CardDescription>
+                Isi data pengadaan sesuai dengan tahapan yang tersedia
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* TAB 1: DATA USULAN */}
+              {activeTab === "usulan" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tanggalUsulan" className="flex items-center gap-1">
+                        Tanggal Usulan <span className="text-red-500">*</span>
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {format(formData.tanggalUsulan, "PPP", { locale: id })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <CalendarComponent
+                            mode="single"
+                            selected={formData.tanggalUsulan}
+                            onSelect={(date) => date && handleInputChange("tanggalUsulan", date)}
+                            initialFocus
+                            locale={id}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="tahunAnggaran">Tahun Anggaran</Label>
+                      <Input
+                        value={formData.tahunAnggaran}
+                        onChange={(e) => handleInputChange("tahunAnggaran", e.target.value)}
+                        placeholder="2024"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="namaProdukBarangJasa" className="flex items-center gap-1">
+                        Nama Produk Barang/Jasa <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={formData.namaProdukBarangJasa}
+                        onChange={(e) => handleInputChange("namaProdukBarangJasa", e.target.value)}
+                        placeholder="Contoh: Pengadaan Komputer Workstation"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="jenisPengadaan" className="flex items-center gap-1">
+                        Jenis Pengadaan <span className="text-red-500">*</span>
+                      </Label>
+                      <Select value={formData.jenisPengadaan} onValueChange={(value) => handleInputChange("jenisPengadaan", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih jenis pengadaan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {JENIS_PENGADAAN.map((jenis) => (
+                            <SelectItem key={jenis.value} value={jenis.value}>{jenis.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="kodePOK" className="flex items-center gap-1">
+                        Kode POK <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={formData.kodePOK}
+                        onChange={(e) => handleInputChange("kodePOK", e.target.value)}
+                        placeholder="Contoh: 054.01.06.XXXX.XXX.052.001.A"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="namaKegiatanDetilPOK" className="flex items-center gap-1">
+                        Nama Kegiatan/Detil POK <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={formData.namaKegiatanDetilPOK}
+                        onChange={(e) => handleInputChange("namaKegiatanDetilPOK", e.target.value)}
+                        placeholder="Contoh: Pengadaan Sarana Prasarana Kantor"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="rencanaAnggaranRAB" className="flex items-center gap-1">
+                        Rencana Anggaran (RAB) <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={formData.rencanaAnggaranRAB}
+                        onChange={(e) => handleInputChange("rencanaAnggaranRAB", formatRupiah(e.target.value))}
+                        placeholder="Rp 0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-4">
+                    <Button variant="outline" onClick={() => setShowForm(false)}>
+                      Kembali ke Tabel
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={simpanDataUsulan} variant="outline" className="flex items-center gap-2">
+                        <Save className="h-4 w-4" />
+                        Simpan Usulan Saja
+                      </Button>
+                      <Button onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2">
+                        Lanjut ke Dokumen
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Summary Preview */}
-              <Card className="bg-muted/50">
-                <CardHeader>
-                  <CardTitle className="text-sm">Ringkasan Pengadaan</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span>Produk:</span>
-                    <span className="font-medium">{formData.namaProduk || "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Jenis:</span>
-                    <Badge variant="outline" className={JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.color}>
-                      {JENIS_PENGADAAN.find(j => j.value === formData.jenisPengadaan)?.label || "-"}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>RAB:</span>
-                    <span className="font-medium">{formData.rencanaAnggaran || "-"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Status:</span>
-                    <Badge variant="outline" className={STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.color}>
-                      {STATUS_PENGADAAN.find(s => s.value === formData.statusPengadaan)?.label || "-"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* TAB 2: DOKUMEN - Implementasi serupa dengan TAB 1 */}
+              {/* TAB 3: REALISASI - Implementasi serupa dengan TAB 1 */}
 
-              {/* Navigation */}
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setActiveTab("dokumen")} className="flex items-center gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Kembali ke Dokumen
-                </Button>
-                <Button onClick={handleSubmit} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-                  <Save className="h-4 w-4" />
-                  Simpan Pengadaan
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              {/* Tombol simpan akhir untuk semua data */}
+              {(activeTab === "dokumen" || activeTab === "realisasi") && (
+                <div className="flex justify-between pt-4">
+                  <Button variant="outline" onClick={() => setActiveTab(activeTab === "dokumen" ? "usulan" : "dokumen")}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Kembali
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowForm(false)}>
+                      Batalkan
+                    </Button>
+                    <Button onClick={simpanDataLengkap} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+                      <Save className="h-4 w-4" />
+                      Simpan Semua Data
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
