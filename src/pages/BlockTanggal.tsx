@@ -1322,97 +1322,94 @@ export default function BlockTanggal() {
         </div>
       </div>
 
-      {/* Add Data Section - SEMUA DALAM 1 BARIS */}
+      {/* PERBAIKAN KHUSUS BAGIAN TAMBAH DATA - LEBIH RESPONSIF */}
       {canUserTag && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="w-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <UserCheck className="h-5 w-5 text-primary" />
               Tambah Data
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Isi nama kegiatan dan pilih organik atau mitra
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
-              {/* Input Kegiatan */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  Nama Kegiatan
-                  <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  value={kegiatanInput}
-                  onChange={(e) => setKegiatanInput(e.target.value)}
-                  placeholder="Masukkan nama kegiatan..."
-                  className="border-orange-200 focus:border-orange-400"
-                />
-              </div>
+          <CardContent className="space-y-4">
+            {/* Input Kegiatan */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+                Nama Kegiatan
+                <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={kegiatanInput}
+                onChange={(e) => setKegiatanInput(e.target.value)}
+                placeholder="Masukkan nama kegiatan..."
+                className="border-orange-200 focus:border-orange-400 w-full"
+              />
+            </div>
 
+            {/* Grid untuk Organik dan Mitra */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Tambah Organik */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tambah Organik</label>
-                <div className="flex gap-2">
-                  <Combobox
-                    options={filteredAvailableOrganik.map(org => ({
-                      value: org.nama,
-                      label: `${org.nama} - ${org.nip}`
-                    }))}
-                    value={selectedOrganik}
-                    onValueChange={setSelectedOrganik}
-                    placeholder="Pilih organik..."
-                    searchPlaceholder="Cari organik..."
-                    emptyMessage="Tidak ada organik tersedia"
-                    onSearchChange={setSearchTermOrganik}
-                  />
-                </div>
+                <Combobox
+                  options={filteredAvailableOrganik.map(org => ({
+                    value: org.nama,
+                    label: `${org.nama} - ${org.nip}`
+                  }))}
+                  value={selectedOrganik}
+                  onValueChange={setSelectedOrganik}
+                  placeholder="Pilih organik..."
+                  searchPlaceholder="Cari organik..."
+                  emptyMessage="Tidak ada organik tersedia"
+                  onSearchChange={setSearchTermOrganik}
+                />
               </div>
 
               {/* Tambah Mitra */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tambah Mitra</label>
-                <div className="flex gap-2">
-                  <Combobox
-                    options={filteredAvailableMitra.map(mitra => ({
-                      value: mitra.nama,
-                      label: `${mitra.nama} - ${mitra.kecamatan}`
-                    }))}
-                    value={selectedMitra}
-                    onValueChange={setSelectedMitra}
-                    placeholder="Pilih mitra..."
-                    searchPlaceholder="Cari mitra..."
-                    emptyMessage="Tidak ada mitra tersedia"
-                    onSearchChange={setSearchTermMitra}
-                  />
-                </div>
-              </div>
-
-              {/* Tombol Aksi */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium invisible">Aksi</label>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={addOrganik} 
-                    disabled={!selectedOrganik || !kegiatanInput.trim()}
-                    className="bg-orange-600 hover:bg-orange-700 flex-1"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Organik
-                  </Button>
-                  <Button 
-                    onClick={addMitra} 
-                    disabled={!selectedMitra || !kegiatanInput.trim()}
-                    className="bg-orange-600 hover:bg-orange-700 flex-1"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Mitra
-                  </Button>
-                </div>
+                <Combobox
+                  options={filteredAvailableMitra.map(mitra => ({
+                    value: mitra.nama,
+                    label: `${mitra.nama} - ${mitra.kecamatan}`
+                  }))}
+                  value={selectedMitra}
+                  onValueChange={setSelectedMitra}
+                  placeholder="Pilih mitra..."
+                  searchPlaceholder="Cari mitra..."
+                  emptyMessage="Tidak ada mitra tersedia"
+                  onSearchChange={setSearchTermMitra}
+                />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+
+            {/* Tombol Aksi */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button 
+                onClick={addOrganik} 
+                disabled={!selectedOrganik || !kegiatanInput.trim()}
+                className="bg-orange-600 hover:bg-orange-700 flex-1"
+                size="lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Organik
+              </Button>
+              <Button 
+                onClick={addMitra} 
+                disabled={!selectedMitra || !kegiatanInput.trim()}
+                className="bg-orange-600 hover:bg-orange-700 flex-1"
+                size="lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Mitra
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground pt-2 border-t">
               Kegiatan akan disimpan di kolom <strong className={ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING]?.color}>{userRole}</strong>
             </p>
           </CardContent>
