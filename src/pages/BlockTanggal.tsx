@@ -1392,7 +1392,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addOrganik} 
                 disabled={!selectedOrganik || !kegiatanInput.trim()}
-                className="bg-orange-600 hover:bg-orange-700 flex-1"
+                className="bg-orange-600 hover:bg-blue-600 flex-1"
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1401,7 +1401,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addMitra} 
                 disabled={!selectedMitra || !kegiatanInput.trim()}
-                className="bg-orange-600 hover:bg-orange-700 flex-1"
+                className="bg-orange-600 hover:bg-blue-600 flex-1"
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
