@@ -854,7 +854,7 @@ export default function InputPengadaan() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <ClipboardList className="h-8 w-8" />
-            Input Data Pengadaan
+            Input Data Pengadaan Barang/Jasa
           </h1>
           <p className="text-muted-foreground mt-2">
             Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
@@ -985,7 +985,7 @@ export default function InputPengadaan() {
           <Card>
             <CardHeader>
               <CardTitle>
-                Data Pengadaan -{" "}
+                Data Pengadaan Barang/Jasa -{" "}
                 <span className="text-red-500">
                   {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)} {getTahunName()}
                   {filterStatus !== "all" && ` • ${getStatusName(filterStatus)}`}
