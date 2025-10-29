@@ -1642,7 +1642,7 @@ export default function EntriTarget() {
                           size="icon"
                           className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                           onClick={() => handleActionClick(item.month)}
-                          title="Entri"
+                          title="Input Kegiatan"
                         >
                           <LogIn className="h-4 w-4" />
                         </Button>
