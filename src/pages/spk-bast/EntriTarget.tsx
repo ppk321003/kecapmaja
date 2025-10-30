@@ -22,6 +22,75 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
+// =============================================
+// FUNGSI UTILITY BARU UNTUK KONSISTENSI
+// =============================================
+
+/**
+ * Fungsi pembersihan angka - SAMA dengan Skrip 1
+ */
+const cleanNumberValue = (value: any): number => {
+  if (value === null || value === undefined || value === '') return 0;
+  
+  const stringValue = value.toString().trim();
+  if (stringValue === '') return 0;
+  
+  // Hilangkan semua karakter non-numeric kecuali titik, koma, dan minus
+  const cleanValue = stringValue
+    .replace(/[^\d,.-]/g, '')      // Hapus karakter non-numeric
+    .replace(',', '.')             // Ubah koma menjadi titik
+    .replace(/(\..*)\./g, '$1');   // Hapus titik duplikat
+  
+  const numberValue = parseFloat(cleanValue);
+  return isNaN(numberValue) ? 0 : numberValue;
+};
+
+/**
+ * Fungsi pemrosesan multiple values - SAMA dengan Skrip 1
+ */
+const processMultipleValues = (text: string, separator: string = '|'): string[] => {
+  if (!text) return [];
+  
+  return text.toString()
+    .split(separator)
+    .map(item => item.trim())
+    .filter(item => item !== '');
+};
+
+/**
+ * Fungsi perhitungan total kegiatan - MENGIKUTI SKRIP 1 (per petugas)
+ */
+const calculateActivityTotal = (activity: Activity): number => {
+  const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
+  let total = 0;
+  
+  // Hitung per petugas seperti di Skrip 1
+  activity.workers.forEach(worker => {
+    const realisasi = cleanNumberValue(worker.realisasi);
+    const nilaiPetugas = hargaSatuan * realisasi;
+    total += nilaiPetugas;
+  });
+  
+  return total;
+};
+
+/**
+ * Fungsi perhitungan target total - MENGIKUTI SKRIP 1
+ */
+const calculateActivityTarget = (activity: Activity): number => {
+  const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
+  let totalTarget = 0;
+  
+  // Hitung per petugas seperti di Skrip 1
+  activity.workers.forEach(worker => {
+    const target = cleanNumberValue(worker.target);
+    const nilaiTarget = hargaSatuan * target;
+    totalTarget += nilaiTarget;
+  });
+  
+  return totalTarget;
+};
+
 // Mock data for SPK periods
 const spkData = [
   { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
@@ -113,7 +182,7 @@ const formSchema = z.object({
   tanggalMulai: z.date({ required_error: "Tanggal mulai wajib diisi" }),
   tanggalAkhir: z.date({ required_error: "Tanggal akhir wajib diisi" }),
   hargaSatuan: z.string().min(1, "Harga satuan wajib diisi").refine((val) => {
-    const num = parseFloat(val);
+    const num = cleanNumberValue(val);
     return !isNaN(num) && num >= 0;
   }, "Harga satuan harus berupa angka positif"),
   satuan: z.string().min(1, "Satuan wajib dipilih"),
@@ -561,6 +630,10 @@ export default function EntriTarget() {
     }).length;
   };
 
+  // =============================================
+  // PERBAIKAN 1: KONVERSI ANGKA YANG KONSISTEN
+  // =============================================
+
   const dynamicSpkData = useMemo(() => {
     const monthlyData = spkData.map(month => {
       let totalActivities = 0;
@@ -577,22 +650,19 @@ export default function EntriTarget() {
           monthActivities.forEach(activity => {
             activity.workers.forEach(worker => uniqueWorkers.add(worker.nip));
             
-            // PERBAIKAN: Hitung target per kegiatan
+            // PERBAIKAN: Gunakan cleanNumberValue dan hitung seperti Skrip 1
             const activityTarget = activity.workers.reduce((sum, w) => {
-              return sum + parseFloat(w.target || '0');
+              return sum + cleanNumberValue(w.target);
             }, 0);
             totalTarget += activityTarget;
             
-            // PERBAIKAN: Hitung nilai perjanjian (target × harga satuan)
-            const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
-            const nilaiPerjanjian = activityTarget * hargaSatuan;
+            // PERBAIKAN: Hitung nilai perjanjian seperti Skrip 1 (per petugas)
+            const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
+            const nilaiPerjanjian = calculateActivityTarget(activity); // Menggunakan fungsi baru
             totalValue += nilaiPerjanjian;
             
-            // PERBAIKAN: Hitung nilai realisasi (realisasi × harga satuan)
-            const activityRealisasi = activity.workers.reduce((sum, w) => {
-              return sum + parseFloat(w.realisasi || '0');
-            }, 0);
-            const nilaiRealisasi = activityRealisasi * hargaSatuan;
+            // PERBAIKAN: Hitung nilai realisasi seperti Skrip 1 (per petugas)
+            const nilaiRealisasi = calculateActivityTotal(activity); // Menggunakan fungsi baru
             totalRealisasi += nilaiRealisasi;
           });
 
@@ -634,6 +704,10 @@ export default function EntriTarget() {
     });
   }, [dynamicSpkData]);
 
+  // =============================================
+  // PERBAIKAN 2: PENANGANAN MULTIPLE VALUES KONSISTEN
+  // =============================================
+
   const dynamicJobTypes = useMemo(() => {
     return jobTypes.map(jobType => {
       const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
@@ -646,21 +720,22 @@ export default function EntriTarget() {
       const uniqueWorkers = new Set<string>();
       
       jobActivities.forEach(activity => {
-        const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
+        const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
         
-        // PERBAIKAN: Hitung total target dan realisasi untuk kegiatan ini
+        // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
         const activityTarget = activity.workers.reduce((sum, worker) => {
           uniqueWorkers.add(worker.nip);
-          return sum + parseFloat(worker.target || '0');
+          return sum + cleanNumberValue(worker.target);
         }, 0);
         
+        // PERBAIKAN: Hitung seperti Skrip 1 (per petugas)
         const activityRealisasi = activity.workers.reduce((sum, worker) => {
-          return sum + parseFloat(worker.realisasi || '0');
+          return sum + cleanNumberValue(worker.realisasi);
         }, 0);
         
         totalTarget += activityTarget;
-        totalValue += activityTarget * hargaSatuan; // PERBAIKAN: Nilai Perjanjian
-        totalRealisasi += activityRealisasi * hargaSatuan; // PERBAIKAN: Nilai Realisasi
+        totalValue += calculateActivityTarget(activity); // Menggunakan fungsi baru
+        totalRealisasi += calculateActivityTotal(activity); // Menggunakan fungsi baru
       });
 
       totalSent = calculateSentToPPK(jobActivities);
@@ -704,14 +779,15 @@ export default function EntriTarget() {
       const rows = data.values.slice(1);
       const options: ActivityOption[] = rows
         .map((row: any[], index: number) => ({
-          no: parseInt(row[0]) || index + 1,
+          no: cleanNumberValue(row[0]) || index + 1, // PERBAIKAN: Gunakan cleanNumberValue
           role: row[1] || '',
           namaKegiatan: row[2] || '',
           bebanAnggaran: row[3] || '',
         }))
         .filter((option: ActivityOption) => {
           if (!option.namaKegiatan.trim()) return false;
-          const roles = option.role.split('|').map(r => r.trim());
+          // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
+          const roles = processMultipleValues(option.role);
           return roles.includes(user.role);
         });
 
@@ -800,6 +876,10 @@ export default function EntriTarget() {
     loadInitialData();
   }, [user?.role]);
 
+  // =============================================
+  // PERBAIKAN 3: LOAD DATA DENGAN PROCESSING KONSISTEN
+  // =============================================
+
   const loadDataFromSpreadsheet = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
@@ -858,10 +938,11 @@ export default function EntriTarget() {
         const realisasiStr = row[15] || '';
         const nikListStr = row[22] || '';
         
-        const namaPetugasList = namaPetugasStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-        const targetList = targetStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-        const realisasiList = realisasiStr.split('|').map((s: string) => s.trim()).filter(Boolean);
-        const nikList = nikListStr.split('|').map((s: string) => s.trim()).filter(Boolean);
+        // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
+        const namaPetugasList = processMultipleValues(namaPetugasStr);
+        const targetList = processMultipleValues(targetStr);
+        const realisasiList = processMultipleValues(realisasiStr);
+        const nikList = processMultipleValues(nikListStr);
 
         const workers: Worker[] = [];
         
@@ -1126,7 +1207,10 @@ export default function EntriTarget() {
         return;
       }
 
-      const invalidWorkers = newWorkers.filter(w => parseFloat(w.realisasi) > parseFloat(w.target));
+      // PERBAIKAN: Gunakan cleanNumberValue untuk validasi
+      const invalidWorkers = newWorkers.filter(w => 
+        cleanNumberValue(w.realisasi) > cleanNumberValue(w.target)
+      );
       if (invalidWorkers.length > 0) {
         toast({
           title: "Realisasi tidak valid",
@@ -1226,7 +1310,8 @@ export default function EntriTarget() {
 
   const handleUpdateWorker = async (activityId: number, workerId: number, selectedValue: string, newTarget: string, newRealisasi: string) => {
     try {
-      if (parseFloat(newRealisasi) > parseFloat(newTarget)) {
+      // PERBAIKAN: Gunakan cleanNumberValue untuk validasi
+      if (cleanNumberValue(newRealisasi) > cleanNumberValue(newTarget)) {
         toast({
           title: "Realisasi tidak valid",
           description: "Realisasi tidak boleh lebih besar dari Target.",
@@ -1307,7 +1392,10 @@ export default function EntriTarget() {
     }
   };
 
-  // PERBAIKAN: Fungsi saveActivityToSpreadsheet yang sudah diperbaiki
+  // =============================================
+  // PERBAIKAN 4: SAVE KE SPREADSHEET DENGAN KONSISTENSI
+  // =============================================
+
   const saveActivityToSpreadsheet = async (activity: Activity, targetPeriod: string, targetYear: string): Promise<number | null> => {
     try {
       const { data: existingData } = await supabase.functions.invoke('google-sheets', {
@@ -1321,27 +1409,23 @@ export default function EntriTarget() {
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
-      // Siapkan data petugas untuk duplikat
+      // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi join
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
       
-      // Hitung nilai realisasi per petugas
+      // PERBAIKAN: Hitung nilai realisasi per petugas seperti Skrip 1
       const nilaiRealisasiList = activity.workers
-        .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
+        .map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan)))
         .join(" | ");
       
-      // Hitung total realisasi
-      const totalRealisasi = activity.workers.reduce(
-        (sum, w) => sum + (parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)),
-        0
-      );
+      // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
+      const totalRealisasi = calculateActivityTotal(activity);
 
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
 
-      // PERBAIKAN: Struktur kolom yang sesuai dengan format yang sudah berfungsi
       const rowData = [
         [
           nextNo.toString(), // A: No
@@ -1357,16 +1441,16 @@ export default function EntriTarget() {
           activity.satuan, // K: Satuan
           activity.koordinator, // L: Koordinator
           komponenPOKLabel, // M: Komponen POK
-          namaPetugas, // N: Nama Petugas (DIPERBAIKI)
-          targetList, // O: Target (DIPERBAIKI)
-          realisasiList, // P: Realisasi (DIPERBAIKI)
-          nilaiRealisasiList, // Q: Nilai Realisasi (DIPERBAIKI)
-          formatCurrency(totalRealisasi), // R: Total Realisasi (DIPERBAIKI)
+          namaPetugas, // N: Nama Petugas
+          targetList, // O: Target
+          realisasiList, // P: Realisasi
+          nilaiRealisasiList, // Q: Nilai Realisasi
+          formatCurrency(totalRealisasi), // R: Total Realisasi
           activity.bebanAnggaran || "", // S: Beban Anggaran
           activity.dikirimKePPK || "", // T: Dikirim ke PPK
           "", // U: (Kosong)
           "", // V: (Kosong)
-          nikList, // W: NIK List (DIPERBAIKI - posisi yang benar)
+          nikList, // W: NIK List
         ]
       ];
 
@@ -1396,14 +1480,13 @@ export default function EntriTarget() {
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
       
+      // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
       const nilaiRealisasiList = activity.workers
-        .map(w => formatCurrency(parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)))
+        .map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan)))
         .join(" | ");
       
-      const totalRealisasi = activity.workers.reduce(
-        (sum, w) => sum + (parseFloat(w.realisasi) * parseFloat(activity.hargaSatuan)),
-        0
-      );
+      // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
+      const totalRealisasi = calculateActivityTotal(activity);
 
       const nikList = activity.workers.map(w => w.nip).join(" | ");
 
@@ -1514,8 +1597,9 @@ export default function EntriTarget() {
   };
 
   const hasTargetButNoRealisasi = (worker: Worker) => {
-    const target = parseFloat(worker.target || '0');
-    const realisasi = parseFloat(worker.realisasi || '0');
+    // PERBAIKAN: Gunakan cleanNumberValue
+    const target = cleanNumberValue(worker.target);
+    const realisasi = cleanNumberValue(worker.realisasi);
     return target > 0 && realisasi === 0;
   };
 
@@ -1580,6 +1664,10 @@ export default function EntriTarget() {
       </div>
     );
   }
+
+  // =============================================
+  // PERBAIKAN 5: TAMPILAN DENGAN PERHITUNGAN KONSISTEN
+  // =============================================
 
   return (
     <div className="space-y-6">
@@ -1771,12 +1859,8 @@ export default function EntriTarget() {
                     </TableRow>
                   ) : (
                     filteredActivities.map((activity, index) => {
-                      // Hitung total nilai realisasi untuk kegiatan ini
-                      const totalNilaiRealisasi = activity.workers.reduce((sum, worker) => {
-                        const realisasi = parseFloat(worker.realisasi || '0');
-                        const hargaSatuan = parseFloat(activity.hargaSatuan || '0');
-                        return sum + (realisasi * hargaSatuan);
-                      }, 0);
+                      // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
+                      const totalNilaiRealisasi = calculateActivityTotal(activity);
 
                       return (
                         <>
@@ -1792,7 +1876,7 @@ export default function EntriTarget() {
                             </TableCell>
                             <TableCell className="text-center">{format(activity.tanggalMulai, "dd/MM/yyyy")}</TableCell>
                             <TableCell className="text-center">{format(activity.tanggalAkhir, "dd/MM/yyyy")}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(parseFloat(activity.hargaSatuan))}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(cleanNumberValue(activity.hargaSatuan))}</TableCell>
                             <TableCell>{activity.satuan}</TableCell>
                             <TableCell>{getKomponenPOKLabel(activity.komponenPOK)}</TableCell>
                             <TableCell>{activity.nomorSK}</TableCell>
@@ -1995,7 +2079,8 @@ export default function EntriTarget() {
                                 )}
                               </TableCell>
                               <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                                Nilai Realisasi: {formatCurrency(parseFloat(worker.realisasi) * parseFloat(activity.hargaSatuan))}
+                                {/* PERBAIKAN: Gunakan cleanNumberValue untuk perhitungan */}
+                                Nilai Realisasi: {formatCurrency(cleanNumberValue(worker.realisasi) * cleanNumberValue(activity.hargaSatuan))}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-1">
