@@ -222,9 +222,9 @@ export default function AkiToBendahara() {
       
       // Coba beberapa range yang mungkin
       const rangesToTry = [
-        "All-In!A:EE",  // Range spesifik worksheet All-In
+        "All-In!A:ZZ",  // Range spesifik worksheet All-In
         "A:Z",         // Range umum worksheet pertama
-        "Sheet1!A:EE",  // Range worksheet Sheet1
+        "Sheet1!A:ZZ",  // Range worksheet Sheet1
         "All-In"       // Nama worksheet saja
       ];
 
