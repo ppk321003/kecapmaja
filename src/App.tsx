@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import AkiToBendahara from "./pages/AkiToBendahara";
 import BlockTanggal from "./pages/BlockTanggal";
 import Pengadaan from "./pages/Pengadaan";
+import SpkBast from "./pages/SpkBast";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
