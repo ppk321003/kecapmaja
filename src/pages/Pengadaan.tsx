@@ -1036,7 +1036,7 @@ export default function InputPengadaan() {
                               {item.namaKegiatanDetilPOK || '-'}
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-xs">
+                          <TableCell className="font-mono text-sm">
                             <div className="truncate" title={item.kodePOK}>
                               {item.kodePOK || '-'}
                             </div>
