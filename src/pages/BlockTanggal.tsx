@@ -1364,8 +1364,7 @@ export default function BlockTanggal() {
                   onValueChange={setSelectedOrganik}
                   placeholder="Pilih organik..."
                   searchPlaceholder="Cari organik..."
-                  emptyMessage="Tidak ada organik tersedia"
-                  onSearchChange={setSearchTermOrganik}
+                  emptyText="Tidak ada organik tersedia"
                 />
               </div>
 
@@ -1381,12 +1380,10 @@ export default function BlockTanggal() {
                   onValueChange={setSelectedMitra}
                   placeholder="Pilih mitra..."
                   searchPlaceholder="Cari mitra..."
-                  emptyMessage="Tidak ada mitra tersedia"
-                  onSearchChange={setSearchTermMitra}
+                  emptyText="Tidak ada mitra tersedia"
                 />
               </div>
             </div>
-
             {/* Tombol Aksi */}
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button 
@@ -1415,7 +1412,6 @@ export default function BlockTanggal() {
           </CardContent>
         </Card>
       )}
-
       {/* Warning untuk role disabled */}
       {isUserRoleDisabled && (
         <Card className="border-yellow-200 bg-yellow-50">
