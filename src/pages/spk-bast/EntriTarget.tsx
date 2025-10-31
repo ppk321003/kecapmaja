@@ -645,9 +645,18 @@ export default function EntriTarget() {
 
       Object.entries(activitiesByPeriod).forEach(([key, monthActivities]) => {
         if (key.includes(month.month) && key.includes(selectedYear)) {
-          totalActivities += monthActivities.length;
+          // PERBAIKAN: Filter activities berdasarkan role user
+          let filteredActivities = monthActivities;
+          if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
+            const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
+            filteredActivities = monthActivities.filter(act => 
+              allowedActivityNames.includes(act.namaKegiatan)
+            );
+          }
+
+          totalActivities += filteredActivities.length;
           
-          monthActivities.forEach(activity => {
+          filteredActivities.forEach(activity => {
             activity.workers.forEach(worker => uniqueWorkers.add(worker.nip));
             
             // PERBAIKAN: Gunakan cleanNumberValue dan hitung seperti Skrip 1
@@ -666,7 +675,7 @@ export default function EntriTarget() {
             totalRealisasi += nilaiRealisasi;
           });
 
-          totalSent += calculateSentToPPK(monthActivities);
+          totalSent += calculateSentToPPK(filteredActivities);
         }
       });
 
@@ -682,7 +691,7 @@ export default function EntriTarget() {
     });
 
     return monthlyData;
-  }, [activitiesByPeriod, selectedYear]);
+  }, [activitiesByPeriod, selectedYear, user?.role, activityOptions]);
 
   const summaryData = useMemo(() => {
     return dynamicSpkData.reduce((acc, month) => {
@@ -713,13 +722,22 @@ export default function EntriTarget() {
       const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
       const jobActivities = activitiesByPeriod[key] || [];
       
+      // PERBAIKAN: Filter activities berdasarkan role user
+      let filteredJobActivities = jobActivities;
+      if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
+        const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
+        filteredJobActivities = jobActivities.filter(act => 
+          allowedActivityNames.includes(act.namaKegiatan)
+        );
+      }
+
       let totalTarget = 0;
       let totalValue = 0;
       let totalRealisasi = 0;
       let totalSent = 0;
       const uniqueWorkers = new Set<string>();
       
-      jobActivities.forEach(activity => {
+      filteredJobActivities.forEach(activity => {
         const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
         
         // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
@@ -738,11 +756,11 @@ export default function EntriTarget() {
         totalRealisasi += calculateActivityTotal(activity); // Menggunakan fungsi baru
       });
 
-      totalSent = calculateSentToPPK(jobActivities);
+      totalSent = calculateSentToPPK(filteredJobActivities);
       
       return {
         ...jobType,
-        activities: jobActivities.length,
+        activities: filteredJobActivities.length,
         workers: uniqueWorkers.size,
         target: totalTarget,
         value: totalValue,
@@ -750,7 +768,7 @@ export default function EntriTarget() {
         sent: totalSent,
       };
     });
-  }, [activitiesByPeriod, selectedPeriod, selectedYear]);
+  }, [activitiesByPeriod, selectedPeriod, selectedYear, user?.role, activityOptions]);
 
   const loadActivityOptions = async () => {
     if (!user?.role) return;
@@ -2159,7 +2177,7 @@ export default function EntriTarget() {
                       placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"}
                       searchPlaceholder="Cari nama kegiatan..."
                       disabled={loadingActivityOptions}
-                      emptyMessage={
+                      emptyText={
                         loadingActivityOptions 
                           ? "Memuat..." 
                           : "Tidak ada kegiatan untuk role Anda"
