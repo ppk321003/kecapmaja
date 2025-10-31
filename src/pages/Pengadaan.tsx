@@ -1014,9 +1014,9 @@ export default function InputPengadaan() {
                         <TableHead className="font-semibold text-foreground w-32">Tanggal Usulan</TableHead>
                         <TableHead className="font-semibold text-foreground w-64">Nama Produk</TableHead>
                         <TableHead className="font-semibold text-foreground w-64">Detil POK</TableHead>
-                        <TableHead className="font-semibold text-foreground w-48">Kode POK</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-32">Rencana</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-32">Realisasi</TableHead>
+                        <TableHead className="font-semibold text-foreground w-28">Kode POK</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-48">Rencana</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right w-48">Realisasi</TableHead>
                         <TableHead className="font-semibold text-foreground text-center w-24">Status</TableHead>
                         <TableHead className="font-semibold text-foreground text-center w-28">Aksi</TableHead>
                       </TableRow>
