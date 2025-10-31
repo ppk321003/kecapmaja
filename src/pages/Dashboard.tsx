@@ -279,7 +279,7 @@ const RoleBadge = ({
   onHideTooltip: () => void;
 }) => {
   const badgeRef = useRef<HTMLSpanElement>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
@@ -338,7 +338,7 @@ const RiskItem = ({
   onHideRiskTooltip: () => void;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -812,8 +812,8 @@ export default function Dashboard() {
   // Ref untuk menghindari blinking
   const petugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
   const allPetugasRoleData = useRef<Map<string, Map<string, { kegiatan: number, anggaran: number }>>>(new Map());
-  const hideTooltipTimeout = useRef<NodeJS.Timeout>();
-  const hideRiskTooltipTimeout = useRef<NodeJS.Timeout>();
+  const hideTooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const hideRiskTooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   // Map untuk menyimpan data kegiatan per fungsi per petugas
   const petugasFungsiKegiatanMap = useRef<Map<string, Map<string, { kegiatan: number; anggaran: number; namaKegiatanList: string[] }>>>(new Map());
