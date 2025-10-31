@@ -12,7 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import AkiToBendahara from "./pages/AkiToBendahara";
 import BlockTanggal from "./pages/BlockTanggal";
 import Pengadaan from "./pages/Pengadaan";
-import SpkBast from "./pages/SpkBast";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
@@ -42,7 +41,6 @@ const App = () => (
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />
             <Route path="/Pengadaan" element={<ProtectedRoute><Layout><Pengadaan /></Layout></ProtectedRoute>} />
-            <Route path="/SpkBast" element={<ProtectedRoute><Layout><SpkBast /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-petugas" element={<ProtectedRoute><Layout><EntriPetugas /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-realisasi" element={<ProtectedRoute><Layout><EntriRealisasi /></Layout></ProtectedRoute>} />
