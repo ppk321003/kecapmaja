@@ -15,7 +15,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-accent/80 flex items-center">
           <div className="px-8 text-primary-foreground">
             <h1 className="text-4xl font-bold mb-2">AKI MAJA</h1>
-            <p className="text-xl">Aplikasi Kinerja Monitoring dan Administrasi Mitra Statistik Majalengka</p>
+            <p className="text-xl">Aplikasi Kinerja, Monitoring dan Administrasi BPS Kabupaten Majalengka</p>
           </div>
         </div>
       </section>
@@ -28,8 +28,8 @@ export default function Home() {
           </CardHeader>
           <CardContent className="space-y-4 text-foreground">
             <p className="text-justify leading-relaxed">
-              Aplikasi Kinerja Monitoring dan Administrasi Mitra Statistik Majalengka (AKI MAJA) adalah aplikasi berbasis web 
-              yang dirancang untuk mengelola dan memantau kinerja mitra statistik di wilayah Kabupaten Majalengka. 
+              Aplikasi Kinerja, Monitoring dan Administrasi BPS Kabupaten Majalengka (AKI MAJA) adalah aplikasi berbasis web 
+              yang dirancang untuk mengelola dan memantau kinerja Organik dan Mitra Statistik di wilayah Kabupaten Majalengka. 
               Aplikasi ini merupakan solusi digital yang mengintegrasikan berbagai proses administrasi dan monitoring 
               dalam satu platform yang efisien dan terstruktur.
             </p>

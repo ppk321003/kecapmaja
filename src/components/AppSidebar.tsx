@@ -67,7 +67,7 @@ export function AppSidebar() {
         <div className="px-4 py-6">
           <h2 className="text-xl font-bold text-sidebar-foreground">AKI MAJA</h2>
           <p className="text-xs text-sidebar-foreground/80 mt-1">
-            Aplikasi Kinerja Monitoring Mitra
+            Aplikasi Kinerja, Monitoring dan Administrasi
           </p>
         </div>
 
