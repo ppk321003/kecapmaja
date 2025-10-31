@@ -296,7 +296,6 @@ export default function InputPengadaan() {
     try {
       setSaving(true);
 
-      // Check if user has permission to edit
       if (!canEdit()) {
         toast({
           title: "Akses Ditolak",
@@ -433,7 +432,6 @@ export default function InputPengadaan() {
   };
 
   const editData = (data: PengadaanData) => {
-    // Check if user has permission to edit
     if (!canEdit()) {
       toast({
         title: "Akses Ditolak",
@@ -472,7 +470,6 @@ export default function InputPengadaan() {
     try {
       setSaving(true);
 
-      // Check if user has permission to edit
       if (!canEdit()) {
         toast({
           title: "Akses Ditolak",
@@ -494,13 +491,10 @@ export default function InputPengadaan() {
 
       if (!editingData) return;
 
-      // Get all data to find the correct row
       const allData = await getAllData();
       
-      // PERBAIKAN: Cari row index yang tepat dengan mempertimbangkan header
       let rowIndex = -1;
       
-      // Cari berdasarkan ID di semua baris data (termasuk baris pertama setelah header)
       for (let i = 1; i < allData.length; i++) {
         const row = allData[i];
         if (row && row.length > 1 && row[1] === editingData.id) {
@@ -514,8 +508,7 @@ export default function InputPengadaan() {
         throw new Error("Data tidak ditemukan di spreadsheet");
       }
 
-      // PERBAIKAN: Row number dihitung dengan benar (+2 karena header + index 0-based)
-      const rowNumber = rowIndex + 1; // +1 karena Google Sheets dimulai dari 1, dan rowIndex sudah termasuk offset header
+      const rowNumber = rowIndex + 1;
 
       const dataToUpdate = [
         editingData.no.toString(),
@@ -604,7 +597,6 @@ export default function InputPengadaan() {
     try {
       setSaving(true);
 
-      // Check if user has permission to delete
       if (!canEdit()) {
         toast({
           title: "Akses Ditolak",
@@ -614,11 +606,9 @@ export default function InputPengadaan() {
         return;
       }
 
-      // Get all data to find the correct row
       const allData = await getAllData();
       console.log('📋 All data for deletion:', allData);
       
-      // PERBAIKAN: Cari row index yang tepat
       let rowIndex = -1;
       
       for (let i = 1; i < allData.length; i++) {
@@ -633,7 +623,6 @@ export default function InputPengadaan() {
       }
 
       if (rowIndex === -1) {
-        // Fallback: cari berdasarkan nomor urut
         for (let i = 1; i < allData.length; i++) {
           const row = allData[i];
           if (row && row.length > 0 && parseInt(row[0]) === data.no) {
@@ -648,7 +637,6 @@ export default function InputPengadaan() {
         throw new Error("Data tidak ditemukan di spreadsheet");
       }
 
-      // PERBAIKAN: Row number dihitung dengan benar
       const rowNumber = rowIndex + 1;
       console.log(`🗑️ Deleting data at row: ${rowNumber}`);
 
@@ -687,7 +675,6 @@ export default function InputPengadaan() {
   };
 
   const confirmDelete = (data: PengadaanData) => {
-    // Check if user has permission to delete
     if (!canEdit()) {
       toast({
         title: "Akses Ditolak",
@@ -733,7 +720,6 @@ export default function InputPengadaan() {
   };
 
   const filteredData = pengadaanData.filter(item => {
-    // Filter by bulan and tahun
     if (filterTahun !== "all" && item.tahunAnggaran !== filterTahun) return false;
     if (filterBulan !== "all") {
       try {
@@ -745,10 +731,8 @@ export default function InputPengadaan() {
       }
     }
     
-    // Filter by status
     if (filterStatus !== "all" && item.statusPengadaan !== filterStatus) return false;
     
-    // Filter by search term
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -817,7 +801,6 @@ export default function InputPengadaan() {
     return isNaN(numeric) ? value : `Rp ${numeric.toLocaleString('id-ID')}`;
   };
 
-  // PERBAIKAN: Fungsi untuk mengecek apakah string adalah URL valid
   const isValidUrl = (string: string) => {
     try {
       new URL(string);
@@ -827,7 +810,6 @@ export default function InputPengadaan() {
     }
   };
 
-  // PERBAIKAN: Fungsi untuk menampilkan link KAK yang bisa diklik
   const renderKAKLink = (kakValue: string) => {
     if (!kakValue) return '-';
     
@@ -878,22 +860,16 @@ export default function InputPengadaan() {
       </div>
 
       {!showForm ? (
-        /* TAMPILAN TABEL DATA */
+        /* TAMPILAN TABEL DATA - LEBIH MINIMALIS */
         <>
           {/* Filter Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filter Data
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
-                  <Label>Bulan</Label>
+                  <Label className="text-sm font-medium text-blue-900">Bulan</Label>
                   <Select value={filterBulan} onValueChange={(value) => { setFilterBulan(value); setCurrentPage(1); }}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Semua Bulan" />
                     </SelectTrigger>
                     <SelectContent>
@@ -906,9 +882,9 @@ export default function InputPengadaan() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Tahun Anggaran</Label>
+                  <Label className="text-sm font-medium text-blue-900">Tahun Anggaran</Label>
                   <Select value={filterTahun} onValueChange={(value) => { setFilterTahun(value); setCurrentPage(1); }}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Pilih Tahun" />
                     </SelectTrigger>
                     <SelectContent>
@@ -921,9 +897,9 @@ export default function InputPengadaan() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label className="text-sm font-medium text-blue-900">Status</Label>
                   <Select value={filterStatus} onValueChange={(value) => { setFilterStatus(value); setCurrentPage(1); }}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Semua Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -936,14 +912,14 @@ export default function InputPengadaan() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Cari Data</Label>
+                  <Label className="text-sm font-medium text-blue-900">Cari Data</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Cari nama produk, detil POK, kode POK..."
                       value={searchTerm}
                       onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                      className="pl-10"
+                      className="pl-10 bg-white"
                     />
                   </div>
                 </div>
@@ -960,7 +936,7 @@ export default function InputPengadaan() {
                       }
                       setShowForm(true);
                     }} 
-                    className="flex items-center gap-2 w-full"
+                    className="flex items-center gap-2 w-full bg-blue-600 hover:bg-blue-700"
                     disabled={!canEdit()}
                   >
                     <Plus className="h-4 w-4" />
@@ -983,82 +959,105 @@ export default function InputPengadaan() {
 
           {/* Data Table */}
           <Card>
-            <CardHeader>
-              <CardTitle>
-                Data Pengadaan -{" "}
-                <span className="text-red-500">
-                  {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)} {getTahunName()}
-                  {filterStatus !== "all" && ` • ${getStatusName(filterStatus)}`}
-                </span>
-              </CardTitle>
-              <CardDescription>
-                Menampilkan {currentItems.length} dari {filteredData.length} data pengadaan
-                {searchTerm && ` untuk pencarian "${searchTerm}"`}
-                {pengadaanData.length === 0 && " - Spreadsheet kosong"}
-              </CardDescription>
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-xl">
+                    Data Pengadaan
+                  </CardTitle>
+                  <CardDescription className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge variant="outline" className="bg-white">
+                      {filterBulan === "all" ? "Semua Bulan" : getBulanName(filterBulan)}
+                    </Badge>
+                    <Badge variant="outline" className="bg-white">
+                      {getTahunName()}
+                    </Badge>
+                    {filterStatus !== "all" && (
+                      <Badge variant="outline" className="bg-white">
+                        {getStatusName(filterStatus)}
+                      </Badge>
+                    )}
+                    {searchTerm && (
+                      <Badge variant="outline" className="bg-white">
+                        Pencarian: "{searchTerm}"
+                      </Badge>
+                    )}
+                  </CardDescription>
+                </div>
+                <div className="mt-2 sm:mt-0 text-sm text-muted-foreground">
+                  {filteredData.length} data ditemukan
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8">
+                <div className="flex justify-center py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="text-muted-foreground mt-2">Memuat data...</p>
                   </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-lg border">
+                <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader className="bg-slate-50">
                       <TableRow>
-                        <TableHead className="font-semibold text-foreground w-16 text-center">No</TableHead>
-                        <TableHead className="font-semibold text-foreground w-32">Tanggal Usulan</TableHead>
-                        <TableHead className="font-semibold text-foreground w-64">Nama Produk</TableHead>
-                        <TableHead className="font-semibold text-foreground w-80">Detil POK</TableHead>
-                        <TableHead className="font-semibold text-foreground w-28">Kode POK</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-48">Rencana</TableHead>
-                        <TableHead className="font-semibold text-foreground text-right w-48">Realisasi</TableHead>
-                        <TableHead className="font-semibold text-foreground text-center w-24">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground text-center w-28">Aksi</TableHead>
+                        <TableHead className="w-16 text-center font-semibold">No</TableHead>
+                        <TableHead className="w-32 font-semibold">Tanggal</TableHead>
+                        <TableHead className="min-w-64 font-semibold">Produk</TableHead>
+                        <TableHead className="min-w-80 font-semibold">Kegiatan</TableHead>
+                        <TableHead className="w-28 font-semibold">Kode POK</TableHead>
+                        <TableHead className="w-48 text-right font-semibold">Rencana</TableHead>
+                        <TableHead className="w-48 text-right font-semibold">Realisasi</TableHead>
+                        <TableHead className="w-24 text-center font-semibold">Status</TableHead>
+                        <TableHead className="w-28 text-center font-semibold">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {currentItems.map((item, index) => (
-                        <TableRow key={item.id || index} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-medium text-center">{item.no || index + 1 + indexOfFirstItem}</TableCell>
-                          <TableCell className="whitespace-nowrap text-sm">{formatDate(item.tanggalUsulan)}</TableCell>
+                        <TableRow key={item.id || index} className="hover:bg-slate-50/50 border-b">
+                          <TableCell className="font-medium text-center text-sm">
+                            {item.no || index + 1 + indexOfFirstItem}
+                          </TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {formatDate(item.tanggalUsulan)}
+                          </TableCell>
                           <TableCell>
-                            <div className="line-clamp-2 text-sm" title={item.namaProdukBarangJasa}>
+                            <div className="max-w-xs truncate text-sm" title={item.namaProdukBarangJasa}>
                               {item.namaProdukBarangJasa || '-'}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="line-clamp-2 text-sm" title={item.namaKegiatanDetilPOK}>
+                            <div className="max-w-sm truncate text-sm" title={item.namaKegiatanDetilPOK}>
                               {item.namaKegiatanDetilPOK || '-'}
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-sm">
+                          <TableCell className="font-mono text-xs">
                             <div className="truncate" title={item.kodePOK}>
                               {item.kodePOK || '-'}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-medium text-sm">
+                          <TableCell className="text-right text-sm font-medium">
                             {formatCurrency(item.rencanaAnggaranRAB)}
                           </TableCell>
-                          <TableCell className="text-right font-medium text-sm">
+                          <TableCell className="text-right text-sm font-medium">
                             {formatCurrency(item.nilaiRealisasi)}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className={`${getStatusColor(item.statusPengadaan)} border text-xs px-2 py-1`}>
+                            <Badge 
+                              variant="outline" 
+                              className={`${getStatusColor(item.statusPengadaan)} text-xs px-2 py-1 border`}
+                            >
                               {item.statusPengadaan || 'Draft'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-center space-x-1">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
                                 onClick={() => viewData(item)}
-                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="h-8 w-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
                                 title="Lihat Detail"
                               >
                                 <Eye className="h-4 w-4" />
@@ -1066,19 +1065,19 @@ export default function InputPengadaan() {
                               {canEdit() && (
                                 <>
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="icon"
                                     onClick={() => editData(item)}
-                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                     title="Edit Data"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="icon"
                                     onClick={() => confirmDelete(item)}
-                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50"
                                     title="Hapus Data"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1090,32 +1089,36 @@ export default function InputPengadaan() {
                         </TableRow>
                       ))}
                       {filteredData.length > 0 && (
-                        <TableRow className="bg-muted/50 font-bold border-t-2">
-                          <TableCell colSpan={5} className="text-right font-bold">TOTAL:</TableCell>
-                          <TableCell className="text-right font-bold">Rp {totalRAB.toLocaleString('id-ID')}</TableCell>
-                          <TableCell className="text-right font-bold">Rp {totalRealisasi.toLocaleString('id-ID')}</TableCell>
+                        <TableRow className="bg-slate-50 font-semibold border-t-2">
+                          <TableCell colSpan={5} className="text-right font-semibold text-sm">TOTAL:</TableCell>
+                          <TableCell className="text-right font-semibold text-sm">
+                            Rp {totalRAB.toLocaleString('id-ID')}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-sm">
+                            Rp {totalRealisasi.toLocaleString('id-ID')}
+                          </TableCell>
                           <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                   {filteredData.length === 0 && !loading && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">Tidak ada data pengadaan ditemukan</p>
-                      <p className="text-sm mt-2">
+                    <div className="text-center py-16 text-muted-foreground">
+                      <FileText className="h-16 w-16 mx-auto mb-4 opacity-40" />
+                      <p className="text-lg font-medium">Tidak ada data pengadaan</p>
+                      <p className="text-sm mt-2 max-w-md mx-auto">
                         {searchTerm 
                           ? `Tidak ada hasil untuk pencarian "${searchTerm}"` 
-                          : "Spreadsheet kosong. Gunakan tombol 'Tambah Pengadaan' untuk menambah data."}
+                          : "Data pengadaan belum tersedia. Klik tombol 'Tambah Pengadaan' untuk menambah data."}
                       </p>
                     </div>
                   )}
 
                   {/* Pagination */}
                   {filteredData.length > 0 && (
-                    <div className="flex items-center justify-between px-4 py-4 border-t">
+                    <div className="flex items-center justify-between px-6 py-4 border-t bg-slate-50/50">
                       <div className="text-sm text-muted-foreground">
-                        Menampilkan {indexOfFirstItem + 1} sampai {Math.min(indexOfLastItem, filteredData.length)} dari {filteredData.length} data
+                        Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)} dari {filteredData.length}
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -1138,8 +1141,8 @@ export default function InputPengadaan() {
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-sm font-medium">
-                          Halaman {currentPage} dari {totalPages}
+                        <span className="text-sm font-medium px-2">
+                          {currentPage} / {totalPages}
                         </span>
                         <Button
                           variant="outline"
@@ -1170,27 +1173,35 @@ export default function InputPengadaan() {
           </Card>
         </>
       ) : (
-        /* TAMPILAN FORM INPUT */
+        /* TAMPILAN FORM INPUT - LEBIH MINIMALIS */
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg border-b">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-blue-900">
-                <BookOpen className="h-5 w-5" />
-                {editingData ? 'Edit Data Pengadaan' : 'Form Input Pengadaan'}
-              </CardTitle>
-              <CardDescription className="text-blue-700">
-                {editingData ? `Mengedit data ${editingData.id}` : 'Isi data pengadaan sesuai dengan tahapan yang tersedia'}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              {editingData && (
-                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                  Edit Mode
-                </Badge>
-              )}
-              <Button variant="outline" size="sm" onClick={() => { setShowForm(false); resetForm(); }} disabled={saving}>
-                <X className="h-4 w-4" />
-              </Button>
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-blue-900">
+                  <BookOpen className="h-5 w-5" />
+                  {editingData ? 'Edit Data Pengadaan' : 'Form Input Pengadaan'}
+                </CardTitle>
+                <CardDescription className="text-blue-700">
+                  {editingData ? `Mengedit data pengadaan` : 'Isi data pengadaan sesuai tahapan yang tersedia'}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                {editingData && (
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                    Edit Mode
+                  </Badge>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => { setShowForm(false); resetForm(); }} 
+                  disabled={saving}
+                  className="border-blue-200 text-blue-700 hover:bg-blue-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
@@ -1236,7 +1247,7 @@ export default function InputPengadaan() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="tanggalUsulan" className="flex items-center gap-1">
+                    <Label htmlFor="tanggalUsulan" className="flex items-center gap-1 text-sm font-medium">
                       Tanggal Usulan <span className="text-red-500">*</span>
                     </Label>
                     <Popover>
@@ -1259,7 +1270,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tahunAnggaran">Tahun Anggaran</Label>
+                    <Label htmlFor="tahunAnggaran" className="text-sm font-medium">Tahun Anggaran</Label>
                     <Select 
                       value={formData.tahunAnggaran} 
                       onValueChange={(value) => handleInputChange("tahunAnggaran", value)}
@@ -1278,7 +1289,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="namaProdukBarangJasa" className="flex items-center gap-1">
+                    <Label htmlFor="namaProdukBarangJasa" className="flex items-center gap-1 text-sm font-medium">
                       Nama Produk Barang/Jasa <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1289,7 +1300,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="jenisPengadaan" className="flex items-center gap-1">
+                    <Label htmlFor="jenisPengadaan" className="flex items-center gap-1 text-sm font-medium">
                       Jenis Pengadaan <span className="text-red-500">*</span>
                     </Label>
                     <Select value={formData.jenisPengadaan} onValueChange={(value) => handleInputChange("jenisPengadaan", value)}>
@@ -1307,7 +1318,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="kodePOK" className="flex items-center gap-1">
+                    <Label htmlFor="kodePOK" className="flex items-center gap-1 text-sm font-medium">
                       Kode POK <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1318,7 +1329,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="namaKegiatanDetilPOK" className="flex items-center gap-1">
+                    <Label htmlFor="namaKegiatanDetilPOK" className="flex items-center gap-1 text-sm font-medium">
                       Nama Kegiatan/Detil POK <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1329,8 +1340,8 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="rencanaAnggaranRAB" className="flex items-center gap-1">
-                      Rencana Pembelanjaan / Rencana Anggaran Belanja (RAB) <span className="text-red-500">*</span>
+                    <Label htmlFor="rencanaAnggaranRAB" className="flex items-center gap-1 text-sm font-medium">
+                      Rencana Anggaran (RAB) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={formData.rencanaAnggaranRAB}
@@ -1352,11 +1363,11 @@ export default function InputPengadaan() {
                       disabled={saving}
                     >
                       {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      {saving ? "Menyimpan..." : editingData ? "Update Data" : "Simpan Usulan Saja"}
+                      {saving ? "Menyimpan..." : editingData ? "Update Data" : "Simpan Usulan"}
                     </Button>
                     <Button 
                       onClick={() => setActiveTab("dokumen")} 
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                       disabled={saving}
                     >
                       Lanjut ke Dokumen
@@ -1372,7 +1383,7 @@ export default function InputPengadaan() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="formPermintaanFP">Form Permintaan (FP)</Label>
+                    <Label htmlFor="formPermintaanFP" className="text-sm font-medium">Form Permintaan (FP)</Label>
                     <Input
                       value={formData.formPermintaanFP}
                       onChange={(e) => handleInputChange("formPermintaanFP", e.target.value)}
@@ -1381,7 +1392,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="kerangkaAcuanKerjaKAK">Link Kerangka Acuan Kerja (KAK)</Label>
+                    <Label htmlFor="kerangkaAcuanKerjaKAK" className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
                     <Input
                       value={formData.kerangkaAcuanKerjaKAK}
                       onChange={(e) => handleInputChange("kerangkaAcuanKerjaKAK", e.target.value)}
@@ -1390,7 +1401,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="jenisDokumenPengadaan">Jenis Dokumen Pengadaan</Label>
+                    <Label htmlFor="jenisDokumenPengadaan" className="text-sm font-medium">Jenis Dokumen Pengadaan</Label>
                     <Select value={formData.jenisDokumenPengadaan} onValueChange={(value) => handleInputChange("jenisDokumenPengadaan", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis dokumen" />
@@ -1406,7 +1417,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorDokumenPengadaan">Nomor Dokumen Pengadaan</Label>
+                    <Label htmlFor="nomorDokumenPengadaan" className="text-sm font-medium">Nomor Dokumen Pengadaan</Label>
                     <Input
                       value={formData.nomorDokumenPengadaan}
                       onChange={(e) => handleInputChange("nomorDokumenPengadaan", e.target.value)}
@@ -1415,7 +1426,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tanggalDokumenPengadaan">Tanggal Dokumen Pengadaan</Label>
+                    <Label htmlFor="tanggalDokumenPengadaan" className="text-sm font-medium">Tanggal Dokumen Pengadaan</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -1436,7 +1447,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="namaPenyediaMitra">Nama Penyedia / Mitra</Label>
+                    <Label htmlFor="namaPenyediaMitra" className="text-sm font-medium">Nama Penyedia / Mitra</Label>
                     <Input
                       value={formData.namaPenyediaMitra}
                       onChange={(e) => handleInputChange("namaPenyediaMitra", e.target.value)}
@@ -1445,7 +1456,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="linkEPurchasingEKatalog">Link E-Purchasing / E-Katalog</Label>
+                    <Label htmlFor="linkEPurchasingEKatalog" className="text-sm font-medium">Link E-Purchasing / E-Katalog</Label>
                     <Input
                       value={formData.linkEPurchasingEKatalog}
                       onChange={(e) => handleInputChange("linkEPurchasingEKatalog", e.target.value)}
@@ -1459,7 +1470,7 @@ export default function InputPengadaan() {
                     <ArrowLeft className="h-4 w-4" />
                     Kembali ke Usulan
                   </Button>
-                  <Button onClick={() => setActiveTab("realisasi")} className="flex items-center gap-2" disabled={saving}>
+                  <Button onClick={() => setActiveTab("realisasi")} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700" disabled={saving}>
                     Lanjut ke Realisasi
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -1472,7 +1483,7 @@ export default function InputPengadaan() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="nilaiRealisasi">Nilai Realisasi</Label>
+                    <Label htmlFor="nilaiRealisasi" className="text-sm font-medium">Nilai Realisasi</Label>
                     <Input
                       value={formData.nilaiRealisasi}
                       onChange={(e) => handleInputChange("nilaiRealisasi", formatRupiah(e.target.value))}
@@ -1481,7 +1492,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tanggalPembayaran">Tanggal Pembayaran</Label>
+                    <Label htmlFor="tanggalPembayaran" className="text-sm font-medium">Tanggal Pembayaran</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -1502,7 +1513,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorBuktiPembayaran">Nomor Bukti Pembayaran</Label>
+                    <Label htmlFor="nomorBuktiPembayaran" className="text-sm font-medium">Nomor Bukti Pembayaran</Label>
                     <Input
                       value={formData.nomorBuktiPembayaran}
                       onChange={(e) => handleInputChange("nomorBuktiPembayaran", e.target.value)}
@@ -1511,7 +1522,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="statusPengadaan">Status Pengadaan</Label>
+                    <Label htmlFor="statusPengadaan" className="text-sm font-medium">Status Pengadaan</Label>
                     <Select value={formData.statusPengadaan} onValueChange={(value) => handleInputChange("statusPengadaan", value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih status" />
@@ -1527,7 +1538,7 @@ export default function InputPengadaan() {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="keteranganCatatan">Keterangan / Catatan</Label>
+                    <Label htmlFor="keteranganCatatan" className="text-sm font-medium">Keterangan / Catatan</Label>
                     <Textarea
                       value={formData.keteranganCatatan}
                       onChange={(e) => handleInputChange("keteranganCatatan", e.target.value)}
@@ -1548,7 +1559,7 @@ export default function InputPengadaan() {
                     disabled={saving}
                   >
                     {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {saving ? "Menyimpan..." : editingData ? "Update Data" : "Simpan Semua Data"}
+                    {saving ? "Menyimpan..." : editingData ? "Update Data" : "Simpan Semua"}
                   </Button>
                 </div>
               </div>
@@ -1581,7 +1592,7 @@ export default function InputPengadaan() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Data Dialog - DENGAN PERBAIKAN LINK KAK */}
+      {/* View Data Dialog - LEBIH MINIMALIS */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
@@ -1590,21 +1601,17 @@ export default function InputPengadaan() {
               Detail Data Pengadaan
             </DialogTitle>
             <DialogDescription className="text-blue-100">
-              {dataToView?.namaProdukBarangJasa}
+              Informasi lengkap data pengadaan
             </DialogDescription>
           </DialogHeader>
           
           {dataToView && (
             <div className="space-y-6">
-              {/* Header Info */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="text-center">
-                  <div className="text-sm text-blue-600 font-semibold">ID Pengadaan</div>
-                  <div className="text-lg font-bold text-blue-800">{dataToView.id}</div>
-                </div>
+              {/* Header Info - TANPA ID PENGGADAAN */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="text-center">
                   <div className="text-sm text-blue-600 font-semibold">Status</div>
-                  <Badge className={`${getStatusColor(dataToView.statusPengadaan)} text-sm py-1 px-2`}>
+                  <Badge className={`${getStatusColor(dataToView.statusPengadaan)} text-sm py-1 px-2 mt-1`}>
                     {dataToView.statusPengadaan}
                   </Badge>
                 </div>
@@ -1619,23 +1626,23 @@ export default function InputPengadaan() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Tanggal Usulan</Label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{formatDate(dataToView.tanggalUsulan)}</div>
+                    <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{formatDate(dataToView.tanggalUsulan)}</div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Jenis Pengadaan</Label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.jenisPengadaan}</div>
+                    <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.jenisPengadaan}</div>
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-sm font-medium">Nama Produk Barang/Jasa</Label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.namaProdukBarangJasa}</div>
+                    <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.namaProdukBarangJasa}</div>
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-sm font-medium">Nama Kegiatan/Detil POK</Label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.namaKegiatanDetilPOK}</div>
+                    <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.namaKegiatanDetilPOK}</div>
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-sm font-medium">Kode POK</Label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border text-sm font-mono">{dataToView.kodePOK}</div>
+                    <div className="mt-1 p-2 bg-slate-50 rounded border text-sm font-mono">{dataToView.kodePOK}</div>
                   </div>
                 </div>
 
@@ -1647,7 +1654,7 @@ export default function InputPengadaan() {
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium">Rencana Pembelanjaan / (RAB)</Label>
+                      <Label className="text-sm font-medium">Rencana Pembelanjaan (RAB)</Label>
                       <div className="mt-1 p-2 bg-green-50 rounded border text-sm font-bold text-green-800">
                         {formatCurrency(dataToView.rencanaAnggaranRAB)}
                       </div>
@@ -1670,41 +1677,41 @@ export default function InputPengadaan() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium">Form Permintaan (FP)</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.formPermintaanFP || '-'}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.formPermintaanFP || '-'}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Link Kerangka Acuan Kerja (KAK)</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm break-words">
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm break-words">
                         {renderKAKLink(dataToView.kerangkaAcuanKerjaKAK)}
                       </div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Jenis Dokumen Pengadaan</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.jenisDokumenPengadaan || '-'}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.jenisDokumenPengadaan || '-'}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Nomor Dokumen Pengadaan</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.nomorDokumenPengadaan || '-'}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.nomorDokumenPengadaan || '-'}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Tanggal Dokumen Pengadaan</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{formatDate(dataToView.tanggalDokumenPengadaan)}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Nama Penyedia / Mitra</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.namaPenyediaMitra || '-'}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.namaPenyediaMitra || '-'}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Tanggal Pembayaran</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{formatDate(dataToView.tanggalPembayaran)}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{formatDate(dataToView.tanggalPembayaran)}</div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Nomor Bukti Pembayaran</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm">{dataToView.nomorBuktiPembayaran || '-'}</div>
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm">{dataToView.nomorBuktiPembayaran || '-'}</div>
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-sm font-medium">Link E-Purchasing / E-Katalog</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm break-words">
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm break-words">
                         {dataToView.linkEPurchasingEKatalog ? (
                           <a href={dataToView.linkEPurchasingEKatalog} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                             {dataToView.linkEPurchasingEKatalog}
@@ -1714,7 +1721,7 @@ export default function InputPengadaan() {
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-sm font-medium">Keterangan / Catatan</Label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded border text-sm min-h-[60px]">
+                      <div className="mt-1 p-2 bg-slate-50 rounded border text-sm min-h-[60px]">
                         {dataToView.keteranganCatatan || '-'}
                       </div>
                     </div>
