@@ -437,12 +437,14 @@ const KerangkaAcuanKerja = () => {
       const [
         programNama,
         kegiatanNama, 
+        kroNama, // TAMBAH
         roNama,
         komponenNama,
         akunNama
       ] = await Promise.all([
         getLabelWithCache("program", formData.program, 'C'),
         getLabelWithCache("kegiatan", formData.kegiatan, 'D'),
+        getLabelWithCache("kro", formData.kro, 'C'), // TAMBAH - sesuaikan kolom nama KRO
         getLabelWithCache("ro", formData.ro, 'D'),
         getLabelWithCache("komponen", formData.komponen, 'C'),
         getLabelWithCache("akun", formData.akun, 'C')
@@ -485,7 +487,7 @@ const KerangkaAcuanKerja = () => {
         formData.jenisPaketMeeting,
         programNama, // Kolom 4: Program Pembebanan (NAMA dari kolom C sheet program)
         kegiatanNama, // Kolom 5: Kegiatan (NAMA dari kolom D sheet kegiatan)
-        formData.kro, // Kolom 6: Kode Rincian Output (KODE dari kolom C sheet kro)
+        kroNama, // Kolom 6: Kode Rincian Output (KODE dari kolom C sheet kro)
         roNama, // Kolom 7: Rincian Output (NAMA dari kolom D sheet ro)
         komponenNama, // Kolom 8: Komponen Output (NAMA dari kolom C sheet komponen)
         akunNama, // Kolom 9: Akun (NAMA dari kolom C sheet akun)
