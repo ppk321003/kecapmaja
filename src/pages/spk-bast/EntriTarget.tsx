@@ -31,16 +31,14 @@ import { supabase } from "@/integrations/supabase/client";
  */
 const cleanNumberValue = (value: any): number => {
   if (value === null || value === undefined || value === '') return 0;
-  
   const stringValue = value.toString().trim();
   if (stringValue === '') return 0;
-  
+
   // Hilangkan semua karakter non-numeric kecuali titik, koma, dan minus
-  const cleanValue = stringValue
-    .replace(/[^\d,.-]/g, '')      // Hapus karakter non-numeric
-    .replace(',', '.')             // Ubah koma menjadi titik
-    .replace(/(\..*)\./g, '$1');   // Hapus titik duplikat
-  
+  const cleanValue = stringValue.replace(/[^\d,.-]/g, '') // Hapus karakter non-numeric
+  .replace(',', '.') // Ubah koma menjadi titik
+  .replace(/(\..*)\./g, '$1'); // Hapus titik duplikat
+
   const numberValue = parseFloat(cleanValue);
   return isNaN(numberValue) ? 0 : numberValue;
 };
@@ -50,11 +48,7 @@ const cleanNumberValue = (value: any): number => {
  */
 const processMultipleValues = (text: string, separator: string = '|'): string[] => {
   if (!text) return [];
-  
-  return text.toString()
-    .split(separator)
-    .map(item => item.trim())
-    .filter(item => item !== '');
+  return text.toString().split(separator).map(item => item.trim()).filter(item => item !== '');
 };
 
 /**
@@ -63,14 +57,13 @@ const processMultipleValues = (text: string, separator: string = '|'): string[] 
 const calculateActivityTotal = (activity: Activity): number => {
   const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
   let total = 0;
-  
+
   // Hitung per petugas seperti di Skrip 1
   activity.workers.forEach(worker => {
     const realisasi = cleanNumberValue(worker.realisasi);
     const nilaiPetugas = hargaSatuan * realisasi;
     total += nilaiPetugas;
   });
-  
   return total;
 };
 
@@ -80,40 +73,156 @@ const calculateActivityTotal = (activity: Activity): number => {
 const calculateActivityTarget = (activity: Activity): number => {
   const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
   let totalTarget = 0;
-  
+
   // Hitung per petugas seperti di Skrip 1
   activity.workers.forEach(worker => {
     const target = cleanNumberValue(worker.target);
     const nilaiTarget = hargaSatuan * target;
     totalTarget += nilaiTarget;
   });
-  
   return totalTarget;
 };
 
 // Mock data for SPK periods
-const spkData = [
-  { id: 1, month: "Januari", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 2, month: "Februari", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 3, month: "Maret", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 4, month: "April", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 5, month: "Mei", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 6, month: "Juni", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 7, month: "Juli", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 8, month: "Agustus", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 9, month: "September", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 10, month: "Oktober", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 11, month: "November", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-  { id: 12, month: "Desember", activities: 0, workers: 0, target: 0, value: 0, realisasi: 0, sent: 0 },
-];
+const spkData = [{
+  id: 1,
+  month: "Januari",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 2,
+  month: "Februari",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 3,
+  month: "Maret",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 4,
+  month: "April",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 5,
+  month: "Mei",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 6,
+  month: "Juni",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 7,
+  month: "Juli",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 8,
+  month: "Agustus",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 9,
+  month: "September",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 10,
+  month: "Oktober",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 11,
+  month: "November",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}, {
+  id: 12,
+  month: "Desember",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  realisasi: 0,
+  sent: 0
+}];
 
 // Job types options
-const jobTypes = [
-  { id: 1, name: "Petugas Pendataan Lapangan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 2, name: "Petugas Pemeriksaan Lapangan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-  { id: 3, name: "Petugas Pengolahan", activities: 0, workers: 0, target: 0, value: 0, sent: 0, approved: 0 },
-];
-
+const jobTypes = [{
+  id: 1,
+  name: "Petugas Pendataan Lapangan",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  sent: 0,
+  approved: 0
+}, {
+  id: 2,
+  name: "Petugas Pemeriksaan Lapangan",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  sent: 0,
+  approved: 0
+}, {
+  id: 3,
+  name: "Petugas Pengolahan",
+  activities: 0,
+  workers: 0,
+  target: 0,
+  value: 0,
+  sent: 0,
+  approved: 0
+}];
 type Worker = {
   id: number;
   nama: string;
@@ -123,7 +232,6 @@ type Worker = {
   realisasi: string;
   kecamatan?: string;
 };
-
 type Activity = {
   id: number;
   namaKegiatan: string;
@@ -141,7 +249,6 @@ type Activity = {
   bebanAnggaran?: string;
   dikirimKePPK?: string;
 };
-
 type PetugasFromSheet = {
   id: number;
   nama: string;
@@ -152,60 +259,77 @@ type PetugasFromSheet = {
   rekening: string;
   kecamatan: string;
 };
-
 type ActivityOption = {
   no: number;
   role: string;
   namaKegiatan: string;
   bebanAnggaran: string;
 };
-
 type KoordinatorOption = {
   nama: string;
   jabatan: string;
 };
-
-const komponenPOKOptions = [
-  { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
-  { value: "051", label: "051 - PERSIAPAN" },
-  { value: "052", label: "052 - PENGUMPULAN DATA" },
-  { value: "053", label: "053 - PENGOLAHAN DAN ANALISIS" },
-  { value: "054", label: "054 - DISEMINASI DAN EVALUASI" },
-  { value: "506", label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat" },
-  { value: "516", label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan" },
-  { value: "519", label: "519 - Penyusunan Bahan Publisitas" },
-];
-
+const komponenPOKOptions = [{
+  value: "005",
+  label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit"
+}, {
+  value: "051",
+  label: "051 - PERSIAPAN"
+}, {
+  value: "052",
+  label: "052 - PENGUMPULAN DATA"
+}, {
+  value: "053",
+  label: "053 - PENGOLAHAN DAN ANALISIS"
+}, {
+  value: "054",
+  label: "054 - DISEMINASI DAN EVALUASI"
+}, {
+  value: "506",
+  label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat"
+}, {
+  value: "516",
+  label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan"
+}, {
+  value: "519",
+  label: "519 - Penyusunan Bahan Publisitas"
+}];
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
-  tanggalSK: z.date({ required_error: "Tanggal SK wajib diisi" }),
-  tanggalMulai: z.date({ required_error: "Tanggal mulai wajib diisi" }),
-  tanggalAkhir: z.date({ required_error: "Tanggal akhir wajib diisi" }),
-  hargaSatuan: z.string().min(1, "Harga satuan wajib diisi").refine((val) => {
+  tanggalSK: z.date({
+    required_error: "Tanggal SK wajib diisi"
+  }),
+  tanggalMulai: z.date({
+    required_error: "Tanggal mulai wajib diisi"
+  }),
+  tanggalAkhir: z.date({
+    required_error: "Tanggal akhir wajib diisi"
+  }),
+  hargaSatuan: z.string().min(1, "Harga satuan wajib diisi").refine(val => {
     const num = cleanNumberValue(val);
     return !isNaN(num) && num >= 0;
   }, "Harga satuan harus berupa angka positif"),
   satuan: z.string().min(1, "Satuan wajib dipilih"),
   komponenPOK: z.string().min(1, "Komponen POK wajib dipilih"),
   nomorSK: z.string().min(1, "Nomor SK wajib diisi"),
-  koordinator: z.string().min(1, "Koordinator wajib dipilih"),
-}).refine((data) => data.tanggalMulai >= data.tanggalSK, {
+  koordinator: z.string().min(1, "Koordinator wajib dipilih")
+}).refine(data => data.tanggalMulai >= data.tanggalSK, {
   message: "Tanggal mulai kegiatan tidak boleh lebih awal dari tanggal SK",
-  path: ["tanggalMulai"],
-}).refine((data) => data.tanggalAkhir >= data.tanggalSK, {
+  path: ["tanggalMulai"]
+}).refine(data => data.tanggalAkhir >= data.tanggalSK, {
   message: "Tanggal akhir kegiatan tidak boleh lebih awal dari tanggal SK",
-  path: ["tanggalAkhir"],
-}).refine((data) => data.tanggalAkhir >= data.tanggalMulai, {
+  path: ["tanggalAkhir"]
+}).refine(data => data.tanggalAkhir >= data.tanggalMulai, {
   message: "Tanggal akhir kegiatan tidak boleh lebih awal dari tanggal mulai",
-  path: ["tanggalAkhir"],
+  path: ["tanggalAkhir"]
 });
-
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
-
-const bulanMap: { [key: string]: string } = {
+const bulanMap: {
+  [key: string]: string;
+} = {
   'januari': 'January',
-  'februari': 'February', 
+  'februari': 'February',
   'maret': 'March',
   'april': 'April',
   'mei': 'May',
@@ -217,24 +341,47 @@ const bulanMap: { [key: string]: string } = {
   'november': 'November',
   'desember': 'December'
 };
-
-const bulanList = [
-  { value: "Januari", label: "Januari" },
-  { value: "Februari", label: "Februari" },
-  { value: "Maret", label: "Maret" },
-  { value: "April", label: "April" },
-  { value: "Mei", label: "Mei" },
-  { value: "Juni", label: "Juni" },
-  { value: "Juli", label: "Juli" },
-  { value: "Agustus", label: "Agustus" },
-  { value: "September", label: "September" },
-  { value: "Oktober", label: "Oktober" },
-  { value: "November", label: "November" },
-  { value: "Desember", label: "Desember" },
-];
-
+const bulanList = [{
+  value: "Januari",
+  label: "Januari"
+}, {
+  value: "Februari",
+  label: "Februari"
+}, {
+  value: "Maret",
+  label: "Maret"
+}, {
+  value: "April",
+  label: "April"
+}, {
+  value: "Mei",
+  label: "Mei"
+}, {
+  value: "Juni",
+  label: "Juni"
+}, {
+  value: "Juli",
+  label: "Juli"
+}, {
+  value: "Agustus",
+  label: "Agustus"
+}, {
+  value: "September",
+  label: "September"
+}, {
+  value: "Oktober",
+  label: "Oktober"
+}, {
+  value: "November",
+  label: "November"
+}, {
+  value: "Desember",
+  label: "Desember"
+}];
 export default function EntriTarget() {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [selectedYear, setSelectedYear] = useState("2025");
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -244,9 +391,20 @@ export default function EntriTarget() {
   const [showAddWorkerDialog, setShowAddWorkerDialog] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [selectedActivityForWorkers, setSelectedActivityForWorkers] = useState<Activity | null>(null);
-  const [activitiesByPeriod, setActivitiesByPeriod] = useState<{[key: string]: Activity[]}>({});
-  const [selectedWorkers, setSelectedWorkers] = useState<{[key: number]: {selected: boolean, target: string, realisasi: string}}>({});
-  const [editingWorker, setEditingWorker] = useState<{activityId: number, worker: Worker} | null>(null);
+  const [activitiesByPeriod, setActivitiesByPeriod] = useState<{
+    [key: string]: Activity[];
+  }>({});
+  const [selectedWorkers, setSelectedWorkers] = useState<{
+    [key: number]: {
+      selected: boolean;
+      target: string;
+      realisasi: string;
+    };
+  }>({});
+  const [editingWorker, setEditingWorker] = useState<{
+    activityId: number;
+    worker: Worker;
+  } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [petugasFromSheet, setPetugasFromSheet] = useState<PetugasFromSheet[]>([]);
   const [loadingPetugas, setLoadingPetugas] = useState(false);
@@ -256,26 +414,20 @@ export default function EntriTarget() {
   const [loadingKoordinatorOptions, setLoadingKoordinatorOptions] = useState(false);
   const [bebanAnggaran, setBebanAnggaran] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // State untuk fitur duplikat
   const [duplicatingActivity, setDuplicatingActivity] = useState<Activity | null>(null);
   const [showDuplicatePopover, setShowDuplicatePopover] = useState(false);
   const [duplicateTargetPeriod, setDuplicateTargetPeriod] = useState<string>("");
   const [duplicateTargetYear, setDuplicateTargetYear] = useState<string>("");
   const [isDuplicating, setIsDuplicating] = useState(false);
-  
   const periodKey = `${selectedPeriod} ${selectedYear}-${selectedJobType}`;
   let activities = activitiesByPeriod[periodKey] || [];
-  
   if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
-    const allActivitiesForPeriod = Object.entries(activitiesByPeriod)
-      .filter(([key]) => key.startsWith(`${selectedPeriod} ${selectedYear}-`))
-      .flatMap(([, acts]) => acts);
-    
+    const allActivitiesForPeriod = Object.entries(activitiesByPeriod).filter(([key]) => key.startsWith(`${selectedPeriod} ${selectedYear}-`)).flatMap(([, acts]) => acts);
     const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
     activities = activities.filter(act => allowedActivityNames.includes(act.namaKegiatan));
   }
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -284,10 +436,9 @@ export default function EntriTarget() {
       satuan: "",
       komponenPOK: "",
       nomorSK: "",
-      koordinator: "",
-    },
+      koordinator: ""
+    }
   });
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
       minimumFractionDigits: 0,
@@ -300,12 +451,11 @@ export default function EntriTarget() {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth(); // 0-11
     const currentYear = currentDate.getFullYear();
-    
+
     // 2 bulan terakhir + semua bulan masa depan
     const allowedMonths = bulanList.filter((_, index) => {
       const monthIndex = index; // Januari = 0, Desember = 11
       const monthYear = parseInt(duplicateTargetYear || selectedYear);
-      
       if (monthYear > currentYear) {
         return true; // Semua bulan di tahun depan diizinkan
       } else if (monthYear === currentYear) {
@@ -314,7 +464,6 @@ export default function EntriTarget() {
         return false; // Tahun sebelumnya tidak diizinkan
       }
     });
-    
     return allowedMonths;
   };
 
@@ -322,15 +471,13 @@ export default function EntriTarget() {
   const calculateNewDates = (originalDate: Date, sourceMonth: string, targetMonth: string, sourceYear: string, targetYear: string) => {
     const sourceMonthIndex = bulanList.findIndex(b => b.value === sourceMonth);
     const targetMonthIndex = bulanList.findIndex(b => b.value === targetMonth);
-    
     const sourceDate = new Date(parseInt(sourceYear), sourceMonthIndex, originalDate.getDate());
     const targetDate = new Date(parseInt(targetYear), targetMonthIndex, originalDate.getDate());
-    
+
     // Jika tanggal tidak valid (misal: 31 Februari), set ke akhir bulan
     if (targetDate.getMonth() !== targetMonthIndex) {
       return endOfMonth(new Date(parseInt(targetYear), targetMonthIndex));
     }
-    
     return targetDate;
   };
 
@@ -348,7 +495,7 @@ export default function EntriTarget() {
       toast({
         title: "Data tidak lengkap",
         description: "Pilih periode tujuan untuk duplikat",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -358,44 +505,32 @@ export default function EntriTarget() {
       toast({
         title: "Tidak dapat duplikat",
         description: "Tidak dapat menduplikat ke periode yang sama",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setIsDuplicating(true);
-
     try {
       // Hitung tanggal baru
-      const newTanggalMulai = calculateNewDates(
-        duplicatingActivity.tanggalMulai,
-        selectedPeriod!,
-        duplicateTargetPeriod,
-        selectedYear,
-        duplicateTargetYear
-      );
-      
-      const newTanggalAkhir = calculateNewDates(
-        duplicatingActivity.tanggalAkhir,
-        selectedPeriod!,
-        duplicateTargetPeriod,
-        selectedYear,
-        duplicateTargetYear
-      );
+      const newTanggalMulai = calculateNewDates(duplicatingActivity.tanggalMulai, selectedPeriod!, duplicateTargetPeriod, selectedYear, duplicateTargetYear);
+      const newTanggalAkhir = calculateNewDates(duplicatingActivity.tanggalAkhir, selectedPeriod!, duplicateTargetPeriod, selectedYear, duplicateTargetYear);
 
       // Buat aktivitas baru dengan data yang diduplikasi
       const duplicatedActivity: Activity = {
         ...duplicatingActivity,
-        id: Date.now(), // ID baru
+        id: Date.now(),
+        // ID baru
         tanggalMulai: newTanggalMulai,
         tanggalAkhir: newTanggalAkhir,
-        tanggalSK: duplicatingActivity.tanggalSK, // Tanggal SK tetap sama
+        tanggalSK: duplicatingActivity.tanggalSK,
+        // Tanggal SK tetap sama
         workers: duplicatingActivity.workers.map(worker => ({
           ...worker,
-          id: Date.now() + Math.random(), // ID worker baru
+          id: Date.now() + Math.random() // ID worker baru
         })),
-        dikirimKePPK: "", // Reset status PPK
-        spreadsheetRowIndex: undefined, // Reset row index
+        dikirimKePPK: "",
+        // Reset status PPK
+        spreadsheetRowIndex: undefined // Reset row index
       };
 
       // Simpan ke spreadsheet
@@ -410,10 +545,9 @@ export default function EntriTarget() {
         ...prev,
         [targetPeriodKey]: [...(prev[targetPeriodKey] || []), duplicatedActivity]
       }));
-
       toast({
         title: "Duplikat berhasil",
-        description: `Kegiatan berhasil diduplikat ke ${duplicateTargetPeriod} ${duplicateTargetYear}`,
+        description: `Kegiatan berhasil diduplikat ke ${duplicateTargetPeriod} ${duplicateTargetYear}`
       });
 
       // Reset state
@@ -421,13 +555,12 @@ export default function EntriTarget() {
       setDuplicatingActivity(null);
       setDuplicateTargetPeriod("");
       setDuplicateTargetYear("");
-
     } catch (error) {
       console.error('Error duplicating activity:', error);
       toast({
         title: "Gagal menduplikat",
         description: "Terjadi kesalahan saat menduplikat kegiatan",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsDuplicating(false);
@@ -444,7 +577,7 @@ export default function EntriTarget() {
 
   // Fungsi konfirmasi delete dengan sweet alert
   const confirmDelete = (message: string): Promise<boolean> => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (window.confirm(message)) {
         resolve(true);
       } else {
@@ -452,14 +585,11 @@ export default function EntriTarget() {
       }
     });
   };
-
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       return new Date();
     }
-
     const str = dateStr.toString().trim();
-
     if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
       try {
         const parts = str.split(' ');
@@ -467,11 +597,11 @@ export default function EntriTarget() {
           const day = parseInt(parts[0]);
           const monthName = parts[1].toLowerCase();
           const year = parseInt(parts[2]);
-          
           const englishMonth = bulanMap[monthName];
           if (englishMonth && !isNaN(day) && !isNaN(year)) {
-            const parsedDate = parse(str, 'd MMMM yyyy', new Date(), { locale: id });
-            
+            const parsedDate = parse(str, 'd MMMM yyyy', new Date(), {
+              locale: id
+            });
             if (!isNaN(parsedDate.getTime())) {
               return parsedDate;
             }
@@ -481,7 +611,6 @@ export default function EntriTarget() {
         console.warn('Failed to parse Indonesian date:', str, e);
       }
     }
-
     if (str.includes('/')) {
       try {
         const parts = str.split('/').map(part => part.trim());
@@ -489,11 +618,9 @@ export default function EntriTarget() {
           const day = parseInt(parts[0]);
           const month = parseInt(parts[1]) - 1;
           const year = parseInt(parts[2]);
-          
           if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
             const fullYear = year < 100 ? 2000 + year : year;
             const parsedDate = new Date(fullYear, month, day);
-            
             if (!isNaN(parsedDate.getTime())) {
               return parsedDate;
             }
@@ -503,7 +630,6 @@ export default function EntriTarget() {
         console.warn('Failed to parse date with / format:', str, e);
       }
     }
-
     if (/^\d+\.?\d*$/.test(str)) {
       try {
         const excelDate = parseFloat(str);
@@ -516,7 +642,6 @@ export default function EntriTarget() {
         console.warn('Failed to parse Excel date:', str, e);
       }
     }
-
     try {
       const parsed = new Date(str);
       if (!isNaN(parsed.getTime())) {
@@ -525,37 +650,34 @@ export default function EntriTarget() {
     } catch (e) {
       console.warn('Failed to parse as Date object:', str, e);
     }
-
     return new Date();
   };
-
   const loadPetugasFromSheet = async () => {
     try {
       setLoadingPetugas(true);
-      
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: 'read',
-          range: 'MASTER.MITRA!A:H',
+          range: 'MASTER.MITRA!A:H'
         }
       });
-
       if (error) {
         console.error('Error loading petugas data:', error);
         toast({
           title: "Error",
           description: "Gagal memuat data petugas dari spreadsheet",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       if (!data?.values || data.values.length <= 1) {
         setPetugasFromSheet([]);
         return;
       }
-
       const rows = data.values.slice(1);
       const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
         id: index + 1,
@@ -565,25 +687,20 @@ export default function EntriTarget() {
         alamat: row[4]?.toString().trim() || '',
         bank: row[5]?.toString().trim() || '',
         rekening: row[6]?.toString().trim() || '',
-        kecamatan: row[7]?.toString().trim() || '',
-      })).filter((petugas: PetugasFromSheet) => 
-        petugas.nama !== '' && petugas.nik !== ''
-      );
-
+        kecamatan: row[7]?.toString().trim() || ''
+      })).filter((petugas: PetugasFromSheet) => petugas.nama !== '' && petugas.nik !== '');
       setPetugasFromSheet(petugasData);
-      
     } catch (error) {
       console.error('Error loading petugas:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat memuat data petugas",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoadingPetugas(false);
     }
   };
-
   const petugasAsWorkers = useMemo(() => {
     return petugasFromSheet.map((petugas, index) => ({
       id: index + 1,
@@ -592,38 +709,31 @@ export default function EntriTarget() {
       jabatan: petugas.pekerjaan || 'Petugas',
       target: "0",
       realisasi: "0",
-      kecamatan: petugas.kecamatan || '',
+      kecamatan: petugas.kecamatan || ''
     }));
   }, [petugasFromSheet]);
-
   const getNikByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.nik || '';
   };
-
   const getKecamatanByNama = (nama: string): string => {
     const petugas = petugasFromSheet.find(p => p.nama === nama);
     return petugas?.kecamatan || '';
   };
-
   const getPetugasByNama = (nama: string): PetugasFromSheet | undefined => {
     return petugasFromSheet.find(p => p.nama === nama);
   };
-
   const getPetugasByNik = (nik: string): PetugasFromSheet | undefined => {
     return petugasFromSheet.find(p => p.nik === nik);
   };
-
   const getKomponenPOKValueFromLabel = (label: string): string => {
     const option = komponenPOKOptions.find(opt => opt.label === label);
     return option ? option.value : label;
   };
-
   const getKomponenPOKLabelFromValue = (value: string): string => {
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
   };
-
   const calculateSentToPPK = (activities: Activity[]) => {
     return activities.filter(activity => {
       return activity.dikirimKePPK && activity.dikirimKePPK.includes("Kirim ke PPK");
@@ -642,43 +752,36 @@ export default function EntriTarget() {
       let totalRealisasi = 0;
       let totalSent = 0;
       const uniqueWorkers = new Set<string>();
-
       Object.entries(activitiesByPeriod).forEach(([key, monthActivities]) => {
         if (key.includes(month.month) && key.includes(selectedYear)) {
           // PERBAIKAN: Filter activities berdasarkan role user
           let filteredActivities = monthActivities;
           if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
             const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
-            filteredActivities = monthActivities.filter(act => 
-              allowedActivityNames.includes(act.namaKegiatan)
-            );
+            filteredActivities = monthActivities.filter(act => allowedActivityNames.includes(act.namaKegiatan));
           }
-
           totalActivities += filteredActivities.length;
-          
           filteredActivities.forEach(activity => {
             activity.workers.forEach(worker => uniqueWorkers.add(worker.nip));
-            
+
             // PERBAIKAN: Gunakan cleanNumberValue dan hitung seperti Skrip 1
             const activityTarget = activity.workers.reduce((sum, w) => {
               return sum + cleanNumberValue(w.target);
             }, 0);
             totalTarget += activityTarget;
-            
+
             // PERBAIKAN: Hitung nilai perjanjian seperti Skrip 1 (per petugas)
             const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
             const nilaiPerjanjian = calculateActivityTarget(activity); // Menggunakan fungsi baru
             totalValue += nilaiPerjanjian;
-            
+
             // PERBAIKAN: Hitung nilai realisasi seperti Skrip 1 (per petugas)
             const nilaiRealisasi = calculateActivityTotal(activity); // Menggunakan fungsi baru
             totalRealisasi += nilaiRealisasi;
           });
-
           totalSent += calculateSentToPPK(filteredActivities);
         }
       });
-
       return {
         ...month,
         activities: totalActivities,
@@ -686,13 +789,11 @@ export default function EntriTarget() {
         target: totalTarget,
         value: totalValue,
         realisasi: totalRealisasi,
-        sent: totalSent,
+        sent: totalSent
       };
     });
-
     return monthlyData;
   }, [activitiesByPeriod, selectedYear, user?.role, activityOptions]);
-
   const summaryData = useMemo(() => {
     return dynamicSpkData.reduce((acc, month) => {
       return {
@@ -701,7 +802,7 @@ export default function EntriTarget() {
         target: acc.target + month.target,
         value: acc.value + month.value,
         realisasi: acc.realisasi + month.realisasi,
-        sent: acc.sent + month.sent,
+        sent: acc.sent + month.sent
       };
     }, {
       activities: 0,
@@ -709,7 +810,7 @@ export default function EntriTarget() {
       target: 0,
       value: 0,
       realisasi: 0,
-      sent: 0,
+      sent: 0
     });
   }, [dynamicSpkData]);
 
@@ -721,43 +822,36 @@ export default function EntriTarget() {
     return jobTypes.map(jobType => {
       const key = `${selectedPeriod} ${selectedYear}-${jobType.name}`;
       const jobActivities = activitiesByPeriod[key] || [];
-      
+
       // PERBAIKAN: Filter activities berdasarkan role user
       let filteredJobActivities = jobActivities;
       if (user?.role && user.role !== "Pejabat Pembuat Komitmen") {
         const allowedActivityNames = activityOptions.map(opt => opt.namaKegiatan);
-        filteredJobActivities = jobActivities.filter(act => 
-          allowedActivityNames.includes(act.namaKegiatan)
-        );
+        filteredJobActivities = jobActivities.filter(act => allowedActivityNames.includes(act.namaKegiatan));
       }
-
       let totalTarget = 0;
       let totalValue = 0;
       let totalRealisasi = 0;
       let totalSent = 0;
       const uniqueWorkers = new Set<string>();
-      
       filteredJobActivities.forEach(activity => {
         const hargaSatuan = cleanNumberValue(activity.hargaSatuan);
-        
+
         // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
         const activityTarget = activity.workers.reduce((sum, worker) => {
           uniqueWorkers.add(worker.nip);
           return sum + cleanNumberValue(worker.target);
         }, 0);
-        
+
         // PERBAIKAN: Hitung seperti Skrip 1 (per petugas)
         const activityRealisasi = activity.workers.reduce((sum, worker) => {
           return sum + cleanNumberValue(worker.realisasi);
         }, 0);
-        
         totalTarget += activityTarget;
         totalValue += calculateActivityTarget(activity); // Menggunakan fungsi baru
         totalRealisasi += calculateActivityTotal(activity); // Menggunakan fungsi baru
       });
-
       totalSent = calculateSentToPPK(filteredJobActivities);
-      
       return {
         ...jobType,
         activities: filteredJobActivities.length,
@@ -765,132 +859,109 @@ export default function EntriTarget() {
         target: totalTarget,
         value: totalValue,
         realisasi: totalRealisasi,
-        sent: totalSent,
+        sent: totalSent
       };
     });
   }, [activitiesByPeriod, selectedPeriod, selectedYear, user?.role, activityOptions]);
-
   const loadActivityOptions = async () => {
     if (!user?.role) return;
-    
     try {
       setLoadingActivityOptions(true);
-      
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
           operation: 'read',
-          range: 'Sheet1!A:D',
+          range: 'Sheet1!A:D'
         }
       });
-
       if (error) {
         console.error('Error loading activity options:', error);
         return;
       }
-
       if (!data?.values || data.values.length <= 1) {
         setActivityOptions([]);
         return;
       }
-
       const rows = data.values.slice(1);
-      const options: ActivityOption[] = rows
-        .map((row: any[], index: number) => ({
-          no: cleanNumberValue(row[0]) || index + 1, // PERBAIKAN: Gunakan cleanNumberValue
-          role: row[1] || '',
-          namaKegiatan: row[2] || '',
-          bebanAnggaran: row[3] || '',
-        }))
-        .filter((option: ActivityOption) => {
-          if (!option.namaKegiatan.trim()) return false;
-          // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
-          const roles = processMultipleValues(option.role);
-          return roles.includes(user.role);
-        });
-
+      const options: ActivityOption[] = rows.map((row: any[], index: number) => ({
+        no: cleanNumberValue(row[0]) || index + 1,
+        // PERBAIKAN: Gunakan cleanNumberValue
+        role: row[1] || '',
+        namaKegiatan: row[2] || '',
+        bebanAnggaran: row[3] || ''
+      })).filter((option: ActivityOption) => {
+        if (!option.namaKegiatan.trim()) return false;
+        // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
+        const roles = processMultipleValues(option.role);
+        return roles.includes(user.role);
+      });
       setActivityOptions(options);
-      
     } catch (error) {
       console.error('Error loading activity options:', error);
     } finally {
       setLoadingActivityOptions(false);
     }
   };
-
   const loadKoordinatorOptions = async () => {
     if (!user?.role) return;
-    
     try {
       setLoadingKoordinatorOptions(true);
-      
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: '1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU',
           operation: 'read',
-          range: 'Sheet1!A:D',
+          range: 'Sheet1!A:D'
         }
       });
-
       if (error) {
         console.error('Error loading koordinator options:', error);
         return;
       }
-
       if (!data?.values || data.values.length <= 1) {
         setKoordinatorOptions([]);
         return;
       }
-
       const rows = data.values.slice(1);
-      const options: KoordinatorOption[] = rows
-        .map((row: any[]) => ({
-          nama: row[1] || '',
-          jabatan: row[3] || '',
-        }))
-        .filter((option: KoordinatorOption) => {
-          if (!option.nama.trim()) return false;
-          return option.jabatan === user.role;
-        });
-
+      const options: KoordinatorOption[] = rows.map((row: any[]) => ({
+        nama: row[1] || '',
+        jabatan: row[3] || ''
+      })).filter((option: KoordinatorOption) => {
+        if (!option.nama.trim()) return false;
+        return option.jabatan === user.role;
+      });
       setKoordinatorOptions(options);
-      
     } catch (error) {
       console.error('Error loading koordinator options:', error);
     } finally {
       setLoadingKoordinatorOptions(false);
     }
   };
-
   const handleNamaKegiatanChange = (selectedKegiatan: string) => {
     form.setValue("namaKegiatan", selectedKegiatan);
-    
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === selectedKegiatan);
-    
     if (selectedActivity) {
       setBebanAnggaran(selectedActivity.bebanAnggaran);
     } else {
       setBebanAnggaran("");
     }
   };
-
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([
-          loadDataFromSpreadsheet(),
-          loadPetugasFromSheet(),
-          loadActivityOptions(),
-          loadKoordinatorOptions()
-        ]);
+        await Promise.all([loadDataFromSpreadsheet(), loadPetugasFromSheet(), loadActivityOptions(), loadKoordinatorOptions()]);
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadInitialData();
   }, [user?.role]);
 
@@ -900,73 +971,65 @@ export default function EntriTarget() {
 
   const loadDataFromSpreadsheet = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'read',
-          range: 'Sheet1!A:W',
+          range: 'Sheet1!A:W'
         }
       });
-
       if (error) {
         console.error('Error loading from spreadsheet:', error);
         toast({
           title: "Error",
           description: "Gagal memuat data dari spreadsheet",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       if (!data?.values || data.values.length <= 1) {
         setActivitiesByPeriod({});
         return;
       }
-
       const rows = data.values.slice(1);
-      const activitiesMap: {[key: string]: Activity[]} = {};
+      const activitiesMap: {
+        [key: string]: Activity[];
+      } = {};
       let activityIdCounter = 1;
-
       rows.forEach((row: any[], rowIndex: number) => {
         if (!row[0] || !row[2] || !row[3]) return;
-
         const periode = row[2] || '';
         const jenisPekerjaan = row[3] || '';
         const namaKegiatan = row[4] || '';
         const nomorSK = row[5] || '';
-        
         const tanggalSK = parseDateFromSpreadsheet(row[6]);
         const tanggalMulai = parseDateFromSpreadsheet(row[7]);
         const tanggalAkhir = parseDateFromSpreadsheet(row[8]);
-        
         const hargaSatuan = row[9] || '0';
         const satuan = row[10] || '';
         const koordinator = row[11] || '';
-        
         let komponenPOK = row[12] || '';
         if (komponenPOK.includes('-')) {
           komponenPOK = getKomponenPOKValueFromLabel(komponenPOK);
         }
-        
         const bebanAnggaran = row[18] || '';
         const dikirimKePPK = row[19] || '';
-        
         const namaPetugasStr = row[13] || '';
         const targetStr = row[14] || '';
         const realisasiStr = row[15] || '';
         const nikListStr = row[22] || '';
-        
+
         // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
         const namaPetugasList = processMultipleValues(namaPetugasStr);
         const targetList = processMultipleValues(targetStr);
         const realisasiList = processMultipleValues(realisasiStr);
         const nikList = processMultipleValues(nikListStr);
-
         const workers: Worker[] = [];
-        
         namaPetugasList.forEach((nama: string, idx: number) => {
           let nip = nikList[idx] || '';
-          
           if (!nip) {
             const allMatchingPetugas = petugasFromSheet.filter(p => p.nama === nama);
             if (allMatchingPetugas.length > 0) {
@@ -975,9 +1038,7 @@ export default function EntriTarget() {
               nip = `NIK-${idx + 1}`;
             }
           }
-          
           const petugasData = getPetugasByNik(nip);
-          
           workers.push({
             id: idx + 1,
             nama: nama,
@@ -985,10 +1046,9 @@ export default function EntriTarget() {
             jabatan: petugasData?.pekerjaan || 'Petugas',
             target: targetList[idx] || '0',
             realisasi: realisasiList[idx] || '0',
-            kecamatan: petugasData?.kecamatan || '',
+            kecamatan: petugasData?.kecamatan || ''
           });
         });
-
         const activity: Activity = {
           id: activityIdCounter++,
           namaKegiatan,
@@ -1004,72 +1064,59 @@ export default function EntriTarget() {
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2,
           bebanAnggaran,
-          dikirimKePPK,
+          dikirimKePPK
         };
-
         const periodKey = `${periode}-${jenisPekerjaan}`;
         if (!activitiesMap[periodKey]) {
           activitiesMap[periodKey] = [];
         }
         activitiesMap[periodKey].push(activity);
       });
-
       setActivitiesByPeriod(activitiesMap);
-      
     } catch (error) {
       console.error('Error loading from spreadsheet:', error);
       toast({
         title: "Error",
         description: "Gagal memuat data dari spreadsheet",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleActionClick = (month: string) => {
     setSelectedPeriod(month);
     setShowJobTypesDialog(true);
   };
-
   const handleJobTypeClick = (jobTypeName: string) => {
     setSelectedJobType(jobTypeName);
     setShowProposalsDialog(true);
   };
-
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
       if (editingActivity) {
-        const updatedActivities = activities.map(activity => 
-          activity.id === editingActivity.id 
-            ? {
-                ...activity,
-                namaKegiatan: data.namaKegiatan,
-                tanggalMulai: data.tanggalMulai,
-                tanggalAkhir: data.tanggalAkhir,
-                hargaSatuan: data.hargaSatuan,
-                satuan: data.satuan,
-                komponenPOK: data.komponenPOK,
-                nomorSK: data.nomorSK,
-                tanggalSK: data.tanggalSK,
-                koordinator: data.koordinator,
-                bebanAnggaran: bebanAnggaran,
-              }
-            : activity
-        );
-        
+        const updatedActivities = activities.map(activity => activity.id === editingActivity.id ? {
+          ...activity,
+          namaKegiatan: data.namaKegiatan,
+          tanggalMulai: data.tanggalMulai,
+          tanggalAkhir: data.tanggalAkhir,
+          hargaSatuan: data.hargaSatuan,
+          satuan: data.satuan,
+          komponenPOK: data.komponenPOK,
+          nomorSK: data.nomorSK,
+          tanggalSK: data.tanggalSK,
+          koordinator: data.koordinator,
+          bebanAnggaran: bebanAnggaran
+        } : activity);
         setActivitiesByPeriod(prev => ({
           ...prev,
           [periodKey]: updatedActivities
         }));
-        
         const updatedActivity = updatedActivities.find(a => a.id === editingActivity.id);
         if (updatedActivity) {
           await updateActivityInSpreadsheet(updatedActivity);
         }
-        
         toast({
           title: "Kegiatan berhasil diperbarui",
-          description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`,
+          description: `Kegiatan "${data.namaKegiatan}" telah diperbarui.`
         });
         setEditingActivity(null);
       } else {
@@ -1086,25 +1133,21 @@ export default function EntriTarget() {
           koordinator: data.koordinator,
           workers: [],
           jobType: selectedJobType || "",
-          bebanAnggaran: bebanAnggaran,
+          bebanAnggaran: bebanAnggaran
         };
-        
         const rowIndex = await saveActivityToSpreadsheet(newActivity, selectedPeriod!, selectedYear);
         if (rowIndex) {
           newActivity.spreadsheetRowIndex = rowIndex;
         }
-        
         setActivitiesByPeriod(prev => ({
           ...prev,
           [periodKey]: [...(prev[periodKey] || []), newActivity]
         }));
-        
         toast({
           title: "Kegiatan berhasil ditambahkan",
-          description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`,
+          description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`
         });
       }
-      
       setShowAddActivityDialog(false);
       form.reset();
       setBebanAnggaran("");
@@ -1113,64 +1156,56 @@ export default function EntriTarget() {
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat menyimpan data",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleDeleteActivity = async (id: number) => {
     const activityToDelete = activities.find(activity => activity.id === id);
     if (!activityToDelete) return;
-
     const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`);
     if (!confirmed) return;
-
     try {
       if (activityToDelete.spreadsheetRowIndex) {
         await deleteActivityFromSpreadsheet(activityToDelete.spreadsheetRowIndex);
       }
-
       const updatedActivities = activities.filter(activity => activity.id !== id);
       setActivitiesByPeriod(prev => ({
         ...prev,
         [periodKey]: updatedActivities
       }));
-      
       toast({
         title: "Kegiatan berhasil dihapus",
-        description: `Kegiatan "${activityToDelete.namaKegiatan}" telah dihapus.`,
+        description: `Kegiatan "${activityToDelete.namaKegiatan}" telah dihapus.`
       });
-      
     } catch (error: any) {
       console.error('Error deleting activity:', error);
       toast({
         title: "Gagal menghapus kegiatan",
         description: error.message || "Terjadi kesalahan saat menghapus kegiatan",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const deleteActivityFromSpreadsheet = async (rowIndex: number) => {
     try {
-      const { error } = await supabase.functions.invoke('google-sheets', {
+      const {
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'delete',
-          rowIndex: rowIndex,
+          rowIndex: rowIndex
         }
       });
-
       if (error) throw error;
     } catch (error) {
       console.error('Error in deleteActivityFromSpreadsheet:', error);
       throw error;
     }
   };
-
   const handleEditActivity = (activity: Activity) => {
     setEditingActivity(activity);
-    
     form.setValue("namaKegiatan", activity.namaKegiatan || "");
     form.setValue("tanggalMulai", activity.tanggalMulai);
     form.setValue("tanggalAkhir", activity.tanggalAkhir);
@@ -1180,95 +1215,88 @@ export default function EntriTarget() {
     form.setValue("nomorSK", activity.nomorSK || "");
     form.setValue("tanggalSK", activity.tanggalSK);
     form.setValue("koordinator", activity.koordinator || "");
-    
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
     setBebanAnggaran(selectedActivity?.bebanAnggaran || activity.bebanAnggaran || "");
-    
     setShowAddActivityDialog(true);
   };
-
   const handleAddWorker = (activity: Activity) => {
     setSelectedActivityForWorkers(activity);
-    const initialWorkers: {[key: number]: {selected: boolean, target: string, realisasi: string}} = {};
+    const initialWorkers: {
+      [key: number]: {
+        selected: boolean;
+        target: string;
+        realisasi: string;
+      };
+    } = {};
     petugasAsWorkers.forEach(worker => {
-      initialWorkers[worker.id] = { selected: false, target: "0", realisasi: "0" };
+      initialWorkers[worker.id] = {
+        selected: false,
+        target: "0",
+        realisasi: "0"
+      };
     });
     setSelectedWorkers(initialWorkers);
     setSearchTerm("");
     setShowAddWorkerDialog(true);
   };
-
   const handleSaveWorker = async () => {
     if (!selectedActivityForWorkers) return;
-    
     try {
-      const newWorkers: Worker[] = petugasAsWorkers
-        .filter(worker => selectedWorkers[worker.id]?.selected)
-        .map(worker => {
-          const petugasData = getPetugasByNik(worker.nip);
-          return {
-            ...worker,
-            target: selectedWorkers[worker.id].target || "0",
-            realisasi: selectedWorkers[worker.id].realisasi || "0",
-            kecamatan: petugasData?.kecamatan || worker.kecamatan || '',
-            jabatan: petugasData?.pekerjaan || worker.jabatan || 'Petugas',
-            nip: worker.nip,
-          };
-        });
-      
+      const newWorkers: Worker[] = petugasAsWorkers.filter(worker => selectedWorkers[worker.id]?.selected).map(worker => {
+        const petugasData = getPetugasByNik(worker.nip);
+        return {
+          ...worker,
+          target: selectedWorkers[worker.id].target || "0",
+          realisasi: selectedWorkers[worker.id].realisasi || "0",
+          kecamatan: petugasData?.kecamatan || worker.kecamatan || '',
+          jabatan: petugasData?.pekerjaan || worker.jabatan || 'Petugas',
+          nip: worker.nip
+        };
+      });
       if (newWorkers.length === 0) {
         toast({
           title: "Tidak ada petugas dipilih",
           description: "Pilih minimal satu petugas dan isi targetnya.",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
 
       // PERBAIKAN: Gunakan cleanNumberValue untuk validasi
-      const invalidWorkers = newWorkers.filter(w => 
-        cleanNumberValue(w.realisasi) > cleanNumberValue(w.target)
-      );
+      const invalidWorkers = newWorkers.filter(w => cleanNumberValue(w.realisasi) > cleanNumberValue(w.target));
       if (invalidWorkers.length > 0) {
         toast({
           title: "Realisasi tidak valid",
           description: `Realisasi tidak boleh lebih besar dari Target untuk: ${invalidWorkers.map(w => w.nama).join(", ")}`,
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       const existingWorkerNips = selectedActivityForWorkers.workers.map(w => w.nip);
       const duplicates = newWorkers.filter(w => existingWorkerNips.includes(w.nip));
-      
       if (duplicates.length > 0) {
         toast({
           title: "Petugas sudah terdaftar",
           description: `${duplicates.map(d => `${d.nama} (${d.nip})`).join(", ")} sudah terdaftar dalam kegiatan ini.`,
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-      
-      const updatedActivities = activities.map(activity => 
-        activity.id === selectedActivityForWorkers.id 
-          ? { ...activity, workers: [...activity.workers, ...newWorkers] }
-          : activity
-      );
-      
+      const updatedActivities = activities.map(activity => activity.id === selectedActivityForWorkers.id ? {
+        ...activity,
+        workers: [...activity.workers, ...newWorkers]
+      } : activity);
       setActivitiesByPeriod(prev => ({
         ...prev,
         [periodKey]: updatedActivities
       }));
-      
       const updatedActivity = updatedActivities.find(a => a.id === selectedActivityForWorkers.id);
       if (updatedActivity) {
         await updateActivityInSpreadsheet(updatedActivity);
       }
-      
       toast({
         title: "Petugas berhasil ditambahkan",
-        description: `${newWorkers.length} petugas telah ditambahkan.`,
+        description: `${newWorkers.length} petugas telah ditambahkan.`
       });
       setShowAddWorkerDialog(false);
       setSelectedActivityForWorkers(null);
@@ -1277,55 +1305,48 @@ export default function EntriTarget() {
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat menyimpan petugas",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleDeleteWorker = async (activityId: number, workerId: number) => {
     const activity = activities.find(a => a.id === activityId);
     const workerToDelete = activity?.workers.find(w => w.id === workerId);
-    
     if (!workerToDelete) return;
-
     const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus petugas "${workerToDelete.nama}" dari kegiatan ini?`);
     if (!confirmed) return;
-
     try {
-      const updatedActivities = activities.map(activity => 
-        activity.id === activityId 
-          ? { ...activity, workers: activity.workers.filter(w => w.id !== workerId) }
-          : activity
-      );
-      
+      const updatedActivities = activities.map(activity => activity.id === activityId ? {
+        ...activity,
+        workers: activity.workers.filter(w => w.id !== workerId)
+      } : activity);
       setActivitiesByPeriod(prev => ({
         ...prev,
         [periodKey]: updatedActivities
       }));
-      
       const updatedActivity = updatedActivities.find(a => a.id === activityId);
       if (updatedActivity) {
         await updateActivityInSpreadsheet(updatedActivity);
       }
-      
       toast({
         title: "Petugas berhasil dihapus",
-        description: "Petugas telah dihapus dari kegiatan.",
+        description: "Petugas telah dihapus dari kegiatan."
       });
     } catch (error) {
       console.error('Error deleting worker:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat menghapus petugas",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleEditWorker = (activityId: number, worker: Worker) => {
-    setEditingWorker({ activityId, worker });
+    setEditingWorker({
+      activityId,
+      worker
+    });
   };
-
   const handleUpdateWorker = async (activityId: number, workerId: number, selectedValue: string, newTarget: string, newRealisasi: string) => {
     try {
       // PERBAIKAN: Gunakan cleanNumberValue untuk validasi
@@ -1333,79 +1354,58 @@ export default function EntriTarget() {
         toast({
           title: "Realisasi tidak valid",
           description: "Realisasi tidak boleh lebih besar dari Target.",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       const activity = activities.find(a => a.id === activityId);
       const currentWorker = activity?.workers.find(w => w.id === workerId);
-      
       if (!currentWorker) return;
-
       const newNik = extractNikFromValue(selectedValue);
       const newName = extractNameFromValue(selectedValue);
-      
-      const duplicateWorker = activity?.workers.find(w => 
-        w.id !== workerId && w.nip === newNik
-      );
-      
+      const duplicateWorker = activity?.workers.find(w => w.id !== workerId && w.nip === newNik);
       if (duplicateWorker) {
         toast({
           title: "Petugas sudah terdaftar",
           description: "Petugas dengan NIK yang sama sudah digunakan dalam kegiatan ini.",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
-
       const petugasData = getPetugasByNik(newNik);
       const newKecamatan = petugasData?.kecamatan || '';
       const newJabatan = petugasData?.pekerjaan || 'Petugas';
-
-      const updatedActivities = activities.map(activity => 
-        activity.id === activityId 
-          ? { 
-              ...activity, 
-              workers: activity.workers.map(w => 
-                w.id === workerId 
-                  ? { 
-                      ...w, 
-                      nama: newName, 
-                      nip: newNik,
-                      kecamatan: newKecamatan,
-                      jabatan: newJabatan,
-                      target: newTarget, 
-                      realisasi: newRealisasi 
-                    }
-                  : w
-              )
-            }
-          : activity
-      );
-      
+      const updatedActivities = activities.map(activity => activity.id === activityId ? {
+        ...activity,
+        workers: activity.workers.map(w => w.id === workerId ? {
+          ...w,
+          nama: newName,
+          nip: newNik,
+          kecamatan: newKecamatan,
+          jabatan: newJabatan,
+          target: newTarget,
+          realisasi: newRealisasi
+        } : w)
+      } : activity);
       setActivitiesByPeriod(prev => ({
         ...prev,
         [periodKey]: updatedActivities
       }));
-      
       setEditingWorker(null);
-      
       const updatedActivity = updatedActivities.find(a => a.id === activityId);
       if (updatedActivity) {
         await updateActivityInSpreadsheet(updatedActivity);
       }
-      
       toast({
         title: "Petugas berhasil diperbarui",
-        description: "Data petugas telah diperbarui.",
+        description: "Data petugas telah diperbarui."
       });
     } catch (error) {
       console.error('Error updating worker:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat memperbarui petugas",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -1416,14 +1416,15 @@ export default function EntriTarget() {
 
   const saveActivityToSpreadsheet = async (activity: Activity, targetPeriod: string, targetYear: string): Promise<number | null> => {
     try {
-      const { data: existingData } = await supabase.functions.invoke('google-sheets', {
+      const {
+        data: existingData
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'read',
-          range: 'Sheet1!A:A',
+          range: 'Sheet1!A:A'
         }
       });
-
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
 
@@ -1431,172 +1432,144 @@ export default function EntriTarget() {
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
-      
+
       // PERBAIKAN: Hitung nilai realisasi per petugas seperti Skrip 1
-      const nilaiRealisasiList = activity.workers
-        .map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan)))
-        .join(" | ");
-      
+      const nilaiRealisasiList = activity.workers.map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan))).join(" | ");
+
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
-
       const nikList = activity.workers.map(w => w.nip).join(" | ");
-
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
-
-      const rowData = [
-        [
-          nextNo.toString(), // A: No
-          user?.role || "User", // B: Role User
-          `${targetPeriod} ${targetYear}`, // C: Periode
-          selectedJobType || "", // D: Jenis Pekerjaan
-          activity.namaKegiatan, // E: Nama Kegiatan
-          activity.nomorSK, // F: Nomor SK
-          format(activity.tanggalSK, "dd/MM/yyyy"), // G: Tanggal SK
-          format(activity.tanggalMulai, "dd/MM/yyyy"), // H: Tanggal Mulai
-          format(activity.tanggalAkhir, "dd/MM/yyyy"), // I: Tanggal Akhir
-          activity.hargaSatuan, // J: Harga Satuan
-          activity.satuan, // K: Satuan
-          activity.koordinator, // L: Koordinator
-          komponenPOKLabel, // M: Komponen POK
-          namaPetugas, // N: Nama Petugas
-          targetList, // O: Target
-          realisasiList, // P: Realisasi
-          nilaiRealisasiList, // Q: Nilai Realisasi
-          formatCurrency(totalRealisasi), // R: Total Realisasi
-          activity.bebanAnggaran || "", // S: Beban Anggaran
-          activity.dikirimKePPK || "", // T: Dikirim ke PPK
-          "", // U: (Kosong)
-          "", // V: (Kosong)
-          nikList, // W: NIK List
-        ]
-      ];
-
-      const { error } = await supabase.functions.invoke('google-sheets', {
+      const rowData = [[nextNo.toString(),
+      // A: No
+      user?.role || "User",
+      // B: Role User
+      `${targetPeriod} ${targetYear}`,
+      // C: Periode
+      selectedJobType || "",
+      // D: Jenis Pekerjaan
+      activity.namaKegiatan,
+      // E: Nama Kegiatan
+      activity.nomorSK,
+      // F: Nomor SK
+      format(activity.tanggalSK, "dd/MM/yyyy"),
+      // G: Tanggal SK
+      format(activity.tanggalMulai, "dd/MM/yyyy"),
+      // H: Tanggal Mulai
+      format(activity.tanggalAkhir, "dd/MM/yyyy"),
+      // I: Tanggal Akhir
+      activity.hargaSatuan,
+      // J: Harga Satuan
+      activity.satuan,
+      // K: Satuan
+      activity.koordinator,
+      // L: Koordinator
+      komponenPOKLabel,
+      // M: Komponen POK
+      namaPetugas,
+      // N: Nama Petugas
+      targetList,
+      // O: Target
+      realisasiList,
+      // P: Realisasi
+      nilaiRealisasiList,
+      // Q: Nilai Realisasi
+      formatCurrency(totalRealisasi),
+      // R: Total Realisasi
+      activity.bebanAnggaran || "",
+      // S: Beban Anggaran
+      activity.dikirimKePPK || "",
+      // T: Dikirim ke PPK
+      "",
+      // U: (Kosong)
+      "",
+      // V: (Kosong)
+      nikList // W: NIK List
+      ]];
+      const {
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'append',
           range: 'Sheet1',
-          values: rowData,
+          values: rowData
         }
       });
-
       if (error) throw error;
-      
       return nextRowIndex;
     } catch (error) {
       console.error('Error saving to spreadsheet:', error);
       throw error;
     }
   };
-
   const updateActivityInSpreadsheet = async (activity: Activity) => {
     if (!activity.spreadsheetRowIndex) return;
-
     try {
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
       const targetList = activity.workers.map(w => w.target).join(" | ");
       const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
-      
+
       // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
-      const nilaiRealisasiList = activity.workers
-        .map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan)))
-        .join(" | ");
-      
+      const nilaiRealisasiList = activity.workers.map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan))).join(" | ");
+
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
-
       const nikList = activity.workers.map(w => w.nip).join(" | ");
-
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
-
-      const rowData = [
-        [
-          (activity.spreadsheetRowIndex - 1).toString(),
-          user?.role || "User",
-          `${selectedPeriod} ${selectedYear}`,
-          selectedJobType || "",
-          activity.namaKegiatan,
-          activity.nomorSK,
-          format(activity.tanggalSK, "dd/MM/yyyy"),
-          format(activity.tanggalMulai, "dd/MM/yyyy"),
-          format(activity.tanggalAkhir, "dd/MM/yyyy"),
-          activity.hargaSatuan,
-          activity.satuan,
-          activity.koordinator,
-          komponenPOKLabel,
-          namaPetugas,
-          targetList,
-          realisasiList,
-          nilaiRealisasiList,
-          formatCurrency(totalRealisasi),
-          activity.bebanAnggaran || "",
-          activity.dikirimKePPK || "",
-          "",
-          "",
-          nikList,
-        ]
-      ];
-
-      const { error } = await supabase.functions.invoke('google-sheets', {
+      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), activity.hargaSatuan, activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, formatCurrency(totalRealisasi), activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
+      const {
+        error
+      } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: DATA_SPREADSHEET_ID,
           operation: 'update',
           range: 'Sheet1',
           rowIndex: activity.spreadsheetRowIndex,
-          values: rowData,
+          values: rowData
         }
       });
-
       if (error) throw error;
     } catch (error) {
       console.error('Error updating spreadsheet:', error);
       throw error;
     }
   };
-
   const handleSendToPPK = async (activityId: number) => {
     const activity = activities.find(a => a.id === activityId);
     if (!activity) return;
-
     if (activity.workers.length === 0) {
       toast({
         title: "Tidak dapat mengirim",
         description: "Tambahkan minimal satu petugas sebelum mengirim ke PPK.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     try {
       // Toggle status - jika sudah dikirim, kembalikan ke blank
       const newStatus = activity.dikirimKePPK?.includes("Kirim ke PPK") ? "" : "Kirim ke PPK";
-      
-      const updatedActivities = activities.map(a => 
-        a.id === activityId 
-          ? { ...a, dikirimKePPK: newStatus }
-          : a
-      );
-      
+      const updatedActivities = activities.map(a => a.id === activityId ? {
+        ...a,
+        dikirimKePPK: newStatus
+      } : a);
       setActivitiesByPeriod(prev => ({
         ...prev,
         [periodKey]: updatedActivities
       }));
-
       const updatedActivity = updatedActivities.find(a => a.id === activityId);
       if (updatedActivity) {
         await updateActivityInSpreadsheet(updatedActivity);
       }
-      
       if (newStatus === "Kirim ke PPK") {
         toast({
           title: "Berhasil dikirim ke PPK",
-          description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`,
+          description: `Kegiatan "${activity.namaKegiatan}" telah dikirim ke PPK.`
         });
       } else {
         toast({
           title: "Status direset",
-          description: `Kegiatan "${activity.namaKegiatan}" tidak lagi dikirim ke PPK.`,
+          description: `Kegiatan "${activity.namaKegiatan}" tidak lagi dikirim ke PPK.`
         });
       }
     } catch (error) {
@@ -1604,93 +1577,82 @@ export default function EntriTarget() {
       toast({
         title: "Gagal mengubah status",
         description: "Terjadi kesalahan saat mengubah status PPK.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const getKomponenPOKLabel = (value: string) => {
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
   };
-
   const hasTargetButNoRealisasi = (worker: Worker) => {
     // PERBAIKAN: Gunakan cleanNumberValue
     const target = cleanNumberValue(worker.target);
     const realisasi = cleanNumberValue(worker.realisasi);
     return target > 0 && realisasi === 0;
   };
-
   const getAvailableWorkers = (activity: Activity, excludeWorkerId?: number) => {
-    const existingWorkerNips = activity.workers
-      .filter(w => w.id !== excludeWorkerId)
-      .map(w => w.nip);
-    
-    const availableWorkers = petugasAsWorkers
-      .filter(w => !existingWorkerNips.includes(w.nip));
-    
+    const existingWorkerNips = activity.workers.filter(w => w.id !== excludeWorkerId).map(w => w.nip);
+    const availableWorkers = petugasAsWorkers.filter(w => !existingWorkerNips.includes(w.nip));
     const groupedWorkers = availableWorkers.map(w => ({
       value: `${w.nama}|${w.nip}`,
       label: `${w.nama} (${w.nip}) - ${w.kecamatan}`,
       data: w
     }));
-    
     return groupedWorkers;
   };
-
   const extractNameFromValue = (value: string): string => {
     return value.split('|')[0] || value;
   };
-
   const extractNikFromValue = (value: string): string => {
     return value.split('|')[1] || '';
   };
-
   const filteredWorkers = useMemo(() => {
     if (!searchTerm) return petugasAsWorkers;
-    
     const lowerSearch = searchTerm.toLowerCase();
-    return petugasAsWorkers.filter(w => 
-      w.nama.toLowerCase().includes(lowerSearch) || 
-      w.kecamatan?.toLowerCase().includes(lowerSearch) ||
-      w.nip.toLowerCase().includes(lowerSearch)
-    );
+    return petugasAsWorkers.filter(w => w.nama.toLowerCase().includes(lowerSearch) || w.kecamatan?.toLowerCase().includes(lowerSearch) || w.nip.toLowerCase().includes(lowerSearch));
   }, [searchTerm, petugasAsWorkers]);
-
   const filteredActivities = activities;
-
   const getJobTypeInfo = (jobType: string) => {
-    switch(jobType) {
+    switch (jobType) {
       case "Petugas Pendataan Lapangan":
-        return { color: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200", label: "Entri Petugas Pendataan Lapangan" };
+        return {
+          color: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200",
+          label: "Entri Petugas Pendataan Lapangan"
+        };
       case "Petugas Pemeriksaan Lapangan":
-        return { color: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-200", label: "Entri Petugas Pemeriksaan Lapangan" };
+        return {
+          color: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-200",
+          label: "Entri Petugas Pemeriksaan Lapangan"
+        };
       case "Petugas Pengolahan":
-        return { color: "bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900 dark:border-orange-700 dark:text-orange-200", label: "Entri Petugas Pengolahan" };
+        return {
+          color: "bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900 dark:border-orange-700 dark:text-orange-200",
+          label: "Entri Petugas Pengolahan"
+        };
       default:
-        return { color: "bg-muted", label: "Entri Kegiatan" };
+        return {
+          color: "bg-muted",
+          label: "Entri Kegiatan"
+        };
     }
   };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
+    return <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Memuat data...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // =============================================
   // PERBAIKAN 5: TAMPILAN DENGAN PERHITUNGAN KONSISTEN
   // =============================================
 
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Entri Kegiatan</h1>
+        <h1 className="text-3xl font-bold text-red-500">Entri Kegiatan</h1>
         <p className="text-muted-foreground mt-2">
           Penetapan target kegiatan untuk mitra statistik
         </p>
@@ -1732,8 +1694,7 @@ export default function EntriTarget() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dynamicSpkData.map((item, index) => (
-                    <TableRow key={item.id}>
+                  {dynamicSpkData.map((item, index) => <TableRow key={item.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>SPK Bulan {item.month} {selectedYear}</TableCell>
                       <TableCell className="text-center">{item.activities}</TableCell>
@@ -1743,18 +1704,11 @@ export default function EntriTarget() {
                       <TableCell className="text-right">{formatCurrency(item.realisasi)}</TableCell>
                       <TableCell className="text-center">{item.sent}</TableCell>
                       <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                          onClick={() => handleActionClick(item.month)}
-                          title="Input Kegiatan"
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10" onClick={() => handleActionClick(item.month)} title="Input Kegiatan">
                           <LogIn className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                    </TableRow>)}
                   <TableRow className="bg-primary/10 font-semibold">
                     <TableCell colSpan={2} className="text-center font-bold">JUMLAH</TableCell>
                     <TableCell className="text-center font-bold">{summaryData.activities}</TableCell>
@@ -1796,8 +1750,7 @@ export default function EntriTarget() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dynamicJobTypes.map((job, index) => (
-                  <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleJobTypeClick(job.name)}>
+                {dynamicJobTypes.map((job, index) => <TableRow key={job.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleJobTypeClick(job.name)}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{job.name}</TableCell>
                     <TableCell className="text-center">{job.activities}</TableCell>
@@ -1807,21 +1760,14 @@ export default function EntriTarget() {
                     <TableCell className="text-right">{formatCurrency(job.realisasi)}</TableCell>
                     <TableCell className="text-center">{job.sent}</TableCell>
                     <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleJobTypeClick(job.name);
-                        }}
-                        title="Entri"
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10" onClick={e => {
+                    e.stopPropagation();
+                    handleJobTypeClick(job.name);
+                  }} title="Entri">
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
           </div>
@@ -1869,19 +1815,14 @@ export default function EntriTarget() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredActivities.length === 0 ? (
-                    <TableRow>
+                  {filteredActivities.length === 0 ? <TableRow>
                       <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                         Belum ada kegiatan. Klik "Tambah Kegiatan" untuk menambahkan.
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredActivities.map((activity, index) => {
-                      // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
-                      const totalNilaiRealisasi = calculateActivityTotal(activity);
-
-                      return (
-                        <>
+                    </TableRow> : filteredActivities.map((activity, index) => {
+                  // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
+                  const totalNilaiRealisasi = calculateActivityTotal(activity);
+                  return <>
                           <TableRow key={activity.id}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">
@@ -1902,59 +1843,23 @@ export default function EntriTarget() {
                             <TableCell>{activity.koordinator}</TableCell>
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
-                                  onClick={() => handleAddWorker(activity)}
-                                  title="Tambah Petugas"
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10" onClick={() => handleAddWorker(activity)} title="Tambah Petugas">
                                   <UserPlus className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10"
-                                  onClick={() => handleEditActivity(activity)}
-                                  title="Edit Kegiatan"
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10" onClick={() => handleEditActivity(activity)} title="Edit Kegiatan">
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn(
-                                    "h-8 w-8 hover:bg-green-600/10",
-                                    activity.dikirimKePPK?.includes("Kirim ke PPK") 
-                                      ? "text-green-600 hover:text-green-600" 
-                                      : "text-green-400 hover:text-green-600"
-                                  )}
-                                  onClick={() => handleSendToPPK(activity.id)}
-                                  title={activity.dikirimKePPK?.includes("Kirim ke PPK") ? "Batalkan Kirim ke PPK" : "Kirim ke PPK"}
-                                  disabled={activity.workers.length === 0}
-                                >
+                                <Button variant="ghost" size="icon" className={cn("h-8 w-8 hover:bg-green-600/10", activity.dikirimKePPK?.includes("Kirim ke PPK") ? "text-green-600 hover:text-green-600" : "text-green-400 hover:text-green-600")} onClick={() => handleSendToPPK(activity.id)} title={activity.dikirimKePPK?.includes("Kirim ke PPK") ? "Batalkan Kirim ke PPK" : "Kirim ke PPK"} disabled={activity.workers.length === 0}>
                                   <Send className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleDeleteActivity(activity.id)}
-                                  title="Hapus Kegiatan"
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteActivity(activity.id)} title="Hapus Kegiatan">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                                <Popover open={showDuplicatePopover && duplicatingActivity?.id === activity.id} onOpenChange={(open) => {
-                                  if (!open) resetDuplicateState();
-                                }}>
+                                <Popover open={showDuplicatePopover && duplicatingActivity?.id === activity.id} onOpenChange={open => {
+                            if (!open) resetDuplicateState();
+                          }}>
                                   <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10"
-                                      onClick={() => handleDuplicateClick(activity)}
-                                      title="Duplikat Kegiatan"
-                                    >
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600 hover:text-purple-600 hover:bg-purple-600/10" onClick={() => handleDuplicateClick(activity)} title="Duplikat Kegiatan">
                                       <Copy className="h-4 w-4" />
                                     </Button>
                                   </PopoverTrigger>
@@ -1987,31 +1892,19 @@ export default function EntriTarget() {
                                               <SelectValue placeholder="Pilih bulan" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                              {getAllowedMonths().map((bulan) => (
-                                                <SelectItem key={bulan.value} value={bulan.value}>
+                                              {getAllowedMonths().map(bulan => <SelectItem key={bulan.value} value={bulan.value}>
                                                   {bulan.label}
-                                                </SelectItem>
-                                              ))}
+                                                </SelectItem>)}
                                             </SelectContent>
                                           </Select>
                                         </div>
                                       </div>
 
                                       <div className="flex gap-2 pt-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={resetDuplicateState}
-                                          className="flex-1"
-                                        >
+                                        <Button variant="outline" size="sm" onClick={resetDuplicateState} className="flex-1">
                                           Batal
                                         </Button>
-                                        <Button
-                                          size="sm"
-                                          onClick={handleDuplicateConfirm}
-                                          disabled={!duplicateTargetPeriod || !duplicateTargetYear || isDuplicating}
-                                          className="flex-1 bg-purple-600 hover:bg-purple-700"
-                                        >
+                                        <Button size="sm" onClick={handleDuplicateConfirm} disabled={!duplicateTargetPeriod || !duplicateTargetYear || isDuplicating} className="flex-1 bg-purple-600 hover:bg-purple-700">
                                           {isDuplicating ? "Menduplikat..." : "Duplikat"}
                                         </Button>
                                       </div>
@@ -2019,82 +1912,43 @@ export default function EntriTarget() {
                                   </PopoverContent>
                                 </Popover>
                               </div>
-                              {activity.dikirimKePPK?.includes("Kirim ke PPK") && (
-                                <div className="text-xs text-green-600 font-medium mt-1">
+                              {activity.dikirimKePPK?.includes("Kirim ke PPK") && <div className="text-xs text-green-600 font-medium mt-1">
                                   ✓ Sudah dikirim ke PPK
-                                </div>
-                              )}
-                              {!activity.dikirimKePPK?.includes("Kirim ke PPK") && (
-                                <div className="text-xs text-red-600 font-medium mt-1">
+                                </div>}
+                              {!activity.dikirimKePPK?.includes("Kirim ke PPK") && <div className="text-xs text-red-600 font-medium mt-1">
                                   Belum kirim ke PPK
-                                </div>
-                              )}
+                                </div>}
                             </TableCell>
                           </TableRow>
-                          {activity.workers.map((worker, workerIndex) => (
-                            <TableRow 
-                              key={`${activity.id}-worker-${worker.id}`} 
-                              className={cn(
-                                "bg-muted/30",
-                                hasTargetButNoRealisasi(worker) && 
-                                "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400"
-                              )}
-                            >
+                          {activity.workers.map((worker, workerIndex) => <TableRow key={`${activity.id}-worker-${worker.id}`} className={cn("bg-muted/30", hasTargetButNoRealisasi(worker) && "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-900/30 border-l-4 border-l-yellow-400")}>
                               <TableCell></TableCell>
                               <TableCell colSpan={2} className="pl-8">
-                                {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
-                                  <Combobox
-                                    options={getAvailableWorkers(activity, worker.id)}
-                                    value={`${worker.nama}|${worker.nip}`}
-                                    onValueChange={(value) => {
-                                      handleUpdateWorker(activity.id, worker.id, value, worker.target, worker.realisasi);
-                                    }}
-                                    placeholder="Pilih petugas"
-                                    searchPlaceholder="Cari nama petugas..."
-                                    className="h-8"
-                                  />
-                                ) : (
-                                  <div className="text-sm">
+                                {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? <Combobox options={getAvailableWorkers(activity, worker.id)} value={`${worker.nama}|${worker.nip}`} onValueChange={value => {
+                          handleUpdateWorker(activity.id, worker.id, value, worker.target, worker.realisasi);
+                        }} placeholder="Pilih petugas" searchPlaceholder="Cari nama petugas..." className="h-8" /> : <div className="text-sm">
                                     <div className="font-medium">
                                       {workerIndex + 1}. {worker.nama}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                       NIK: {worker.nip}
                                     </div>
-                                    {hasTargetButNoRealisasi(worker) && (
-                                      <span className="text-xs text-yellow-600 font-medium">(Belum Realisasi)</span>
-                                    )}
-                                  </div>
-                                )}
+                                    {hasTargetButNoRealisasi(worker) && <span className="text-xs text-yellow-600 font-medium">(Belum Realisasi)</span>}
+                                  </div>}
                               </TableCell>
                               <TableCell className="text-center text-sm">
-                                {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? (
-                                  <div className="flex flex-col gap-1">
+                                {editingWorker?.activityId === activity.id && editingWorker.worker.id === worker.id ? <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-1">
                                       <span className="text-xs">Target:</span>
-                                      <Input
-                                        type="number"
-                                        defaultValue={worker.target}
-                                        onBlur={(e) => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, e.target.value, worker.realisasi)}
-                                        className="h-7 w-20"
-                                      />
+                                      <Input type="number" defaultValue={worker.target} onBlur={e => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, e.target.value, worker.realisasi)} className="h-7 w-20" />
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <span className="text-xs">Realisasi:</span>
-                                      <Input
-                                        type="number"
-                                        defaultValue={worker.realisasi}
-                                        onBlur={(e) => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, worker.target, e.target.value)}
-                                        className="h-7 w-20"
-                                      />
+                                      <Input type="number" defaultValue={worker.realisasi} onBlur={e => handleUpdateWorker(activity.id, worker.id, `${worker.nama}|${worker.nip}`, worker.target, e.target.value)} className="h-7 w-20" />
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-1">
+                                  </div> : <div className="flex flex-col gap-1">
                                     <div>Target: {worker.target}</div>
                                     <div>Realisasi: {worker.realisasi}</div>
-                                  </div>
-                                )}
+                                  </div>}
                               </TableCell>
                               <TableCell colSpan={5} className="text-sm text-muted-foreground">
                                 {/* PERBAIKAN: Gunakan cleanNumberValue untuk perhitungan */}
@@ -2102,32 +1956,17 @@ export default function EntriTarget() {
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10"
-                                    onClick={() => handleEditWorker(activity.id, worker)}
-                                    title="Edit Petugas"
-                                  >
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10" onClick={() => handleEditWorker(activity.id, worker)} title="Edit Petugas">
                                     <Pencil className="h-3 w-3" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeleteWorker(activity.id, worker.id)}
-                                    title="Hapus Petugas"
-                                  >
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteWorker(activity.id, worker.id)} title="Hapus Petugas">
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </TableCell>
-                            </TableRow>
-                          ))}
-                        </>
-                      );
-                    })
-                  )}
+                            </TableRow>)}
+                        </>;
+                })}
                 </TableBody>
               </Table>
             </div>
@@ -2136,14 +1975,14 @@ export default function EntriTarget() {
       </Dialog>
 
       {/* Dialog lainnya tetap sama */}
-      <Dialog open={showAddActivityDialog} onOpenChange={(open) => {
-        setShowAddActivityDialog(open);
-        if (!open) {
-          setEditingActivity(null);
-          form.reset();
-          setBebanAnggaran("");
-        }
-      }}>
+      <Dialog open={showAddActivityDialog} onOpenChange={open => {
+      setShowAddActivityDialog(open);
+      if (!open) {
+        setEditingActivity(null);
+        form.reset();
+        setBebanAnggaran("");
+      }
+    }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">
@@ -2151,206 +1990,121 @@ export default function EntriTarget() {
             </DialogTitle>
           </DialogHeader>
 
-          {selectedJobType && !editingActivity && (
-            <Alert className={cn("border-2", getJobTypeInfo(selectedJobType).color)}>
+          {selectedJobType && !editingActivity && <Alert className={cn("border-2", getJobTypeInfo(selectedJobType).color)}>
               <AlertDescription className="font-semibold">
                 {getJobTypeInfo(selectedJobType).label}
               </AlertDescription>
-            </Alert>
-          )}
+            </Alert>}
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="namaKegiatan"
-                render={({ field }) => (
-                  <FormItem>
+              <FormField control={form.control} name="namaKegiatan" render={({
+              field
+            }) => <FormItem>
                     <FormLabel>Nama Kegiatan <span className="text-destructive">*</span></FormLabel>
-                    <Combobox
-                      options={activityOptions.map(option => ({
-                        value: option.namaKegiatan,
-                        label: option.namaKegiatan
-                      }))}
-                      value={field.value}
-                      onValueChange={handleNamaKegiatanChange}
-                      placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"}
-                      searchPlaceholder="Cari nama kegiatan..."
-                      disabled={loadingActivityOptions}
-                      emptyText={
-                        loadingActivityOptions 
-                          ? "Memuat..." 
-                          : "Tidak ada kegiatan untuk role Anda"
-                      }
-                    />
+                    <Combobox options={activityOptions.map(option => ({
+                value: option.namaKegiatan,
+                label: option.namaKegiatan
+              }))} value={field.value} onValueChange={handleNamaKegiatanChange} placeholder={loadingActivityOptions ? "Memuat kegiatan..." : "Pilih atau cari kegiatan"} searchPlaceholder="Cari nama kegiatan..." disabled={loadingActivityOptions} emptyText={loadingActivityOptions ? "Memuat..." : "Tidak ada kegiatan untuk role Anda"} />
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </FormItem>} />
 
-              {bebanAnggaran && (
-                <Alert className="bg-blue-50 border-blue-200">
+              {bebanAnggaran && <Alert className="bg-blue-50 border-blue-200">
                   <AlertDescription className="text-blue-800">
                     <strong>Beban Anggaran:</strong> {bebanAnggaran}
                   </AlertDescription>
-                </Alert>
-              )}
+                </Alert>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="nomorSK"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="nomorSK" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Nomor SK <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
                         <Input placeholder="Masukkan nomor SK" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
 
-                <FormField
-                  control={form.control}
-                  name="tanggalSK"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                <FormField control={form.control} name="tanggalSK" render={({
+                field
+              }) => <FormItem className="flex flex-col">
                       <FormLabel>Tanggal SK <span className="text-destructive">*</span></FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                               {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="pointer-events-auto" />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="tanggalMulai"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                <FormField control={form.control} name="tanggalMulai" render={({
+                field
+              }) => <FormItem className="flex flex-col">
                       <FormLabel>Tanggal Mulai <span className="text-destructive">*</span></FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                               {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="pointer-events-auto" />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
 
-                <FormField
-                  control={form.control}
-                  name="tanggalAkhir"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                <FormField control={form.control} name="tanggalAkhir" render={({
+                field
+              }) => <FormItem className="flex flex-col">
                       <FormLabel>Tanggal Akhir <span className="text-destructive">*</span></FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                               {field.value ? format(field.value, "dd/MM/yyyy") : <span>Pilih tanggal</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="pointer-events-auto" />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="hargaSatuan"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="hargaSatuan" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Harga Satuan <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Masukkan harga satuan" 
-                          {...field} 
-                        />
+                        <Input type="number" placeholder="Masukkan harga satuan" {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
 
-                <FormField
-                  control={form.control}
-                  name="satuan"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="satuan" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Satuan <span className="text-destructive">*</span></FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value}
-                      >
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih satuan" />
@@ -2367,17 +2121,13 @@ export default function EntriTarget() {
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="koordinator"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="koordinator" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Koordinator <span className="text-destructive">*</span></FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={loadingKoordinatorOptions}>
                         <FormControl>
@@ -2386,29 +2136,19 @@ export default function EntriTarget() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {koordinatorOptions.length > 0 ? (
-                            koordinatorOptions.map((option, index) => (
-                              <SelectItem key={index} value={option.nama}>
+                          {koordinatorOptions.length > 0 ? koordinatorOptions.map((option, index) => <SelectItem key={index} value={option.nama}>
                                 {option.nama}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>
+                              </SelectItem>) : <SelectItem value="" disabled>
                               {loadingKoordinatorOptions ? "Memuat..." : "Tidak ada koordinator untuk role Anda"}
-                            </SelectItem>
-                          )}
+                            </SelectItem>}
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
 
-                <FormField
-                  control={form.control}
-                  name="komponenPOK"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="komponenPOK" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -2417,30 +2157,22 @@ export default function EntriTarget() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {komponenPOKOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
+                          {komponenPOKOptions.map(option => <SelectItem key={option.value} value={option.value}>
                               {option.label}
-                            </SelectItem>
-                          ))}
+                            </SelectItem>)}
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
               </div>
 
               <DialogFooter className="gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowAddActivityDialog(false);
-                    setEditingActivity(null);
-                    form.reset();
-                    setBebanAnggaran("");
-                  }}
-                >
+                <Button type="button" variant="outline" onClick={() => {
+                setShowAddActivityDialog(false);
+                setEditingActivity(null);
+                form.reset();
+                setBebanAnggaran("");
+              }}>
                   Batal
                 </Button>
                 <Button type="submit">
@@ -2468,45 +2200,35 @@ export default function EntriTarget() {
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Cari nama, kecamatan, atau NIK petugas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+              <Input type="text" placeholder="Cari nama, kecamatan, atau NIK petugas..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
 
-            {loadingPetugas ? (
-              <div className="text-center py-8 text-muted-foreground">
+            {loadingPetugas ? <div className="text-center py-8 text-muted-foreground">
                 Memuat data petugas...
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+              </div> : <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-12">
-                        <Checkbox
-                          checked={filteredWorkers.length > 0 && filteredWorkers.every(w => {
-                            const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
-                            return isAlreadyAdded || selectedWorkers[w.id]?.selected;
-                          })}
-                          onCheckedChange={(checked) => {
-                            const newSelected = {...selectedWorkers};
-                            filteredWorkers.forEach(w => {
-                              const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
-                              if (!isAlreadyAdded) {
-                                newSelected[w.id] = { 
-                                  selected: checked as boolean, 
-                                  target: newSelected[w.id]?.target || "0",
-                                  realisasi: newSelected[w.id]?.realisasi || "0"
-                                };
-                              }
-                            });
-                            setSelectedWorkers(newSelected);
-                          }}
-                        />
+                        <Checkbox checked={filteredWorkers.length > 0 && filteredWorkers.every(w => {
+                      const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                      return isAlreadyAdded || selectedWorkers[w.id]?.selected;
+                    })} onCheckedChange={checked => {
+                      const newSelected = {
+                        ...selectedWorkers
+                      };
+                      filteredWorkers.forEach(w => {
+                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(aw => aw.nip === w.nip);
+                        if (!isAlreadyAdded) {
+                          newSelected[w.id] = {
+                            selected: checked as boolean,
+                            target: newSelected[w.id]?.target || "0",
+                            realisasi: newSelected[w.id]?.realisasi || "0"
+                          };
+                        }
+                      });
+                      setSelectedWorkers(newSelected);
+                    }} />
                       </TableHead>
                       <TableHead>Nama Petugas</TableHead>
                       <TableHead>Kecamatan</TableHead>
@@ -2517,33 +2239,24 @@ export default function EntriTarget() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredWorkers.length === 0 ? (
-                      <TableRow>
+                    {filteredWorkers.length === 0 ? <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           {searchTerm ? "Tidak ada petugas ditemukan" : "Tidak ada data petugas"}
                         </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredWorkers.map((petugas) => {
-                        const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.nip === petugas.nip);
-                        
-                        return (
-                          <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50 bg-muted/30" : ""}>
+                      </TableRow> : filteredWorkers.map(petugas => {
+                  const isAlreadyAdded = selectedActivityForWorkers?.workers.some(w => w.nip === petugas.nip);
+                  return <TableRow key={petugas.id} className={isAlreadyAdded ? "opacity-50 bg-muted/30" : ""}>
                             <TableCell>
-                              <Checkbox
-                                checked={selectedWorkers[petugas.id]?.selected || false}
-                                disabled={isAlreadyAdded}
-                                onCheckedChange={(checked) => {
-                                  setSelectedWorkers({
-                                    ...selectedWorkers,
-                                    [petugas.id]: {
-                                      selected: checked as boolean,
-                                      target: selectedWorkers[petugas.id]?.target || "0",
-                                      realisasi: selectedWorkers[petugas.id]?.realisasi || "0",
-                                    }
-                                  });
-                                }}
-                              />
+                              <Checkbox checked={selectedWorkers[petugas.id]?.selected || false} disabled={isAlreadyAdded} onCheckedChange={checked => {
+                        setSelectedWorkers({
+                          ...selectedWorkers,
+                          [petugas.id]: {
+                            selected: checked as boolean,
+                            target: selectedWorkers[petugas.id]?.target || "0",
+                            realisasi: selectedWorkers[petugas.id]?.realisasi || "0"
+                          }
+                        });
+                      }} />
                             </TableCell>
                             <TableCell>
                               {petugas.nama} 
@@ -2553,68 +2266,45 @@ export default function EntriTarget() {
                             <TableCell className="font-mono text-sm">{petugas.nip}</TableCell>
                             <TableCell>{petugas.jabatan}</TableCell>
                             <TableCell>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                value={selectedWorkers[petugas.id]?.target || ""}
-                                onChange={(e) => {
-                                  const newTarget = e.target.value;
-                                  const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "0";
-                                  
-                                  setSelectedWorkers({
-                                    ...selectedWorkers,
-                                    [petugas.id]: {
-                                      selected: selectedWorkers[petugas.id]?.selected || false,
-                                      target: newTarget,
-                                      realisasi: currentRealisasi,
-                                    }
-                                  });
-                                }}
-                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
-                                className="h-8"
-                              />
+                              <Input type="number" placeholder="0" value={selectedWorkers[petugas.id]?.target || ""} onChange={e => {
+                        const newTarget = e.target.value;
+                        const currentRealisasi = selectedWorkers[petugas.id]?.realisasi || "0";
+                        setSelectedWorkers({
+                          ...selectedWorkers,
+                          [petugas.id]: {
+                            selected: selectedWorkers[petugas.id]?.selected || false,
+                            target: newTarget,
+                            realisasi: currentRealisasi
+                          }
+                        });
+                      }} disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded} className="h-8" />
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                value={selectedWorkers[petugas.id]?.realisasi || ""}
-                                onChange={(e) => {
-                                  const newRealisasi = e.target.value;
-                                  const currentTarget = selectedWorkers[petugas.id]?.target || "0";
-                                  
-                                  setSelectedWorkers({
-                                    ...selectedWorkers,
-                                    [petugas.id]: {
-                                      selected: selectedWorkers[petugas.id]?.selected || false,
-                                      target: currentTarget,
-                                      realisasi: newRealisasi,
-                                    }
-                                  });
-                                }}
-                                disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded}
-                                className="h-8"
-                              />
+                              <Input type="number" placeholder="0" value={selectedWorkers[petugas.id]?.realisasi || ""} onChange={e => {
+                        const newRealisasi = e.target.value;
+                        const currentTarget = selectedWorkers[petugas.id]?.target || "0";
+                        setSelectedWorkers({
+                          ...selectedWorkers,
+                          [petugas.id]: {
+                            selected: selectedWorkers[petugas.id]?.selected || false,
+                            target: currentTarget,
+                            realisasi: newRealisasi
+                          }
+                        });
+                      }} disabled={!selectedWorkers[petugas.id]?.selected || isAlreadyAdded} className="h-8" />
                             </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
+                          </TableRow>;
+                })}
                   </TableBody>
                 </Table>
-              </div>
-            )}
+              </div>}
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowAddWorkerDialog(false);
-                setSelectedActivityForWorkers(null);
-              }}
-            >
+            <Button type="button" variant="outline" onClick={() => {
+            setShowAddWorkerDialog(false);
+            setSelectedActivityForWorkers(null);
+          }}>
               Tutup
             </Button>
             <Button onClick={handleSaveWorker}>
@@ -2623,6 +2313,5 @@ export default function EntriTarget() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 }
