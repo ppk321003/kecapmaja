@@ -809,7 +809,7 @@ export default function InputPengadaan() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2 text-orange-500">
+          <h1 className="text-3xl font-bold flex items-center gap-2 text-red-500">
             <ClipboardList className="h-8 w-8" />
             Input Data Pengadaan
           </h1>
