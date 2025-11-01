@@ -111,7 +111,7 @@ export function AppSidebar() {
                       }
                     >
                       <FileText className="h-4 w-4" />
-                      {open && <span>Buat SPK dan BAST</span>}
+                      {open && <span>SPK dan BAST</span>}
                       {open && <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200" style={{ transform: spkBastOpen ? "rotate(180deg)" : "rotate(0deg)" }} />}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
