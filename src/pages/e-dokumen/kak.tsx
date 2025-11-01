@@ -48,17 +48,11 @@ interface FormData {
   jenisKak: string;
   jenisPaketMeeting: string;
   program: string;
-  programLabel: string;
   kegiatan: string;
-  kegiatanLabel: string;
   kro: string;
-  kroLabel: string;
   ro: string;
-  roLabel: string;
   komponen: string;
-  komponenLabel: string;
   akun: string;
-  akunLabel: string;
   paguAnggaran: string;
   kegiatanDetails: KegiatanDetail[];
   tanggalMulaiKegiatan: Date | null;
@@ -95,17 +89,11 @@ const KerangkaAcuanKerja = () => {
     jenisKak: "",
     jenisPaketMeeting: "",
     program: "",
-    programLabel: "",
     kegiatan: "",
-    kegiatanLabel: "",
     kro: "",
-    kroLabel: "",
     ro: "",
-    roLabel: "",
     komponen: "",
-    komponenLabel: "",
     akun: "",
-    akunLabel: "",
     paguAnggaran: "",
     kegiatanDetails: [{
       id: `kegiatan-${Date.now()}`,
@@ -233,43 +221,28 @@ const KerangkaAcuanKerja = () => {
     }));
   }, [formData.jumlahGelombang]);
 
-  const handleChange = (field: keyof FormData, value: any, labelField?: keyof FormData, labelValue?: string) => {
+  const handleChange = (field: keyof FormData, value: any) => {
     setFormData(prev => {
       const newData = {
         ...prev,
         [field]: value
       };
 
-      // Jika ada label field, update juga
-      if (labelField && labelValue !== undefined) {
-        newData[labelField] = labelValue;
-      }
-
       // Reset dependent fields
       if (field === 'program') {
         newData.kegiatan = '';
-        newData.kegiatanLabel = '';
         newData.kro = '';
-        newData.kroLabel = '';
         newData.ro = '';
-        newData.roLabel = '';
         newData.komponen = '';
-        newData.komponenLabel = '';
       } else if (field === 'kegiatan') {
         newData.kro = '';
-        newData.kroLabel = '';
         newData.ro = '';
-        newData.roLabel = '';
         newData.komponen = '';
-        newData.komponenLabel = '';
       } else if (field === 'kro') {
         newData.ro = '';
-        newData.roLabel = '';
         newData.komponen = '';
-        newData.komponenLabel = '';
       } else if (field === 'ro') {
         newData.komponen = '';
-        newData.komponenLabel = '';
       } else if (field === 'jenisKak' && value !== 'Belanja Paket Meeting') {
         newData.jenisPaketMeeting = '';
         newData.jumlahGelombang = "0";
@@ -277,31 +250,6 @@ const KerangkaAcuanKerja = () => {
 
       return newData;
     });
-  };
-
-  // Handler khusus untuk komponen Select yang perlu menyimpan label
-  const handleProgramChange = (value: string, label: string) => {
-    handleChange('program', value, 'programLabel', label);
-  };
-
-  const handleKegiatanChange = (value: string, label: string) => {
-    handleChange('kegiatan', value, 'kegiatanLabel', label);
-  };
-
-  const handleKROChange = (value: string, label: string) => {
-    handleChange('kro', value, 'kroLabel', label);
-  };
-
-  const handleROChange = (value: string, label: string) => {
-    handleChange('ro', value, 'roLabel', label);
-  };
-
-  const handleKomponenChange = (value: string, label: string) => {
-    handleChange('komponen', value, 'komponenLabel', label);
-  };
-
-  const handleAkunChange = (value: string, label: string) => {
-    handleChange('akun', value, 'akunLabel', label);
   };
 
   const handleWaveDateChange = (waveIndex: number, field: 'startDate' | 'endDate', date: Date | null) => {
@@ -463,17 +411,18 @@ const KerangkaAcuanKerja = () => {
         }
       }
 
-      // Susun rowData sesuai header spreadsheet - GUNAKAN LABEL BUKAN KODE
+      // Susun rowData sesuai header spreadsheet
+      // CATATAN: Komponen Select sudah mengembalikan label yang benar
       const rowData = [
         timestamp, // Id
         formData.jenisKak,
         formData.jenisPaketMeeting,
-        formData.programLabel || formData.program, // Kolom 4: Program Pembebanan (LABEL)
-        formData.kegiatanLabel || formData.kegiatan, // Kolom 5: Kegiatan (LABEL)
+        formData.program, // Kolom 4: Program Pembebanan (LABEL)
+        formData.kegiatan, // Kolom 5: Kegiatan (LABEL)
         formData.kro, // Kolom 6: Kode Rincian Output (KODE)
-        formData.roLabel || formData.ro, // Kolom 7: Rincian Output (LABEL)
-        formData.komponenLabel || formData.komponen, // Kolom 8: Komponen Output (LABEL)
-        formData.akunLabel || formData.akun, // Kolom 9: Akun (LABEL)
+        formData.ro, // Kolom 7: Rincian Output (LABEL)
+        formData.komponen, // Kolom 8: Komponen Output (LABEL)
+        formData.akun, // Kolom 9: Akun (LABEL)
         formData.paguAnggaran,
         formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
@@ -488,12 +437,12 @@ const KerangkaAcuanKerja = () => {
       ];
 
       console.log("📋 Final data to submit:", {
-        program: formData.programLabel,
-        kegiatan: formData.kegiatanLabel,
+        program: formData.program,
+        kegiatan: formData.kegiatan,
         kro: formData.kro,
-        ro: formData.roLabel,
-        komponen: formData.komponenLabel,
-        akun: formData.akunLabel
+        ro: formData.ro,
+        komponen: formData.komponen,
+        akun: formData.akun
       });
       console.log("🔢 Total columns:", rowData.length);
 
@@ -511,17 +460,11 @@ const KerangkaAcuanKerja = () => {
         jenisKak: "",
         jenisPaketMeeting: "",
         program: "",
-        programLabel: "",
         kegiatan: "",
-        kegiatanLabel: "",
         kro: "",
-        kroLabel: "",
         ro: "",
-        roLabel: "",
         komponen: "",
-        komponenLabel: "",
         akun: "",
-        akunLabel: "",
         paguAnggaran: "",
         kegiatanDetails: [{
           id: `kegiatan-${Date.now()}`,
@@ -616,7 +559,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
                   <ProgramSelect
                     value={formData.program}
-                    onValueChange={handleProgramChange}
+                    onValueChange={(value) => handleChange('program', value)}
                   />
                 </div>
 
@@ -624,7 +567,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Kegiatan <span className="text-red-500">*</span></Label>
                   <KegiatanSelect
                     value={formData.kegiatan}
-                    onValueChange={handleKegiatanChange}
+                    onValueChange={(value) => handleChange('kegiatan', value)}
                     programId={formData.program}
                     disabled={!formData.program}
                   />
@@ -634,7 +577,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
                   <KROSelect
                     value={formData.kro}
-                    onValueChange={handleKROChange}
+                    onValueChange={(value) => handleChange('kro', value)}
                     kegiatanId={formData.kegiatan}
                     disabled={!formData.kegiatan}
                   />
@@ -644,7 +587,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
                   <ROSelect
                     value={formData.ro}
-                    onValueChange={handleROChange}
+                    onValueChange={(value) => handleChange('ro', value)}
                     kroId={formData.kro}
                     disabled={!formData.kro}
                   />
@@ -654,7 +597,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Komponen Output <span className="text-red-500">*</span></Label>
                   <KomponenSelect
                     value={formData.komponen}
-                    onValueChange={handleKomponenChange}
+                    onValueChange={(value) => handleChange('komponen', value)}
                   />
                 </div>
 
@@ -662,7 +605,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Akun <span className="text-red-500">*</span></Label>
                   <AkunSelect
                     value={formData.akun}
-                    onValueChange={handleAkunChange}
+                    onValueChange={(value) => handleChange('akun', value)}
                   />
                 </div>
 
