@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Link as LinkIcon } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Link as LinkIcon, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Set Indonesian Timezone
 const indonesianOptions = {
@@ -20,6 +22,8 @@ const indonesianOptions = {
 
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("daftar-hadir");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pageSize, setPageSize] = useState(10);
 
   // Data for each table with sheet IDs - sorted alphabetically
   const documents = [{
@@ -27,6 +31,7 @@ const DownloadDokumen = () => {
     title: "Daftar Hadir",
     sheetId: "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
     sheetName: "Sheet1",
+    searchFields: ["Jenis", "Nama Kegiatan", "Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -58,6 +63,7 @@ const DownloadDokumen = () => {
     title: "Dokumen Pengadaan",
     sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
     sheetName: "Sheet1",
+    searchFields: ["Nama Paket Pengadaan", "Kode Kegiatan", "Penyedia Barang/Jasa"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -89,6 +95,7 @@ const DownloadDokumen = () => {
     title: "Kerangka Acuan Kerja",
     sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
     sheetName: "Sheet1",
+    searchFields: ["Jenis Kerangka Acuan Kerja", "Nama Kegiatan-1", "Nama Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "Id"
@@ -120,6 +127,7 @@ const DownloadDokumen = () => {
     title: "Kuitansi Perjalanan Dinas",
     sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
     sheetName: "Sheet1",
+    searchFields: ["Pelaksana Perjalanan Dinas", "Tujuan Pelaksanaan Perjalanan Dinas", "Jenis Perjalanan Dinas"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -154,6 +162,7 @@ const DownloadDokumen = () => {
     title: "Kuitansi Transport Lokal",
     sheetId: "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
     sheetName: "KuitansiTransportLokal",
+    searchFields: ["Tujuan", "Pembuat daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -208,6 +217,7 @@ const DownloadDokumen = () => {
     title: "Lembur & Laporan",
     sheetId: "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
     sheetName: "Sheet1",
+    searchFields: ["Kegiatan", "Pembuat daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -262,6 +272,7 @@ const DownloadDokumen = () => {
     title: "SPJ Honor",
     sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
     sheetName: "Sheet1",
+    searchFields: ["Nama Kegiatan", "Jenis", "Detil", "Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -296,6 +307,7 @@ const DownloadDokumen = () => {
     title: "Surat Keputusan",
     sheetId: "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
     sheetName: "Sheet1",
+    searchFields: ["no_sk", "tentang", "Pembuat daftar"],
     columns: [{
       key: "Id",
       header: "Id"
@@ -327,6 +339,7 @@ const DownloadDokumen = () => {
     title: "Surat Pernyataan",
     sheetId: "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
     sheetName: "SuratPernyataan",
+    searchFields: ["Jenis Surat Pernyataan", "kegiatan", "Organik", "Mitra Statistik", "Pembuat daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -364,6 +377,7 @@ const DownloadDokumen = () => {
     title: "Tanda Terima",
     sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
     sheetName: "Sheet1",
+    searchFields: ["Nama Kegiatan", "Detail Kegiatan", "Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -395,6 +409,7 @@ const DownloadDokumen = () => {
     title: "Transport Lokal",
     sheetId: "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
     sheetName: "Sheet1",
+    searchFields: ["Nama Kegiatan", "Detil", "Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -426,6 +441,7 @@ const DownloadDokumen = () => {
     title: "Uang Harian dan Transport Lokal",
     sheetId: "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys",
     sheetName: "Sheet1",
+    searchFields: ["Nama Kegiatan", "Detil", "Jenis", "Pembuat Daftar"],
     columns: [{
       key: "Id",
       header: "ID"
@@ -470,6 +486,25 @@ const DownloadDokumen = () => {
     sheetName: activeDocument.sheetName
   });
 
+  // Filter data based on search term
+  const filteredData = useMemo(() => {
+    if (!data || !searchTerm) return data;
+
+    const lowercasedSearch = searchTerm.toLowerCase();
+    return data.filter(item => 
+      activeDocument.searchFields.some(field => {
+        const value = item[field];
+        return value && String(value).toLowerCase().includes(lowercasedSearch);
+      })
+    );
+  }, [data, searchTerm, activeDocument.searchFields]);
+
+  // Reset search when changing tabs
+  const handleTabChange = (value) => {
+    setSearchTerm("");
+    setActiveTab(value);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -482,43 +517,75 @@ const DownloadDokumen = () => {
         </p>
       </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
-            {documents.map(doc => (
-              <TabsTrigger 
-                key={doc.id} 
-                value={doc.id} 
-                className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
-              >
-                {doc.title}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
           {documents.map(doc => (
-            <TabsContent key={doc.id} value={doc.id} className="mt-0">
-              {isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : isError ? (
-                <div className="text-center p-8">
-                  <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
-                </div>
-              ) : (
-                <DataTable 
-                  title={doc.title} 
-                  columns={doc.columns} 
-                  data={data || []} 
-                />
-              )}
-            </TabsContent>
+            <TabsTrigger 
+              key={doc.id} 
+              value={doc.id} 
+              className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
+            >
+              {doc.title}
+            </TabsTrigger>
           ))}
-        </Tabs>
+        </TabsList>
+        
+        {documents.map(doc => (
+          <TabsContent key={doc.id} value={doc.id} className="mt-0 space-y-4">
+            {/* Search and Page Size Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder={`Cari ${doc.title.toLowerCase()}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-sm text-gray-600 whitespace-nowrap">Tampilkan:</span>
+                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 baris</SelectItem>
+                    <SelectItem value="20">20 baris</SelectItem>
+                    <SelectItem value="50">50 baris</SelectItem>
+                    <SelectItem value="100">100 baris</SelectItem>
+                    <SelectItem value="0">Semua</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Data Table */}
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : isError ? (
+              <div className="text-center p-8">
+                <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
+              </div>
+            ) : (
+              <DataTable 
+                title={doc.title} 
+                columns={doc.columns} 
+                data={filteredData || []}
+                pageSize={pageSize}
+                searchTerm={searchTerm}
+              />
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 };
