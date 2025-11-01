@@ -46,7 +46,6 @@ interface FormData {
   komponen: string;
   akun: string;
   paguAnggaran: string;
-  keterangan: string;
   kegiatanDetails: KegiatanDetail[];
   tanggalMulaiKegiatan: Date | null;
   tanggalAkhirKegiatan: Date | null;
@@ -84,7 +83,6 @@ const KerangkaAcuanKerja = () => {
     komponen: "",
     akun: "",
     paguAnggaran: "",
-    keterangan: "",
     kegiatanDetails: [{
       id: `kegiatan-${Date.now()}`,
       namaKegiatan: "",
@@ -107,7 +105,7 @@ const KerangkaAcuanKerja = () => {
         title: "Sukses",
         description: "Data KAK berhasil dikirim"
       });
-      // Reset form ke default values
+      // Reset form
       setFormData({
         jenisKak: "",
         jenisPaketMeeting: "",
@@ -118,7 +116,6 @@ const KerangkaAcuanKerja = () => {
         komponen: "",
         akun: "",
         paguAnggaran: "",
-        keterangan: "",
         kegiatanDetails: [{
           id: `kegiatan-${Date.now()}`,
           namaKegiatan: "",
@@ -147,26 +144,29 @@ const KerangkaAcuanKerja = () => {
   // Effect untuk update wave dates ketika jumlahGelombang berubah
   useEffect(() => {
     const gelombangCount = parseInt(formData.jumlahGelombang) || 0;
-    if (gelombangCount > 0) {
-      const newWaveDates: WaveDate[] = [];
-      for (let i = 0; i < gelombangCount; i++) {
+    const newWaveDates: WaveDate[] = [];
+    
+    for (let i = 0; i < 15; i++) { // Selalu buat 15 slot untuk gelombang
+      if (i < gelombangCount) {
         const existingWave = formData.waveDates[i];
         newWaveDates.push({
           id: existingWave?.id || `wave-${i + 1}-${Date.now()}`,
           startDate: existingWave?.startDate || null,
           endDate: existingWave?.endDate || null
         });
+      } else {
+        newWaveDates.push({
+          id: `wave-${i + 1}-empty`,
+          startDate: null,
+          endDate: null
+        });
       }
-      setFormData(prev => ({
-        ...prev,
-        waveDates: newWaveDates
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        waveDates: []
-      }));
     }
+    
+    setFormData(prev => ({
+      ...prev,
+      waveDates: newWaveDates
+    }));
   }, [formData.jumlahGelombang]);
 
   const handleChange = (field: keyof FormData, value: any) => {
@@ -194,18 +194,17 @@ const KerangkaAcuanKerja = () => {
       } else if (field === 'jenisKak' && value !== 'Belanja Paket Meeting') {
         newData.jenisPaketMeeting = '';
         newData.jumlahGelombang = "0";
-        newData.waveDates = [];
       }
 
       return newData;
     });
   };
 
-  const handleWaveDateChange = (waveId: string, field: 'startDate' | 'endDate', date: Date | null) => {
+  const handleWaveDateChange = (waveIndex: number, field: 'startDate' | 'endDate', date: Date | null) => {
     setFormData(prev => ({
       ...prev,
-      waveDates: prev.waveDates.map(wave => 
-        wave.id === waveId ? { ...wave, [field]: date } : wave
+      waveDates: prev.waveDates.map((wave, index) => 
+        index === waveIndex ? { ...wave, [field]: date } : wave
       )
     }));
   };
@@ -220,6 +219,15 @@ const KerangkaAcuanKerja = () => {
   };
 
   const addKegiatanDetail = () => {
+    if (formData.kegiatanDetails.length >= 15) {
+      toast({
+        title: "Peringatan",
+        description: "Maksimal 15 detail kegiatan",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       kegiatanDetails: [
@@ -246,7 +254,7 @@ const KerangkaAcuanKerja = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validasi dari skrip 2
+    // Validasi
     if (!formData.jenisKak) {
       toast({
         title: "Validasi Gagal",
@@ -325,8 +333,9 @@ const KerangkaAcuanKerja = () => {
         return;
       }
 
-      for (let i = 0; i < formData.waveDates.length; i++) {
-        const wave = formData.waveDates[i];
+      const activeWaves = formData.waveDates.slice(0, parseInt(formData.jumlahGelombang));
+      for (let i = 0; i < activeWaves.length; i++) {
+        const wave = activeWaves[i];
         if (!wave.startDate || !wave.endDate) {
           toast({
             title: "Validasi Gagal",
@@ -360,30 +369,62 @@ const KerangkaAcuanKerja = () => {
     try {
       const timestamp = new Date().toISOString();
       
-      // SEDERHANAKAN DATA YANG DIKIRIM - gunakan format yang sama dengan skrip 1
-      // Hanya kirim data dasar dulu untuk testing
+      // Siapkan array untuk 15 detail kegiatan (isi dengan empty string jika tidak ada)
+      const kegiatanData = [];
+      for (let i = 0; i < 15; i++) {
+        if (i < formData.kegiatanDetails.length) {
+          const detail = formData.kegiatanDetails[i];
+          kegiatanData.push(
+            detail.namaKegiatan || "",
+            detail.volume || "",
+            detail.satuan || "",
+            detail.hargaSatuan || ""
+          );
+        } else {
+          // Isi dengan empty string untuk detail yang tidak ada
+          kegiatanData.push("", "", "", "");
+        }
+      }
+
+      // Siapkan array untuk 15 gelombang (isi dengan empty string jika tidak ada)
+      const waveData = [];
+      for (let i = 0; i < 15; i++) {
+        if (i < parseInt(formData.jumlahGelombang)) {
+          const wave = formData.waveDates[i];
+          waveData.push(
+            formatTanggalIndonesia(wave?.startDate) || "",
+            formatTanggalIndonesia(wave?.endDate) || ""
+          );
+        } else {
+          // Isi dengan empty string untuk gelombang yang tidak ada
+          waveData.push("", "");
+        }
+      }
+
+      // Susun rowData sesuai dengan header kolom
       const rowData = [
-        timestamp,
+        timestamp, // Id (gunakan timestamp sebagai ID)
         formData.jenisKak,
         formData.jenisPaketMeeting,
         formData.program,
         formData.kegiatan,
-        formData.kro,
-        formData.ro,
+        formData.kro, // Kode Rincian Output
+        formData.ro, // Rincian Output
         formData.komponen,
         formData.akun,
         formData.paguAnggaran,
-        formData.keterangan || "", // Pastikan tidak null
+        formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
         formatTanggalIndonesia(formData.tanggalAkhirKegiatan),
-        formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formData.pembuatDaftar,
+        ...kegiatanData, // 15 set detail kegiatan (4 field each = 60 fields)
         formData.jumlahGelombang,
-        // Gabungkan detail kegiatan menjadi string untuk sementara
-        formData.kegiatanDetails.map(d => `${d.namaKegiatan} (${d.volume} ${d.satuan})`).join('; ')
+        ...waveData, // 15 set gelombang (2 field each = 30 fields)
+        "" // Tanggal Pelaksanaan Gelombang (kosongkan)
       ];
 
-      console.log("Data yang dikirim ke spreadsheet:", rowData);
+      console.log("Jumlah kolom:", rowData.length);
+      console.log("Data yang dikirim:", rowData);
 
       await submitData(rowData);
     } catch (error) {
@@ -397,6 +438,7 @@ const KerangkaAcuanKerja = () => {
   };
 
   const shouldShowJenisPaketMeeting = formData.jenisKak === "Belanja Paket Meeting";
+  const shouldShowGelombang = formData.jenisKak === "Belanja Paket Meeting";
 
   return (
     <Layout>
@@ -414,7 +456,6 @@ const KerangkaAcuanKerja = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Field baru dari skrip 2 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Jenis Kerangka Acuan Kerja <span className="text-red-500">*</span></Label>
@@ -477,7 +518,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>KRO <span className="text-red-500">*</span></Label>
+                  <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
                   <KROSelect
                     value={formData.kro}
                     onValueChange={(value) => handleChange('kro', value)}
@@ -487,7 +528,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>RO <span className="text-red-500">*</span></Label>
+                  <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
                   <ROSelect
                     value={formData.ro}
                     onValueChange={(value) => handleChange('ro', value)}
@@ -524,15 +565,31 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Keterangan</Label>
-                  <Input
-                    value={formData.keterangan}
-                    onChange={(e) => handleChange('keterangan', e.target.value)}
-                    placeholder="Keterangan (opsional)"
-                  />
+                  <Label>Tanggal Pengajuan KAK <span className="text-red-500">*</span></Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formData.tanggalPengajuanKAK && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.tanggalPengajuanKAK ? format(formData.tanggalPengajuanKAK, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={formData.tanggalPengajuanKAK || undefined}
+                        onSelect={(date) => handleChange('tanggalPengajuanKAK', date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                {/* Field tanggal dari skrip 2 */}
                 <div className="space-y-2">
                   <Label>Tanggal Mulai Kegiatan <span className="text-red-500">*</span></Label>
                   <Popover>
@@ -586,33 +643,7 @@ const KerangkaAcuanKerja = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal Pengajuan KAK <span className="text-red-500">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.tanggalPengajuanKAK && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.tanggalPengajuanKAK ? format(formData.tanggalPengajuanKAK, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.tanggalPengajuanKAK || undefined}
-                        onSelect={(date) => handleChange('tanggalPengajuanKAK', date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Pembuat Daftar <span className="text-red-500">*</span></Label>
+                  <Label>Nama Pembuat Daftar <span className="text-red-500">*</span></Label>
                   <Input
                     value={formData.pembuatDaftar}
                     onChange={(e) => handleChange('pembuatDaftar', e.target.value)}
@@ -621,89 +652,33 @@ const KerangkaAcuanKerja = () => {
                   />
                 </div>
 
-                {formData.jenisKak === "Belanja Paket Meeting" && (
+                {shouldShowGelombang && (
                   <div className="space-y-2">
                     <Label>Jumlah Gelombang <span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       min="1"
+                      max="15"
                       value={formData.jumlahGelombang}
                       onChange={(e) => handleChange('jumlahGelombang', e.target.value)}
-                      placeholder="Masukkan jumlah gelombang"
+                      placeholder="Masukkan jumlah gelombang (1-15)"
                       required
                     />
                   </div>
                 )}
               </div>
 
-              {/* Wave Dates untuk Belanja Paket Meeting */}
-              {formData.jenisKak === "Belanja Paket Meeting" && formData.waveDates.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Tanggal Gelombang</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {formData.waveDates.map((wave, index) => (
-                      <React.Fragment key={wave.id}>
-                        <div className="space-y-2">
-                          <Label>{`Tanggal Mulai Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !wave.startDate && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {wave.startDate ? format(wave.startDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={wave.startDate || undefined}
-                                onSelect={(date) => handleWaveDateChange(wave.id, 'startDate', date)}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{`Tanggal Akhir Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !wave.endDate && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {wave.endDate ? format(wave.endDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={wave.endDate || undefined}
-                                onSelect={(date) => handleWaveDateChange(wave.id, 'endDate', date)}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Detail Kegiatan dari skrip 2 */}
+              {/* Detail Kegiatan */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Detail Kegiatan</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addKegiatanDetail}>
+                  <h3 className="text-lg font-medium">Detail Kegiatan (Maksimal 15)</h3>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addKegiatanDetail}
+                    disabled={formData.kegiatanDetails.length >= 15}
+                  >
                     <Plus className="mr-1 h-4 w-4" /> Tambah Kegiatan
                   </Button>
                 </div>
@@ -777,6 +752,69 @@ const KerangkaAcuanKerja = () => {
                   </Card>
                 ))}
               </div>
+
+              {/* Wave Dates untuk Belanja Paket Meeting */}
+              {shouldShowGelombang && parseInt(formData.jumlahGelombang) > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Tanggal Gelombang</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.waveDates.slice(0, parseInt(formData.jumlahGelombang)).map((wave, index) => (
+                      <React.Fragment key={wave.id}>
+                        <div className="space-y-2">
+                          <Label>{`Tanggal Mulai Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !wave.startDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {wave.startDate ? format(wave.startDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={wave.startDate || undefined}
+                                onSelect={(date) => handleWaveDateChange(index, 'startDate', date)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{`Tanggal Akhir Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !wave.endDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {wave.endDate ? format(wave.endDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={wave.endDate || undefined}
+                                onSelect={(date) => handleWaveDateChange(index, 'endDate', date)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => window.history.back()}>
