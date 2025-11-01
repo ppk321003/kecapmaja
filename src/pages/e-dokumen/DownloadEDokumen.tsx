@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link as LinkIcon, Search } from "lucide-react";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 // Set Indonesian Timezone
 const indonesianOptions = {
@@ -24,6 +25,7 @@ const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("daftar-hadir");
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Data for each table with sheet IDs - sorted alphabetically
   const documents = [{
@@ -499,11 +501,37 @@ const DownloadDokumen = () => {
     );
   }, [data, searchTerm, activeDocument.searchFields]);
 
-  // Reset search when changing tabs
+  // Pagination logic
+  const paginatedData = useMemo(() => {
+    if (!filteredData) return [];
+    
+    if (pageSize === 0) return filteredData; // Show all data
+    
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, currentPage, pageSize]);
+
+  const totalPages = Math.ceil((filteredData?.length || 0) / (pageSize || 1));
+  const totalItems = filteredData?.length || 0;
+
+  // Reset pagination when data changes
   const handleTabChange = (value) => {
     setSearchTerm("");
+    setCurrentPage(1);
     setActiveTab(value);
   };
+
+  const handlePageSizeChange = (value) => {
+    setPageSize(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  // Pagination handlers
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const goToLastPage = () => setCurrentPage(totalPages);
 
   return (
     <div className="space-y-6">
@@ -546,7 +574,7 @@ const DownloadDokumen = () => {
               
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <span className="text-sm text-gray-600 whitespace-nowrap">Tampilkan:</span>
-                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                   <SelectTrigger className="w-24">
                     <SelectValue />
                   </SelectTrigger>
@@ -575,13 +603,70 @@ const DownloadDokumen = () => {
                 <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
               </div>
             ) : (
-              <DataTable 
-                title={doc.title} 
-                columns={doc.columns} 
-                data={filteredData || []}
-                pageSize={pageSize}
-                searchTerm={searchTerm}
-              />
+              <>
+                <DataTable 
+                  title={doc.title} 
+                  columns={doc.columns} 
+                  data={paginatedData || []}
+                />
+                
+                {/* Pagination Controls */}
+                {pageSize > 0 && totalItems > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalItems)} dari {totalItems} data
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToFirstPage}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1"
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                        Awal
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Sebelumnya
+                      </Button>
+                      
+                      <span className="text-sm text-gray-600 mx-2">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1"
+                      >
+                        Selanjutnya
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToLastPage}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1"
+                      >
+                        Akhir
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         ))}
