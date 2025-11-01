@@ -17,6 +17,7 @@ import BuatEDokumen from "./pages/e-dokumen/BuatEDokumen";
 import DownloadEDokumen from "./pages/e-dokumen/DownloadEDokumen";
 import PlaceholderEDokumen from "./pages/e-dokumen/PlaceholderEDokumen";
 import KerangkaAcuanKerja from "./pages/e-dokumen/kak";
+import DaftarHadir from "./pages/e-dokumen/daftar-hadir";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/e-dokumen/daftar-hadir" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/dokumen-pengadaan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/kak" element={<ProtectedRoute><KerangkaAcuanKerja /></ProtectedRoute>} />
+            <Route path="/e-dokumen/daftar-hadir" element={<ProtectedRoute><DaftarHadir /></ProtectedRoute>} />
             <Route path="/e-dokumen/kuitansi-perjalanan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/kuitansi-transport" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/lembur-laporan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
