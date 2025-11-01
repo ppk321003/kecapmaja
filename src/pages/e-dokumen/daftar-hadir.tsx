@@ -572,7 +572,7 @@ const DaftarHadir = () => {
   };
 
   return (
-    <Layout>
+    //<Layout>
     <Card className="w-full">
   <CardHeader className="pb-4">
     <CardTitle className="text-xl">Form Daftar Hadir</CardTitle>
@@ -1017,7 +1017,7 @@ const DaftarHadir = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    //</Layout>
   );
 };
 
