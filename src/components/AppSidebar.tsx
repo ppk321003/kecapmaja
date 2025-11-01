@@ -4,15 +4,11 @@ import {
   LayoutDashboard,
   FileText,
   Users,
-  Target,
-  CheckSquare,
   DollarSign,
-  UserCog,
-  CheckCircle,
-  Download,
-  Database,
-  BookOpen,
   ChevronDown,
+  FolderOpen,
+  FilePlus,
+  Download as DownloadIcon,
 } from "lucide-react";
 
 import {
@@ -35,30 +31,23 @@ import { useState } from "react";
 const mainMenuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
 ];
 
-const spkBastSubItems = [
-  { title: "Entri Petugas", url: "/spk-bast/entri-petugas", icon: Users },
-  { title: "Entri Kegiatan", url: "/spk-bast/entri-target", icon: Target },
-  { title: "Cek SBML", url: "/spk-bast/cek-sbml", icon: CheckSquare },
-  { title: "Entri SBML", url: "/spk-bast/entri-sbml", icon: DollarSign },
-  { title: "Entri Pengelola Anggaran", url: "/spk-bast/entri-pengelola", icon: UserCog },
-  { title: "Approval PPK", url: "/spk-bast/approval-ppk", icon: CheckCircle },
-  { title: "Download SPK & BAST", url: "/spk-bast/download-spk-bast", icon: Download },
-  { title: "Download SPJ", url: "/spk-bast/download-spj", icon: Download },
-  { title: "Download Raw Data", url: "/spk-bast/download-raw-data", icon: Database },
-  { title: "Pedoman", url: "/spk-bast/pedoman", icon: BookOpen },
+const eDokumenSubItems = [
+  { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
+  { title: "Download e-Dokumen", url: "/e-dokumen/download", icon: DownloadIcon },
 ];
 
 export function AppSidebar() {
   const { open } = useSidebar();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
 
-  const isSpkBastActive = currentPath.startsWith("/spk-bast");
-  const [spkBastOpen, setSpkBastOpen] = useState(() => isSpkBastActive);
+  const isEDokumenActive = currentPath.startsWith("/e-dokumen");
+  const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
 
 
   return (
@@ -100,24 +89,24 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <Collapsible open={spkBastOpen} onOpenChange={setSpkBastOpen}>
+              <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
                       className={
-                        isSpkBastActive
+                        isEDokumenActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                           : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
                       }
                     >
-                      <FileText className="h-4 w-4" />
-                      {open && <span>SPK dan BAST</span>}
-                      {open && <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200" style={{ transform: spkBastOpen ? "rotate(180deg)" : "rotate(0deg)" }} />}
+                      <FolderOpen className="h-4 w-4" />
+                      {open && <span>e-Dokumen</span>}
+                      {open && <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200" style={{ transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)" }} />}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {spkBastSubItems.map((subItem) => (
+                      {eDokumenSubItems.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild>
                             <NavLink

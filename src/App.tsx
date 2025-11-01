@@ -12,6 +12,10 @@ import Dashboard from "./pages/Dashboard";
 import AkiToBendahara from "./pages/AkiToBendahara";
 import BlockTanggal from "./pages/BlockTanggal";
 import Pengadaan from "./pages/Pengadaan";
+import SPKBast from "./pages/SPKBast";
+import BuatEDokumen from "./pages/e-dokumen/BuatEDokumen";
+import DownloadEDokumen from "./pages/e-dokumen/DownloadEDokumen";
+import PlaceholderEDokumen from "./pages/e-dokumen/PlaceholderEDokumen";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
 import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
@@ -41,6 +45,21 @@ const App = () => (
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />
             <Route path="/Pengadaan" element={<ProtectedRoute><Layout><Pengadaan /></Layout></ProtectedRoute>} />
+            <Route path="/spk-bast" element={<ProtectedRoute><Layout><SPKBast /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/buat" element={<ProtectedRoute><Layout><BuatEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/download" element={<ProtectedRoute><Layout><DownloadEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/daftar-hadir" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/dokumen-pengadaan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/kak" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/kuitansi-perjalanan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/kuitansi-transport" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/lembur-laporan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/spj-honor" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/surat-keputusan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/surat-pernyataan" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/tanda-terima" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/transport-lokal" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
+            <Route path="/e-dokumen/uang-harian-transport" element={<ProtectedRoute><Layout><PlaceholderEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-petugas" element={<ProtectedRoute><Layout><EntriPetugas /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-realisasi" element={<ProtectedRoute><Layout><EntriRealisasi /></Layout></ProtectedRoute>} />
