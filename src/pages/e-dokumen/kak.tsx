@@ -1,880 +1,185 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Layout from "@/components/Layout";
+import React, { useState } from "react";
+import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { ProgramSelect } from "@/components/ProgramSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 
-// Custom hook untuk membaca data dari Google Sheets
-const useSheetsData = (sheetName) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/sheets?sheetName=${sheetName}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${sheetName}`);
-        }
-        
-        const result = await response.json();
-        setData(result.data || []);
-      } catch (err) {
-        console.error(`Error fetching ${sheetName}:`, err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [sheetName]);
-
-  return { data, loading, error };
-};
-
-interface KegiatanDetail {
-  id: string;
-  namaKegiatan: string;
-  volume: string;
-  satuan: string;
-  hargaSatuan: string;
-}
-
-interface WaveDate {
-  id: string;
-  startDate: Date | null;
-  endDate: Date | null;
-}
-
-interface FormValues {
-  jenisKak: string;
-  jenisPaketMeeting: string;
-  programPembebanan: string;
-  kegiatan: string;
-  kro: string;
-  ro: string;
-  komponenOutput: string;
-  akun: string;
-  paguAnggaran: string;
-  kegiatanDetails: KegiatanDetail[];
-  tanggalMulaiKegiatan: Date | null;
-  tanggalAkhirKegiatan: Date | null;
-  tanggalPengajuanKAK: Date | null;
-  pembuatDaftar: string;
-  jumlahGelombang: string;
-  waveDates: WaveDate[];
-}
-
-const defaultValues: FormValues = {
-  jenisKak: "",
-  jenisPaketMeeting: "",
-  programPembebanan: "",
-  kegiatan: "",
-  kro: "",
-  ro: "",
-  komponenOutput: "",
-  akun: "",
-  paguAnggaran: "",
-  kegiatanDetails: [],
-  tanggalMulaiKegiatan: null,
-  tanggalAkhirKegiatan: null,
-  tanggalPengajuanKAK: null,
-  pembuatDaftar: "",
-  jumlahGelombang: "0",
-  waveDates: []
-};
-
-// Updated options
-const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
-const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
-const satuanOptions = ["BLN", "BS", "Desa", "Dok", "Liter", "Lmbr", "M2", "OB", "OH", "OJP", "OK", "OP", "Paket", "Pasar", "RT", "SET", "SLS", "Stel", "Tahun", "Segmen"];
+const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 
 const KerangkaAcuanKerja = () => {
-  const navigate = useNavigate();
-  const [formValues, setFormValues] = useState<FormValues>({
-    ...defaultValues,
-    kegiatanDetails: [{
-      id: `kegiatan-${Date.now()}`,
-      namaKegiatan: "",
-      volume: "",
-      satuan: "",
-      hargaSatuan: ""
-    }]
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    program: "",
+    kegiatan: "",
+    kro: "",
+    ro: "",
+    komponen: "",
+    akun: "",
+    paguAnggaran: "",
+    keterangan: ""
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Data queries from Google Sheets
-  const { data: programs = [] } = useSheetsData('program');
-  const { data: kegiatan = [] } = useSheetsData('kegiatan');
-  const { data: kros = [] } = useSheetsData('kro');
-  const { data: ros = [] } = useSheetsData('ro');
-  const { data: komponenOptions = [] } = useSheetsData('komponen');
-  const { data: akuns = [] } = useSheetsData('akun');
-  const { data: organikList = [] } = useSheetsData('organik');
-
-  // Name mapping states
-  const [programNameMap, setProgramNameMap] = useState<Record<string, string>>({});
-  const [kegiatanNameMap, setKegiatanNameMap] = useState<Record<string, string>>({});
-  const [kroNameMap, setKroNameMap] = useState<Record<string, string>>({});
-  const [roNameMap, setRoNameMap] = useState<Record<string, string>>({});
-  const [komponenNameMap, setKomponenNameMap] = useState<Record<string, string>>({});
-  const [akunNameMap, setAkunNameMap] = useState<Record<string, string>>({});
-  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
-
-  // Update name mappings
-  useEffect(() => {
-    // Update program name map
-    const progMap: Record<string, string> = {};
-    programs.forEach(prog => {
-      progMap[prog.id] = prog.name;
-    });
-    setProgramNameMap(progMap);
-
-    // Update kegiatan name map
-    const kegMap: Record<string, string> = {};
-    kegiatan.forEach(keg => {
-      kegMap[keg.id] = keg.name;
-    });
-    setKegiatanNameMap(kegMap);
-
-    // Update KRO name map
-    const kroMap: Record<string, string> = {};
-    kros.forEach(k => {
-      kroMap[k.id] = k.name;
-    });
-    setKroNameMap(kroMap);
-
-    // Update RO name map
-    const roMap: Record<string, string> = {};
-    ros.forEach(r => {
-      roMap[r.id] = r.name;
-    });
-    setRoNameMap(roMap);
-
-    // Update komponen name map
-    const kompMap: Record<string, string> = {};
-    komponenOptions.forEach(komp => {
-      kompMap[komp.id] = komp.name;
-    });
-    setKomponenNameMap(kompMap);
-
-    // Update akun name map
-    const akMap: Record<string, string> = {};
-    akuns.forEach(akun => {
-      akMap[akun.id] = akun.name;
-    });
-    setAkunNameMap(akMap);
-
-    // Update pembuat daftar name
-    if (formValues.pembuatDaftar) {
-      const pembuat = organikList.find(org => org.id === formValues.pembuatDaftar);
-      if (pembuat) {
-        setPembuatDaftarName(pembuat.name);
-      }
-    }
-  }, [programs, kegiatan, kros, ros, komponenOptions, akuns, formValues.pembuatDaftar, organikList]);
-
-  // Google Sheets submission hook
-  const submitToSheets = useSubmitToSheets({
-    documentType: "KerangkaAcuanKerja",
+  const { submitData, isSubmitting } = useSubmitToSheets({
+    spreadsheetId: TARGET_SPREADSHEET_ID,
     onSuccess: () => {
-      navigate("/buat-dokumen");
-    },
-    skipSaveToSupabase: true
+      toast({
+        title: "Sukses",
+        description: "Data KAK berhasil dikirim"
+      });
+      // Reset form
+      setFormData({
+        program: "",
+        kegiatan: "",
+        kro: "",
+        ro: "",
+        komponen: "",
+        akun: "",
+        paguAnggaran: "",
+        keterangan: ""
+      });
+    }
   });
 
-  // Effect to update wave dates when jumlahGelombang changes
-  useEffect(() => {
-    const gelombangCount = parseInt(formValues.jumlahGelombang) || 0;
-    if (gelombangCount > 0) {
-      const newWaveDates: WaveDate[] = [];
-      for (let i = 0; i < gelombangCount; i++) {
-        const existingWave = formValues.waveDates[i];
-        newWaveDates.push({
-          id: existingWave?.id || `wave-${i + 1}-${Date.now()}`,
-          startDate: existingWave?.startDate || null,
-          endDate: existingWave?.endDate || null
-        });
-      }
-      setFormValues(prev => ({
-        ...prev,
-        waveDates: newWaveDates
-      }));
-    } else {
-      setFormValues(prev => ({
-        ...prev,
-        waveDates: []
-      }));
-    }
-  }, [formValues.jumlahGelombang]);
-
-  const handleChange = (field: keyof FormValues, value: any) => {
-    setFormValues(prev => {
-      const newValues = {
-        ...prev,
-        [field]: value
-      };
-
-      // Reset dependent fields
-      if (field === 'programPembebanan') {
-        newValues.kegiatan = '';
-        newValues.kro = '';
-        newValues.ro = '';
-        newValues.komponenOutput = '';
-      } else if (field === 'kegiatan') {
-        newValues.kro = '';
-        newValues.ro = '';
-        newValues.komponenOutput = '';
-      } else if (field === 'kro') {
-        newValues.ro = '';
-        newValues.komponenOutput = '';
-      } else if (field === 'ro') {
-        newValues.komponenOutput = '';
-      } else if (field === 'jenisKak' && value !== 'Belanja Paket Meeting') {
-        newValues.jenisPaketMeeting = '';
-      }
-      return newValues;
-    });
-  };
-
-  const handleWaveDateChange = (waveId: string, field: 'startDate' | 'endDate', date: Date | null) => {
-    setFormValues(prev => ({
-      ...prev,
-      waveDates: prev.waveDates.map(wave => wave.id === waveId ? {
-        ...wave,
-        [field]: date
-      } : wave)
-    }));
-  };
-
-  const handleKegiatanDetailChange = (id: string, field: keyof KegiatanDetail, value: string) => {
-    setFormValues(prev => ({
-      ...prev,
-      kegiatanDetails: prev.kegiatanDetails.map(item => item.id === id ? {
-        ...item,
-        [field]: value
-      } : item)
-    }));
-  };
-
-  const addKegiatanDetail = () => {
-    setFormValues(prev => ({
-      ...prev,
-      kegiatanDetails: [...prev.kegiatanDetails, {
-        id: `kegiatan-${Date.now()}`,
-        namaKegiatan: "",
-        volume: "",
-        satuan: "",
-        hargaSatuan: ""
-      }]
-    }));
-  };
-
-  const removeKegiatanDetail = (id: string) => {
-    if (formValues.kegiatanDetails.length <= 1) {
-      return;
-    }
-    setFormValues(prev => ({
-      ...prev,
-      kegiatanDetails: prev.kegiatanDetails.filter(item => item.id !== id)
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    // Validate required fields
-    if (!formValues.jenisKak) {
+    // Validasi
+    if (!formData.program || !formData.kegiatan || !formData.kro || !formData.ro || !formData.komponen || !formData.akun) {
       toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Jenis Kerangka Acuan Kerja wajib diisi"
+        title: "Validasi Gagal",
+        description: "Semua field wajib diisi",
+        variant: "destructive"
       });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (formValues.jenisKak === "Belanja Paket Meeting" && !formValues.jenisPaketMeeting) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Jenis Paket Meeting wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.programPembebanan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Program Pembebanan wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.kegiatan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Kegiatan wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.kro) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "KRO wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.ro) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "RO wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.komponenOutput) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Komponen Output wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.akun) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Akun wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.paguAnggaran) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Pagu Anggaran wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Validate kegiatan details
-    for (let i = 0; i < formValues.kegiatanDetails.length; i++) {
-      const detail = formValues.kegiatanDetails[i];
-      if (!detail.namaKegiatan || !detail.volume || !detail.satuan || !detail.hargaSatuan) {
-        toast({
-          variant: "destructive",
-          title: "Validasi gagal",
-          description: `Detail Kegiatan ${i + 1} belum lengkap. Semua field wajib diisi`
-        });
-        setIsSubmitting(false);
-        return;
-      }
-    }
-
-    if (!formValues.tanggalMulaiKegiatan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Tanggal Mulai Kegiatan wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.tanggalAkhirKegiatan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Tanggal Akhir Kegiatan wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.tanggalPengajuanKAK) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Tanggal Pengajuan KAK wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formValues.pembuatDaftar) {
-      toast({
-        variant: "destructive",
-        title: "Validasi gagal",
-        description: "Pembuat Daftar wajib diisi"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Validate for Belanja Paket Meeting
-    if (formValues.jenisKak === "Belanja Paket Meeting") {
-      if (!formValues.jumlahGelombang || parseInt(formValues.jumlahGelombang) <= 0) {
-        toast({
-          variant: "destructive",
-          title: "Validasi gagal",
-          description: "Jumlah Gelombang wajib diisi dan harus lebih dari 0"
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Validate wave dates
-      for (let i = 0; i < formValues.waveDates.length; i++) {
-        const wave = formValues.waveDates[i];
-        if (!wave.startDate || !wave.endDate) {
-          toast({
-            variant: "destructive",
-            title: "Validasi gagal",
-            description: `Tanggal Gelombang ${i + 1} belum lengkap. Tanggal mulai dan akhir wajib diisi`
-          });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-    }
-
-    // Validate dates
-    if (formValues.tanggalPengajuanKAK && formValues.tanggalMulaiKegiatan && formValues.tanggalPengajuanKAK > formValues.tanggalMulaiKegiatan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi tanggal gagal",
-        description: "Tanggal pengajuan KAK harus sebelum tanggal mulai kegiatan"
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    if (formValues.tanggalMulaiKegiatan && formValues.tanggalAkhirKegiatan && formValues.tanggalMulaiKegiatan > formValues.tanggalAkhirKegiatan) {
-      toast({
-        variant: "destructive",
-        title: "Validasi tanggal gagal",
-        description: "Tanggal akhir kegiatan harus setelah atau sama dengan tanggal mulai kegiatan"
-      });
-      setIsSubmitting(false);
       return;
     }
 
     try {
-      const submissionData = {
-        ...formValues,
-        _programNameMap: programNameMap,
-        _kegiatanNameMap: kegiatanNameMap,
-        _kroNameMap: kroNameMap,
-        _roNameMap: roNameMap,
-        _komponenNameMap: komponenNameMap,
-        _akunNameMap: akunNameMap,
-        _pembuatDaftarName: pembuatDaftarName
-      };
+      const timestamp = new Date().toISOString();
+      const rowData = [
+        timestamp,
+        formData.program,
+        formData.kegiatan,
+        formData.kro,
+        formData.ro,
+        formData.komponen,
+        formData.akun,
+        formData.paguAnggaran,
+        formData.keterangan
+      ];
 
-      // Submit directly to Google Sheets
-      await submitToSheets.mutateAsync(submissionData);
-
+      await submitData(rowData);
     } catch (error) {
-      console.error("Error submitting form:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
-      });
-      setIsSubmitting(false);
+      console.error("Error submitting KAK:", error);
     }
   };
-
-  const shouldShowJenisPaketMeeting = formValues.jenisKak === "Belanja Paket Meeting";
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-orange-600">Kerangka Acuan Kerja</h1>
-          <p className="text-sm text-muted-foreground">
-            Buat dokumen kerangka acuan kerja (KAK)
+          <h1 className="text-3xl font-bold text-red-500">Kerangka Acuan Kerja (KAK)</h1>
+          <p className="text-muted-foreground mt-2">
+            Form pengisian Kerangka Acuan Kerja
           </p>
         </div>
 
         <Card>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
+          <CardHeader>
+            <CardTitle>Form KAK</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="jenisKak">Jenis Kerangka Acuan Kerja <span className="text-destructive">*</span></Label>
-                  <Select value={formValues.jenisKak} onValueChange={value => handleChange('jenisKak', value)} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih jenis KAK" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jenisKakOptions.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {shouldShowJenisPaketMeeting && (
-                  <div className="space-y-2">
-                    <Label htmlFor="jenisPaketMeeting">Jenis Paket Meeting <span className="text-destructive">*</span></Label>
-                    <Select value={formValues.jenisPaketMeeting} onValueChange={value => handleChange('jenisPaketMeeting', value)} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih jenis paket meeting" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jenisPaketMeetingOptions.map(option => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="programPembebanan">Program Pembebanan <span className="text-destructive">*</span></Label>
-                  <Select value={formValues.programPembebanan} onValueChange={value => handleChange('programPembebanan', value)} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih program pembebanan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {programs.map(program => (
-                        <SelectItem key={program.id} value={program.id}>
-                          {program.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="kegiatan">Kegiatan <span className="text-destructive">*</span></Label>
-                  <KegiatanSelect 
-                    value={formValues.kegiatan} 
-                    onChange={value => handleChange('kegiatan', value)} 
-                    placeholder="Pilih kegiatan" 
-                    programId={formValues.programPembebanan} 
+                  <Label>Program Pembebanan</Label>
+                  <ProgramSelect
+                    value={formData.program}
+                    onValueChange={(value) => setFormData({ ...formData, program: value, kegiatan: "", kro: "", ro: "" })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kro">KRO <span className="text-destructive">*</span></Label>
-                  <KROSelect 
-                    value={formValues.kro} 
-                    onChange={value => handleChange('kegiatan', value)} 
-                    placeholder="Pilih KRO" 
-                    kegiatanId={formValues.kegiatan} 
+                  <Label>Kegiatan</Label>
+                  <KegiatanSelect
+                    value={formData.kegiatan}
+                    onValueChange={(value) => setFormData({ ...formData, kegiatan: value, kro: "", ro: "" })}
+                    programId={formData.program}
+                    disabled={!formData.program}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ro">RO <span className="text-destructive">*</span></Label>
-                  <ROSelect 
-                    value={formValues.ro} 
-                    onChange={value => handleChange('ro', value)} 
-                    placeholder="Pilih RO" 
-                    kroId={formValues.kro} 
+                  <Label>KRO</Label>
+                  <KROSelect
+                    value={formData.kro}
+                    onValueChange={(value) => setFormData({ ...formData, kro: value, ro: "" })}
+                    kegiatanId={formData.kegiatan}
+                    disabled={!formData.kegiatan}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="komponenOutput">Komponen Output <span className="text-destructive">*</span></Label>
-                  <KomponenSelect value={formValues.komponenOutput} onChange={value => handleChange('komponenOutput', value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="akun">Akun <span className="text-destructive">*</span></Label>
-                  <AkunSelect 
-                    value={formValues.akun} 
-                    onChange={value => handleChange('akun', value)} 
-                    placeholder="Pilih akun" 
+                  <Label>RO</Label>
+                  <ROSelect
+                    value={formData.ro}
+                    onValueChange={(value) => setFormData({ ...formData, ro: value })}
+                    kroId={formData.kro}
+                    disabled={!formData.kro}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paguAnggaran">Pagu Anggaran <span className="text-destructive">*</span></Label>
-                  <Input 
-                    id="paguAnggaran" 
-                    type="number" 
-                    placeholder="Masukkan pagu anggaran" 
-                    value={formValues.paguAnggaran} 
-                    onChange={e => handleChange('paguAnggaran', e.target.value)} 
-                    required 
+                  <Label>Komponen Output</Label>
+                  <KomponenSelect
+                    value={formData.komponen}
+                    onValueChange={(value) => setFormData({ ...formData, komponen: value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Akun</Label>
+                  <AkunSelect
+                    value={formData.akun}
+                    onValueChange={(value) => setFormData({ ...formData, akun: value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Pagu Anggaran</Label>
+                  <Input
+                    type="number"
+                    value={formData.paguAnggaran}
+                    onChange={(e) => setFormData({ ...formData, paguAnggaran: e.target.value })}
+                    placeholder="Masukkan pagu anggaran"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Keterangan</Label>
+                  <Input
+                    value={formData.keterangan}
+                    onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                    placeholder="Keterangan (opsional)"
                   />
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Detail Kegiatan</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addKegiatanDetail}>
-                    <Plus className="mr-1 h-4 w-4" /> Tambah Kegiatan
-                  </Button>
-                </div>
-
-                {formValues.kegiatanDetails.map((kegiatan, index) => (
-                  <Card key={kegiatan.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium">Kegiatan {index + 1}</h4>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => removeKegiatanDetail(kegiatan.id)} 
-                          disabled={formValues.kegiatanDetails.length <= 1}
-                        >
-                          <Trash className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor={`namaKegiatan-${kegiatan.id}`}>Nama Kegiatan <span className="text-destructive">*</span></Label>
-                          <Input 
-                            id={`namaKegiatan-${kegiatan.id}`} 
-                            placeholder="Masukkan nama kegiatan" 
-                            value={kegiatan.namaKegiatan} 
-                            onChange={e => handleKegiatanDetailChange(kegiatan.id, 'namaKegiatan', e.target.value)} 
-                            required 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`volume-${kegiatan.id}`}>Volume <span className="text-destructive">*</span></Label>
-                          <Input 
-                            id={`volume-${kegiatan.id}`} 
-                            type="number" 
-                            placeholder="Masukkan volume" 
-                            value={kegiatan.volume} 
-                            onChange={e => handleKegiatanDetailChange(kegiatan.id, 'volume', e.target.value)} 
-                            required 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`satuan-${kegiatan.id}`}>Satuan <span className="text-destructive">*</span></Label>
-                          <Select value={kegiatan.satuan} onValueChange={value => handleKegiatanDetailChange(kegiatan.id, 'satuan', value)} required>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih satuan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {satuanOptions.map(option => (
-                                <SelectItem key={option} value={option}>
-                                  {option}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`hargaSatuan-${kegiatan.id}`}>Harga Satuan <span className="text-destructive">*</span></Label>
-                          <Input 
-                            id={`hargaSatuan-${kegiatan.id}`} 
-                            type="number" 
-                            placeholder="Masukkan harga satuan" 
-                            value={kegiatan.hargaSatuan} 
-                            onChange={e => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', e.target.value)} 
-                            required 
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Tanggal Mulai Kegiatan <span className="text-destructive">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalMulaiKegiatan && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalMulaiKegiatan ? format(formValues.tanggalMulaiKegiatan, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar 
-                        mode="single" 
-                        selected={formValues.tanggalMulaiKegiatan || undefined} 
-                        onSelect={date => handleChange('tanggalMulaiKegiatan', date)} 
-                        initialFocus 
-                        className="p-3 pointer-events-auto" 
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tanggal Akhir Kegiatan <span className="text-destructive">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalAkhirKegiatan && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalAkhirKegiatan ? format(formValues.tanggalAkhirKegiatan, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar 
-                        mode="single" 
-                        selected={formValues.tanggalAkhirKegiatan || undefined} 
-                        onSelect={date => handleChange('tanggalAkhirKegiatan', date)} 
-                        initialFocus 
-                        className="p-3 pointer-events-auto" 
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Tanggal Pengajuan KAK <span className="text-destructive">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalPengajuanKAK && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formValues.tanggalPengajuanKAK ? format(formValues.tanggalPengajuanKAK, "PPP") : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar 
-                        mode="single" 
-                        selected={formValues.tanggalPengajuanKAK || undefined} 
-                        onSelect={date => handleChange('tanggalPengajuanKAK', date)} 
-                        initialFocus 
-                        className="p-3 pointer-events-auto" 
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pembuatDaftar">Pembuat Daftar <span className="text-destructive">*</span></Label>
-                  <Select value={formValues.pembuatDaftar} onValueChange={value => handleChange('pembuatDaftar', value)} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pembuat daftar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikList.map(organik => (
-                        <SelectItem key={organik.id} value={organik.id}>
-                          {organik.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {formValues.jenisKak === "Belanja Paket Meeting" && (
-                <div className="grid grid-cols-1">
-                  <div className="space-y-2">
-                    <Label htmlFor="jumlahGelombang">Jumlah Gelombang <span className="text-destructive">*</span></Label>
-                    <Input 
-                      id="jumlahGelombang" 
-                      type="number" 
-                      min="1" 
-                      placeholder="Masukkan jumlah gelombang" 
-                      value={formValues.jumlahGelombang} 
-                      onChange={e => handleChange('jumlahGelombang', e.target.value)} 
-                      required 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {formValues.jenisKak === "Belanja Paket Meeting" && formValues.waveDates.length > 0 && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  {formValues.waveDates.map((wave, index) => (
-                    <React.Fragment key={wave.id}>
-                      <div className="space-y-2">
-                        <Label>{`Tanggal Mulai Gelombang-${index + 1}`} <span className="text-destructive">*</span></Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !wave.startDate && "text-muted-foreground")}>
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {wave.startDate ? format(wave.startDate, "PPP") : <span>Pilih tanggal</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar 
-                              mode="single" 
-                              selected={wave.startDate || undefined} 
-                              onSelect={date => handleWaveDateChange(wave.id, 'startDate', date)} 
-                              initialFocus 
-                              className="p-3 pointer-events-auto" 
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>{`Tanggal Akhir Gelombang-${index + 1}`} <span className="text-destructive">*</span></Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !wave.endDate && "text-muted-foreground")}>
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {wave.endDate ? format(wave.endDate, "PPP") : <span>Pilih tanggal</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar 
-                              mode="single" 
-                              selected={wave.endDate || undefined} 
-                              onSelect={date => handleWaveDateChange(wave.id, 'endDate', date)} 
-                              initialFocus 
-                              className="p-3 pointer-events-auto" 
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex space-x-4">
-                <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => window.history.back()}>
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
-                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Menyimpan..." : "Simpan"}
                 </Button>
               </div>
             </form>
