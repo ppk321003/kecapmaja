@@ -48,11 +48,17 @@ interface FormData {
   jenisKak: string;
   jenisPaketMeeting: string;
   program: string;
+  programLabel: string;
   kegiatan: string;
+  kegiatanLabel: string;
   kro: string;
+  kroLabel: string;
   ro: string;
+  roLabel: string;
   komponen: string;
+  komponenLabel: string;
   akun: string;
+  akunLabel: string;
   paguAnggaran: string;
   kegiatanDetails: KegiatanDetail[];
   tanggalMulaiKegiatan: Date | null;
@@ -89,11 +95,17 @@ const KerangkaAcuanKerja = () => {
     jenisKak: "",
     jenisPaketMeeting: "",
     program: "",
+    programLabel: "",
     kegiatan: "",
+    kegiatanLabel: "",
     kro: "",
+    kroLabel: "",
     ro: "",
+    roLabel: "",
     komponen: "",
+    komponenLabel: "",
     akun: "",
+    akunLabel: "",
     paguAnggaran: "",
     kegiatanDetails: [{
       id: `kegiatan-${Date.now()}`,
@@ -160,18 +172,17 @@ const KerangkaAcuanKerja = () => {
     }
   };
 
-  // Fungsi submit menggunakan Supabase function - SAMA DENGAN CARA YANG BERHASIL
+  // Fungsi submit menggunakan Supabase function
   const submitToSpreadsheet = async (rowData: any[]) => {
     try {
       console.log("📤 Submitting data to spreadsheet...");
       console.log("📊 Data length:", rowData.length);
-      console.log("🔧 Using Supabase function directly");
 
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: "KerangkaAcuanKerja", // NAMA SHEET YANG BENAR
+          range: "KerangkaAcuanKerja",
           values: [rowData]
         }
       });
@@ -222,28 +233,43 @@ const KerangkaAcuanKerja = () => {
     }));
   }, [formData.jumlahGelombang]);
 
-  const handleChange = (field: keyof FormData, value: any) => {
+  const handleChange = (field: keyof FormData, value: any, labelField?: keyof FormData, labelValue?: string) => {
     setFormData(prev => {
       const newData = {
         ...prev,
         [field]: value
       };
 
+      // Jika ada label field, update juga
+      if (labelField && labelValue !== undefined) {
+        newData[labelField] = labelValue;
+      }
+
       // Reset dependent fields
       if (field === 'program') {
         newData.kegiatan = '';
+        newData.kegiatanLabel = '';
         newData.kro = '';
+        newData.kroLabel = '';
         newData.ro = '';
+        newData.roLabel = '';
         newData.komponen = '';
+        newData.komponenLabel = '';
       } else if (field === 'kegiatan') {
         newData.kro = '';
+        newData.kroLabel = '';
         newData.ro = '';
+        newData.roLabel = '';
         newData.komponen = '';
+        newData.komponenLabel = '';
       } else if (field === 'kro') {
         newData.ro = '';
+        newData.roLabel = '';
         newData.komponen = '';
+        newData.komponenLabel = '';
       } else if (field === 'ro') {
         newData.komponen = '';
+        newData.komponenLabel = '';
       } else if (field === 'jenisKak' && value !== 'Belanja Paket Meeting') {
         newData.jenisPaketMeeting = '';
         newData.jumlahGelombang = "0";
@@ -251,6 +277,31 @@ const KerangkaAcuanKerja = () => {
 
       return newData;
     });
+  };
+
+  // Handler khusus untuk komponen Select yang perlu menyimpan label
+  const handleProgramChange = (value: string, label: string) => {
+    handleChange('program', value, 'programLabel', label);
+  };
+
+  const handleKegiatanChange = (value: string, label: string) => {
+    handleChange('kegiatan', value, 'kegiatanLabel', label);
+  };
+
+  const handleKROChange = (value: string, label: string) => {
+    handleChange('kro', value, 'kroLabel', label);
+  };
+
+  const handleROChange = (value: string, label: string) => {
+    handleChange('ro', value, 'roLabel', label);
+  };
+
+  const handleKomponenChange = (value: string, label: string) => {
+    handleChange('komponen', value, 'komponenLabel', label);
+  };
+
+  const handleAkunChange = (value: string, label: string) => {
+    handleChange('akun', value, 'akunLabel', label);
   };
 
   const handleWaveDateChange = (waveIndex: number, field: 'startDate' | 'endDate', date: Date | null) => {
@@ -333,6 +384,50 @@ const KerangkaAcuanKerja = () => {
       }
     }
 
+    // Validasi untuk Belanja Paket Meeting
+    if (formData.jenisKak === "Belanja Paket Meeting") {
+      if (!formData.jumlahGelombang || parseInt(formData.jumlahGelombang) <= 0) {
+        toast({
+          title: "Validasi Gagal",
+          description: "Jumlah Gelombang wajib diisi dan harus lebih dari 0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const activeWaves = formData.waveDates.slice(0, parseInt(formData.jumlahGelombang));
+      for (let i = 0; i < activeWaves.length; i++) {
+        const wave = activeWaves[i];
+        if (!wave.startDate || !wave.endDate) {
+          toast({
+            title: "Validasi Gagal",
+            description: `Tanggal Gelombang ${i + 1} belum lengkap. Tanggal mulai dan akhir wajib diisi`,
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+    }
+
+    // Validasi tanggal
+    if (formData.tanggalPengajuanKAK && formData.tanggalMulaiKegiatan && formData.tanggalPengajuanKAK > formData.tanggalMulaiKegiatan) {
+      toast({
+        title: "Validasi Tanggal Gagal",
+        description: "Tanggal pengajuan KAK harus sebelum tanggal mulai kegiatan",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.tanggalMulaiKegiatan && formData.tanggalAkhirKegiatan && formData.tanggalMulaiKegiatan > formData.tanggalAkhirKegiatan) {
+      toast({
+        title: "Validasi Tanggal Gagal",
+        description: "Tanggal akhir kegiatan harus setelah atau sama dengan tanggal mulai kegiatan",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -368,17 +463,17 @@ const KerangkaAcuanKerja = () => {
         }
       }
 
-      // Susun rowData sesuai header spreadsheet
+      // Susun rowData sesuai header spreadsheet - GUNAKAN LABEL BUKAN KODE
       const rowData = [
         timestamp, // Id
         formData.jenisKak,
         formData.jenisPaketMeeting,
-        formData.program,
-        formData.kegiatan,
-        formData.kro,
-        formData.ro,
-        formData.komponen,
-        formData.akun,
+        formData.programLabel || formData.program, // Kolom 4: Program Pembebanan (LABEL)
+        formData.kegiatanLabel || formData.kegiatan, // Kolom 5: Kegiatan (LABEL)
+        formData.kro, // Kolom 6: Kode Rincian Output (KODE)
+        formData.roLabel || formData.ro, // Kolom 7: Rincian Output (LABEL)
+        formData.komponenLabel || formData.komponen, // Kolom 8: Komponen Output (LABEL)
+        formData.akunLabel || formData.akun, // Kolom 9: Akun (LABEL)
         formData.paguAnggaran,
         formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
@@ -392,10 +487,17 @@ const KerangkaAcuanKerja = () => {
         "" // Link
       ];
 
-      console.log("📋 Final data to submit:", rowData);
+      console.log("📋 Final data to submit:", {
+        program: formData.programLabel,
+        kegiatan: formData.kegiatanLabel,
+        kro: formData.kro,
+        ro: formData.roLabel,
+        komponen: formData.komponenLabel,
+        akun: formData.akunLabel
+      });
       console.log("🔢 Total columns:", rowData.length);
 
-      // Submit menggunakan Supabase function YANG SAMA dengan yang berhasil
+      // Submit menggunakan Supabase function
       await submitToSpreadsheet(rowData);
 
       toast({
@@ -409,11 +511,17 @@ const KerangkaAcuanKerja = () => {
         jenisKak: "",
         jenisPaketMeeting: "",
         program: "",
+        programLabel: "",
         kegiatan: "",
+        kegiatanLabel: "",
         kro: "",
+        kroLabel: "",
         ro: "",
+        roLabel: "",
         komponen: "",
+        komponenLabel: "",
         akun: "",
+        akunLabel: "",
         paguAnggaran: "",
         kegiatanDetails: [{
           id: `kegiatan-${Date.now()}`,
@@ -493,7 +601,7 @@ const KerangkaAcuanKerja = () => {
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis paket meeting" />
                       </SelectTrigger>
-                    <SelectContent>
+                      <SelectContent>
                         {jenisPaketMeetingOptions.map(option => (
                           <SelectItem key={option} value={option}>
                             {option}
@@ -508,7 +616,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
                   <ProgramSelect
                     value={formData.program}
-                    onValueChange={(value) => handleChange('program', value)}
+                    onValueChange={handleProgramChange}
                   />
                 </div>
 
@@ -516,7 +624,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Kegiatan <span className="text-red-500">*</span></Label>
                   <KegiatanSelect
                     value={formData.kegiatan}
-                    onValueChange={(value) => handleChange('kegiatan', value)}
+                    onValueChange={handleKegiatanChange}
                     programId={formData.program}
                     disabled={!formData.program}
                   />
@@ -526,7 +634,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
                   <KROSelect
                     value={formData.kro}
-                    onValueChange={(value) => handleChange('kro', value)}
+                    onValueChange={handleKROChange}
                     kegiatanId={formData.kegiatan}
                     disabled={!formData.kegiatan}
                   />
@@ -536,7 +644,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
                   <ROSelect
                     value={formData.ro}
-                    onValueChange={(value) => handleChange('ro', value)}
+                    onValueChange={handleROChange}
                     kroId={formData.kro}
                     disabled={!formData.kro}
                   />
@@ -546,7 +654,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Komponen Output <span className="text-red-500">*</span></Label>
                   <KomponenSelect
                     value={formData.komponen}
-                    onValueChange={(value) => handleChange('komponen', value)}
+                    onValueChange={handleKomponenChange}
                   />
                 </div>
 
@@ -554,7 +662,7 @@ const KerangkaAcuanKerja = () => {
                   <Label>Akun <span className="text-red-500">*</span></Label>
                   <AkunSelect
                     value={formData.akun}
-                    onValueChange={(value) => handleChange('akun', value)}
+                    onValueChange={handleAkunChange}
                   />
                 </div>
 
