@@ -444,7 +444,7 @@ const KerangkaAcuanKerja = () => {
       ] = await Promise.all([
         getLabelWithCache("program", formData.program, 'D'),
         getLabelWithCache("kegiatan", formData.kegiatan, 'D'),
-        getLabelWithCache("kro", formData.kro, 'C'), // TAMBAH - sesuaikan kolom nama KRO
+        getLabelWithCache("kro", formData.kro, 'D'), // TAMBAH - sesuaikan kolom nama KRO
         getLabelWithCache("ro", formData.ro, 'D'),
         getLabelWithCache("komponen", formData.komponen, 'C'),
         getLabelWithCache("akun", formData.akun, 'C')
