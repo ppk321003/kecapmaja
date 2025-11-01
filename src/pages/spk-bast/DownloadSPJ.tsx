@@ -1,11 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download } from "lucide-react";
-
 export default function DownloadSPJ() {
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Download SPJ</h1>
+        <h1 className="text-3xl font-bold text-red-500">Download SPJ</h1>
         <p className="text-muted-foreground mt-2">
           Unduh Surat Pertanggungjawaban per kegiatan
         </p>
@@ -27,6 +25,5 @@ export default function DownloadSPJ() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
