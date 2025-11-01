@@ -57,7 +57,7 @@ export default function SPKBast() {
   }];
   return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-orange-600">SPK dan BAST</h1>
+        <h1 className="text-3xl font-bold text-orange-500">SPK dan BAST</h1>
         <p className="text-muted-foreground mt-2">Kelola Surat Perjanjian Kerja dan Berita Acara Serah Terima</p>
       </div>
 
