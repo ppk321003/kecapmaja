@@ -117,6 +117,54 @@ const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' 
   }
 };
 
+// Fungsi untuk mendapatkan nomor urut berikutnya
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    // Baca kolom A (nomor urut) dari spreadsheet
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: "KerangkaAcuanKerja!A:A"
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      // Jika hanya header atau kosong, mulai dari 1
+      return 1;
+    }
+
+    // Skip header dan ambil hanya angka dari kolom A
+    const sequenceNumbers = values
+      .slice(1) // Skip header
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
 // Fungsi untuk mendapatkan ID KAK berikutnya
 const getNextKakId = async (): Promise<string> => {
   try {
@@ -125,7 +173,7 @@ const getNextKakId = async (): Promise<string> => {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: "KerangkaAcuanKerja!A:A"
+        range: "KerangkaAcuanKerja!B:B" // Sekarang ID KAK ada di kolom B
       }
     });
 
@@ -138,6 +186,7 @@ const getNextKakId = async (): Promise<string> => {
     
     // Filter hanya ID yang sesuai format kak-yymmxxx
     const kakIds = values
+      .slice(1) // Skip header
       .flat()
       .filter((id: string) => id && id.startsWith('kak-'))
       .map((id: string) => {
@@ -181,7 +230,7 @@ const getNextKakId = async (): Promise<string> => {
   }
 };
 
-// Komponen Select dengan Search
+// Komponen Select dengan Search yang lebih baik
 interface SearchSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -207,10 +256,20 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
 
   const selectedOption = options.find(opt => opt.value === value);
 
+  // Reset search ketika dropdown dibuka/ditutup
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
+    }
+  }, [isOpen]);
+
   return (
     <Select
       value={value}
-      onValueChange={onValueChange}
+      onValueChange={(value) => {
+        onValueChange(value);
+        setIsOpen(false);
+      }}
       open={isOpen}
       onOpenChange={setIsOpen}
       disabled={disabled}
@@ -220,7 +279,7 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
           {selectedOption ? selectedOption.label : placeholder}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="max-h-[300px]">
         {/* Search Input */}
         <div className="relative p-2 border-b">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -230,21 +289,24 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
         
         {/* Options */}
-        {filteredOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-        
-        {filteredOptions.length === 0 && (
-          <div className="p-2 text-sm text-muted-foreground text-center">
-            Tidak ditemukan
-          </div>
-        )}
+        <div className="max-h-[250px] overflow-y-auto">
+          {filteredOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+          
+          {filteredOptions.length === 0 && (
+            <div className="p-2 text-sm text-muted-foreground text-center">
+              Tidak ditemukan
+            </div>
+          )}
+        </div>
       </SelectContent>
     </Select>
   );
@@ -645,8 +707,11 @@ const KerangkaAcuanKerja = () => {
     setIsSubmitting(true);
 
     try {
-      // Generate KAK ID baru
-      const kakId = await getNextKakId();
+      // Generate nomor urut dan ID KAK baru
+      const [sequenceNumber, kakId] = await Promise.all([
+        getNextSequenceNumber(),
+        getNextKakId()
+      ]);
       
       // Dapatkan nama dari kode untuk setiap field
       const [
@@ -695,31 +760,33 @@ const KerangkaAcuanKerja = () => {
         }
       }
 
-      // Susun rowData sesuai header spreadsheet - GUNAKAN NAMA BUKAN KODE
+      // Susun rowData sesuai header spreadsheet - DENGAN NOMOR URUT DI KOLOM PERTAMA
       const rowData = [
-        kakId, // ID KAK (menggantikan timestamp)
-        formData.jenisKak,
-        formData.jenisPaketMeeting,
-        programNama, // Kolom 4: Program Pembebanan (NAMA dari kolom C sheet program)
-        kegiatanNama, // Kolom 5: Kegiatan (NAMA dari kolom D sheet kegiatan)
-        kroNama, // Kolom 6: Kode Rincian Output (NAMA dari kolom D sheet kro)
-        roNama, // Kolom 7: Rincian Output (NAMA dari kolom D sheet ro)
-        komponenNama, // Kolom 8: Komponen Output (NAMA dari kolom C sheet komponen)
-        akunNama, // Kolom 9: Akun (NAMA dari kolom C sheet akun)
-        formData.paguAnggaran,
-        formatTanggalIndonesia(formData.tanggalPengajuanKAK),
-        formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
-        formatTanggalIndonesia(formData.tanggalAkhirKegiatan),
-        formData.pembuatDaftar,
-        ...kegiatanData, // 60 fields untuk detail kegiatan
-        formData.jumlahGelombang,
-        ...waveData, // 30 fields untuk wave dates
-        "", // Tanggal Pelaksanaan Gelombang
-        "", // Status
-        "" // Link
+        sequenceNumber, // Kolom 1: Nomor Urut
+        kakId, // Kolom 2: ID KAK
+        formData.jenisKak, // Kolom 3: Jenis KAK
+        formData.jenisPaketMeeting, // Kolom 4: Jenis Paket Meeting
+        programNama, // Kolom 5: Program Pembebanan (NAMA dari kolom C sheet program)
+        kegiatanNama, // Kolom 6: Kegiatan (NAMA dari kolom D sheet kegiatan)
+        kroNama, // Kolom 7: Kode Rincian Output (NAMA dari kolom D sheet kro)
+        roNama, // Kolom 8: Rincian Output (NAMA dari kolom D sheet ro)
+        komponenNama, // Kolom 9: Komponen Output (NAMA dari kolom C sheet komponen)
+        akunNama, // Kolom 10: Akun (NAMA dari kolom C sheet akun)
+        formData.paguAnggaran, // Kolom 11: Pagu Anggaran
+        formatTanggalIndonesia(formData.tanggalPengajuanKAK), // Kolom 12: Tanggal Pengajuan KAK
+        formatTanggalIndonesia(formData.tanggalMulaiKegiatan), // Kolom 13: Tanggal Mulai Kegiatan
+        formatTanggalIndonesia(formData.tanggalAkhirKegiatan), // Kolom 14: Tanggal Akhir Kegiatan
+        formData.pembuatDaftar, // Kolom 15: Pembuat Daftar
+        ...kegiatanData, // Kolom 16-75: 60 fields untuk detail kegiatan (15 kegiatan × 4 field)
+        formData.jumlahGelombang, // Kolom 76: Jumlah Gelombang
+        ...waveData, // Kolom 77-106: 30 fields untuk wave dates (15 gelombang × 2 tanggal)
+        "", // Kolom 107: Tanggal Pelaksanaan Gelombang
+        "", // Kolom 108: Status
+        "" // Kolom 109: Link
       ];
 
       console.log("📋 Final data to submit:", {
+        sequenceNumber,
         kakId,
         program: programNama,
         kegiatan: kegiatanNama,
@@ -735,7 +802,7 @@ const KerangkaAcuanKerja = () => {
 
       toast({
         title: "Sukses!",
-        description: `Data KAK berhasil disimpan dengan ID: ${kakId}`,
+        description: `Data KAK berhasil disimpan dengan ID: ${kakId} (No. ${sequenceNumber})`,
         variant: "default"
       });
 
