@@ -22,7 +22,7 @@ export const ProgramSelect = ({ value, onValueChange, disabled }: ProgramSelectP
       </SelectTrigger>
       <SelectContent>
         {data.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.program}
           </SelectItem>
         ))}

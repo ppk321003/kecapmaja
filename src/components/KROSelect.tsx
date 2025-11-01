@@ -27,7 +27,7 @@ export const KROSelect = ({ value, onValueChange, kegiatanId, disabled }: KROSel
       </SelectTrigger>
       <SelectContent>
         {filteredData.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.kro}
           </SelectItem>
         ))}

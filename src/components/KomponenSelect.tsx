@@ -22,7 +22,7 @@ export const KomponenSelect = ({ value, onValueChange, disabled }: KomponenSelec
       </SelectTrigger>
       <SelectContent>
         {data.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.komponen}
           </SelectItem>
         ))}

@@ -22,7 +22,7 @@ export const AkunSelect = ({ value, onValueChange, disabled }: AkunSelectProps) 
       </SelectTrigger>
       <SelectContent>
         {data.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.akun}
           </SelectItem>
         ))}

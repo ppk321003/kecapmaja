@@ -27,7 +27,7 @@ export const ROSelect = ({ value, onValueChange, kroId, disabled }: ROSelectProp
       </SelectTrigger>
       <SelectContent>
         {filteredData.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.ro}
           </SelectItem>
         ))}

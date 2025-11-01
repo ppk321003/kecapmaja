@@ -27,7 +27,7 @@ export const KegiatanSelect = ({ value, onValueChange, programId, disabled }: Ke
       </SelectTrigger>
       <SelectContent>
         {filteredData.map((item) => (
-          <SelectItem key={item.id} value={item.kode}>
+          <SelectItem key={item.id} value={item.id}>
             {item.kode} - {item.kegiatan}
           </SelectItem>
         ))}
