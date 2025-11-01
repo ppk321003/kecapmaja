@@ -21,6 +21,7 @@ import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TARGET_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
+const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 interface KegiatanDetail {
   id: string;
@@ -34,6 +35,13 @@ interface WaveDate {
   id: string;
   startDate: Date | null;
   endDate: Date | null;
+}
+
+interface OrganikData {
+  nip: string;
+  nama: string;
+  jabatan: string;
+  kecamatan: string;
 }
 
 interface FormData {
@@ -73,6 +81,9 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
+  const [organikData, setOrganikData] = useState<OrganikData[]>([]);
+  const [loadingOrganik, setLoadingOrganik] = useState(false);
+  
   const [formData, setFormData] = useState<FormData>({
     jenisKak: "",
     jenisPaketMeeting: "",
@@ -140,6 +151,53 @@ const KerangkaAcuanKerja = () => {
       });
     }
   });
+
+  // Fetch data organik dari Google Sheets
+  const fetchOrganikData = async () => {
+    setLoadingOrganik(true);
+    try {
+      // Menggunakan Google Sheets API v4
+      const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${ORGANIK_SHEET_ID}/values/MASTER.ORGANIK?key=YOUR_API_KEY`);
+      
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data organik');
+      }
+      
+      const data = await response.json();
+      const rows = data.values;
+      
+      if (!rows || rows.length <= 1) {
+        setOrganikData([]);
+        return;
+      }
+      
+      // Skip header (baris pertama)
+      const organikRows = rows.slice(1);
+      
+      const formattedData: OrganikData[] = organikRows.map((row: any[]) => ({
+        nip: row[1] || '', // NIP BPS
+        nama: row[3] || '', // Nama
+        jabatan: row[4] || '', // Jabatan
+        kecamatan: row[5] || '' // Kecamatan
+      })).filter((item: OrganikData) => item.nama); // Hanya yang memiliki nama
+      
+      setOrganikData(formattedData);
+    } catch (error) {
+      console.error('Error fetching organik data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengambil data organik",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingOrganik(false);
+    }
+  };
+
+  // Load data organik saat komponen mount
+  useEffect(() => {
+    fetchOrganikData();
+  }, []);
 
   // Effect untuk update wave dates ketika jumlahGelombang berubah
   useEffect(() => {
@@ -644,12 +702,26 @@ const KerangkaAcuanKerja = () => {
 
                 <div className="space-y-2">
                   <Label>Nama Pembuat Daftar <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={formData.pembuatDaftar}
-                    onChange={(e) => handleChange('pembuatDaftar', e.target.value)}
-                    placeholder="Masukkan nama pembuat daftar"
+                  <Select 
+                    value={formData.pembuatDaftar} 
+                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
                     required
-                  />
+                    disabled={loadingOrganik}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Pilih pembuat daftar"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organikData.map((item) => (
+                        <SelectItem key={item.nip} value={item.nama}>
+                          {item.nama} - {item.jabatan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingOrganik && (
+                    <p className="text-sm text-muted-foreground">Memuat data organik...</p>
+                  )}
                 </div>
 
                 {shouldShowGelombang && (
