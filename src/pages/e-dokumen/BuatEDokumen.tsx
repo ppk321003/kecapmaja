@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Briefcase, Plane, Car, Clock, FileSpreadsheet, FileCheck, FileSignature, Receipt, Banknote, Bike } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 export default function BuatEDokumen() {
   const navigate = useNavigate();
   const eDokumenMenuItems = [{
@@ -77,6 +78,7 @@ export default function BuatEDokumen() {
     description: "Buat uang harian dan transport lokal dalam format tabel rekap",
     rowColor: "orange"
   }];
+
   const getColorClasses = rowColor => {
     const colors = {
       blue: {
@@ -97,7 +99,9 @@ export default function BuatEDokumen() {
     };
     return colors[rowColor] || colors.blue;
   };
-  return <div className="space-y-8 p-6">
+
+  return (
+    <div className="space-y-8 p-6">
       <div className="text-center space-y-3">
         <h1 className="text-4xl font-bold text-red-500">Buat e-Dokumen</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -107,10 +111,14 @@ export default function BuatEDokumen() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {eDokumenMenuItems.map((item, index) => {
-        const colorClasses = getColorClasses(item.rowColor);
-        return <Card key={item.title} className={`hover:shadow-lg transition-all duration-300 flex flex-col border-2 ${colorClasses.border} hover:scale-105`}>
-              <CardHeader className="pb-4">
-                <div className="flex items-center space-x-4">
+          const colorClasses = getColorClasses(item.rowColor);
+          return (
+            <Card 
+              key={item.title} 
+              className={`hover:shadow-lg transition-all duration-300 flex flex-col border-2 ${colorClasses.border} hover:scale-105 min-h-[280px] h-full`}
+            >
+              <CardHeader className="pb-4 px-6 pt-6">
+                <div className="flex items-center space-x-4 mb-4">
                   <div className={`p-3 rounded-2xl bg-gray-50 border`}>
                     <item.icon className={`h-8 w-8 ${colorClasses.icon}`} />
                   </div>
@@ -118,17 +126,23 @@ export default function BuatEDokumen() {
                     {item.title}
                   </CardTitle>
                 </div>
-                <CardDescription className="mt-3 text-sm leading-relaxed text-gray-600">
+                <CardDescription className="text-sm leading-relaxed text-gray-600 line-clamp-3">
                   {item.description}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-0 mt-auto">
-                <Button onClick={() => navigate(item.url)} className={`w-full ${colorClasses.button} text-white font-medium py-2.5 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg`} size="lg">
+              <CardContent className="pt-0 mt-auto px-6 pb-6">
+                <Button 
+                  onClick={() => navigate(item.url)} 
+                  className={`w-full ${colorClasses.button} text-white font-medium py-3 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg`} 
+                  size="lg"
+                >
                   Buat Dokumen
                 </Button>
               </CardContent>
-            </Card>;
-      })}
+            </Card>
+          );
+        })}
       </div>
-    </div>;
+    </div>
+  );
 }
