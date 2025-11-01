@@ -11,28 +11,25 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
 const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
-
 const pengelolaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
   nip: z.string().min(1, "NIP harus diisi").max(50),
-  jabatan: z.string().min(1, "Jabatan harus diisi").max(100),
+  jabatan: z.string().min(1, "Jabatan harus diisi").max(100)
 });
-
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
-
 interface Pengelola extends PengelolaFormData {
   rowIndex: number;
 }
-
 export default function EntriPengelola() {
   const [pengelola, setPengelola] = useState<Pengelola[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPengelola, setEditingPengelola] = useState<Pengelola | null>(null);
   const [userRole, setUserRole] = useState<string>("");
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Get user role from localStorage
   useEffect(() => {
@@ -42,73 +39,70 @@ export default function EntriPengelola() {
       setUserRole(user.role || "");
     }
   }, []);
-
   const form = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
     defaultValues: {
       nama: "",
       nip: "",
-      jabatan: "",
-    },
+      jabatan: ""
+    }
   });
-
   const fetchPengelola = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1",
-        },
+          range: "Sheet1"
+        }
       });
-
       if (error) throw error;
-
       const rows = data.values || [];
       const pengelolaData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
         nama: row[1] || "",
         nip: row[2] || "",
-        jabatan: row[3] || "",
+        jabatan: row[3] || ""
       }));
-
       setPengelola(pengelolaData);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchPengelola();
   }, []);
-
   const onSubmit = async (values: PengelolaFormData) => {
     try {
       const operation = editingPengelola ? "update" : "append";
-      const { error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
           range: "Sheet1",
           values: [["", values.nama, values.nip, values.jabatan]],
-          ...(editingPengelola && { rowIndex: editingPengelola.rowIndex }),
-        },
+          ...(editingPengelola && {
+            rowIndex: editingPengelola.rowIndex
+          })
+        }
       });
-
       if (error) throw error;
-
       toast({
         title: "Sukses",
-        description: `Data pengelola anggaran berhasil ${editingPengelola ? "diperbarui" : "ditambahkan"}`,
+        description: `Data pengelola anggaran berhasil ${editingPengelola ? "diperbarui" : "ditambahkan"}`
       });
-
       setDialogOpen(false);
       form.reset();
       setEditingPengelola(null);
@@ -117,62 +111,56 @@ export default function EntriPengelola() {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleEdit = (pengelola: Pengelola) => {
     setEditingPengelola(pengelola);
     form.reset(pengelola);
     setDialogOpen(true);
   };
-
   const handleDelete = async (pengelola: Pengelola) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
-
     try {
-      const { error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "delete",
-          rowIndex: pengelola.rowIndex,
-        },
+          rowIndex: pengelola.rowIndex
+        }
       });
-
       if (error) throw error;
-
       toast({
         title: "Sukses",
-        description: "Data pengelola anggaran berhasil dihapus",
+        description: "Data pengelola anggaran berhasil dihapus"
       });
-
       fetchPengelola();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Entri Pengelola Anggaran</h1>
+          <h1 className="text-3xl font-bold text-red-500">Entri Pengelola Anggaran</h1>
           <p className="text-muted-foreground mt-2">
             Pendataan pengelola anggaran kegiatan
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setEditingPengelola(null);
-            form.reset();
-          }
-        }}>
+        <Dialog open={dialogOpen} onOpenChange={open => {
+        setDialogOpen(open);
+        if (!open) {
+          setEditingPengelola(null);
+          form.reset();
+        }
+      }}>
           <DialogTrigger asChild>
             <Button disabled={userRole !== "Pejabat Pembuat Komitmen"}>
               <Plus className="mr-2 h-4 w-4" />
@@ -185,45 +173,33 @@ export default function EntriPengelola() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="nama"
-                  render={({ field }) => (
-                    <FormItem>
+                <FormField control={form.control} name="nama" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Nama</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="nip"
-                  render={({ field }) => (
-                    <FormItem>
+                    </FormItem>} />
+                <FormField control={form.control} name="nip" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>NIP</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="jabatan"
-                  render={({ field }) => (
-                    <FormItem>
+                    </FormItem>} />
+                <FormField control={form.control} name="jabatan" render={({
+                field
+              }) => <FormItem>
                       <FormLabel>Jabatan</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </FormItem>} />
                 <Button type="submit" className="w-full">
                   {editingPengelola ? "Update" : "Tambah"}
                 </Button>
@@ -241,53 +217,34 @@ export default function EntriPengelola() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p className="text-center py-8 text-muted-foreground">Memuat data...</p>
-          ) : (
-            <Table>
+          {loading ? <p className="text-center py-8 text-muted-foreground">Memuat data...</p> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead>NIP</TableHead>
                   <TableHead>Jabatan</TableHead>
-                  {userRole === "Pejabat Pembuat Komitmen" && (
-                    <TableHead className="text-right">Aksi</TableHead>
-                  )}
+                  {userRole === "Pejabat Pembuat Komitmen" && <TableHead className="text-right">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pengelola.map((p, index) => (
-                  <TableRow key={p.rowIndex}>
+                {pengelola.map((p, index) => <TableRow key={p.rowIndex}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{p.nama}</TableCell>
                     <TableCell>{p.nip}</TableCell>
                     <TableCell>{p.jabatan}</TableCell>
-                    {userRole === "Pejabat Pembuat Komitmen" && (
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(p)}
-                        >
+                    {userRole === "Pejabat Pembuat Komitmen" && <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(p)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                      </TableCell>}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
