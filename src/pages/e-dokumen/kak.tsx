@@ -21,6 +21,7 @@ import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const SHEET_NAME = "KerangkaAcuanKerja"; // Nama sheet yang spesifik
 
 interface KegiatanDetail {
   id: string;
@@ -98,13 +99,14 @@ const KerangkaAcuanKerja = () => {
     waveDates: []
   });
 
-  // Coba dengan approach yang lebih sederhana - gunakan hook yang sama dengan skrip 1 asli
+  // Gunakan hook dengan parameter range yang spesifik
   const { submitData, isSubmitting } = useSubmitToSheets({
     spreadsheetId: TARGET_SPREADSHEET_ID,
+    range: SHEET_NAME, // Kirim nama sheet yang spesifik
     onSuccess: () => {
       toast({
         title: "Sukses",
-        description: "Data KAK berhasil dikirim"
+        description: "Data KAK berhasil dikirim ke sheet KerangkaAcuanKerja"
       });
       // Reset form
       setFormData({
@@ -136,7 +138,7 @@ const KerangkaAcuanKerja = () => {
       console.error("Error in submit:", error);
       toast({
         title: "Error",
-        description: "Gagal mengirim data ke spreadsheet. Coba lagi.",
+        description: "Gagal mengirim data ke spreadsheet. Pastikan service account memiliki akses.",
         variant: "destructive"
       });
     }
@@ -356,11 +358,10 @@ const KerangkaAcuanKerja = () => {
         "" // Tanggal Pelaksanaan Gelombang
       ];
 
-      console.log("Mengirim data ke spreadsheet...");
+      console.log("Mengirim data ke sheet:", SHEET_NAME);
       console.log("Jumlah kolom:", rowData.length);
       console.log("Data:", rowData);
 
-      // Coba dengan approach yang lebih sederhana
       await submitData(rowData);
 
     } catch (error) {
