@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link as LinkIcon } from "lucide-react";
-import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -472,17 +471,16 @@ const DownloadDokumen = () => {
   });
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
-          <p className="text-muted-foreground">
-            Lihat dan download dokumen yang tersedia dalam format tabel.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
+        <p className="text-muted-foreground">
+          Lihat dan download dokumen yang tersedia dalam format tabel.
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
+        </p>
+      </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-inherit">
@@ -521,8 +519,7 @@ const DownloadDokumen = () => {
             </TabsContent>
           ))}
         </Tabs>
-      </div>
-    </Layout>
+    </div>
   );
 };
 

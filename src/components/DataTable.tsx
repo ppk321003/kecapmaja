@@ -15,12 +15,12 @@ interface DataTableProps {
 
 export function DataTable({ title, columns, data }: DataTableProps) {
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
