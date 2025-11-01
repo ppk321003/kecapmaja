@@ -19,7 +19,7 @@ export const useSubmitToSheets = ({ spreadsheetId, onSuccess, onError }: UseSubm
         body: {
           spreadsheetId: spreadsheetId,
           operation: "append",
-          range: "Sheet1",
+          range: "KerangkaAcuanKerja",
           values: [data]
         }
       });

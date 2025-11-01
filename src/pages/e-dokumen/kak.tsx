@@ -20,7 +20,7 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const TARGET_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 interface KegiatanDetail {
   id: string;
