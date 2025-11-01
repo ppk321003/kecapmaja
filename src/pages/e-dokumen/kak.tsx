@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Plus, Trash, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -117,12 +117,149 @@ const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' 
   }
 };
 
+// Fungsi untuk mendapatkan ID KAK berikutnya
+const getNextKakId = async (): Promise<string> => {
+  try {
+    // Baca data terakhir dari spreadsheet untuk mendapatkan nomor urut terakhir
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: "KerangkaAcuanKerja!A:A"
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching last KAK ID:", error);
+      throw new Error("Gagal mengambil ID KAK terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    // Filter hanya ID yang sesuai format kak-yymmxxx
+    const kakIds = values
+      .flat()
+      .filter((id: string) => id && id.startsWith('kak-'))
+      .map((id: string) => {
+        const match = id.match(/kak-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          return {
+            year: parseInt(match[1]),
+            month: parseInt(match[2]),
+            sequence: parseInt(match[3])
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    const now = new Date();
+    const currentYear = now.getFullYear() % 100; // 2 digit terakhir tahun
+    const currentMonth = now.getMonth() + 1; // Bulan 1-12
+
+    // Cari sequence terakhir untuk bulan dan tahun ini
+    const currentMonthIds = kakIds.filter((id: any) => 
+      id.year === currentYear && id.month === currentMonth
+    );
+
+    let nextSequence = 1;
+    if (currentMonthIds.length > 0) {
+      const lastSequence = Math.max(...currentMonthIds.map((id: any) => id.sequence));
+      nextSequence = lastSequence + 1;
+    }
+
+    // Format: kak-yymmxxx
+    const yearStr = currentYear.toString().padStart(2, '0');
+    const monthStr = currentMonth.toString().padStart(2, '0');
+    const sequenceStr = nextSequence.toString().padStart(3, '0');
+
+    return `kak-${yearStr}${monthStr}${sequenceStr}`;
+  } catch (error) {
+    console.error("Error generating KAK ID:", error);
+    // Fallback: gunakan timestamp jika gagal
+    return `kak-${Date.now()}`;
+  }
+};
+
+// Komponen Select dengan Search
+interface SearchSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const SearchSelect: React.FC<SearchSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    option.value.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {/* Search Input */}
+        <div className="relative p-2 border-b">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+        
+        {/* Options */}
+        {filteredOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+        
+        {filteredOptions.length === 0 && (
+          <div className="p-2 text-sm text-muted-foreground text-center">
+            Tidak ditemukan
+          </div>
+        )}
+      </SelectContent>
+    </Select>
+  );
+};
+
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
   const [organikData, setOrganikData] = useState<OrganikData[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [labelCache, setLabelCache] = useState<{[key: string]: string}>({});
+  const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [akunOptions, setAkunOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loadingKomponen, setLoadingKomponen] = useState(false);
+  const [loadingAkun, setLoadingAkun] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     jenisKak: "",
@@ -199,6 +336,72 @@ const KerangkaAcuanKerja = () => {
     }
   };
 
+  // Fetch data komponen untuk search select
+  const fetchKomponenOptions = async () => {
+    setLoadingKomponen(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: DATABASE_SHEET_ID,
+          operation: "read",
+          range: "komponen"
+        }
+      });
+
+      if (error || !data?.values) {
+        console.error("Error fetching komponen data:", error);
+        return;
+      }
+
+      const rows = data.values.slice(1); // Skip header
+      const options = rows
+        .map((row: any[]) => ({
+          value: row[1] || '', // Kode komponen (kolom B)
+          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
+        }))
+        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
+
+      setKomponenOptions(options);
+    } catch (error) {
+      console.error("Error fetching komponen options:", error);
+    } finally {
+      setLoadingKomponen(false);
+    }
+  };
+
+  // Fetch data akun untuk search select
+  const fetchAkunOptions = async () => {
+    setLoadingAkun(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: DATABASE_SHEET_ID,
+          operation: "read",
+          range: "akun"
+        }
+      });
+
+      if (error || !data?.values) {
+        console.error("Error fetching akun data:", error);
+        return;
+      }
+
+      const rows = data.values.slice(1); // Skip header
+      const options = rows
+        .map((row: any[]) => ({
+          value: row[1] || '', // Kode akun (kolom B)
+          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
+        }))
+        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
+
+      setAkunOptions(options);
+    } catch (error) {
+      console.error("Error fetching akun options:", error);
+    } finally {
+      setLoadingAkun(false);
+    }
+  };
+
   // Fungsi untuk mendapatkan label dengan caching
   const getLabelWithCache = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
     const cacheKey = `${sheetName}-${kode}`;
@@ -240,9 +443,11 @@ const KerangkaAcuanKerja = () => {
     }
   };
 
-  // Load data organik saat komponen mount
+  // Load data saat komponen mount
   useEffect(() => {
     fetchOrganikData();
+    fetchKomponenOptions();
+    fetchAkunOptions();
   }, []);
 
   // Effect untuk update wave dates ketika jumlahGelombang berubah
@@ -386,6 +591,15 @@ const KerangkaAcuanKerja = () => {
 
     // Validasi untuk Belanja Paket Meeting
     if (formData.jenisKak === "Belanja Paket Meeting") {
+      if (!formData.jenisPaketMeeting) {
+        toast({
+          title: "Validasi Gagal",
+          description: "Jenis Paket Meeting wajib diisi",
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (!formData.jumlahGelombang || parseInt(formData.jumlahGelombang) <= 0) {
         toast({
           title: "Validasi Gagal",
@@ -431,20 +645,21 @@ const KerangkaAcuanKerja = () => {
     setIsSubmitting(true);
 
     try {
-      const timestamp = new Date().toISOString();
+      // Generate KAK ID baru
+      const kakId = await getNextKakId();
       
       // Dapatkan nama dari kode untuk setiap field
       const [
         programNama,
         kegiatanNama, 
-        kroNama, // TAMBAH
+        kroNama,
         roNama,
         komponenNama,
         akunNama
       ] = await Promise.all([
         getLabelWithCache("program", formData.program, 'C'),
         getLabelWithCache("kegiatan", formData.kegiatan, 'D'),
-        getLabelWithCache("kro", formData.kro, 'D'), // TAMBAH - sesuaikan kolom nama KRO
+        getLabelWithCache("kro", formData.kro, 'D'),
         getLabelWithCache("ro", formData.ro, 'D'),
         getLabelWithCache("komponen", formData.komponen, 'C'),
         getLabelWithCache("akun", formData.akun, 'C')
@@ -482,12 +697,12 @@ const KerangkaAcuanKerja = () => {
 
       // Susun rowData sesuai header spreadsheet - GUNAKAN NAMA BUKAN KODE
       const rowData = [
-        timestamp, // Id
+        kakId, // ID KAK (menggantikan timestamp)
         formData.jenisKak,
         formData.jenisPaketMeeting,
         programNama, // Kolom 4: Program Pembebanan (NAMA dari kolom C sheet program)
         kegiatanNama, // Kolom 5: Kegiatan (NAMA dari kolom D sheet kegiatan)
-        kroNama, // Kolom 6: Kode Rincian Output (KODE dari kolom C sheet kro)
+        kroNama, // Kolom 6: Kode Rincian Output (NAMA dari kolom D sheet kro)
         roNama, // Kolom 7: Rincian Output (NAMA dari kolom D sheet ro)
         komponenNama, // Kolom 8: Komponen Output (NAMA dari kolom C sheet komponen)
         akunNama, // Kolom 9: Akun (NAMA dari kolom C sheet akun)
@@ -505,9 +720,10 @@ const KerangkaAcuanKerja = () => {
       ];
 
       console.log("📋 Final data to submit:", {
+        kakId,
         program: programNama,
         kegiatan: kegiatanNama,
-        kro: formData.kro,
+        kro: kroNama,
         ro: roNama,
         komponen: komponenNama,
         akun: akunNama
@@ -519,7 +735,7 @@ const KerangkaAcuanKerja = () => {
 
       toast({
         title: "Sukses!",
-        description: "Data KAK berhasil disimpan",
+        description: `Data KAK berhasil disimpan dengan ID: ${kakId}`,
         variant: "default"
       });
 
@@ -663,18 +879,36 @@ const KerangkaAcuanKerja = () => {
 
                 <div className="space-y-2">
                   <Label>Komponen Output <span className="text-red-500">*</span></Label>
-                  <KomponenSelect
+                  <SearchSelect
                     value={formData.komponen}
                     onValueChange={(value) => handleChange('komponen', value)}
+                    options={komponenOptions}
+                    placeholder={loadingKomponen ? "Memuat data..." : "Pilih komponen output"}
+                    disabled={loadingKomponen}
                   />
+                  {loadingKomponen && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data komponen...
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Akun <span className="text-red-500">*</span></Label>
-                  <AkunSelect
+                  <SearchSelect
                     value={formData.akun}
                     onValueChange={(value) => handleChange('akun', value)}
+                    options={akunOptions}
+                    placeholder={loadingAkun ? "Memuat data..." : "Pilih akun"}
+                    disabled={loadingAkun}
                   />
+                  {loadingAkun && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data akun...
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
