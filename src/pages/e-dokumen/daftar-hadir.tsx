@@ -34,7 +34,12 @@ interface OrganikData {
 
 interface MitraData {
   id: string;
+  nik: string;
   nama: string;
+  pekerjaan: string;
+  alamat: string;
+  bank: string;
+  rekening: string;
   kecamatan: string;
 }
 
@@ -42,6 +47,7 @@ interface Peserta {
   id: string;
   nama: string;
   jenis: "organik" | "mitra";
+  kecamatan?: string;
 }
 
 interface FormData {
@@ -164,88 +170,6 @@ const getNextSequenceNumber = async (): Promise<number> => {
   }
 };
 
-// Komponen Select dengan Search yang lebih baik
-interface SearchSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-}
-
-const SearchSelect: React.FC<SearchSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const selectedOption = options.find(opt => opt.value === value);
-
-  // Reset search ketika dropdown dibuka/ditutup
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm("");
-    }
-  }, [isOpen]);
-
-  return (
-    <Select
-      value={value}
-      onValueChange={(value) => {
-        onValueChange(value);
-        setIsOpen(false);
-      }}
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      disabled={disabled}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="max-h-[300px]">
-        {/* Search Input */}
-        <div className="relative p-2 border-b">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-        </div>
-        
-        {/* Options */}
-        <div className="max-h-[250px] overflow-y-auto">
-          {filteredOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-          
-          {filteredOptions.length === 0 && (
-            <div className="p-2 text-sm text-muted-foreground text-center">
-              Tidak ditemukan
-            </div>
-          )}
-        </div>
-      </SelectContent>
-    </Select>
-  );
-};
-
 const DaftarHadir = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -326,15 +250,15 @@ const DaftarHadir = () => {
     }
   };
 
-  // Fetch data mitra dari Google Sheets
+  // Fetch data mitra dari Google Sheets - sheet MASTER.MITRA
   const fetchMitraData = async () => {
     setLoadingMitra(true);
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: DATABASE_SHEET_ID,
+          spreadsheetId: ORGANIK_SHEET_ID, // Menggunakan sheet yang sama dengan organik
           operation: "read",
-          range: "mitra"
+          range: "MASTER.MITRA"
         }
       });
 
@@ -356,8 +280,13 @@ const DaftarHadir = () => {
       const formattedData: MitraData[] = mitraRows
         .map((row: any[], index: number) => ({
           id: `mitra-${index}`,
-          nama: row[1] || '', // Nama mitra (kolom B)
-          kecamatan: row[2] || '' // Kecamatan (kolom C)
+          nik: row[1] || '', // NIK (kolom B)
+          nama: row[2] || '', // Nama (kolom C)
+          pekerjaan: row[3] || '', // Pekerjaan (kolom D)
+          alamat: row[4] || '', // Alamat (kolom E)
+          bank: row[5] || '', // Bank (kolom F)
+          rekening: row[6] || '', // Rekening (kolom G)
+          kecamatan: row[7] || '' // Kecamatan (kolom H)
         }))
         .filter((item: MitraData) => item.nama);
       
@@ -461,7 +390,8 @@ const DaftarHadir = () => {
           return {
             id: `org-${orgId}`,
             nama: org?.nama || "",
-            jenis: "organik" as const
+            jenis: "organik" as const,
+            kecamatan: org?.kecamatan
           };
         })
       ]
@@ -479,7 +409,8 @@ const DaftarHadir = () => {
           return {
             id: `mitra-${mitraId}`,
             nama: mitra?.nama || "",
-            jenis: "mitra" as const
+            jenis: "mitra" as const,
+            kecamatan: mitra?.kecamatan
           };
         })
       ]
@@ -632,39 +563,52 @@ const DaftarHadir = () => {
     }
   };
 
+  const removeOrganik = (orgId: string) => {
+    handleOrganikChange(formData.organik.filter(id => id !== orgId));
+  };
+
+  const removeMitra = (mitraId: string) => {
+    handleMitraChange(formData.mitra.filter(id => id !== mitraId));
+  };
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
+      <div className="container mx-auto py-6 space-y-6 max-w-7xl">
+        <div className="text-center">
           <h1 className="text-3xl font-bold text-orange-600">Daftar Hadir</h1>
           <p className="text-muted-foreground mt-2">
             Formulir Daftar Hadir
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Form Daftar Hadir</CardTitle>
+        <Card className="w-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl">Form Daftar Hadir</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Nama Kegiatan <span className="text-red-500">*</span></Label>
+              {/* Informasi Kegiatan */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="namaKegiatan">Nama Kegiatan <span className="text-red-500">*</span></Label>
                   <Input
+                    id="namaKegiatan"
                     value={formData.namaKegiatan}
                     onChange={(e) => handleChange('namaKegiatan', e.target.value)}
                     placeholder="Contoh: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025"
                     required
+                    className="w-full"
                   />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Detil Kegiatan</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="detil">Detil Kegiatan</Label>
                   <Input
+                    id="detil"
                     value={formData.detil}
                     onChange={(e) => handleChange('detil', e.target.value)}
                     placeholder="Contoh: Pemutakhiran Perkembangan Desa Tahun 2025"
+                    className="w-full"
                   />
                 </div>
 
@@ -675,7 +619,7 @@ const DaftarHadir = () => {
                     onValueChange={(value) => handleChange('jenis', value)}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Pilih jenis" />
                     </SelectTrigger>
                     <SelectContent>
@@ -688,6 +632,28 @@ const DaftarHadir = () => {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Tempat Kegiatan</Label>
+                  <Select 
+                    value={formData.trainingCenter} 
+                    onValueChange={(value) => handleChange('trainingCenter', value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pilih tempat kegiatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trainingCenterOptions.map(option => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Program dan Kegiatan */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
                   <ProgramSelect
@@ -741,26 +707,10 @@ const DaftarHadir = () => {
                     onValueChange={(value) => handleChange('akun', value)}
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label>Tempat Kegiatan</Label>
-                  <Select 
-                    value={formData.trainingCenter} 
-                    onValueChange={(value) => handleChange('trainingCenter', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih tempat kegiatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trainingCenterOptions.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              {/* Tanggal */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
                   <Popover>
@@ -838,7 +788,10 @@ const DaftarHadir = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
+              </div>
 
+              {/* Pembuat Daftar */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Pembuat Daftar <span className="text-red-500">*</span></Label>
                   <Select 
@@ -847,7 +800,7 @@ const DaftarHadir = () => {
                     required
                     disabled={loadingOrganik}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Pilih pembuat daftar"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -868,46 +821,54 @@ const DaftarHadir = () => {
               </div>
 
               {/* Peserta Organik dan Mitra */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Peserta Organik BPS</h3>
-                  <div className="space-y-2">
-                    <Select 
-                      value="" 
-                      onValueChange={(value) => {
-                        if (value && !formData.organik.includes(value)) {
-                          handleOrganikChange([...formData.organik, value]);
-                        }
-                      }}
-                      disabled={loadingOrganik}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Tambah peserta organik"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {organikData
-                          .filter(org => !formData.organik.includes(org.nip))
-                          .map((item) => (
-                            <SelectItem key={item.nip} value={item.nip}>
-                              {item.nama} - {item.jabatan}
-                            </SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Peserta Organik */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Peserta Organik BPS</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Select 
+                        value="" 
+                        onValueChange={(value) => {
+                          if (value && !formData.organik.includes(value)) {
+                            handleOrganikChange([...formData.organik, value]);
+                          }
+                        }}
+                        disabled={loadingOrganik}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Tambah peserta organik"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {organikData
+                            .filter(org => !formData.organik.includes(org.nip))
+                            .map((item) => (
+                              <SelectItem key={item.nip} value={item.nip}>
+                                {item.nama} - {item.jabatan}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
                     
                     {/* Daftar peserta organik yang sudah dipilih */}
-                    <div className="space-y-2 mt-4">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {formData.organik.map(orgId => {
                         const org = organikData.find(o => o.nip === orgId);
                         return (
-                          <div key={orgId} className="flex items-center justify-between p-2 border rounded">
-                            <span>{org?.nama}</span>
+                          <div key={orgId} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div>
+                              <p className="font-medium">{org?.nama}</p>
+                              <p className="text-sm text-muted-foreground">{org?.jabatan}</p>
+                            </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOrganikChange(formData.organik.filter(id => id !== orgId))}
+                              onClick={() => removeOrganik(orgId)}
                             >
                               <Trash className="h-4 w-4 text-destructive" />
                             </Button>
@@ -915,48 +876,62 @@ const DaftarHadir = () => {
                         );
                       })}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Peserta Mitra Statistik</h3>
-                  <div className="space-y-2">
-                    <Select 
-                      value="" 
-                      onValueChange={(value) => {
-                        if (value && !formData.mitra.includes(value)) {
-                          handleMitraChange([...formData.mitra, value]);
-                        }
-                      }}
-                      disabled={loadingMitra}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={loadingMitra ? "Memuat data..." : "Tambah peserta mitra"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mitraData
-                          .filter(mitra => !formData.mitra.includes(mitra.id))
-                          .map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.nama} {item.kecamatan ? `- ${item.kecamatan}` : ''}
-                            </SelectItem>
-                          ))
-                        }
-                      </SelectContent>
-                    </Select>
+                {/* Peserta Mitra */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Peserta Mitra Statistik</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Select 
+                        value="" 
+                        onValueChange={(value) => {
+                          if (value && !formData.mitra.includes(value)) {
+                            handleMitraChange([...formData.mitra, value]);
+                          }
+                        }}
+                        disabled={loadingMitra}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingMitra ? "Memuat data..." : "Tambah peserta mitra"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mitraData
+                            .filter(mitra => !formData.mitra.includes(mitra.id))
+                            .map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.nama} - {item.kecamatan}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                      {loadingMitra && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Memuat data mitra...
+                        </div>
+                      )}
+                    </div>
                     
                     {/* Daftar peserta mitra yang sudah dipilih */}
-                    <div className="space-y-2 mt-4">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {formData.mitra.map(mitraId => {
                         const mitra = mitraData.find(m => m.id === mitraId);
                         return (
-                          <div key={mitraId} className="flex items-center justify-between p-2 border rounded">
-                            <span>{mitra?.nama}</span>
+                          <div key={mitraId} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div>
+                              <p className="font-medium">{mitra?.nama}</p>
+                              <p className="text-sm text-muted-foreground">{mitra?.kecamatan}</p>
+                            </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleMitraChange(formData.mitra.filter(id => id !== mitraId))}
+                              onClick={() => removeMitra(mitraId)}
                             >
                               <Trash className="h-4 w-4 text-destructive" />
                             </Button>
@@ -964,58 +939,72 @@ const DaftarHadir = () => {
                         );
                       })}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Ringkasan Peserta */}
               {formData.peserta.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Ringkasan Peserta ({formData.peserta.length} orang)</CardTitle>
+                    <CardTitle className="text-lg">
+                      Ringkasan Peserta ({formData.peserta.length} orang)
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-medium mb-2">Organik BPS ({formData.organik.length})</h4>
-                        <ul className="space-y-1">
+                        <h4 className="font-medium mb-3 text-green-600">
+                          Organik BPS ({formData.organik.length})
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
                           {formData.peserta
                             .filter(p => p.jenis === "organik")
                             .map(p => (
-                              <li key={p.id} className="text-sm">• {p.nama}</li>
+                              <div key={p.id} className="flex items-center justify-between p-2 border rounded">
+                                <span className="text-sm">{p.nama}</span>
+                                <span className="text-xs text-muted-foreground">{p.kecamatan}</span>
+                              </div>
                             ))
                           }
-                        </ul>
+                        </div>
                       </div>
                       <div>
-                        <h4 className="font-medium mb-2">Mitra Statistik ({formData.mitra.length})</h4>
-                        <ul className="space-y-1">
+                        <h4 className="font-medium mb-3 text-blue-600">
+                          Mitra Statistik ({formData.mitra.length})
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
                           {formData.peserta
                             .filter(p => p.jenis === "mitra")
                             .map(p => (
-                              <li key={p.id} className="text-sm">• {p.nama}</li>
+                              <div key={p.id} className="flex items-center justify-between p-2 border rounded">
+                                <span className="text-sm">{p.nama}</span>
+                                <span className="text-xs text-muted-foreground">{p.kecamatan}</span>
+                              </div>
                             ))
                           }
-                        </ul>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              <div className="flex justify-end gap-2 pt-4">
+              {/* Tombol Aksi */}
+              <div className="flex justify-end gap-4 pt-6 border-t">
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => navigate("/buat-dokumen")}
                   disabled={isSubmitting}
+                  className="min-w-24"
                 >
                   Batal
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="min-w-24 bg-teal-700 hover:bg-teal-600"
+                  className="min-w-32 bg-teal-600 hover:bg-teal-700"
                 >
                   {isSubmitting ? (
                     <>
