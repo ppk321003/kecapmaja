@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, Trash } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Search, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ProgramSelect } from "@/components/ProgramSelect";
@@ -170,6 +170,88 @@ const getNextSequenceNumber = async (): Promise<number> => {
   }
 };
 
+// Komponen Select dengan Search yang lebih baik (diadopsi dari KAK)
+interface SearchSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const SearchSelect: React.FC<SearchSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    option.value.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  // Reset search ketika dropdown dibuka/ditutup
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
+    }
+  }, [isOpen]);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={(value) => {
+        onValueChange(value);
+        setIsOpen(false);
+      }}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-[300px]">
+        {/* Search Input */}
+        <div className="relative p-2 border-b">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+        
+        {/* Options */}
+        <div className="max-h-[250px] overflow-y-auto">
+          {filteredOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+          
+          {filteredOptions.length === 0 && (
+            <div className="p-2 text-sm text-muted-foreground text-center">
+              Tidak ditemukan
+            </div>
+          )}
+        </div>
+      </SelectContent>
+    </Select>
+  );
+};
+
 const DaftarHadir = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -179,6 +261,10 @@ const DaftarHadir = () => {
   const [loadingMitra, setLoadingMitra] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [labelCache, setLabelCache] = useState<{[key: string]: string}>({});
+  const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [akunOptions, setAkunOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loadingKomponen, setLoadingKomponen] = useState(false);
+  const [loadingAkun, setLoadingAkun] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     namaKegiatan: "",
@@ -304,6 +390,72 @@ const DaftarHadir = () => {
     }
   };
 
+  // Fetch data komponen untuk search select
+  const fetchKomponenOptions = async () => {
+    setLoadingKomponen(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: DATABASE_SHEET_ID,
+          operation: "read",
+          range: "komponen"
+        }
+      });
+
+      if (error || !data?.values) {
+        console.error("Error fetching komponen data:", error);
+        return;
+      }
+
+      const rows = data.values.slice(1); // Skip header
+      const options = rows
+        .map((row: any[]) => ({
+          value: row[1] || '', // Kode komponen (kolom B)
+          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
+        }))
+        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
+
+      setKomponenOptions(options);
+    } catch (error) {
+      console.error("Error fetching komponen options:", error);
+    } finally {
+      setLoadingKomponen(false);
+    }
+  };
+
+  // Fetch data akun untuk search select
+  const fetchAkunOptions = async () => {
+    setLoadingAkun(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: DATABASE_SHEET_ID,
+          operation: "read",
+          range: "akun"
+        }
+      });
+
+      if (error || !data?.values) {
+        console.error("Error fetching akun data:", error);
+        return;
+      }
+
+      const rows = data.values.slice(1); // Skip header
+      const options = rows
+        .map((row: any[]) => ({
+          value: row[1] || '', // Kode akun (kolom B)
+          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
+        }))
+        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
+
+      setAkunOptions(options);
+    } catch (error) {
+      console.error("Error fetching akun options:", error);
+    } finally {
+      setLoadingAkun(false);
+    }
+  };
+
   // Fungsi untuk mendapatkan label dengan caching
   const getLabelWithCache = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
     const cacheKey = `${sheetName}-${kode}`;
@@ -349,6 +501,8 @@ const DaftarHadir = () => {
   useEffect(() => {
     fetchOrganikData();
     fetchMitraData();
+    fetchKomponenOptions();
+    fetchAkunOptions();
   }, []);
 
   const handleChange = (field: keyof FormData, value: any) => {
@@ -700,20 +854,36 @@ const DaftarHadir = () => {
 
                 <div className="space-y-2">
                   <Label>Komponen Output <span className="text-red-500">*</span></Label>
-                  <KomponenSelect
+                  <SearchSelect
                     value={formData.komponen}
                     onValueChange={(value) => handleChange('komponen', value)}
+                    options={komponenOptions}
+                    placeholder={loadingKomponen ? "Memuat data..." : "Pilih komponen output"}
+                    disabled={loadingKomponen}
                   />
+                  {loadingKomponen && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data komponen...
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Akun <span className="text-red-500">*</span></Label>
-                  <AkunSelect
+                  <SearchSelect
                     value={formData.akun}
                     onValueChange={(value) => handleChange('akun', value)}
-                    komponenId={formData.komponen}
-                    disabled={!formData.komponen}
+                    options={akunOptions}
+                    placeholder={loadingAkun ? "Memuat data..." : "Pilih akun"}
+                    disabled={loadingAkun || !formData.komponen}
                   />
+                  {loadingAkun && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data akun...
+                    </div>
+                  )}
                 </div>
               </div>
 
