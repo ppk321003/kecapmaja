@@ -1173,7 +1173,7 @@ const DaftarHadir = () => {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => navigate("/buat-dokumen")}
+                  onClick={() => navigate("/buat")}
                   disabled={isSubmitting}
                   className="min-w-24"
                 >
