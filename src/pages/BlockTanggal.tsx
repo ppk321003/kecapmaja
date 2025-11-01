@@ -1113,7 +1113,7 @@ export default function BlockTanggal() {
   return <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-orange-500">Block Tanggal Perjalanan Dinas</h1>
+          <h1 className="text-3xl font-bold text-red-500">Block Tanggal Perjalanan Dinas</h1>
           <p className="text-muted-foreground mt-2">
             Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik Kabupaten Majalengka
           </p>
