@@ -21,7 +21,7 @@ import { ROSelect } from "@/components/ROSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 
-const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const TARGET_SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
