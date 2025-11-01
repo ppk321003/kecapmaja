@@ -55,7 +55,7 @@ interface FormData {
   waveDates: WaveDate[];
 }
 
-// Options dari skrip 2
+// Options
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
 const satuanOptions = ["BLN", "BS", "Desa", "Dok", "Liter", "Lmbr", "M2", "OB", "OH", "OJP", "OK", "OP", "Paket", "Pasar", "RT", "SET", "SLS", "Stel", "Tahun", "Segmen"];
@@ -98,6 +98,7 @@ const KerangkaAcuanKerja = () => {
     waveDates: []
   });
 
+  // Coba dengan approach yang lebih sederhana - gunakan hook yang sama dengan skrip 1 asli
   const { submitData, isSubmitting } = useSubmitToSheets({
     spreadsheetId: TARGET_SPREADSHEET_ID,
     onSuccess: () => {
@@ -135,18 +136,18 @@ const KerangkaAcuanKerja = () => {
       console.error("Error in submit:", error);
       toast({
         title: "Error",
-        description: "Gagal mengirim data ke spreadsheet",
+        description: "Gagal mengirim data ke spreadsheet. Coba lagi.",
         variant: "destructive"
       });
     }
   });
 
-  // Effect untuk update wave dates ketika jumlahGelombang berubah
+  // Effect untuk update wave dates
   useEffect(() => {
     const gelombangCount = parseInt(formData.jumlahGelombang) || 0;
     const newWaveDates: WaveDate[] = [];
     
-    for (let i = 0; i < 15; i++) { // Selalu buat 15 slot untuk gelombang
+    for (let i = 0; i < 15; i++) {
       if (i < gelombangCount) {
         const existingWave = formData.waveDates[i];
         newWaveDates.push({
@@ -254,38 +255,14 @@ const KerangkaAcuanKerja = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validasi
-    if (!formData.jenisKak) {
+    // Validasi dasar
+    if (!formData.jenisKak || !formData.program || !formData.kegiatan || !formData.kro || 
+        !formData.ro || !formData.komponen || !formData.akun || !formData.paguAnggaran ||
+        !formData.tanggalMulaiKegiatan || !formData.tanggalAkhirKegiatan || 
+        !formData.tanggalPengajuanKAK || !formData.pembuatDaftar) {
       toast({
         title: "Validasi Gagal",
-        description: "Jenis Kerangka Acuan Kerja wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.jenisKak === "Belanja Paket Meeting" && !formData.jenisPaketMeeting) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Jenis Paket Meeting wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.program || !formData.kegiatan || !formData.kro || !formData.ro || !formData.komponen || !formData.akun) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Semua field program, kegiatan, KRO, RO, komponen, dan akun wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.paguAnggaran) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Pagu Anggaran wajib diisi",
+        description: "Semua field wajib diisi",
         variant: "destructive"
       });
       return;
@@ -297,79 +274,37 @@ const KerangkaAcuanKerja = () => {
       if (!detail.namaKegiatan || !detail.volume || !detail.satuan || !detail.hargaSatuan) {
         toast({
           title: "Validasi Gagal",
-          description: `Detail Kegiatan ${i + 1} belum lengkap. Semua field wajib diisi`,
+          description: `Detail Kegiatan ${i + 1} belum lengkap`,
           variant: "destructive"
         });
         return;
       }
-    }
-
-    if (!formData.tanggalMulaiKegiatan || !formData.tanggalAkhirKegiatan || !formData.tanggalPengajuanKAK) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Semua tanggal wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.pembuatDaftar) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Pembuat Daftar wajib diisi",
-        variant: "destructive"
-      });
-      return;
     }
 
     // Validasi untuk Belanja Paket Meeting
     if (formData.jenisKak === "Belanja Paket Meeting") {
-      if (!formData.jumlahGelombang || parseInt(formData.jumlahGelombang) <= 0) {
+      if (!formData.jenisPaketMeeting) {
         toast({
           title: "Validasi Gagal",
-          description: "Jumlah Gelombang wajib diisi dan harus lebih dari 0",
+          description: "Jenis Paket Meeting wajib diisi",
           variant: "destructive"
         });
         return;
       }
-
-      const activeWaves = formData.waveDates.slice(0, parseInt(formData.jumlahGelombang));
-      for (let i = 0; i < activeWaves.length; i++) {
-        const wave = activeWaves[i];
-        if (!wave.startDate || !wave.endDate) {
-          toast({
-            title: "Validasi Gagal",
-            description: `Tanggal Gelombang ${i + 1} belum lengkap. Tanggal mulai dan akhir wajib diisi`,
-            variant: "destructive"
-          });
-          return;
-        }
+      if (!formData.jumlahGelombang || parseInt(formData.jumlahGelombang) <= 0) {
+        toast({
+          title: "Validasi Gagal",
+          description: "Jumlah Gelombang wajib diisi",
+          variant: "destructive"
+        });
+        return;
       }
-    }
-
-    // Validasi tanggal
-    if (formData.tanggalPengajuanKAK && formData.tanggalMulaiKegiatan && formData.tanggalPengajuanKAK > formData.tanggalMulaiKegiatan) {
-      toast({
-        title: "Validasi Tanggal Gagal",
-        description: "Tanggal pengajuan KAK harus sebelum tanggal mulai kegiatan",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.tanggalMulaiKegiatan && formData.tanggalAkhirKegiatan && formData.tanggalMulaiKegiatan > formData.tanggalAkhirKegiatan) {
-      toast({
-        title: "Validasi Tanggal Gagal",
-        description: "Tanggal akhir kegiatan harus setelah atau sama dengan tanggal mulai kegiatan",
-        variant: "destructive"
-      });
-      return;
     }
 
     try {
       const timestamp = new Date().toISOString();
       
-      // Siapkan array untuk 15 detail kegiatan (isi dengan empty string jika tidak ada)
+      // Siapkan array untuk 15 detail kegiatan
       const kegiatanData = [];
       for (let i = 0; i < 15; i++) {
         if (i < formData.kegiatanDetails.length) {
@@ -381,12 +316,11 @@ const KerangkaAcuanKerja = () => {
             detail.hargaSatuan || ""
           );
         } else {
-          // Isi dengan empty string untuk detail yang tidak ada
           kegiatanData.push("", "", "", "");
         }
       }
 
-      // Siapkan array untuk 15 gelombang (isi dengan empty string jika tidak ada)
+      // Siapkan array untuk 15 gelombang
       const waveData = [];
       for (let i = 0; i < 15; i++) {
         if (i < parseInt(formData.jumlahGelombang)) {
@@ -396,14 +330,13 @@ const KerangkaAcuanKerja = () => {
             formatTanggalIndonesia(wave?.endDate) || ""
           );
         } else {
-          // Isi dengan empty string untuk gelombang yang tidak ada
           waveData.push("", "");
         }
       }
 
       // Susun rowData sesuai dengan header kolom
       const rowData = [
-        timestamp, // Id (gunakan timestamp sebagai ID)
+        timestamp, // Id
         formData.jenisKak,
         formData.jenisPaketMeeting,
         formData.program,
@@ -417,16 +350,19 @@ const KerangkaAcuanKerja = () => {
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
         formatTanggalIndonesia(formData.tanggalAkhirKegiatan),
         formData.pembuatDaftar,
-        ...kegiatanData, // 15 set detail kegiatan (4 field each = 60 fields)
+        ...kegiatanData, // 60 fields untuk 15 detail kegiatan
         formData.jumlahGelombang,
-        ...waveData, // 15 set gelombang (2 field each = 30 fields)
-        "" // Tanggal Pelaksanaan Gelombang (kosongkan)
+        ...waveData, // 30 fields untuk 15 gelombang
+        "" // Tanggal Pelaksanaan Gelombang
       ];
 
+      console.log("Mengirim data ke spreadsheet...");
       console.log("Jumlah kolom:", rowData.length);
-      console.log("Data yang dikirim:", rowData);
+      console.log("Data:", rowData);
 
+      // Coba dengan approach yang lebih sederhana
       await submitData(rowData);
+
     } catch (error) {
       console.error("Error submitting KAK:", error);
       toast({
@@ -446,7 +382,7 @@ const KerangkaAcuanKerja = () => {
         <div>
           <h1 className="text-3xl font-bold text-red-500">Kerangka Acuan Kerja (KAK)</h1>
           <p className="text-muted-foreground mt-2">
-            Form pengisian Kerangka Acuan Kerja
+            Form pengisian Kerangka Acuan Kerja - Sheet: KerangkaAcuanKerja
           </p>
         </div>
 
