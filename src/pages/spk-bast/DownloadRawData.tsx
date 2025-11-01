@@ -1,11 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database } from "lucide-react";
-
 export default function DownloadRawData() {
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Download Raw Data</h1>
+        <h1 className="text-3xl font-bold text-red-500">Download Raw Data</h1>
         <p className="text-muted-foreground mt-2">
           Unduh data mentah kegiatan untuk analisis lebih lanjut
         </p>
@@ -27,6 +25,5 @@ export default function DownloadRawData() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
