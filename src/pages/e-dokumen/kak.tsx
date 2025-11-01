@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 interface KegiatanDetail {
   id: string;
@@ -79,11 +80,49 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
+// Fungsi untuk mendapatkan nama dari kode
+const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
+  if (!kode) return kode;
+  
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: DATABASE_SHEET_ID,
+        operation: "read",
+        range: sheetName
+      }
+    });
+
+    if (error || !data?.values) {
+      console.error(`Error fetching ${sheetName}:`, error);
+      return kode;
+    }
+
+    const rows = data.values.slice(1); // Skip header
+    const foundRow = rows.find((row: any[]) => {
+      // Cari berdasarkan kode di kolom B (index 1)
+      return row[1] === kode;
+    });
+
+    if (foundRow) {
+      // Kolom C = index 2, Kolom D = index 3
+      const columnIndex = namaColumn === 'C' ? 2 : 3;
+      return foundRow[columnIndex] || kode;
+    }
+
+    return kode;
+  } catch (error) {
+    console.error(`Error in getNamaFromKode for ${sheetName}:`, error);
+    return kode;
+  }
+};
+
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
   const [organikData, setOrganikData] = useState<OrganikData[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [labelCache, setLabelCache] = useState<{[key: string]: string}>({});
   
   const [formData, setFormData] = useState<FormData>({
     jenisKak: "",
@@ -158,6 +197,19 @@ const KerangkaAcuanKerja = () => {
     } finally {
       setLoadingOrganik(false);
     }
+  };
+
+  // Fungsi untuk mendapatkan label dengan caching
+  const getLabelWithCache = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
+    const cacheKey = `${sheetName}-${kode}`;
+    
+    if (labelCache[cacheKey]) {
+      return labelCache[cacheKey];
+    }
+    
+    const nama = await getNamaFromKode(sheetName, kode, namaColumn);
+    setLabelCache(prev => ({...prev, [cacheKey]: nama}));
+    return nama;
   };
 
   // Fungsi submit menggunakan Supabase function
@@ -381,6 +433,21 @@ const KerangkaAcuanKerja = () => {
     try {
       const timestamp = new Date().toISOString();
       
+      // Dapatkan nama dari kode untuk setiap field
+      const [
+        programNama,
+        kegiatanNama, 
+        roNama,
+        komponenNama,
+        akunNama
+      ] = await Promise.all([
+        getLabelWithCache("program", formData.program, 'C'),
+        getLabelWithCache("kegiatan", formData.kegiatan, 'D'),
+        getLabelWithCache("ro", formData.ro, 'D'),
+        getLabelWithCache("komponen", formData.komponen, 'C'),
+        getLabelWithCache("akun", formData.akun, 'C')
+      ]);
+
       // Siapkan array untuk 15 detail kegiatan
       const kegiatanData = [];
       for (let i = 0; i < 15; i++) {
@@ -411,18 +478,17 @@ const KerangkaAcuanKerja = () => {
         }
       }
 
-      // Susun rowData sesuai header spreadsheet
-      // CATATAN: Komponen Select sudah mengembalikan label yang benar
+      // Susun rowData sesuai header spreadsheet - GUNAKAN NAMA BUKAN KODE
       const rowData = [
         timestamp, // Id
         formData.jenisKak,
         formData.jenisPaketMeeting,
-        formData.program, // Kolom 4: Program Pembebanan (LABEL)
-        formData.kegiatan, // Kolom 5: Kegiatan (LABEL)
-        formData.kro, // Kolom 6: Kode Rincian Output (KODE)
-        formData.ro, // Kolom 7: Rincian Output (LABEL)
-        formData.komponen, // Kolom 8: Komponen Output (LABEL)
-        formData.akun, // Kolom 9: Akun (LABEL)
+        programNama, // Kolom 4: Program Pembebanan (NAMA dari kolom C sheet program)
+        kegiatanNama, // Kolom 5: Kegiatan (NAMA dari kolom D sheet kegiatan)
+        formData.kro, // Kolom 6: Kode Rincian Output (KODE dari kolom C sheet kro)
+        roNama, // Kolom 7: Rincian Output (NAMA dari kolom D sheet ro)
+        komponenNama, // Kolom 8: Komponen Output (NAMA dari kolom C sheet komponen)
+        akunNama, // Kolom 9: Akun (NAMA dari kolom C sheet akun)
         formData.paguAnggaran,
         formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
@@ -437,12 +503,12 @@ const KerangkaAcuanKerja = () => {
       ];
 
       console.log("📋 Final data to submit:", {
-        program: formData.program,
-        kegiatan: formData.kegiatan,
+        program: programNama,
+        kegiatan: kegiatanNama,
         kro: formData.kro,
-        ro: formData.ro,
-        komponen: formData.komponen,
-        akun: formData.akun
+        ro: roNama,
+        komponen: komponenNama,
+        akun: akunNama
       });
       console.log("🔢 Total columns:", rowData.length);
 
