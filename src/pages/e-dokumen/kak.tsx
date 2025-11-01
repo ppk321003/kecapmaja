@@ -20,7 +20,7 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TARGET_SPREADSHEET_ID = "1B2EBK1EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 
 interface KegiatanDetail {
   id: string;
@@ -133,10 +133,18 @@ const KerangkaAcuanKerja = () => {
         jumlahGelombang: "0",
         waveDates: []
       });
+    },
+    onError: (error) => {
+      console.error("Error in submit:", error);
+      toast({
+        title: "Error",
+        description: "Gagal mengirim data ke spreadsheet",
+        variant: "destructive"
+      });
     }
   });
 
-  // Effect untuk update wave dates ketika jumlahGelombang berubah (dari skrip 2)
+  // Effect untuk update wave dates ketika jumlahGelombang berubah
   useEffect(() => {
     const gelombangCount = parseInt(formData.jumlahGelombang) || 0;
     if (gelombangCount > 0) {
@@ -168,7 +176,7 @@ const KerangkaAcuanKerja = () => {
         [field]: value
       };
 
-      // Reset dependent fields (dari skrip 2)
+      // Reset dependent fields
       if (field === 'program') {
         newData.kegiatan = '';
         newData.kro = '';
@@ -352,9 +360,9 @@ const KerangkaAcuanKerja = () => {
     try {
       const timestamp = new Date().toISOString();
       
-      // Format data untuk spreadsheet - mengikuti struktur skrip 1 dengan field tambahan dari skrip 2
-      // Setiap detail kegiatan akan menjadi kolom terpisah
-      let rowData: any[] = [
+      // SEDERHANAKAN DATA YANG DIKIRIM - gunakan format yang sama dengan skrip 1
+      // Hanya kirim data dasar dulu untuk testing
+      const rowData = [
         timestamp,
         formData.jenisKak,
         formData.jenisPaketMeeting,
@@ -365,38 +373,17 @@ const KerangkaAcuanKerja = () => {
         formData.komponen,
         formData.akun,
         formData.paguAnggaran,
-        formData.keterangan,
+        formData.keterangan || "", // Pastikan tidak null
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
         formatTanggalIndonesia(formData.tanggalAkhirKegiatan),
         formatTanggalIndonesia(formData.tanggalPengajuanKAK),
         formData.pembuatDaftar,
-        formData.jumlahGelombang
+        formData.jumlahGelombang,
+        // Gabungkan detail kegiatan menjadi string untuk sementara
+        formData.kegiatanDetails.map(d => `${d.namaKegiatan} (${d.volume} ${d.satuan})`).join('; ')
       ];
 
-      // Tambahkan wave dates ke rowData
-      formData.waveDates.forEach(wave => {
-        rowData.push(formatTanggalIndonesia(wave.startDate));
-        rowData.push(formatTanggalIndonesia(wave.endDate));
-      });
-
-      // Tambahkan detail kegiatan ke rowData
-      // Untuk kompatibilitas, kita akan mengambil detail pertama atau gabungkan jika multiple
-      if (formData.kegiatanDetails.length > 0) {
-        const firstDetail = formData.kegiatanDetails[0];
-        rowData.push(firstDetail.namaKegiatan);
-        rowData.push(firstDetail.volume);
-        rowData.push(firstDetail.satuan);
-        rowData.push(firstDetail.hargaSatuan);
-        
-        // Jika ada detail tambahan, tambahkan sebagai set kolom baru
-        for (let i = 1; i < formData.kegiatanDetails.length; i++) {
-          const detail = formData.kegiatanDetails[i];
-          rowData.push(detail.namaKegiatan);
-          rowData.push(detail.volume);
-          rowData.push(detail.satuan);
-          rowData.push(detail.hargaSatuan);
-        }
-      }
+      console.log("Data yang dikirim ke spreadsheet:", rowData);
 
       await submitData(rowData);
     } catch (error) {
@@ -657,7 +644,7 @@ const KerangkaAcuanKerja = () => {
                     {formData.waveDates.map((wave, index) => (
                       <React.Fragment key={wave.id}>
                         <div className="space-y-2">
-                          <Label>{`Tanggal Mulai Gelombang ${index + 1} <span className="text-red-500">*</span>`}</Label>
+                          <Label>{`Tanggal Mulai Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
@@ -682,7 +669,7 @@ const KerangkaAcuanKerja = () => {
                           </Popover>
                         </div>
                         <div className="space-y-2">
-                          <Label>{`Tanggal Akhir Gelombang ${index + 1} <span className="text-red-500">*</span>`}</Label>
+                          <Label>{`Tanggal Akhir Gelombang ${index + 1}`} <span className="text-red-500">*</span></Label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
