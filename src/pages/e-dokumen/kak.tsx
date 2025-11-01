@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { ProgramSelect } from "@/components/ProgramSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
@@ -21,10 +20,8 @@ import { Calendar as CalendarIcon, Plus, Trash, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
-// Spreadsheet IDs sesuai dengan informasi yang diberikan
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 interface KegiatanDetail {
   id: string;
@@ -86,6 +83,7 @@ const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
   const [organikData, setOrganikData] = useState<OrganikData[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     jenisKak: "",
@@ -112,49 +110,6 @@ const KerangkaAcuanKerja = () => {
     waveDates: []
   });
 
-  const { submitData, isSubmitting } = useSubmitToSheets({
-    spreadsheetId: TARGET_SPREADSHEET_ID,
-    onSuccess: () => {
-      toast({
-        title: "Sukses",
-        description: "Data KAK berhasil dikirim"
-      });
-      // Reset form
-      setFormData({
-        jenisKak: "",
-        jenisPaketMeeting: "",
-        program: "",
-        kegiatan: "",
-        kro: "",
-        ro: "",
-        komponen: "",
-        akun: "",
-        paguAnggaran: "",
-        kegiatanDetails: [{
-          id: `kegiatan-${Date.now()}`,
-          namaKegiatan: "",
-          volume: "",
-          satuan: "",
-          hargaSatuan: ""
-        }],
-        tanggalMulaiKegiatan: null,
-        tanggalAkhirKegiatan: null,
-        tanggalPengajuanKAK: null,
-        pembuatDaftar: "",
-        jumlahGelombang: "0",
-        waveDates: []
-      });
-    },
-    onError: (error) => {
-      console.error("Error in submit:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengirim data ke spreadsheet",
-        variant: "destructive"
-      });
-    }
-  });
-
   // Fetch data organik dari Google Sheets menggunakan Supabase function
   const fetchOrganikData = async () => {
     setLoadingOrganik(true);
@@ -176,7 +131,6 @@ const KerangkaAcuanKerja = () => {
       
       if (!rows || rows.length <= 1) {
         setOrganikData([]);
-        console.log("Tidak ada data organik ditemukan");
         return;
       }
       
@@ -190,11 +144,9 @@ const KerangkaAcuanKerja = () => {
           jabatan: row[4] || '', // Jabatan (kolom E)
           kecamatan: row[5] || '' // Kecamatan (kolom F)
         }))
-        .filter((item: OrganikData) => item.nama && item.nip); // Hanya yang memiliki nama dan NIP
+        .filter((item: OrganikData) => item.nama && item.nip);
       
       setOrganikData(formattedData);
-      
-      console.log("Data organik berhasil dimuat:", formattedData.length, "data");
       
     } catch (error: any) {
       console.error('Error fetching organik data:', error);
@@ -205,6 +157,35 @@ const KerangkaAcuanKerja = () => {
       });
     } finally {
       setLoadingOrganik(false);
+    }
+  };
+
+  // Fungsi submit menggunakan Supabase function - SAMA DENGAN CARA YANG BERHASIL
+  const submitToSpreadsheet = async (rowData: any[]) => {
+    try {
+      console.log("📤 Submitting data to spreadsheet...");
+      console.log("📊 Data length:", rowData.length);
+      console.log("🔧 Using Supabase function directly");
+
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: "KerangkaAcuanKerja", // NAMA SHEET YANG BENAR
+          values: [rowData]
+        }
+      });
+
+      if (error) {
+        console.error("❌ Supabase function error:", error);
+        throw new Error(error.message || 'Gagal mengirim data ke spreadsheet');
+      }
+
+      console.log("✅ Submit successful:", data);
+      return data;
+    } catch (error: any) {
+      console.error("❌ Error submitting to spreadsheet:", error);
+      throw error;
     }
   };
 
@@ -326,38 +307,14 @@ const KerangkaAcuanKerja = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validasi
-    if (!formData.jenisKak) {
+    // Validasi dasar
+    if (!formData.jenisKak || !formData.program || !formData.kegiatan || !formData.kro || 
+        !formData.ro || !formData.komponen || !formData.akun || !formData.paguAnggaran ||
+        !formData.tanggalPengajuanKAK || !formData.tanggalMulaiKegiatan || !formData.tanggalAkhirKegiatan ||
+        !formData.pembuatDaftar) {
       toast({
         title: "Validasi Gagal",
-        description: "Jenis Kerangka Acuan Kerja wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.jenisKak === "Belanja Paket Meeting" && !formData.jenisPaketMeeting) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Jenis Paket Meeting wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.program || !formData.kegiatan || !formData.kro || !formData.ro || !formData.komponen || !formData.akun) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Semua field program, kegiatan, KRO, RO, komponen, dan akun wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.paguAnggaran) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Pagu Anggaran wajib diisi",
+        description: "Semua field wajib diisi",
         variant: "destructive"
       });
       return;
@@ -369,79 +326,19 @@ const KerangkaAcuanKerja = () => {
       if (!detail.namaKegiatan || !detail.volume || !detail.satuan || !detail.hargaSatuan) {
         toast({
           title: "Validasi Gagal",
-          description: `Detail Kegiatan ${i + 1} belum lengkap. Semua field wajib diisi`,
+          description: `Detail Kegiatan ${i + 1} belum lengkap`,
           variant: "destructive"
         });
         return;
       }
     }
 
-    if (!formData.tanggalMulaiKegiatan || !formData.tanggalAkhirKegiatan || !formData.tanggalPengajuanKAK) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Semua tanggal wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.pembuatDaftar) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Pembuat Daftar wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validasi untuk Belanja Paket Meeting
-    if (formData.jenisKak === "Belanja Paket Meeting") {
-      if (!formData.jumlahGelombang || parseInt(formData.jumlahGelombang) <= 0) {
-        toast({
-          title: "Validasi Gagal",
-          description: "Jumlah Gelombang wajib diisi dan harus lebih dari 0",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const activeWaves = formData.waveDates.slice(0, parseInt(formData.jumlahGelombang));
-      for (let i = 0; i < activeWaves.length; i++) {
-        const wave = activeWaves[i];
-        if (!wave.startDate || !wave.endDate) {
-          toast({
-            title: "Validasi Gagal",
-            description: `Tanggal Gelombang ${i + 1} belum lengkap. Tanggal mulai dan akhir wajib diisi`,
-            variant: "destructive"
-          });
-          return;
-        }
-      }
-    }
-
-    // Validasi tanggal
-    if (formData.tanggalPengajuanKAK && formData.tanggalMulaiKegiatan && formData.tanggalPengajuanKAK > formData.tanggalMulaiKegiatan) {
-      toast({
-        title: "Validasi Tanggal Gagal",
-        description: "Tanggal pengajuan KAK harus sebelum tanggal mulai kegiatan",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (formData.tanggalMulaiKegiatan && formData.tanggalAkhirKegiatan && formData.tanggalMulaiKegiatan > formData.tanggalAkhirKegiatan) {
-      toast({
-        title: "Validasi Tanggal Gagal",
-        description: "Tanggal akhir kegiatan harus setelah atau sama dengan tanggal mulai kegiatan",
-        variant: "destructive"
-      });
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
       const timestamp = new Date().toISOString();
       
-      // Siapkan array untuk 15 detail kegiatan (isi dengan empty string jika tidak ada)
+      // Siapkan array untuk 15 detail kegiatan
       const kegiatanData = [];
       for (let i = 0; i < 15; i++) {
         if (i < formData.kegiatanDetails.length) {
@@ -453,12 +350,11 @@ const KerangkaAcuanKerja = () => {
             detail.hargaSatuan || ""
           );
         } else {
-          // Isi dengan empty string untuk detail yang tidak ada
           kegiatanData.push("", "", "", "");
         }
       }
 
-      // Siapkan array untuk 15 gelombang (isi dengan empty string jika tidak ada)
+      // Siapkan array untuk 15 gelombang
       const waveData = [];
       for (let i = 0; i < 15; i++) {
         if (i < parseInt(formData.jumlahGelombang)) {
@@ -468,20 +364,19 @@ const KerangkaAcuanKerja = () => {
             formatTanggalIndonesia(wave?.endDate) || ""
           );
         } else {
-          // Isi dengan empty string untuk gelombang yang tidak ada
           waveData.push("", "");
         }
       }
 
-      // Susun rowData sesuai dengan header kolom di spreadsheet target
+      // Susun rowData sesuai header spreadsheet
       const rowData = [
-        timestamp, // Id (gunakan timestamp sebagai ID)
+        timestamp, // Id
         formData.jenisKak,
         formData.jenisPaketMeeting,
         formData.program,
         formData.kegiatan,
-        formData.kro, // Kode Rincian Output
-        formData.ro, // Rincian Output
+        formData.kro,
+        formData.ro,
         formData.komponen,
         formData.akun,
         formData.paguAnggaran,
@@ -489,25 +384,61 @@ const KerangkaAcuanKerja = () => {
         formatTanggalIndonesia(formData.tanggalMulaiKegiatan),
         formatTanggalIndonesia(formData.tanggalAkhirKegiatan),
         formData.pembuatDaftar,
-        ...kegiatanData, // 15 set detail kegiatan (4 field each = 60 fields)
+        ...kegiatanData, // 60 fields untuk detail kegiatan
         formData.jumlahGelombang,
-        ...waveData, // 15 set gelombang (2 field each = 30 fields)
-        "", // Tanggal Pelaksanaan Gelombang (kosongkan)
-        "", // Status (kosongkan)
-        "" // Link (kosongkan)
+        ...waveData, // 30 fields untuk wave dates
+        "", // Tanggal Pelaksanaan Gelombang
+        "", // Status
+        "" // Link
       ];
 
-      console.log("Jumlah kolom:", rowData.length);
-      console.log("Data yang dikirim:", rowData);
+      console.log("📋 Final data to submit:", rowData);
+      console.log("🔢 Total columns:", rowData.length);
 
-      await submitData(rowData);
-    } catch (error) {
-      console.error("Error submitting KAK:", error);
+      // Submit menggunakan Supabase function YANG SAMA dengan yang berhasil
+      await submitToSpreadsheet(rowData);
+
+      toast({
+        title: "Sukses!",
+        description: "Data KAK berhasil disimpan",
+        variant: "default"
+      });
+
+      // Reset form
+      setFormData({
+        jenisKak: "",
+        jenisPaketMeeting: "",
+        program: "",
+        kegiatan: "",
+        kro: "",
+        ro: "",
+        komponen: "",
+        akun: "",
+        paguAnggaran: "",
+        kegiatanDetails: [{
+          id: `kegiatan-${Date.now()}`,
+          namaKegiatan: "",
+          volume: "",
+          satuan: "",
+          hargaSatuan: ""
+        }],
+        tanggalMulaiKegiatan: null,
+        tanggalAkhirKegiatan: null,
+        tanggalPengajuanKAK: null,
+        pembuatDaftar: "",
+        jumlahGelombang: "0",
+        waveDates: []
+      });
+
+    } catch (error: any) {
+      console.error("❌ Error submitting KAK:", error);
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat mengirim data",
+        description: "Gagal menyimpan data: " + error.message,
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -562,7 +493,7 @@ const KerangkaAcuanKerja = () => {
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis paket meeting" />
                       </SelectTrigger>
-                      <SelectContent>
+                    <SelectContent>
                         {jenisPaketMeetingOptions.map(option => (
                           <SelectItem key={option} value={option}>
                             {option}
@@ -741,9 +672,6 @@ const KerangkaAcuanKerja = () => {
                       Memuat data organik...
                     </div>
                   )}
-                  {!loadingOrganik && organikData.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Tidak ada data organik tersedia</p>
-                  )}
                 </div>
 
                 {shouldShowGelombang && (
@@ -911,11 +839,27 @@ const KerangkaAcuanKerja = () => {
               )}
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => window.history.back()}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => window.history.back()}
+                  disabled={isSubmitting}
+                >
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Menyimpan..." : "Simpan"}
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="min-w-24"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan"
+                  )}
                 </Button>
               </div>
             </form>
