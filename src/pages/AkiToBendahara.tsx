@@ -526,7 +526,7 @@ export default function AkiToBendahara() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-orange-500">Aki to Bendahara</h1>
+          <h1 className="text-3xl font-bold text-red-500">Aki to Bendahara</h1>
           <p className="text-muted-foreground mt-2">
             Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
           </p>
