@@ -1439,7 +1439,7 @@ export default function Dashboard() {
   if (loading) {
     return <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-orange-500">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-red-500">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
             Monitoring dan visualisasi data kegiatan mitra statistik
           </p>
