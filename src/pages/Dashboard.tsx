@@ -1467,7 +1467,7 @@ export default function Dashboard() {
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-red-600">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-red-500">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
             Monitoring dan visualisasi data kegiatan mitra statistik
           </p>
