@@ -17,11 +17,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
-const TARGET_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
+// Spreadsheet IDs sesuai dengan informasi yang diberikan
+const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 interface KegiatanDetail {
   id: string;
@@ -63,7 +66,7 @@ interface FormData {
   waveDates: WaveDate[];
 }
 
-// Options dari skrip 2
+// Options
 const jenisKakOptions = ["Belanja Bahan", "Belanja Honor", "Belanja Modal", "Belanja Paket Meeting", "Belanja Perjalanan Dinas"];
 const jenisPaketMeetingOptions = ["Halfday", "Fullday", "Fullboard"];
 const satuanOptions = ["BLN", "BS", "Desa", "Dok", "Liter", "Lmbr", "M2", "OB", "OH", "OJP", "OK", "OP", "Paket", "Pasar", "RT", "SET", "SLS", "Stel", "Tahun", "Segmen"];
@@ -152,41 +155,52 @@ const KerangkaAcuanKerja = () => {
     }
   });
 
-  // Fetch data organik dari Google Sheets
+  // Fetch data organik dari Google Sheets menggunakan Supabase function
   const fetchOrganikData = async () => {
     setLoadingOrganik(true);
     try {
-      // Menggunakan Google Sheets API v4
-      const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${ORGANIK_SHEET_ID}/values/MASTER.ORGANIK?key=YOUR_API_KEY`);
-      
-      if (!response.ok) {
-        throw new Error('Gagal mengambil data organik');
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: ORGANIK_SHEET_ID,
+          operation: "read",
+          range: "MASTER.ORGANIK"
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching organik data:", error);
+        throw new Error(error.message || 'Gagal mengambil data organik');
       }
-      
-      const data = await response.json();
-      const rows = data.values;
+
+      const rows = data?.values || [];
       
       if (!rows || rows.length <= 1) {
         setOrganikData([]);
+        console.log("Tidak ada data organik ditemukan");
         return;
       }
       
       // Skip header (baris pertama)
       const organikRows = rows.slice(1);
       
-      const formattedData: OrganikData[] = organikRows.map((row: any[]) => ({
-        nip: row[1] || '', // NIP BPS
-        nama: row[3] || '', // Nama
-        jabatan: row[4] || '', // Jabatan
-        kecamatan: row[5] || '' // Kecamatan
-      })).filter((item: OrganikData) => item.nama); // Hanya yang memiliki nama
+      const formattedData: OrganikData[] = organikRows
+        .map((row: any[]) => ({
+          nip: row[1] || '', // NIP BPS (kolom B)
+          nama: row[3] || '', // Nama (kolom D)
+          jabatan: row[4] || '', // Jabatan (kolom E)
+          kecamatan: row[5] || '' // Kecamatan (kolom F)
+        }))
+        .filter((item: OrganikData) => item.nama && item.nip); // Hanya yang memiliki nama dan NIP
       
       setOrganikData(formattedData);
-    } catch (error) {
+      
+      console.log("Data organik berhasil dimuat:", formattedData.length, "data");
+      
+    } catch (error: any) {
       console.error('Error fetching organik data:', error);
       toast({
         title: "Error",
-        description: "Gagal mengambil data organik",
+        description: "Gagal mengambil data organik: " + error.message,
         variant: "destructive"
       });
     } finally {
@@ -204,7 +218,7 @@ const KerangkaAcuanKerja = () => {
     const gelombangCount = parseInt(formData.jumlahGelombang) || 0;
     const newWaveDates: WaveDate[] = [];
     
-    for (let i = 0; i < 15; i++) { // Selalu buat 15 slot untuk gelombang
+    for (let i = 0; i < 15; i++) {
       if (i < gelombangCount) {
         const existingWave = formData.waveDates[i];
         newWaveDates.push({
@@ -459,7 +473,7 @@ const KerangkaAcuanKerja = () => {
         }
       }
 
-      // Susun rowData sesuai dengan header kolom
+      // Susun rowData sesuai dengan header kolom di spreadsheet target
       const rowData = [
         timestamp, // Id (gunakan timestamp sebagai ID)
         formData.jenisKak,
@@ -478,7 +492,9 @@ const KerangkaAcuanKerja = () => {
         ...kegiatanData, // 15 set detail kegiatan (4 field each = 60 fields)
         formData.jumlahGelombang,
         ...waveData, // 15 set gelombang (2 field each = 30 fields)
-        "" // Tanggal Pelaksanaan Gelombang (kosongkan)
+        "", // Tanggal Pelaksanaan Gelombang (kosongkan)
+        "", // Status (kosongkan)
+        "" // Link (kosongkan)
       ];
 
       console.log("Jumlah kolom:", rowData.length);
@@ -713,14 +729,20 @@ const KerangkaAcuanKerja = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {organikData.map((item) => (
-                        <SelectItem key={item.nip} value={item.nama}>
+                        <SelectItem key={`${item.nip}-${item.nama}`} value={item.nama}>
                           {item.nama} - {item.jabatan}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {loadingOrganik && (
-                    <p className="text-sm text-muted-foreground">Memuat data organik...</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data organik...
+                    </div>
+                  )}
+                  {!loadingOrganik && organikData.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Tidak ada data organik tersedia</p>
                   )}
                 </div>
 
