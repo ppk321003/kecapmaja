@@ -53,7 +53,8 @@ interface Option {
 const CONSTANTS = {
   SPREADSHEET: {
     TARGET_ID: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
-    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"
+    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+    SOURCE_ID: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8"
   },
   SHEET_NAMES: {
     DAFTAR_HADIR: "DaftarHadir",
@@ -92,6 +93,43 @@ const defaultValues: FormValues = {
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   return format(date, "dd MMMM yyyy", { locale: id });
+};
+
+// Fungsi untuk mendapatkan nama dari kode
+const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
+  if (!kode) return kode;
+  
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
+        operation: "read",
+        range: sheetName
+      }
+    });
+
+    if (error || !data?.values) {
+      console.error(`Error fetching ${sheetName}:`, error);
+      return kode;
+    }
+
+    const rows = data.values.slice(1); // Skip header
+    const foundRow = rows.find((row: any[]) => {
+      // Cari berdasarkan kode di kolom B (index 1)
+      return row[1] === kode;
+    });
+
+    if (foundRow) {
+      // Kolom C = index 2, Kolom D = index 3
+      const columnIndex = namaColumn === 'C' ? 2 : 3;
+      return foundRow[columnIndex] || kode;
+    }
+
+    return kode;
+  } catch (error) {
+    console.error(`Error in getNamaFromKode for ${sheetName}:`, error);
+    return kode;
+  }
 };
 
 // Custom Hooks
@@ -393,6 +431,23 @@ const DaftarHadir = () => {
         generateDaftarHadirId()
       ]);
 
+      // Dapatkan nama dari kode untuk setiap field - PERBAIKAN UTAMA
+      const [
+        programNama,
+        kegiatanNama, 
+        kroNama,
+        roNama,
+        komponenNama,
+        akunNama
+      ] = await Promise.all([
+        getNamaFromKode("program", data.program, 'C'),
+        getNamaFromKode("kegiatan", data.kegiatan, 'D'),
+        getNamaFromKode("kro", data.kro, 'D'),
+        getNamaFromKode("ro", data.ro, 'D'),
+        getNamaFromKode("komponen", data.komponen, 'C'),
+        getNamaFromKode("akun", data.akun, 'C')
+      ]);
+
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       
       const rowData = [
@@ -401,12 +456,12 @@ const DaftarHadir = () => {
         data.namaKegiatan,
         data.detil || "",
         data.jenis,
-        data.program, // Simpan kode program
-        data.kegiatan, // Simpan kode kegiatan
-        data.kro, // Simpan kode KRO
-        data.ro, // Simpan kode RO
-        data.komponen, // Simpan kode komponen
-        data.akun, // Simpan kode akun
+        programNama,      // ← GUNAKAN NAMA program
+        kegiatanNama,     // ← GUNAKAN NAMA kegiatan
+        kroNama,          // ← GUNAKAN NAMA KRO
+        roNama,           // ← GUNAKAN NAMA RO
+        komponenNama,     // ← GUNAKAN NAMA komponen
+        akunNama,         // ← GUNAKAN NAMA akun
         formatTanggalIndonesia(data.tanggalMulai),
         formatTanggalIndonesia(data.tanggalSelesai),
         pembuatDaftar?.name || data.pembuatDaftar,
