@@ -181,7 +181,7 @@ const useSequenceGenerator = () => {
     return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
   }, [fetchSheetData]);
 
-  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
+    const generateDaftarHadirId = useCallback(async (): Promise<string> => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -194,19 +194,23 @@ const useSequenceGenerator = () => {
 
     if (values.length <= 1) return `${prefix}001`;
 
+    // Filter hanya ID yang sesuai format dan bulan/tahun yang sama
     const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[1])
+      .slice(1) // Skip header
+      .map((row: any[]) => row[0]) // Kolom B adalah index 0 dalam array
       .filter((id: string) => id && id.startsWith(prefix))
       .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
+        const match = id.match(/dh-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          const sequence = parseInt(match[3]);
+          return isNaN(sequence) ? 0 : sequence;
+        }
+        return 0;
       })
       .filter(num => num > 0);
 
-    const nextNum = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
   }, [fetchSheetData]);
 
   return { getNextSequenceNumber, generateDaftarHadirId };
