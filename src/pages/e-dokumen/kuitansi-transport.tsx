@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2, Search } from "lucide-react";
+import { CalendarIcon, Trash2, Search, Plus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -19,10 +19,9 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { AkunSelect } from "@/components/AkunSelect";
-import PersonTransportGroup from "@/components/PersonTransportGroup";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
-// Searchable Select Component
+// Searchable Select Components
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -66,7 +65,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-60">
-        {/* Search Input */}
         <div className="relative p-2 border-b">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -78,7 +76,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           />
         </div>
 
-        {/* Options */}
         <div className="max-h-48 overflow-y-auto">
           {filteredOptions.length === 0 ? (
             <div className="p-2 text-center text-muted-foreground text-sm">
@@ -93,7 +90,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           )}
         </div>
 
-        {/* Clear Search Button */}
         {searchTerm && (
           <div className="p-2 border-t">
             <Button
@@ -112,7 +108,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
-// Searchable Person Select Component
 interface SearchablePersonSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -150,10 +145,10 @@ const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
       onValueChange={onValueChange}
       open={isOpen}
       onOpenChange={setIsOpen}
-      disabled={disabled}
+      disabled={disabled || options.length === 0}
     >
       <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder}>
+        <SelectValue placeholder={options.length === 0 ? "Tidak ada data" : placeholder}>
           {selectedOption ? (
             <div className="flex flex-col text-left">
               <span className="font-medium">{selectedOption.name}</span>
@@ -168,7 +163,6 @@ const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-60 w-full">
-        {/* Search Input */}
         <div className="relative p-2 border-b">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -180,11 +174,10 @@ const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
           />
         </div>
 
-        {/* Options */}
         <div className="max-h-48 overflow-y-auto">
           {filteredOptions.length === 0 ? (
             <div className="p-2 text-center text-muted-foreground text-sm">
-              Tidak ada data ditemukan
+              {searchTerm ? "Tidak ada data ditemukan" : "Tidak ada data tersedia"}
             </div>
           ) : (
             filteredOptions.map((option) => (
@@ -203,7 +196,6 @@ const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
           )}
         </div>
 
-        {/* Search Info */}
         {searchTerm && (
           <div className="p-2 border-t bg-muted/50">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
@@ -225,7 +217,7 @@ const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
   );
 };
 
-// Interfaces for grouped transport data
+// PersonTransportGroup Component
 interface Trip {
   kecamatanTujuan: string;
   rate: string;
@@ -239,6 +231,238 @@ interface PersonGroup {
   trips: Trip[];
 }
 
+interface PersonTransportGroupProps {
+  personId: string;
+  personName: string;
+  dariKecamatan: string;
+  trips: Trip[];
+  type: "organik" | "mitra";
+  personList: Array<{ id: string; name: string; jabatan?: string; kecamatan?: string }>;
+  kecamatanList: string[];
+  onUpdatePerson: (personId: string) => void;
+  onUpdateDariKecamatan: (kecamatan: string) => void;
+  onUpdateTrip: (tripIndex: number, field: keyof Trip, value: any) => void;
+  onAddTrip: () => void;
+  onRemoveTrip: (tripIndex: number) => void;
+  onRemovePerson: () => void;
+}
+
+const PersonTransportGroup: React.FC<PersonTransportGroupProps> = ({
+  personId,
+  personName,
+  dariKecamatan,
+  trips,
+  type,
+  personList,
+  kecamatanList,
+  onUpdatePerson,
+  onUpdateDariKecamatan,
+  onUpdateTrip,
+  onAddTrip,
+  onRemoveTrip,
+  onRemovePerson,
+}) => {
+  const calculateTotal = () => {
+    return trips.reduce((sum, trip) => sum + (parseInt(trip.rate) || 0), 0);
+  };
+
+  return (
+    <Card className="mb-4 border-l-4 border-l-blue-500">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="font-semibold text-blue-700">
+            {type === "organik" ? "Organik BPS" : "Mitra Statistik"}
+          </h4>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemovePerson}
+            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="space-y-2">
+            <Label htmlFor={`person-${type}`}>
+              Nama {type === "organik" ? "Organik" : "Mitra"} *
+            </Label>
+            <SearchablePersonSelect
+              value={personId}
+              onValueChange={onUpdatePerson}
+              options={personList}
+              placeholder={`Pilih ${type === "organik" ? "organik" : "mitra"}`}
+              type={type}
+            />
+            {personName && (
+              <p className="text-xs text-green-600 font-medium">
+                ✓ {personName}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`dari-kecamatan-${type}`}>Dari Kecamatan *</Label>
+            <Select value={dariKecamatan} onValueChange={onUpdateDariKecamatan}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kecamatan asal" />
+              </SelectTrigger>
+              <SelectContent>
+                {kecamatanList.map(kecamatan => (
+                  <SelectItem key={kecamatan} value={kecamatan}>
+                    {kecamatan}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label>Detail Perjalanan</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onAddTrip}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Tambah Perjalanan
+            </Button>
+          </div>
+
+          {trips.map((trip, tripIndex) => (
+            <div key={tripIndex} className="p-4 border rounded-lg bg-gray-50/50">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-medium text-gray-700">
+                  Perjalanan {tripIndex + 1}
+                </span>
+                {trips.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRemoveTrip(tripIndex)}
+                    className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`kecamatan-tujuan-${type}-${tripIndex}`}>
+                    Kecamatan Tujuan *
+                  </Label>
+                  <Select
+                    value={trip.kecamatanTujuan}
+                    onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih kecamatan tujuan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {kecamatanList.map(kecamatan => (
+                        <SelectItem key={kecamatan} value={kecamatan}>
+                          {kecamatan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`rate-${type}-${tripIndex}`}>
+                    Rate Transport (Rp) *
+                  </Label>
+                  <Input
+                    id={`rate-${type}-${tripIndex}`}
+                    type="text"
+                    placeholder="0"
+                    value={trip.rate}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d]/g, "");
+                      onUpdateTrip(tripIndex, 'rate', value);
+                    }}
+                    className="text-right font-mono"
+                  />
+                  {trip.rate && (
+                    <p className="text-xs text-gray-600">
+                      Rp {parseInt(trip.rate).toLocaleString('id-ID')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`tanggal-${type}-${tripIndex}`}>
+                    Tanggal Pelaksanaan *
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !trip.tanggalPelaksanaan && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {trip.tanggalPelaksanaan ? (
+                          format(trip.tanggalPelaksanaan, "PPP", { locale: idLocale })
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={trip.tanggalPelaksanaan || undefined}
+                        onSelect={(date) => onUpdateTrip(tripIndex, 'tanggalPelaksanaan', date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {trip.rate && parseInt(trip.rate) > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-sm font-medium text-right text-green-600">
+                    Total Trip: Rp {parseInt(trip.rate).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {personName && trips.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-blue-700">
+                Total untuk {personName}:
+              </span>
+              <span className="text-lg font-bold text-green-600">
+                Rp {calculateTotal().toLocaleString('id-ID')}
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 mt-1">
+              {trips.length} perjalanan
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Main Form Schema and Types
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(50, "Nomor surat tugas maksimal 50 karakter"),
@@ -284,6 +508,13 @@ const defaultValues: Partial<FormValues> = {
   pembuatDaftar: "",
   transportDetails: []
 };
+
+// Label component
+const Label: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({ htmlFor, children }) => (
+  <label htmlFor={htmlFor} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+    {children}
+  </label>
+);
 
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
@@ -947,7 +1178,6 @@ const KuitansiTransportLokal = () => {
                     onAddTrip={() => handleAddOrganikTrip(groupIndex)}
                     onRemoveTrip={(tripIndex) => handleRemoveOrganikTrip(groupIndex, tripIndex)}
                     onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)}
-                    searchable={true}
                   />
                 ))}
 
@@ -991,7 +1221,6 @@ const KuitansiTransportLokal = () => {
                     onAddTrip={() => handleAddMitraTrip(groupIndex)}
                     onRemoveTrip={(tripIndex) => handleRemoveMitraTrip(groupIndex, tripIndex)}
                     onRemovePerson={() => handleRemoveMitraPerson(groupIndex)}
-                    searchable={true}
                   />
                 ))}
 
