@@ -15,12 +15,6 @@ import { Calendar as CalendarIcon, Trash, Search, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { ProgramSelect } from "@/components/ProgramSelect";
-import { KomponenSelect } from "@/components/KomponenSelect";
-import { KegiatanSelect } from "@/components/KegiatanSelect";
-import { KROSelect } from "@/components/KROSelect";
-import { ROSelect } from "@/components/ROSelect";
-import { AkunSelect } from "@/components/AkunSelect";
 
 // Types
 interface FormValues {
@@ -105,6 +99,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 const useSheetData = () => {
   const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
     try {
+      console.log(`📥 Fetching data from: ${range}`);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId,
@@ -113,10 +108,15 @@ const useSheetData = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ Error fetching ${range}:`, error);
+        throw error;
+      }
+
+      console.log(`✅ Success fetching ${range}:`, data?.values?.length || 0, 'rows');
       return data?.values || [];
     } catch (error) {
-      console.error(`Error fetching sheet data from ${range}:`, error);
+      console.error(`❌ Error fetching sheet data from ${range}:`, error);
       throw error;
     }
   }, []);
@@ -124,7 +124,7 @@ const useSheetData = () => {
   return { fetchSheetData };
 };
 
-// Komponen Select dengan Search yang lebih baik - MIRIP DENGAN KAK
+// Komponen Select dengan Search yang lebih baik
 interface SearchSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -197,7 +197,7 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
           
           {filteredOptions.length === 0 && (
             <div className="p-2 text-sm text-muted-foreground text-center">
-              Tidak ditemukan
+              {options.length === 0 ? "Tidak ada data" : "Tidak ditemukan"}
             </div>
           )}
         </div>
@@ -206,7 +206,7 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
   );
 };
 
-// Komponen Select yang diperbaiki - MENGIKUTI POLA KAK
+// Komponen Select yang diperbaiki dengan debugging
 const ProgramSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void;
@@ -224,16 +224,24 @@ const ProgramSelect: React.FC<{
           `${CONSTANTS.SHEET_NAMES.PROGRAM}!A:C`
         );
         
+        console.log('📊 Program data rows:', rows);
+        
         if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // Kode program di kolom B
-            label: `${row[1]} - ${row[2]}` // Kode - Nama
-          })).filter((item: any) => item.value && item.label);
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 Program row:', row);
+            return {
+              value: row[1] || '', // Kode program di kolom B
+              label: `${row[1]} - ${row[2]}` // Kode - Nama
+            };
+          }).filter((item: any) => item.value && item.label);
           
+          console.log('✅ Program options:', options);
           setProgramOptions(options);
+        } else {
+          console.log('⚠️ No program data found');
         }
       } catch (error) {
-        console.error("Error fetching programs:", error);
+        console.error("❌ Error fetching programs:", error);
       } finally {
         setLoading(false);
       }
@@ -257,81 +265,272 @@ const ProgramSelect: React.FC<{
           Memuat data program...
         </div>
       )}
+      {!loading && programOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada data program tersedia
+        </div>
+      )}
     </div>
   );
 };
 
-                <div className="space-y-2">
-                  <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
-                  <ProgramSelect
-                    value={formData.program}
-                    onValueChange={(value) => handleChange('program', value)}
-                  />
-                </div>
+const KegiatanSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  programId?: string 
+}> = ({ value, onValueChange, programId }) => {
+  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+  const [allKegiatan, setAllKegiatan] = useState<Array<{value: string; label: string; programCode: string}>>([]);
+  const { fetchSheetData } = useSheetData();
 
-                <div className="space-y-2">
-                  <Label>Kegiatan <span className="text-red-500">*</span></Label>
-                  <KegiatanSelect
-                    value={formData.kegiatan}
-                    onValueChange={(value) => handleChange('kegiatan', value)}
-                    programId={formData.program}
-                    disabled={!formData.program}
-                  />
-                </div>
+  // Fetch semua data kegiatan sekali saja
+  useEffect(() => {
+    const fetchAllKegiatan = async () => {
+      try {
+        const rows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          `${CONSTANTS.SHEET_NAMES.KEGIATAN}!A:D`
+        );
+        
+        console.log('📊 All Kegiatan data rows:', rows);
+        
+        if (rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 Kegiatan row:', row);
+            return {
+              value: row[2] || '', // Kode kegiatan di kolom C
+              label: `${row[2]} - ${row[3]}`, // Kode - Nama
+              programCode: row[1] || '' // Kode program di kolom B
+            };
+          }).filter((item: any) => item.value && item.label);
+          
+          console.log('✅ All Kegiatan options:', options);
+          setAllKegiatan(options);
+        } else {
+          console.log('⚠️ No kegiatan data found');
+        }
+      } catch (error) {
+        console.error("❌ Error fetching all kegiatan:", error);
+      }
+    };
 
-                <div className="space-y-2">
-                  <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
-                  <KROSelect
-                    value={formData.kro}
-                    onValueChange={(value) => handleChange('kro', value)}
-                    kegiatanId={formData.kegiatan}
-                    disabled={!formData.kegiatan}
-                  />
-                </div>
+    fetchAllKegiatan();
+  }, [fetchSheetData]);
 
-                <div className="space-y-2">
-                  <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
-                  <ROSelect
-                    value={formData.ro}
-                    onValueChange={(value) => handleChange('ro', value)}
-                    kroId={formData.kro}
-                    disabled={!formData.kro}
-                  />
-                </div>
+  // Filter kegiatan berdasarkan program yang dipilih
+  useEffect(() => {
+    if (!programId) {
+      setKegiatanOptions([]);
+      return;
+    }
 
-                <div className="space-y-2">
-                  <Label>Komponen Output <span className="text-red-500">*</span></Label>
-                  <SearchSelect
-                    value={formData.komponen}
-                    onValueChange={(value) => handleChange('komponen', value)}
-                    options={komponenOptions}
-                    placeholder={loadingKomponen ? "Memuat data..." : "Pilih komponen output"}
-                    disabled={loadingKomponen}
-                  />
-                  {loadingKomponen && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Memuat data komponen...
-                    </div>
-                  )}
-                </div>
+    setLoading(true);
+    const filtered = allKegiatan.filter(item => item.programCode === programId);
+    console.log(`🔍 Filtering kegiatan for program ${programId}:`, {
+      allKegiatan: allKegiatan.length,
+      filtered: filtered.length,
+      filteredItems: filtered
+    });
+    setKegiatanOptions(filtered);
+    setLoading(false);
+  }, [programId, allKegiatan]);
 
-                <div className="space-y-2">
-                  <Label>Akun <span className="text-red-500">*</span></Label>
-                  <SearchSelect
-                    value={formData.akun}
-                    onValueChange={(value) => handleChange('akun', value)}
-                    options={akunOptions}
-                    placeholder={loadingAkun ? "Memuat data..." : "Pilih akun"}
-                    disabled={loadingAkun}
-                  />
-                  {loadingAkun && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Memuat data akun...
-                    </div>
-                  )}
-                </div>
+  return (
+    <div className="space-y-2">
+      <SearchSelect
+        value={value}
+        onValueChange={onValueChange}
+        options={kegiatanOptions}
+        placeholder={!programId ? "Pilih program terlebih dahulu" : loading ? "Memuat data..." : "Pilih kegiatan"}
+        disabled={!programId || loading}
+      />
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Memuat data kegiatan...
+        </div>
+      )}
+      {programId && !loading && kegiatanOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada kegiatan untuk program ini
+        </div>
+      )}
+    </div>
+  );
+};
+
+const KROSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  kegiatanId?: string 
+}> = ({ value, onValueChange, kegiatanId }) => {
+  const [kroOptions, setKroOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+  const [allKRO, setAllKRO] = useState<Array<{value: string; label: string; kegiatanCode: string}>>([]);
+  const { fetchSheetData } = useSheetData();
+
+  // Fetch semua data KRO sekali saja
+  useEffect(() => {
+    const fetchAllKRO = async () => {
+      try {
+        const rows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          `${CONSTANTS.SHEET_NAMES.KRO}!A:D`
+        );
+        
+        console.log('📊 All KRO data rows:', rows);
+        
+        if (rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 KRO row:', row);
+            return {
+              value: row[2] || '', // Kode KRO di kolom C
+              label: `${row[2]} - ${row[3]}`, // Kode - Nama
+              kegiatanCode: row[1] || '' // Kode kegiatan di kolom B
+            };
+          }).filter((item: any) => item.value && item.label);
+          
+          console.log('✅ All KRO options:', options);
+          setAllKRO(options);
+        } else {
+          console.log('⚠️ No KRO data found');
+        }
+      } catch (error) {
+        console.error("❌ Error fetching all KRO:", error);
+      }
+    };
+
+    fetchAllKRO();
+  }, [fetchSheetData]);
+
+  // Filter KRO berdasarkan kegiatan yang dipilih
+  useEffect(() => {
+    if (!kegiatanId) {
+      setKroOptions([]);
+      return;
+    }
+
+    setLoading(true);
+    const filtered = allKRO.filter(item => item.kegiatanCode === kegiatanId);
+    console.log(`🔍 Filtering KRO for kegiatan ${kegiatanId}:`, {
+      allKRO: allKRO.length,
+      filtered: filtered.length,
+      filteredItems: filtered
+    });
+    setKroOptions(filtered);
+    setLoading(false);
+  }, [kegiatanId, allKRO]);
+
+  return (
+    <div className="space-y-2">
+      <SearchSelect
+        value={value}
+        onValueChange={onValueChange}
+        options={kroOptions}
+        placeholder={!kegiatanId ? "Pilih kegiatan terlebih dahulu" : loading ? "Memuat data..." : "Pilih KRO"}
+        disabled={!kegiatanId || loading}
+      />
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Memuat data KRO...
+        </div>
+      )}
+      {kegiatanId && !loading && kroOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada KRO untuk kegiatan ini
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ROSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  kroId?: string 
+}> = ({ value, onValueChange, kroId }) => {
+  const [roOptions, setRoOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+  const [allRO, setAllRO] = useState<Array<{value: string; label: string; kroCode: string}>>([]);
+  const { fetchSheetData } = useSheetData();
+
+  // Fetch semua data RO sekali saja
+  useEffect(() => {
+    const fetchAllRO = async () => {
+      try {
+        const rows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          `${CONSTANTS.SHEET_NAMES.RO}!A:D`
+        );
+        
+        console.log('📊 All RO data rows:', rows);
+        
+        if (rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 RO row:', row);
+            return {
+              value: row[2] || '', // Kode RO di kolom C
+              label: `${row[2]} - ${row[3]}`, // Kode - Nama
+              kroCode: row[1] || '' // Kode KRO di kolom B
+            };
+          }).filter((item: any) => item.value && item.label);
+          
+          console.log('✅ All RO options:', options);
+          setAllRO(options);
+        } else {
+          console.log('⚠️ No RO data found');
+        }
+      } catch (error) {
+        console.error("❌ Error fetching all RO:", error);
+      }
+    };
+
+    fetchAllRO();
+  }, [fetchSheetData]);
+
+  // Filter RO berdasarkan KRO yang dipilih
+  useEffect(() => {
+    if (!kroId) {
+      setRoOptions([]);
+      return;
+    }
+
+    setLoading(true);
+    const filtered = allRO.filter(item => item.kroCode === kroId);
+    console.log(`🔍 Filtering RO for KRO ${kroId}:`, {
+      allRO: allRO.length,
+      filtered: filtered.length,
+      filteredItems: filtered
+    });
+    setRoOptions(filtered);
+    setLoading(false);
+  }, [kroId, allRO]);
+
+  return (
+    <div className="space-y-2">
+      <SearchSelect
+        value={value}
+        onValueChange={onValueChange}
+        options={roOptions}
+        placeholder={!kroId ? "Pilih KRO terlebih dahulu" : loading ? "Memuat data..." : "Pilih RO"}
+        disabled={!kroId || loading}
+      />
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Memuat data RO...
+        </div>
+      )}
+      {kroId && !loading && roOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada RO untuk KRO ini
+        </div>
+      )}
+    </div>
+  );
+};
 
 const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
   const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
@@ -347,16 +546,24 @@ const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) =
           `${CONSTANTS.SHEET_NAMES.KOMPONEN}!A:C`
         );
         
+        console.log('📊 Komponen data rows:', rows);
+        
         if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // Kode komponen di kolom B
-            label: `${row[1]} - ${row[2]}` // Kode - Nama
-          })).filter((item: any) => item.value && item.label);
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 Komponen row:', row);
+            return {
+              value: row[1] || '', // Kode komponen di kolom B
+              label: `${row[1]} - ${row[2]}` // Kode - Nama
+            };
+          }).filter((item: any) => item.value && item.label);
           
+          console.log('✅ Komponen options:', options);
           setKomponenOptions(options);
+        } else {
+          console.log('⚠️ No komponen data found');
         }
       } catch (error) {
-        console.error("Error fetching komponen:", error);
+        console.error("❌ Error fetching komponen:", error);
       } finally {
         setLoading(false);
       }
@@ -380,6 +587,11 @@ const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) =
           Memuat data komponen...
         </div>
       )}
+      {!loading && komponenOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada data komponen tersedia
+        </div>
+      )}
     </div>
   );
 };
@@ -398,16 +610,24 @@ const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => vo
           `${CONSTANTS.SHEET_NAMES.AKUN}!A:C`
         );
         
+        console.log('📊 Akun data rows:', rows);
+        
         if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // Kode akun di kolom B
-            label: `${row[1]} - ${row[2]}` // Kode - Nama
-          })).filter((item: any) => item.value && item.label);
+          const options = rows.slice(1).map((row: any[]) => {
+            console.log('🔍 Akun row:', row);
+            return {
+              value: row[1] || '', // Kode akun di kolom B
+              label: `${row[1]} - ${row[2]}` // Kode - Nama
+            };
+          }).filter((item: any) => item.value && item.label);
           
+          console.log('✅ Akun options:', options);
           setAkunOptions(options);
+        } else {
+          console.log('⚠️ No akun data found');
         }
       } catch (error) {
-        console.error("Error fetching akun:", error);
+        console.error("❌ Error fetching akun:", error);
       } finally {
         setLoading(false);
       }
@@ -431,9 +651,16 @@ const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => vo
           Memuat data akun...
         </div>
       )}
+      {!loading && akunOptions.length === 0 && (
+        <div className="text-sm text-yellow-600">
+          Tidak ada data akun tersedia
+        </div>
+      )}
     </div>
   );
 };
+
+// ... (sisanya tetap sama dengan kode sebelumnya untuk MultiSelect, useSequenceGenerator, useDataSubmission)
 
 // Multi Select Component untuk PESERTA (Organik dan Mitra)
 const MultiSelect: React.FC<{
@@ -516,7 +743,6 @@ const MultiSelect: React.FC<{
   );
 };
 
-// Custom hooks untuk sequence dan submission
 const useSequenceGenerator = () => {
   const { fetchSheetData } = useSheetData();
 
@@ -853,7 +1079,7 @@ const DaftarHadir = () => {
                 </div>
               </div>
 
-              {/* Program dan Kegiatan - MENGGUNAKAN KOMPONEN BARU */}
+              {/* Program dan Kegiatan */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
