@@ -57,15 +57,6 @@ const formSchema = z.object({
   biayaTransport: z.string().optional(),
   biayaBBM: z.string().optional(),
   biayaPenginapan: z.string().optional()
-}).refine((data) => {
-  // Untuk Luar Kota, validasi field khusus
-  if (data.jenisPerjalanan === "Luar Kota") {
-    return data.kabupatenKota && data.namaTempatTujuan && data.tanggalBerangkat && data.tanggalKembali;
-  }
-  return true;
-}, {
-  message: "Field khusus Luar Kota harus diisi",
-  path: ["kabupatenKota"]
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -107,23 +98,29 @@ const KuitansiPerjalananDinas = () => {
     defaultValues: DEFAULT_VALUES
   });
 
+  // Watch form values
+  const watchedValues = form.watch();
+  const watchedProgram = form.watch("program");
+  const watchedKegiatan = form.watch("kegiatan");
+  const watchedKRO = form.watch("kro");
+  const watchedJenisPerjalanan = form.watch("jenisPerjalanan");
+
   // Watch for changes in jenisPerjalanan
-  const jenisPerjalanan = form.watch("jenisPerjalanan");
   useEffect(() => {
-    const luarKota = jenisPerjalanan === "Luar Kota";
+    const luarKota = watchedJenisPerjalanan === "Luar Kota";
     setIsLuarKota(luarKota);
     
     // Reset kecamatan details jika beralih ke Luar Kota
     if (luarKota && kecamatanDetails.length > 0) {
       setKecamatanDetails([]);
     }
-  }, [jenisPerjalanan, kecamatanDetails.length]);
+  }, [watchedJenisPerjalanan, kecamatanDetails.length]);
 
   // Data fetching hooks
   const { data: programList = [] } = usePrograms();
-  const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
-  const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
-  const { data: roList = [] } = useRO(form.watch("kro") || null);
+  const { data: kegiatanList = [] } = useKegiatan(watchedProgram || null);
+  const { data: kroList = [] } = useKRO(watchedKegiatan || null);
+  const { data: roList = [] } = useRO(watchedKRO || null);
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
@@ -136,7 +133,7 @@ const KuitansiPerjalananDinas = () => {
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
 
-  // Google Sheets submission hook
+  // Google Sheets submission hook - PERBAIKAN: Gunakan format yang sama dengan skrip KAK
   const submitToSheets = useSubmitToSheets({
     documentType: "KuitansiPerjalananDinas",
     onSuccess: () => {
@@ -147,6 +144,7 @@ const KuitansiPerjalananDinas = () => {
       navigate("/buat-dokumen");
     },
     onError: (error) => {
+      console.error("Submission error:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan",
@@ -162,24 +160,24 @@ const KuitansiPerjalananDinas = () => {
     return format(date, "yyyy-MM-dd");
   };
 
-  const formatCurrency = (value: string | undefined): string => {
-    if (!value) return "0";
-    // Remove any non-digit characters and format
+  const formatCurrency = (value: string | undefined): number => {
+    if (!value) return 0;
+    // Remove any non-digit characters and convert to number
     const numericValue = value.replace(/[^\d]/g, "");
-    return numericValue || "0";
+    return parseInt(numericValue) || 0;
   };
 
   const generateKecamatanFields = (details: KecamatanDetail[]) => {
-    const fields: Record<string, string> = {};
+    const fields: Record<string, any> = {};
     
     // Generate fields for up to 10 kecamatan
     for (let i = 0; i < 10; i++) {
       const detail = details[i];
       const index = i + 1;
       
-      fields[`Kecamatan Tujuan-${index}`] = detail?.nama || "";
-      fields[`Tanggal Berangkat-${index}`] = detail?.tanggalBerangkat ? formatDateForSheets(detail.tanggalBerangkat) : "";
-      fields[`Tanggal Kembali-${index}`] = detail?.tanggalKembali ? formatDateForSheets(detail.tanggalKembali) : "";
+      fields[`KecamatanTujuan${index}`] = detail?.nama || "";
+      fields[`TanggalBerangkat${index}`] = detail?.tanggalBerangkat ? formatDateForSheets(detail.tanggalBerangkat) : "";
+      fields[`TanggalKembali${index}`] = detail?.tanggalKembali ? formatDateForSheets(detail.tanggalKembali) : "";
     }
     
     return fields;
@@ -216,7 +214,7 @@ const KuitansiPerjalananDinas = () => {
     ));
   };
 
-  // Form submission handler
+  // Form submission handler - PERBAIKAN: Gunakan format yang sama dengan skrip KAK
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -233,60 +231,93 @@ const KuitansiPerjalananDinas = () => {
       }
 
       // Validasi data kecamatan
-      for (let i = 0; i < kecamatanDetails.length; i++) {
-        const detail = kecamatanDetails[i];
-        if (!detail.nama || !detail.tanggalBerangkat || !detail.tanggalKembali) {
+      if (!isLuarKota) {
+        for (let i = 0; i < kecamatanDetails.length; i++) {
+          const detail = kecamatanDetails[i];
+          if (!detail.nama || !detail.tanggalBerangkat || !detail.tanggalKembali) {
+            toast({
+              variant: "destructive",
+              title: "Validasi gagal",
+              description: `Data kecamatan ${i + 1} belum lengkap. Semua field harus diisi`
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          // Validasi tanggal kecamatan
+          if (detail.tanggalBerangkat && detail.tanggalKembali && detail.tanggalBerangkat > detail.tanggalKembali) {
+            toast({
+              variant: "destructive",
+              title: "Validasi tanggal gagal",
+              description: `Tanggal kembali harus setelah tanggal berangkat untuk kecamatan ${i + 1}`
+            });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      // Validasi untuk Luar Kota
+      if (isLuarKota) {
+        if (!values.kabupatenKota || !values.namaTempatTujuan || !values.tanggalBerangkat || !values.tanggalKembali) {
           toast({
             variant: "destructive",
             title: "Validasi gagal",
-            description: `Data kecamatan ${i + 1} belum lengkap. Semua field harus diisi`
+            description: "Semua field khusus Luar Kota harus diisi"
           });
           setIsSubmitting(false);
           return;
         }
 
-        // Validasi tanggal kecamatan
-        if (detail.tanggalBerangkat && detail.tanggalKembali && detail.tanggalBerangkat > detail.tanggalKembali) {
+        if (values.tanggalBerangkat && values.tanggalKembali && values.tanggalBerangkat > values.tanggalKembali) {
           toast({
             variant: "destructive",
             title: "Validasi tanggal gagal",
-            description: `Tanggal kembali harus setelah tanggal berangkat untuk kecamatan ${i + 1}`
+            description: "Tanggal kembali harus setelah tanggal berangkat"
           });
           setIsSubmitting(false);
           return;
         }
       }
 
-      // Transform data untuk Google Sheets
+      // Transform data untuk Google Sheets - PERBAIKAN: Format sesuai dengan Edge Function
       const submissionData = {
-        // Basic fields
-        "Nomor Surat Tugas": values.nomorSuratTugas,
-        "Tanggal Surat Tugas": formatDateForSheets(values.tanggalSuratTugas),
-        "Pelaksana Perjalanan Dinas": values.namaPelaksana,
-        "Tujuan Pelaksanaan Perjalanan Dinas": values.tujuanPerjalanan,
-        "Kab/Kota Tujuan": values.kabupatenKota || "",
-        "Nama Tempat Tujuan": values.namaTempatTujuan || "",
-        "Tanggal Berangkat": values.tanggalBerangkat ? formatDateForSheets(values.tanggalBerangkat) : "",
-        "Tanggal Kembali": values.tanggalKembali ? formatDateForSheets(values.tanggalKembali) : "",
-        "Tanggal Pengajuan": formatDateForSheets(values.tanggalPengajuan),
-        "Program": programsMap[values.program] || "",
-        "Kegiatan": kegiatanMap[values.kegiatan] || "",
-        "KRO": kroMap[values.kro] || "",
-        "RO": roMap[values.ro] || "",
-        "Komponen": komponenMap[values.komponen] || "",
-        "Akun": akunMap[values.akun] || "",
-        "Biaya Transport Kab/Kota Tujuan (PP)": formatCurrency(values.biayaTransport),
-        "Biaya Pembelian BBM/Tol (PP)": formatCurrency(values.biayaBBM),
-        "Biaya Penginapan/Hotel": formatCurrency(values.biayaPenginapan),
-        "Jenis Perjalanan Dinas": values.jenisPerjalanan,
+        // Basic fields - sesuaikan dengan header spreadsheet
+        jenisPerjalanan: values.jenisPerjalanan,
+        nomorSuratTugas: values.nomorSuratTugas,
+        tanggalSuratTugas: formatDateForSheets(values.tanggalSuratTugas),
+        namaPelaksana: values.namaPelaksana,
+        tujuanPerjalanan: values.tujuanPerjalanan,
+        kabupatenKota: values.kabupatenKota || "",
+        namaTempatTujuan: values.namaTempatTujuan || "",
+        tanggalBerangkat: values.tanggalBerangkat ? formatDateForSheets(values.tanggalBerangkat) : "",
+        tanggalKembali: values.tanggalKembali ? formatDateForSheets(values.tanggalKembali) : "",
+        tanggalPengajuan: formatDateForSheets(values.tanggalPengajuan),
+        program: programsMap[values.program] || values.program,
+        kegiatan: kegiatanMap[values.kegiatan] || values.kegiatan,
+        kro: kroMap[values.kro] || values.kro,
+        ro: roMap[values.ro] || values.ro,
+        komponen: komponenMap[values.komponen] || values.komponen,
+        akun: akunMap[values.akun] || values.akun,
+        biayaTransport: formatCurrency(values.biayaTransport),
+        biayaBBM: formatCurrency(values.biayaBBM),
+        biayaPenginapan: formatCurrency(values.biayaPenginapan),
         
         // Dynamic kecamatan fields
-        ...generateKecamatanFields(kecamatanDetails)
+        ...generateKecamatanFields(kecamatanDetails),
+
+        // Tambahkan mapping names seperti di skrip KAK
+        _programNameMap: programsMap,
+        _kegiatanNameMap: kegiatanMap,
+        _kroNameMap: kroMap,
+        _roNameMap: roMap,
+        _komponenNameMap: komponenMap,
+        _akunNameMap: akunMap
       };
 
-      console.log("Submitting data to sheets:", submissionData);
+      console.log("Submitting transformed data to sheets:", submissionData);
 
-      // Submit to Google Sheets
+      // Submit to Google Sheets - PERBAIKAN: Gunakan mutateAsync seperti di skrip KAK
       await submitToSheets.mutateAsync(submissionData);
 
     } catch (error: any) {
@@ -379,7 +410,6 @@ const KuitansiPerjalananDinas = () => {
                               selected={field.value} 
                               onSelect={field.onChange} 
                               initialFocus 
-                              className="p-3 pointer-events-auto" 
                             />
                           </PopoverContent>
                         </Popover>
@@ -478,7 +508,7 @@ const KuitansiPerjalananDinas = () => {
                             form.setValue("ro", "");
                           }} 
                           placeholder="Pilih kegiatan" 
-                          programId={form.watch("program")} 
+                          programId={watchedProgram} 
                         />
                         <FormMessage />
                       </FormItem>
@@ -499,7 +529,7 @@ const KuitansiPerjalananDinas = () => {
                             form.setValue("ro", "");
                           }} 
                           placeholder="Pilih KRO" 
-                          kegiatanId={form.watch("kegiatan")} 
+                          kegiatanId={watchedKegiatan} 
                         />
                         <FormMessage />
                       </FormItem>
@@ -517,7 +547,7 @@ const KuitansiPerjalananDinas = () => {
                           value={field.value} 
                           onChange={field.onChange} 
                           placeholder="Pilih RO" 
-                          kroId={form.watch("kro")} 
+                          kroId={watchedKRO} 
                         />
                         <FormMessage />
                       </FormItem>
@@ -583,7 +613,6 @@ const KuitansiPerjalananDinas = () => {
                               selected={field.value} 
                               onSelect={field.onChange} 
                               initialFocus 
-                              className="p-3 pointer-events-auto" 
                             />
                           </PopoverContent>
                         </Popover>
@@ -601,7 +630,7 @@ const KuitansiPerjalananDinas = () => {
                         name="kabupatenKota" 
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Kabupaten/Kota Tujuan</FormLabel>
+                            <FormLabel>Kabupaten/Kota Tujuan *</FormLabel>
                             <FormControl>
                               <Input {...field} placeholder="Masukkan kabupaten/kota tujuan" />
                             </FormControl>
@@ -616,7 +645,7 @@ const KuitansiPerjalananDinas = () => {
                         name="namaTempatTujuan" 
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nama Tempat Tujuan</FormLabel>
+                            <FormLabel>Nama Tempat Tujuan *</FormLabel>
                             <FormControl>
                               <Input {...field} placeholder="Masukkan nama tempat tujuan" />
                             </FormControl>
@@ -631,7 +660,7 @@ const KuitansiPerjalananDinas = () => {
                         name="tanggalBerangkat" 
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Tanggal Berangkat</FormLabel>
+                            <FormLabel>Tanggal Berangkat *</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -650,7 +679,6 @@ const KuitansiPerjalananDinas = () => {
                                   selected={field.value} 
                                   onSelect={field.onChange} 
                                   initialFocus 
-                                  className="p-3 pointer-events-auto" 
                                 />
                               </PopoverContent>
                             </Popover>
@@ -665,7 +693,7 @@ const KuitansiPerjalananDinas = () => {
                         name="tanggalKembali" 
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Tanggal Kembali</FormLabel>
+                            <FormLabel>Tanggal Kembali *</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -684,7 +712,6 @@ const KuitansiPerjalananDinas = () => {
                                   selected={field.value} 
                                   onSelect={field.onChange} 
                                   initialFocus 
-                                  className="p-3 pointer-events-auto" 
                                 />
                               </PopoverContent>
                             </Popover>
@@ -706,7 +733,6 @@ const KuitansiPerjalananDinas = () => {
                                 type="text" 
                                 placeholder="Rp 0" 
                                 onChange={(e) => {
-                                  // Format input untuk currency
                                   const value = e.target.value.replace(/[^\d]/g, "");
                                   field.onChange(value);
                                 }}
@@ -839,7 +865,6 @@ const KuitansiPerjalananDinas = () => {
                                         selected={detail.tanggalBerangkat} 
                                         onSelect={(date) => updateKecamatanDetail(detail.id, 'tanggalBerangkat', date)} 
                                         initialFocus 
-                                        className="p-3 pointer-events-auto" 
                                       />
                                     </PopoverContent>
                                   </Popover>
@@ -863,7 +888,6 @@ const KuitansiPerjalananDinas = () => {
                                         selected={detail.tanggalKembali} 
                                         onSelect={(date) => updateKecamatanDetail(detail.id, 'tanggalKembali', date)} 
                                         initialFocus 
-                                        className="p-3 pointer-events-auto" 
                                       />
                                     </PopoverContent>
                                   </Popover>
