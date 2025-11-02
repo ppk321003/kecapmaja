@@ -24,45 +24,20 @@ export default function SPKBast() {
     icon: Target,
     description: "Input target dan kegiatan yang akan dilaksanakan"
   }, {
+    title: "Entri Realisasi",
+    url: "/spk-bast/entri-realisasi",
+    icon: CheckSquare,
+    description: "Input realisasi kegiatan yang telah dilaksanakan"
+  }, {
     title: "Cek SBML",
     url: "/spk-bast/cek-sbml",
     icon: CheckSquare,
     description: "Verifikasi dan pengecekan Standar Biaya Masukan Lainnya"
   }, {
-    title: "Entri SBML",
-    url: "/spk-bast/entri-sbml",
-    icon: DollarSign,
-    description: "Input data Standar Biaya Masukan Lainnya"
-  }, {
-    title: "Entri Pengelola Anggaran",
-    url: "/spk-bast/entri-pengelola",
-    icon: UserCog,
-    description: "Pendataan pengelola anggaran kegiatan"
-  }, {
-    title: "Approval PPK",
-    url: "/spk-bast/approval-ppk",
-    icon: CheckCircle,
-    description: "Persetujuan dari Pejabat Pembuat Komitmen"
-  }, {
     title: "Download SPK & BAST",
     url: "/spk-bast/download-spk-bast",
     icon: Download,
     description: "Unduh dokumen Surat Perjanjian Kerja dan BAST"
-  }, {
-    title: "Download SPJ",
-    url: "/spk-bast/download-spj",
-    icon: Download,
-    description: "Unduh dokumen Surat Pertanggungjawaban"
-  }, {
-    title: "Download Raw Data",
-    url: "/spk-bast/download-raw-data",
-    icon: Database,
-    description: "Unduh data mentah untuk keperluan analisis"
-  }, {
-    title: "Pedoman",
-    url: "/spk-bast/pedoman",
-    icon: BookOpen,
-    description: "Panduan dan petunjuk penggunaan sistem"
   }];
   
   return <div className="space-y-6">

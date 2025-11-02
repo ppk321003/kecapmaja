@@ -9,6 +9,9 @@ import {
   FolderOpen,
   FilePlus,
   Download as DownloadIcon,
+  UserCog,
+  Database,
+  BookOpen,
 } from "lucide-react";
 
 import {
@@ -35,6 +38,10 @@ const mainMenuItems = [
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
+  { title: "Entri Pengelola Anggaran", url: "/spk-bast/entri-pengelola", icon: UserCog },
+  { title: "Entri SBML", url: "/spk-bast/entri-sbml", icon: DollarSign },
+  { title: "Download Raw Data", url: "/spk-bast/download-raw-data", icon: Database },
+  { title: "Pedoman", url: "/spk-bast/pedoman", icon: BookOpen },
 ];
 
 const eDokumenSubItems = [
