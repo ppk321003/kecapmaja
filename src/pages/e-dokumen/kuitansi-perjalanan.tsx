@@ -330,13 +330,38 @@ const KuitansiPerjalananDinas = () => {
     fetchOrganikData();
   }, []);
 
-  // Create name mappings dengan format yang benar (hanya nama tanpa kode)
-  const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name.split(' - ')[0]]));
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name.split(' - ')[0]]));
-  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name.split(' - ')[0]]));
-  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name.split(' - ')[0]]));
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name.split(' - ')[0]]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+// GANTI bagian name mappings dengan yang ini:
+
+// Create name mappings dengan format yang benar (hanya nama tanpa kode)
+const programsMap = Object.fromEntries((programList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name; // Ambil bagian setelah " - "
+  return [item.id, nameOnly];
+}));
+
+const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name;
+  return [item.id, nameOnly];
+}));
+
+const kroMap = Object.fromEntries((kroList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name;
+  return [item.id, nameOnly];
+}));
+
+const roMap = Object.fromEntries((roList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name;
+  return [item.id, nameOnly];
+}));
+
+const komponenMap = Object.fromEntries((komponenList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name;
+  return [item.id, nameOnly];
+}));
+
+const akunMap = Object.fromEntries((akunList || []).map(item => {
+  const nameOnly = item.name.split(' - ')[1] || item.name;
+  return [item.id, nameOnly];
+}));
 
   // Helper functions
   const formatDateForSheets = (date: Date | undefined): string => {
@@ -676,11 +701,14 @@ const KuitansiPerjalananDinas = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programList.map(program => (
-                              <SelectItem key={program.id} value={program.id}>
-                                {program.name.split(' - ')[0]} {/* Hanya tampilkan nama tanpa kode */}
-                              </SelectItem>
-                            ))}
+                            {programList.map(program => {
+                              const displayName = program.name.split(' - ')[1] || program.name;
+                              return (
+                                <SelectItem key={program.id} value={program.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
