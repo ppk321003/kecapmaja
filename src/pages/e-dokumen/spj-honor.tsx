@@ -388,7 +388,7 @@ const SPJHonor = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
+                        <KomponenSelect value={field.value} onValueChange={field.onChange} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -400,8 +400,7 @@ const SPJHonor = () => {
                         <FormControl>
                           <AkunSelect 
                             value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Pilih akun"
+                            onValueChange={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />

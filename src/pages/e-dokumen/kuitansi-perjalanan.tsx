@@ -313,11 +313,11 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Kegiatan</FormLabel>
-                        <KegiatanSelect value={field.value} onChange={value => {
+                        <KegiatanSelect value={field.value} onValueChange={value => {
                     field.onChange(value);
                     form.setValue("kro", "");
                     form.setValue("ro", "");
-                  }} placeholder="Pilih kegiatan" programId={form.watch("program")} />
+                  }} programId={form.watch("program")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -326,10 +326,10 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>KRO</FormLabel>
-                        <KROSelect value={field.value} onChange={value => {
+                        <KROSelect value={field.value} onValueChange={value => {
                     field.onChange(value);
                     form.setValue("ro", "");
-                  }} placeholder="Pilih KRO" kegiatanId={form.watch("kegiatan")} />
+                  }} kegiatanId={form.watch("kegiatan")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -338,7 +338,7 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>RO</FormLabel>
-                        <ROSelect value={field.value} onChange={field.onChange} placeholder="Pilih RO" kroId={form.watch("kro")} />
+                        <ROSelect value={field.value} onValueChange={field.onChange} kroId={form.watch("kro")} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -347,7 +347,7 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
+                        <KomponenSelect value={field.value} onValueChange={field.onChange} />
                         <FormMessage />
                       </FormItem>} />
 
@@ -356,7 +356,7 @@ const KuitansiPerjalananDinas = () => {
                   field
                 }) => <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <AkunSelect value={field.value} onChange={field.onChange} placeholder="Pilih akun" />
+                        <AkunSelect value={field.value} onValueChange={field.onChange} />
                         <FormMessage />
                       </FormItem>} />
 

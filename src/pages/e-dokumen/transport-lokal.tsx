@@ -382,7 +382,7 @@ const TransportLokal = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Komponen</FormLabel>
-                      <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
+                      <KomponenSelect value={field.value} onValueChange={field.onChange} />
                       <FormMessage />
                     </FormItem>} />
 
@@ -392,7 +392,7 @@ const TransportLokal = () => {
                 }) => <FormItem>
                       <FormLabel>Akun</FormLabel>
                       <FormControl>
-                        <AkunSelect value={field.value} onChange={field.onChange} placeholder="Pilih akun" />
+                        <AkunSelect value={field.value} onValueChange={field.onChange} />
                       </FormControl>
                        <FormMessage />
                      </FormItem>} />

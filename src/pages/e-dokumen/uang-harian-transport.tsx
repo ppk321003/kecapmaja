@@ -297,8 +297,7 @@ const UangHarianTransport = () => {
                     render={({ field }) => (
                       <KegiatanSelect 
                         value={field.value} 
-                        onChange={field.onChange} 
-                        placeholder="Pilih kegiatan" 
+                        onValueChange={field.onChange} 
                         programId={watch('program')} 
                       />
                     )} 
@@ -315,8 +314,7 @@ const UangHarianTransport = () => {
                     render={({ field }) => (
                       <KROSelect 
                         value={field.value} 
-                        onChange={field.onChange} 
-                        placeholder="Pilih KRO" 
+                        onValueChange={field.onChange} 
                         kegiatanId={watch('kegiatan')} 
                       />
                     )} 
@@ -333,8 +331,7 @@ const UangHarianTransport = () => {
                     render={({ field }) => (
                       <ROSelect 
                         value={field.value} 
-                        onChange={field.onChange} 
-                        placeholder="Pilih RO" 
+                        onValueChange={field.onChange} 
                         kroId={watch('kro')} 
                       />
                     )} 
@@ -349,7 +346,7 @@ const UangHarianTransport = () => {
                     control={control} 
                     rules={{ required: "Komponen harus dipilih" }} 
                     render={({ field }) => (
-                      <KomponenSelect value={field.value} onChange={field.onChange} placeholder="Pilih komponen" />
+                      <KomponenSelect value={field.value} onValueChange={field.onChange} />
                     )} 
                   />
                   {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
@@ -364,8 +361,7 @@ const UangHarianTransport = () => {
                     render={({ field }) => (
                       <AkunSelect 
                         value={field.value} 
-                        onChange={field.onChange} 
-                        placeholder="Pilih akun" 
+                        onValueChange={field.onChange} 
                       />
                     )} 
                   />
