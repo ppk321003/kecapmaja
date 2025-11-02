@@ -14,7 +14,7 @@ const SBML_SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunList = Array.from({
   length: 9
-}, (_, i) => (2022 + i).toString());
+}, (_, i) => (2024 + i).toString());
 interface PetugasTugas {
   nama: string;
   nik: string;
