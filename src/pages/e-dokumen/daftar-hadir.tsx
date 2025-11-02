@@ -15,6 +15,12 @@ import { Calendar as CalendarIcon, Trash, Search, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { ProgramSelect } from "@/components/ProgramSelect";
+import { KomponenSelect } from "@/components/KomponenSelect";
+import { KegiatanSelect } from "@/components/KegiatanSelect";
+import { KROSelect } from "@/components/KROSelect";
+import { ROSelect } from "@/components/ROSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 
 // Types
 interface FormValues {
@@ -255,209 +261,77 @@ const ProgramSelect: React.FC<{
   );
 };
 
-const KegiatanSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  programId?: string 
-}> = ({ value, onValueChange, programId }) => {
-  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-  const [allKegiatan, setAllKegiatan] = useState<Array<{value: string; label: string; programCode: string}>>([]);
-  const { fetchSheetData } = useSheetData();
+                <div className="space-y-2">
+                  <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
+                  <ProgramSelect
+                    value={formData.program}
+                    onValueChange={(value) => handleChange('program', value)}
+                  />
+                </div>
 
-  // Fetch semua data kegiatan sekali saja
-  useEffect(() => {
-    const fetchAllKegiatan = async () => {
-      try {
-        const rows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.SOURCE_ID,
-          `${CONSTANTS.SHEET_NAMES.KEGIATAN}!A:D`
-        );
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[2] || '', // Kode kegiatan di kolom C
-            label: `${row[2]} - ${row[3]}`, // Kode - Nama
-            programCode: row[1] || '' // Kode program di kolom B
-          })).filter((item: any) => item.value && item.label);
-          
-          setAllKegiatan(options);
-        }
-      } catch (error) {
-        console.error("Error fetching all kegiatan:", error);
-      }
-    };
+                <div className="space-y-2">
+                  <Label>Kegiatan <span className="text-red-500">*</span></Label>
+                  <KegiatanSelect
+                    value={formData.kegiatan}
+                    onValueChange={(value) => handleChange('kegiatan', value)}
+                    programId={formData.program}
+                    disabled={!formData.program}
+                  />
+                </div>
 
-    fetchAllKegiatan();
-  }, [fetchSheetData]);
+                <div className="space-y-2">
+                  <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
+                  <KROSelect
+                    value={formData.kro}
+                    onValueChange={(value) => handleChange('kro', value)}
+                    kegiatanId={formData.kegiatan}
+                    disabled={!formData.kegiatan}
+                  />
+                </div>
 
-  // Filter kegiatan berdasarkan program yang dipilih
-  useEffect(() => {
-    if (!programId) {
-      setKegiatanOptions([]);
-      return;
-    }
+                <div className="space-y-2">
+                  <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
+                  <ROSelect
+                    value={formData.ro}
+                    onValueChange={(value) => handleChange('ro', value)}
+                    kroId={formData.kro}
+                    disabled={!formData.kro}
+                  />
+                </div>
 
-    setLoading(true);
-    const filtered = allKegiatan.filter(item => item.programCode === programId);
-    setKegiatanOptions(filtered);
-    setLoading(false);
-  }, [programId, allKegiatan]);
+                <div className="space-y-2">
+                  <Label>Komponen Output <span className="text-red-500">*</span></Label>
+                  <SearchSelect
+                    value={formData.komponen}
+                    onValueChange={(value) => handleChange('komponen', value)}
+                    options={komponenOptions}
+                    placeholder={loadingKomponen ? "Memuat data..." : "Pilih komponen output"}
+                    disabled={loadingKomponen}
+                  />
+                  {loadingKomponen && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data komponen...
+                    </div>
+                  )}
+                </div>
 
-  return (
-    <div className="space-y-2">
-      <SearchSelect
-        value={value}
-        onValueChange={onValueChange}
-        options={kegiatanOptions}
-        placeholder={!programId ? "Pilih program terlebih dahulu" : loading ? "Memuat data..." : "Pilih kegiatan"}
-        disabled={!programId || loading}
-      />
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Memuat data kegiatan...
-        </div>
-      )}
-    </div>
-  );
-};
-
-const KROSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  kegiatanId?: string 
-}> = ({ value, onValueChange, kegiatanId }) => {
-  const [kroOptions, setKroOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-  const [allKRO, setAllKRO] = useState<Array<{value: string; label: string; kegiatanCode: string}>>([]);
-  const { fetchSheetData } = useSheetData();
-
-  // Fetch semua data KRO sekali saja
-  useEffect(() => {
-    const fetchAllKRO = async () => {
-      try {
-        const rows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.SOURCE_ID,
-          `${CONSTANTS.SHEET_NAMES.KRO}!A:D`
-        );
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[2] || '', // Kode KRO di kolom C
-            label: `${row[2]} - ${row[3]}`, // Kode - Nama
-            kegiatanCode: row[1] || '' // Kode kegiatan di kolom B
-          })).filter((item: any) => item.value && item.label);
-          
-          setAllKRO(options);
-        }
-      } catch (error) {
-        console.error("Error fetching all KRO:", error);
-      }
-    };
-
-    fetchAllKRO();
-  }, [fetchSheetData]);
-
-  // Filter KRO berdasarkan kegiatan yang dipilih
-  useEffect(() => {
-    if (!kegiatanId) {
-      setKroOptions([]);
-      return;
-    }
-
-    setLoading(true);
-    const filtered = allKRO.filter(item => item.kegiatanCode === kegiatanId);
-    setKroOptions(filtered);
-    setLoading(false);
-  }, [kegiatanId, allKRO]);
-
-  return (
-    <div className="space-y-2">
-      <SearchSelect
-        value={value}
-        onValueChange={onValueChange}
-        options={kroOptions}
-        placeholder={!kegiatanId ? "Pilih kegiatan terlebih dahulu" : loading ? "Memuat data..." : "Pilih KRO"}
-        disabled={!kegiatanId || loading}
-      />
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Memuat data KRO...
-        </div>
-      )}
-    </div>
-  );
-};
-
-const ROSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  kroId?: string 
-}> = ({ value, onValueChange, kroId }) => {
-  const [roOptions, setRoOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-  const [allRO, setAllRO] = useState<Array<{value: string; label: string; kroCode: string}>>([]);
-  const { fetchSheetData } = useSheetData();
-
-  // Fetch semua data RO sekali saja
-  useEffect(() => {
-    const fetchAllRO = async () => {
-      try {
-        const rows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.SOURCE_ID,
-          `${CONSTANTS.SHEET_NAMES.RO}!A:D`
-        );
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[2] || '', // Kode RO di kolom C
-            label: `${row[2]} - ${row[3]}`, // Kode - Nama
-            kroCode: row[1] || '' // Kode KRO di kolom B
-          })).filter((item: any) => item.value && item.label);
-          
-          setAllRO(options);
-        }
-      } catch (error) {
-        console.error("Error fetching all RO:", error);
-      }
-    };
-
-    fetchAllRO();
-  }, [fetchSheetData]);
-
-  // Filter RO berdasarkan KRO yang dipilih
-  useEffect(() => {
-    if (!kroId) {
-      setRoOptions([]);
-      return;
-    }
-
-    setLoading(true);
-    const filtered = allRO.filter(item => item.kroCode === kroId);
-    setRoOptions(filtered);
-    setLoading(false);
-  }, [kroId, allRO]);
-
-  return (
-    <div className="space-y-2">
-      <SearchSelect
-        value={value}
-        onValueChange={onValueChange}
-        options={roOptions}
-        placeholder={!kroId ? "Pilih KRO terlebih dahulu" : loading ? "Memuat data..." : "Pilih RO"}
-        disabled={!kroId || loading}
-      />
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Memuat data RO...
-        </div>
-      )}
-    </div>
-  );
-};
+                <div className="space-y-2">
+                  <Label>Akun <span className="text-red-500">*</span></Label>
+                  <SearchSelect
+                    value={formData.akun}
+                    onValueChange={(value) => handleChange('akun', value)}
+                    options={akunOptions}
+                    placeholder={loadingAkun ? "Memuat data..." : "Pilih akun"}
+                    disabled={loadingAkun}
+                  />
+                  {loadingAkun && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat data akun...
+                    </div>
+                  )}
+                </div>
 
 const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
   const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
