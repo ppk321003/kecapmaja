@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useOrganikBPS } from "@/hooks/use-database";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   nomorSuratTugasLembur: z.string().min(1, "Nomor surat tugas harus diisi").max(50, "Maksimal 50 karakter"),
@@ -70,9 +70,147 @@ const CONTOH_OUTPUT = [
   "2. Draft laporan selesai disusun"
 ];
 
+// Constants
+const TARGET_SPREADSHEET_ID = "1gOIlK84nhv9Hwy_3HGyR7JwD-CXEZ-iXaM5imTgtT3o";
+const SHEET_NAME = "Lembur";
+
+// Custom hook untuk submit data
+const useSubmitLemburToSheets = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      console.log('📤 Submitting lembur data to sheets:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: `${SHEET_NAME}!A:J`,
+          values: [data]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting lembur:', error);
+        throw error;
+      }
+
+      console.log('✅ Lembur submission successful:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
+// Fungsi untuk generate ID lembur (lmbr-yymmxxx)
+const generateLemburId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `lmbr-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching lembur IDs:", error);
+      throw new Error("Gagal mengambil ID lembur terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    // Filter ID yang sesuai dengan prefix bulan ini
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[1]) // Kolom B adalah ID
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating lembur ID:", error);
+    throw error;
+  }
+};
+
 const LemburLaporan = () => {
   const navigate = useNavigate();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -80,18 +218,7 @@ const LemburLaporan = () => {
   });
 
   const { data: organikList = [] } = useOrganikBPS();
-
-  const { mutate: submitToSheets, isPending } = useSubmitToSheets({
-    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-    sheetName: "LemburLaporan",
-    onSuccess: () => {
-      toast({
-        title: "Berhasil",
-        description: "Lembur & Laporan berhasil disimpan"
-      });
-      navigate("/");
-    }
-  });
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitLemburToSheets();
 
   const handleAddOrganik = (organikId: string) => {
     if (organikId && !selectedOrganik.includes(organikId)) {
@@ -136,18 +263,66 @@ const LemburLaporan = () => {
     }
   };
 
-  const onSubmit = (data: FormValues) => {
-    const formattedData = {
-      ...data,
-      organikBPS: selectedOrganik.map(id => getOrganikName(id)).join(" | "),
-      tanggalSuratTugasLembur: format(data.tanggalSuratTugasLembur, "yyyy-MM-dd"),
-      tanggalPelaksanaan: format(data.tanggalPelaksanaan, "yyyy-MM-dd"),
-      uraianKegiatan: data.uraianKegiatan.join(" | "),
-      outputHasil: data.outputHasil.join(" | "),
-      pembuatDaftar: getOrganikName(data.pembuatDaftar)
-    };
-    submitToSheets(formattedData);
+  const formatTanggalIndonesia = (date: Date | null): string => {
+    if (!date) return "";
+    
+    const day = date.getDate();
+    const month = date.toLocaleDateString('id-ID', { month: 'long' });
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
   };
+
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setIsSubmitting(true);
+
+      // Generate nomor urut baru dan ID lembur
+      const sequenceNumber = await getNextSequenceNumber();
+      const lemburId = await generateLemburId();
+
+      // Format data sesuai dengan header spreadsheet
+      const rowData = [
+        sequenceNumber, // Kolom 1: No
+        lemburId, // Kolom 2: Id (lmbr-yymmxxx)
+        data.nomorSuratTugasLembur, // Kolom 3: Nomor Surat Tugas Lembur
+        formatTanggalIndonesia(data.tanggalSuratTugasLembur), // Kolom 4: Tanggal Surat Tugas Lembur
+        data.tujuanPelaksanaan, // Kolom 5: Kegiatan
+        selectedOrganik.map(id => getOrganikName(id)).join(" | "), // Kolom 6: Organik
+        formatTanggalIndonesia(data.tanggalPelaksanaan), // Kolom 7: Tanggal Pelaksanaan
+        data.uraianKegiatan.join(" | "), // Kolom 8: Uraian Kegiatan
+        data.outputHasil.join(" | "), // Kolom 9: Output Hasil
+        getOrganikName(data.pembuatDaftar), // Kolom 10: Pembuat daftar
+        "Draft", // Kolom 11: Status
+        "" // Kolom 12: Link
+      ];
+
+      console.log('📋 Final lembur data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 Lembur ID:', lemburId);
+
+      // Submit data ke spreadsheet
+      await submitData(rowData);
+
+      toast({
+        title: "Berhasil",
+        description: `Lembur & Laporan berhasil disimpan (ID: ${lemburId})`
+      });
+      navigate("/");
+
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan data",
+        description: error.message || "Terjadi kesalahan saat menyimpan form"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isLoading = isSubmitting || isSubmitLoading;
 
   return (
     <Layout>
@@ -487,8 +662,8 @@ const LemburLaporan = () => {
                   <Button type="button" variant="outline" onClick={() => navigate("/")}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isPending} className="bg-teal-700 hover:bg-teal-600">
-                    {isPending ? "Menyimpan..." : "Simpan"}
+                  <Button type="submit" disabled={isLoading} className="bg-teal-700 hover:bg-teal-600">
+                    {isLoading ? "Menyimpan..." : "Simpan"}
                   </Button>
                 </div>
               </form>
