@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -642,12 +642,11 @@ const KuitansiPerjalananDinas = () => {
                         <FormLabel>Kegiatan</FormLabel>
                         <KegiatanSelect 
                           value={field.value} 
-                          onChange={(value) => {
+                          onValueChange={(value) => {
                             field.onChange(value);
                             form.setValue("kro", "");
                             form.setValue("ro", "");
                           }} 
-                          placeholder="Pilih kegiatan" 
                           programId={watchedProgram} 
                         />
                         <FormMessage />
@@ -664,11 +663,10 @@ const KuitansiPerjalananDinas = () => {
                         <FormLabel>KRO</FormLabel>
                         <KROSelect 
                           value={field.value} 
-                          onChange={(value) => {
+                          onValueChange={(value) => {
                             field.onChange(value);
                             form.setValue("ro", "");
                           }} 
-                          placeholder="Pilih KRO" 
                           kegiatanId={watchedKegiatan} 
                         />
                         <FormMessage />
@@ -685,8 +683,7 @@ const KuitansiPerjalananDinas = () => {
                         <FormLabel>RO</FormLabel>
                         <ROSelect 
                           value={field.value} 
-                          onChange={field.onChange} 
-                          placeholder="Pilih RO" 
+                          onValueChange={field.onChange} 
                           kroId={watchedKRO} 
                         />
                         <FormMessage />
@@ -703,8 +700,7 @@ const KuitansiPerjalananDinas = () => {
                         <FormLabel>Komponen</FormLabel>
                         <KomponenSelect 
                           value={field.value} 
-                          onChange={field.onChange} 
-                          placeholder="Pilih komponen" 
+                          onValueChange={field.onChange} 
                         />
                         <FormMessage />
                       </FormItem>
@@ -720,8 +716,7 @@ const KuitansiPerjalananDinas = () => {
                         <FormLabel>Akun</FormLabel>
                         <AkunSelect 
                           value={field.value} 
-                          onChange={field.onChange} 
-                          placeholder="Pilih akun" 
+                          onValueChange={field.onChange} 
                         />
                         <FormMessage />
                       </FormItem>
