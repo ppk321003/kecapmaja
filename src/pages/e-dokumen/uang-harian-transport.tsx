@@ -73,7 +73,7 @@ const TARGET_SPREADSHEET_ID = "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg";
 const SHEET_NAME = "UangHarianTransport";
 
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
-const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
+const jenisOptions = ["Fullday", "Fullboard"];
 
 // Custom hook untuk submit data
 const useSubmitUangHarianTransportToSheets = () => {
