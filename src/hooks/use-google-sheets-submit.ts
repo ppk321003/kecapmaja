@@ -4,23 +4,30 @@ import { useToast } from '@/hooks/use-toast';
 
 interface UseSubmitToSheetsProps {
   spreadsheetId: string;
+  sheetName?: string;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
 
-export const useSubmitToSheets = ({ spreadsheetId, onSuccess, onError }: UseSubmitToSheetsProps) => {
+export const useSubmitToSheets = ({ spreadsheetId, sheetName = "Sheet1", onSuccess, onError }: UseSubmitToSheetsProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const submitData = async (data: any[]) => {
+  const submitData = async (data: any[] | any) => {
     setIsSubmitting(true);
     try {
+      // Convert object to array if needed
+      let rowData = data;
+      if (!Array.isArray(data)) {
+        rowData = Object.values(data);
+      }
+
       const { data: response, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: spreadsheetId,
           operation: "append",
-          range: "Sheet1",
-          values: [data]
+          range: sheetName,
+          values: [rowData]
         }
       });
 
@@ -53,5 +60,8 @@ export const useSubmitToSheets = ({ spreadsheetId, onSuccess, onError }: UseSubm
     }
   };
 
-  return { submitData, isSubmitting };
+  const mutateAsync = submitData;
+  const mutate = submitData;
+
+  return { submitData, mutateAsync, mutate, isSubmitting, isPending: isSubmitting };
 };
