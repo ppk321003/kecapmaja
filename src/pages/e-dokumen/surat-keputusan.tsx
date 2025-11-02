@@ -14,12 +14,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
-import { KomponenSelect } from "@/components/KomponenSelect";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
-// import { GoogleSheetsService } from "@/components/GoogleSheetsService";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
   tentang: z.string().min(1, "Tentang harus diisi"),
@@ -42,18 +41,154 @@ const suratKeputusanSchema = z.object({
   message: "Minimal salah satu dari Organik atau Mitra Statistik harus dipilih",
   path: ["organik"]
 });
+
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
-const SuratKeputusan = () => {
-  const {
-    toast
-  } = useToast();
+
+// Constants
+const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
+const SHEET_NAME = "SuratKeputusan";
+
+// Custom hook untuk submit data
+const useSubmitSKToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const {
-    data: organikList = []
-  } = useOrganikBPS();
-  const {
-    data: mitraList = []
-  } = useMitraStatistik();
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      console.log('📤 Submitting SK data to sheets:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: `${SHEET_NAME}!A:O`,
+          values: [data]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting SK:', error);
+        throw error;
+      }
+
+      console.log('✅ SK submission successful:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
+// Fungsi untuk generate ID surat keputusan (sk-yymmxxx)
+const generateSKId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `sk-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching SK IDs:", error);
+      throw new Error("Gagal mengambil ID SK terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    // Filter ID yang sesuai dengan prefix bulan ini
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[1]) // Kolom B adalah ID
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating SK ID:", error);
+    throw error;
+  }
+};
+
+const SuratKeputusan = () => {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
+  
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
+
   const form = useForm<SuratKeputusanFormData>({
     resolver: zodResolver(suratKeputusanSchema),
     defaultValues: {
@@ -72,52 +207,84 @@ const SuratKeputusan = () => {
     }
   });
 
-  // Remove auto-generation of ID for the input field
-  const submitToSheets = useSubmitToSheets({
-    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-    sheetName: "SuratKeputusan",
-    onSuccess: () => {
-      form.reset();
-      setIsSubmitting(false);
-      toast({
-        title: "Berhasil",
-        description: "Surat keputusan berhasil disimpan"
-      });
-    }
-  });
   const organikOptions = organikList.map(organik => ({
     value: organik.id,
     label: organik.name
   }));
+
   const mitraOptions = mitraList.map(mitra => ({
     value: mitra.id,
     label: mitra.name
   }));
+
+  const formatTanggalIndonesia = (date: Date | null): string => {
+    if (!date) return "";
+    
+    const day = date.getDate();
+    const month = date.toLocaleDateString('id-ID', { month: 'long' });
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
+  };
+
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
     try {
-      // Generate automatic ID for spreadsheet
-      const documentId = `SK-${Date.now()}`;
+      // Generate nomor urut baru dan ID SK
+      const sequenceNumber = await getNextSequenceNumber();
+      const skId = await generateSKId();
+
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
-      const formattedData = {
-        ...data,
-        tanggalSuratKeputusan: format(data.tanggalSuratKeputusan, "dd MMMM yyyy", {
-          locale: id
-        }),
-        organikNames: selectedOrganiks.map(o => `"${o.name}"`).join(" | "),
-        mitraNames: selectedMitras.map(m => `"${m.name}"`).join(" | "),
-        pembuatName: selectedPembuat?.name || "",
-        documentId: documentId // Use the generated ID for spreadsheet
-      };
-      await submitToSheets.mutateAsync(formattedData);
-    } catch (error) {
-      setIsSubmitting(false);
+
+      // Format data sesuai dengan header spreadsheet
+      const rowData = [
+        sequenceNumber, // Kolom 1: No
+        skId, // Kolom 2: Id (sk-yymmxxx)
+        data.nomorSuratKeputusan, // Kolom 3: no_sk
+        data.tentang, // Kolom 4: tentang
+        data.menimbangKesatu, // Kolom 5: menimbang1
+        data.menimbangKedua || "", // Kolom 6: menimbang2
+        data.menimbangKetiga || "", // Kolom 7: menimbang3
+        data.menimbangKeempat || "", // Kolom 8: menimbang4
+        data.memutuskanKesatu, // Kolom 9: kesatu
+        data.memutuskanKedua || "", // Kolom 10: kedua
+        data.memutuskanKetiga || "", // Kolom 11: ketiga
+        formatTanggalIndonesia(data.tanggalSuratKeputusan), // Kolom 12: tanggal
+        selectedOrganiks.map(o => o.name).join(" | "), // Kolom 13: Organik
+        selectedMitras.map(m => m.name).join(" | "), // Kolom 14: Mitra Statistik
+        selectedPembuat?.name || "" // Kolom 15: Pembuat daftar
+      ];
+
+      console.log('📋 Final SK data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 SK ID:', skId);
+
+      // Submit data ke spreadsheet
+      await submitData(rowData);
+
+      form.reset();
+      toast({
+        title: "Berhasil",
+        description: `Surat keputusan berhasil disimpan (ID: ${skId})`
+      });
+    } catch (error: any) {
       console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan surat keputusan",
+        description: error.message || "Terjadi kesalahan saat menyimpan data"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  return <Layout>
+
+  const isLoading = isSubmitting || isSubmitLoading;
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
@@ -267,7 +434,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="memutuskanKedua" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KEDUA - (Wajib)</FormLabel>
+                        <FormLabel>KEDUA - (Opsional)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan kedua" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -277,7 +444,7 @@ const SuratKeputusan = () => {
                   <FormField control={form.control} name="memutuskanKetiga" render={({
                   field
                 }) => <FormItem>
-                        <FormLabel>KETIGA - (Wajib)</FormLabel>
+                        <FormLabel>KETIGA - (Opsional)</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
                         </FormControl>
@@ -345,8 +512,8 @@ const SuratKeputusan = () => {
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-teal-700 hover:bg-teal-600">
-                    {isSubmitting ? "Menyimpan..." : "Simpan Surat Keputusan"}
+                  <Button type="submit" disabled={isLoading} className="bg-teal-700 hover:bg-teal-600">
+                    {isLoading ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
               </form>
@@ -354,6 +521,8 @@ const SuratKeputusan = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default SuratKeputusan;
