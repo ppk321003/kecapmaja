@@ -167,13 +167,15 @@ const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) =
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "komponen"
+            range: "komponen!A:C"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('Komponen rows:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1).map((row: any[]) => ({
             id: row[1] || '',
@@ -217,30 +219,48 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
       }
 
       try {
+        console.log('Fetching kegiatan for program:', programId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kegiatan!A:E"
+            range: "kegiatan!A:D"
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching kegiatan:", error);
+          throw error;
+        }
+        
+        console.log('Raw kegiatan data:', data);
         
         const rows = data?.values || [];
+        console.log('Kegiatan rows:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === programId)
+            .filter((row: any[]) => {
+              const matchesProgram = row[1] === programId;
+              console.log(`Row ${row[1]} matches program ${programId}:`, matchesProgram);
+              return matchesProgram;
+            })
             .map((row: any[]) => ({
               id: row[2] || '',
               name: row[3] || ''
             }))
             .filter((item: any) => item.id && item.name);
           
+          console.log('Filtered kegiatan options:', options);
           setKegiatanOptions(options);
+        } else {
+          console.log('No kegiatan data found');
+          setKegiatanOptions([]);
         }
       } catch (error) {
         console.error("Error fetching kegiatan:", error);
+        setKegiatanOptions([]);
       }
     };
 
@@ -253,11 +273,17 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
         <SelectValue placeholder={programId ? "Pilih kegiatan" : "Pilih program terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {kegiatanOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
+        {kegiatanOptions.length > 0 ? (
+          kegiatanOptions.map(option => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.name}
+            </SelectItem>
+          ))
+        ) : (
+          <SelectItem value="no-data" disabled>
+            {programId ? "Tidak ada kegiatan tersedia" : "Pilih program terlebih dahulu"}
           </SelectItem>
-        ))}
+        )}
       </SelectContent>
     </Select>
   );
@@ -274,17 +300,21 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
       }
 
       try {
+        console.log('Fetching KRO for kegiatan:', kegiatanId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kro"
+            range: "kro!A:D"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('KRO rows:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1)
             .filter((row: any[]) => row[1] === kegiatanId)
@@ -294,6 +324,7 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
             }))
             .filter((item: any) => item.id && item.name);
           
+          console.log('Filtered KRO options:', options);
           setKroOptions(options);
         }
       } catch (error) {
@@ -310,11 +341,17 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
         <SelectValue placeholder={kegiatanId ? "Pilih KRO" : "Pilih kegiatan terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {kroOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
+        {kroOptions.length > 0 ? (
+          kroOptions.map(option => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.name}
+            </SelectItem>
+          ))
+        ) : (
+          <SelectItem value="no-data" disabled>
+            {kegiatanId ? "Tidak ada KRO tersedia" : "Pilih kegiatan terlebih dahulu"}
           </SelectItem>
-        ))}
+        )}
       </SelectContent>
     </Select>
   );
@@ -331,17 +368,21 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
       }
 
       try {
+        console.log('Fetching RO for KRO:', kroId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "ro"
+            range: "ro!A:D"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('RO rows:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1)
             .filter((row: any[]) => row[1] === kroId)
@@ -351,6 +392,7 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
             }))
             .filter((item: any) => item.id && item.name);
           
+          console.log('Filtered RO options:', options);
           setRoOptions(options);
         }
       } catch (error) {
@@ -367,11 +409,17 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
         <SelectValue placeholder={kroId ? "Pilih RO" : "Pilih KRO terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {roOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
+        {roOptions.length > 0 ? (
+          roOptions.map(option => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.name}
+            </SelectItem>
+          ))
+        ) : (
+          <SelectItem value="no-data" disabled>
+            {kroId ? "Tidak ada RO tersedia" : "Pilih KRO terlebih dahulu"}
           </SelectItem>
-        ))}
+        )}
       </SelectContent>
     </Select>
   );
@@ -387,13 +435,15 @@ const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => vo
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "akun"
+            range: "akun!A:C"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('Akun rows:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1).map((row: any[]) => ({
             id: row[1] || '',
@@ -448,6 +498,32 @@ const DaftarHadir = () => {
     defaultValues
   });
 
+  // Reset dependent fields when parent field changes
+  const watchProgram = watch('program');
+  const watchKegiatan = watch('kegiatan');
+  const watchKro = watch('kro');
+
+  useEffect(() => {
+    if (watchProgram) {
+      setValue('kegiatan', '');
+      setValue('kro', '');
+      setValue('ro', '');
+    }
+  }, [watchProgram, setValue]);
+
+  useEffect(() => {
+    if (watchKegiatan) {
+      setValue('kro', '');
+      setValue('ro', '');
+    }
+  }, [watchKegiatan, setValue]);
+
+  useEffect(() => {
+    if (watchKro) {
+      setValue('ro', '');
+    }
+  }, [watchKro, setValue]);
+
   // Fetch data programs
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -456,13 +532,15 @@ const DaftarHadir = () => {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "program"
+            range: "program!A:C"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('Program rows:', rows);
+        
         if (rows.length > 1) {
           const programData = rows.slice(1).map((row: any[]) => ({
             id: row[1] || '',
