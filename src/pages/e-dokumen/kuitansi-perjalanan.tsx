@@ -86,11 +86,11 @@ const DEFAULT_VALUES: Partial<FormValues> = {
 // Kecamatan options
 const kecamatanOptions = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"];
 
-// Constants - SAMA DENGAN POLA KAK
+// Constants
 const TARGET_SPREADSHEET_ID = "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
-// Custom hook untuk submit data - SAMA PERSIS DENGAN KAK
+// Custom hook untuk submit data
 const useSubmitKuitansiToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -126,7 +126,7 @@ const useSubmitKuitansiToSheets = () => {
   return { submitData, isSubmitting };
 };
 
-// Format tanggal Indonesia - SAMA DENGAN KAK
+// Format tanggal Indonesia
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   
@@ -137,7 +137,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya - SAMA DENGAN KAK
+// Fungsi untuk mendapatkan nomor urut berikutnya
 const getNextSequenceNumber = async (): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -182,6 +182,58 @@ const getNextSequenceNumber = async (): Promise<number> => {
   }
 };
 
+// Fungsi untuk generate ID kuitansi (kui-yymmxxx)
+const generateKuitansiId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `kui-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: "KuitansiPerjalananDinas!B:B"
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching kuitansi IDs:", error);
+      throw new Error("Gagal mengambil ID kuitansi terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    // Filter ID yang sesuai dengan prefix bulan ini
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating kuitansi ID:", error);
+    throw error;
+  }
+};
+
 const KuitansiPerjalananDinas = () => {
   const navigate = useNavigate();
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
@@ -190,7 +242,7 @@ const KuitansiPerjalananDinas = () => {
   const [organikData, setOrganikData] = useState<Array<{nip: string; nama: string; jabatan: string}>>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
 
-  // Gunakan hook yang sama dengan KAK
+  // Gunakan hook untuk submit data
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitKuitansiToSheets();
 
   // Initialize form
@@ -225,7 +277,7 @@ const KuitansiPerjalananDinas = () => {
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
 
-  // Fetch data organik - SAMA DENGAN KAK
+  // Fetch data organik
   const fetchOrganikData = async () => {
     setLoadingOrganik(true);
     try {
@@ -278,13 +330,13 @@ const KuitansiPerjalananDinas = () => {
     fetchOrganikData();
   }, []);
 
-  // Create name mappings
-  const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name]));
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
-  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
-  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  // Create name mappings dengan format yang benar (hanya nama tanpa kode)
+  const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name.split(' - ')[0]]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name.split(' - ')[0]]));
 
   // Helper functions
   const formatDateForSheets = (date: Date | undefined): string => {
@@ -298,7 +350,7 @@ const KuitansiPerjalananDinas = () => {
     return parseInt(numericValue) || 0;
   };
 
-  // Fungsi untuk generate array kecamatan - SESUAI URUTAN HEADER
+  // Fungsi untuk generate array kecamatan sesuai urutan header
   const generateKecamatanArray = (details: KecamatanDetail[]) => {
     const arr = [];
     
@@ -346,7 +398,7 @@ const KuitansiPerjalananDinas = () => {
     ));
   };
 
-  // Form submission handler - MENGIRIM ARRAY SEPERTI KAK
+  // Form submission handler
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -411,46 +463,49 @@ const KuitansiPerjalananDinas = () => {
         }
       }
 
-      // Generate nomor urut baru - SAMA DENGAN KAK
+      // Generate nomor urut baru dan ID kuitansi
       const sequenceNumber = await getNextSequenceNumber();
+      const kuitansiId = await generateKuitansiId();
       
-      // TRANSFORM DATA KE ARRAY - SESUAI URUTAN HEADER SPREADSHEET
+      // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
       const rowData = [
-        sequenceNumber, // Kolom 1: Nomor Urut
-        values.nomorSuratTugas, // Kolom 2: Nomor Surat Tugas
-        formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 3: Tanggal Surat Tugas
-        values.namaPelaksana, // Kolom 4: Pelaksana Perjalanan Dinas
-        values.tujuanPerjalanan, // Kolom 5: Tujuan Pelaksanaan Perjalanan Dinas
-        values.kabupatenKota || "", // Kolom 6: Kab/Kota Tujuan
-        values.namaTempatTujuan || "", // Kolom 7: Nama Tempat Tujuan
-        formatTanggalIndonesia(values.tanggalBerangkat), // Kolom 8: Tanggal Berangkat
-        formatTanggalIndonesia(values.tanggalKembali), // Kolom 9: Tanggal Kembali
-        formatTanggalIndonesia(values.tanggalPengajuan), // Kolom 10: Tanggal Pengajuan
-        programsMap[values.program] || values.program, // Kolom 11: Program
-        kegiatanMap[values.kegiatan] || values.kegiatan, // Kolom 12: Kegiatan
-        kroMap[values.kro] || values.kro, // Kolom 13: KRO
-        roMap[values.ro] || values.ro, // Kolom 14: RO
-        komponenMap[values.komponen] || values.komponen, // Kolom 15: Komponen
-        akunMap[values.akun] || values.akun, // Kolom 16: Akun
-        formatCurrency(values.biayaTransport), // Kolom 17: Biaya Transport Kab/Kota Tujuan (PP)
-        formatCurrency(values.biayaBBM), // Kolom 18: Biaya Pembelian BBM/Tol (PP)
-        formatCurrency(values.biayaPenginapan), // Kolom 19: Biaya Penginapan/Hotel
-        values.jenisPerjalanan, // Kolom 20: Jenis Perjalanan Dinas
-        // Kolom 21-50: 30 fields untuk kecamatan (10 kecamatan × 3 field)
+        sequenceNumber, // Kolom 1: No (urut)
+        kuitansiId, // Kolom 2: id (kui-yymmxxx)
+        values.nomorSuratTugas, // Kolom 3: Nomor Surat Tugas
+        formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 4: Tanggal Surat Tugas
+        values.namaPelaksana, // Kolom 5: Pelaksana Perjalanan Dinas
+        values.tujuanPerjalanan, // Kolom 6: Tujuan Pelaksanaan Perjalanan Dinas
+        values.kabupatenKota || "", // Kolom 7: Kab/Kota Tujuan
+        values.namaTempatTujuan || "", // Kolom 8: Nama Tempat Tujuan
+        formatTanggalIndonesia(values.tanggalBerangkat), // Kolom 9: Tanggal Berangkat
+        formatTanggalIndonesia(values.tanggalKembali), // Kolom 10: Tanggal Kembali
+        formatTanggalIndonesia(values.tanggalPengajuan), // Kolom 11: Tanggal Pengajuan
+        programsMap[values.program] || values.program, // Kolom 12: Program (hanya nama)
+        kegiatanMap[values.kegiatan] || values.kegiatan, // Kolom 13: Kegiatan (hanya nama)
+        kroMap[values.kro] || values.kro, // Kolom 14: KRO (hanya nama)
+        roMap[values.ro] || values.ro, // Kolom 15: RO (hanya nama)
+        komponenMap[values.komponen] || values.komponen, // Kolom 16: Komponen (hanya nama)
+        akunMap[values.akun] || values.akun, // Kolom 17: Akun (hanya nama)
+        formatCurrency(values.biayaTransport), // Kolom 18: Biaya Transport Kab/Kota Tujuan (PP)
+        formatCurrency(values.biayaBBM), // Kolom 19: Biaya Pembelian BBM/Tol (PP)
+        formatCurrency(values.biayaPenginapan), // Kolom 20: Biaya Penginapan/Hotel
+        values.jenisPerjalanan, // Kolom 21: Jenis Perjalanan Dinas
+        // Kolom 22-51: 30 fields untuk kecamatan (10 kecamatan × 3 field)
         ...generateKecamatanArray(kecamatanDetails),
-        "Draft", // Kolom 51: Status
-        "" // Kolom 52: Link
+        "Draft", // Kolom 52: Status
+        "" // Kolom 53: Link
       ];
 
       console.log('📋 Final kuitansi data array:', rowData);
       console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 Kuitansi ID:', kuitansiId);
 
-      // SUBMIT DATA - CARA YANG SAMA DENGAN KAK
+      // SUBMIT DATA
       await submitData(rowData);
 
       toast({
         title: "Berhasil",
-        description: `Data kuitansi perjalanan dinas berhasil disimpan (No. ${sequenceNumber})`
+        description: `Data kuitansi perjalanan dinas berhasil disimpan (ID: ${kuitansiId})`
       });
       navigate("/e-dokumen/buat");
 
@@ -623,7 +678,7 @@ const KuitansiPerjalananDinas = () => {
                           <SelectContent>
                             {programList.map(program => (
                               <SelectItem key={program.id} value={program.id}>
-                                {program.name}
+                                {program.name.split(' - ')[0]} {/* Hanya tampilkan nama tanpa kode */}
                               </SelectItem>
                             ))}
                           </SelectContent>
