@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+// Types
 interface FormValues {
   namaKegiatan: string;
   detil: string;
@@ -34,6 +35,40 @@ interface FormValues {
   mitra: string[];
   pembuatDaftar: string;
 }
+
+interface Option {
+  id: string;
+  name: string;
+  jabatan?: string;
+  kecamatan?: string;
+}
+
+// Constants
+const CONSTANTS = {
+  SPREADSHEET: {
+    TARGET_ID: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+    SOURCE_ID: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"
+  },
+  SHEET_NAMES: {
+    DAFTAR_HADIR: "DaftarHadir",
+    PROGRAM: "program",
+    KEGIATAN: "kegiatan",
+    KRO: "kro",
+    RO: "ro",
+    KOMPONEN: "komponen",
+    AKUN: "akun",
+    ORGANIK: "MASTER.ORGANIK",
+    MITRA: "MASTER.MITRA"
+  }
+} as const;
+
+const TRAINING_CENTER_OPTIONS = [
+  "BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", 
+  "Garden Hotel", "Horison Ultima", "Achiera Hotel"
+];
+
+const JENIS_OPTIONS = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
 const defaultValues: FormValues = {
   namaKegiatan: "",
@@ -54,24 +89,125 @@ const defaultValues: FormValues = {
   pembuatDaftar: ""
 };
 
-const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
-const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
-
-// Constants
-const TARGET_SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0";
-const SHEET_NAME = "DaftarHadir";
-
-// Format tanggal Indonesia
+// Utility Functions
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   return format(date, "dd MMMM yyyy", { locale: id });
 };
 
-// Simple Searchable Select Component untuk SINGLE SELECT
+// Custom Hooks
+const useSheetData = () => {
+  const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId,
+          operation: "read",
+          range
+        }
+      });
+
+      if (error) throw error;
+      return data?.values || [];
+    } catch (error) {
+      console.error(`Error fetching sheet data from ${range}:`, error);
+      throw error;
+    }
+  }, []);
+
+  return { fetchSheetData };
+};
+
+const useSequenceGenerator = () => {
+  const { fetchSheetData } = useSheetData();
+
+  const getNextSequenceNumber = useCallback(async (): Promise<number> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:A`
+    );
+
+    if (values.length <= 1) return 1;
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+  }, [fetchSheetData]);
+
+  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `dh-${year}${month}`;
+
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!B:B`
+    );
+
+    if (values.length <= 1) return `${prefix}001`;
+
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[1])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    const nextNum = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  }, [fetchSheetData]);
+
+  return { getNextSequenceNumber, generateDaftarHadirId };
+};
+
+const useDataSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+          operation: "append",
+          range: `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:O`,
+          values: [data]
+        }
+      });
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Components
 const SearchableSelect: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
-  options: Array<{ id: string; name: string }>;
+  options: Option[];
   placeholder?: string;
   disabled?: boolean;
 }> = ({ value, onValueChange, options, placeholder = "Pilih...", disabled = false }) => {
@@ -111,11 +247,10 @@ const SearchableSelect: React.FC<{
   );
 };
 
-// Multi Select Component untuk PESERTA (Organik dan Mitra)
 const MultiSelect: React.FC<{
   value: string[];
   onValueChange: (value: string[]) => void;
-  options: Array<{ id: string; name: string; jabatan?: string; kecamatan?: string }>;
+  options: Option[];
   placeholder?: string;
 }> = ({ value, onValueChange, options, placeholder = "Pilih..." }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,10 +261,8 @@ const MultiSelect: React.FC<{
 
   const handleSelect = (selectedValue: string) => {
     if (value.includes(selectedValue)) {
-      // Remove if already selected
       onValueChange(value.filter(v => v !== selectedValue));
     } else {
-      // Add if not selected
       onValueChange([...value, selectedValue]);
     }
   };
@@ -185,7 +318,6 @@ const MultiSelect: React.FC<{
         </SelectContent>
       </Select>
       
-      {/* Selected count */}
       {value.length > 0 && (
         <p className="text-xs text-green-600">
           {value.length} peserta terpilih
@@ -195,139 +327,29 @@ const MultiSelect: React.FC<{
   );
 };
 
-// Custom hook untuk submit data
-const useSubmitDaftarHadirToSheets = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitData = async (data: any[]) => {
-    setIsSubmitting(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "append",
-          range: `${SHEET_NAME}!A:O`,
-          values: [data]
-        }
-      });
-
-      if (error) throw error;
-      return result;
-    } catch (error) {
-      console.error('Submission error:', error);
-      throw error;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return { submitData, isSubmitting };
-};
-
-// Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A`
-      }
-    });
-
-    if (error) throw error;
-
-    const values = data?.values || [];
-    if (values.length <= 1) return 1;
-
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
-  } catch (error) {
-    console.error("Error generating sequence number:", error);
-    throw error;
-  }
-};
-
-// Fungsi untuk generate ID daftar hadir
-const generateDaftarHadirId = async (): Promise<string> => {
-  try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `dh-${year}${month}`;
-
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
-        operation: "read",
-        range: `${SHEET_NAME}!B:B`
-      }
-    });
-
-    if (error) throw error;
-
-    const values = data?.values || [];
-    if (values.length <= 1) return `${prefix}001`;
-
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[1])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
-      })
-      .filter(num => num > 0);
-
-    const nextNum = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
-  } catch (error) {
-    console.error("Error generating daftar hadir ID:", error);
-    throw error;
-  }
-};
-
-// Komponen Select yang diperbaiki
-const KegiatanSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  programId?: string 
-}> = ({ value, onValueChange, programId }) => {
-  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{id: string, name: string}>>([]);
+const DependentSelect: React.FC<{
+  value: string;
+  onValueChange: (value: string) => void;
+  parentValue?: string;
+  sheetName: string;
+  placeholder: string;
+  disabledPlaceholder: string;
+}> = ({ value, onValueChange, parentValue, sheetName, placeholder, disabledPlaceholder }) => {
+  const [options, setOptions] = useState<Option[]>([]);
+  const { fetchSheetData } = useSheetData();
 
   useEffect(() => {
-    const fetchKegiatan = async () => {
-      if (!programId) {
-        setKegiatanOptions([]);
+    const fetchData = async () => {
+      if (!parentValue) {
+        setOptions([]);
         return;
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kegiatan!A:D"
-          }
-        });
-
-        if (error) throw error;
+        const rows = await fetchSheetData(CONSTANTS.SPREADSHEET.SOURCE_ID, `${sheetName}!A:D`);
         
-        const rows = data?.values || [];
         if (rows.length > 1) {
-          const options = rows
+          const newOptions = rows
             .slice(1)
             .map((row: any[]) => ({
               id: row[2] || '',
@@ -335,238 +357,41 @@ const KegiatanSelect: React.FC<{
             }))
             .filter((item: any) => item.id && item.name);
 
-          setKegiatanOptions(options);
+          setOptions(newOptions);
         }
       } catch (error) {
-        console.error("Error fetching kegiatan:", error);
-        setKegiatanOptions([]);
+        console.error(`Error fetching ${sheetName}:`, error);
+        setOptions([]);
       }
     };
 
-    fetchKegiatan();
-  }, [programId]);
+    fetchData();
+  }, [parentValue, sheetName, fetchSheetData]);
 
   return (
     <SearchableSelect
       value={value}
       onValueChange={onValueChange}
-      options={kegiatanOptions}
-      placeholder={programId ? "Pilih kegiatan" : "Pilih program terlebih dahulu"}
-      disabled={!programId}
+      options={options}
+      placeholder={parentValue ? placeholder : disabledPlaceholder}
+      disabled={!parentValue}
     />
   );
 };
 
-const KROSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  kegiatanId?: string 
-}> = ({ value, onValueChange, kegiatanId }) => {
-  const [kroOptions, setKroOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKRO = async () => {
-      if (!kegiatanId) {
-        setKroOptions([]);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kro!A:D"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const options = rows
-            .slice(1)
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
-            .filter((item: any) => item.id && item.name);
-
-          setKroOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching KRO:", error);
-        setKroOptions([]);
-      }
-    };
-
-    fetchKRO();
-  }, [kegiatanId]);
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={kroOptions}
-      placeholder={kegiatanId ? "Pilih KRO" : "Pilih kegiatan terlebih dahulu"}
-      disabled={!kegiatanId}
-    />
-  );
-};
-
-const ROSelect: React.FC<{ 
-  value: string; 
-  onValueChange: (value: string) => void; 
-  kroId?: string 
-}> = ({ value, onValueChange, kroId }) => {
-  const [roOptions, setRoOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchRO = async () => {
-      if (!kroId) {
-        setRoOptions([]);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "ro!A:D"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const options = rows
-            .slice(1)
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
-            .filter((item: any) => item.id && item.name);
-
-          setRoOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching RO:", error);
-        setRoOptions([]);
-      }
-    };
-
-    fetchRO();
-  }, [kroId]);
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={roOptions}
-      placeholder={kroId ? "Pilih RO" : "Pilih KRO terlebih dahulu"}
-      disabled={!kroId}
-    />
-  );
-};
-
-const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [komponenOptions, setKomponenOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKomponen = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "komponen!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setKomponenOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching komponen:", error);
-      }
-    };
-
-    fetchKomponen();
-  }, []);
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={komponenOptions}
-      placeholder="Pilih komponen"
-    />
-  );
-};
-
-const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchAkun = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "akun!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setAkunOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching akun:", error);
-      }
-    };
-
-    fetchAkun();
-  }, []);
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={akunOptions}
-      placeholder="Pilih akun"
-    />
-  );
-};
-
+// Main Component
 const DaftarHadir = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedOrganik, setSelectedOrganik] = useState<any[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<Array<{id: string, name: string}>>([]);
-  const [organikList, setOrganikList] = useState<Array<{id: string, name: string, jabatan: string}>>([]);
-  const [mitraList, setMitraList] = useState<Array<{id: string, name: string, kecamatan: string}>>([]);
+  const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
+  const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
+  const [programs, setPrograms] = useState<Option[]>([]);
+  const [organikList, setOrganikList] = useState<Option[]>([]);
+  const [mitraList, setMitraList] = useState<Option[]>([]);
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitDaftarHadirToSheets();
+  const { submitData, isSubmitting: isSubmitLoading } = useDataSubmission();
+  const { getNextSequenceNumber, generateDaftarHadirId } = useSequenceGenerator();
+  const { fetchSheetData } = useSheetData();
 
   const {
     control,
@@ -579,8 +404,10 @@ const DaftarHadir = () => {
   const watchedProgram = watch('program');
   const watchedKegiatan = watch('kegiatan');
   const watchedKRO = watch('kro');
+  const watchedOrganik = watch('organik');
+  const watchedMitra = watch('mitra');
 
-  // Reset dependent fields
+  // Reset dependent fields when parent changes
   useEffect(() => {
     if (!watchedProgram) {
       setValue('kegiatan', '');
@@ -602,130 +429,83 @@ const DaftarHadir = () => {
     }
   }, [watchedKRO, setValue]);
 
-  // Fetch data programs
+  // Fetch initial data
   useEffect(() => {
-    const fetchPrograms = async () => {
+    const fetchInitialData = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "program!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const programData = rows.slice(1).map((row: any[]) => ({
+        // Fetch programs
+        const programRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          `${CONSTANTS.SHEET_NAMES.PROGRAM}!A:C`
+        );
+        if (programRows.length > 1) {
+          const programData = programRows.slice(1).map((row: any[]) => ({
             id: row[1] || '',
             name: row[2] || ''
           })).filter((item: any) => item.id && item.name);
-          
           setPrograms(programData);
         }
-      } catch (error) {
-        console.error("Error fetching programs:", error);
-      }
-    };
 
-    fetchPrograms();
-  }, []);
-
-  // Fetch data organik
-  useEffect(() => {
-    const fetchOrganik = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.ORGANIK!A:E"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const organikData = rows.slice(1).map((row: any[]) => ({
+        // Fetch organik
+        const organikRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.MASTER_ID,
+          `${CONSTANTS.SHEET_NAMES.ORGANIK}!A:E`
+        );
+        if (organikRows.length > 1) {
+          const organikData = organikRows.slice(1).map((row: any[]) => ({
             id: row[1] || '',
             name: row[3] || '',
             jabatan: row[4] || ''
           })).filter((item: any) => item.id && item.name);
-          
           setOrganikList(organikData);
         }
-      } catch (error) {
-        console.error("Error fetching organik:", error);
-      }
-    };
 
-    fetchOrganik();
-  }, []);
-
-  // Fetch data mitra
-  useEffect(() => {
-    const fetchMitra = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.MITRA!A:H"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const mitraData = rows.slice(1).map((row: any[]) => ({
+        // Fetch mitra
+        const mitraRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.MASTER_ID,
+          `${CONSTANTS.SHEET_NAMES.MITRA}!A:H`
+        );
+        if (mitraRows.length > 1) {
+          const mitraData = mitraRows.slice(1).map((row: any[]) => ({
             id: `mitra-${row[1]}` || '',
             name: row[2] || '',
             kecamatan: row[7] || ''
           })).filter((item: any) => item.id && item.name);
-          
           setMitraList(mitraData);
         }
       } catch (error) {
-        console.error("Error fetching mitra:", error);
+        console.error("Error fetching initial data:", error);
       }
     };
 
-    fetchMitra();
-  }, []);
+    fetchInitialData();
+  }, [fetchSheetData]);
 
-  // Update selected organik dan mitra
+  // Update selected organik and mitra
   useEffect(() => {
-    const organikIds = watch('organik') || [];
-    const mitraIds = watch('mitra') || [];
+    const updatedOrganik = (watchedOrganik || [])
+      .map(id => organikList.find(item => item.id === id))
+      .filter(Boolean) as Option[];
     
-    const updatedOrganik = organikIds.map(id => 
-      organikList.find(item => item.id === id)
-    ).filter(Boolean);
-    
-    const updatedMitra = mitraIds.map(id => 
-      mitraList.find(item => item.id === id)
-    ).filter(Boolean);
+    const updatedMitra = (watchedMitra || [])
+      .map(id => mitraList.find(item => item.id === id))
+      .filter(Boolean) as Option[];
     
     setSelectedOrganik(updatedOrganik);
     setSelectedMitra(updatedMitra);
-  }, [watch('organik'), watch('mitra'), organikList, mitraList]);
+  }, [watchedOrganik, watchedMitra, organikList, mitraList]);
 
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Generate nomor urut baru dan ID daftar hadir
-      const sequenceNumber = await getNextSequenceNumber();
-      const daftarHadirId = await generateDaftarHadirId();
+      const [sequenceNumber, daftarHadirId] = await Promise.all([
+        getNextSequenceNumber(),
+        generateDaftarHadirId()
+      ]);
 
-      // Get names for display
       const programName = programs.find(p => p.id === data.program)?.name || data.program;
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       
-      // Format data untuk spreadsheet
       const rowData = [
         sequenceNumber,
         daftarHadirId,
@@ -733,11 +513,11 @@ const DaftarHadir = () => {
         data.detil || "",
         data.jenis,
         programName,
-        "", // Kegiatan (akan diisi otomatis)
-        "", // KRO (akan diisi otomatis)
-        "", // RO (akan diisi otomatis)
-        "", // Komponen (akan diisi otomatis)
-        "", // Akun (akan diisi otomatis)
+        data.kegiatan,
+        data.kro,
+        data.ro,
+        data.komponen,
+        data.akun,
         formatTanggalIndonesia(data.tanggalMulai),
         formatTanggalIndonesia(data.tanggalSelesai),
         pembuatDaftar?.name || data.pembuatDaftar,
@@ -769,14 +549,12 @@ const DaftarHadir = () => {
 
   const removeOrganik = (id: string) => {
     const currentOrganik = watch('organik') || [];
-    const updatedOrganik = currentOrganik.filter(orgId => orgId !== id);
-    setValue('organik', updatedOrganik);
+    setValue('organik', currentOrganik.filter(orgId => orgId !== id));
   };
 
   const removeMitra = (id: string) => {
     const currentMitra = watch('mitra') || [];
-    const updatedMitra = currentMitra.filter(mitraId => mitraId !== id);
-    setValue('mitra', updatedMitra);
+    setValue('mitra', currentMitra.filter(mitraId => mitraId !== id));
   };
 
   const isLoading = isSubmitting || isSubmitLoading;
@@ -839,7 +617,7 @@ const DaftarHadir = () => {
                           <SelectValue placeholder="Pilih jenis" />
                         </SelectTrigger>
                         <SelectContent>
-                          {jenisOptions.map(option => (
+                          {JENIS_OPTIONS.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
                         </SelectContent>
@@ -860,7 +638,7 @@ const DaftarHadir = () => {
                           <SelectValue placeholder="Pilih tempat kegiatan" />
                         </SelectTrigger>
                         <SelectContent>
-                          {trainingCenterOptions.map(option => (
+                          {TRAINING_CENTER_OPTIONS.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
                         </SelectContent>
@@ -903,10 +681,13 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Kegiatan harus dipilih" }}
                     render={({ field }) => (
-                      <KegiatanSelect 
-                        value={field.value} 
+                      <DependentSelect 
+                        value={field.value}
                         onValueChange={field.onChange}
-                        programId={watch('program')} 
+                        parentValue={watchedProgram}
+                        sheetName={CONSTANTS.SHEET_NAMES.KEGIATAN}
+                        placeholder="Pilih kegiatan"
+                        disabledPlaceholder="Pilih program terlebih dahulu"
                       />
                     )} 
                   />
@@ -920,10 +701,13 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "KRO harus dipilih" }}
                     render={({ field }) => (
-                      <KROSelect 
-                        value={field.value} 
+                      <DependentSelect 
+                        value={field.value}
                         onValueChange={field.onChange}
-                        kegiatanId={watch('kegiatan')} 
+                        parentValue={watchedKegiatan}
+                        sheetName={CONSTANTS.SHEET_NAMES.KRO}
+                        placeholder="Pilih KRO"
+                        disabledPlaceholder="Pilih kegiatan terlebih dahulu"
                       />
                     )} 
                   />
@@ -937,10 +721,13 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "RO harus dipilih" }}
                     render={({ field }) => (
-                      <ROSelect 
-                        value={field.value} 
+                      <DependentSelect 
+                        value={field.value}
                         onValueChange={field.onChange}
-                        kroId={watch('kro')} 
+                        parentValue={watchedKRO}
+                        sheetName={CONSTANTS.SHEET_NAMES.RO}
+                        placeholder="Pilih RO"
+                        disabledPlaceholder="Pilih KRO terlebih dahulu"
                       />
                     )} 
                   />
@@ -954,9 +741,12 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Komponen harus dipilih" }}
                     render={({ field }) => (
-                      <KomponenSelect 
-                        value={field.value} 
+                      <DependentSelect 
+                        value={field.value}
                         onValueChange={field.onChange}
+                        sheetName={CONSTANTS.SHEET_NAMES.KOMPONEN}
+                        placeholder="Pilih komponen"
+                        disabledPlaceholder="Pilih komponen"
                       />
                     )} 
                   />
@@ -970,9 +760,12 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Akun harus dipilih" }}
                     render={({ field }) => (
-                      <AkunSelect 
-                        value={field.value} 
+                      <DependentSelect 
+                        value={field.value}
                         onValueChange={field.onChange}
+                        sheetName={CONSTANTS.SHEET_NAMES.AKUN}
+                        placeholder="Pilih akun"
+                        disabledPlaceholder="Pilih akun"
                       />
                     )} 
                   />
@@ -982,83 +775,47 @@ const DaftarHadir = () => {
 
               {/* Tanggal */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalMulai" 
-                    control={control} 
-                    rules={{ required: "Tanggal mulai harus diisi" }}
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                    )} 
-                  />
-                  {errors.tanggalMulai && <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tanggal Selesai <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalSelesai" 
-                    control={control} 
-                    rules={{ required: "Tanggal selesai harus diisi" }}
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                    )} 
-                  />
-                  {errors.tanggalSelesai && <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tanggal SPJ <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalSpj" 
-                    control={control} 
-                    rules={{ required: "Tanggal SPJ harus diisi" }}
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                    )} 
-                  />
-                  {errors.tanggalSpj && <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>}
-                </div>
+                {['tanggalMulai', 'tanggalSelesai', 'tanggalSpj'].map((fieldName) => (
+                  <div key={fieldName} className="space-y-2">
+                    <Label>
+                      {fieldName === 'tanggalMulai' && 'Tanggal Mulai'}
+                      {fieldName === 'tanggalSelesai' && 'Tanggal Selesai'}
+                      {fieldName === 'tanggalSpj' && 'Tanggal SPJ'}
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <Controller 
+                      name={fieldName as keyof FormValues} 
+                      control={control} 
+                      rules={{ required: `Tanggal ${fieldName.replace('tanggal', '').toLowerCase()} harus diisi` }}
+                      render={({ field }) => (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar 
+                              mode="single" 
+                              selected={field.value || undefined} 
+                              onSelect={field.onChange} 
+                              initialFocus 
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )} 
+                    />
+                    {errors[fieldName as keyof FormValues] && (
+                      <p className="text-sm text-destructive">
+                        {errors[fieldName as keyof FormValues]?.message}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
 
               {/* Pembuat Daftar */}
