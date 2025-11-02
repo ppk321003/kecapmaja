@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Loader2, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,535 +57,36 @@ const defaultValues: FormValues = {
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
 const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
-// Komponen SearchSelect yang sama seperti di KAK
-interface SearchSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-}
+// Data statis untuk testing - akan diganti dengan data dari spreadsheet nanti
+const staticProgramOptions = [
+  { value: "001", label: "001 - Program Statistik" },
+  { value: "002", label: "002 - Program Pengembangan" }
+];
 
-const SearchSelect: React.FC<SearchSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+const staticKegiatanOptions = [
+  { value: "K001", label: "K001 - Kegiatan Pelatihan" },
+  { value: "K002", label: "K002 - Kegiatan Rapat" }
+];
 
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const staticKROOptions = [
+  { value: "KRO001", label: "KRO001 - Output Pelatihan" },
+  { value: "KRO002", label: "KRO002 - Output Rapat" }
+];
 
-  const selectedOption = options.find(opt => opt.value === value);
+const staticROOptions = [
+  { value: "RO001", label: "RO001 - Rincian Pelatihan" },
+  { value: "RO002", label: "RO002 - Rincian Rapat" }
+];
 
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm("");
-    }
-  }, [isOpen]);
+const staticKomponenOptions = [
+  { value: "521211", label: "521211 - Belanja Bahan" },
+  { value: "521213", label: "521213 - Belanja Honor" }
+];
 
-  return (
-    <Select
-      value={value}
-      onValueChange={(value) => {
-        onValueChange(value);
-        setIsOpen(false);
-      }}
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      disabled={disabled}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="max-h-[300px]">
-        <div className="relative p-2 border-b">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-        </div>
-        
-        <div className="max-h-[250px] overflow-y-auto">
-          {filteredOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-          
-          {filteredOptions.length === 0 && (
-            <div className="p-2 text-sm text-muted-foreground text-center">
-              Tidak ditemukan
-            </div>
-          )}
-        </div>
-      </SelectContent>
-    </Select>
-  );
-};
-
-// Komponen ProgramSelect
-interface ProgramSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const ProgramSelect: React.FC<ProgramSelectProps> = ({ value, onValueChange }) => {
-  const [programOptions, setProgramOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching programs...');
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "program!A:C"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching programs:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw program data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 Program rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // program_id
-            label: `${row[1]} - ${row[2]}` // kode - nama
-          })).filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Program options:', options);
-          setProgramOptions(options);
-        } else {
-          console.log('ℹ️ No program data found');
-          setProgramOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching programs:", error);
-        setProgramOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPrograms();
-  }, []);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={programOptions}
-      placeholder={loading ? "Memuat program..." : "Pilih program"}
-      disabled={loading}
-    />
-  );
-};
-
-// Komponen KegiatanSelect
-interface KegiatanSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  programId?: string;
-}
-
-const KegiatanSelect: React.FC<KegiatanSelectProps> = ({ value, onValueChange, programId }) => {
-  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchKegiatan = async () => {
-      if (!programId) {
-        setKegiatanOptions([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching kegiatan for program:', programId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kegiatan!A:D"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching kegiatan:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw kegiatan data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 Kegiatan rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => {
-              const matchesProgram = row[1] === programId;
-              console.log(`🔍 Checking row:`, row, `matches program ${programId}:`, matchesProgram);
-              return matchesProgram;
-            })
-            .map((row: any[]) => ({
-              value: row[2] || '', // kegiatan_id
-              label: `${row[2]} - ${row[3]}` // kode - nama
-            }))
-            .filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Filtered kegiatan options:', options);
-          setKegiatanOptions(options);
-        } else {
-          console.log('ℹ️ No kegiatan data found');
-          setKegiatanOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching kegiatan:", error);
-        setKegiatanOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchKegiatan();
-  }, [programId]);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={kegiatanOptions}
-      placeholder={
-        loading ? "Memuat..." : 
-        !programId ? "Pilih program terlebih dahulu" : 
-        "Pilih kegiatan"
-      }
-      disabled={!programId || loading}
-    />
-  );
-};
-
-// Komponen KROSelect
-interface KROSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  kegiatanId?: string;
-}
-
-const KROSelect: React.FC<KROSelectProps> = ({ value, onValueChange, kegiatanId }) => {
-  const [kroOptions, setKroOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchKRO = async () => {
-      if (!kegiatanId) {
-        setKroOptions([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching KRO for kegiatan:', kegiatanId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kro!A:D"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching KRO:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw KRO data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 KRO rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kegiatanId)
-            .map((row: any[]) => ({
-              value: row[2] || '', // kro_id
-              label: `${row[2]} - ${row[3]}` // kode - nama
-            }))
-            .filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Filtered KRO options:', options);
-          setKroOptions(options);
-        } else {
-          console.log('ℹ️ No KRO data found');
-          setKroOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching KRO:", error);
-        setKroOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchKRO();
-  }, [kegiatanId]);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={kroOptions}
-      placeholder={
-        loading ? "Memuat..." : 
-        !kegiatanId ? "Pilih kegiatan terlebih dahulu" : 
-        "Pilih KRO"
-      }
-      disabled={!kegiatanId || loading}
-    />
-  );
-};
-
-// Komponen ROSelect
-interface ROSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  kroId?: string;
-}
-
-const ROSelect: React.FC<ROSelectProps> = ({ value, onValueChange, kroId }) => {
-  const [roOptions, setRoOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchRO = async () => {
-      if (!kroId) {
-        setRoOptions([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching RO for KRO:', kroId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "ro!A:D"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching RO:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw RO data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 RO rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kroId)
-            .map((row: any[]) => ({
-              value: row[2] || '', // ro_id
-              label: `${row[2]} - ${row[3]}` // kode - nama
-            }))
-            .filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Filtered RO options:', options);
-          setRoOptions(options);
-        } else {
-          console.log('ℹ️ No RO data found');
-          setRoOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching RO:", error);
-        setRoOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRO();
-  }, [kroId]);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={roOptions}
-      placeholder={
-        loading ? "Memuat..." : 
-        !kroId ? "Pilih KRO terlebih dahulu" : 
-        "Pilih RO"
-      }
-      disabled={!kroId || loading}
-    />
-  );
-};
-
-// Komponen KomponenSelect
-interface KomponenSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const KomponenSelect: React.FC<KomponenSelectProps> = ({ value, onValueChange }) => {
-  const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchKomponen = async () => {
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching komponen...');
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "komponen!A:C"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching komponen:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw komponen data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 Komponen rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // komponen_id
-            label: `${row[1]} - ${row[2]}` // kode - nama
-          })).filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Komponen options:', options);
-          setKomponenOptions(options);
-        } else {
-          console.log('ℹ️ No komponen data found');
-          setKomponenOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching komponen:", error);
-        setKomponenOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchKomponen();
-  }, []);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={komponenOptions}
-      placeholder={loading ? "Memuat komponen..." : "Pilih komponen"}
-      disabled={loading}
-    />
-  );
-};
-
-// Komponen AkunSelect
-interface AkunSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchAkun = async () => {
-      setLoading(true);
-      try {
-        console.log('🔄 Fetching akun...');
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "akun!A:C"
-          }
-        });
-
-        if (error) {
-          console.error("❌ Error fetching akun:", error);
-          throw error;
-        }
-        
-        console.log('📊 Raw akun data:', data);
-        
-        const rows = data?.values || [];
-        console.log('📋 Akun rows count:', rows.length);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            value: row[1] || '', // akun_id
-            label: `${row[1]} - ${row[2]}` // kode - nama
-          })).filter((item: any) => item.value && item.label);
-          
-          console.log('✅ Akun options:', options);
-          setAkunOptions(options);
-        } else {
-          console.log('ℹ️ No akun data found');
-          setAkunOptions([]);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching akun:", error);
-        setAkunOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAkun();
-  }, []);
-
-  return (
-    <SearchSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={akunOptions}
-      placeholder={loading ? "Memuat akun..." : "Pilih akun"}
-      disabled={loading}
-    />
-  );
-};
+const staticAkunOptions = [
+  { value: "521211", label: "521211 - Belanja Bahan" },
+  { value: "521213", label: "521213 - Belanja Honor Operasional" }
+];
 
 // Komponen FormSelect untuk multi select
 interface FormSelectProps {
@@ -640,6 +141,513 @@ const FormSelect: React.FC<FormSelectProps> = ({
       </SelectTrigger>
       <SelectContent>
         {options.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen ProgramSelect dengan fallback ke data statis
+interface ProgramSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const ProgramSelect: React.FC<ProgramSelectProps> = ({ value, onValueChange }) => {
+  const [programOptions, setProgramOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      setLoading(true);
+      try {
+        console.log('🔄 Fetching programs from spreadsheet...');
+        
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "program!A:Z" // Range lebih luas untuk menangkap semua data
+          }
+        });
+
+        if (error) {
+          console.error("❌ Error fetching programs:", error);
+          throw error;
+        }
+        
+        console.log('📊 Raw program data:', data);
+        
+        const rows = data?.values || [];
+        console.log('📋 Program rows:', rows);
+        
+        if (rows && rows.length > 1) {
+          // Coba berbagai struktur data
+          let options: Array<{value: string; label: string}> = [];
+          
+          // Coba struktur 1: Kolom B = kode, Kolom C = nama
+          if (rows[0].includes('Kode') || rows[0].includes('kode')) {
+            const kodeIndex = rows[0].findIndex((col: string) => col.toLowerCase().includes('kode'));
+            const namaIndex = rows[0].findIndex((col: string) => col.toLowerCase().includes('nama'));
+            
+            options = rows.slice(1)
+              .map((row: any[]) => ({
+                value: row[kodeIndex] || '',
+                label: `${row[kodeIndex] || ''} - ${row[namaIndex] || ''}`
+              }))
+              .filter((item: any) => item.value && item.label);
+          } else {
+            // Fallback: ambil dari kolom B dan C
+            options = rows.slice(1)
+              .map((row: any[]) => ({
+                value: row[1] || '',
+                label: `${row[1] || ''} - ${row[2] || ''}`
+              }))
+              .filter((item: any) => item.value && item.label);
+          }
+          
+          if (options.length > 0) {
+            console.log('✅ Program options from spreadsheet:', options);
+            setProgramOptions(options);
+          } else {
+            console.log('ℹ️ No valid program data found, using static data');
+            setProgramOptions(staticProgramOptions);
+          }
+        } else {
+          console.log('ℹ️ No program data found in spreadsheet, using static data');
+          setProgramOptions(staticProgramOptions);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching programs, using static data:", error);
+        setProgramOptions(staticProgramOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={loading ? "Memuat program..." : "Pilih program"} />
+      </SelectTrigger>
+      <SelectContent>
+        {programOptions.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen KegiatanSelect dengan fallback
+interface KegiatanSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  programId?: string;
+}
+
+const KegiatanSelect: React.FC<KegiatanSelectProps> = ({ value, onValueChange, programId }) => {
+  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchKegiatan = async () => {
+      if (!programId) {
+        setKegiatanOptions([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        console.log('🔄 Fetching kegiatan for program:', programId);
+        
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "kegiatan!A:Z"
+          }
+        });
+
+        if (error) {
+          console.error("❌ Error fetching kegiatan:", error);
+          throw error;
+        }
+        
+        const rows = data?.values || [];
+        console.log('📋 Kegiatan rows:', rows);
+        
+        if (rows && rows.length > 1) {
+          let options: Array<{value: string; label: string}> = [];
+          
+          // Cari berdasarkan program_id
+          options = rows.slice(1)
+            .filter((row: any[]) => row[1] === programId) // Kolom B = program_id
+            .map((row: any[]) => ({
+              value: row[2] || '', // Kolom C = kegiatan_id
+              label: `${row[2] || ''} - ${row[3] || ''}` // Kolom D = nama
+            }))
+            .filter((item: any) => item.value && item.label);
+          
+          if (options.length > 0) {
+            console.log('✅ Kegiatan options from spreadsheet:', options);
+            setKegiatanOptions(options);
+          } else {
+            console.log('ℹ️ No kegiatan data found for program, using static data');
+            setKegiatanOptions(staticKegiatanOptions);
+          }
+        } else {
+          console.log('ℹ️ No kegiatan data found, using static data');
+          setKegiatanOptions(staticKegiatanOptions);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching kegiatan, using static data:", error);
+        setKegiatanOptions(staticKegiatanOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKegiatan();
+  }, [programId]);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!programId || loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={
+          loading ? "Memuat..." : 
+          !programId ? "Pilih program terlebih dahulu" : 
+          "Pilih kegiatan"
+        } />
+      </SelectTrigger>
+      <SelectContent>
+        {kegiatanOptions.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen KROSelect dengan fallback
+interface KROSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  kegiatanId?: string;
+}
+
+const KROSelect: React.FC<KROSelectProps> = ({ value, onValueChange, kegiatanId }) => {
+  const [kroOptions, setKroOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchKRO = async () => {
+      if (!kegiatanId) {
+        setKroOptions([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "kro!A:Z"
+          }
+        });
+
+        if (error) throw error;
+        
+        const rows = data?.values || [];
+        
+        if (rows && rows.length > 1) {
+          const options = rows.slice(1)
+            .filter((row: any[]) => row[1] === kegiatanId)
+            .map((row: any[]) => ({
+              value: row[2] || '',
+              label: `${row[2] || ''} - ${row[3] || ''}`
+            }))
+            .filter((item: any) => item.value && item.label);
+          
+          if (options.length > 0) {
+            setKroOptions(options);
+          } else {
+            setKroOptions(staticKROOptions);
+          }
+        } else {
+          setKroOptions(staticKROOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching KRO, using static data:", error);
+        setKroOptions(staticKROOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKRO();
+  }, [kegiatanId]);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!kegiatanId || loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={
+          loading ? "Memuat..." : 
+          !kegiatanId ? "Pilih kegiatan terlebih dahulu" : 
+          "Pilih KRO"
+        } />
+      </SelectTrigger>
+      <SelectContent>
+        {kroOptions.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen ROSelect dengan fallback
+interface ROSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  kroId?: string;
+}
+
+const ROSelect: React.FC<ROSelectProps> = ({ value, onValueChange, kroId }) => {
+  const [roOptions, setRoOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchRO = async () => {
+      if (!kroId) {
+        setRoOptions([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "ro!A:Z"
+          }
+        });
+
+        if (error) throw error;
+        
+        const rows = data?.values || [];
+        
+        if (rows && rows.length > 1) {
+          const options = rows.slice(1)
+            .filter((row: any[]) => row[1] === kroId)
+            .map((row: any[]) => ({
+              value: row[2] || '',
+              label: `${row[2] || ''} - ${row[3] || ''}`
+            }))
+            .filter((item: any) => item.value && item.label);
+          
+          if (options.length > 0) {
+            setRoOptions(options);
+          } else {
+            setRoOptions(staticROOptions);
+          }
+        } else {
+          setRoOptions(staticROOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching RO, using static data:", error);
+        setRoOptions(staticROOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRO();
+  }, [kroId]);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!kroId || loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={
+          loading ? "Memuat..." : 
+          !kroId ? "Pilih KRO terlebih dahulu" : 
+          "Pilih RO"
+        } />
+      </SelectTrigger>
+      <SelectContent>
+        {roOptions.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen KomponenSelect dengan fallback
+interface KomponenSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const KomponenSelect: React.FC<KomponenSelectProps> = ({ value, onValueChange }) => {
+  const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchKomponen = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "komponen!A:Z"
+          }
+        });
+
+        if (error) throw error;
+        
+        const rows = data?.values || [];
+        
+        if (rows && rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => ({
+            value: row[1] || '',
+            label: `${row[1] || ''} - ${row[2] || ''}`
+          })).filter((item: any) => item.value && item.label);
+          
+          if (options.length > 0) {
+            setKomponenOptions(options);
+          } else {
+            setKomponenOptions(staticKomponenOptions);
+          }
+        } else {
+          setKomponenOptions(staticKomponenOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching komponen, using static data:", error);
+        setKomponenOptions(staticKomponenOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKomponen();
+  }, []);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={loading ? "Memuat komponen..." : "Pilih komponen"} />
+      </SelectTrigger>
+      <SelectContent>
+        {komponenOptions.map(option => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Komponen AkunSelect dengan fallback
+interface AkunSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
+  const [akunOptions, setAkunOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchAkun = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "akun!A:Z"
+          }
+        });
+
+        if (error) throw error;
+        
+        const rows = data?.values || [];
+        
+        if (rows && rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => ({
+            value: row[1] || '',
+            label: `${row[1] || ''} - ${row[2] || ''}`
+          })).filter((item: any) => item.value && item.label);
+          
+          if (options.length > 0) {
+            setAkunOptions(options);
+          } else {
+            setAkunOptions(staticAkunOptions);
+          }
+        } else {
+          setAkunOptions(staticAkunOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching akun, using static data:", error);
+        setAkunOptions(staticAkunOptions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAkun();
+  }, []);
+
+  return (
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={loading}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={loading ? "Memuat akun..." : "Pilih akun"} />
+      </SelectTrigger>
+      <SelectContent>
+        {akunOptions.map(option => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>
@@ -743,14 +751,16 @@ const DaftarHadir = () => {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
             operation: "read",
-            range: "MASTER.ORGANIK"
+            range: "MASTER.ORGANIK!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
-        if (rows.length > 1) {
+        console.log('Organik rows:', rows);
+        
+        if (rows && rows.length > 1) {
           const organikData = rows.slice(1).map((row: any[]) => ({
             id: row[1] || '', // NIP
             name: row[3] || '', // Nama
@@ -778,14 +788,16 @@ const DaftarHadir = () => {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
             operation: "read",
-            range: "MASTER.MITRA"
+            range: "MASTER.MITRA!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
-        if (rows.length > 1) {
+        console.log('Mitra rows:', rows);
+        
+        if (rows && rows.length > 1) {
           const mitraData = rows.slice(1).map((row: any[]) => ({
             id: `mitra-${row[1]}` || '', // NIK
             name: row[2] || '', // Nama
@@ -840,8 +852,10 @@ const DaftarHadir = () => {
         data.ro,
         data.komponen,
         data.akun,
+        data.trainingCenter,
         formatTanggalIndonesia(data.tanggalMulai),
         formatTanggalIndonesia(data.tanggalSelesai),
+        formatTanggalIndonesia(data.tanggalSpj),
         pembuatDaftar?.name || data.pembuatDaftar,
         selectedOrganik.map(org => org.name).join(", "),
         selectedMitra.map(mitra => mitra.name).join(", ")
