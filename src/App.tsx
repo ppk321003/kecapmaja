@@ -24,7 +24,7 @@ import KuitansiTransportLokal from "./pages/e-dokumen/kuitansi-transport";
 import LemburLaporan from "./pages/e-dokumen/lembur-laporan";
 import SPJHonor from "./pages/e-dokumen/spj-honor";
 import SuratKeputusan from "./pages/e-dokumen/surat-keputusan";
-import SuratPernyataan from "./pages/e-dokumen/spj-honor";
+import SuratPernyataan from "./pages/e-dokumen/surat-pernyataan";
 import TandaTerima from "./pages/e-dokumen/tanda-terima";
 import TransportLokal from "./pages/e-dokumen/transport-lokal";
 import UangHarianTransport from "./pages/e-dokumen/uang-harian-transport";
@@ -84,7 +84,7 @@ const App = () => (
             <Route path="/spk-bast/download-spj" element={<ProtectedRoute><Layout><DownloadSPJ /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/mitra-kepka" element={<ProtectedRoute><Layout><MitraKepka /></Layout></ProtectedRoute>} />
+            <Route path="/spk-bast/mitra-kepka" element={<ProtectedRoute><MitraKepka /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
