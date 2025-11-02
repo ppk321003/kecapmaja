@@ -246,7 +246,7 @@ const MitraKepka = () => {
         <div>
           <h1 className="text-3xl font-bold text-primary">Mitra Kepka</h1>
           <p className="text-muted-foreground mt-2">
-            Data Mitra Kegiatan Keperluan Kegiatan - Pendataan dan pengelolaan informasi petugas mitra statistik
+            Data Mitra Statistik dilinkungan BPS Kabupaten Majalengka Tahun 2025
           </p>
         </div>
 

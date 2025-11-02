@@ -14,20 +14,10 @@ export default function SPKBast() {
   ];
 
   const spkBastMenuItems = [{
-    title: "Entri Petugas",
-    url: "/spk-bast/entri-petugas",
-    icon: Users,
-    description: "Pendataan dan pengelolaan informasi petugas mitra statistik"
-  }, {
     title: "Entri Kegiatan",
     url: "/spk-bast/entri-target",
     icon: Target,
     description: "Input target dan kegiatan yang akan dilaksanakan"
-  }, {
-    title: "Entri Realisasi",
-    url: "/spk-bast/entri-realisasi",
-    icon: CheckSquare,
-    description: "Input realisasi kegiatan yang telah dilaksanakan"
   }, {
     title: "Cek SBML",
     url: "/spk-bast/cek-sbml",
