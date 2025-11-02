@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { toast } from "@/hooks/use-toast";
 import { TandaTerimaData, TandaTerimaItem } from "@/types";
-import { useOrganikBPS, useMitraStatistik, useSaveDocument } from "@/hooks/use-database";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { supabase } from "@/integrations/supabase/client";
 
 const TandaTerima = () => {
   const navigate = useNavigate();
@@ -28,16 +28,145 @@ const TandaTerima = () => {
   const {
     data: mitraStatistikList = []
   } = useMitraStatistik();
-  const saveDocument = useSaveDocument();
 
-  // Google Sheets submission hook
-  const submitToSheets = useSubmitToSheets({
-    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-    sheetName: "TandaTerima",
-    onSuccess: () => {
-      navigate("/e-dokumen/buat");
+  // Constants
+  const TARGET_SPREADSHEET_ID = "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8";
+  const SHEET_NAME = "TandaTerima";
+
+  // Custom hook untuk submit data
+  const useSubmitTandaTerimaToSheets = () => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const submitData = async (data: any[]) => {
+      setIsSubmitting(true);
+      try {
+        console.log('📤 Submitting tanda terima data to sheets:', data);
+        
+        const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: TARGET_SPREADSHEET_ID,
+            operation: "append",
+            range: `${SHEET_NAME}!A:AQ`,
+            values: [data]
+          }
+        });
+
+        if (error) {
+          console.error('❌ Error submitting tanda terima:', error);
+          throw error;
+        }
+
+        console.log('✅ Tanda terima submission successful:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ Submission error:', error);
+        throw error;
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return { submitData, isSubmitting };
+  };
+
+  // Fungsi untuk mendapatkan nomor urut berikutnya
+  const getNextSequenceNumber = async (): Promise<number> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "read",
+          range: `${SHEET_NAME}!A:A`
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching sequence numbers:", error);
+        throw new Error("Gagal mengambil nomor urut terakhir");
+      }
+
+      const values = data?.values || [];
+      
+      if (values.length <= 1) {
+        return 1;
+      }
+
+      const sequenceNumbers = values
+        .slice(1)
+        .map((row: any[]) => {
+          const value = row[0];
+          if (typeof value === 'string' && value.trim() !== '') {
+            const num = parseInt(value);
+            return isNaN(num) ? 0 : num;
+          }
+          return 0;
+        })
+        .filter(num => num > 0);
+
+      if (sequenceNumbers.length === 0) {
+        return 1;
+      }
+
+      return Math.max(...sequenceNumbers) + 1;
+    } catch (error) {
+      console.error("Error generating sequence number:", error);
+      throw error;
     }
-  });
+  };
+
+  // Fungsi untuk generate ID tanda terima (tt-yymmxxx)
+  const generateTandaTerimaId = async (): Promise<string> => {
+    try {
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const prefix = `tt-${year}${month}`;
+
+      // Ambil semua data untuk mencari nomor terakhir di bulan ini
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "read",
+          range: `${SHEET_NAME}!B:B`
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching tanda terima IDs:", error);
+        throw new Error("Gagal mengambil ID tanda terima terakhir");
+      }
+
+      const values = data?.values || [];
+      
+      if (values.length <= 1) {
+        return `${prefix}001`;
+      }
+
+      // Filter ID yang sesuai dengan prefix bulan ini
+      const currentMonthIds = values
+        .slice(1)
+        .map((row: any[]) => row[1]) // Kolom B adalah ID
+        .filter((id: string) => id && id.startsWith(prefix))
+        .map((id: string) => {
+          const numStr = id.replace(prefix, '');
+          const num = parseInt(numStr);
+          return isNaN(num) ? 0 : num;
+        })
+        .filter(num => num > 0);
+
+      if (currentMonthIds.length === 0) {
+        return `${prefix}001`;
+      }
+
+      const nextNum = Math.max(...currentMonthIds) + 1;
+      return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+    } catch (error) {
+      console.error("Error generating tanda terima ID:", error);
+      throw error;
+    }
+  };
+
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitTandaTerimaToSheets();
 
   // Define react-hook-form
   const {
@@ -58,7 +187,6 @@ const TandaTerima = () => {
       organikBPS: [],
       mitraStatistik: [],
       daftarItem: [
-      // Explicitly define each required field with non-null initial values
       {
         namaItem: "",
         banyaknya: 1,
@@ -113,33 +241,82 @@ const TandaTerima = () => {
     control,
     name: "daftarItem"
   });
+
+  const formatTanggalIndonesia = (date: Date | null): string => {
+    if (!date) return "";
+    
+    const day = date.getDate();
+    const month = date.toLocaleDateString('id-ID', { month: 'long' });
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
+  };
+
   const onSubmit = async (data: TandaTerimaData) => {
     setIsSubmitting(true);
     try {
-      // Add name mappings to data for Google Sheets
-      const submissionData = {
-        ...data,
-        _pembuatDaftarName: pembuatDaftarName,
-        _organikNameMap: organikNameMap,
-        _mitraNameMap: mitraNameMap
-      };
+      // Generate nomor urut baru dan ID tanda terima
+      const sequenceNumber = await getNextSequenceNumber();
+      const tandaTerimaId = await generateTandaTerimaId();
 
-      // Save to Google Sheets only
-      await submitToSheets.mutateAsync(submissionData);
+      // Prepare data for spreadsheet submission
+      const pembuatDaftar = organikBPSList.find(item => item.id === data.pembuatDaftar);
+      const organikNames = Object.values(organikNameMap).join(" | ");
+      const mitraNames = Object.values(mitraNameMap).join(" | ");
 
-      // No need to save to Supabase
+      // Generate array for 15 items (sesuai header)
+      const itemsArray = [];
+      for (let i = 0; i < 15; i++) {
+        const item = data.daftarItem[i];
+        if (item) {
+          itemsArray.push(
+            item.namaItem || "",
+            item.banyaknya?.toString() || "",
+            item.satuan || ""
+          );
+        } else {
+          itemsArray.push("", "", ""); // Empty values for unused items
+        }
+      }
 
-      // No need to navigate here as it's handled in the onSuccess of submitToSheets
-    } catch (error) {
+      // Format data sesuai struktur spreadsheet
+      const rowData = [
+        sequenceNumber, // Kolom 1: No
+        tandaTerimaId, // Kolom 2: Id (tt-yymmxxx)
+        data.namaKegiatan, // Kolom 3: Nama Kegiatan
+        data.detail || "", // Kolom 4: Detail Kegiatan
+        formatTanggalIndonesia(new Date(data.tanggalPembuatanDaftar)), // Kolom 5: Tanggal Pembuatan Daftar
+        pembuatDaftar?.name || data.pembuatDaftar, // Kolom 6: Pembuat Daftar
+        organikNames, // Kolom 7: Organik
+        mitraNames, // Kolom 8: Mitra Statistik
+        ...itemsArray // Kolom 9-53: 15 items × 3 fields = 45 fields
+      ];
+
+      console.log('📋 Final tanda terima data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 Tanda Terima ID:', tandaTerimaId);
+
+      // Submit to Google Sheets
+      await submitData(rowData);
+
+      toast({
+        title: "Berhasil",
+        description: `Tanda terima berhasil disimpan (ID: ${tandaTerimaId})`
+      });
+      navigate("/e-dokumen/buat");
+
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
+        description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
+
   const handleAddItem = () => {
     // Make sure all required fields are defined when adding new items
     append({
@@ -148,7 +325,11 @@ const TandaTerima = () => {
       satuan: ""
     });
   };
-  return <Layout>
+
+  const isLoading = isSubmitting || isSubmitLoading;
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600">Tanda Terima</h1>
@@ -235,64 +416,93 @@ const TandaTerima = () => {
                   </Button>
                 </div>
 
-                {fields.map((field, index) => <Card key={field.id}>
+                {fields.map((field, index) => (
+                  <Card key={field.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-sm font-medium">Item {index + 1}</h4>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => remove(index)} 
+                          disabled={fields.length <= 1}
+                        >
                           <Trash className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
                           <Label htmlFor={`daftarItem.${index}.namaItem`}>Nama Item</Label>
-                          <Input id={`daftarItem.${index}.namaItem`} placeholder="Masukkan nama item" {...register(`daftarItem.${index}.namaItem` as const, {
-                        required: "Nama item harus diisi"
-                      })} />
-                          {errors.daftarItem?.[index]?.namaItem && <p className="text-sm text-destructive">
+                          <Input 
+                            id={`daftarItem.${index}.namaItem`} 
+                            placeholder="Masukkan nama item" 
+                            {...register(`daftarItem.${index}.namaItem` as const, {
+                              required: "Nama item harus diisi"
+                            })} 
+                          />
+                          {errors.daftarItem?.[index]?.namaItem && (
+                            <p className="text-sm text-destructive">
                               {errors.daftarItem[index]?.namaItem?.message}
-                            </p>}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor={`daftarItem.${index}.banyaknya`}>Banyaknya</Label>
-                          <Input id={`daftarItem.${index}.banyaknya`} type="number" placeholder="Masukkan jumlah" {...register(`daftarItem.${index}.banyaknya` as const, {
-                        required: "Jumlah harus diisi",
-                        valueAsNumber: true,
-                        min: {
-                          value: 1,
-                          message: "Minimal 1"
-                        }
-                      })} />
-                          {errors.daftarItem?.[index]?.banyaknya && <p className="text-sm text-destructive">
+                          <Input 
+                            id={`daftarItem.${index}.banyaknya`} 
+                            type="number" 
+                            placeholder="Masukkan jumlah" 
+                            {...register(`daftarItem.${index}.banyaknya` as const, {
+                              required: "Jumlah harus diisi",
+                              valueAsNumber: true,
+                              min: {
+                                value: 1,
+                                message: "Minimal 1"
+                              }
+                            })} 
+                          />
+                          {errors.daftarItem?.[index]?.banyaknya && (
+                            <p className="text-sm text-destructive">
                               {errors.daftarItem[index]?.banyaknya?.message}
-                            </p>}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor={`daftarItem.${index}.satuan`}>Satuan</Label>
-                          <Input id={`daftarItem.${index}.satuan`} placeholder="Masukkan satuan" {...register(`daftarItem.${index}.satuan` as const, {
-                        required: "Satuan harus diisi"
-                      })} />
-                          {errors.daftarItem?.[index]?.satuan && <p className="text-sm text-destructive">
+                          <Input 
+                            id={`daftarItem.${index}.satuan`} 
+                            placeholder="Masukkan satuan" 
+                            {...register(`daftarItem.${index}.satuan` as const, {
+                              required: "Satuan harus diisi"
+                            })} 
+                          />
+                          {errors.daftarItem?.[index]?.satuan && (
+                            <p className="text-sm text-destructive">
                               {errors.daftarItem[index]?.satuan?.message}
-                            </p>}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </CardContent>
-                  </Card>)}
+                  </Card>
+                ))}
               </div>
 
               <div className="flex space-x-4">
                 <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")}>
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">
-                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
+                <Button type="submit" disabled={isLoading} className="flex-1 bg-teal-700 hover:bg-teal-600">
+                  {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default TandaTerima;
