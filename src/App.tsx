@@ -30,16 +30,13 @@ import TransportLokal from "./pages/e-dokumen/transport-lokal";
 import UangHarianTransport from "./pages/e-dokumen/uang-harian-transport";
 import EntriPetugas from "./pages/spk-bast/EntriPetugas";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
-import EntriRealisasi from "./pages/spk-bast/EntriRealisasi";
 import CekSBML from "./pages/spk-bast/CekSBML";
-import EntriSBML from "./pages/spk-bast/EntriSBML";
-import EntriPengelola from "./pages/spk-bast/EntriPengelola";
-import ApprovalPPK from "./pages/spk-bast/ApprovalPPK";
+import EntriSBML from "./pages/EntriSBML";
+import EntriPengelola from "./pages/EntriPengelola";
 import DownloadSPKBAST from "./pages/spk-bast/DownloadSPKBAST";
-import DownloadSPJ from "./pages/spk-bast/DownloadSPJ";
-import DownloadRawData from "./pages/spk-bast/DownloadRawData";
-import Pedoman from "./pages/spk-bast/Pedoman";
-import MitraKepka from "./pages/spk-bast/MitraKepka";
+import DownloadRawData from "./pages/DownloadRawData";
+import Pedoman from "./pages/Pedoman";
+import MitraKepka from "./pages/MitraKepka";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,16 +72,13 @@ const App = () => (
             <Route path="/e-dokumen/uang-harian-transport" element={<ProtectedRoute><UangHarianTransport /></ProtectedRoute>} />
             <Route path="/spk-bast/entri-petugas" element={<ProtectedRoute><Layout><EntriPetugas /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/entri-realisasi" element={<ProtectedRoute><Layout><EntriRealisasi /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/cek-sbml" element={<ProtectedRoute><Layout><CekSBML /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/entri-sbml" element={<ProtectedRoute><Layout><EntriSBML /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/entri-pengelola" element={<ProtectedRoute><Layout><EntriPengelola /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/approval-ppk" element={<ProtectedRoute><Layout><ApprovalPPK /></Layout></ProtectedRoute>} />
+            <Route path="/entri-sbml" element={<ProtectedRoute><Layout><EntriSBML /></Layout></ProtectedRoute>} />
+            <Route path="/entri-pengelola" element={<ProtectedRoute><Layout><EntriPengelola /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/download-spk-bast" element={<ProtectedRoute><Layout><DownloadSPKBAST /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/download-spj" element={<ProtectedRoute><Layout><DownloadSPJ /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/mitra-kepka" element={<ProtectedRoute><Layout><MitraKepka /></Layout></ProtectedRoute>} />
+            <Route path="/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
+            <Route path="/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
+            <Route path="/mitra-kepka" element={<ProtectedRoute><MitraKepka /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
