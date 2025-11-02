@@ -452,7 +452,7 @@ const KuitansiPerjalananDinas = () => {
         title: "Berhasil",
         description: `Data kuitansi perjalanan dinas berhasil disimpan (No. ${sequenceNumber})`
       });
-      navigate("/buat-dokumen");
+      navigate("/e-dokumen/buat");
 
     } catch (error: any) {
       console.error("Error submitting form:", error);
@@ -1046,7 +1046,7 @@ const KuitansiPerjalananDinas = () => {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => navigate("/buat-dokumen")}
+                    onClick={() => navigate("/e-dokumen/buat")}
                     disabled={isLoading}
                   >
                     Batal
