@@ -1,56 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
+import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Loader2, Search, Trash } from "lucide-react";
+import { Calendar as CalendarIcon, Trash } from "lucide-react";
+import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import { ProgramSelect } from "@/components/ProgramSelect";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
+import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
-import { KomponenSelect } from "@/components/KomponenSelect";
 import { AkunSelect } from "@/components/AkunSelect";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { FormSelect } from "@/components/FormSelect";
 
-const TARGET_SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0";
-const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
-
-interface OrganikData {
-  nip: string;
-  nama: string;
-  jabatan: string;
-  kecamatan: string;
-}
-
-interface MitraData {
-  id: string;
-  nik: string;
-  nama: string;
-  pekerjaan: string;
-  alamat: string;
-  bank: string;
-  rekening: string;
-  kecamatan: string;
-}
-
-interface Peserta {
-  id: string;
-  nama: string;
-  jenis: "organik" | "mitra";
-  kecamatan?: string;
-}
-
-interface FormData {
+interface FormValues {
   namaKegiatan: string;
   detil: string;
   jenis: string;
@@ -67,12 +40,29 @@ interface FormData {
   organik: string[];
   mitra: string[];
   pembuatDaftar: string;
-  peserta: Peserta[];
 }
 
-// Options
-const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
+const defaultValues: FormValues = {
+  namaKegiatan: "",
+  detil: "",
+  jenis: "",
+  program: "",
+  kegiatan: "",
+  kro: "",
+  ro: "",
+  komponen: "",
+  akun: "",
+  trainingCenter: "",
+  tanggalMulai: null,
+  tanggalSelesai: null,
+  tanggalSpj: null,
+  organik: [],
+  mitra: [],
+  pembuatDaftar: ""
+};
+
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
+const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
 // Format tanggal Indonesia
 const formatTanggalIndonesia = (date: Date | null): string => {
@@ -85,655 +75,134 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
-// Fungsi untuk mendapatkan nama dari kode
-const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
-  if (!kode) return kode;
-  
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: DATABASE_SHEET_ID,
-        operation: "read",
-        range: sheetName
-      }
-    });
-
-    if (error || !data?.values) {
-      console.error(`Error fetching ${sheetName}:`, error);
-      return kode;
-    }
-
-    const rows = data.values.slice(1); // Skip header
-    const foundRow = rows.find((row: any[]) => {
-      // Cari berdasarkan kode di kolom B (index 1)
-      return row[1] === kode;
-    });
-
-    if (foundRow) {
-      // Kolom C = index 2, Kolom D = index 3
-      const columnIndex = namaColumn === 'C' ? 2 : 3;
-      return foundRow[columnIndex] || kode;
-    }
-
-    return kode;
-  } catch (error) {
-    console.error(`Error in getNamaFromKode for ${sheetName}:`, error);
-    return kode;
-  }
-};
-
-// Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
-  try {
-    // Baca kolom A (nomor urut) dari spreadsheet
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
-        operation: "read",
-        range: "DaftarHadir!A:A"
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching sequence numbers:", error);
-      throw new Error("Gagal mengambil nomor urut terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    if (values.length <= 1) {
-      // Jika hanya header atau kosong, mulai dari 1
-      return 1;
-    }
-
-    // Skip header dan ambil hanya angka dari kolom A
-    const sequenceNumbers = values
-      .slice(1) // Skip header
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    if (sequenceNumbers.length === 0) {
-      return 1;
-    }
-
-    return Math.max(...sequenceNumbers) + 1;
-  } catch (error) {
-    console.error("Error generating sequence number:", error);
-    throw error;
-  }
-};
-
-// Komponen Select dengan Search yang lebih baik (diadopsi dari KAK)
-interface SearchSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-}
-
-const SearchSelect: React.FC<SearchSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const selectedOption = options.find(opt => opt.value === value);
-
-  // Reset search ketika dropdown dibuka/ditutup
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm("");
-    }
-  }, [isOpen]);
-
-  return (
-    <Select
-      value={value}
-      onValueChange={(value) => {
-        onValueChange(value);
-        setIsOpen(false);
-      }}
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      disabled={disabled}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent className="max-h-[300px]">
-        {/* Search Input */}
-        <div className="relative p-2 border-b">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-        </div>
-        
-        {/* Options */}
-        <div className="max-h-[250px] overflow-y-auto">
-          {filteredOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-          
-          {filteredOptions.length === 0 && (
-            <div className="p-2 text-sm text-muted-foreground text-center">
-              Tidak ditemukan
-            </div>
-          )}
-        </div>
-      </SelectContent>
-    </Select>
-  );
-};
-
 const DaftarHadir = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const [organikData, setOrganikData] = useState<OrganikData[]>([]);
-  const [mitraData, setMitraData] = useState<MitraData[]>([]);
-  const [loadingOrganik, setLoadingOrganik] = useState(false);
-  const [loadingMitra, setLoadingMitra] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [labelCache, setLabelCache] = useState<{[key: string]: string}>({});
-  const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [akunOptions, setAkunOptions] = useState<Array<{value: string; label: string}>>([]);
-  const [loadingKomponen, setLoadingKomponen] = useState(false);
-  const [loadingAkun, setLoadingAkun] = useState(false);
-  
-  const [formData, setFormData] = useState<FormData>({
-    namaKegiatan: "",
-    detil: "",
-    jenis: "",
-    program: "",
-    kegiatan: "",
-    kro: "",
-    ro: "",
-    komponen: "",
-    akun: "",
-    trainingCenter: "",
-    tanggalMulai: null,
-    tanggalSelesai: null,
-    tanggalSpj: null,
-    organik: [],
-    mitra: [],
-    pembuatDaftar: "",
-    peserta: []
+  const [selectedOrganik, setSelectedOrganik] = useState<any[]>([]);
+  const [selectedMitra, setSelectedMitra] = useState<any[]>([]);
+
+  // Use react-hook-form
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useForm<FormValues>({
+    defaultValues
   });
 
-  // Fetch data organik dari Google Sheets menggunakan Supabase function
-  const fetchOrganikData = async () => {
-    setLoadingOrganik(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: ORGANIK_SHEET_ID,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
-      });
+  // Data queries
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatan = [] } = useKegiatan(watch('program') || null);
+  const { data: kros = [] } = useKRO(watch('kegiatan') || null);
+  const { data: ros = [] } = useRO(watch('kro') || null);
+  const { data: komponenOptions = [] } = useKomponen();
+  const { data: akuns = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
 
-      if (error) {
-        console.error("Error fetching organik data:", error);
-        throw new Error(error.message || 'Gagal mengambil data organik');
-      }
-
-      const rows = data?.values || [];
-      
-      if (!rows || rows.length <= 1) {
-        setOrganikData([]);
-        return;
-      }
-      
-      // Skip header (baris pertama)
-      const organikRows = rows.slice(1);
-      
-      const formattedData: OrganikData[] = organikRows
-        .map((row: any[]) => ({
-          nip: row[1] || '', // NIP BPS (kolom B)
-          nama: row[3] || '', // Nama (kolom D)
-          jabatan: row[4] || '', // Jabatan (kolom E)
-          kecamatan: row[5] || '' // Kecamatan (kolom F)
-        }))
-        .filter((item: OrganikData) => item.nama && item.nip);
-      
-      setOrganikData(formattedData);
-      
-    } catch (error: any) {
-      console.error('Error fetching organik data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengambil data organik: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingOrganik(false);
-    }
-  };
-
-  // Fetch data mitra dari Google Sheets - sheet MASTER.MITRA
-  const fetchMitraData = async () => {
-    setLoadingMitra(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: ORGANIK_SHEET_ID, // Menggunakan sheet yang sama dengan organik
-          operation: "read",
-          range: "MASTER.MITRA"
-        }
-      });
-
-      if (error) {
-        console.error("Error fetching mitra data:", error);
-        throw new Error(error.message || 'Gagal mengambil data mitra');
-      }
-
-      const rows = data?.values || [];
-      
-      if (!rows || rows.length <= 1) {
-        setMitraData([]);
-        return;
-      }
-      
-      // Skip header (baris pertama)
-      const mitraRows = rows.slice(1);
-      
-      const formattedData: MitraData[] = mitraRows
-        .map((row: any[], index: number) => ({
-          id: `mitra-${index}`,
-          nik: row[1] || '', // NIK (kolom B)
-          nama: row[2] || '', // Nama (kolom C)
-          pekerjaan: row[3] || '', // Pekerjaan (kolom D)
-          alamat: row[4] || '', // Alamat (kolom E)
-          bank: row[5] || '', // Bank (kolom F)
-          rekening: row[6] || '', // Rekening (kolom G)
-          kecamatan: row[7] || '' // Kecamatan (kolom H)
-        }))
-        .filter((item: MitraData) => item.nama);
-      
-      setMitraData(formattedData);
-      
-    } catch (error: any) {
-      console.error('Error fetching mitra data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengambil data mitra: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingMitra(false);
-    }
-  };
-
-  // Fetch data komponen untuk search select
-  const fetchKomponenOptions = async () => {
-    setLoadingKomponen(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: DATABASE_SHEET_ID,
-          operation: "read",
-          range: "komponen"
-        }
-      });
-
-      if (error || !data?.values) {
-        console.error("Error fetching komponen data:", error);
-        return;
-      }
-
-      const rows = data.values.slice(1); // Skip header
-      const options = rows
-        .map((row: any[]) => ({
-          value: row[1] || '', // Kode komponen (kolom B)
-          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
-        }))
-        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
-
-      setKomponenOptions(options);
-    } catch (error) {
-      console.error("Error fetching komponen options:", error);
-    } finally {
-      setLoadingKomponen(false);
-    }
-  };
-
-  // Fetch data akun untuk search select
-  const fetchAkunOptions = async () => {
-    setLoadingAkun(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: DATABASE_SHEET_ID,
-          operation: "read",
-          range: "akun"
-        }
-      });
-
-      if (error || !data?.values) {
-        console.error("Error fetching akun data:", error);
-        return;
-      }
-
-      const rows = data.values.slice(1); // Skip header
-      const options = rows
-        .map((row: any[]) => ({
-          value: row[1] || '', // Kode akun (kolom B)
-          label: `${row[1]} - ${row[2]}` // Kode - Nama (kolom C)
-        }))
-        .filter((opt: {value: string; label: string}) => opt.value && opt.label);
-
-      setAkunOptions(options);
-    } catch (error) {
-      console.error("Error fetching akun options:", error);
-    } finally {
-      setLoadingAkun(false);
-    }
-  };
-
-  // Fungsi untuk mendapatkan label dengan caching
-  const getLabelWithCache = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
-    const cacheKey = `${sheetName}-${kode}`;
-    
-    if (labelCache[cacheKey]) {
-      return labelCache[cacheKey];
-    }
-    
-    const nama = await getNamaFromKode(sheetName, kode, namaColumn);
-    setLabelCache(prev => ({...prev, [cacheKey]: nama}));
-    return nama;
-  };
-
-  // Fungsi submit menggunakan Supabase function
-  const submitToSpreadsheet = async (rowData: any[]) => {
-    try {
-      console.log("📤 Submitting data to spreadsheet...");
-      console.log("📊 Data length:", rowData.length);
-
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "append",
-          range: "DaftarHadir",
-          values: [rowData]
-        }
-      });
-
-      if (error) {
-        console.error("❌ Supabase function error:", error);
-        throw new Error(error.message || 'Gagal mengirim data ke spreadsheet');
-      }
-
-      console.log("✅ Submit successful:", data);
-      return data;
-    } catch (error: any) {
-      console.error("❌ Error submitting to spreadsheet:", error);
-      throw error;
-    }
-  };
-
-  // Load data saat komponen mount
-  useEffect(() => {
-    fetchOrganikData();
-    fetchMitraData();
-    fetchKomponenOptions();
-    fetchAkunOptions();
-  }, []);
-
-  const handleChange = (field: keyof FormData, value: any) => {
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [field]: value
-      };
-
-      // Reset dependent fields
-      if (field === 'program') {
-        newData.kegiatan = '';
-        newData.kro = '';
-        newData.ro = '';
-        newData.komponen = '';
-        newData.akun = '';
-      } else if (field === 'kegiatan') {
-        newData.kro = '';
-        newData.ro = '';
-        newData.komponen = '';
-        newData.akun = '';
-      } else if (field === 'kro') {
-        newData.ro = '';
-        newData.komponen = '';
-        newData.akun = '';
-      } else if (field === 'ro') {
-        newData.komponen = '';
-        newData.akun = '';
-      } else if (field === 'komponen') {
-        newData.akun = '';
-      }
-
-      return newData;
-    });
-  };
-
-  const handleOrganikChange = (values: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      organik: values,
-      peserta: [
-        ...prev.peserta.filter(p => p.jenis !== "organik"),
-        ...values.map(orgId => {
-          const org = organikData.find(o => o.nip === orgId);
-          return {
-            id: `org-${orgId}`,
-            nama: org?.nama || "",
-            jenis: "organik" as const,
-            kecamatan: org?.kecamatan
-          };
-        })
-      ]
-    }));
-  };
-
-  const handleMitraChange = (values: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      mitra: values,
-      peserta: [
-        ...prev.peserta.filter(p => p.jenis !== "mitra"),
-        ...values.map(mitraId => {
-          const mitra = mitraData.find(m => m.id === mitraId);
-          return {
-            id: `mitra-${mitraId}`,
-            nama: mitra?.nama || "",
-            jenis: "mitra" as const,
-            kecamatan: mitra?.kecamatan
-          };
-        })
-      ]
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validasi dasar
-    if (!formData.namaKegiatan || !formData.jenis || !formData.program || !formData.kegiatan || 
-        !formData.kro || !formData.ro || !formData.komponen || !formData.akun ||
-        !formData.tanggalMulai || !formData.tanggalSelesai || !formData.tanggalSpj ||
-        !formData.pembuatDaftar) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Semua field wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validasi peserta
-    if (formData.organik.length === 0 && formData.mitra.length === 0) {
-      toast({
-        title: "Validasi Gagal",
-        description: "Pilih minimal satu peserta (organik atau mitra)",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validasi tanggal
-    if (formData.tanggalMulai && formData.tanggalSelesai && formData.tanggalMulai > formData.tanggalSelesai) {
-      toast({
-        title: "Validasi Tanggal Gagal",
-        description: "Tanggal selesai harus setelah atau sama dengan tanggal mulai",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Generate nomor urut baru
-      const sequenceNumber = await getNextSequenceNumber();
-      
-      // Dapatkan nama dari kode untuk setiap field
-      const [
-        programNama,
-        kegiatanNama, 
-        kroNama,
-        roNama,
-        komponenNama,
-        akunNama
-      ] = await Promise.all([
-        getLabelWithCache("program", formData.program, 'C'),
-        getLabelWithCache("kegiatan", formData.kegiatan, 'D'),
-        getLabelWithCache("kro", formData.kro, 'D'),
-        getLabelWithCache("ro", formData.ro, 'D'),
-        getLabelWithCache("komponen", formData.komponen, 'C'),
-        getLabelWithCache("akun", formData.akun, 'C')
-      ]);
-
-      // Dapatkan nama pembuat daftar
-      const pembuatDaftarData = organikData.find(org => org.nip === formData.pembuatDaftar);
-      const pembuatDaftarNama = pembuatDaftarData?.nama || formData.pembuatDaftar;
-
-      // Siapkan data peserta organik (maksimal 30)
-      const pesertaOrganikData = [];
-      for (let i = 0; i < 30; i++) {
-        if (i < formData.organik.length) {
-          const orgId = formData.organik[i];
-          const org = organikData.find(o => o.nip === orgId);
-          pesertaOrganikData.push(org?.nama || "");
-        } else {
-          pesertaOrganikData.push("");
-        }
-      }
-
-      // Siapkan data peserta mitra (maksimal 30)
-      const pesertaMitraData = [];
-      for (let i = 0; i < 30; i++) {
-        if (i < formData.mitra.length) {
-          const mitraId = formData.mitra[i];
-          const mitra = mitraData.find(m => m.id === mitraId);
-          pesertaMitraData.push(mitra?.nama || "");
-        } else {
-          pesertaMitraData.push("");
-        }
-      }
-
-      // Susun rowData sesuai header spreadsheet
-      const rowData = [
-        sequenceNumber, // Kolom 1: Nomor Urut
-        formData.namaKegiatan, // Kolom 2: Nama Kegiatan
-        formData.detil, // Kolom 3: Detil
-        formData.jenis, // Kolom 4: Jenis
-        programNama, // Kolom 5: Program Pembebanan
-        kegiatanNama, // Kolom 6: Kegiatan
-        kroNama, // Kolom 7: KRO
-        roNama, // Kolom 8: RO
-        komponenNama, // Kolom 9: Komponen
-        akunNama, // Kolom 10: Akun
-        formData.trainingCenter, // Kolom 11: Tempat Kegiatan
-        formatTanggalIndonesia(formData.tanggalMulai), // Kolom 12: Tanggal Mulai
-        formatTanggalIndonesia(formData.tanggalSelesai), // Kolom 13: Tanggal Selesai
-        formatTanggalIndonesia(formData.tanggalSpj), // Kolom 14: Tanggal SPJ
-        pembuatDaftarNama, // Kolom 15: Pembuat Daftar
-        ...pesertaOrganikData, // Kolom 16-45: 30 fields untuk peserta organik
-        ...pesertaMitraData, // Kolom 46-75: 30 fields untuk peserta mitra
-        "", // Kolom 76: Status
-        "" // Kolom 77: Link
-      ];
-
-      console.log("📋 Final data to submit:", {
-        sequenceNumber,
-        namaKegiatan: formData.namaKegiatan,
-        program: programNama,
-        kegiatan: kegiatanNama,
-        pesertaOrganik: formData.organik.length,
-        pesertaMitra: formData.mitra.length
-      });
-      console.log("🔢 Total columns:", rowData.length);
-
-      // Submit menggunakan Supabase function
-      await submitToSpreadsheet(rowData);
-
+  const submitMutation = useSubmitToSheets({
+    documentType: "DaftarHadir",
+    onSuccess: () => {
       toast({
         title: "Sukses!",
-        description: `Daftar Hadir berhasil disimpan dengan nomor: ${sequenceNumber}`,
+        description: "Daftar Hadir berhasil disimpan",
         variant: "default"
       });
-
-      // Navigate kembali setelah sukses
-      setTimeout(() => {
-        navigate("/buat-dokumen");
-      }, 2000);
-
-    } catch (error: any) {
-      console.error("❌ Error submitting Daftar Hadir:", error);
+      navigate("/buat-dokumen");
+    },
+    onError: (error) => {
       toast({
-        title: "Error",
-        description: "Gagal menyimpan data: " + error.message,
-        variant: "destructive"
+        variant: "destructive",
+        title: "Gagal menyimpan dokumen",
+        description: error.message || "Terjadi kesalahan saat menyimpan data"
+      });
+    }
+  });
+
+  // Effect untuk update selected organik dan mitra
+  useEffect(() => {
+    const organikIds = watch('organik') || [];
+    const mitraIds = watch('mitra') || [];
+    
+    const updatedOrganik = organikIds.map(id => 
+      organikList.find(item => item.id === id)
+    ).filter(Boolean);
+    
+    const updatedMitra = mitraIds.map(id => 
+      mitraList.find(item => item.id === id)
+    ).filter(Boolean);
+    
+    setSelectedOrganik(updatedOrganik);
+    setSelectedMitra(updatedMitra);
+  }, [watch('organik'), watch('mitra'), organikList, mitraList]);
+
+  const handleSubmitForm = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      console.log('Form data submitted:', data);
+
+      // Prepare data for Google Sheets submission
+      const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
+      
+      // Format data sesuai struktur spreadsheet
+      const sheetData = {
+        // Data utama sesuai header spreadsheet
+        namaKegiatan: data.namaKegiatan,
+        detil: data.detil || "",
+        jenis: data.jenis,
+        program: programs.find(p => p.id === data.program)?.name || data.program,
+        kegiatan: kegiatan.find(k => k.id === data.kegiatan)?.name || data.kegiatan,
+        kro: kros.find(k => k.id === data.kro)?.name || data.kro,
+        ro: ros.find(r => r.id === data.ro)?.name || data.ro,
+        komponen: komponenOptions.find(k => k.id === data.komponen)?.name || data.komponen,
+        akun: akuns.find(a => a.id === data.akun)?.name || data.akun,
+        tanggalMulai: formatTanggalIndonesia(data.tanggalMulai),
+        tanggalSelesai: formatTanggalIndonesia(data.tanggalSelesai),
+        pembuatDaftar: pembuatDaftar?.name || data.pembuatDaftar,
+        organik: selectedOrganik.map(org => org.name).join(", "),
+        mitra: selectedMitra.map(mitra => mitra.name).join(", "),
+        
+        // Additional data for processing
+        trainingCenter: data.trainingCenter,
+        tanggalSpj: formatTanggalIndonesia(data.tanggalSpj),
+        organikList: selectedOrganik,
+        mitraList: selectedMitra
+      };
+
+      console.log('Data prepared for sheets:', sheetData);
+
+      // Submit to Google Sheets
+      await submitMutation.mutateAsync(sheetData);
+
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan dokumen",
+        description: "Terjadi kesalahan saat menyimpan data"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const removeOrganik = (orgId: string) => {
-    handleOrganikChange(formData.organik.filter(id => id !== orgId));
+  const removeOrganik = (id: string) => {
+    const currentOrganik = watch('organik') || [];
+    const updatedOrganik = currentOrganik.filter(orgId => orgId !== id);
+    setValue('organik', updatedOrganik);
   };
 
-  const removeMitra = (mitraId: string) => {
-    handleMitraChange(formData.mitra.filter(id => id !== mitraId));
+  const removeMitra = (id: string) => {
+    const currentMitra = watch('mitra') || [];
+    const updatedMitra = currentMitra.filter(mitraId => mitraId !== id);
+    setValue('mitra', updatedMitra);
   };
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 space-y-6 max-w-7xl px-4">
+      <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-orange-600">Daftar Hadir</h1>
           <p className="text-muted-foreground mt-2">
@@ -746,69 +215,87 @@ const DaftarHadir = () => {
             <CardTitle className="text-xl">Form Daftar Hadir</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(handleSubmitForm)} className="space-y-6">
               {/* Informasi Kegiatan */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="namaKegiatan">Nama Kegiatan <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="namaKegiatan"
-                    value={formData.namaKegiatan}
-                    onChange={(e) => handleChange('namaKegiatan', e.target.value)}
-                    placeholder="Contoh: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025"
-                    required
-                    className="w-full"
+                  <Controller 
+                    name="namaKegiatan" 
+                    control={control} 
+                    rules={{ required: "Nama kegiatan harus diisi" }}
+                    render={({ field }) => (
+                      <Input 
+                        id="namaKegiatan" 
+                        placeholder="Contoh: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025"
+                        value={field.value} 
+                        onChange={field.onChange} 
+                      />
+                    )} 
                   />
+                  {errors.namaKegiatan && <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="detil">Detil Kegiatan</Label>
-                  <Input
-                    id="detil"
-                    value={formData.detil}
-                    onChange={(e) => handleChange('detil', e.target.value)}
-                    placeholder="Contoh: Pemutakhiran Perkembangan Desa Tahun 2025"
-                    className="w-full"
+                  <Controller 
+                    name="detil" 
+                    control={control} 
+                    render={({ field }) => (
+                      <Input 
+                        id="detil" 
+                        placeholder="Contoh: Pemutakhiran Perkembangan Desa Tahun 2025"
+                        value={field.value} 
+                        onChange={field.onChange} 
+                      />
+                    )} 
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Jenis <span className="text-red-500">*</span></Label>
-                  <Select 
-                    value={formData.jenis} 
-                    onValueChange={(value) => handleChange('jenis', value)}
-                    required
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih jenis" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jenisOptions.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller 
+                    name="jenis" 
+                    control={control} 
+                    rules={{ required: "Jenis harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih jenis" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {jenisOptions.map(option => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )} 
+                  />
+                  {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Tempat Kegiatan</Label>
-                  <Select 
-                    value={formData.trainingCenter} 
-                    onValueChange={(value) => handleChange('trainingCenter', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih tempat kegiatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trainingCenterOptions.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller 
+                    name="trainingCenter" 
+                    control={control} 
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih tempat kegiatan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {trainingCenterOptions.map(option => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )} 
+                  />
                 </div>
               </div>
 
@@ -816,74 +303,114 @@ const DaftarHadir = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
-                  <ProgramSelect
-                    value={formData.program}
-                    onValueChange={(value) => handleChange('program', value)}
+                  <Controller 
+                    name="program" 
+                    control={control} 
+                    rules={{ required: "Program harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {programs.map(program => (
+                            <SelectItem key={program.id} value={program.id}>
+                              {program.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )} 
                   />
+                  {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Kegiatan <span className="text-red-500">*</span></Label>
-                  <KegiatanSelect
-                    value={formData.kegiatan}
-                    onValueChange={(value) => handleChange('kegiatan', value)}
-                    programId={formData.program}
-                    disabled={!formData.program}
+                  <Controller 
+                    name="kegiatan" 
+                    control={control} 
+                    rules={{ required: "Kegiatan harus dipilih" }}
+                    render={({ field }) => (
+                      <KegiatanSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih kegiatan" 
+                        programId={watch('program')} 
+                      />
+                    )} 
                   />
+                  {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
-                  <KROSelect
-                    value={formData.kro}
-                    onValueChange={(value) => handleChange('kro', value)}
-                    kegiatanId={formData.kegiatan}
-                    disabled={!formData.kegiatan}
+                  <Controller 
+                    name="kro" 
+                    control={control} 
+                    rules={{ required: "KRO harus dipilih" }}
+                    render={({ field }) => (
+                      <KROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih KRO" 
+                        kegiatanId={watch('kegiatan')} 
+                      />
+                    )} 
                   />
+                  {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
-                  <ROSelect
-                    value={formData.ro}
-                    onValueChange={(value) => handleChange('ro', value)}
-                    kroId={formData.kro}
-                    disabled={!formData.kro}
+                  <Controller 
+                    name="ro" 
+                    control={control} 
+                    rules={{ required: "RO harus dipilih" }}
+                    render={({ field }) => (
+                      <ROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih RO" 
+                        kroId={watch('kro')} 
+                      />
+                    )} 
                   />
+                  {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Komponen Output <span className="text-red-500">*</span></Label>
-                  <SearchSelect
-                    value={formData.komponen}
-                    onValueChange={(value) => handleChange('komponen', value)}
-                    options={komponenOptions}
-                    placeholder={loadingKomponen ? "Memuat data..." : "Pilih komponen output"}
-                    disabled={loadingKomponen}
+                  <Controller 
+                    name="komponen" 
+                    control={control} 
+                    rules={{ required: "Komponen harus dipilih" }}
+                    render={({ field }) => (
+                      <KomponenSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih komponen" 
+                      />
+                    )} 
                   />
-                  {loadingKomponen && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Memuat data komponen...
-                    </div>
-                  )}
+                  {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Akun <span className="text-red-500">*</span></Label>
-                  <SearchSelect
-                    value={formData.akun}
-                    onValueChange={(value) => handleChange('akun', value)}
-                    options={akunOptions}
-                    placeholder={loadingAkun ? "Memuat data..." : "Pilih akun"}
-                    disabled={loadingAkun || !formData.komponen}
+                  <Controller 
+                    name="akun" 
+                    control={control} 
+                    rules={{ required: "Akun harus dipilih" }}
+                    render={({ field }) => (
+                      <AkunSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih akun" 
+                      />
+                    )} 
                   />
-                  {loadingAkun && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Memuat data akun...
-                    </div>
-                  )}
+                  {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
                 </div>
               </div>
 
@@ -891,80 +418,104 @@ const DaftarHadir = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.tanggalMulai && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.tanggalMulai ? format(formData.tanggalMulai, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.tanggalMulai || undefined}
-                        onSelect={(date) => handleChange('tanggalMulai', date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Controller 
+                    name="tanggalMulai" 
+                    control={control} 
+                    rules={{ required: "Tanggal mulai harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value || undefined}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )} 
+                  />
+                  {errors.tanggalMulai && <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Tanggal Selesai <span className="text-red-500">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.tanggalSelesai && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.tanggalSelesai ? format(formData.tanggalSelesai, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.tanggalSelesai || undefined}
-                        onSelect={(date) => handleChange('tanggalSelesai', date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Controller 
+                    name="tanggalSelesai" 
+                    control={control} 
+                    rules={{ required: "Tanggal selesai harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value || undefined}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )} 
+                  />
+                  {errors.tanggalSelesai && <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tanggal SPJ <span className="text-red-500">*</span></Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.tanggalSpj && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.tanggalSpj ? format(formData.tanggalSpj, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.tanggalSpj || undefined}
-                        onSelect={(date) => handleChange('tanggalSpj', date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Label>Tanggal membuat daftar <span className="text-red-500">*</span></Label>
+                  <Controller 
+                    name="tanggalSpj" 
+                    control={control} 
+                    rules={{ required: "Tanggal SPJ harus diisi" }}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value || undefined}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )} 
+                  />
+                  {errors.tanggalSpj && <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>}
                 </div>
               </div>
 
@@ -972,29 +523,23 @@ const DaftarHadir = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Pembuat Daftar <span className="text-red-500">*</span></Label>
-                  <Select 
-                    value={formData.pembuatDaftar} 
-                    onValueChange={(value) => handleChange('pembuatDaftar', value)}
-                    required
-                    disabled={loadingOrganik}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Pilih pembuat daftar"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organikData.map((item) => (
-                        <SelectItem key={item.nip} value={item.nip}>
-                          {item.nama} - {item.jabatan}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {loadingOrganik && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Memuat data organik...
-                    </div>
-                  )}
+                  <Controller 
+                    name="pembuatDaftar" 
+                    control={control} 
+                    rules={{ required: "Pembuat daftar harus dipilih" }}
+                    render={({ field }) => (
+                      <FormSelect 
+                        placeholder="Pilih pembuat daftar" 
+                        options={organikList.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))} 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                      />
+                    )} 
+                  />
+                  {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
                 </div>
               </div>
 
@@ -1007,52 +552,42 @@ const DaftarHadir = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Select 
-                        value="" 
-                        onValueChange={(value) => {
-                          if (value && !formData.organik.includes(value)) {
-                            handleOrganikChange([...formData.organik, value]);
-                          }
-                        }}
-                        disabled={loadingOrganik}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Tambah peserta organik"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {organikData
-                            .filter(org => !formData.organik.includes(org.nip))
-                            .map((item) => (
-                              <SelectItem key={item.nip} value={item.nip}>
-                                {item.nama} - {item.jabatan}
-                              </SelectItem>
-                            ))
-                          }
-                        </SelectContent>
-                      </Select>
+                      <Controller 
+                        name="organik" 
+                        control={control} 
+                        render={({ field }) => (
+                          <FormSelect 
+                            placeholder="Pilih organik BPS" 
+                            options={organikList.map(item => ({
+                              value: item.id,
+                              label: item.name
+                            }))} 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            isMulti 
+                          />
+                        )} 
+                      />
                     </div>
                     
                     {/* Daftar peserta organik yang sudah dipilih */}
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {formData.organik.map(orgId => {
-                        const org = organikData.find(o => o.nip === orgId);
-                        return (
-                          <div key={orgId} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{org?.nama}</p>
-                              <p className="text-sm text-muted-foreground">{org?.jabatan}</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeOrganik(orgId)}
-                            >
-                              <Trash className="h-4 w-4 text-destructive" />
-                            </Button>
+                      {selectedOrganik.map(org => (
+                        <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{org.name}</p>
+                            <p className="text-sm text-muted-foreground">{org.jabatan}</p>
                           </div>
-                        );
-                      })}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeOrganik(org.id)}
+                          >
+                            <Trash className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -1064,103 +599,81 @@ const DaftarHadir = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Select 
-                        value="" 
-                        onValueChange={(value) => {
-                          if (value && !formData.mitra.includes(value)) {
-                            handleMitraChange([...formData.mitra, value]);
-                          }
-                        }}
-                        disabled={loadingMitra}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingMitra ? "Memuat data..." : "Tambah peserta mitra"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mitraData
-                            .filter(mitra => !formData.mitra.includes(mitra.id))
-                            .map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.nama} - {item.kecamatan}
-                              </SelectItem>
-                            ))
-                          }
-                        </SelectContent>
-                      </Select>
-                      {loadingMitra && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Memuat data mitra...
-                        </div>
-                      )}
+                      <Controller 
+                        name="mitra" 
+                        control={control} 
+                        render={({ field }) => (
+                          <FormSelect 
+                            placeholder="Pilih mitra statistik" 
+                            options={mitraList.map(item => ({
+                              value: item.id,
+                              label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
+                            }))} 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            isMulti 
+                          />
+                        )} 
+                      />
                     </div>
                     
                     {/* Daftar peserta mitra yang sudah dipilih */}
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {formData.mitra.map(mitraId => {
-                        const mitra = mitraData.find(m => m.id === mitraId);
-                        return (
-                          <div key={mitraId} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{mitra?.nama}</p>
-                              <p className="text-sm text-muted-foreground">{mitra?.kecamatan}</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeMitra(mitraId)}
-                            >
-                              <Trash className="h-4 w-4 text-destructive" />
-                            </Button>
+                      {selectedMitra.map(mitra => (
+                        <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{mitra.name}</p>
+                            <p className="text-sm text-muted-foreground">{mitra.kecamatan}</p>
                           </div>
-                        );
-                      })}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeMitra(mitra.id)}
+                          >
+                            <Trash className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Ringkasan Peserta */}
-              {formData.peserta.length > 0 && (
+              {(selectedOrganik.length > 0 || selectedMitra.length > 0) && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">
-                      Ringkasan Peserta ({formData.peserta.length} orang)
+                      Ringkasan Peserta ({selectedOrganik.length + selectedMitra.length} orang)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div>
                         <h4 className="font-medium mb-3 text-green-600">
-                          Organik BPS ({formData.organik.length})
+                          Organik BPS ({selectedOrganik.length})
                         </h4>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {formData.peserta
-                            .filter(p => p.jenis === "organik")
-                            .map(p => (
-                              <div key={p.id} className="flex items-center justify-between p-2 border rounded">
-                                <span className="text-sm">{p.nama}</span>
-                                <span className="text-xs text-muted-foreground">{p.kecamatan}</span>
-                              </div>
-                            ))
-                          }
+                          {selectedOrganik.map(org => (
+                            <div key={org.id} className="flex items-center justify-between p-2 border rounded">
+                              <span className="text-sm">{org.name}</span>
+                              <span className="text-xs text-muted-foreground">{org.jabatan}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <div>
                         <h4 className="font-medium mb-3 text-blue-600">
-                          Mitra Statistik ({formData.mitra.length})
+                          Mitra Statistik ({selectedMitra.length})
                         </h4>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {formData.peserta
-                            .filter(p => p.jenis === "mitra")
-                            .map(p => (
-                              <div key={p.id} className="flex items-center justify-between p-2 border rounded">
-                                <span className="text-sm">{p.nama}</span>
-                                <span className="text-xs text-muted-foreground">{p.kecamatan}</span>
-                              </div>
-                            ))
-                          }
+                          {selectedMitra.map(mitra => (
+                            <div key={mitra.id} className="flex items-center justify-between p-2 border rounded">
+                              <span className="text-sm">{mitra.name}</span>
+                              <span className="text-xs text-muted-foreground">{mitra.kecamatan}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1173,7 +686,7 @@ const DaftarHadir = () => {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => navigate("/buat")}
+                  onClick={() => navigate("/e-dokumen/buat")}
                   disabled={isSubmitting}
                   className="min-w-24"
                 >
@@ -1184,14 +697,7 @@ const DaftarHadir = () => {
                   disabled={isSubmitting}
                   className="min-w-32 bg-teal-600 hover:bg-teal-700"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Menyimpan...
-                    </>
-                  ) : (
-                    "Simpan Dokumen"
-                  )}
+                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
               </div>
             </form>
