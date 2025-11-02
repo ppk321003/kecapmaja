@@ -57,7 +57,7 @@ const DokumenPengadaan = () => {
   // Create submission mutation using Google Sheets
   const submitMutation = useSubmitToPengadaanSheets({
     onSuccess: () => {
-      navigate("/buat-dokumen");
+      navigate("/e-dokumen/buat");
     }
   });
   const handleChange = (field: string, value: any) => {
@@ -352,7 +352,7 @@ const DokumenPengadaan = () => {
 
             {/* Submit Buttons */}
             <div className="flex gap-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/buat-dokumen")}>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/e-dokumen/buat")}>
                 Batal
               </Button>
               <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-800 hover:bg-teal-700">

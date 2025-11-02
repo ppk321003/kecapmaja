@@ -116,7 +116,7 @@ const UangHarianTransport = () => {
     spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
     sheetName: "UangHarianTransport",
     onSuccess: () => {
-      navigate("/buat-dokumen");
+      navigate("/e-dokumen/buat");
     }
   });
 
@@ -566,7 +566,7 @@ const UangHarianTransport = () => {
               </div>
 
               <div className="flex space-x-4">
-                <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
+                <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")}>
                   Batal
                 </Button>
                 <Button type="submit" disabled={isSubmitting} className="flex-1 bg-teal-700 hover:bg-teal-600">

@@ -36,11 +36,11 @@ const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
-  { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
+  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
-  { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
   { title: "SBML", url: "/entri-sbml", icon: Database },
   { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
+    { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];

@@ -109,7 +109,7 @@ const TransportLokal = () => {
     spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
     sheetName: "TransportLokal",
     onSuccess: () => {
-      navigate("/buat-dokumen");
+      navigate("/e-dokumen/buat");
     }
   });
 
@@ -585,7 +585,7 @@ const TransportLokal = () => {
                     <Label>Total Keseluruhan (Rp)</Label>
                     <Input value={calculateGrandTotal().toLocaleString('id-ID')} readOnly className="font-bold text-lg" />
                   </div>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/buat-dokumen")}>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/e-dokumen/buat")}>
                     Batal
                   </Button>
                   <Button type="submit" disabled={submitMutation.isPending} className="w-full bg-teal-700 hover:bg-teal-600">

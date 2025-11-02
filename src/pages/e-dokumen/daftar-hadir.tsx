@@ -597,7 +597,7 @@ const DaftarHadir = () => {
         variant: "default"
       });
       
-      navigate("/buat-dokumen");
+      navigate("/e-dokumen/buat");
 
     } catch (error) {
       console.error("Error submitting form:", error);
