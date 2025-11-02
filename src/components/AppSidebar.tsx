@@ -38,11 +38,11 @@ const mainMenuItems = [
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
-  { title: "Pengelola Anggaran", url: "/spk-bast/entri-pengelola", icon: UserCog },
-  { title: "SBML", url: "/spk-bast/entri-sbml", icon: Database },
-  { title: "Mitra Kepka", url: "/spk-bast/mitra-kepka", icon: Users },
-  { title: "Download Raw Data", url: "/spk-bast/download-raw-data", icon: DownloadIcon },
-  { title: "Pedoman", url: "/spk-bast/pedoman", icon: BookOpen },
+  { title: "Pengelola Anggaran", url: "/sentri-pengelola", icon: UserCog },
+  { title: "SBML", url: "/entri-sbml", icon: Database },
+  { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
+  { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
+  { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 
 const eDokumenSubItems = [
