@@ -22,7 +22,7 @@ const kecamatanMap = new Map<string, string>();
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunList = Array.from({
   length: 9
-}, (_, i) => (2022 + i).toString());
+}, (_, i) => (2024 + i).toString());
 
 // Daftar fungsi yang tersedia
 const fungsiList = ["Semua Fungsi", "Fungsi Distribusi", "Fungsi Produksi", "Fungsi Sosial", "Fungsi Neraca", "Fungsi IPDS"];
