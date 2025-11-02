@@ -293,7 +293,7 @@ const LemburLaporan = () => {
         data.uraianKegiatan.join(" | "), // Kolom 8: Uraian Kegiatan
         data.outputHasil.join(" | "), // Kolom 9: Output Hasil
         getOrganikName(data.pembuatDaftar), // Kolom 10: Pembuat daftar
-        "Draft", // Kolom 11: Status
+        "", // Kolom 11: Status
         "" // Kolom 12: Link
       ];
 
