@@ -221,7 +221,7 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kegiatan"
+            range: "kegiatan!A:E"
           }
         });
 
