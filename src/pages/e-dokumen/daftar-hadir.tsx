@@ -14,6 +14,7 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Trash } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormValues {
   namaKegiatan: string;
@@ -56,152 +57,6 @@ const defaultValues: FormValues = {
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
 const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
-// Custom hook untuk membaca data dari Google Sheets
-const useGoogleSheets = () => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const readData = async (spreadsheetId: string, range: string) => {
-    setIsLoading(true);
-    try {
-      // Simulasi pembacaan data dari Google Sheets
-      // Dalam implementasi nyata, ini akan memanggil API Google Sheets
-      console.log(`Reading data from ${spreadsheetId}, range: ${range}`);
-      
-      // Untuk sementara, return data dummy berdasarkan range yang diminta
-      return await getMockData(spreadsheetId, range);
-    } catch (error) {
-      console.error("Error reading data:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const appendData = async (spreadsheetId: string, range: string, values: any[]) => {
-    setIsLoading(true);
-    try {
-      console.log(`Appending data to ${spreadsheetId}, range: ${range}`, values);
-      // Simulasi penyimpanan data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { success: true };
-    } catch (error) {
-      console.error("Error appending data:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { readData, appendData, isLoading };
-};
-
-// Data mock untuk testing
-const getMockData = async (spreadsheetId: string, range: string) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  if (spreadsheetId === "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8") {
-    // Data Referensi
-    if (range === "program!A:C") {
-      return {
-        values: [
-          ["No", "Kode", "Nama Program"],
-          ["1", "P001", "Program Statistik Dasar"],
-          ["2", "P002", "Program Statistik Sektoral"],
-          ["3", "P003", "Program Statistik Khusus"]
-        ]
-      };
-    }
-    
-    if (range === "kegiatan!A:D") {
-      return {
-        values: [
-          ["No", "ProgramID", "Kode", "Nama Kegiatan"],
-          ["1", "P001", "K001", "Sensus Pertanian"],
-          ["2", "P001", "K002", "Survei Sosial Ekonomi"],
-          ["3", "P002", "K003", "Statistik Kesehatan"],
-          ["4", "P002", "K004", "Statistik Pendidikan"],
-          ["5", "P003", "K005", "Statistik Lingkungan"]
-        ]
-      };
-    }
-    
-    if (range === "kro!A:D") {
-      return {
-        values: [
-          ["No", "KegiatanID", "Kode", "Nama KRO"],
-          ["1", "K001", "KRO001", "Pengumpulan Data Pertanian"],
-          ["2", "K001", "KRO002", "Pengolahan Data Pertanian"],
-          ["3", "K002", "KRO003", "Pengumpulan Data Sosial"],
-          ["4", "K003", "KRO004", "Pengumpulan Data Kesehatan"]
-        ]
-      };
-    }
-    
-    if (range === "ro!A:D") {
-      return {
-        values: [
-          ["No", "KROID", "Kode", "Nama RO"],
-          ["1", "KRO001", "RO001", "Penyusunan Kuesioner"],
-          ["2", "KRO001", "RO002", "Pelatihan Petugas"],
-          ["3", "KRO002", "RO003", "Data Cleaning"],
-          ["4", "KRO003", "RO004", "Wawancara Lapangan"]
-        ]
-      };
-    }
-    
-    if (range === "komponen!A:C") {
-      return {
-        values: [
-          ["No", "Kode", "Nama Komponen"],
-          ["1", "KOMP001", "Honorarium"],
-          ["2", "KOMP002", "Transportasi"],
-          ["3", "KOMP003", "Akomodasi"],
-          ["4", "KOMP004", "Konsumsi"]
-        ]
-      };
-    }
-    
-    if (range === "akun!A:C") {
-      return {
-        values: [
-          ["No", "Kode", "Nama Akun"],
-          ["1", "521211", "Belanja Honor Operasional"],
-          ["2", "524111", "Belanja Perjalanan Dinas"],
-          ["3", "521213", "Belanja Konsumsi Rapat"],
-          ["4", "521115", "Belanja Pengadaan Barang"]
-        ]
-      };
-    }
-  }
-  
-  if (spreadsheetId === "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM") {
-    // Data Master
-    if (range === "MASTER.ORGANIK") {
-      return {
-        values: [
-          ["No", "NIP", "NIP BPS", "Nama", "Jabatan", "Kecamatan"],
-          ["1", "123456", "BPS123", "Budi Santoso", "Statistisi", "Majalengka"],
-          ["2", "234567", "BPS234", "Siti Rahayu", "Koordinator", "Cikijing"],
-          ["3", "345678", "BPS345", "Ahmad Fauzi", "Staff", "Talaga"]
-        ]
-      };
-    }
-    
-    if (range === "MASTER.MITRA") {
-      return {
-        values: [
-          ["No", "NIK", "Nama", "Pekerjaan", "Alamat", "Bank", "Rekening", "Kecamatan"],
-          ["1", "327123456", "Dedi Supriadi", "Petani", "Jl. Merdeka No.1", "BNI", "123456", "Majalengka"],
-          ["2", "327234567", "Maya Sari", "Guru", "Jl. Pahlawan No.2", "BRI", "234567", "Cikijing"],
-          ["3", "327345678", "Rizki Pratama", "Wiraswasta", "Jl. Sudirman No.3", "Mandiri", "345678", "Talaga"]
-        ]
-      };
-    }
-  }
-  
-  return { values: [] };
-};
-
 // Format tanggal Indonesia
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
@@ -211,6 +66,32 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   const year = date.getFullYear();
   
   return `${day} ${month} ${year}`;
+};
+
+// Custom hook untuk submit data
+const useSubmitToSheets = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+          operation: "append",
+          range: "DaftarHadir",
+          values: [data]
+        }
+      });
+
+      if (error) throw error;
+      return result;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
 };
 
 // Komponen FormSelect sederhana
@@ -275,23 +156,28 @@ const FormSelect: React.FC<FormSelectProps> = ({
   );
 };
 
-// Komponen select yang diperbaiki
+// Komponen select sederhana tanpa placeholder yang tidak diperlukan
 const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
   const [komponenOptions, setKomponenOptions] = useState<Array<{id: string, name: string}>>([]);
-  const { readData } = useGoogleSheets();
 
   useEffect(() => {
     const fetchKomponen = async () => {
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "komponen!A:C");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "komponen"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('Komponen data:', rows);
-        
         if (rows.length > 1) {
           const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || '',
-            name: row[2] || row[1] || ''
+            id: row[1] || '',
+            name: row[2] || ''
           })).filter((item: any) => item.id && item.name);
           
           setKomponenOptions(options);
@@ -322,49 +208,39 @@ const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) =
 
 const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) => void; programId?: string }> = ({ value, onValueChange, programId }) => {
   const [kegiatanOptions, setKegiatanOptions] = useState<Array<{id: string, name: string}>>([]);
-  const { readData } = useGoogleSheets();
 
   useEffect(() => {
     const fetchKegiatan = async () => {
+      if (!programId) {
+        setKegiatanOptions([]);
+        return;
+      }
+
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "kegiatan!A:D");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "kegiatan"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('All kegiatan data:', rows);
-        
         if (rows.length > 1) {
-          let options = [];
+          const options = rows.slice(1)
+            .filter((row: any[]) => row[1] === programId)
+            .map((row: any[]) => ({
+              id: row[2] || '',
+              name: row[3] || ''
+            }))
+            .filter((item: any) => item.id && item.name);
           
-          if (programId) {
-            // Filter berdasarkan programId
-            options = rows.slice(1)
-              .filter((row: any[]) => {
-                const matchesProgram = row[1] === programId;
-                console.log(`Checking row:`, row, `matches program ${programId}:`, matchesProgram);
-                return matchesProgram;
-              })
-              .map((row: any[]) => ({
-                id: row[2] || row[1] || '',
-                name: row[3] || row[2] || ''
-              }))
-              .filter((item: any) => item.id && item.name);
-          } else {
-            // Tampilkan semua kegiatan jika tidak ada programId
-            options = rows.slice(1).map((row: any[]) => ({
-              id: row[2] || row[1] || '',
-              name: row[3] || row[2] || ''
-            })).filter((item: any) => item.id && item.name);
-          }
-          
-          console.log('Filtered kegiatan options:', options);
           setKegiatanOptions(options);
-        } else {
-          console.log('No kegiatan data found');
-          setKegiatanOptions([]);
         }
       } catch (error) {
         console.error("Error fetching kegiatan:", error);
-        setKegiatanOptions([]);
       }
     };
 
@@ -377,17 +253,11 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
         <SelectValue placeholder={programId ? "Pilih kegiatan" : "Pilih program terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {kegiatanOptions.length > 0 ? (
-          kegiatanOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {programId ? "Tidak ada kegiatan tersedia" : "Pilih program terlebih dahulu"}
+        {kegiatanOptions.map(option => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
           </SelectItem>
-        )}
+        ))}
       </SelectContent>
     </Select>
   );
@@ -395,35 +265,35 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
 
 const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kegiatanId?: string }> = ({ value, onValueChange, kegiatanId }) => {
   const [kroOptions, setKroOptions] = useState<Array<{id: string, name: string}>>([]);
-  const { readData } = useGoogleSheets();
 
   useEffect(() => {
     const fetchKRO = async () => {
+      if (!kegiatanId) {
+        setKroOptions([]);
+        return;
+      }
+
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "kro!A:D");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "kro"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('All KRO data:', rows);
-        
         if (rows.length > 1) {
-          let options = [];
+          const options = rows.slice(1)
+            .filter((row: any[]) => row[1] === kegiatanId)
+            .map((row: any[]) => ({
+              id: row[2] || '',
+              name: row[3] || ''
+            }))
+            .filter((item: any) => item.id && item.name);
           
-          if (kegiatanId) {
-            options = rows.slice(1)
-              .filter((row: any[]) => row[1] === kegiatanId)
-              .map((row: any[]) => ({
-                id: row[2] || row[1] || '',
-                name: row[3] || row[2] || ''
-              }))
-              .filter((item: any) => item.id && item.name);
-          } else {
-            options = rows.slice(1).map((row: any[]) => ({
-              id: row[2] || row[1] || '',
-              name: row[3] || row[2] || ''
-            })).filter((item: any) => item.id && item.name);
-          }
-          
-          console.log('Filtered KRO options:', options);
           setKroOptions(options);
         }
       } catch (error) {
@@ -440,17 +310,11 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
         <SelectValue placeholder={kegiatanId ? "Pilih KRO" : "Pilih kegiatan terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {kroOptions.length > 0 ? (
-          kroOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {kegiatanId ? "Tidak ada KRO tersedia" : "Pilih kegiatan terlebih dahulu"}
+        {kroOptions.map(option => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
           </SelectItem>
-        )}
+        ))}
       </SelectContent>
     </Select>
   );
@@ -458,35 +322,35 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
 
 const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kroId?: string }> = ({ value, onValueChange, kroId }) => {
   const [roOptions, setRoOptions] = useState<Array<{id: string, name: string}>>([]);
-  const { readData } = useGoogleSheets();
 
   useEffect(() => {
     const fetchRO = async () => {
+      if (!kroId) {
+        setRoOptions([]);
+        return;
+      }
+
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "ro!A:D");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "ro"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('All RO data:', rows);
-        
         if (rows.length > 1) {
-          let options = [];
+          const options = rows.slice(1)
+            .filter((row: any[]) => row[1] === kroId)
+            .map((row: any[]) => ({
+              id: row[2] || '',
+              name: row[3] || ''
+            }))
+            .filter((item: any) => item.id && item.name);
           
-          if (kroId) {
-            options = rows.slice(1)
-              .filter((row: any[]) => row[1] === kroId)
-              .map((row: any[]) => ({
-                id: row[2] || row[1] || '',
-                name: row[3] || row[2] || ''
-              }))
-              .filter((item: any) => item.id && item.name);
-          } else {
-            options = rows.slice(1).map((row: any[]) => ({
-              id: row[2] || row[1] || '',
-              name: row[3] || row[2] || ''
-            })).filter((item: any) => item.id && item.name);
-          }
-          
-          console.log('Filtered RO options:', options);
           setRoOptions(options);
         }
       } catch (error) {
@@ -503,17 +367,11 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
         <SelectValue placeholder={kroId ? "Pilih RO" : "Pilih KRO terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {roOptions.length > 0 ? (
-          roOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {kroId ? "Tidak ada RO tersedia" : "Pilih KRO terlebih dahulu"}
+        {roOptions.map(option => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
           </SelectItem>
-        )}
+        ))}
       </SelectContent>
     </Select>
   );
@@ -521,20 +379,25 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
 
 const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
   const [akunOptions, setAkunOptions] = useState<Array<{id: string, name: string}>>([]);
-  const { readData } = useGoogleSheets();
 
   useEffect(() => {
     const fetchAkun = async () => {
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "akun!A:C");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "akun"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('Akun data:', rows);
-        
         if (rows.length > 1) {
           const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || '',
-            name: row[2] || row[1] || ''
+            id: row[1] || '',
+            name: row[2] || ''
           })).filter((item: any) => item.id && item.name);
           
           setAkunOptions(options);
@@ -572,7 +435,7 @@ const DaftarHadir = () => {
   const [organikList, setOrganikList] = useState<Array<{id: string, name: string, jabatan: string}>>([]);
   const [mitraList, setMitraList] = useState<Array<{id: string, name: string, kecamatan: string}>>([]);
 
-  const { readData, appendData, isLoading: isSheetLoading } = useGoogleSheets();
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitToSheets();
 
   // Use react-hook-form
   const {
@@ -585,45 +448,25 @@ const DaftarHadir = () => {
     defaultValues
   });
 
-  // Reset dependent fields when parent field changes
-  const watchProgram = watch('program');
-  const watchKegiatan = watch('kegiatan');
-  const watchKro = watch('kro');
-
-  useEffect(() => {
-    if (watchProgram) {
-      setValue('kegiatan', '');
-      setValue('kro', '');
-      setValue('ro', '');
-    }
-  }, [watchProgram, setValue]);
-
-  useEffect(() => {
-    if (watchKegiatan) {
-      setValue('kro', '');
-      setValue('ro', '');
-    }
-  }, [watchKegiatan, setValue]);
-
-  useEffect(() => {
-    if (watchKro) {
-      setValue('ro', '');
-    }
-  }, [watchKro, setValue]);
-
   // Fetch data programs
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const data = await readData("1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8", "program!A:C");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "program"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('Program data:', rows);
-        
         if (rows.length > 1) {
           const programData = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || '',
-            name: row[2] || row[1] || ''
+            id: row[1] || '',
+            name: row[2] || ''
           })).filter((item: any) => item.id && item.name);
           
           setPrograms(programData);
@@ -640,15 +483,21 @@ const DaftarHadir = () => {
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
-        const data = await readData("1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", "MASTER.ORGANIK");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+            operation: "read",
+            range: "MASTER.ORGANIK"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('Organik data:', rows);
-        
         if (rows.length > 1) {
           const organikData = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || '', // NIP
-            name: row[3] || row[2] || '', // Nama
+            id: row[1] || '', // NIP
+            name: row[3] || '', // Nama
             jabatan: row[4] || '' // Jabatan
           })).filter((item: any) => item.id && item.name);
           
@@ -666,16 +515,22 @@ const DaftarHadir = () => {
   useEffect(() => {
     const fetchMitra = async () => {
       try {
-        const data = await readData("1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", "MASTER.MITRA");
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+            operation: "read",
+            range: "MASTER.MITRA"
+          }
+        });
+
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('Mitra data:', rows);
-        
         if (rows.length > 1) {
           const mitraData = rows.slice(1).map((row: any[]) => ({
-            id: `mitra-${row[1]}` || `mitra-${row[0]}` || '', // NIK
-            name: row[2] || row[1] || '', // Nama
-            kecamatan: row[7] || row[6] || '' // Kecamatan
+            id: `mitra-${row[1]}` || '', // NIK
+            name: row[2] || '', // Nama
+            kecamatan: row[7] || '' // Kecamatan
           })).filter((item: any) => item.id && item.name);
           
           setMitraList(mitraData);
@@ -734,7 +589,7 @@ const DaftarHadir = () => {
       console.log('Data prepared for sheets:', rowData);
 
       // Submit to Google Sheets
-      await appendData("11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0", "DaftarHadir", [rowData]);
+      await submitData(rowData);
 
       toast({
         title: "Sukses!",
@@ -768,7 +623,7 @@ const DaftarHadir = () => {
     setValue('mitra', updatedMitra);
   };
 
-  const isLoading = isSubmitting || isSheetLoading;
+  const isLoading = isSubmitting || isSubmitLoading;
 
   return (
     <Layout>
