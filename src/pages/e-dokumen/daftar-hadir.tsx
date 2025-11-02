@@ -317,6 +317,7 @@ const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) =
   );
 };
 
+// Perbaikan untuk KegiatanSelect
 const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) => void; programId?: string }> = ({ value, onValueChange, programId }) => {
   const [kegiatanOptions, setKegiatanOptions] = useState<Array<{id: string, name: string}>>([]);
 
@@ -332,26 +333,50 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kegiatan"
+            range: "kegiatan!A:D" // Pastikan range mencakup semua kolom yang diperlukan
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 Data kegiatan dari spreadsheet:', rows);
+        
         if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === programId)
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
+          // Debug: Log semua data untuk melihat struktur
+          rows.slice(0, 5).forEach((row, index) => {
+            console.log(`Row ${index}:`, row);
+          });
+
+          const options = rows
+            .slice(1) // Skip header
+            .filter((row: any[]) => {
+              // Program ID biasanya di kolom 1 (index 1)
+              const rowProgramId = row[1];
+              console.log(`Comparing program: ${rowProgramId} with ${programId}`);
+              return rowProgramId === programId;
+            })
+            .map((row: any[]) => {
+              // ID kegiatan di kolom 2 (index 2), nama di kolom 3 (index 3)
+              const id = row[2] || '';
+              const name = row[3] || '';
+              console.log(`Mapped kegiatan: ${id} - ${name}`);
+              return {
+                id: id,
+                name: name
+              };
+            })
             .filter((item: any) => item.id && item.name);
           
+          console.log('✅ Filtered kegiatan options:', options);
           setKegiatanOptions(options);
+        } else {
+          console.log('❌ No data found for kegiatan');
+          setKegiatanOptions([]);
         }
       } catch (error) {
         console.error("Error fetching kegiatan:", error);
+        setKegiatanOptions([]);
       }
     };
 
@@ -361,14 +386,22 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
   return (
     <Select value={value} onValueChange={onValueChange} disabled={!programId}>
       <SelectTrigger>
-        <SelectValue placeholder={programId ? "Pilih kegiatan" : "Pilih program terlebih dahulu"} />
+        <SelectValue placeholder={programId ? (kegiatanOptions.length > 0 ? "Pilih kegiatan" : "Memuat kegiatan...") : "Pilih program terlebih dahulu"} />
       </SelectTrigger>
       <SelectContent>
-        {kegiatanOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
-          </SelectItem>
-        ))}
+        {kegiatanOptions.length > 0 ? (
+          kegiatanOptions.map(option => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.name}
+            </SelectItem>
+          ))
+        ) : (
+          programId && (
+            <SelectItem value="no-data" disabled>
+              Tidak ada kegiatan tersedia
+            </SelectItem>
+          )
+        )}
       </SelectContent>
     </Select>
   );
