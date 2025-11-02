@@ -241,8 +241,9 @@ const KegiatanSelect: React.FC<{
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 Data kegiatan dari spreadsheet:', rows);
+        
         if (rows.length > 1) {
-          // Struktur sederhana: ambil semua data dan filter di client
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
@@ -251,7 +252,10 @@ const KegiatanSelect: React.FC<{
             }))
             .filter((item: any) => item.id && item.name && item.id.startsWith(programId));
 
+          console.log('🎯 Kegiatan options setelah filter:', options);
           setKegiatanOptions(options);
+        } else {
+          setKegiatanOptions([]);
         }
       } catch (error) {
         console.error("Error fetching kegiatan:", error);
@@ -273,6 +277,7 @@ const KegiatanSelect: React.FC<{
   );
 };
 
+// PERBAIKAN: KROSelect dengan logging yang lebih detail
 const KROSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -283,11 +288,14 @@ const KROSelect: React.FC<{
   useEffect(() => {
     const fetchKRO = async () => {
       if (!kegiatanId) {
+        console.log('❌ Tidak ada kegiatanId, reset KRO options');
         setKroOptions([]);
         return;
       }
 
       try {
+        console.log('🔄 Fetching KRO untuk kegiatanId:', kegiatanId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
@@ -296,22 +304,41 @@ const KROSelect: React.FC<{
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Error fetching KRO:', error);
+          throw error;
+        }
         
         const rows = data?.values || [];
+        console.log('📋 Data KRO mentah dari spreadsheet:', rows);
+        
         if (rows.length > 1) {
+          // Debug: lihat struktur data
+          console.log('🔍 Struktur data KRO:');
+          rows.slice(0, 3).forEach((row, index) => {
+            console.log(`Row ${index}:`, row);
+          });
+
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
+              id: row[2] || '', // Kolom C - ID KRO
+              name: row[3] || '' // Kolom D - Nama KRO
             }))
-            .filter((item: any) => item.id && item.name && item.id.startsWith(kegiatanId));
+            .filter((item: any) => {
+              const isValid = item.id && item.name;
+              console.log(`🔍 Filtering KRO: ${item.id} - ${item.name}`, isValid);
+              return isValid;
+            });
 
+          console.log('🎯 KRO options setelah mapping:', options);
           setKroOptions(options);
+        } else {
+          console.log('❌ Tidak ada data KRO ditemukan');
+          setKroOptions([]);
         }
       } catch (error) {
-        console.error("Error fetching KRO:", error);
+        console.error("❌ Error fetching KRO:", error);
         setKroOptions([]);
       }
     };
@@ -330,6 +357,7 @@ const KROSelect: React.FC<{
   );
 };
 
+// ROSelect dengan pendekatan yang sama
 const ROSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -345,6 +373,8 @@ const ROSelect: React.FC<{
       }
 
       try {
+        console.log('🔄 Fetching RO untuk kroId:', kroId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
@@ -356,6 +386,8 @@ const ROSelect: React.FC<{
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 Data RO mentah:', rows);
+        
         if (rows.length > 1) {
           const options = rows
             .slice(1)
@@ -363,9 +395,12 @@ const ROSelect: React.FC<{
               id: row[2] || '',
               name: row[3] || ''
             }))
-            .filter((item: any) => item.id && item.name && item.id.startsWith(kroId));
+            .filter((item: any) => item.id && item.name);
 
+          console.log('🎯 RO options:', options);
           setRoOptions(options);
+        } else {
+          setRoOptions([]);
         }
       } catch (error) {
         console.error("Error fetching RO:", error);

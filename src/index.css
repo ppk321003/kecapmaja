@@ -49,8 +49,8 @@ All colors MUST be HSL.
     --sidebar-ring: 195 70% 48%;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 100% 25%), hsl(195, 67%, 76%));
-    --gradient-header: linear-gradient(to right, hsl(210 80% 42%), hsl(195 67% 76%));
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 25%), hsl(18, 73%, 49%));
+    --gradient-header: linear-gradient(to right, hsl(210 80% 42%), hsl(18, 73%, 49%));
   }
 
   .dark {
