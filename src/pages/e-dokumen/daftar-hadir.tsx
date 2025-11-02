@@ -267,59 +267,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
   );
 };
 
-// Komponen select sederhana tanpa placeholder yang tidak diperlukan
-const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [komponenOptions, setKomponenOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKomponen = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "komponen"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setKomponenOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching komponen:", error);
-      }
-    };
-
-    fetchKomponen();
-  }, []);
-
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger>
-        <SelectValue placeholder="Pilih komponen" />
-      </SelectTrigger>
-      <SelectContent>
-        {komponenOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-// Perbaikan untuk KegiatanSelect
-const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) => void; programId?: string }> = ({ value, onValueChange, programId }) => {
+// PERBAIKAN 1: Komponen KegiatanSelect yang diperbaiki
+const KegiatanSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  programId?: string 
+}> = ({ value, onValueChange, programId }) => {
   const [kegiatanOptions, setKegiatanOptions] = useState<Array<{id: string, name: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchKegiatan = async () => {
@@ -328,39 +283,47 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
         return;
       }
 
+      setIsLoading(true);
       try {
+        console.log('🔄 Fetching kegiatan for program:', programId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kegiatan!A:D" // Pastikan range mencakup semua kolom yang diperlukan
+            range: "kegiatan!A:Z" // PERBAIKAN: Gunakan range yang lebih luas
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Error fetching kegiatan:', error);
+          throw error;
+        }
         
         const rows = data?.values || [];
-        console.log('📋 Data kegiatan dari spreadsheet:', rows);
+        console.log('📋 All kegiatan data:', rows);
         
         if (rows.length > 1) {
-          // Debug: Log semua data untuk melihat struktur
-          rows.slice(0, 5).forEach((row, index) => {
-            console.log(`Row ${index}:`, row);
-          });
-
+          // PERBAIKAN 2: Struktur data yang benar berdasarkan spreadsheet
+          // Asumsi struktur: [No, ProgramID, KegiatanID, NamaKegiatan, ...]
+          const header = rows[0];
+          console.log('📝 Header columns:', header);
+          
           const options = rows
             .slice(1) // Skip header
             .filter((row: any[]) => {
-              // Program ID biasanya di kolom 1 (index 1)
-              const rowProgramId = row[1];
-              console.log(`Comparing program: ${rowProgramId} with ${programId}`);
+              // PERBAIKAN 3: Cari kolom yang berisi programId
+              // Program ID biasanya di kolom 1 (index 1) berdasarkan struktur umum
+              const rowProgramId = row[1]; // Kolom B (index 1)
+              console.log(`🔍 Comparing program: "${rowProgramId}" with "${programId}"`);
               return rowProgramId === programId;
             })
             .map((row: any[]) => {
-              // ID kegiatan di kolom 2 (index 2), nama di kolom 3 (index 3)
-              const id = row[2] || '';
-              const name = row[3] || '';
-              console.log(`Mapped kegiatan: ${id} - ${name}`);
+              // PERBAIKAN 4: Ambil ID dan nama dari kolom yang benar
+              // Kegiatan ID di kolom 2 (index 2), nama di kolom 3 (index 3)
+              const id = row[2] || ''; // Kolom C (index 2)
+              const name = row[3] || ''; // Kolom D (index 3)
+              console.log(`✅ Mapped kegiatan: ${id} - ${name}`);
               return {
                 id: id,
                 name: name
@@ -368,15 +331,17 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
             })
             .filter((item: any) => item.id && item.name);
           
-          console.log('✅ Filtered kegiatan options:', options);
+          console.log('🎯 Filtered kegiatan options:', options);
           setKegiatanOptions(options);
         } else {
           console.log('❌ No data found for kegiatan');
           setKegiatanOptions([]);
         }
       } catch (error) {
-        console.error("Error fetching kegiatan:", error);
+        console.error("❌ Error fetching kegiatan:", error);
         setKegiatanOptions([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -384,9 +349,19 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
   }, [programId]);
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={!programId}>
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!programId || isLoading}
+    >
       <SelectTrigger>
-        <SelectValue placeholder={programId ? (kegiatanOptions.length > 0 ? "Pilih kegiatan" : "Memuat kegiatan...") : "Pilih program terlebih dahulu"} />
+        <SelectValue 
+          placeholder={
+            isLoading ? "Memuat kegiatan..." : 
+            !programId ? "Pilih program terlebih dahulu" : 
+            "Pilih kegiatan"
+          } 
+        />
       </SelectTrigger>
       <SelectContent>
         {kegiatanOptions.length > 0 ? (
@@ -396,9 +371,9 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
             </SelectItem>
           ))
         ) : (
-          programId && (
+          programId && !isLoading && (
             <SelectItem value="no-data" disabled>
-              Tidak ada kegiatan tersedia
+              Tidak ada kegiatan tersedia untuk program ini
             </SelectItem>
           )
         )}
@@ -407,8 +382,14 @@ const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) =
   );
 };
 
-const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kegiatanId?: string }> = ({ value, onValueChange, kegiatanId }) => {
+// PERBAIKAN 5: Komponen KROSelect yang diperbaiki
+const KROSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  kegiatanId?: string 
+}> = ({ value, onValueChange, kegiatanId }) => {
   const [kroOptions, setKroOptions] = useState<Array<{id: string, name: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchKRO = async () => {
@@ -417,31 +398,49 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
         return;
       }
 
+      setIsLoading(true);
       try {
+        console.log('🔄 Fetching KRO for kegiatan:', kegiatanId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "kro"
+            range: "kro!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 All KRO data:', rows);
+        
         if (rows.length > 1) {
+          const header = rows[0];
+          console.log('📝 KRO Header columns:', header);
+          
           const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kegiatanId)
+            .filter((row: any[]) => {
+              const rowKegiatanId = row[1]; // Kolom B (index 1) - Kegiatan ID
+              console.log(`🔍 Comparing kegiatan: "${rowKegiatanId}" with "${kegiatanId}"`);
+              return rowKegiatanId === kegiatanId;
+            })
             .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
+              id: row[2] || '', // Kolom C (index 2) - KRO ID
+              name: row[3] || '' // Kolom D (index 3) - Nama KRO
             }))
             .filter((item: any) => item.id && item.name);
           
+          console.log('🎯 Filtered KRO options:', options);
           setKroOptions(options);
+        } else {
+          setKroOptions([]);
         }
       } catch (error) {
-        console.error("Error fetching KRO:", error);
+        console.error("❌ Error fetching KRO:", error);
+        setKroOptions([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -449,9 +448,19 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
   }, [kegiatanId]);
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={!kegiatanId}>
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!kegiatanId || isLoading}
+    >
       <SelectTrigger>
-        <SelectValue placeholder={kegiatanId ? "Pilih KRO" : "Pilih kegiatan terlebih dahulu"} />
+        <SelectValue 
+          placeholder={
+            isLoading ? "Memuat KRO..." : 
+            !kegiatanId ? "Pilih kegiatan terlebih dahulu" : 
+            "Pilih KRO"
+          } 
+        />
       </SelectTrigger>
       <SelectContent>
         {kroOptions.map(option => (
@@ -464,8 +473,14 @@ const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => voi
   );
 };
 
-const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kroId?: string }> = ({ value, onValueChange, kroId }) => {
+// PERBAIKAN 6: Komponen ROSelect yang diperbaiki
+const ROSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void; 
+  kroId?: string 
+}> = ({ value, onValueChange, kroId }) => {
   const [roOptions, setRoOptions] = useState<Array<{id: string, name: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchRO = async () => {
@@ -474,31 +489,49 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
         return;
       }
 
+      setIsLoading(true);
       try {
+        console.log('🔄 Fetching RO for KRO:', kroId);
+        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "ro"
+            range: "ro!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 All RO data:', rows);
+        
         if (rows.length > 1) {
+          const header = rows[0];
+          console.log('📝 RO Header columns:', header);
+          
           const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kroId)
+            .filter((row: any[]) => {
+              const rowKroId = row[1]; // Kolom B (index 1) - KRO ID
+              console.log(`🔍 Comparing KRO: "${rowKroId}" with "${kroId}"`);
+              return rowKroId === kroId;
+            })
             .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
+              id: row[2] || '', // Kolom C (index 2) - RO ID
+              name: row[3] || '' // Kolom D (index 3) - Nama RO
             }))
             .filter((item: any) => item.id && item.name);
           
+          console.log('🎯 Filtered RO options:', options);
           setRoOptions(options);
+        } else {
+          setRoOptions([]);
         }
       } catch (error) {
-        console.error("Error fetching RO:", error);
+        console.error("❌ Error fetching RO:", error);
+        setRoOptions([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -506,9 +539,19 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
   }, [kroId]);
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={!kroId}>
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={!kroId || isLoading}
+    >
       <SelectTrigger>
-        <SelectValue placeholder={kroId ? "Pilih RO" : "Pilih KRO terlebih dahulu"} />
+        <SelectValue 
+          placeholder={
+            isLoading ? "Memuat RO..." : 
+            !kroId ? "Pilih KRO terlebih dahulu" : 
+            "Pilih RO"
+          } 
+        />
       </SelectTrigger>
       <SelectContent>
         {roOptions.map(option => (
@@ -521,33 +564,96 @@ const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void
   );
 };
 
-const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<Array<{id: string, name: string}>>([]);
+const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
+  const [komponenOptions, setKomponenOptions] = useState<Array<{id: string, name: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchAkun = async () => {
+    const fetchKomponen = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "akun"
+            range: "komponen!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 All komponen data:', rows);
+        
         if (rows.length > 1) {
           const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
+            id: row[1] || '', // Kolom B (index 1) - Komponen ID
+            name: row[2] || '' // Kolom C (index 2) - Nama Komponen
           })).filter((item: any) => item.id && item.name);
           
+          console.log('🎯 Komponen options:', options);
+          setKomponenOptions(options);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching komponen:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchKomponen();
+  }, []);
+
+  return (
+    <Select value={value} onValueChange={onValueChange} disabled={isLoading}>
+      <SelectTrigger>
+        <SelectValue placeholder={isLoading ? "Memuat komponen..." : "Pilih komponen"} />
+      </SelectTrigger>
+      <SelectContent>
+        {komponenOptions.map(option => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
+  const [akunOptions, setAkunOptions] = useState<Array<{id: string, name: string}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchAkun = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
+            operation: "read",
+            range: "akun!A:Z"
+          }
+        });
+
+        if (error) throw error;
+        
+        const rows = data?.values || [];
+        console.log('📋 All akun data:', rows);
+        
+        if (rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => ({
+            id: row[1] || '', // Kolom B (index 1) - Akun ID
+            name: row[2] || '' // Kolom C (index 2) - Nama Akun
+          })).filter((item: any) => item.id && item.name);
+          
+          console.log('🎯 Akun options:', options);
           setAkunOptions(options);
         }
       } catch (error) {
-        console.error("Error fetching akun:", error);
+        console.error("❌ Error fetching akun:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -555,9 +661,9 @@ const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => vo
   }, []);
 
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={onValueChange} disabled={isLoading}>
       <SelectTrigger>
-        <SelectValue placeholder="Pilih akun" />
+        <SelectValue placeholder={isLoading ? "Memuat akun..." : "Pilih akun"} />
       </SelectTrigger>
       <SelectContent>
         {akunOptions.map(option => (
@@ -592,31 +698,64 @@ const DaftarHadir = () => {
     defaultValues
   });
 
+  // Watch program changes to reset dependent fields
+  const watchedProgram = watch('program');
+  const watchedKegiatan = watch('kegiatan');
+  const watchedKRO = watch('kro');
+
+  // Reset dependent fields when program changes
+  useEffect(() => {
+    if (!watchedProgram) {
+      setValue('kegiatan', '');
+      setValue('kro', '');
+      setValue('ro', '');
+    }
+  }, [watchedProgram, setValue]);
+
+  // Reset dependent fields when kegiatan changes
+  useEffect(() => {
+    if (!watchedKegiatan) {
+      setValue('kro', '');
+      setValue('ro', '');
+    }
+  }, [watchedKegiatan, setValue]);
+
+  // Reset dependent fields when KRO changes
+  useEffect(() => {
+    if (!watchedKRO) {
+      setValue('ro', '');
+    }
+  }, [watchedKRO, setValue]);
+
   // Fetch data programs
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
+        console.log('🔄 Fetching programs...');
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
             operation: "read",
-            range: "program"
+            range: "program!A:Z"
           }
         });
 
         if (error) throw error;
         
         const rows = data?.values || [];
+        console.log('📋 All program data:', rows);
+        
         if (rows.length > 1) {
           const programData = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
+            id: row[1] || '', // Kolom B (index 1) - Program ID
+            name: row[2] || '' // Kolom C (index 2) - Nama Program
           })).filter((item: any) => item.id && item.name);
           
+          console.log('🎯 Program options:', programData);
           setPrograms(programData);
         }
       } catch (error) {
-        console.error("Error fetching programs:", error);
+        console.error("❌ Error fetching programs:", error);
       }
     };
 
@@ -631,7 +770,7 @@ const DaftarHadir = () => {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
             operation: "read",
-            range: "MASTER.ORGANIK"
+            range: "MASTER.ORGANIK!A:Z"
           }
         });
 
@@ -648,7 +787,7 @@ const DaftarHadir = () => {
           setOrganikList(organikData);
         }
       } catch (error) {
-        console.error("Error fetching organik:", error);
+        console.error("❌ Error fetching organik:", error);
       }
     };
 
@@ -663,7 +802,7 @@ const DaftarHadir = () => {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
             operation: "read",
-            range: "MASTER.MITRA"
+            range: "MASTER.MITRA!A:Z"
           }
         });
 
@@ -680,7 +819,7 @@ const DaftarHadir = () => {
           setMitraList(mitraData);
         }
       } catch (error) {
-        console.error("Error fetching mitra:", error);
+        console.error("❌ Error fetching mitra:", error);
       }
     };
 
@@ -707,7 +846,12 @@ const DaftarHadir = () => {
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      console.log('Form data submitted:', data);
+      console.log('✅ Form data submitted:', data);
+
+      // Validasi required fields
+      if (!data.program || !data.kegiatan || !data.kro || !data.ro || !data.komponen || !data.akun) {
+        throw new Error("Semua field program, kegiatan, KRO, RO, komponen, dan akun harus dipilih");
+      }
 
       // Generate nomor urut baru dan ID daftar hadir
       const sequenceNumber = await getNextSequenceNumber();
@@ -755,7 +899,7 @@ const DaftarHadir = () => {
       navigate("/e-dokumen/buat");
 
     } catch (error: any) {
-      console.error("Error submitting form:", error);
+      console.error("❌ Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan dokumen",
