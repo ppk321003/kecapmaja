@@ -327,7 +327,48 @@ const MultiSelect: React.FC<{
   );
 };
 
-// Komponen Select Khusus untuk setiap field
+// Komponen Select yang diperbaiki berdasarkan logika KAK
+const ProgramSelect: React.FC<{ 
+  value: string; 
+  onValueChange: (value: string) => void;
+}> = ({ value, onValueChange }) => {
+  const [programOptions, setProgramOptions] = useState<Option[]>([]);
+  const { fetchSheetData } = useSheetData();
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const rows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          `${CONSTANTS.SHEET_NAMES.PROGRAM}!A:C`
+        );
+        
+        if (rows.length > 1) {
+          const options = rows.slice(1).map((row: any[]) => ({
+            id: row[1] || '',
+            name: row[2] || ''
+          })).filter((item: any) => item.id && item.name);
+          
+          setProgramOptions(options);
+        }
+      } catch (error) {
+        console.error("Error fetching programs:", error);
+      }
+    };
+
+    fetchPrograms();
+  }, [fetchSheetData]);
+
+  return (
+    <SearchableSelect
+      value={value}
+      onValueChange={onValueChange}
+      options={programOptions}
+      placeholder="Pilih program"
+    />
+  );
+};
+
 const KegiatanSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -350,13 +391,15 @@ const KegiatanSelect: React.FC<{
         );
         
         if (rows.length > 1) {
+          // Filter kegiatan berdasarkan program yang dipilih
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
               id: row[2] || '',
-              name: row[3] || ''
+              name: row[3] || '',
+              programCode: row[1] || '' // Kode program di kolom B
             }))
-            .filter((item: any) => item.id && item.name);
+            .filter((item: any) => item.id && item.name && item.programCode === programId);
 
           setKegiatanOptions(options);
         }
@@ -402,13 +445,15 @@ const KROSelect: React.FC<{
         );
         
         if (rows.length > 1) {
+          // Filter KRO berdasarkan kegiatan yang dipilih
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
               id: row[2] || '',
-              name: row[3] || ''
+              name: row[3] || '',
+              kegiatanCode: row[1] || '' // Kode kegiatan di kolom B
             }))
-            .filter((item: any) => item.id && item.name);
+            .filter((item: any) => item.id && item.name && item.kegiatanCode === kegiatanId);
 
           setKroOptions(options);
         }
@@ -454,13 +499,15 @@ const ROSelect: React.FC<{
         );
         
         if (rows.length > 1) {
+          // Filter RO berdasarkan KRO yang dipilih
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
               id: row[2] || '',
-              name: row[3] || ''
+              name: row[3] || '',
+              kroCode: row[1] || '' // Kode KRO di kolom B
             }))
-            .filter((item: any) => item.id && item.name);
+            .filter((item: any) => item.id && item.name && item.kroCode === kroId);
 
           setRoOptions(options);
         }
@@ -566,7 +613,6 @@ const DaftarHadir = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
-  const [programs, setPrograms] = useState<Option[]>([]);
   const [organikList, setOrganikList] = useState<Option[]>([]);
   const [mitraList, setMitraList] = useState<Option[]>([]);
 
@@ -588,19 +634,16 @@ const DaftarHadir = () => {
   const watchedOrganik = watch('organik');
   const watchedMitra = watch('mitra');
 
-  // Reset dependent fields when parent changes
+  // Reset dependent fields when parent changes - LOGIKA YANG DIPERBAIKI
   useEffect(() => {
     if (!watchedProgram) {
       setValue('kegiatan', '');
-      setValue('kro', '');
-      setValue('ro', '');
     }
   }, [watchedProgram, setValue]);
 
   useEffect(() => {
     if (!watchedKegiatan) {
       setValue('kro', '');
-      setValue('ro', '');
     }
   }, [watchedKegiatan, setValue]);
 
@@ -610,23 +653,10 @@ const DaftarHadir = () => {
     }
   }, [watchedKRO, setValue]);
 
-  // Fetch initial data
+  // Fetch initial data untuk organik dan mitra
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch programs
-        const programRows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.SOURCE_ID,
-          `${CONSTANTS.SHEET_NAMES.PROGRAM}!A:C`
-        );
-        if (programRows.length > 1) {
-          const programData = programRows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          setPrograms(programData);
-        }
-
         // Fetch organik
         const organikRows = await fetchSheetData(
           CONSTANTS.SPREADSHEET.MASTER_ID,
@@ -684,7 +714,6 @@ const DaftarHadir = () => {
         generateDaftarHadirId()
       ]);
 
-      const programName = programs.find(p => p.id === data.program)?.name || data.program;
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       
       const rowData = [
@@ -693,12 +722,12 @@ const DaftarHadir = () => {
         data.namaKegiatan,
         data.detil || "",
         data.jenis,
-        programName,
-        data.kegiatan,
-        data.kro,
-        data.ro,
-        data.komponen,
-        data.akun,
+        data.program, // Simpan kode program
+        data.kegiatan, // Simpan kode kegiatan
+        data.kro, // Simpan kode KRO
+        data.ro, // Simpan kode RO
+        data.komponen, // Simpan kode komponen
+        data.akun, // Simpan kode akun
         formatTanggalIndonesia(data.tanggalMulai),
         formatTanggalIndonesia(data.tanggalSelesai),
         pembuatDaftar?.name || data.pembuatDaftar,
@@ -829,7 +858,7 @@ const DaftarHadir = () => {
                 </div>
               </div>
 
-              {/* Program dan Kegiatan */}
+              {/* Program dan Kegiatan - LOGIKA YANG DIPERBAIKI */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
@@ -838,18 +867,10 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Program harus dipilih" }}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih program" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {programs.map(program => (
-                            <SelectItem key={program.id} value={program.id}>
-                              {program.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ProgramSelect 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                      />
                     )} 
                   />
                   {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}

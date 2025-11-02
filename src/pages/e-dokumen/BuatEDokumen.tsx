@@ -83,17 +83,17 @@ export default function BuatEDokumen() {
     const colors = {
       blue: {
         icon: "text-blue-600",
-        button: "bg-blue-900 hover:bg-blue-900",
+        button: "bg-blue-500 hover:bg-blue-500",
         border: "border-blue-100"
       },
       green: {
         icon: "text-green-600",
-        button: "bg-blue-900 hover:bg-blue-900",
+        button: "bg-blue-500 hover:bg-blue-500",
         border: "border-green-100"
       },
       orange: {
         icon: "text-orange-600",
-        button: "bg-blue-900 hover:bg-blue-900",
+        button: "bg-blue-500 hover:bg-blue-500",
         border: "border-orange-100"
       }
     };
