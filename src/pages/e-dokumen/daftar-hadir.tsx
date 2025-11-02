@@ -57,6 +57,10 @@ const defaultValues: FormValues = {
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
 const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
+// Constants
+const TARGET_SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0";
+const SHEET_NAME = "DaftarHadir";
+
 // Format tanggal Indonesia
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
@@ -69,29 +73,136 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 };
 
 // Custom hook untuk submit data
-const useSubmitToSheets = () => {
+const useSubmitDaftarHadirToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
+      console.log('📤 Submitting daftar hadir data to sheets:', data);
+      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+          spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: "DaftarHadir",
+          range: `${SHEET_NAME}!A:O`,
           values: [data]
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error submitting daftar hadir:', error);
+        throw error;
+      }
+
+      console.log('✅ Daftar hadir submission successful:', result);
       return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return { submitData, isSubmitting };
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
+// Fungsi untuk generate ID daftar hadir (dh-yymmxxx)
+const generateDaftarHadirId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `dh-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching daftar hadir IDs:", error);
+      throw new Error("Gagal mengambil ID daftar hadir terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    // Filter ID yang sesuai dengan prefix bulan ini
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[1]) // Kolom B adalah ID
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating daftar hadir ID:", error);
+    throw error;
+  }
 };
 
 // Komponen FormSelect sederhana
@@ -435,7 +546,7 @@ const DaftarHadir = () => {
   const [organikList, setOrganikList] = useState<Array<{id: string, name: string, jabatan: string}>>([]);
   const [mitraList, setMitraList] = useState<Array<{id: string, name: string, kecamatan: string}>>([]);
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitToSheets();
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitDaftarHadirToSheets();
 
   // Use react-hook-form
   const {
@@ -565,46 +676,57 @@ const DaftarHadir = () => {
     try {
       console.log('Form data submitted:', data);
 
+      // Generate nomor urut baru dan ID daftar hadir
+      const sequenceNumber = await getNextSequenceNumber();
+      const daftarHadirId = await generateDaftarHadirId();
+
       // Prepare data for Google Sheets submission
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       
+      // Get names for program, kegiatan, KRO, RO, komponen, akun
+      const programName = programs.find(p => p.id === data.program)?.name || data.program;
+      
       // Format data sesuai struktur spreadsheet
       const rowData = [
-        data.namaKegiatan,
-        data.detil || "",
-        data.jenis,
-        programs.find(p => p.id === data.program)?.name || data.program,
-        "", // Kegiatan akan diisi berdasarkan selection
-        "", // KRO akan diisi berdasarkan selection  
-        "", // RO akan diisi berdasarkan selection
-        "", // Komponen akan diisi berdasarkan selection
-        "", // Akun akan diisi berdasarkan selection
-        formatTanggalIndonesia(data.tanggalMulai),
-        formatTanggalIndonesia(data.tanggalSelesai),
-        pembuatDaftar?.name || data.pembuatDaftar,
-        selectedOrganik.map(org => org.name).join(", "),
-        selectedMitra.map(mitra => mitra.name).join(", ")
+        sequenceNumber, // Kolom 1: No
+        daftarHadirId, // Kolom 2: Id (dh-yymmxxx)
+        data.namaKegiatan, // Kolom 3: Nama Kegiatan
+        data.detil || "", // Kolom 4: Detil
+        data.jenis, // Kolom 5: Jenis
+        programName, // Kolom 6: Program
+        "", // Kolom 7: Kegiatan (akan diisi berdasarkan selection)
+        "", // Kolom 8: KRO (akan diisi berdasarkan selection)  
+        "", // Kolom 9: RO (akan diisi berdasarkan selection)
+        "", // Kolom 10: Komponen (akan diisi berdasarkan selection)
+        "", // Kolom 11: Akun (akan diisi berdasarkan selection)
+        formatTanggalIndonesia(data.tanggalMulai), // Kolom 12: Tanggal Mulai
+        formatTanggalIndonesia(data.tanggalSelesai), // Kolom 13: Tanggal Selesai
+        pembuatDaftar?.name || data.pembuatDaftar, // Kolom 14: Pembuat Daftar
+        selectedOrganik.map(org => org.name).join(" | "), // Kolom 15: Organik
+        selectedMitra.map(mitra => mitra.name).join(" | ") // Kolom 16: Mitra Statistik
       ];
 
-      console.log('Data prepared for sheets:', rowData);
+      console.log('📋 Final daftar hadir data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 Daftar Hadir ID:', daftarHadirId);
 
       // Submit to Google Sheets
       await submitData(rowData);
 
       toast({
         title: "Sukses!",
-        description: "Daftar Hadir berhasil disimpan",
+        description: `Daftar Hadir berhasil disimpan (ID: ${daftarHadirId})`,
         variant: "default"
       });
       
       navigate("/e-dokumen/buat");
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
+        description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
     } finally {
       setIsSubmitting(false);
