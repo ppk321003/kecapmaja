@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2 } from "lucide-react";
+import { CalendarIcon, Trash2, Search } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -21,6 +21,209 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import PersonTransportGroup from "@/components/PersonTransportGroup";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+
+// Searchable Select Component
+interface SearchableSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ id: string; name: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+  emptyMessage?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  emptyMessage = "Tidak ada data"
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  const selectedOption = options.find(opt => opt.id === value);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder}>
+          {selectedOption ? selectedOption.name : ""}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-60">
+        {/* Search Input */}
+        <div className="relative p-2 border-b">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Options */}
+        <div className="max-h-48 overflow-y-auto">
+          {filteredOptions.length === 0 ? (
+            <div className="p-2 text-center text-muted-foreground text-sm">
+              {emptyMessage}
+            </div>
+          ) : (
+            filteredOptions.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.name}
+              </SelectItem>
+            ))
+          )}
+        </div>
+
+        {/* Clear Search Button */}
+        {searchTerm && (
+          <div className="p-2 border-t">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => setSearchTerm("")}
+            >
+              Hapus Pencarian
+            </Button>
+          </div>
+        )}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Searchable Person Select Component
+interface SearchablePersonSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ id: string; name: string; jabatan?: string; kecamatan?: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+  type?: "organik" | "mitra";
+}
+
+const SearchablePersonSelect: React.FC<SearchablePersonSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  type = "organik"
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (option.jabatan && option.jabatan.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (option.kecamatan && option.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [options, searchTerm]);
+
+  const selectedOption = options.find(opt => opt.id === value);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      disabled={disabled}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder}>
+          {selectedOption ? (
+            <div className="flex flex-col text-left">
+              <span className="font-medium">{selectedOption.name}</span>
+              {selectedOption.jabatan && (
+                <span className="text-xs text-muted-foreground">{selectedOption.jabatan}</span>
+              )}
+              {selectedOption.kecamatan && (
+                <span className="text-xs text-muted-foreground">{selectedOption.kecamatan}</span>
+              )}
+            </div>
+          ) : null}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-60 w-full">
+        {/* Search Input */}
+        <div className="relative p-2 border-b">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={`Cari ${type === 'organik' ? 'organik' : 'mitra'}...`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Options */}
+        <div className="max-h-48 overflow-y-auto">
+          {filteredOptions.length === 0 ? (
+            <div className="p-2 text-center text-muted-foreground text-sm">
+              Tidak ada data ditemukan
+            </div>
+          ) : (
+            filteredOptions.map((option) => (
+              <SelectItem key={option.id} value={option.id} className="py-2">
+                <div className="flex flex-col">
+                  <span className="font-medium">{option.name}</span>
+                  {option.jabatan && (
+                    <span className="text-xs text-muted-foreground">{option.jabatan}</span>
+                  )}
+                  {option.kecamatan && (
+                    <span className="text-xs text-muted-foreground">{option.kecamatan}</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))
+          )}
+        </div>
+
+        {/* Search Info */}
+        {searchTerm && (
+          <div className="p-2 border-t bg-muted/50">
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
+              <span>Ditemukan: {filteredOptions.length} data</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => setSearchTerm("")}
+              >
+                Hapus
+              </Button>
+            </div>
+          </div>
+        )}
+      </SelectContent>
+    </Select>
+  );
+};
 
 // Interfaces for grouped transport data
 interface Trip {
@@ -92,7 +295,7 @@ const KuitansiTransportLokal = () => {
     defaultValues
   });
 
-  // Data queries - Use memoized values to prevent excessive re-renders
+  // Data queries
   const watchedProgram = form.watch("program");
   const watchedKegiatan = form.watch("kegiatan");
   const watchedKro = form.watch("kro");
@@ -106,48 +309,23 @@ const KuitansiTransportLokal = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Create memoized name-to-object mappings for display purposes
-  const programsMap = useMemo(() => 
-    Object.fromEntries((programs || []).map(item => [item.id, item.name])), 
-    [programs]
-  );
+  // Enhanced organik data with jabatan
+  const enhancedOrganikList = useMemo(() => {
+    return organikList.map(org => ({
+      ...org,
+      jabatan: org.jabatan || "Tidak ada jabatan"
+    }));
+  }, [organikList]);
 
-  const kegiatanMap = useMemo(() => 
-    Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name])), 
-    [kegiatanList]
-  );
+  // Enhanced mitra data with kecamatan
+  const enhancedMitraList = useMemo(() => {
+    return mitraList.map(mitra => ({
+      ...mitra,
+      kecamatan: mitra.kecamatan || "Tidak ada kecamatan"
+    }));
+  }, [mitraList]);
 
-  const kroMap = useMemo(() => 
-    Object.fromEntries((kroList || []).map(item => [item.id, item.name])), 
-    [kroList]
-  );
-
-  const roMap = useMemo(() => 
-    Object.fromEntries((roList || []).map(item => [item.id, item.name])), 
-    [roList]
-  );
-
-  const komponenMap = useMemo(() => 
-    Object.fromEntries((komponenList || []).map(item => [item.id, item.name])), 
-    [komponenList]
-  );
-
-  const akunMap = useMemo(() => 
-    Object.fromEntries((akunList || []).map(item => [item.id, item.name])), 
-    [akunList]
-  );
-
-  const organikMap = useMemo(() => 
-    Object.fromEntries((organikList || []).map(item => [item.id, item.name])), 
-    [organikList]
-  );
-
-  const mitraMap = useMemo(() => 
-    Object.fromEntries((mitraList || []).map(item => [item.id, item.name])), 
-    [mitraList]
-  );
-
-  // Setup submission to Google Sheets - PERTAHANKAN KONFIGURASI SKRIP 1
+  // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
     spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
     sheetName: "KuitansiTransportLokal",
@@ -175,7 +353,7 @@ const KuitansiTransportLokal = () => {
     return flattened;
   }, [organikGroups, mitraGroups]);
 
-  // Debounced form update to prevent excessive re-renders
+  // Debounced form update
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       form.setValue("transportDetails", flattenedTransportDetails, {
@@ -190,9 +368,9 @@ const KuitansiTransportLokal = () => {
     return flattenedTransportDetails.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
   }, [flattenedTransportDetails]);
 
-  // Optimized event handlers with useCallback for grouped data
+  // Optimized event handlers
   const addOrganik = useCallback(() => {
-    if (organikList.length > 0) {
+    if (enhancedOrganikList.length > 0) {
       setOrganikGroups(prev => [...prev, {
         personId: "",
         personName: "",
@@ -210,10 +388,10 @@ const KuitansiTransportLokal = () => {
         description: "Tidak ada data organik yang dapat ditambahkan"
       });
     }
-  }, [organikList.length]);
+  }, [enhancedOrganikList.length]);
 
   const addMitra = useCallback(() => {
-    if (mitraList.length > 0) {
+    if (enhancedMitraList.length > 0) {
       setMitraGroups(prev => [...prev, {
         personId: "",
         personName: "",
@@ -231,13 +409,13 @@ const KuitansiTransportLokal = () => {
         description: "Tidak ada data mitra yang dapat ditambahkan"
       });
     }
-  }, [mitraList.length]);
+  }, [enhancedMitraList.length]);
 
   // Handlers for PersonTransportGroup - Organik
   const handleUpdateOrganikPerson = useCallback((groupIndex: number, personId: string) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
-      const selectedPerson = organikList.find(p => p.id === personId);
+      const selectedPerson = enhancedOrganikList.find(p => p.id === personId);
       updated[groupIndex] = {
         ...updated[groupIndex],
         personId,
@@ -245,7 +423,7 @@ const KuitansiTransportLokal = () => {
       };
       return updated;
     });
-  }, [organikList]);
+  }, [enhancedOrganikList]);
 
   const handleUpdateOrganikDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
     setOrganikGroups(prev => {
@@ -305,7 +483,7 @@ const KuitansiTransportLokal = () => {
   const handleUpdateMitraPerson = useCallback((groupIndex: number, personId: string) => {
     setMitraGroups(prev => {
       const updated = [...prev];
-      const selectedPerson = mitraList.find(p => p.id === personId);
+      const selectedPerson = enhancedMitraList.find(p => p.id === personId);
       updated[groupIndex] = {
         ...updated[groupIndex],
         personId,
@@ -313,7 +491,7 @@ const KuitansiTransportLokal = () => {
       };
       return updated;
     });
-  }, [mitraList]);
+  }, [enhancedMitraList]);
 
   const handleUpdateMitraDariKecamatan = useCallback((groupIndex: number, kecamatan: string) => {
     setMitraGroups(prev => {
@@ -372,16 +550,15 @@ const KuitansiTransportLokal = () => {
   // Form submission handler
   const onSubmit = async (data: FormValues) => {
     try {
-      // Tambahkan nama ke setiap transportDetail
       const transportDetailsWithNames = data.transportDetails.map(detail => {
         if (detail.type === "organik") {
-          const person = organikList.find(p => p.id === detail.personId);
+          const person = enhancedOrganikList.find(p => p.id === detail.personId);
           return {
             ...detail,
             nama: person?.name || ""
           };
         } else {
-          const person = mitraList.find(p => p.id === detail.personId);
+          const person = enhancedMitraList.find(p => p.id === detail.personId);
           return {
             ...detail,
             nama: person?.name || ""
@@ -391,16 +568,7 @@ const KuitansiTransportLokal = () => {
 
       const submitData = {
         ...data,
-        transportDetails: transportDetailsWithNames,
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[data.pembuatDaftar]
+        transportDetails: transportDetailsWithNames
       };
 
       await submitMutation.mutateAsync(submitData);
@@ -534,6 +702,7 @@ const KuitansiTransportLokal = () => {
 
                   {/* Program, Kegiatan, KRO, RO */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Program */}
                     <FormField 
                       control={form.control} 
                       name="program" 
@@ -567,125 +736,25 @@ const KuitansiTransportLokal = () => {
                       )} 
                     />
 
+                    {/* Kegiatan - Searchable */}
                     <FormField 
                       control={form.control} 
                       name="kegiatan" 
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Kegiatan</FormLabel>
-                          <Select 
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              form.setValue("kro", "");
-                              form.setValue("ro", "");
-                            }} 
-                            value={field.value}
-                            disabled={!form.watch("program")}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih kegiatan" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {kegiatanList.map(item => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
-
-                    <FormField 
-                      control={form.control} 
-                      name="kro" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>KRO</FormLabel>
-                          <Select 
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              form.setValue("ro", "");
-                            }} 
-                            value={field.value}
-                            disabled={!form.watch("kegiatan")}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih KRO" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {kroList.map(item => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
-
-                    <FormField 
-                      control={form.control} 
-                      name="ro" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>RO</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value}
-                            disabled={!form.watch("kro")}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih RO" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {roList.map(item => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
-
-                    <FormField 
-                      control={form.control} 
-                      name="komponen" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Komponen</FormLabel>
-                          <KomponenSelect 
-                            value={field.value} 
-                            onValueChange={field.onChange}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
-
-                    <FormField 
-                      control={form.control} 
-                      name="akun" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Akun</FormLabel>
                           <FormControl>
-                            <AkunSelect 
-                              value={field.value} 
-                              onValueChange={field.onChange}
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("kro", "");
+                                form.setValue("ro", "");
+                              }}
+                              options={kegiatanList}
+                              placeholder="Pilih kegiatan"
+                              disabled={!form.watch("program")}
+                              emptyMessage="Tidak ada kegiatan tersedia"
                             />
                           </FormControl>
                           <FormMessage />
@@ -693,6 +762,96 @@ const KuitansiTransportLokal = () => {
                       )} 
                     />
 
+                    {/* KRO - Searchable */}
+                    <FormField 
+                      control={form.control} 
+                      name="kro" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>KRO</FormLabel>
+                          <FormControl>
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("ro", "");
+                              }}
+                              options={kroList}
+                              placeholder="Pilih KRO"
+                              disabled={!form.watch("kegiatan")}
+                              emptyMessage="Tidak ada KRO tersedia"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+
+                    {/* RO - Searchable */}
+                    <FormField 
+                      control={form.control} 
+                      name="ro" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>RO</FormLabel>
+                          <FormControl>
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={roList}
+                              placeholder="Pilih RO"
+                              disabled={!form.watch("kro")}
+                              emptyMessage="Tidak ada RO tersedia"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+
+                    {/* Komponen - Searchable */}
+                    <FormField 
+                      control={form.control} 
+                      name="komponen" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Komponen</FormLabel>
+                          <FormControl>
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={komponenList}
+                              placeholder="Pilih komponen"
+                              emptyMessage="Tidak ada komponen tersedia"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+
+                    {/* Akun - Searchable */}
+                    <FormField 
+                      control={form.control} 
+                      name="akun" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Akun</FormLabel>
+                          <FormControl>
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={akunList}
+                              placeholder="Pilih akun"
+                              emptyMessage="Tidak ada akun tersedia"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+
+                    {/* Tanggal Pengajuan */}
                     <FormField 
                       control={form.control} 
                       name="tanggalSpj" 
@@ -732,29 +891,22 @@ const KuitansiTransportLokal = () => {
                       )} 
                     />
 
+                    {/* Pembuat Daftar - Searchable */}
                     <FormField 
                       control={form.control} 
                       name="pembuatDaftar" 
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Pembuat Daftar</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih pembuat daftar" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {organikList.map(organik => (
-                                <SelectItem key={organik.id} value={organik.id}>
-                                  {organik.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <SearchablePersonSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={enhancedOrganikList}
+                              placeholder="Pilih pembuat daftar"
+                              type="organik"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} 
@@ -773,7 +925,7 @@ const KuitansiTransportLokal = () => {
                     type="button" 
                     onClick={addOrganik} 
                     variant="outline"
-                    disabled={organikList.length === 0}
+                    disabled={enhancedOrganikList.length === 0}
                   >
                     Tambah Organik
                   </Button>
@@ -787,7 +939,7 @@ const KuitansiTransportLokal = () => {
                     dariKecamatan={group.dariKecamatan}
                     trips={group.trips}
                     type="organik"
-                    personList={organikList}
+                    personList={enhancedOrganikList}
                     kecamatanList={kecamatanList}
                     onUpdatePerson={(personId) => handleUpdateOrganikPerson(groupIndex, personId)}
                     onUpdateDariKecamatan={(kecamatan) => handleUpdateOrganikDariKecamatan(groupIndex, kecamatan)}
@@ -795,6 +947,7 @@ const KuitansiTransportLokal = () => {
                     onAddTrip={() => handleAddOrganikTrip(groupIndex)}
                     onRemoveTrip={(tripIndex) => handleRemoveOrganikTrip(groupIndex, tripIndex)}
                     onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)}
+                    searchable={true}
                   />
                 ))}
 
@@ -816,7 +969,7 @@ const KuitansiTransportLokal = () => {
                     type="button" 
                     onClick={addMitra} 
                     variant="outline"
-                    disabled={mitraList.length === 0}
+                    disabled={enhancedMitraList.length === 0}
                   >
                     Tambah Mitra
                   </Button>
@@ -830,7 +983,7 @@ const KuitansiTransportLokal = () => {
                     dariKecamatan={group.dariKecamatan}
                     trips={group.trips}
                     type="mitra"
-                    personList={mitraList}
+                    personList={enhancedMitraList}
                     kecamatanList={kecamatanList}
                     onUpdatePerson={(personId) => handleUpdateMitraPerson(groupIndex, personId)}
                     onUpdateDariKecamatan={(kecamatan) => handleUpdateMitraDariKecamatan(groupIndex, kecamatan)}
@@ -838,6 +991,7 @@ const KuitansiTransportLokal = () => {
                     onAddTrip={() => handleAddMitraTrip(groupIndex)}
                     onRemoveTrip={(tripIndex) => handleRemoveMitraTrip(groupIndex, tripIndex)}
                     onRemovePerson={() => handleRemoveMitraPerson(groupIndex)}
+                    searchable={true}
                   />
                 ))}
 
