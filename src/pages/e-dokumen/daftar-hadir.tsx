@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
+import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,11 +10,17 @@ import { toast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
+import { KomponenSelect } from "@/components/KomponenSelect";
+import { KegiatanSelect } from "@/components/KegiatanSelect";
+import { KROSelect } from "@/components/KROSelect";
+import { ROSelect } from "@/components/ROSelect";
+import { AkunSelect } from "@/components/AkunSelect";
+import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { FormSelect } from "@/components/FormSelect";
 
 interface FormValues {
   namaKegiatan: string;
@@ -54,438 +60,18 @@ const defaultValues: FormValues = {
   pembuatDaftar: ""
 };
 
-const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
-const jenisOptions = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
-
-// Format tanggal Indonesia
-const formatTanggalIndonesia = (date: Date | null): string => {
-  if (!date) return "";
-  
-  const day = date.getDate();
-  const month = date.toLocaleDateString('id-ID', { month: 'long' });
-  const year = date.getFullYear();
-  
-  return `${day} ${month} ${year}`;
-};
-
-// Custom hook untuk submit data
-const useSubmitToSheets = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitData = async (data: any[]) => {
-    setIsSubmitting(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
-          operation: "append",
-          range: "DaftarHadir",
-          values: [data]
-        }
-      });
-
-      if (error) throw error;
-      return result;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return { submitData, isSubmitting };
-};
-
-// Komponen FormSelect sederhana
-interface FormSelectProps {
-  value: string | string[];
-  onChange: (value: any) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
-  isMulti?: boolean;
-}
-
-const FormSelect: React.FC<FormSelectProps> = ({ 
-  value, 
-  onChange, 
-  options, 
-  placeholder = "Pilih...",
-  isMulti = false 
-}) => {
-  const handleChange = (newValue: string) => {
-    if (isMulti) {
-      const currentValues = Array.isArray(value) ? value : [];
-      if (currentValues.includes(newValue)) {
-        onChange(currentValues.filter(v => v !== newValue));
-      } else {
-        onChange([...currentValues, newValue]);
-      }
-    } else {
-      onChange(newValue);
-    }
-  };
-
-  if (isMulti) {
-    return (
-      <Select onValueChange={handleChange}>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map(option => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  }
-
-  return (
-    <Select value={value as string} onValueChange={handleChange}>
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map(option => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-// Komponen select sederhana tanpa placeholder yang tidak diperlukan
-const KomponenSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [komponenOptions, setKomponenOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKomponen = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "komponen!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        console.log('Komponen rows:', rows);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setKomponenOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching komponen:", error);
-      }
-    };
-
-    fetchKomponen();
-  }, []);
-
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger>
-        <SelectValue placeholder="Pilih komponen" />
-      </SelectTrigger>
-      <SelectContent>
-        {komponenOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const KegiatanSelect: React.FC<{ value: string; onValueChange: (value: string) => void; programId?: string }> = ({ value, onValueChange, programId }) => {
-  const [kegiatanOptions, setKegiatanOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKegiatan = async () => {
-      if (!programId) {
-        setKegiatanOptions([]);
-        return;
-      }
-
-      try {
-        console.log('Fetching kegiatan for program:', programId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kegiatan!A:D"
-          }
-        });
-
-        if (error) {
-          console.error("Error fetching kegiatan:", error);
-          throw error;
-        }
-        
-        console.log('Raw kegiatan data:', data);
-        
-        const rows = data?.values || [];
-        console.log('Kegiatan rows:', rows);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => {
-              const matchesProgram = row[1] === programId;
-              console.log(`Row ${row[1]} matches program ${programId}:`, matchesProgram);
-              return matchesProgram;
-            })
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
-            .filter((item: any) => item.id && item.name);
-          
-          console.log('Filtered kegiatan options:', options);
-          setKegiatanOptions(options);
-        } else {
-          console.log('No kegiatan data found');
-          setKegiatanOptions([]);
-        }
-      } catch (error) {
-        console.error("Error fetching kegiatan:", error);
-        setKegiatanOptions([]);
-      }
-    };
-
-    fetchKegiatan();
-  }, [programId]);
-
-  return (
-    <Select value={value} onValueChange={onValueChange} disabled={!programId}>
-      <SelectTrigger>
-        <SelectValue placeholder={programId ? "Pilih kegiatan" : "Pilih program terlebih dahulu"} />
-      </SelectTrigger>
-      <SelectContent>
-        {kegiatanOptions.length > 0 ? (
-          kegiatanOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {programId ? "Tidak ada kegiatan tersedia" : "Pilih program terlebih dahulu"}
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const KROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kegiatanId?: string }> = ({ value, onValueChange, kegiatanId }) => {
-  const [kroOptions, setKroOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchKRO = async () => {
-      if (!kegiatanId) {
-        setKroOptions([]);
-        return;
-      }
-
-      try {
-        console.log('Fetching KRO for kegiatan:', kegiatanId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "kro!A:D"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        console.log('KRO rows:', rows);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kegiatanId)
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
-            .filter((item: any) => item.id && item.name);
-          
-          console.log('Filtered KRO options:', options);
-          setKroOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching KRO:", error);
-      }
-    };
-
-    fetchKRO();
-  }, [kegiatanId]);
-
-  return (
-    <Select value={value} onValueChange={onValueChange} disabled={!kegiatanId}>
-      <SelectTrigger>
-        <SelectValue placeholder={kegiatanId ? "Pilih KRO" : "Pilih kegiatan terlebih dahulu"} />
-      </SelectTrigger>
-      <SelectContent>
-        {kroOptions.length > 0 ? (
-          kroOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {kegiatanId ? "Tidak ada KRO tersedia" : "Pilih kegiatan terlebih dahulu"}
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const ROSelect: React.FC<{ value: string; onValueChange: (value: string) => void; kroId?: string }> = ({ value, onValueChange, kroId }) => {
-  const [roOptions, setRoOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchRO = async () => {
-      if (!kroId) {
-        setRoOptions([]);
-        return;
-      }
-
-      try {
-        console.log('Fetching RO for KRO:', kroId);
-        
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "ro!A:D"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        console.log('RO rows:', rows);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1)
-            .filter((row: any[]) => row[1] === kroId)
-            .map((row: any[]) => ({
-              id: row[2] || '',
-              name: row[3] || ''
-            }))
-            .filter((item: any) => item.id && item.name);
-          
-          console.log('Filtered RO options:', options);
-          setRoOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching RO:", error);
-      }
-    };
-
-    fetchRO();
-  }, [kroId]);
-
-  return (
-    <Select value={value} onValueChange={onValueChange} disabled={!kroId}>
-      <SelectTrigger>
-        <SelectValue placeholder={kroId ? "Pilih RO" : "Pilih KRO terlebih dahulu"} />
-      </SelectTrigger>
-      <SelectContent>
-        {roOptions.length > 0 ? (
-          roOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-data" disabled>
-            {kroId ? "Tidak ada RO tersedia" : "Pilih KRO terlebih dahulu"}
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const AkunSelect: React.FC<{ value: string; onValueChange: (value: string) => void }> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<Array<{id: string, name: string}>>([]);
-
-  useEffect(() => {
-    const fetchAkun = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "akun!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        console.log('Akun rows:', rows);
-        
-        if (rows.length > 1) {
-          const options = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setAkunOptions(options);
-        }
-      } catch (error) {
-        console.error("Error fetching akun:", error);
-      }
-    };
-
-    fetchAkun();
-  }, []);
-
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger>
-        <SelectValue placeholder="Pilih akun" />
-      </SelectTrigger>
-      <SelectContent>
-        {akunOptions.map(option => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
+const trainingCenterOptions = [
+  "BPS Kabupaten Majalengka", 
+  "RM. Majalengka", 
+  "Fitra Hotel", 
+  "Garden Hotel", 
+  "Horison Ultima", 
+  "Achiera Hotel"
+];
 
 const DaftarHadir = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedOrganik, setSelectedOrganik] = useState<any[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<Array<{id: string, name: string}>>([]);
-  const [organikList, setOrganikList] = useState<Array<{id: string, name: string, jabatan: string}>>([]);
-  const [mitraList, setMitraList] = useState<Array<{id: string, name: string, kecamatan: string}>>([]);
-
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitToSheets();
 
   // Use react-hook-form
   const {
@@ -498,231 +84,162 @@ const DaftarHadir = () => {
     defaultValues
   });
 
-  // Reset dependent fields when parent field changes
-  const watchProgram = watch('program');
-  const watchKegiatan = watch('kegiatan');
-  const watchKro = watch('kro');
+  // Data queries - Hook ini sudah dimodifikasi untuk membaca dari Google Spreadsheet
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatan = [] } = useKegiatan(watch('program') || null);
+  const { data: kros = [] } = useKRO(watch('kegiatan') || null);
+  const { data: ros = [] } = useRO(watch('kro') || null);
+  const { data: komponenOptions = [] } = useKomponen();
+  const { data: akuns = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
 
-  useEffect(() => {
-    if (watchProgram) {
-      setValue('kegiatan', '');
-      setValue('kro', '');
-      setValue('ro', '');
+  const jenisList = [
+    { id: "Pelatihan", name: "Pelatihan" },
+    { id: "Briefing", name: "Briefing" },
+    { id: "Rapat Persiapan", name: "Rapat Persiapan" },
+    { id: "Rapat Evaluasi", name: "Rapat Evaluasi" }
+  ];
+
+  // Create name-to-object mappings for display purposes
+  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
+  const kegiatanMap = Object.fromEntries((kegiatan || []).map(item => [item.id, item.name]));
+  const kroMap = Object.fromEntries((kros || []).map(item => [item.id, item.name]));
+  const roMap = Object.fromEntries((ros || []).map(item => [item.id, item.name]));
+  const komponenMap = Object.fromEntries((komponenOptions || []).map(item => [item.id, item.name]));
+  const akunMap = Object.fromEntries((akuns || []).map(item => [item.id, item.name]));
+  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
+  const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+
+  const submitMutation = useSubmitToSheets({
+    documentType: "DaftarHadir",
+    onSuccess: () => {
+      toast({
+        title: "Berhasil menyimpan dokumen",
+        description: "Data daftar hadir berhasil disimpan ke spreadsheet"
+      });
+      navigate("/buat-dokumen");
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan dokumen",
+        description: "Terjadi kesalahan saat menyimpan data ke spreadsheet"
+      });
     }
-  }, [watchProgram, setValue]);
+  });
 
+  // For name mapping
+  const [pembuatDaftarName, setPembuatDaftarName] = useState<string>("");
+  const [organikNameMap, setOrganikNameMap] = useState<Record<string, string>>({});
+  const [mitraNameMap, setMitraNameMap] = useState<Record<string, string>>({});
+
+  // Effect to update name mappings when selections change
   useEffect(() => {
-    if (watchKegiatan) {
-      setValue('kro', '');
-      setValue('ro', '');
+    // Update pembuat daftar name
+    const pembuatId = watch('pembuatDaftar');
+    if (pembuatId) {
+      const pembuat = organikList.find(item => item.id === pembuatId);
+      setPembuatDaftarName(pembuat?.name || "");
     }
-  }, [watchKegiatan, setValue]);
 
-  useEffect(() => {
-    if (watchKro) {
-      setValue('ro', '');
-    }
-  }, [watchKro, setValue]);
-
-  // Fetch data programs
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-            operation: "read",
-            range: "program!A:C"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        console.log('Program rows:', rows);
-        
-        if (rows.length > 1) {
-          const programData = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[2] || ''
-          })).filter((item: any) => item.id && item.name);
-          
-          setPrograms(programData);
-        }
-      } catch (error) {
-        console.error("Error fetching programs:", error);
-      }
-    };
-
-    fetchPrograms();
-  }, []);
-
-  // Fetch data organik
-  useEffect(() => {
-    const fetchOrganik = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.ORGANIK"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const organikData = rows.slice(1).map((row: any[]) => ({
-            id: row[1] || '', // NIP
-            name: row[3] || '', // Nama
-            jabatan: row[4] || '' // Jabatan
-          })).filter((item: any) => item.id && item.name);
-          
-          setOrganikList(organikData);
-        }
-      } catch (error) {
-        console.error("Error fetching organik:", error);
-      }
-    };
-
-    fetchOrganik();
-  }, []);
-
-  // Fetch data mitra
-  useEffect(() => {
-    const fetchMitra = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.MITRA"
-          }
-        });
-
-        if (error) throw error;
-        
-        const rows = data?.values || [];
-        if (rows.length > 1) {
-          const mitraData = rows.slice(1).map((row: any[]) => ({
-            id: `mitra-${row[1]}` || '', // NIK
-            name: row[2] || '', // Nama
-            kecamatan: row[7] || '' // Kecamatan
-          })).filter((item: any) => item.id && item.name);
-          
-          setMitraList(mitraData);
-        }
-      } catch (error) {
-        console.error("Error fetching mitra:", error);
-      }
-    };
-
-    fetchMitra();
-  }, []);
-
-  // Effect untuk update selected organik dan mitra
-  useEffect(() => {
+    // Update organik name mapping
     const organikIds = watch('organik') || [];
+    const newOrganikNameMap: Record<string, string> = {};
+    organikIds.forEach(id => {
+      const organik = organikList.find(item => item.id === id);
+      if (organik) {
+        newOrganikNameMap[id] = organik.name;
+      }
+    });
+    setOrganikNameMap(newOrganikNameMap);
+
+    // Update mitra name mapping
     const mitraIds = watch('mitra') || [];
-    
-    const updatedOrganik = organikIds.map(id => 
-      organikList.find(item => item.id === id)
-    ).filter(Boolean);
-    
-    const updatedMitra = mitraIds.map(id => 
-      mitraList.find(item => item.id === id)
-    ).filter(Boolean);
-    
-    setSelectedOrganik(updatedOrganik);
-    setSelectedMitra(updatedMitra);
-  }, [watch('organik'), watch('mitra'), organikList, mitraList]);
+    const newMitraNameMap: Record<string, string> = {};
+    mitraIds.forEach(id => {
+      const mitra = mitraList.find(item => item.id === id);
+      if (mitra) {
+        newMitraNameMap[id] = mitra.name;
+      }
+    });
+    setMitraNameMap(newMitraNameMap);
+  }, [watch('pembuatDaftar'), watch('organik'), watch('mitra'), organikList, mitraList]);
 
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      console.log('Form data submitted:', data);
+      // Prepare data for spreadsheet submission
+      const submitData = {
+        // Form data
+        namaKegiatan: data.namaKegiatan,
+        detil: data.detil,
+        jenis: data.jenis,
+        program: data.program,
+        programName: programsMap[data.program] || "",
+        kegiatan: data.kegiatan,
+        kegiatanName: kegiatanMap[data.kegiatan] || "",
+        kro: data.kro,
+        kroName: kroMap[data.kro] || "",
+        ro: data.ro,
+        roName: roMap[data.ro] || "",
+        komponen: data.komponen,
+        komponenName: komponenMap[data.komponen] || "",
+        akun: data.akun,
+        akunName: akunMap[data.akun] || "",
+        trainingCenter: data.trainingCenter,
+        tanggalMulai: data.tanggalMulai ? format(data.tanggalMulai, "yyyy-MM-dd") : "",
+        tanggalSelesai: data.tanggalSelesai ? format(data.tanggalSelesai, "yyyy-MM-dd") : "",
+        tanggalSpj: data.tanggalSpj ? format(data.tanggalSpj, "yyyy-MM-dd") : "",
+        organik: data.organik,
+        organikNames: data.organik.map(id => organikNameMap[id] || "").filter(Boolean),
+        mitra: data.mitra,
+        mitraNames: data.mitra.map(id => mitraNameMap[id] || "").filter(Boolean),
+        pembuatDaftar: data.pembuatDaftar,
+        pembuatDaftarName: pembuatDaftarName,
+        
+        // Metadata
+        timestamp: new Date().toISOString(),
+        documentType: "DaftarHadir"
+      };
 
-      // Prepare data for Google Sheets submission
-      const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
+      console.log('Submitting to spreadsheet:', submitData);
+
+      // Submit to Google Sheets menggunakan hook yang sudah ada
+      await submitMutation.mutateAsync(submitData);
       
-      // Format data sesuai struktur spreadsheet
-      const rowData = [
-        data.namaKegiatan,
-        data.detil || "",
-        data.jenis,
-        programs.find(p => p.id === data.program)?.name || data.program,
-        "", // Kegiatan akan diisi berdasarkan selection
-        "", // KRO akan diisi berdasarkan selection  
-        "", // RO akan diisi berdasarkan selection
-        "", // Komponen akan diisi berdasarkan selection
-        "", // Akun akan diisi berdasarkan selection
-        formatTanggalIndonesia(data.tanggalMulai),
-        formatTanggalIndonesia(data.tanggalSelesai),
-        pembuatDaftar?.name || data.pembuatDaftar,
-        selectedOrganik.map(org => org.name).join(", "),
-        selectedMitra.map(mitra => mitra.name).join(", ")
-      ];
-
-      console.log('Data prepared for sheets:', rowData);
-
-      // Submit to Google Sheets
-      await submitData(rowData);
-
-      toast({
-        title: "Sukses!",
-        description: "Daftar Hadir berhasil disimpan",
-        variant: "default"
-      });
-      
-      navigate("/e-dokumen/buat");
-
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan dokumen",
-        description: "Terjadi kesalahan saat menyimpan data"
+        description: "Terjadi kesalahan saat menyimpan data ke spreadsheet"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const removeOrganik = (id: string) => {
-    const currentOrganik = watch('organik') || [];
-    const updatedOrganik = currentOrganik.filter(orgId => orgId !== id);
-    setValue('organik', updatedOrganik);
-  };
-
-  const removeMitra = (id: string) => {
-    const currentMitra = watch('mitra') || [];
-    const updatedMitra = currentMitra.filter(mitraId => mitraId !== id);
-    setValue('mitra', updatedMitra);
-  };
-
-  const isLoading = isSubmitting || isSubmitLoading;
-
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-orange-600">Daftar Hadir</h1>
-          <p className="text-muted-foreground mt-2">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-600">Daftar Hadir</h1>
+          <p className="text-sm text-muted-foreground">
             Formulir Daftar Hadir
           </p>
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Form Daftar Hadir</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card>
+          <CardContent className="p-6">
             <form onSubmit={handleSubmit(handleSubmitForm)} className="space-y-6">
-              {/* Informasi Kegiatan */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="namaKegiatan">Nama Kegiatan <span className="text-red-500">*</span></Label>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Nama Kegiatan */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="namaKegiatan">
+                    Nama Kegiatan (cth: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025)
+                  </Label>
                   <Controller 
                     name="namaKegiatan" 
                     control={control} 
@@ -730,24 +247,29 @@ const DaftarHadir = () => {
                     render={({ field }) => (
                       <Input 
                         id="namaKegiatan" 
-                        placeholder="Contoh: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025"
+                        placeholder="Masukkan nama kegiatan" 
                         value={field.value} 
                         onChange={field.onChange} 
                       />
                     )} 
                   />
-                  {errors.namaKegiatan && <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>}
+                  {errors.namaKegiatan && (
+                    <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="detil">Detil Kegiatan</Label>
+                {/* Detil Kegiatan */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="detil">
+                    Detil (cth: Pemutakhiran Perkembangan Desa Tahun 2025)
+                  </Label>
                   <Controller 
                     name="detil" 
                     control={control} 
                     render={({ field }) => (
                       <Input 
                         id="detil" 
-                        placeholder="Contoh: Pemutakhiran Perkembangan Desa Tahun 2025"
+                        placeholder="Masukkan detil kegiatan" 
                         value={field.value} 
                         onChange={field.onChange} 
                       />
@@ -755,43 +277,171 @@ const DaftarHadir = () => {
                   />
                 </div>
 
+                {/* Jenis */}
                 <div className="space-y-2">
-                  <Label>Jenis <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="jenis">Jenis</Label>
                   <Controller 
                     name="jenis" 
                     control={control} 
                     rules={{ required: "Jenis harus dipilih" }}
                     render={({ field }) => (
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih jenis" />
                         </SelectTrigger>
                         <SelectContent>
-                          {jenisOptions.map(option => (
-                            <SelectItem key={option} value={option}>
-                              {option}
+                          {jenisList.map(jenis => (
+                            <SelectItem key={jenis.id} value={jenis.id}>
+                              {jenis.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )} 
                   />
-                  {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
+                  {errors.jenis && (
+                    <p className="text-sm text-destructive">{errors.jenis.message}</p>
+                  )}
                 </div>
 
+                {/* Program */}
                 <div className="space-y-2">
-                  <Label>Tempat Kegiatan</Label>
+                  <Label htmlFor="program">Program</Label>
+                  <Controller 
+                    name="program" 
+                    control={control} 
+                    rules={{ required: "Program harus dipilih" }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {programs.map(program => (
+                            <SelectItem key={program.id} value={program.id}>
+                              {program.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )} 
+                  />
+                  {errors.program && (
+                    <p className="text-sm text-destructive">{errors.program.message}</p>
+                  )}
+                </div>
+
+                {/* Kegiatan */}
+                <div className="space-y-2">
+                  <Label htmlFor="kegiatan">Kegiatan</Label>
+                  <Controller 
+                    name="kegiatan" 
+                    control={control} 
+                    rules={{ required: "Kegiatan harus dipilih" }}
+                    render={({ field }) => (
+                      <KegiatanSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih kegiatan" 
+                        programId={watch('program')} 
+                      />
+                    )} 
+                  />
+                  {errors.kegiatan && (
+                    <p className="text-sm text-destructive">{errors.kegiatan.message}</p>
+                  )}
+                </div>
+
+                {/* KRO */}
+                <div className="space-y-2">
+                  <Label htmlFor="kro">KRO</Label>
+                  <Controller 
+                    name="kro" 
+                    control={control} 
+                    rules={{ required: "KRO harus dipilih" }}
+                    render={({ field }) => (
+                      <KROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih KRO" 
+                        kegiatanId={watch('kegiatan')} 
+                      />
+                    )} 
+                  />
+                  {errors.kro && (
+                    <p className="text-sm text-destructive">{errors.kro.message}</p>
+                  )}
+                </div>
+
+                {/* RO */}
+                <div className="space-y-2">
+                  <Label htmlFor="ro">RO</Label>
+                  <Controller 
+                    name="ro" 
+                    control={control} 
+                    rules={{ required: "RO harus dipilih" }}
+                    render={({ field }) => (
+                      <ROSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih RO" 
+                        kroId={watch('kro')} 
+                      />
+                    )} 
+                  />
+                  {errors.ro && (
+                    <p className="text-sm text-destructive">{errors.ro.message}</p>
+                  )}
+                </div>
+
+                {/* Komponen */}
+                <div className="space-y-2">
+                  <Label htmlFor="komponen">Komponen</Label>
+                  <Controller 
+                    name="komponen" 
+                    control={control} 
+                    rules={{ required: "Komponen harus dipilih" }}
+                    render={({ field }) => (
+                      <KomponenSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih komponen" 
+                      />
+                    )} 
+                  />
+                  {errors.komponen && (
+                    <p className="text-sm text-destructive">{errors.komponen.message}</p>
+                  )}
+                </div>
+
+                {/* Akun */}
+                <div className="space-y-2">
+                  <Label htmlFor="akun">Akun</Label>
+                  <Controller 
+                    name="akun" 
+                    control={control} 
+                    rules={{ required: "Akun harus dipilih" }}
+                    render={({ field }) => (
+                      <AkunSelect 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Pilih akun" 
+                      />
+                    )} 
+                  />
+                  {errors.akun && (
+                    <p className="text-sm text-destructive">{errors.akun.message}</p>
+                  )}
+                </div>
+
+                {/* Tempat Kegiatan */}
+                <div className="space-y-2">
+                  <Label htmlFor="trainingCenter">Tempat Kegiatan</Label>
                   <Controller 
                     name="trainingCenter" 
                     control={control} 
                     render={({ field }) => (
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih tempat kegiatan" />
                         </SelectTrigger>
@@ -806,125 +456,10 @@ const DaftarHadir = () => {
                     )} 
                   />
                 </div>
-              </div>
 
-              {/* Program dan Kegiatan */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Tanggal Mulai */}
                 <div className="space-y-2">
-                  <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="program" 
-                    control={control} 
-                    rules={{ required: "Program harus dipilih" }}
-                    render={({ field }) => (
-                      <Select 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih program" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {programs.map(program => (
-                            <SelectItem key={program.id} value={program.id}>
-                              {program.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )} 
-                  />
-                  {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Kegiatan <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="kegiatan" 
-                    control={control} 
-                    rules={{ required: "Kegiatan harus dipilih" }}
-                    render={({ field }) => (
-                      <KegiatanSelect 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                        programId={watch('program')} 
-                      />
-                    )} 
-                  />
-                  {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Kode Rincian Output (KRO) <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="kro" 
-                    control={control} 
-                    rules={{ required: "KRO harus dipilih" }}
-                    render={({ field }) => (
-                      <KROSelect 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                        kegiatanId={watch('kegiatan')} 
-                      />
-                    )} 
-                  />
-                  {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Rincian Output (RO) <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="ro" 
-                    control={control} 
-                    rules={{ required: "RO harus dipilih" }}
-                    render={({ field }) => (
-                      <ROSelect 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                        kroId={watch('kro')} 
-                      />
-                    )} 
-                  />
-                  {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Komponen Output <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="komponen" 
-                    control={control} 
-                    rules={{ required: "Komponen harus dipilih" }}
-                    render={({ field }) => (
-                      <KomponenSelect 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      />
-                    )} 
-                  />
-                  {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Akun <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="akun" 
-                    control={control} 
-                    rules={{ required: "Akun harus dipilih" }}
-                    render={({ field }) => (
-                      <AkunSelect 
-                        value={field.value} 
-                        onValueChange={field.onChange}
-                      />
-                    )} 
-                  />
-                  {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
-                </div>
-              </div>
-
-              {/* Tanggal */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
+                  <Label>Tanggal Mulai</Label>
                   <Controller 
                     name="tanggalMulai" 
                     control={control} 
@@ -932,33 +467,37 @@ const DaftarHadir = () => {
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal", 
                               !field.value && "text-muted-foreground"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            initialFocus
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
                           />
                         </PopoverContent>
                       </Popover>
                     )} 
                   />
-                  {errors.tanggalMulai && <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>}
+                  {errors.tanggalMulai && (
+                    <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>
+                  )}
                 </div>
 
+                {/* Tanggal Selesai */}
                 <div className="space-y-2">
-                  <Label>Tanggal Selesai <span className="text-red-500">*</span></Label>
+                  <Label>Tanggal Selesai</Label>
                   <Controller 
                     name="tanggalSelesai" 
                     control={control} 
@@ -966,33 +505,37 @@ const DaftarHadir = () => {
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal", 
                               !field.value && "text-muted-foreground"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            initialFocus
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
                           />
                         </PopoverContent>
                       </Popover>
                     )} 
                   />
-                  {errors.tanggalSelesai && <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>}
+                  {errors.tanggalSelesai && (
+                    <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>
+                  )}
                 </div>
 
+                {/* Tanggal SPJ */}
                 <div className="space-y-2">
-                  <Label>Tanggal membuat daftar <span className="text-red-500">*</span></Label>
+                  <Label>Tanggal membuat daftar</Label>
                   <Controller 
                     name="tanggalSpj" 
                     control={control} 
@@ -1000,36 +543,37 @@ const DaftarHadir = () => {
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal", 
                               !field.value && "text-muted-foreground"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                            {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            initialFocus
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value || undefined} 
+                            onSelect={field.onChange} 
+                            initialFocus 
+                            className="p-3 pointer-events-auto" 
                           />
                         </PopoverContent>
                       </Popover>
                     )} 
                   />
-                  {errors.tanggalSpj && <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>}
+                  {errors.tanggalSpj && (
+                    <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>
+                  )}
                 </div>
-              </div>
 
-              {/* Pembuat Daftar */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Pembuat Daftar */}
                 <div className="space-y-2">
-                  <Label>Pembuat Daftar <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="pembuatDaftar">Pembuat Daftar</Label>
                   <Controller 
                     name="pembuatDaftar" 
                     control={control} 
@@ -1042,27 +586,27 @@ const DaftarHadir = () => {
                           label: item.name
                         }))} 
                         value={field.value} 
-                        onChange={field.onChange}
+                        onChange={field.onChange} 
                       />
                     )} 
                   />
-                  {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
+                  {errors.pembuatDaftar && (
+                    <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>
+                  )}
                 </div>
               </div>
 
-              {/* Peserta Organik dan Mitra */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Peserta Organik */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Peserta Organik BPS</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Controller 
-                        name="organik" 
-                        control={control} 
-                        render={({ field }) => (
+              {/* Organik BPS dan Mitra Statistik */}
+              <div className="space-y-6 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Organik BPS */}
+                  <div className="space-y-2">
+                    <Label>Organik BPS</Label>
+                    <Controller 
+                      name="organik" 
+                      control={control} 
+                      render={({ field }) => (
+                        <div className="w-full h-full">
                           <FormSelect 
                             placeholder="Pilih organik BPS" 
                             options={organikList.map(item => ({
@@ -1070,46 +614,22 @@ const DaftarHadir = () => {
                               label: item.name
                             }))} 
                             value={field.value} 
-                            onChange={field.onChange}
+                            onChange={field.onChange} 
                             isMulti 
                           />
-                        )} 
-                      />
-                    </div>
-                    
-                    {/* Daftar peserta organik yang sudah dipilih */}
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedOrganik.map(org => (
-                        <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{org.name}</p>
-                            <p className="text-sm text-muted-foreground">{org.jabatan}</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOrganik(org.id)}
-                          >
-                            <Trash className="h-4 w-4 text-destructive" />
-                          </Button>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      )} 
+                    />
+                  </div>
 
-                {/* Peserta Mitra */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Peserta Mitra Statistik</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Controller 
-                        name="mitra" 
-                        control={control} 
-                        render={({ field }) => (
+                  {/* Mitra Statistik */}
+                  <div className="space-y-2">
+                    <Label>Mitra Statistik</Label>
+                    <Controller 
+                      name="mitra" 
+                      control={control} 
+                      render={({ field }) => (
+                        <div className="w-full h-full">
                           <FormSelect 
                             placeholder="Pilih mitra statistik" 
                             options={mitraList.map(item => ({
@@ -1117,94 +637,27 @@ const DaftarHadir = () => {
                               label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
                             }))} 
                             value={field.value} 
-                            onChange={field.onChange}
+                            onChange={field.onChange} 
                             isMulti 
                           />
-                        )} 
-                      />
-                    </div>
-                    
-                    {/* Daftar peserta mitra yang sudah dipilih */}
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedMitra.map(mitra => (
-                        <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{mitra.name}</p>
-                            <p className="text-sm text-muted-foreground">{mitra.kecamatan}</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeMitra(mitra.id)}
-                          >
-                            <Trash className="h-4 w-4 text-destructive" />
-                          </Button>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      )} 
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Ringkasan Peserta */}
-              {(selectedOrganik.length > 0 || selectedMitra.length > 0) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Ringkasan Peserta ({selectedOrganik.length + selectedMitra.length} orang)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-medium mb-3 text-green-600">
-                          Organik BPS ({selectedOrganik.length})
-                        </h4>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {selectedOrganik.map(org => (
-                            <div key={org.id} className="flex items-center justify-between p-2 border rounded">
-                              <span className="text-sm">{org.name}</span>
-                              <span className="text-xs text-muted-foreground">{org.jabatan}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-3 text-blue-600">
-                          Mitra Statistik ({selectedMitra.length})
-                        </h4>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {selectedMitra.map(mitra => (
-                            <div key={mitra.id} className="flex items-center justify-between p-2 border rounded">
-                              <span className="text-sm">{mitra.name}</span>
-                              <span className="text-xs text-muted-foreground">{mitra.kecamatan}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Tombol Aksi */}
-              <div className="flex justify-end gap-4 pt-6 border-t">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate("/e-dokumen/buat")}
-                  disabled={isLoading}
-                  className="min-w-24"
-                >
+              {/* Action Buttons */}
+              <div className="flex space-x-4">
+                <Button type="button" variant="outline" onClick={() => navigate("/buat-dokumen")}>
                   Batal
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isLoading}
-                  className="min-w-32 bg-teal-600 hover:bg-teal-700"
+                  disabled={isSubmitting} 
+                  className="flex-1 bg-teal-700 hover:bg-teal-600"
                 >
-                  {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+                  {isSubmitting ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
               </div>
             </form>
