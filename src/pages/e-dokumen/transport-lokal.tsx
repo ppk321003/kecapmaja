@@ -20,7 +20,8 @@ import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrgan
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { supabase } from "@/integrations/supabase/client";
+
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
@@ -45,7 +46,9 @@ const formSchema = z.object({
     nama: z.string().optional()
   })).min(1, "Minimal harus ada 1 peserta")
 });
+
 type FormValues = z.infer<typeof formSchema>;
+
 const defaultValues: Partial<FormValues> = {
   namaKegiatan: "",
   detil: "",
@@ -59,10 +62,160 @@ const defaultValues: Partial<FormValues> = {
   pembuatDaftar: "",
   transportDetails: []
 };
+
+// Constants
+const TARGET_SPREADSHEET_ID = "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc";
+const SHEET_NAME = "TransportLokal";
+
+// Custom hook untuk submit data
+const useSubmitTransportLokalToSheets = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      console.log('📤 Submitting transport lokal data to sheets:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: `${SHEET_NAME}!A:M`,
+          values: [data]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting transport lokal:', error);
+        throw error;
+      }
+
+      console.log('✅ Transport lokal submission successful:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
+// Fungsi untuk generate ID transport lokal (trl-yymmxxx)
+const generateTransportLokalId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `trl-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching transport lokal IDs:", error);
+      throw new Error("Gagal mengambil ID transport lokal terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    // Filter ID yang sesuai dengan prefix bulan ini
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[1]) // Kolom B adalah ID
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating transport lokal ID:", error);
+    throw error;
+  }
+};
+
+const formatTanggalIndonesia = (date: Date | null): string => {
+  if (!date) return "";
+  
+  const day = date.getDate();
+  const month = date.toLocaleDateString('id-ID', { month: 'long' });
+  const year = date.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+};
+
 const TransportLokal = () => {
   const navigate = useNavigate();
   const [transportOrganik, setTransportOrganik] = useState<any[]>([]);
   const [transportMitra, setTransportMitra] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues
@@ -94,24 +247,17 @@ const TransportLokal = () => {
     data: mitraList = []
   } = useMitraStatistik();
 
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitTransportLokalToSheets();
+
   // Create name-to-object mappings for display purposes
-  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
-  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
-  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
+  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
-
-  // Setup submission to Google Sheets
-  const submitMutation = useSubmitToSheets({
-    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-    sheetName: "TransportLokal",
-    onSuccess: () => {
-      navigate("/e-dokumen/buat");
-    }
-  });
 
   // Combine transportDetails for form submission
   useEffect(() => {
@@ -203,7 +349,12 @@ const TransportLokal = () => {
 
   // Form submission handler
   const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     try {
+      // Generate nomor urut baru dan ID transport lokal
+      const sequenceNumber = await getNextSequenceNumber();
+      const transportLokalId = await generateTransportLokalId();
+
       // Tambahkan nama ke setiap transportDetail
       const transportDetailsWithNames = data.transportDetails.map(detail => {
         if (detail.type === "organik") {
@@ -220,20 +371,54 @@ const TransportLokal = () => {
           };
         }
       });
-      const submitData = {
-        ...data,
-        transportDetails: transportDetailsWithNames,
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[data.pembuatDaftar]
-      };
-      await submitMutation.mutateAsync(submitData);
+
+      // Get names for display
+      const programName = programsMap[data.program] || data.program;
+      const kegiatanName = kegiatanMap[data.kegiatan] || data.kegiatan;
+      const kroName = kroMap[data.kro] || data.kro;
+      const roName = roMap[data.ro] || data.ro;
+      const komponenName = komponenMap[data.komponen] || data.komponen;
+      const akunName = akunMap[data.akun] || data.akun;
+      const pembuatDaftarName = organikMap[data.pembuatDaftar] || data.pembuatDaftar;
+
+      // Format rincian keseluruhan
+      const rincianKeseluruhan = transportDetailsWithNames.map(detail => {
+        const rate = parseInt(detail.rate) || 0;
+        return `${detail.nama} - ${detail.kecamatan} - ${formatTanggalIndonesia(detail.tanggalPelaksanaan)} - Rp ${rate.toLocaleString('id-ID')}`;
+      }).join(" | ");
+
+      // Format data sesuai struktur spreadsheet
+      const rowData = [
+        sequenceNumber, // Kolom 1: No
+        transportLokalId, // Kolom 2: Id (trl-yymmxxx)
+        data.namaKegiatan, // Kolom 3: Nama Kegiatan
+        data.detil || "", // Kolom 4: Detil
+        programName, // Kolom 5: Program
+        kegiatanName, // Kolom 6: Kegiatan
+        kroName, // Kolom 7: KRO
+        roName, // Kolom 8: RO
+        komponenName, // Kolom 9: Komponen
+        akunName, // Kolom 10: Akun
+        formatTanggalIndonesia(data.tanggalSpj), // Kolom 11: Tanggal (SPJ)
+        pembuatDaftarName, // Kolom 12: Pembuat Daftar
+        transportOrganik.map(org => org.nama).filter(Boolean).join(" | "), // Kolom 13: Organik
+        transportMitra.map(mitra => mitra.nama).filter(Boolean).join(" | "), // Kolom 14: Mitra Statistik
+        rincianKeseluruhan // Kolom 15: Rincian Keseluruhan
+      ];
+
+      console.log('📋 Final transport lokal data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 Transport Lokal ID:', transportLokalId);
+
+      // Submit to Google Sheets
+      await submitData(rowData);
+
+      toast({
+        title: "Berhasil",
+        description: `SPJ Transport Lokal berhasil disimpan (ID: ${transportLokalId})`
+      });
+      navigate("/e-dokumen/buat");
+
     } catch (error: any) {
       console.error("Error saving SPJ Transport Lokal:", error);
       toast({
@@ -241,6 +426,8 @@ const TransportLokal = () => {
         title: "Gagal menyimpan data",
         description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -250,8 +437,13 @@ const TransportLokal = () => {
     const mitraTotal = transportMitra.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
     return organikTotal + mitraTotal;
   };
+
   const kecamatanList = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"];
-  return <Layout>
+
+  const isLoading = isSubmitting || isSubmitLoading;
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600">SPJ Transport Lokal</h1>
@@ -302,9 +494,11 @@ const TransportLokal = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {programs.map(program => <SelectItem key={program.id} value={program.id}>
-                              {program.name}
-                            </SelectItem>)}
+                          {programs.map(program => (
+                            <SelectItem key={program.id} value={program.id}>
+                              {program.name.split(' - ')[1] || program.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -326,9 +520,11 @@ const TransportLokal = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
+                          {kegiatanList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name.split(' - ')[1] || item.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -349,9 +545,11 @@ const TransportLokal = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {kroList.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
+                          {kroList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name.split(' - ')[1] || item.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -369,9 +567,11 @@ const TransportLokal = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {roList.map(item => <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>)}
+                          {roList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name.split(' - ')[1] || item.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -430,9 +630,11 @@ const TransportLokal = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
+                          {organikList.map(organik => (
+                            <SelectItem key={organik.id} value={organik.id}>
                               {organik.name}
-                            </SelectItem>)}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -451,7 +653,8 @@ const TransportLokal = () => {
                   </Button>
                 </div>
 
-                {transportOrganik.map((transport, index) => <div key={index} className="border p-4 rounded-md space-y-4">
+                {transportOrganik.map((transport, index) => (
+                  <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="text-lg font-medium">Organik BPS - {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeTransportDetail("organik", index)}>
@@ -461,10 +664,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect placeholder="Pilih Organik BPS" options={organikList.map(organik => ({
-                      value: organik.id,
-                      label: organik.name
-                    }))} value={transport.personId} onChange={value => updateTransportDetail("organik", index, "personId", value)} />
+                        <FormSelect 
+                          placeholder="Pilih Organik BPS" 
+                          options={organikList.map(organik => ({
+                            value: organik.id,
+                            label: organik.name
+                          }))} 
+                          value={transport.personId} 
+                          onChange={value => updateTransportDetail("organik", index, "personId", value)} 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>
@@ -473,18 +681,26 @@ const TransportLokal = () => {
                             <SelectValue placeholder="Pilih Kecamatan" />
                           </SelectTrigger>
                           <SelectContent>
-                            {kecamatanList.map(kec => <SelectItem key={kec} value={kec}>
+                            {kecamatanList.map(kec => (
+                              <SelectItem key={kec} value={kec}>
                                 {kec}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                        <div className="space-y-2">
                          <Label>Rate (Rp)</Label>
-                         <Input type="text" pattern="[0-9]*" value={transport.rate} onChange={e => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      updateTransportDetail("organik", index, "rate", value);
-                    }} placeholder="0" />
+                         <Input 
+                           type="text" 
+                           pattern="[0-9]*" 
+                           value={transport.rate} 
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("organik", index, "rate", value);
+                           }} 
+                           placeholder="0" 
+                         />
                        </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
@@ -496,16 +712,24 @@ const TransportLokal = () => {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={transport.tanggalPelaksanaan} onSelect={date => updateTransportDetail("organik", index, "tanggalPelaksanaan", date)} initialFocus />
+                            <Calendar 
+                              mode="single" 
+                              selected={transport.tanggalPelaksanaan} 
+                              onSelect={date => updateTransportDetail("organik", index, "tanggalPelaksanaan", date)} 
+                              initialFocus 
+                            />
                           </PopoverContent>
                         </Popover>
                       </div>
                     </div>
-                  </div>)}
+                  </div>
+                ))}
 
-                {transportOrganik.length === 0 && <p className="text-muted-foreground text-center py-4">
+                {transportOrganik.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">
                     Belum ada data Transport Lokal organik. Klik tombol "Tambah Organik" untuk menambahkan.
-                  </p>}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -519,7 +743,8 @@ const TransportLokal = () => {
                   </Button>
                 </div>
 
-                {transportMitra.map((transport, index) => <div key={index} className="border p-4 rounded-md space-y-4">
+                {transportMitra.map((transport, index) => (
+                  <div key={index} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
                       <h3 className="font-medium text-base">Mitra Statistik - {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeTransportDetail("mitra", index)}>
@@ -529,10 +754,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect placeholder="Pilih Mitra Statistik" options={mitraList.map(mitra => ({
-                      value: mitra.id,
-                      label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
-                    }))} value={transport.personId} onChange={value => updateTransportDetail("mitra", index, "personId", value)} />
+                        <FormSelect 
+                          placeholder="Pilih Mitra Statistik" 
+                          options={mitraList.map(mitra => ({
+                            value: mitra.id,
+                            label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
+                          }))} 
+                          value={transport.personId} 
+                          onChange={value => updateTransportDetail("mitra", index, "personId", value)} 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Kecamatan Tujuan</Label>
@@ -541,18 +771,26 @@ const TransportLokal = () => {
                             <SelectValue placeholder="Pilih Kecamatan" />
                           </SelectTrigger>
                           <SelectContent>
-                            {kecamatanList.map(kec => <SelectItem key={kec} value={kec}>
+                            {kecamatanList.map(kec => (
+                              <SelectItem key={kec} value={kec}>
                                 {kec}
-                              </SelectItem>)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                        <div className="space-y-2">
                          <Label>Rate (Rp)</Label>
-                         <Input type="text" pattern="[0-9]*" value={transport.rate} onChange={e => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      updateTransportDetail("mitra", index, "rate", value);
-                    }} placeholder="0" />
+                         <Input 
+                           type="text" 
+                           pattern="[0-9]*" 
+                           value={transport.rate} 
+                           onChange={e => {
+                             const value = e.target.value.replace(/\D/g, '');
+                             updateTransportDetail("mitra", index, "rate", value);
+                           }} 
+                           placeholder="0" 
+                         />
                        </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
@@ -564,16 +802,24 @@ const TransportLokal = () => {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={transport.tanggalPelaksanaan} onSelect={date => updateTransportDetail("mitra", index, "tanggalPelaksanaan", date)} initialFocus />
+                            <Calendar 
+                              mode="single" 
+                              selected={transport.tanggalPelaksanaan} 
+                              onSelect={date => updateTransportDetail("mitra", index, "tanggalPelaksanaan", date)} 
+                              initialFocus 
+                            />
                           </PopoverContent>
                         </Popover>
                       </div>
                     </div>
-                  </div>)}
+                  </div>
+                ))}
 
-                {transportMitra.length === 0 && <p className="text-muted-foreground text-center py-4">
+                {transportMitra.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">
                     Belum ada data Transport Lokal mitra. Klik tombol "Tambah Mitra" untuk menambahkan.
-                  </p>}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -588,8 +834,8 @@ const TransportLokal = () => {
                   <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/e-dokumen/buat")}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={submitMutation.isPending} className="w-full bg-teal-700 hover:bg-teal-600">
-                    {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
+                  <Button type="submit" disabled={isLoading} className="w-full bg-teal-700 hover:bg-teal-600">
+                    {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>
               </CardContent>
@@ -597,6 +843,8 @@ const TransportLokal = () => {
           </form>
         </Form>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default TransportLokal;
