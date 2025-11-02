@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,7 +17,20 @@ import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { supabase } from "@/integrations/supabase/client";
+
+// Constants
+const CONSTANTS = {
+  SPREADSHEET: {
+    TARGET_ID: "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI",
+    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"
+  },
+  SHEET_NAMES: {
+    KUITANSI: "KuitansiTransportLokal",
+    ORGANIK: "MASTER.ORGANIK",
+    MITRA: "MASTER.MITRA"
+  }
+} as const;
 
 // Simple Searchable Select Component
 const SearchableSelect: React.FC<{
@@ -318,25 +331,125 @@ const PersonTransportGroup: React.FC<{
   );
 };
 
-// Helper functions
-const generateId = () => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  
-  // Untuk demo, kita gunakan random number. Dalam produksi, Anda perlu menyimpan counter di localStorage/database
-  const counter = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  
-  return `ku-${year}${month}${counter}`;
+// Custom Hooks
+const useSheetData = () => {
+  const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId,
+          operation: "read",
+          range
+        }
+      });
+
+      if (error) throw error;
+      return data?.values || [];
+    } catch (error) {
+      console.error(`Error fetching sheet data from ${range}:`, error);
+      throw error;
+    }
+  }, []);
+
+  return { fetchSheetData };
 };
 
-const formatDateForDisplay = (date: Date | null) => {
+const useKuitansiSequenceGenerator = () => {
+  const { fetchSheetData } = useSheetData();
+
+  const getNextSequenceNumber = useCallback(async (): Promise<number> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.KUITANSI}!A:A`
+    );
+
+    if (values.length <= 1) return 1;
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+  }, [fetchSheetData]);
+
+  const generateKuitansiId = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `ku-${year}${month}`;
+
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.KUITANSI}!B:B`
+    );
+
+    if (values.length <= 1) return `${prefix}001`;
+
+    // Filter hanya ID yang sesuai format dan bulan/tahun yang sama
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const match = id.match(/ku-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          const sequence = parseInt(match[3]);
+          return isNaN(sequence) ? 0 : sequence;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+  }, [fetchSheetData]);
+
+  return { getNextSequenceNumber, generateKuitansiId };
+};
+
+const useDataSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+          operation: "append",
+          range: `${CONSTANTS.SHEET_NAMES.KUITANSI}!A:W`,
+          values: [data]
+        }
+      });
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Helper functions
+const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   return format(date, "d MMMM yyyy", { locale: idLocale });
 };
 
 const extractDisplayName = (fullText: string) => {
-  // Memisahkan kode dan nama, contoh: "054.01.GG - Program Penyediaan dan Pelayanan Informasi Statistik"
   const parts = fullText.split(' - ');
   return parts.length > 1 ? parts[1] + ` (${parts[0]})` : fullText;
 };
@@ -346,6 +459,7 @@ const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
   const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
+  const [duplicateErrors, setDuplicateErrors] = useState<{[key: string]: string}>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -366,12 +480,8 @@ const KuitansiTransportLokal = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Setup submission
-  const submitMutation = useSubmitToSheets({
-    spreadsheetId: "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI",
-    sheetName: "KuitansiTransportLokal",
-    onSuccess: () => navigate("/e-dokumen/buat")
-  });
+  const { submitData, isSubmitting } = useDataSubmission();
+  const { getNextSequenceNumber, generateKuitansiId } = useKuitansiSequenceGenerator();
 
   // Convert grouped data to flat structure
   const flattenedTransportDetails = useMemo(() => {
@@ -403,7 +513,7 @@ const KuitansiTransportLokal = () => {
   }, [flattenedTransportDetails]);
 
   // Validasi duplikat tanggal untuk nama yang sama
-  const duplicateErrors = useMemo(() => {
+  useEffect(() => {
     const errors: {[key: string]: string} = {};
     const datePersonMap = new Map();
     
@@ -411,13 +521,13 @@ const KuitansiTransportLokal = () => {
       if (detail.nama && detail.tanggalPelaksanaan) {
         const key = `${detail.nama}-${detail.tanggalPelaksanaan.toISOString().split('T')[0]}`;
         if (datePersonMap.has(key)) {
-          errors[`detail-${index}`] = `${detail.nama} sudah memiliki perjalanan di tanggal ${formatDateForDisplay(detail.tanggalPelaksanaan)}`;
+          errors[`detail-${index}`] = `${detail.nama} sudah memiliki perjalanan di tanggal ${formatTanggalIndonesia(detail.tanggalPelaksanaan)}`;
         }
         datePersonMap.set(key, true);
       }
     });
     
-    return errors;
+    setDuplicateErrors(errors);
   }, [flattenedTransportDetails]);
 
   // Simple event handlers
@@ -540,9 +650,12 @@ const KuitansiTransportLokal = () => {
   }, []);
 
   // Format data untuk spreadsheet
-  const formatDataForSpreadsheet = useCallback((data: FormValues) => {
-    const id = generateId();
-    
+  const formatDataForSpreadsheet = useCallback(async (data: FormValues): Promise<any[]> => {
+    const [sequenceNumber, kuitansiId] = await Promise.all([
+      getNextSequenceNumber(),
+      generateKuitansiId()
+    ]);
+
     // Pisahkan data organik dan mitra
     const organikDetails = data.transportDetails.filter(detail => detail.type === "organik");
     const mitraDetails = data.transportDetails.filter(detail => detail.type === "mitra");
@@ -563,49 +676,41 @@ const KuitansiTransportLokal = () => {
     const organikKecamatanTujuan = organikDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(" | ");
     const organikDariKecamatan = organikDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(" | ");
     const organikRates = organikDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
-    const organikTanggal = organikDetails.map(detail => formatDateForDisplay(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
+    const organikTanggal = organikDetails.map(detail => formatTanggalIndonesia(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
     const mitraKecamatanTujuan = mitraDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(" | ");
     const mitraDariKecamatan = mitraDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(" | ");
     const mitraRates = mitraDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
-    const mitraTanggal = mitraDetails.map(detail => formatDateForDisplay(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
+    const mitraTanggal = mitraDetails.map(detail => formatTanggalIndonesia(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
-    // Siapkan data untuk spreadsheet
-    const spreadsheetData = {
-      "No": "", // Akan diisi oleh spreadsheet secara otomatis
-      "Id": id,
-      "Tujuan": data.tujuanPelaksanaan,
-      "Nomor Surat": data.nomorSuratTugas,
-      "Tanggal Surat Tugas": formatDateForDisplay(data.tanggalSuratTugas),
-      "Program": selectedProgram,
-      "Kegiatan": selectedKegiatan,
-      "KRO": selectedKRO,
-      "RO": selectedRO,
-      "Komponen": selectedKomponen,
-      "Akun": selectedAkun,
-      "Tanggal Pengajuan": formatDateForDisplay(data.tanggalSpj),
-      "Pembuat daftar": pembuatDaftarName,
-      
-      // Data organik dengan pemisah |
-      "Organik": organikNames,
-      "Dari Kecamatan (organik)": organikDariKecamatan,
-      "Kecamatan Tujuan (organik)": organikKecamatanTujuan,
-      "rate (organik)": organikRates,
-      "tanggal (organik)": organikTanggal,
-      
-      // Data mitra dengan pemisah |
-      "Mitra Statistik": mitraNames,
-      "Dari Kecamatan (mitra)": mitraDariKecamatan,
-      "Kecamatan Tujuan (mitra)": mitraKecamatanTujuan,
-      "rate (mitra)": mitraRates,
-      "tanggal (mitra)": mitraTanggal,
-      
-      // Total
-      "Total": grandTotal.toString()
-    };
-
-    return spreadsheetData;
-  }, [programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, grandTotal]);
+    // Siapkan data untuk spreadsheet sesuai urutan header
+    return [
+      sequenceNumber.toString(), // No
+      kuitansiId, // Id
+      data.tujuanPelaksanaan, // Tujuan
+      data.nomorSuratTugas, // Nomor Surat
+      formatTanggalIndonesia(data.tanggalSuratTugas), // Tanggal Surat Tugas
+      selectedProgram, // Program
+      selectedKegiatan, // Kegiatan
+      selectedKRO, // KRO
+      selectedRO, // RO
+      selectedKomponen, // Komponen
+      selectedAkun, // Akun
+      formatTanggalIndonesia(data.tanggalSpj), // Tanggal Pengajuan
+      pembuatDaftarName, // Pembuat daftar
+      organikNames, // Organik
+      organikDariKecamatan, // Dari Kecamatan (organik)
+      organikKecamatanTujuan, // Kecamatan Tujuan (organik)
+      organikRates, // rate (organik)
+      organikTanggal, // tanggal (organik)
+      mitraNames, // Mitra Statistik
+      mitraDariKecamatan, // Dari Kecamatan (mitra)
+      mitraKecamatanTujuan, // Kecamatan Tujuan (mitra)
+      mitraRates, // rate (mitra)
+      mitraTanggal, // tanggal (mitra)
+      grandTotal.toString() // Total
+    ];
+  }, [programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, grandTotal, getNextSequenceNumber, generateKuitansiId]);
 
   // Form submission
   const onSubmit = async (data: FormValues) => {
@@ -634,19 +739,22 @@ const KuitansiTransportLokal = () => {
       };
 
       // Format data untuk spreadsheet
-      const spreadsheetData = formatDataForSpreadsheet(formDataWithNames);
+      const rowData = await formatDataForSpreadsheet(formDataWithNames);
       
-      console.log("Data yang akan dikirim ke spreadsheet:", spreadsheetData);
+      console.log("Data yang akan dikirim ke spreadsheet:", rowData);
       
       // Submit ke Google Sheets
-      await submitMutation.mutateAsync(spreadsheetData);
-      
+      await submitData(rowData);
+
       toast({ 
         title: "Berhasil!", 
-        description: "Data kuitansi transport lokal berhasil disimpan" 
+        description: `Data kuitansi transport lokal berhasil disimpan (ID: ${rowData[1]})` 
       });
+      
+      navigate("/e-dokumen/buat");
+
     } catch (error: any) {
-      console.error("Error submitting data:", error);
+      console.error("Error submitting form:", error);
       toast({ 
         variant: "destructive", 
         title: "Gagal menyimpan data", 
@@ -662,12 +770,14 @@ const KuitansiTransportLokal = () => {
     "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"
   ];
 
+  const isLoading = isSubmitting;
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
-          <p className="text-sm text-muted-foreground">Formulir Kuitansi Transport Lokal</p>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
+          <p className="text-muted-foreground mt-2">Formulir Kuitansi Transport Lokal</p>
         </div>
 
         {/* Tampilkan error duplikat */}
@@ -688,7 +798,10 @@ const KuitansiTransportLokal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Informasi Umum */}
             <Card>
-              <CardContent className="p-6 space-y-6">
+              <CardHeader>
+                <CardTitle>Informasi Umum</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div className="bg-muted/50 border rounded-lg p-4">
                   <h4 className="text-sm font-medium mb-2">Contoh penulisan:</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
@@ -861,7 +974,10 @@ const KuitansiTransportLokal = () => {
 
             {/* Organik Section */}
             <Card>
-              <CardContent className="p-6">
+              <CardHeader>
+                <CardTitle>Organik BPS</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Organik BPS</h3>
                   <Button type="button" onClick={addOrganik} variant="outline">Tambah Organik</Button>
@@ -887,7 +1003,10 @@ const KuitansiTransportLokal = () => {
 
             {/* Mitra Section */}
             <Card>
-              <CardContent className="p-6">
+              <CardHeader>
+                <CardTitle>Mitra Statistik</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Mitra Statistik</h3>
                   <Button type="button" onClick={addMitra} variant="outline">Tambah Mitra</Button>
@@ -924,11 +1043,11 @@ const KuitansiTransportLokal = () => {
 
             {/* Submit Button */}
             <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={submitMutation.isPending}>
+              <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
                 Batal
               </Button>
-              <Button type="submit" disabled={submitMutation.isPending || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0} className="bg-teal-600 hover:bg-teal-700">
-                {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
+              <Button type="submit" disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0} className="bg-teal-600 hover:bg-teal-700">
+                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
               </Button>
             </div>
           </form>
