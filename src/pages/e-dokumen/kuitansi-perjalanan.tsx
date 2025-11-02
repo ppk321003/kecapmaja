@@ -86,7 +86,11 @@ const DEFAULT_VALUES: Partial<FormValues> = {
 // Kecamatan options
 const kecamatanOptions = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"];
 
-// Custom hook untuk submit data - SAMA DENGAN DAFTAR HADIR
+// Constants - SAMA DENGAN POLA KAK
+const TARGET_SPREADSHEET_ID = "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk";
+const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+// Custom hook untuk submit data - SAMA PERSIS DENGAN KAK
 const useSubmitKuitansiToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,7 +101,7 @@ const useSubmitKuitansiToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk",
+          spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
           range: "KuitansiPerjalananDinas!A:AZ",
           values: [data]
@@ -122,13 +126,71 @@ const useSubmitKuitansiToSheets = () => {
   return { submitData, isSubmitting };
 };
 
+// Format tanggal Indonesia - SAMA DENGAN KAK
+const formatTanggalIndonesia = (date: Date | null): string => {
+  if (!date) return "";
+  
+  const day = date.getDate();
+  const month = date.toLocaleDateString('id-ID', { month: 'long' });
+  const year = date.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya - SAMA DENGAN KAK
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: "KuitansiPerjalananDinas!A:A"
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
 const KuitansiPerjalananDinas = () => {
   const navigate = useNavigate();
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
   const [isLuarKota, setIsLuarKota] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [organikData, setOrganikData] = useState<Array<{nip: string; nama: string; jabatan: string}>>([]);
+  const [loadingOrganik, setLoadingOrganik] = useState(false);
 
-  // Gunakan hook yang sama dengan DaftarHadir
+  // Gunakan hook yang sama dengan KAK
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitKuitansiToSheets();
 
   // Initialize form
@@ -163,6 +225,59 @@ const KuitansiPerjalananDinas = () => {
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
 
+  // Fetch data organik - SAMA DENGAN KAK
+  const fetchOrganikData = async () => {
+    setLoadingOrganik(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: ORGANIK_SHEET_ID,
+          operation: "read",
+          range: "MASTER.ORGANIK"
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching organik data:", error);
+        throw new Error(error.message || 'Gagal mengambil data organik');
+      }
+
+      const rows = data?.values || [];
+      
+      if (!rows || rows.length <= 1) {
+        setOrganikData([]);
+        return;
+      }
+      
+      const organikRows = rows.slice(1);
+      
+      const formattedData = organikRows
+        .map((row: any[]) => ({
+          nip: row[1] || '',
+          nama: row[3] || '',
+          jabatan: row[4] || ''
+        }))
+        .filter((item: any) => item.nama && item.nip);
+      
+      setOrganikData(formattedData);
+      
+    } catch (error: any) {
+      console.error('Error fetching organik data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengambil data organik: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingOrganik(false);
+    }
+  };
+
+  // Load data organik saat komponen mount
+  useEffect(() => {
+    fetchOrganikData();
+  }, []);
+
   // Create name mappings
   const programsMap = Object.fromEntries((programList || []).map(item => [item.id, item.name]));
   const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
@@ -192,8 +307,8 @@ const KuitansiPerjalananDinas = () => {
       const detail = details[i];
       arr.push(
         detail?.nama || "",
-        detail?.tanggalBerangkat ? formatDateForSheets(detail.tanggalBerangkat) : "",
-        detail?.tanggalKembali ? formatDateForSheets(detail.tanggalKembali) : ""
+        formatDateForSheets(detail?.tanggalBerangkat) || "",
+        formatDateForSheets(detail?.tanggalKembali) || ""
       );
     }
     
@@ -231,7 +346,7 @@ const KuitansiPerjalananDinas = () => {
     ));
   };
 
-  // Form submission handler - MENGIRIM ARRAY SEPERTI DAFTAR HADIR
+  // Form submission handler - MENGIRIM ARRAY SEPERTI KAK
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -296,43 +411,46 @@ const KuitansiPerjalananDinas = () => {
         }
       }
 
+      // Generate nomor urut baru - SAMA DENGAN KAK
+      const sequenceNumber = await getNextSequenceNumber();
+      
       // TRANSFORM DATA KE ARRAY - SESUAI URUTAN HEADER SPREADSHEET
       const rowData = [
-        "", // id (auto)
-        values.nomorSuratTugas,
-        formatDateForSheets(values.tanggalSuratTugas),
-        values.namaPelaksana,
-        values.tujuanPerjalanan,
-        values.kabupatenKota || "",
-        values.namaTempatTujuan || "",
-        values.tanggalBerangkat ? formatDateForSheets(values.tanggalBerangkat) : "",
-        values.tanggalKembali ? formatDateForSheets(values.tanggalKembali) : "",
-        formatDateForSheets(values.tanggalPengajuan),
-        programsMap[values.program] || values.program,
-        kegiatanMap[values.kegiatan] || values.kegiatan,
-        kroMap[values.kro] || values.kro,
-        roMap[values.ro] || values.ro,
-        komponenMap[values.komponen] || values.komponen,
-        akunMap[values.akun] || values.akun,
-        formatCurrency(values.biayaTransport),
-        formatCurrency(values.biayaBBM),
-        formatCurrency(values.biayaPenginapan),
-        values.jenisPerjalanan,
-        // Field kecamatan (10 kecamatan × 3 field each = 30 fields)
+        sequenceNumber, // Kolom 1: Nomor Urut
+        values.nomorSuratTugas, // Kolom 2: Nomor Surat Tugas
+        formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 3: Tanggal Surat Tugas
+        values.namaPelaksana, // Kolom 4: Pelaksana Perjalanan Dinas
+        values.tujuanPerjalanan, // Kolom 5: Tujuan Pelaksanaan Perjalanan Dinas
+        values.kabupatenKota || "", // Kolom 6: Kab/Kota Tujuan
+        values.namaTempatTujuan || "", // Kolom 7: Nama Tempat Tujuan
+        formatTanggalIndonesia(values.tanggalBerangkat), // Kolom 8: Tanggal Berangkat
+        formatTanggalIndonesia(values.tanggalKembali), // Kolom 9: Tanggal Kembali
+        formatTanggalIndonesia(values.tanggalPengajuan), // Kolom 10: Tanggal Pengajuan
+        programsMap[values.program] || values.program, // Kolom 11: Program
+        kegiatanMap[values.kegiatan] || values.kegiatan, // Kolom 12: Kegiatan
+        kroMap[values.kro] || values.kro, // Kolom 13: KRO
+        roMap[values.ro] || values.ro, // Kolom 14: RO
+        komponenMap[values.komponen] || values.komponen, // Kolom 15: Komponen
+        akunMap[values.akun] || values.akun, // Kolom 16: Akun
+        formatCurrency(values.biayaTransport), // Kolom 17: Biaya Transport Kab/Kota Tujuan (PP)
+        formatCurrency(values.biayaBBM), // Kolom 18: Biaya Pembelian BBM/Tol (PP)
+        formatCurrency(values.biayaPenginapan), // Kolom 19: Biaya Penginapan/Hotel
+        values.jenisPerjalanan, // Kolom 20: Jenis Perjalanan Dinas
+        // Kolom 21-50: 30 fields untuk kecamatan (10 kecamatan × 3 field)
         ...generateKecamatanArray(kecamatanDetails),
-        "Draft", // Status
-        "" // Link
+        "Draft", // Kolom 51: Status
+        "" // Kolom 52: Link
       ];
 
       console.log('📋 Final kuitansi data array:', rowData);
-      console.log('🔢 Total fields:', rowData.length);
+      console.log('🔢 Total columns:', rowData.length);
 
-      // SUBMIT DATA - CARA YANG SAMA DENGAN DAFTAR HADIR
+      // SUBMIT DATA - CARA YANG SAMA DENGAN KAK
       await submitData(rowData);
 
       toast({
         title: "Berhasil",
-        description: "Data kuitansi perjalanan dinas berhasil disimpan"
+        description: `Data kuitansi perjalanan dinas berhasil disimpan (No. ${sequenceNumber})`
       });
       navigate("/buat-dokumen");
 
@@ -443,16 +561,20 @@ const KuitansiPerjalananDinas = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nama Pelaksana</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          disabled={loadingOrganik}
+                        >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Pilih pelaksana" />
+                              <SelectValue placeholder={loadingOrganik ? "Memuat data..." : "Pilih pelaksana"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.name}>
-                                {organik.name}
+                            {organikData.map(organik => (
+                              <SelectItem key={organik.nip} value={organik.nama}>
+                                {organik.nama} - {organik.jabatan}
                               </SelectItem>
                             ))}
                           </SelectContent>
