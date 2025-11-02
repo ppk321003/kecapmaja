@@ -129,7 +129,8 @@ const KuitansiPerjalananDinas = () => {
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
   const submitMutation = useSubmitToSheets({
-    documentType: "KuitansiPerjalananDinas",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "KuitansiPerjalananDinas",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }

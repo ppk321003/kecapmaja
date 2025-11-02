@@ -64,7 +64,8 @@ const SuratPernyataan = () => {
     mutate: submitToSheets,
     isPending
   } = useSubmitToSheets({
-    documentType: "surat-pernyataan",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "SuratPernyataan",
     onSuccess: () => {
       toast({
         title: "Berhasil",

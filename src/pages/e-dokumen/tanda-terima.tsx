@@ -32,12 +32,11 @@ const TandaTerima = () => {
 
   // Google Sheets submission hook
   const submitToSheets = useSubmitToSheets({
-    documentType: "TandaTerima",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "TandaTerima",
     onSuccess: () => {
-      // Navigate after successful submission
       navigate("/buat-dokumen");
-    },
-    skipSaveToSupabase: true
+    }
   });
 
   // Define react-hook-form

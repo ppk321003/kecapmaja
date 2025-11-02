@@ -110,7 +110,8 @@ const SPJHonor = () => {
 
   // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
-    documentType: "SPJHonor",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "SPJHonor",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }

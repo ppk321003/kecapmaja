@@ -106,7 +106,8 @@ const TransportLokal = () => {
 
   // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
-    documentType: "TransportLokal",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "TransportLokal",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }

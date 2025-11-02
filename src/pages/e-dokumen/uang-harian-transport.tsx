@@ -113,7 +113,8 @@ const UangHarianTransport = () => {
   const pembuatDaftarMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
 
   const submitMutation = useSubmitToSheets({
-    documentType: "UangHarianTransport",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "UangHarianTransport",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }

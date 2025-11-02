@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { AkunSelect } from "@/components/AkunSelect";
-import PersonTransportGroup from "@/components/PersonTransportGroup";
+// import PersonTransportGroup from "@/components/PersonTransportGroup";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 
 // New interfaces for grouped transport data
@@ -128,7 +128,8 @@ const KuitansiTransportLokal = () => {
 
   // Setup submission to Google Sheets
   const submitMutation = useSubmitToSheets({
-    documentType: "KuitansiTransportLokal",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "KuitansiTransportLokal",
     onSuccess: () => {
       navigate("/buat-dokumen");
     }
@@ -608,7 +609,7 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {organikGroups.map((group, groupIndex) => <PersonTransportGroup key={`organik-${groupIndex}-${group.personId}`} personId={group.personId} personName={group.personName} dariKecamatan={group.dariKecamatan} trips={group.trips} type="organik" personList={organikList} kecamatanList={kecamatanList} onUpdatePerson={personId => handleUpdateOrganikPerson(groupIndex, personId)} onUpdateDariKecamatan={kecamatan => handleUpdateOrganikDariKecamatan(groupIndex, kecamatan)} onUpdateTrip={(tripIndex, field, value) => handleUpdateOrganikTrip(groupIndex, tripIndex, field, value)} onAddTrip={() => handleAddOrganikTrip(groupIndex)} onRemoveTrip={tripIndex => handleRemoveOrganikTrip(groupIndex, tripIndex)} onRemovePerson={() => handleRemoveOrganikPerson(groupIndex)} />)}
+                {organikGroups.map((group, groupIndex) => <div key={`organik-${groupIndex}-${group.personId}`} className="p-4 border rounded-lg mb-4"><p className="text-sm text-muted-foreground">PersonTransportGroup - Dalam Pengembangan</p></div>)}
               </CardContent>
             </Card>
 
@@ -622,7 +623,7 @@ const KuitansiTransportLokal = () => {
                   </Button>
                 </div>
                 
-                {mitraGroups.map((group, groupIndex) => <PersonTransportGroup key={`mitra-${groupIndex}-${group.personId}`} personId={group.personId} personName={group.personName} dariKecamatan={group.dariKecamatan} trips={group.trips} type="mitra" personList={mitraList} kecamatanList={kecamatanList} onUpdatePerson={personId => handleUpdateMitraPerson(groupIndex, personId)} onUpdateDariKecamatan={kecamatan => handleUpdateMitraDariKecamatan(groupIndex, kecamatan)} onUpdateTrip={(tripIndex, field, value) => handleUpdateMitraTrip(groupIndex, tripIndex, field, value)} onAddTrip={() => handleAddMitraTrip(groupIndex)} onRemoveTrip={tripIndex => handleRemoveMitraTrip(groupIndex, tripIndex)} onRemovePerson={() => handleRemoveMitraPerson(groupIndex)} />)}
+                {mitraGroups.map((group, groupIndex) => <div key={`mitra-${groupIndex}-${group.personId}`} className="p-4 border rounded-lg mb-4"><p className="text-sm text-muted-foreground">PersonTransportGroup - Dalam Pengembangan</p></div>)}
               </CardContent>
             </Card>
 

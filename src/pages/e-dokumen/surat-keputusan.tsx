@@ -18,7 +18,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { FormSelect } from "@/components/FormSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
-import { GoogleSheetsService } from "@/components/GoogleSheetsService";
+// import { GoogleSheetsService } from "@/components/GoogleSheetsService";
 import { cn } from "@/lib/utils";
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
@@ -74,7 +74,8 @@ const SuratKeputusan = () => {
 
   // Remove auto-generation of ID for the input field
   const submitToSheets = useSubmitToSheets({
-    documentType: "SuratKeputusan",
+    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+    sheetName: "SuratKeputusan",
     onSuccess: () => {
       form.reset();
       setIsSubmitting(false);
@@ -96,7 +97,7 @@ const SuratKeputusan = () => {
     setIsSubmitting(true);
     try {
       // Generate automatic ID for spreadsheet
-      const documentId = await GoogleSheetsService.generateDocumentId("SuratKeputusan");
+      const documentId = `SK-${Date.now()}`;
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
