@@ -149,9 +149,9 @@ export default function EntriPengelola() {
   return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Entri Pengelola Anggaran</h1>
+          <h1 className="text-3xl font-bold text-red-500">Pengelola Anggaran</h1>
           <p className="text-muted-foreground mt-2">
-            Pendataan pengelola anggaran kegiatan
+            Daftas pengelola anggaran kegiatan di BPS Kabupaten Majalengka
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={open => {
