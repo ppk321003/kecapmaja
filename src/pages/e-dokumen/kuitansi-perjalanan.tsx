@@ -517,7 +517,7 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
         values.jenisPerjalanan, // Kolom 21: Jenis Perjalanan Dinas
         // Kolom 22-51: 30 fields untuk kecamatan (10 kecamatan × 3 field)
         ...generateKecamatanArray(kecamatanDetails),
-        "Draft", // Kolom 52: Status
+        "", // Kolom 52: Status
         "" // Kolom 53: Link
       ];
 
