@@ -79,7 +79,7 @@ interface PersonGroup {
   trips: Trip[];
 }
 
-// Form Schema
+// Form Schema dengan validasi tanggal duplikat
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(50, "Nomor surat tugas maksimal 50 karakter"),
@@ -101,6 +101,22 @@ const formSchema = z.object({
     tanggalPelaksanaan: z.date({ required_error: "Tanggal pelaksanaan harus dipilih" }),
     nama: z.string().optional()
   })).min(1, "Minimal harus ada 1 peserta")
+}).refine((data) => {
+  // Validasi: nama tidak boleh bepergian di tanggal yang sama
+  const datePersonMap = new Map();
+  
+  for (const detail of data.transportDetails) {
+    const key = `${detail.nama}-${detail.tanggalPelaksanaan?.toISOString().split('T')[0]}`;
+    if (datePersonMap.has(key)) {
+      return false; // Duplikat ditemukan
+    }
+    datePersonMap.set(key, true);
+  }
+  
+  return true;
+}, {
+  message: "Satu orang tidak boleh memiliki perjalanan di tanggal yang sama",
+  path: ["transportDetails"]
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -302,6 +318,29 @@ const PersonTransportGroup: React.FC<{
   );
 };
 
+// Helper functions
+const generateId = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  
+  // Untuk demo, kita gunakan random number. Dalam produksi, Anda perlu menyimpan counter di localStorage/database
+  const counter = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  
+  return `ku-${year}${month}${counter}`;
+};
+
+const formatDateForDisplay = (date: Date | null) => {
+  if (!date) return "";
+  return format(date, "d MMMM yyyy", { locale: idLocale });
+};
+
+const extractDisplayName = (fullText: string) => {
+  // Memisahkan kode dan nama, contoh: "054.01.GG - Program Penyediaan dan Pelayanan Informasi Statistik"
+  const parts = fullText.split(' - ');
+  return parts.length > 1 ? parts[1] + ` (${parts[0]})` : fullText;
+};
+
 // Main Component
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
@@ -327,7 +366,7 @@ const KuitansiTransportLokal = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Setup submission - PERBAIKAN: Menggunakan spreadsheetId dan sheetName yang benar
+  // Setup submission
   const submitMutation = useSubmitToSheets({
     spreadsheetId: "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI",
     sheetName: "KuitansiTransportLokal",
@@ -361,6 +400,24 @@ const KuitansiTransportLokal = () => {
   // Calculate grand total
   const grandTotal = useMemo(() => {
     return flattenedTransportDetails.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+  }, [flattenedTransportDetails]);
+
+  // Validasi duplikat tanggal untuk nama yang sama
+  const duplicateErrors = useMemo(() => {
+    const errors: {[key: string]: string} = {};
+    const datePersonMap = new Map();
+    
+    flattenedTransportDetails.forEach((detail, index) => {
+      if (detail.nama && detail.tanggalPelaksanaan) {
+        const key = `${detail.nama}-${detail.tanggalPelaksanaan.toISOString().split('T')[0]}`;
+        if (datePersonMap.has(key)) {
+          errors[`detail-${index}`] = `${detail.nama} sudah memiliki perjalanan di tanggal ${formatDateForDisplay(detail.tanggalPelaksanaan)}`;
+        }
+        datePersonMap.set(key, true);
+      }
+    });
+    
+    return errors;
   }, [flattenedTransportDetails]);
 
   // Simple event handlers
@@ -482,70 +539,61 @@ const KuitansiTransportLokal = () => {
     setMitraGroups(prev => prev.filter((_, i) => i !== groupIndex));
   }, []);
 
-  // Format data untuk spreadsheet sesuai dengan header yang diminta
+  // Format data untuk spreadsheet
   const formatDataForSpreadsheet = useCallback((data: FormValues) => {
-    // Generate ID unik berdasarkan timestamp
-    const id = `TRX-${Date.now()}`;
+    const id = generateId();
     
-    // Format tanggal untuk spreadsheet
-    const formatDateForSheet = (date: Date | null) => {
-      if (!date) return "";
-      return format(date, "dd/MM/yyyy");
-    };
-
     // Pisahkan data organik dan mitra
     const organikDetails = data.transportDetails.filter(detail => detail.type === "organik");
     const mitraDetails = data.transportDetails.filter(detail => detail.type === "mitra");
 
-    // Ambil data program, kegiatan, dll dari form
-    const selectedProgram = programs.find(p => p.id === data.program)?.name || "";
-    const selectedKegiatan = kegiatanList.find(k => k.id === data.kegiatan)?.name || "";
-    const selectedKRO = kroList.find(k => k.id === data.kro)?.name || "";
-    const selectedRO = roList.find(r => r.id === data.ro)?.name || "";
-    const selectedKomponen = komponenList.find(k => k.id === data.komponen)?.name || "";
-    const selectedAkun = akunList.find(a => a.id === data.akun)?.name || "";
+    // Ambil data program, kegiatan, dll dari form dan format display name
+    const selectedProgram = extractDisplayName(programs.find(p => p.id === data.program)?.name || "");
+    const selectedKegiatan = extractDisplayName(kegiatanList.find(k => k.id === data.kegiatan)?.name || "");
+    const selectedKRO = extractDisplayName(kroList.find(k => k.id === data.kro)?.name || "");
+    const selectedRO = extractDisplayName(roList.find(r => r.id === data.ro)?.name || "");
+    const selectedKomponen = extractDisplayName(komponenList.find(k => k.id === data.komponen)?.name || "");
+    const selectedAkun = extractDisplayName(akunList.find(a => a.id === data.akun)?.name || "");
     const pembuatDaftarName = organikList.find(p => p.id === data.pembuatDaftar)?.name || "";
 
-    // Gabungkan semua nama organik dan mitra
-    const organikNames = organikDetails.map(detail => detail.nama).filter(Boolean).join(", ");
-    const mitraNames = mitraDetails.map(detail => detail.nama).filter(Boolean).join(", ");
+    // Gabungkan semua data dengan pemisah |
+    const organikNames = organikDetails.map(detail => detail.nama).filter(Boolean).join(" | ");
+    const mitraNames = mitraDetails.map(detail => detail.nama).filter(Boolean).join(" | ");
 
-    // Gabungkan semua data perjalanan untuk organik dan mitra
-    const organikKecamatanTujuan = organikDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(", ");
-    const organikDariKecamatan = organikDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(", ");
-    const organikRates = organikDetails.map(detail => detail.rate).filter(Boolean).join(", ");
-    const organikTanggal = organikDetails.map(detail => formatDateForSheet(detail.tanggalPelaksanaan)).filter(Boolean).join(", ");
+    const organikKecamatanTujuan = organikDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(" | ");
+    const organikDariKecamatan = organikDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(" | ");
+    const organikRates = organikDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
+    const organikTanggal = organikDetails.map(detail => formatDateForDisplay(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
-    const mitraKecamatanTujuan = mitraDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(", ");
-    const mitraDariKecamatan = mitraDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(", ");
-    const mitraRates = mitraDetails.map(detail => detail.rate).filter(Boolean).join(", ");
-    const mitraTanggal = mitraDetails.map(detail => formatDateForSheet(detail.tanggalPelaksanaan)).filter(Boolean).join(", ");
+    const mitraKecamatanTujuan = mitraDetails.map(detail => detail.kecamatanTujuan).filter(Boolean).join(" | ");
+    const mitraDariKecamatan = mitraDetails.map(detail => detail.dariKecamatan).filter(Boolean).join(" | ");
+    const mitraRates = mitraDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
+    const mitraTanggal = mitraDetails.map(detail => formatDateForDisplay(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
-    // Siapkan data untuk spreadsheet sesuai dengan header
+    // Siapkan data untuk spreadsheet
     const spreadsheetData = {
-      // Sesuaikan dengan urutan header yang diberikan
       "No": "", // Akan diisi oleh spreadsheet secara otomatis
       "Id": id,
       "Tujuan": data.tujuanPelaksanaan,
       "Nomor Surat": data.nomorSuratTugas,
-      "Tanggal Surat Tugas": formatDateForSheet(data.tanggalSuratTugas),
+      "Tanggal Surat Tugas": formatDateForDisplay(data.tanggalSuratTugas),
       "Program": selectedProgram,
       "Kegiatan": selectedKegiatan,
       "KRO": selectedKRO,
       "RO": selectedRO,
       "Komponen": selectedKomponen,
       "Akun": selectedAkun,
-      "Tanggal Pengajuan": formatDateForSheet(data.tanggalSpj),
+      "Tanggal Pengajuan": formatDateForDisplay(data.tanggalSpj),
       "Pembuat daftar": pembuatDaftarName,
       
-      // Data organik (gabungkan semua)
+      // Data organik dengan pemisah |
       "Organik": organikNames,
       "Dari Kecamatan (organik)": organikDariKecamatan,
       "Kecamatan Tujuan (organik)": organikKecamatanTujuan,
       "rate (organik)": organikRates,
       "tanggal (organik)": organikTanggal,
       
-      // Data mitra (gabungkan semua)
+      // Data mitra dengan pemisah |
       "Mitra Statistik": mitraNames,
       "Dari Kecamatan (mitra)": mitraDariKecamatan,
       "Kecamatan Tujuan (mitra)": mitraKecamatanTujuan,
@@ -559,9 +607,19 @@ const KuitansiTransportLokal = () => {
     return spreadsheetData;
   }, [programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, grandTotal]);
 
-  // Form submission - PERBAIKAN: Menggunakan format data yang benar
+  // Form submission
   const onSubmit = async (data: FormValues) => {
     try {
+      // Cek duplikat sebelum submit
+      if (Object.keys(duplicateErrors).length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Validasi gagal",
+          description: "Terdapat duplikat perjalanan pada tanggal yang sama untuk orang yang sama"
+        });
+        return;
+      }
+
       // Tambahkan nama ke transport details
       const transportDetailsWithNames = data.transportDetails.map(detail => ({
         ...detail,
@@ -611,6 +669,20 @@ const KuitansiTransportLokal = () => {
           <h1 className="text-2xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
           <p className="text-sm text-muted-foreground">Formulir Kuitansi Transport Lokal</p>
         </div>
+
+        {/* Tampilkan error duplikat */}
+        {Object.keys(duplicateErrors).length > 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <h4 className="font-semibold text-red-700 mb-2">Validasi Gagal:</h4>
+              <ul className="text-sm text-red-600 space-y-1">
+                {Object.values(duplicateErrors).map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -855,7 +927,7 @@ const KuitansiTransportLokal = () => {
               <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={submitMutation.isPending}>
                 Batal
               </Button>
-              <Button type="submit" disabled={submitMutation.isPending || flattenedTransportDetails.length === 0} className="bg-teal-600 hover:bg-teal-700">
+              <Button type="submit" disabled={submitMutation.isPending || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0} className="bg-teal-600 hover:bg-teal-700">
                 {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
               </Button>
             </div>
