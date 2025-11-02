@@ -133,7 +133,7 @@ const KuitansiPerjalananDinas = () => {
   const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
 
-  // Google Sheets submission hook - PERBAIKAN: Gunakan format yang sama dengan skrip KAK
+  // Google Sheets submission hook
   const submitToSheets = useSubmitToSheets({
     documentType: "KuitansiPerjalananDinas",
     onSuccess: () => {
@@ -150,8 +150,7 @@ const KuitansiPerjalananDinas = () => {
         title: "Gagal menyimpan",
         description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
-    },
-    skipSaveToSupabase: true
+    }
   });
 
   // Helper functions
@@ -162,7 +161,6 @@ const KuitansiPerjalananDinas = () => {
 
   const formatCurrency = (value: string | undefined): number => {
     if (!value) return 0;
-    // Remove any non-digit characters and convert to number
     const numericValue = value.replace(/[^\d]/g, "");
     return parseInt(numericValue) || 0;
   };
@@ -175,9 +173,9 @@ const KuitansiPerjalananDinas = () => {
       const detail = details[i];
       const index = i + 1;
       
-      fields[`KecamatanTujuan${index}`] = detail?.nama || "";
-      fields[`TanggalBerangkat${index}`] = detail?.tanggalBerangkat ? formatDateForSheets(detail.tanggalBerangkat) : "";
-      fields[`TanggalKembali${index}`] = detail?.tanggalKembali ? formatDateForSheets(detail.tanggalKembali) : "";
+      fields[`KecamatanTujuan-${index}`] = detail?.nama || "";
+      fields[`TanggalBerangkat-${index}`] = detail?.tanggalBerangkat ? formatDateForSheets(detail.tanggalBerangkat) : "";
+      fields[`TanggalKembali-${index}`] = detail?.tanggalKembali ? formatDateForSheets(detail.tanggalKembali) : "";
     }
     
     return fields;
@@ -214,7 +212,7 @@ const KuitansiPerjalananDinas = () => {
     ));
   };
 
-  // Form submission handler - PERBAIKAN: Gunakan format yang sama dengan skrip KAK
+  // Form submission handler - FIXED VERSION
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -230,7 +228,7 @@ const KuitansiPerjalananDinas = () => {
         return;
       }
 
-      // Validasi data kecamatan
+      // Validasi data kecamatan untuk Dalam Kota
       if (!isLuarKota) {
         for (let i = 0; i < kecamatanDetails.length; i++) {
           const detail = kecamatanDetails[i];
@@ -244,8 +242,7 @@ const KuitansiPerjalananDinas = () => {
             return;
           }
 
-          // Validasi tanggal kecamatan
-          if (detail.tanggalBerangkat && detail.tanggalKembali && detail.tanggalBerangkat > detail.tanggalKembali) {
+          if (detail.tanggalBerangkat > detail.tanggalKembali) {
             toast({
               variant: "destructive",
               title: "Validasi tanggal gagal",
@@ -269,7 +266,7 @@ const KuitansiPerjalananDinas = () => {
           return;
         }
 
-        if (values.tanggalBerangkat && values.tanggalKembali && values.tanggalBerangkat > values.tanggalKembali) {
+        if (values.tanggalBerangkat > values.tanggalKembali) {
           toast({
             variant: "destructive",
             title: "Validasi tanggal gagal",
@@ -280,44 +277,40 @@ const KuitansiPerjalananDinas = () => {
         }
       }
 
-      // Transform data untuk Google Sheets - PERBAIKAN: Format sesuai dengan Edge Function
+      // Transform data untuk Google Sheets - SESUAIKAN DENGAN HEADER SPREADSHEET
       const submissionData = {
-        // Basic fields - sesuaikan dengan header spreadsheet
-        jenisPerjalanan: values.jenisPerjalanan,
-        nomorSuratTugas: values.nomorSuratTugas,
-        tanggalSuratTugas: formatDateForSheets(values.tanggalSuratTugas),
-        namaPelaksana: values.namaPelaksana,
-        tujuanPerjalanan: values.tujuanPerjalanan,
-        kabupatenKota: values.kabupatenKota || "",
-        namaTempatTujuan: values.namaTempatTujuan || "",
-        tanggalBerangkat: values.tanggalBerangkat ? formatDateForSheets(values.tanggalBerangkat) : "",
-        tanggalKembali: values.tanggalKembali ? formatDateForSheets(values.tanggalKembali) : "",
-        tanggalPengajuan: formatDateForSheets(values.tanggalPengajuan),
-        program: programsMap[values.program] || values.program,
-        kegiatan: kegiatanMap[values.kegiatan] || values.kegiatan,
-        kro: kroMap[values.kro] || values.kro,
-        ro: roMap[values.ro] || values.ro,
-        komponen: komponenMap[values.komponen] || values.komponen,
-        akun: akunMap[values.akun] || values.akun,
-        biayaTransport: formatCurrency(values.biayaTransport),
-        biayaBBM: formatCurrency(values.biayaBBM),
-        biayaPenginapan: formatCurrency(values.biayaPenginapan),
+        // Basic fields - sesuai dengan header spreadsheet
+        "Jenis Perjalanan Dinas": values.jenisPerjalanan,
+        "Nomor Surat Tugas": values.nomorSuratTugas,
+        "Tanggal Surat Tugas": formatDateForSheets(values.tanggalSuratTugas),
+        "Pelaksana Perjalanan Dinas": values.namaPelaksana,
+        "Tujuan Pelaksanaan Perjalanan Dinas": values.tujuanPerjalanan,
+        "Kab/Kota Tujuan": values.kabupatenKota || "",
+        "Nama Tempat Tujuan": values.namaTempatTujuan || "",
+        "Tanggal Berangkat": values.tanggalBerangkat ? formatDateForSheets(values.tanggalBerangkat) : "",
+        "Tanggal Kembali": values.tanggalKembali ? formatDateForSheets(values.tanggalKembali) : "",
+        "Tanggal Pengajuan": formatDateForSheets(values.tanggalPengajuan),
+        "Program": programsMap[values.program] || values.program,
+        "Kegiatan": kegiatanMap[values.kegiatan] || values.kegiatan,
+        "KRO": kroMap[values.kro] || values.kro,
+        "RO": roMap[values.ro] || values.ro,
+        "Komponen": komponenMap[values.komponen] || values.komponen,
+        "Akun": akunMap[values.akun] || values.akun,
+        "Biaya Transport Kab/Kota Tujuan (PP)": formatCurrency(values.biayaTransport),
+        "Biaya Pembelian BBM/Tol (PP)": formatCurrency(values.biayaBBM),
+        "Biaya Penginapan/Hotel": formatCurrency(values.biayaPenginapan),
         
-        // Dynamic kecamatan fields
+        // Dynamic kecamatan fields - sesuai dengan header
         ...generateKecamatanFields(kecamatanDetails),
 
-        // Tambahkan mapping names seperti di skrip KAK
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap
+        // Default fields yang diperlukan
+        "Status": "Draft",
+        "Link": ""
       };
 
-      console.log("Submitting transformed data to sheets:", submissionData);
+      console.log("Submitting to sheets:", submissionData);
 
-      // Submit to Google Sheets - PERBAIKAN: Gunakan mutateAsync seperti di skrip KAK
+      // Submit to Google Sheets
       await submitToSheets.mutateAsync(submissionData);
 
     } catch (error: any) {
