@@ -83,18 +83,18 @@ export default function BuatEDokumen() {
     const colors = {
       blue: {
         icon: "text-blue-600",
-        button: "bg-blue-600 hover:bg-blue-700",
+        button: "bg-blue-600 hover:bg-blue-600",
         border: "border-blue-100"
       },
       green: {
         icon: "text-green-600",
-        button: "bg-green-600 hover:bg-green-700",
+        button: "bg-green-600 hover:bg-green-600",
         border: "border-green-100"
       },
       orange: {
-        icon: "text-orange-600",
-        button: "bg-orange-600 hover:bg-orange-700",
-        border: "border-orange-100"
+        icon: "text-blue-600",
+        button: "bg-blue-600 hover:bg-blue-600",
+        border: "border-blue-100"
       }
     };
     return colors[rowColor] || colors.blue;
