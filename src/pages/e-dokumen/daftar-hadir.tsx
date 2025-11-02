@@ -67,7 +67,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return format(date, "dd MMMM yyyy", { locale: id });
 };
 
-// Simple Searchable Select Component
+// Simple Searchable Select Component untuk SINGLE SELECT
 const SearchableSelect: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
@@ -95,6 +95,7 @@ const SearchableSelect: React.FC<{
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -107,6 +108,90 @@ const SearchableSelect: React.FC<{
         </div>
       </SelectContent>
     </Select>
+  );
+};
+
+// Multi Select Component untuk PESERTA (Organik dan Mitra)
+const MultiSelect: React.FC<{
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  options: Array<{ id: string; name: string; jabatan?: string; kecamatan?: string }>;
+  placeholder?: string;
+}> = ({ value, onValueChange, options, placeholder = "Pilih..." }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredOptions = options.filter(option =>
+    option.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelect = (selectedValue: string) => {
+    if (value.includes(selectedValue)) {
+      // Remove if already selected
+      onValueChange(value.filter(v => v !== selectedValue));
+    } else {
+      // Add if not selected
+      onValueChange([...value, selectedValue]);
+    }
+  };
+
+  const isSelected = (optionId: string) => value.includes(optionId);
+
+  return (
+    <div className="space-y-2">
+      <Select onValueChange={handleSelect}>
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent className="max-h-60">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <SelectItem 
+                key={option.id} 
+                value={option.id}
+                className={cn(
+                  "cursor-pointer",
+                  isSelected(option.id) && "bg-blue-50 text-blue-700"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="font-medium">{option.name}</span>
+                    {option.jabatan && (
+                      <span className="text-xs text-muted-foreground">{option.jabatan}</span>
+                    )}
+                    {option.kecamatan && (
+                      <span className="text-xs text-muted-foreground">{option.kecamatan}</span>
+                    )}
+                  </div>
+                  {isSelected(option.id) && (
+                    <div className="w-2 h-2 bg-blue-600 rounded-full ml-2" />
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </div>
+        </SelectContent>
+      </Select>
+      
+      {/* Selected count */}
+      {value.length > 0 && (
+        <p className="text-xs text-green-600">
+          {value.length} peserta terpilih
+        </p>
+      )}
+    </div>
   );
 };
 
@@ -214,7 +299,7 @@ const generateDaftarHadirId = async (): Promise<string> => {
   }
 };
 
-// Komponen Select yang diperbaiki - SEDERHANA dan EFISIEN
+// Komponen Select yang diperbaiki
 const KegiatanSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -241,21 +326,16 @@ const KegiatanSelect: React.FC<{
         if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('📋 Data kegiatan dari spreadsheet:', rows);
-        
         if (rows.length > 1) {
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
-              id: row[2] || '', // Kolom C - ID Kegiatan
-              name: row[3] || '' // Kolom D - Nama Kegiatan
+              id: row[2] || '',
+              name: row[3] || ''
             }))
-            .filter((item: any) => item.id && item.name && item.id.startsWith(programId));
+            .filter((item: any) => item.id && item.name);
 
-          console.log('🎯 Kegiatan options setelah filter:', options);
           setKegiatanOptions(options);
-        } else {
-          setKegiatanOptions([]);
         }
       } catch (error) {
         console.error("Error fetching kegiatan:", error);
@@ -277,7 +357,6 @@ const KegiatanSelect: React.FC<{
   );
 };
 
-// PERBAIKAN: KROSelect dengan logging yang lebih detail
 const KROSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -288,14 +367,11 @@ const KROSelect: React.FC<{
   useEffect(() => {
     const fetchKRO = async () => {
       if (!kegiatanId) {
-        console.log('❌ Tidak ada kegiatanId, reset KRO options');
         setKroOptions([]);
         return;
       }
 
       try {
-        console.log('🔄 Fetching KRO untuk kegiatanId:', kegiatanId);
-        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
@@ -304,41 +380,22 @@ const KROSelect: React.FC<{
           }
         });
 
-        if (error) {
-          console.error('❌ Error fetching KRO:', error);
-          throw error;
-        }
+        if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('📋 Data KRO mentah dari spreadsheet:', rows);
-        
         if (rows.length > 1) {
-          // Debug: lihat struktur data
-          console.log('🔍 Struktur data KRO:');
-          rows.slice(0, 3).forEach((row, index) => {
-            console.log(`Row ${index}:`, row);
-          });
-
           const options = rows
             .slice(1)
             .map((row: any[]) => ({
-              id: row[2] || '', // Kolom C - ID KRO
-              name: row[3] || '' // Kolom D - Nama KRO
+              id: row[2] || '',
+              name: row[3] || ''
             }))
-            .filter((item: any) => {
-              const isValid = item.id && item.name;
-              console.log(`🔍 Filtering KRO: ${item.id} - ${item.name}`, isValid);
-              return isValid;
-            });
+            .filter((item: any) => item.id && item.name);
 
-          console.log('🎯 KRO options setelah mapping:', options);
           setKroOptions(options);
-        } else {
-          console.log('❌ Tidak ada data KRO ditemukan');
-          setKroOptions([]);
         }
       } catch (error) {
-        console.error("❌ Error fetching KRO:", error);
+        console.error("Error fetching KRO:", error);
         setKroOptions([]);
       }
     };
@@ -357,7 +414,6 @@ const KROSelect: React.FC<{
   );
 };
 
-// ROSelect dengan pendekatan yang sama
 const ROSelect: React.FC<{ 
   value: string; 
   onValueChange: (value: string) => void; 
@@ -373,8 +429,6 @@ const ROSelect: React.FC<{
       }
 
       try {
-        console.log('🔄 Fetching RO untuk kroId:', kroId);
-        
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
@@ -386,8 +440,6 @@ const ROSelect: React.FC<{
         if (error) throw error;
         
         const rows = data?.values || [];
-        console.log('📋 Data RO mentah:', rows);
-        
         if (rows.length > 1) {
           const options = rows
             .slice(1)
@@ -397,10 +449,7 @@ const ROSelect: React.FC<{
             }))
             .filter((item: any) => item.id && item.name);
 
-          console.log('🎯 RO options:', options);
           setRoOptions(options);
-        } else {
-          setRoOptions([]);
         }
       } catch (error) {
         console.error("Error fetching RO:", error);
@@ -1045,7 +1094,7 @@ const DaftarHadir = () => {
                         name="organik" 
                         control={control} 
                         render={({ field }) => (
-                          <SearchableSelect
+                          <MultiSelect
                             value={field.value}
                             onValueChange={field.onChange}
                             options={organikList}
@@ -1081,7 +1130,7 @@ const DaftarHadir = () => {
                         name="mitra" 
                         control={control} 
                         render={({ field }) => (
-                          <SearchableSelect
+                          <MultiSelect
                             value={field.value}
                             onValueChange={field.onChange}
                             options={mitraList}
