@@ -38,7 +38,7 @@ const mainMenuItems = [
   { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
-  { title: "Pengelola Anggaran", url: "/sentri-pengelola", icon: UserCog },
+  { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
   { title: "SBML", url: "/entri-sbml", icon: Database },
   { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
