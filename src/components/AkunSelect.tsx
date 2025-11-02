@@ -26,12 +26,15 @@ export const AkunSelect = ({ value, onValueChange, onChange, disabled }: AkunSel
       <SelectTrigger>
         <SelectValue placeholder={loading ? "Memuat..." : "Pilih Akun"} />
       </SelectTrigger>
-      <SelectContent>
-        {data.map((item) => (
-          <SelectItem key={item.id} value={item.id}>
-            {item.kode} - {item.akun}
-          </SelectItem>
-        ))}
+      <SelectContent className="bg-background z-50">
+        {data.map((item, index) => {
+          const itemId = item.id || item.kode || `akun-${index}`;
+          return (
+            <SelectItem key={itemId} value={itemId}>
+              {item.kode} - {item.akun}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );
