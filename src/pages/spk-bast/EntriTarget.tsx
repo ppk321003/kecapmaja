@@ -1845,7 +1845,7 @@ export default function EntriTarget() {
                                   <div className="text-sm font-bold bg-green-600 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
                                     Total Nilai Realisasi: {formatCurrency(totalNilaiRealisasi)}
                                   </div>
-                                  <div className="text-sm font-bold bg-orange-700 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
+                                  <div className="text-sm font-bold bg-orange-600 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
                                     Total Realisasi: {totalRealisasi}
                                   </div>
                                 </div>
