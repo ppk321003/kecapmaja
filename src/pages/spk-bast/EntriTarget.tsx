@@ -83,6 +83,18 @@ const calculateActivityTarget = (activity: Activity): number => {
   return totalTarget;
 };
 
+/**
+ * Fungsi perhitungan total realisasi (jumlah realisasi)
+ */
+const calculateTotalRealisasi = (activity: Activity): number => {
+  let totalRealisasi = 0;
+  activity.workers.forEach(worker => {
+    const realisasi = cleanNumberValue(worker.realisasi);
+    totalRealisasi += realisasi;
+  });
+  return totalRealisasi;
+};
+
 // Mock data for SPK periods
 const spkData = [{
   id: 1,
@@ -1822,14 +1834,20 @@ export default function EntriTarget() {
                     </TableRow> : filteredActivities.map((activity, index) => {
                   // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
                   const totalNilaiRealisasi = calculateActivityTotal(activity);
+                  const totalRealisasi = calculateTotalRealisasi(activity);
                   return <>
                           <TableRow key={activity.id}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell className="font-medium">
                               <div>
                                 {activity.namaKegiatan}
-                                <div className="text-sm font-bold bg-green-600 text-white px-3 py-1 rounded-lg inline-block mt-1 shadow-sm">
-                                 Total Nilai Realisasi: {formatCurrency(totalNilaiRealisasi)}
+                                <div className="flex flex-col gap-1 mt-1">
+                                  <div className="text-sm font-bold bg-green-600 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
+                                    Total Nilai Realisasi: {formatCurrency(totalNilaiRealisasi)}
+                                  </div>
+                                  <div className="text-sm font-bold bg-orange-700 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
+                                    Total Realisasi: {totalRealisasi}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
