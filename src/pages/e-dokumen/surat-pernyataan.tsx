@@ -124,7 +124,7 @@ const useSuratPernyataanSequenceGenerator = () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `sp-${year}${month}`;
+    const prefix = `super-${year}${month}`;
 
     const values = await fetchSheetData(
       CONSTANTS.SPREADSHEET.TARGET_ID,
@@ -139,7 +139,7 @@ const useSuratPernyataanSequenceGenerator = () => {
       .map((row: any[]) => row[0])
       .filter((id: string) => id && id.startsWith(prefix))
       .map((id: string) => {
-        const match = id.match(/sp-(\d{2})(\d{2})(\d{3})/);
+        const match = id.match(/super-(\d{2})(\d{2})(\d{3})/);
         if (match) {
           const sequence = parseInt(match[3]);
           return isNaN(sequence) ? 0 : sequence;
@@ -270,7 +270,7 @@ const SuratPernyataan = () => {
     // Siapkan data untuk spreadsheet sesuai urutan header
     return [
       sequenceNumber.toString(), // No
-      suratPernyataanId, // Id
+      suratPernyataanId, // Id (format: super-yymmxxx)
       data.jenisSuratPernyataan, // Jenis Surat Pernyataan
       organikNames, // Organik
       mitraNames, // Mitra Statistik
