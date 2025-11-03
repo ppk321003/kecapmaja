@@ -35,12 +35,12 @@ export default function Login() {
   };
   return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-accent p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 px-[32px] py-0 mx-[22px]">
-          <div className="flex justify-center mx-0 my-0 py-[30px]">
+        <CardHeader className="space-y-4 py-0 mx-0 px-0 my-0">
+          <div className="flex justify-center my-0 py-[30px] mx-[36px]">
             <img src={simajaLogo} alt="SIMAJA Logo" className="w-full max-w-md h-auto" />
           </div>
           
-          <CardDescription className="text-center text-stone-700">
+          <CardDescription className="text-center text-base text-stone-900">
             Masukkan username dan password Anda
           </CardDescription>
         </CardHeader>
