@@ -32,7 +32,6 @@ const CONSTANTS = {
   }
 } as const;
 
-// Advanced Searchable Select Component dengan kontrol penuh
 const SearchableSelect: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
@@ -43,7 +42,6 @@ const SearchableSelect: React.FC<{
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
@@ -52,53 +50,51 @@ const SearchableSelect: React.FC<{
     );
   }, [options, searchTerm]);
 
-  const selectedOption = options.find(opt => opt.id === value);
-
-  const handleSelect = (optionId: string) => {
-    onValueChange(optionId);
-    setIsOpen(false);
-    setSearchTerm("");
+  // Handle input focus dan prevent event bubbling
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     setSearchTerm(e.target.value);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-    } else if (e.key === 'Enter' && filteredOptions.length > 0) {
-      handleSelect(filteredOptions[0].id);
+    e.stopPropagation();
+    // Prevent Enter key from closing the dropdown
+    if (e.key === 'Enter') {
+      e.preventDefault();
     }
   };
 
-  // Auto focus input ketika dropdown dibuka
+  // Reset search term ketika dropdown ditutup
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+    if (!isOpen) {
+      setSearchTerm("");
     }
   }, [isOpen]);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          ref={triggerRef}
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          className="w-full justify-between"
-          disabled={disabled}
-        >
-          <span className={cn("truncate", !value && "text-muted-foreground")}>
-            {selectedOption ? selectedOption.name : placeholder}
-          </span>
-          <Search className="h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+    <Select 
+      value={value} 
+      onValueChange={onValueChange} 
+      disabled={disabled}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent 
+        className="max-h-60 w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px]"
+        position="popper"
+        align="start"
+      >
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -107,37 +103,37 @@ const SearchableSelect: React.FC<{
               placeholder="Cari..."
               value={searchTerm}
               onChange={handleInputChange}
+              onClick={handleInputClick}
               onKeyDown={handleInputKeyDown}
               className="pl-8"
+              // Auto focus ketika dropdown dibuka
+              autoFocus
             />
           </div>
         </div>
-        <div className="max-h-60 overflow-y-auto">
+        <div className="max-h-48 overflow-y-auto">
           {filteredOptions.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              {searchTerm ? "Tidak ada hasil ditemukan" : "Tidak ada opsi"}
+            <div className="py-6 text-center text-sm text-muted-foreground px-2">
+              Tidak ada hasil ditemukan
             </div>
           ) : (
             filteredOptions.map((option) => (
-              <button
-                key={option.id}
-                className={cn(
-                  "w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground",
-                  "focus:bg-accent focus:text-accent-foreground outline-none",
-                  value === option.id && "bg-accent text-accent-foreground"
-                )}
-                onClick={() => handleSelect(option.id)}
+              <SelectItem 
+                key={option.id} 
+                value={option.id}
+                // Prevent focus loss ketika memilih item
+                onPointerDown={(e) => e.preventDefault()}
+                className="truncate"
               >
                 {option.name}
-              </button>
+              </SelectItem>
             ))
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </SelectContent>
+    </Select>
   );
 };
-
 // Interfaces
 interface Trip {
   kecamatanTujuan: string;
