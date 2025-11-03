@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -32,7 +32,7 @@ const CONSTANTS = {
   }
 } as const;
 
-// Simple Searchable Select Component
+// Advanced Searchable Select Component dengan kontrol penuh
 const SearchableSelect: React.FC<{
   value: string;
   onValueChange: (value: string) => void;
@@ -41,6 +41,9 @@ const SearchableSelect: React.FC<{
   disabled?: boolean;
 }> = ({ value, onValueChange, options, placeholder = "Pilih...", disabled = false }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
@@ -49,32 +52,89 @@ const SearchableSelect: React.FC<{
     );
   }, [options, searchTerm]);
 
+  const selectedOption = options.find(opt => opt.id === value);
+
+  const handleSelect = (optionId: string) => {
+    onValueChange(optionId);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+    } else if (e.key === 'Enter' && filteredOptions.length > 0) {
+      handleSelect(filteredOptions[0].id);
+    }
+  };
+
+  // Auto focus input ketika dropdown dibuka
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="max-h-60">
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          ref={triggerRef}
+          variant="outline"
+          role="combobox"
+          aria-expanded={isOpen}
+          className="w-full justify-between"
+          disabled={disabled}
+        >
+          <span className={cn("truncate", !value && "text-muted-foreground")}>
+            {selectedOption ? selectedOption.name : placeholder}
+          </span>
+          <Search className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
+              ref={inputRef}
               placeholder="Cari..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleInputChange}
+              onKeyDown={handleInputKeyDown}
               className="pl-8"
             />
           </div>
         </div>
-        <div className="max-h-48 overflow-y-auto">
-          {filteredOptions.map((option) => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))}
+        <div className="max-h-60 overflow-y-auto">
+          {filteredOptions.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              {searchTerm ? "Tidak ada hasil ditemukan" : "Tidak ada opsi"}
+            </div>
+          ) : (
+            filteredOptions.map((option) => (
+              <button
+                key={option.id}
+                className={cn(
+                  "w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground",
+                  "focus:bg-accent focus:text-accent-foreground outline-none",
+                  value === option.id && "bg-accent text-accent-foreground"
+                )}
+                onClick={() => handleSelect(option.id)}
+              >
+                {option.name}
+              </button>
+            ))
+          )}
         </div>
-      </SelectContent>
-    </Select>
+      </PopoverContent>
+    </Popover>
   );
 };
 
