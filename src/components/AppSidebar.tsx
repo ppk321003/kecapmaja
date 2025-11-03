@@ -97,7 +97,7 @@ export function AppSidebar() {
               <h2 className="text-xl font-bold text-sidebar-foreground tracking-tight">KECAP MAJA</h2>
             </div>
             <p className="text-xs text-sidebar-foreground/70 mt-1 ml-13 font-light">
-              Aplikasi Kinerja, Monitoring dan Administrasi
+              Kerja Efisien, Cepat, Akurat, Profesional — Maju Aman Jeung Amanah
             </p>
           </div>
 

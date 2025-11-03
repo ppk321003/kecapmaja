@@ -65,9 +65,9 @@ export default function Home() {
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <Users className="h-10 w-10 text-primary mb-2" />
-              <CardTitle>Manajemen Mitra</CardTitle>
+              <CardTitle>Block Tanggal</CardTitle>
               <CardDescription>
-                Pendataan dan pengelolaan informasi petugas mitra statistik
+                Fitur tagging yang digunakan untuk mencatat, mengunci, dan memvalidasi tanggal perjalanan dinas bagi pegawai organik maupun mitra statistik
               </CardDescription>
             </CardHeader>
           </Card>
@@ -75,9 +75,9 @@ export default function Home() {
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <Download className="h-10 w-10 text-primary mb-2" />
-              <CardTitle>Laporan & Dokumen</CardTitle>
+              <CardTitle>e-Dokumen</CardTitle>
               <CardDescription>
-                Download SPJ, raw data, dan berbagai dokumen laporan kegiatan
+                Pengelolaan dan penyusunan dokumen administrasi secara otomatis dan terintegrasi
               </CardDescription>
             </CardHeader>
           </Card>
@@ -94,23 +94,23 @@ export default function Home() {
             <ul className="space-y-3 text-foreground">
               <li className="flex items-start">
                 <span className="text-primary mr-2">•</span>
-                <span><strong>Efisiensi Administrasi:</strong> Mengurangi beban kerja manual dalam pengelolaan dokumen administrasi</span>
+                <span><strong>Efisiensi Administrasi:</strong> Mengurangi pekerjaan manual melalui otomatisasi dalam pembuatan dan pengelolaan dokumen</span>
               </li>
               <li className="flex items-start">
                 <span className="text-primary mr-2">•</span>
-                <span><strong>Transparansi Data:</strong> Memudahkan akses informasi target dan realisasi kegiatan</span>
+                <span><strong>Transparansi Data:</strong> Menyajikan informasi target dan realisasi kegiatan secara terbuka dan mudah diakses</span>
               </li>
               <li className="flex items-start">
                 <span className="text-primary mr-2">•</span>
-                <span><strong>Akuntabilitas:</strong> Sistem approval dan dokumentasi yang terstruktur</span>
+                <span><strong>Tata Kelola Terstruktur:</strong> Setiap proses administrasi tercatat rapi dengan alur kerja yang jelas dan terdokumentasi</span>
               </li>
               <li className="flex items-start">
                 <span className="text-primary mr-2">•</span>
-                <span><strong>Kemudahan Monitoring:</strong> Dashboard interaktif untuk memantau progress kegiatan</span>
+                <span><strong>Kemudahan Monitoring:</strong> Menyediakan dashboard interaktif untuk memantau perkembangan kegiatan secara real-time</span>
               </li>
               <li className="flex items-start">
                 <span className="text-primary mr-2">•</span>
-                <span><strong>Otomasi Pelaporan:</strong> Pembuatan laporan dan dokumen secara otomatis</span>
+                <span><strong>Otomasi Pelaporan:</strong> Menghasilkan laporan dan dokumen administrasi secara otomatis, cepat, dan akurat</span>
               </li>
             </ul>
           </CardContent>
