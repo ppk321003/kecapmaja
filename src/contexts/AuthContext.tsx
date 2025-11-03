@@ -32,7 +32,7 @@ const users = [
   { username: 'IPDS3210', password: 'terhormat', role: 'Fungsi IPDS' },
   { username: 'pbj3210', password: 'terhormat', role: 'Pejabat Pengadaan' },
   { username: 'PBJ3210', password: 'terhormat', role: 'Pejabat Pengadaan' }, 
-  { username: 'Padamel3210', password: 'Terhormat', role: 'Pejabat Pengadaan' },  
+  { username: 'Padamel3210', password: 'Terhormat', role: 'Padamel BPS3210' },  
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
