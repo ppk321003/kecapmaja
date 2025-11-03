@@ -14,8 +14,8 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-accent/80 flex items-center">
           <div className="px-8 text-primary-foreground">
-            <h1 className="text-4xl font-bold mb-2">AKI MAJA</h1>
-            <p className="text-xl">Aplikasi Kinerja, Monitoring dan Administrasi BPS Kabupaten Majalengka</p>
+            <h1 className="text-4xl font-bold mb-2">KECAP MAJA</h1>
+            <p className="text-xl">Kerja Efisien, Cepat, Akurat, Profesional - Maju Aman Jeung Amanah</p>
           </div>
         </div>
       </section>
@@ -24,20 +24,15 @@ export default function Home() {
       <section className="prose max-w-none">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Tentang AKI MAJA</CardTitle>
+            <CardTitle className="text-2xl">Tentang KECAP MAJA</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-foreground">
             <p className="text-justify leading-relaxed">
-              Aplikasi Kinerja, Monitoring dan Administrasi BPS Kabupaten Majalengka (AKI MAJA) adalah aplikasi berbasis web 
-              yang dirancang untuk mengelola dan memantau kinerja Organik dan Mitra Statistik di wilayah Kabupaten Majalengka. 
-              Aplikasi ini merupakan solusi digital yang mengintegrasikan berbagai proses administrasi dan monitoring 
-              dalam satu platform yang efisien dan terstruktur.
+              💡 KECAP MAJA merupakan sistem administrasi digital terpadu yang dikembangkan untuk meningkatkan efisiensi dan akurasi dalam pengelolaan kegiatan.
+              Melalui fitur-fitur seperti pembuatan dokumen otomatis, entri pekerjaan mitra statistik, rekap honorarium, serta pengecekan batas SBML, seluruh proses administrasi dapat dilakukan dengan lebih cepat, terukur, dan profesional.
             </p>
             <p className="text-justify leading-relaxed">
-              AKI MAJA dikembangkan untuk mendukung transparansi, akuntabilitas, dan efektivitas dalam pengelolaan 
-              kegiatan statistik. Dengan fitur-fitur yang komprehensif, aplikasi ini memfasilitasi proses entri data, 
-              monitoring target dan realisasi kegiatan, hingga penerbitan dokumen-dokumen resmi seperti Surat Perjanjian 
-              Kerja (SPK) dan Berita Acara Serah Terima (BAST).
+              Dengan semangat Maju Aman Jeung Amanah, KECAP MAJA mendorong budaya kerja yang efisien, cepat, akurat, dan profesional di setiap aktivitas administrasi di lingkup BPS Kabupaten Majalengka.
             </p>
           </CardContent>
         </Card>
@@ -93,7 +88,7 @@ export default function Home() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Manfaat AKI MAJA</CardTitle>
+            <CardTitle className="text-2xl">Manfaat KECAP MAJA</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3 text-foreground">

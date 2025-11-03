@@ -7,7 +7,7 @@ export default function Pedoman() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Pedoman</h1>
         <p className="text-muted-foreground mt-2">
-          Panduan dan pedoman penggunaan sistem AKI MAJA
+          Panduan dan pedoman penggunaan sistem KECAP MAJA
         </p>
       </div>
 

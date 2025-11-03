@@ -94,7 +94,7 @@ export function AppSidebar() {
               <div className="w-10 h-10 rounded-lg bg-sidebar-accent/50 backdrop-blur-sm flex items-center justify-center">
                 <LayoutDashboard className="h-5 w-5 text-sidebar-foreground" />
               </div>
-              <h2 className="text-xl font-bold text-sidebar-foreground tracking-tight">AKI MAJA</h2>
+              <h2 className="text-xl font-bold text-sidebar-foreground tracking-tight">KECAP MAJA</h2>
             </div>
             <p className="text-xs text-sidebar-foreground/70 mt-1 ml-13 font-light">
               Aplikasi Kinerja, Monitoring dan Administrasi
