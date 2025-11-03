@@ -270,85 +270,87 @@ const MitraKepka = () => {
           </p>
         </div>
 
-        {/* Dialog Form untuk Tambah/Edit */}
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setEditingPetugas(null);
-            form.reset();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> 
-              Tambah Mitra
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPetugas ? "Edit" : "Tambah"} Mitra
-              </DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Input fields kecuali kecamatan */}
-                  {Object.keys(petugasSchema.shape)
-                    .filter(key => key !== "kecamatan")
-                    .map((key) => (
-                      <FormField
-                        key={key}
-                        control={form.control}
-                        name={key as keyof PetugasFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {key.charAt(0).toUpperCase() + key.slice(1)}
-                            </FormLabel>
+        {/* Dialog Form untuk Tambah/Edit - Hanya tampil untuk Pejabat Pembuat Komitmen */}
+        {isPejabatPembuatKomitmen() && (
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingPetugas(null);
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> 
+                Tambah Mitra
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingPetugas ? "Edit" : "Tambah"} Mitra
+                </DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Input fields kecuali kecamatan */}
+                    {Object.keys(petugasSchema.shape)
+                      .filter(key => key !== "kecamatan")
+                      .map((key) => (
+                        <FormField
+                          key={key}
+                          control={form.control}
+                          name={key as keyof PetugasFormData}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {key.charAt(0).toUpperCase() + key.slice(1)}
+                              </FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    
+                    {/* Kecamatan Select */}
+                    <FormField
+                      control={form.control}
+                      name="kecamatan"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kecamatan</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <Input {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih kecamatan" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    ))}
-                  
-                  {/* Kecamatan Select */}
-                  <FormField
-                    control={form.control}
-                    name="kecamatan"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kecamatan</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih kecamatan" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {kecamatanList.map((kec) => (
-                              <SelectItem key={kec} value={kec}>
-                                {kec}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                            <SelectContent>
+                              {kecamatanList.map((kec) => (
+                                <SelectItem key={kec} value={kec}>
+                                  {kec}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <Button type="submit" className="w-full">
-                  {editingPetugas ? "Update" : "Tambah"} Mitra
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  <Button type="submit" className="w-full">
+                    {editingPetugas ? "Update" : "Tambah"} Mitra
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* Tabel Data */}
         <Card>
