@@ -53,8 +53,8 @@ const eDokumenSubItems = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
   { title: "Download e-Dokumen", url: "/e-dokumen/download", icon: DownloadIcon },
   { title: "Blanko Visum", url: "https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing", icon: FileCheck, external: true },
-  { title: "Riwayat Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", icon: FileSpreadsheet, external: true },
-  { title: "Riwayat Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P", icon: FileType, external: true },
+  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", icon: FileSpreadsheet, external: true },
+  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P", icon: FileType, external: true },
 ];
 
 export function AppSidebar() {
