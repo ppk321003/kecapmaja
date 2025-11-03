@@ -67,7 +67,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar 
-      className="border-r border-sidebar-border backdrop-blur-sm" 
+      className="border-r border-sidebar-border backdrop-blur-sm w-[280px]" 
       style={{ 
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)"
