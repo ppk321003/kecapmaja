@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
               <h1 className="ml-4 text-lg font-semibold text-primary-foreground">
-                Kerja Efisien, Cepat, Akurat, Profesional
+                Sistem Administrasi Digital Terpadu untuk Kinerja yang Efisien dan Akurat
               </h1>
             </div>
             <div className="flex items-center gap-4">
