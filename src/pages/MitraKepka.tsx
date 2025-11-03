@@ -55,6 +55,26 @@ const MitraKepka = () => {
 
   const { toast } = useToast();
 
+  // Fungsi untuk mendapatkan informasi user dari localStorage
+  const getCurrentUser = () => {
+    const userData = localStorage.getItem('simaja_user');
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Fungsi untuk mengecek apakah user adalah Pejabat Pembuat Komitmen
+  const isPejabatPembuatKomitmen = () => {
+    const user = getCurrentUser();
+    return user && user.role === "Pejabat Pembuat Komitmen";
+  };
+
   const form = useForm<PetugasFormData>({
     resolver: zodResolver(petugasSchema),
     defaultValues: {
@@ -413,13 +433,16 @@ const MitraKepka = () => {
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => handleDelete(p)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {/* Hanya tampilkan tombol delete untuk Pejabat Pembuat Komitmen */}
+                                {isPejabatPembuatKomitmen() && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleDelete(p)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
