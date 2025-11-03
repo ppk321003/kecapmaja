@@ -153,7 +153,6 @@ export function AppSidebar() {
                               >
                                 <subItem.icon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
                                 <span className="text-sm font-light">{subItem.title}</span>
-                                <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
                               </a>
                             ) : (
                               <NavLink
