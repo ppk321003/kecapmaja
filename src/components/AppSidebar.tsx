@@ -64,119 +64,135 @@ export function AppSidebar() {
   const isEDokumenActive = currentPath.startsWith("/e-dokumen");
   const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
 
-
   return (
     <Sidebar 
-      className="border-r border-sidebar-border backdrop-blur-sm" 
+      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col" 
       style={{ 
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)"
       }}
     >
-      <SidebarContent className="font-['Inter',_sans-serif]">
-        <div className="px-5 py-7 border-b border-sidebar-border/30">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-sidebar-accent/50 backdrop-blur-sm flex items-center justify-center">
-              <LayoutDashboard className="h-5 w-5 text-sidebar-foreground" />
+      <SidebarContent 
+        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+      >
+        {/* CSS inline untuk hide scrollbar di Webkit browsers */}
+        <style>
+          {`
+            .sidebar-content-hidden::-webkit-scrollbar {
+              display: none;
+            }
+          `}
+        </style>
+        
+        <div className="flex-1 sidebar-content-hidden">
+          <div className="px-5 py-7 border-b border-sidebar-border/30">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-sidebar-accent/50 backdrop-blur-sm flex items-center justify-center">
+                <LayoutDashboard className="h-5 w-5 text-sidebar-foreground" />
+              </div>
+              <h2 className="text-xl font-bold text-sidebar-foreground tracking-tight">AKI MAJA</h2>
             </div>
-            <h2 className="text-xl font-bold text-sidebar-foreground tracking-tight">AKI MAJA</h2>
+            <p className="text-xs text-sidebar-foreground/70 mt-1 ml-13 font-light">
+              Aplikasi Kinerja, Monitoring dan Administrasi
+            </p>
           </div>
-          <p className="text-xs text-sidebar-foreground/70 mt-1 ml-13 font-light">
-            Aplikasi Kinerja, Monitoring dan Administrasi
-          </p>
-        </div>
 
-        <SidebarGroup className="px-3 py-4">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
-            Menu Utama
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className={({ isActive }) =>
-                        isActive
-                          ? "relative bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium rounded-lg transition-all duration-200 backdrop-blur-sm"
-                          : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-lg transition-all duration-200"
-                      }
-                      style={({ isActive }) => isActive ? { boxShadow: "var(--shadow-menu-active)" } : {}}
-                    >
-                      <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
-                      {open && <span className="font-medium">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="px-3 py-2">
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      className={
-                        isEDokumenActive
-                          ? "relative bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium rounded-lg transition-all duration-200 backdrop-blur-sm"
-                          : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-lg transition-all duration-200"
-                      }
-                      style={isEDokumenActive ? { boxShadow: "var(--shadow-menu-active)" } : {}}
-                    >
-                      <FolderOpen className="h-4 w-4 transition-transform duration-200" />
-                      {open && <span className="font-medium">e-Dokumen</span>}
-                      {open && (
-                        <ChevronDown 
-                          className="ml-auto h-4 w-4 transition-transform duration-300" 
-                          style={{ transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)" }} 
-                        />
-                      )}
+          <SidebarGroup className="px-3 py-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
+              Menu Utama
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {mainMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "relative bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium rounded-lg transition-all duration-200 backdrop-blur-sm"
+                            : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-lg transition-all duration-200"
+                        }
+                        style={({ isActive }) => isActive ? { boxShadow: "var(--shadow-menu-active)" } : {}}
+                      >
+                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                        {open && <span className="font-medium">{item.title}</span>}
+                      </NavLink>
                     </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-1">
-                    <SidebarMenuSub className="ml-4 border-l-2 border-sidebar-border/30 pl-2 space-y-1">
-                      {eDokumenSubItems.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            {subItem.external ? (
-                              <a
-                                href={subItem.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 rounded-md transition-all duration-200 flex items-center gap-2 group"
-                              >
-                                <subItem.icon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
-                                <span className="text-sm font-light">{subItem.title}</span>
-                              </a>
-                            ) : (
-                              <NavLink
-                                to={subItem.url}
-                                className={({ isActive }) =>
-                                  isActive
-                                    ? "bg-sidebar-accent/60 text-sidebar-accent-foreground font-medium rounded-md transition-all duration-200"
-                                    : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 rounded-md transition-all duration-200"
-                                }
-                              >
-                                <subItem.icon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
-                                <span className="text-sm font-light">{subItem.title}</span>
-                              </NavLink>
-                            )}
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup className="px-3 py-2">
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        className={
+                          isEDokumenActive
+                            ? "relative bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium rounded-lg transition-all duration-200 backdrop-blur-sm"
+                            : "text-sidebar-foreground/90 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-lg transition-all duration-200"
+                        }
+                        style={isEDokumenActive ? { boxShadow: "var(--shadow-menu-active)" } : {}}
+                      >
+                        <FolderOpen className="h-4 w-4 transition-transform duration-200" />
+                        {open && <span className="font-medium">e-Dokumen</span>}
+                        {open && (
+                          <ChevronDown 
+                            className="ml-auto h-4 w-4 transition-transform duration-300" 
+                            style={{ transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)" }} 
+                          />
+                        )}
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-1">
+                      <SidebarMenuSub className="ml-4 border-l-2 border-sidebar-border/30 pl-2 space-y-1">
+                        {eDokumenSubItems.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton asChild>
+                              {subItem.external ? (
+                                <a
+                                  href={subItem.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 rounded-md transition-all duration-200 flex items-center gap-2 group"
+                                >
+                                  <subItem.icon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                  <span className="text-sm font-light">{subItem.title}</span>
+                                </a>
+                              ) : (
+                                <NavLink
+                                  to={subItem.url}
+                                  className={({ isActive }) =>
+                                    isActive
+                                      ? "bg-sidebar-accent/60 text-sidebar-accent-foreground font-medium rounded-md transition-all duration-200"
+                                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 rounded-md transition-all duration-200"
+                                  }
+                                >
+                                  <subItem.icon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110" />
+                                  <span className="text-sm font-light">{subItem.title}</span>
+                                </NavLink>
+                              )}
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </div>
 
         {/* Footer with mini branding */}
         <div className="mt-auto px-5 py-4 border-t border-sidebar-border/30">
