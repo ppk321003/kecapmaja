@@ -157,9 +157,9 @@ All colors MUST be HSL.
     --gradient-menu-hover: linear-gradient(90deg, hsla(30, 95%, 45%, 0.6), hsla(38, 89%, 46%, 0.3));
     
     /* Shadows for depth */
-    --shadow-sidebar: 0 4px 20px -4px hsl(16 85% 25% / 0.3);
-    --shadow-menu-active: inset 3px 0 0 0 hsl(14 100% 57%);
-    --shadow-glass: 0 8px 32px 0 hsl(16 85% 25% / 0.37);
+    --shadow-sidebar: 0 4px 20px -4px hsla(43, 100%, 40%, 0.538);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(31, 89%, 51%);
+    --shadow-glass: 0 8px 32px 0 hsla(45, 100%, 50%, 0.37);
   }
   }
 
