@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-type Theme = "orange" | "blue" | "green";
+type Theme = "blue" | "green" | "orange";
 
 interface ThemeContextType {
   theme: Theme;
@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("app-theme");
-    return (stored as Theme) || "orange";
+    return (stored as Theme) || "blue";
   });
 
   useEffect(() => {
