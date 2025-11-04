@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
+import { ThemeSelector } from "@/components/ThemeSelector";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,6 +26,7 @@ export function Layout({ children }: LayoutProps) {
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <ThemeSelector />
               <div className="flex items-center gap-2 text-primary-foreground">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.role}</span>

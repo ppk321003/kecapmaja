@@ -7,7 +7,61 @@ All colors MUST be HSL.
 */
 
 @layer base {
+  /* Default Theme: Orange Terakota */
   :root {
+    --background: 30 20% 98%;
+    --foreground: 24 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 25% 15%;
+
+    --primary: 16 90% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 60% 92%;
+    --secondary-foreground: 24 25% 15%;
+
+    --muted: 30 30% 94%;
+    --muted-foreground: 24 15% 45%;
+
+    --accent: 14 100% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 25% 88%;
+    --input: 30 25% 88%;
+    --ring: 16 90% 50%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar with gradient colors */
+    --sidebar-background: 16 85% 35%;
+    --sidebar-foreground: 30 20% 95%;
+    --sidebar-primary: 14 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 16 90% 45%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 16 80% 45%;
+    --sidebar-ring: 14 100% 57%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(16 85% 30%) 0%, hsl(16 80% 40%) 50%, hsl(14 90% 50%) 100%);
+    --gradient-header: linear-gradient(to right, hsl(16 90% 50%), hsl(14 100% 57%));
+    --gradient-menu-hover: linear-gradient(90deg, hsl(16 90% 45% / 0.6), hsl(16 90% 45% / 0.3));
+    
+    /* Shadows for depth */
+    --shadow-sidebar: 0 4px 20px -4px hsl(16 85% 25% / 0.3);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(14 100% 57%);
+    --shadow-glass: 0 8px 32px 0 hsl(16 85% 25% / 0.37);
+  }
+
+  /* Blue Theme */
+  [data-theme="blue"] {
     --background: 210 20% 98%;
     --foreground: 215 25% 15%;
 
@@ -36,8 +90,6 @@ All colors MUST be HSL.
     --input: 210 25% 88%;
     --ring: 210 80% 42%;
 
-    --radius: 0.5rem;
-
     /* Sidebar with gradient colors */
     --sidebar-background: 210 100% 25%;
     --sidebar-foreground: 210 20% 95%;
@@ -50,13 +102,64 @@ All colors MUST be HSL.
 
     /* Custom gradients */
     --gradient-primary: linear-gradient(135deg, hsl(210 100% 20%) 0%, hsl(210 95% 30%) 50%, hsl(195 90% 40%) 100%);
-    --gradient-header: linear-gradient(to right, hsl(210 80% 42%), hsl(212, 96%, 55%));
+    --gradient-header: linear-gradient(to right, hsl(210 80% 42%), hsl(212 96% 55%));
     --gradient-menu-hover: linear-gradient(90deg, hsl(210 90% 32% / 0.6), hsl(210 90% 32% / 0.3));
     
     /* Shadows for depth */
     --shadow-sidebar: 0 4px 20px -4px hsl(210 100% 15% / 0.3);
     --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
     --shadow-glass: 0 8px 32px 0 hsl(210 100% 15% / 0.37);
+  }
+
+  /* Green Theme */
+  [data-theme="green"] {
+    --background: 140 20% 98%;
+    --foreground: 140 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 140 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 25% 15%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 60% 92%;
+    --secondary-foreground: 140 25% 15%;
+
+    --muted: 140 30% 94%;
+    --muted-foreground: 140 15% 45%;
+
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 25% 88%;
+    --input: 140 25% 88%;
+    --ring: 142 76% 36%;
+
+    /* Sidebar with gradient colors */
+    --sidebar-background: 142 70% 28%;
+    --sidebar-foreground: 140 20% 95%;
+    --sidebar-primary: 158 64% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 76% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 142 70% 38%;
+    --sidebar-ring: 158 64% 52%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 70% 22%) 0%, hsl(142 65% 32%) 50%, hsl(158 60% 42%) 100%);
+    --gradient-header: linear-gradient(to right, hsl(142 76% 36%), hsl(158 64% 52%));
+    --gradient-menu-hover: linear-gradient(90deg, hsl(142 76% 40% / 0.6), hsl(142 76% 40% / 0.3));
+    
+    /* Shadows for depth */
+    --shadow-sidebar: 0 4px 20px -4px hsl(142 70% 18% / 0.3);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(158 64% 52%);
+    --shadow-glass: 0 8px 32px 0 hsl(142 70% 18% / 0.37);
   }
 
   .dark {
@@ -101,6 +204,10 @@ All colors MUST be HSL.
     --gradient-menu-hover: linear-gradient(90deg, hsl(210 90% 25% / 0.6), hsl(210 90% 25% / 0.3));
     --shadow-sidebar: 0 4px 20px -4px hsl(210 100% 8% / 0.5);
     --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
+  }
+
+  * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 }
 
