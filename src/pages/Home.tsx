@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText, BarChart3, Users, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Cake, Heart } from "lucide-react";
+import { Cake, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import heroBanner from "@/assets/hero-banner.jpg";
@@ -18,8 +18,9 @@ interface Pegawai {
 }
 
 export default function Home() {
-  const [ultahPegawai, setUltahPegawai] = useState<Pegawai | null>(null);
+  const [ultahPegawai, setUltahPegawai] = useState<Pegawai[]>([]);
   const [showDialog, setShowDialog] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -28,7 +29,7 @@ export default function Home() {
     try {
       // Format NIP: 19781017 199803 1 002
       // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
-      const nipParts = nip.split(' ');
+      const nipParts = nip.toString().split(' ');
       if (nipParts.length >= 1) {
         const tanggalLahirStr = nipParts[0];
         if (tanggalLahirStr.length === 8) {
@@ -85,13 +86,14 @@ export default function Home() {
       const rows = data.values || [];
       if (rows.length <= 1) {
         console.log('Tidak ada data pegawai');
-        return null;
+        return [];
       }
 
       // Skip header row
       const pegawaiData = rows.slice(1);
+      const pegawaiUltah: Pegawai[] = [];
       
-      // Cari pegawai yang berulang tahun hari ini
+      // Cari semua pegawai yang berulang tahun hari ini
       for (const row of pegawaiData) {
         const nip = row[2] || row[1]; // Kolom NIP (index 2) atau NIP BPS (index 1)
         const nama = row[3] || "";
@@ -104,7 +106,7 @@ export default function Home() {
           if (tanggalLahir && isHariIniUlangTahun(tanggalLahir)) {
             const umur = hitungUmur(tanggalLahir);
             
-            const pegawaiUltah: Pegawai = {
+            const pegawai: Pegawai = {
               nip: nip.toString(),
               nama: nama.toString(),
               tanggal_lahir: tanggalLahir,
@@ -113,12 +115,12 @@ export default function Home() {
               pangkat: pangkat.toString()
             };
             
-            return pegawaiUltah;
+            pegawaiUltah.push(pegawai);
           }
         }
       }
       
-      return null;
+      return pegawaiUltah;
     } catch (error: any) {
       console.error('Error fetch data pegawai:', error);
       toast({
@@ -126,7 +128,7 @@ export default function Home() {
         description: "Gagal memuat data ulang tahun pegawai",
         variant: "destructive"
       });
-      return null;
+      return [];
     } finally {
       setLoading(false);
     }
@@ -136,19 +138,35 @@ export default function Home() {
   useEffect(() => {
     const checkUltahPegawai = async () => {
       const pegawaiUltah = await fetchPegawaiBerulangTahun();
-      if (pegawaiUltah) {
+      if (pegawaiUltah.length > 0) {
         setUltahPegawai(pegawaiUltah);
         setShowDialog(true);
         
-        toast({
-          title: "Selamat Ulang Tahun! 🎉",
-          description: `Semoga ${pegawaiUltah.nama} senantiasa diberikan kesehatan dan kebahagiaan`,
-        });
+        if (pegawaiUltah.length === 1) {
+          toast({
+            title: "Selamat Ulang Tahun! 🎉",
+            description: `Semoga ${pegawaiUltah[0].nama} senantiasa diberikan kesehatan dan kebahagiaan`,
+          });
+        } else {
+          toast({
+            title: "Selamat Ulang Tahun! 🎉",
+            description: `Ada ${pegawaiUltah.length} pegawai yang berulang tahun hari ini`,
+          });
+        }
       }
     };
 
     checkUltahPegawai();
   }, []);
+
+  // Fungsi untuk navigasi
+  const nextPegawai = () => {
+    setCurrentIndex((prev) => (prev + 1) % ultahPegawai.length);
+  };
+
+  const prevPegawai = () => {
+    setCurrentIndex((prev) => (prev - 1 + ultahPegawai.length) % ultahPegawai.length);
+  };
 
   // Fungsi untuk mendapatkan ucapan berdasarkan umur
   const getUcapanUltah = (umur: number, nama: string, jabatan: string) => {
@@ -182,8 +200,10 @@ export default function Home() {
 
   // Format NIP untuk display
   const formatNIP = (nip: string) => {
-    return nip.replace(/(\d{8}) (\d{6}) (\d) (\d{3})/, '$1 $2 $3 $4');
+    return nip.toString().replace(/(\d{8}) (\d{6}) (\d) (\d{3})/, '$1 $2 $3 $4');
   };
+
+  const currentPegawai = ultahPegawai[currentIndex];
 
   return (
     <div className="space-y-8">
@@ -191,51 +211,97 @@ export default function Home() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-md bg-gradient-to-br from-pink-50 to-red-50 border-pink-200">
           <DialogHeader>
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-between items-center mb-4">
+              {ultahPegawai.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={prevPegawai}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              
               <div className="relative">
                 <Cake className="h-16 w-16 text-pink-500" />
                 <Heart className="h-6 w-6 text-red-500 absolute -top-1 -right-1 animate-pulse" />
               </div>
+
+              {ultahPegawai.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={nextPegawai}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
+
             <DialogTitle className="text-center text-2xl text-pink-700">
               🎉 Selamat Ulang Tahun! 🎉
             </DialogTitle>
-            <DialogDescription className="text-center space-y-4">
-              {ultahPegawai && (
-                <>
-                  <div className="bg-white rounded-lg p-4 shadow-sm border">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                      {ultahPegawai.nama}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-1">
-                      NIP: {formatNIP(ultahPegawai.nip)}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-1">
-                      Jabatan: {ultahPegawai.jabatan}
-                    </p>
-                    <p className="text-sm text-gray-600 mb-1">
-                      Pangkat: {ultahPegawai.pangkat}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Umur: <span className="font-semibold text-pink-600">{ultahPegawai.umur} tahun</span>
-                    </p>
-                  </div>
-                  
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-gray-700 text-justify leading-relaxed italic">
-                      "{getRandomUcapan(ultahPegawai.umur, ultahPegawai.nama, ultahPegawai.jabatan)}"
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col space-y-2 text-xs text-gray-500">
-                    <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
-                    <p>🌟 Terus berkarya untuk BPS Majalengka</p>
-                    <p>🎂 Panjang umur dan sehat selalu</p>
-                  </div>
-                </>
-              )}
-            </DialogDescription>
+            
+            {ultahPegawai.length > 1 && (
+              <div className="text-center text-sm text-pink-600">
+                {currentIndex + 1} dari {ultahPegawai.length} pegawai
+              </div>
+            )}
           </DialogHeader>
+          
+          <DialogDescription className="text-center space-y-4">
+            {currentPegawai && (
+              <>
+                <div className="bg-white rounded-lg p-4 shadow-sm border">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                    {currentPegawai.nama}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-1">
+                    NIP: {formatNIP(currentPegawai.nip)}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Jabatan: {currentPegawai.jabatan}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Pangkat: {currentPegawai.pangkat}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Umur: <span className="font-semibold text-pink-600">{currentPegawai.umur} tahun</span>
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-gray-700 text-justify leading-relaxed italic">
+                    "{getRandomUcapan(currentPegawai.umur, currentPegawai.nama, currentPegawai.jabatan)}"
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-2 text-xs text-gray-500">
+                  <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
+                  <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                  <p>🎂 Panjang umur dan sehat selalu</p>
+                </div>
+
+                {/* Indicator dots untuk multiple pegawai */}
+                {ultahPegawai.length > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    {ultahPegawai.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentIndex(index)}
+                        className={`h-2 w-2 rounded-full transition-colors ${
+                          index === currentIndex ? 'bg-pink-500' : 'bg-pink-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </DialogDescription>
+          
           <div className="flex justify-center mt-4">
             <Button 
               onClick={() => setShowDialog(false)}
