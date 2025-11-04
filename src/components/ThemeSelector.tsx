@@ -12,9 +12,9 @@ export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
 
   const themes = [
-    { value: "orange", label: "Terakota", color: "hsl(16 90% 50%)" },
     { value: "blue", label: "Biru", color: "hsl(210 80% 42%)" },
     { value: "green", label: "Hijau", color: "hsl(142 76% 36%)" },
+    { value: "orange", label: "Orange", color: "hsl(16 90% 50%)" },
   ] as const;
 
   return (
