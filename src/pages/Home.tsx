@@ -1,10 +1,143 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, BarChart3, Users, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Cake, Heart } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
 
+interface Pegawai {
+  nip: string;
+  nama: string;
+  tanggal_lahir: string;
+  umur: number;
+}
+
 export default function Home() {
+  const [ultahPegawai, setUltahPegawai] = useState<Pegawai | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
+
+  // Fungsi untuk mendapatkan data ulang tahun dari localStorage atau API
+  const getPegawaiBerulangTahun = (): Pegawai | null => {
+    try {
+      // Contoh data - Anda bisa mengganti dengan data dari API atau localStorage
+      const dataUltah = localStorage.getItem('ultah_pegawai');
+      if (dataUltah) {
+        return JSON.parse(dataUltah);
+      }
+
+      // Contoh data dummy untuk demonstrasi
+      const today = new Date();
+      const pegawaiContoh: Pegawai = {
+        nip: "198304152006041002",
+        nama: "Dr. Asep Saepudin, S.ST, M.Si",
+        tanggal_lahir: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+        umur: 41
+      };
+
+      // Simpan ke localStorage untuk contoh
+      localStorage.setItem('ultah_pegawai', JSON.stringify(pegawaiContoh));
+      return pegawaiContoh;
+    } catch (error) {
+      console.error('Error mendapatkan data ulang tahun:', error);
+      return null;
+    }
+  };
+
+  // Cek ulang tahun saat component mount
+  useEffect(() => {
+    const pegawaiUltah = getPegawaiBerulangTahun();
+    if (pegawaiUltah) {
+      setUltahPegawai(pegawaiUltah);
+      setShowDialog(true);
+    }
+  }, []);
+
+  // Fungsi untuk mendapatkan ucapan berdasarkan umur
+  const getUcapanUltah = (umur: number, nama: string) => {
+    const ucapanUmum = [
+      `Selamat ulang tahun yang ke-${umur} tahun! Semoga senantiasa diberikan kesehatan, kebahagiaan, dan kesuksesan dalam menjalankan tugas.`,
+      `Di usia yang ke-${umur} tahun ini, semoga semakin bijaksana dan inspiratif bagi rekan-rekan di BPS Majalengka.`,
+      `Semoga di usia ${umur} tahun ini, menjadi pribadi yang lebih baik dan profesional dalam mengabdi untuk negara.`
+    ];
+
+    if (umur >= 50) {
+      return [
+        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki semakin membawa manfaat bagi BPS Majalengka.`,
+        `Di usia emas ${umur} tahun, semoga senantiasa diberikan kesehatan dan semangat dalam mengabdi untuk statistik Indonesia.`,
+        `Terima kasih atas dedikasi dan pengabdian selama ini. Selamat merayakan ${umur} tahun kehidupan yang penuh makna.`
+      ];
+    } else if (umur >= 40) {
+      return [
+        `Selamat ulang tahun ke-${umur} tahun! Semoga di usia yang penuh kematangan ini, semakin banyak kontribusi berharga untuk BPS.`,
+        `Di usia ${umur} tahun, semoga semakin produktif dan inspiratif dalam memajukan statistik di Kabupaten Majalengka.`,
+        `Semoga di usia yang semakin dewasa ini, senantiasa diberikan kemudahan dalam setiap tugas dan tanggung jawab.`
+      ];
+    } else {
+      return ucapanUmum;
+    }
+  };
+
+  const getRandomUcapan = (umur: number, nama: string) => {
+    const ucapanList = getUcapanUltah(umur, nama);
+    return ucapanList[Math.floor(Math.random() * ucapanList.length)];
+  };
+
   return (
     <div className="space-y-8">
+      {/* Dialog Ulang Tahun */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-md bg-gradient-to-br from-pink-50 to-red-50 border-pink-200">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <Cake className="h-16 w-16 text-pink-500" />
+                <Heart className="h-6 w-6 text-red-500 absolute -top-1 -right-1 animate-pulse" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-2xl text-pink-700">
+              🎉 Selamat Ulang Tahun! 🎉
+            </DialogTitle>
+            <DialogDescription className="text-center space-y-4">
+              {ultahPegawai && (
+                <>
+                  <div className="bg-white rounded-lg p-4 shadow-sm border">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                      {ultahPegawai.nama}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-1">
+                      NIP: {ultahPegawai.nip}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Umur: <span className="font-semibold text-pink-600">{ultahPegawai.umur} tahun</span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-gray-700 text-justify leading-relaxed italic">
+                      "{getRandomUcapan(ultahPegawai.umur, ultahPegawai.nama)}"
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col space-y-2 text-xs text-gray-500">
+                    <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
+                    <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                  </div>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center mt-4">
+            <Button 
+              onClick={() => setShowDialog(false)}
+              className="bg-pink-500 hover:bg-pink-600 text-white"
+            >
+              Tutup & Lanjutkan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Hero Section */}
       <section className="relative rounded-lg overflow-hidden">
         <img 
