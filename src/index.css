@@ -7,8 +7,61 @@ All colors MUST be HSL.
 */
 
 @layer base {
-  /* Default Theme: Biru */
+  /* Default Theme: Orange Terakota */
   :root {
+    --background: 30 20% 98%;
+    --foreground: 24 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 25% 15%;
+
+    --primary: 16 90% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 60% 92%;
+    --secondary-foreground: 24 25% 15%;
+
+    --muted: 30 30% 94%;
+    --muted-foreground: 24 15% 45%;
+
+    --accent: 14 100% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 25% 88%;
+    --input: 30 25% 88%;
+    --ring: 16 90% 50%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar with gradient colors */
+    --sidebar-background: 16 85% 35%;
+    --sidebar-foreground: 30 20% 95%;
+    --sidebar-primary: 14 100% 57%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 16 90% 45%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 16 80% 45%;
+    --sidebar-ring: 14 100% 57%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(16 85% 30%) 0%, hsl(16 80% 40%) 50%, hsl(14 90% 50%) 100%);
+    --gradient-header: linear-gradient(to right, hsl(16 90% 50%), hsl(14 100% 57%));
+    --gradient-menu-hover: linear-gradient(90deg, hsl(16 90% 45% / 0.6), hsl(16 90% 45% / 0.3));
+    
+    /* Shadows for depth */
+    --shadow-sidebar: 0 4px 20px -4px hsl(16 85% 25% / 0.3);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(14 100% 57%);
+    --shadow-glass: 0 8px 32px 0 hsl(16 85% 25% / 0.37);
+  }
+
+  /* Blue Theme */
+  [data-theme="blue"] {
     --background: 210 20% 98%;
     --foreground: 215 25% 15%;
 
@@ -55,7 +108,8 @@ All colors MUST be HSL.
     /* Shadows for depth */
     --shadow-sidebar: 0 4px 20px -4px hsl(210 100% 15% / 0.3);
     --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
-    --shadow-glass: 0 8px 32px 0 hsl(210 100% 15% / 0.37);    
+    --shadow-glass: 0 8px 32px 0 hsl(210 100% 15% / 0.37);
+  }
 
   /* Green Theme */
   [data-theme="green"] {
@@ -106,61 +160,6 @@ All colors MUST be HSL.
     --shadow-sidebar: 0 4px 20px -4px hsl(142 70% 18% / 0.3);
     --shadow-menu-active: inset 3px 0 0 0 hsl(158 64% 52%);
     --shadow-glass: 0 8px 32px 0 hsl(142 70% 18% / 0.37);
-  }
-
-  /* Blue Orange */
-  [data-theme="orange"] {
-
-    --background: 30 20% 98%;
-    --foreground: 24 25% 15%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 24 25% 15%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 24 25% 15%;
-
-    --primary: 16 90% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 30 60% 92%;
-    --secondary-foreground: 24 25% 15%;
-
-    --muted: 30 30% 94%;
-    --muted-foreground: 24 15% 45%;
-
-    --accent: 14 100% 57%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 30 25% 88%;
-    --input: 30 25% 88%;
-    --ring: 16 90% 50%;
-
-    --radius: 0.5rem;
-
-    /* Sidebar with gradient colors */
-    --sidebar-background: 16 85% 35%;
-    --sidebar-foreground: 30 20% 95%;
-    --sidebar-primary: 14 100% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 16 90% 45%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 16 80% 45%;
-    --sidebar-ring: 14 100% 57%;
-
-    /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(30, 100%, 43%) 0%, hsl(41, 98%, 53%) 50%, hsl(36, 84%, 59%) 100%);
-    --gradient-header: linear-gradient(to right, hsl(35, 90%, 50%), hsl(38, 100%, 57%));
-    --gradient-menu-hover: linear-gradient(90deg, hsla(30, 95%, 45%, 0.6), hsla(38, 89%, 46%, 0.3));
-    
-    /* Shadows for depth */
-    --shadow-sidebar: 0 4px 20px -4px hsla(43, 100%, 40%, 0.538);
-    --shadow-menu-active: inset 3px 0 0 0 hsl(31, 89%, 51%);
-    --shadow-glass: 0 8px 32px 0 hsla(45, 100%, 50%, 0.37);
-  }
   }
 
   .dark {
