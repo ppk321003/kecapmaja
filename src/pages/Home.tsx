@@ -4,6 +4,8 @@ import { FileText, BarChart3, Users, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Cake, Heart } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import heroBanner from "@/assets/hero-banner.jpg";
 
 interface Pegawai {
@@ -11,76 +13,176 @@ interface Pegawai {
   nama: string;
   tanggal_lahir: string;
   umur: number;
+  jabatan: string;
+  pangkat: string;
 }
 
 export default function Home() {
   const [ultahPegawai, setUltahPegawai] = useState<Pegawai | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Fungsi untuk mendapatkan data ulang tahun dari localStorage atau API
-  const getPegawaiBerulangTahun = (): Pegawai | null => {
+  // Fungsi untuk extract tanggal lahir dari NIP
+  const extractTanggalLahirFromNIP = (nip: string): string | null => {
     try {
-      // Contoh data - Anda bisa mengganti dengan data dari API atau localStorage
-      const dataUltah = localStorage.getItem('ultah_pegawai');
-      if (dataUltah) {
-        return JSON.parse(dataUltah);
+      // Format NIP: 19781017 199803 1 002
+      // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
+      const nipParts = nip.split(' ');
+      if (nipParts.length >= 1) {
+        const tanggalLahirStr = nipParts[0];
+        if (tanggalLahirStr.length === 8) {
+          const tahun = tanggalLahirStr.substring(0, 4);
+          const bulan = tanggalLahirStr.substring(4, 6);
+          const tanggal = tanggalLahirStr.substring(6, 8);
+          return `${tahun}-${bulan}-${tanggal}`;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error extract tanggal lahir dari NIP:', error);
+      return null;
+    }
+  };
+
+  // Fungsi untuk menghitung umur
+  const hitungUmur = (tanggalLahir: string): number => {
+    const today = new Date();
+    const birthDate = new Date(tanggalLahir);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  // Fungsi untuk cek apakah hari ini ulang tahun
+  const isHariIniUlangTahun = (tanggalLahir: string): boolean => {
+    const today = new Date();
+    const birthDate = new Date(tanggalLahir);
+    
+    return today.getMonth() === birthDate.getMonth() && 
+           today.getDate() === birthDate.getDate();
+  };
+
+  // Fetch data pegawai dari Google Sheets
+  const fetchPegawaiBerulangTahun = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+          operation: "read",
+          range: "MASTER.ORGANIK"
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      if (rows.length <= 1) {
+        console.log('Tidak ada data pegawai');
+        return null;
       }
 
-      // Contoh data dummy untuk demonstrasi
-      const today = new Date();
-      const pegawaiContoh: Pegawai = {
-        nip: "198304152006041002",
-        nama: "Dr. Asep Saepudin, S.ST, M.Si",
-        tanggal_lahir: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
-        umur: 41
-      };
+      // Skip header row
+      const pegawaiData = rows.slice(1);
+      
+      // Cari pegawai yang berulang tahun hari ini
+      for (const row of pegawaiData) {
+        const nip = row[2] || row[1]; // Kolom NIP (index 2) atau NIP BPS (index 1)
+        const nama = row[3] || "";
+        const jabatan = row[4] || "";
+        const pangkat = row[7] || "";
 
-      // Simpan ke localStorage untuk contoh
-      localStorage.setItem('ultah_pegawai', JSON.stringify(pegawaiContoh));
-      return pegawaiContoh;
-    } catch (error) {
-      console.error('Error mendapatkan data ulang tahun:', error);
+        if (nip && nama) {
+          const tanggalLahir = extractTanggalLahirFromNIP(nip.toString());
+          
+          if (tanggalLahir && isHariIniUlangTahun(tanggalLahir)) {
+            const umur = hitungUmur(tanggalLahir);
+            
+            const pegawaiUltah: Pegawai = {
+              nip: nip.toString(),
+              nama: nama.toString(),
+              tanggal_lahir: tanggalLahir,
+              umur: umur,
+              jabatan: jabatan.toString(),
+              pangkat: pangkat.toString()
+            };
+            
+            return pegawaiUltah;
+          }
+        }
+      }
+      
       return null;
+    } catch (error: any) {
+      console.error('Error fetch data pegawai:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data ulang tahun pegawai",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Cek ulang tahun saat component mount
   useEffect(() => {
-    const pegawaiUltah = getPegawaiBerulangTahun();
-    if (pegawaiUltah) {
-      setUltahPegawai(pegawaiUltah);
-      setShowDialog(true);
-    }
+    const checkUltahPegawai = async () => {
+      const pegawaiUltah = await fetchPegawaiBerulangTahun();
+      if (pegawaiUltah) {
+        setUltahPegawai(pegawaiUltah);
+        setShowDialog(true);
+        
+        toast({
+          title: "Selamat Ulang Tahun! 🎉",
+          description: `Semoga ${pegawaiUltah.nama} senantiasa diberikan kesehatan dan kebahagiaan`,
+        });
+      }
+    };
+
+    checkUltahPegawai();
   }, []);
 
   // Fungsi untuk mendapatkan ucapan berdasarkan umur
-  const getUcapanUltah = (umur: number, nama: string) => {
+  const getUcapanUltah = (umur: number, nama: string, jabatan: string) => {
     const ucapanUmum = [
-      `Selamat ulang tahun yang ke-${umur} tahun! Semoga senantiasa diberikan kesehatan, kebahagiaan, dan kesuksesan dalam menjalankan tugas.`,
-      `Di usia yang ke-${umur} tahun ini, semoga semakin bijaksana dan inspiratif bagi rekan-rekan di BPS Majalengka.`,
-      `Semoga di usia ${umur} tahun ini, menjadi pribadi yang lebih baik dan profesional dalam mengabdi untuk negara.`
+      `Selamat ulang tahun yang ke-${umur} tahun, ${nama}! Semoga senantiasa diberikan kesehatan, kebahagiaan, dan kesuksesan dalam menjalankan tugas sebagai ${jabatan}.`,
+      `Di usia yang ke-${umur} tahun ini, semoga ${nama} semakin bijaksana dan inspiratif bagi rekan-rekan di BPS Majalengka.`,
+      `Semoga di usia ${umur} tahun ini, ${nama} menjadi pribadi yang lebih baik dan profesional dalam mengabdi untuk negara.`
     ];
 
     if (umur >= 50) {
       return [
-        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki semakin membawa manfaat bagi BPS Majalengka.`,
-        `Di usia emas ${umur} tahun, semoga senantiasa diberikan kesehatan dan semangat dalam mengabdi untuk statistik Indonesia.`,
-        `Terima kasih atas dedikasi dan pengabdian selama ini. Selamat merayakan ${umur} tahun kehidupan yang penuh makna.`
+        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki ${nama} semakin membawa manfaat bagi BPS Majalengka.`,
+        `Di usia emas ${umur} tahun, semoga ${nama} senantiasa diberikan kesehatan dan semangat dalam mengabdi untuk statistik Indonesia.`,
+        `Terima kasih atas dedikasi dan pengabdian selama ini. Selamat merayakan ${umur} tahun kehidupan yang penuh makna, ${nama}.`
       ];
     } else if (umur >= 40) {
       return [
-        `Selamat ulang tahun ke-${umur} tahun! Semoga di usia yang penuh kematangan ini, semakin banyak kontribusi berharga untuk BPS.`,
-        `Di usia ${umur} tahun, semoga semakin produktif dan inspiratif dalam memajukan statistik di Kabupaten Majalengka.`,
-        `Semoga di usia yang semakin dewasa ini, senantiasa diberikan kemudahan dalam setiap tugas dan tanggung jawab.`
+        `Selamat ulang tahun ke-${umur} tahun! Semoga di usia yang penuh kematangan ini, ${nama} semakin banyak kontribusi berharga untuk BPS.`,
+        `Di usia ${umur} tahun, semoga ${nama} semakin produktif dan inspiratif dalam memajukan statistik di Kabupaten Majalengka.`,
+        `Semoga di usia yang semakin dewasa ini, ${nama} senantiasa diberikan kemudahan dalam setiap tugas dan tanggung jawab.`
       ];
     } else {
       return ucapanUmum;
     }
   };
 
-  const getRandomUcapan = (umur: number, nama: string) => {
-    const ucapanList = getUcapanUltah(umur, nama);
+  const getRandomUcapan = (umur: number, nama: string, jabatan: string) => {
+    const ucapanList = getUcapanUltah(umur, nama, jabatan);
     return ucapanList[Math.floor(Math.random() * ucapanList.length)];
+  };
+
+  // Format NIP untuk display
+  const formatNIP = (nip: string) => {
+    return nip.replace(/(\d{8}) (\d{6}) (\d) (\d{3})/, '$1 $2 $3 $4');
   };
 
   return (
@@ -106,7 +208,13 @@ export default function Home() {
                       {ultahPegawai.nama}
                     </h3>
                     <p className="text-sm text-gray-600 mb-1">
-                      NIP: {ultahPegawai.nip}
+                      NIP: {formatNIP(ultahPegawai.nip)}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      Jabatan: {ultahPegawai.jabatan}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      Pangkat: {ultahPegawai.pangkat}
                     </p>
                     <p className="text-sm text-gray-600">
                       Umur: <span className="font-semibold text-pink-600">{ultahPegawai.umur} tahun</span>
@@ -115,13 +223,14 @@ export default function Home() {
                   
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-gray-700 text-justify leading-relaxed italic">
-                      "{getRandomUcapan(ultahPegawai.umur, ultahPegawai.nama)}"
+                      "{getRandomUcapan(ultahPegawai.umur, ultahPegawai.nama, ultahPegawai.jabatan)}"
                     </p>
                   </div>
 
                   <div className="flex flex-col space-y-2 text-xs text-gray-500">
                     <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
                     <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                    <p>🎂 Panjang umur dan sehat selalu</p>
                   </div>
                 </>
               )}
