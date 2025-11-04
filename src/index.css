@@ -40,7 +40,7 @@ All colors MUST be HSL.
     /* Sidebar with gradient colors */
     --sidebar-background: 210 100% 25%;
     --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 195 70% 48%;
+    --sidebar-primary: 210 100% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 90% 32%;
     --sidebar-accent-foreground: 0 0% 100%;
