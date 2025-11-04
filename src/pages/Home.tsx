@@ -28,11 +28,10 @@ export default function Home() {
           </CardHeader>
           <CardContent className="space-y-4 text-foreground">
             <p className="text-justify leading-relaxed">
-              💡 KECAP MAJA merupakan sistem administrasi digital terpadu yang dikembangkan untuk meningkatkan efisiensi dan akurasi dalam pengelolaan kegiatan.
-              Melalui fitur-fitur seperti pembuatan dokumen otomatis, entri pekerjaan mitra statistik, rekap honorarium, serta pengecekan batas SBML, seluruh proses administrasi dapat dilakukan dengan lebih cepat, terukur, dan profesional.
+              💡 KECAP MAJA adalah sistem administrasi digital terpadu yang dirancang untuk mentransformasi pengelolaan kegiatan menjadi lebih efisien, transparan, dan andal. Sistem ini menghadirkan beragam fitur canggih, seperti pembuatan dokumen otomatis, entri data mitra statistik, rekap honorarium yang terintegrasi, serta pemantauan batas SBML secara real-time. Dengan dukungan teknologi ini, proses administrasi tidak hanya menjadi lebih cepat dan terukur, tetapi juga meminimalisir kesalahan, sehingga menciptakan standar kerja yang lebih profesional.
             </p>
             <p className="text-justify leading-relaxed">
-              Dengan semangat Maju Aman Jeung Amanah, KECAP MAJA mendorong budaya kerja yang efisien, cepat, akurat, dan profesional di setiap aktivitas administrasi di lingkup BPS Kabupaten Majalengka.
+              Berdiri di atas semangat Maju Aman jeung Amanah, KECAP MAJA tidak sekadar menjadi alat bantu, melainkan juga pendorong terwujudnya budaya kerja yang unggul di lingkungan BPS Kabupaten Majalengka. Setiap aktivitas administrasi kini dapat dijalankan dengan prinsip efisiensi, ketepatan, kecepatan, dan profesionalisme, mendukung terciptanya tata kelola yang akuntabel dan berorientasi pada kualitas.
             </p>
           </CardContent>
         </Card>
