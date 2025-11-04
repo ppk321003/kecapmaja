@@ -1843,7 +1843,7 @@ export default function EntriTarget() {
                                 {activity.namaKegiatan}
                                 <div className="flex flex-col gap-1 mt-1">
                                   <div className="text-sm font-bold bg-green-600 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
-                                    Total Nilai Realisasi: {formatCurrency(totalNilaiRealisasi)}
+                                    Total Nilai Realisasi: Rp. {formatCurrency(totalNilaiRealisasi)}
                                   </div>
                                   <div className="text-sm font-bold bg-orange-600 text-white px-3 py-1 rounded-lg inline-block shadow-sm">
                                     Total Realisasi: {totalRealisasi} {activity.satuan}
