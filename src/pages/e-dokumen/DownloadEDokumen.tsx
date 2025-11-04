@@ -134,8 +134,8 @@ const DownloadDokumen = () => {
       key: "Id",
       header: "ID"
     }, {
-      key: "Pelaksana Perjalanan Dinas",
-      header: "Pelaksana Perjalanan Dinas"
+      key: "Jenis Perjalanan Dinas",
+      header: "Jenis Perjalanan Dinas"
     }, {
       key: "Nomor Surat Tugas",
       header: "Nomor Surat Tugas"
@@ -143,8 +143,8 @@ const DownloadDokumen = () => {
       key: "Tujuan Pelaksanaan Perjalanan Dinas",
       header: "Tujuan Pelaksanaan Perjalanan Dinas"
     }, {
-      key: "Jenis Perjalanan Dinas",
-      header: "Jenis Perjalanan Dinas"
+      key: "Pelaksana Perjalanan Dinas",
+      header: "Pelaksana Perjalanan Dinas"
     }, {
       key: "Link",
       header: "Link",
