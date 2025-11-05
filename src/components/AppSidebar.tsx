@@ -39,7 +39,7 @@ const mainMenuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
-  { title: "Aki to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
+  { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
   { title: "SBML", url: "/entri-sbml", icon: Database },
