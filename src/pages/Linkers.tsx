@@ -43,43 +43,43 @@ const linksData = [
 export default function Linkers() {
   return (
     <div className="min-h-screen bg-background p-0 m-0">
-      <div className="w-full px-4 py-4">
-        {/* Header Section - Ultra Compact */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Link2 className="h-4 w-4 text-primary" />
+      <div className="w-full px-6 py-6">
+        {/* Header Section - Improved sizing */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Link2 className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-red-500">Linkers</h1>
-            <p className="text-muted-foreground text-xs">
+            <h1 className="text-2xl font-bold text-red-500">Linkers</h1>
+            <p className="text-muted-foreground text-base">
               Kumpulan tautan dokumen dan aplikasi terkait BPS Kabupaten Majalengka
             </p>
           </div>
         </div>
 
-        {/* Grid Layout - Maximized space usage */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {/* Grid Layout - Improved spacing and typography */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {linksData.map((link) => {
             const IconComponent = link.icon;
             return (
               <Card 
                 key={link.title} 
-                className="group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-pointer border-border bg-card h-full flex flex-col min-h-[120px]"
+                className="group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-pointer border-border bg-card h-full flex flex-col min-h-[140px]"
                 onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}
               >
-                <CardHeader className="p-3 pb-2 space-y-2 flex-grow-0">
+                <CardHeader className="p-4 pb-3 space-y-3 flex-grow-0">
                   <div className="flex items-center justify-between">
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                      <IconComponent className="h-3.5 w-3.5 text-primary" />
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <IconComponent className="h-5 w-5 text-primary" />
                     </div>
-                    <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                    <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                   </div>
-                  <CardTitle className="text-sm font-semibold line-clamp-1">
+                  <CardTitle className="text-base font-semibold line-clamp-1">
                     {link.title}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 pt-0 flex-grow">
-                  <CardDescription className="text-xs leading-relaxed line-clamp-2">
+                <CardContent className="p-4 pt-0 flex-grow">
+                  <CardDescription className="text-sm leading-relaxed line-clamp-2">
                     {link.description}
                   </CardDescription>
                 </CardContent>
