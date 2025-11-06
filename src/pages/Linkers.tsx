@@ -11,6 +11,16 @@ const linksData = [{
   description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis",
   icon: Database
 }, {
+  title: "Kertas Kerja (Excel)",
+  url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1",
+  description: "Riwayat Kertas Kertas dalam bentuk Excel",
+  icon: FileText
+}, {
+  title: "Kertas Kerja (PDF)",
+  url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P",
+  description: "Riwayat Kertas Kertas dalam bentuk PDF",
+  icon: FileText
+}, {
   title: "Perka BPS",
   url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view",
   description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan",
@@ -31,6 +41,7 @@ const linksData = [{
   description: "Surat Keputusan tentang transportasi lokal BPS Kabupaten Majalengka",
   icon: FileText
 }];
+
 export default function Linkers() {
   return <div className="min-h-screen bg-background p-0 m-0">
       <div className="w-full px-6 py-6">
