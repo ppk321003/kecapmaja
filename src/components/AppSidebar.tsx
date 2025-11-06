@@ -16,6 +16,7 @@ import {
   FileSpreadsheet,
   FileType,
   ExternalLink,
+  Link2,
 } from "lucide-react";
 
 import {
@@ -44,7 +45,8 @@ const mainMenuItems = [
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
   { title: "SBML", url: "/entri-sbml", icon: Database },
   { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
-    { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
+  { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
+  { title: "Linkers", url: "/linkers", icon: Link2 },
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
