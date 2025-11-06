@@ -14,17 +14,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-
 const SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-
-const kecamatanList = [
-  "Argapura", "Banjaran", "Bantarujeg", "Cigasong", "Cikijing", 
-  "Cingambul", "Dawuan", "Jatitujuh", "Jatiwangi", "Kadipaten", 
-  "Kasokandel", "Kertajati", "Lemahsugih", "Leuwimunding", "Ligung", 
-  "Maja", "Majalengka", "Malausma", "Palasah", "Panyingkiran", 
-  "Rajagaluh", "Sindang", "Sindangwangi", "Sukahaji", "Sumberjaya", "Talaga"
-];
-
+const kecamatanList = ["Argapura", "Banjaran", "Bantarujeg", "Cigasong", "Cikijing", "Cingambul", "Dawuan", "Jatitujuh", "Jatiwangi", "Kadipaten", "Kasokandel", "Kertajati", "Lemahsugih", "Leuwimunding", "Ligung", "Maja", "Majalengka", "Malausma", "Palasah", "Panyingkiran", "Rajagaluh", "Sindang", "Sindangwangi", "Sukahaji", "Sumberjaya", "Talaga"];
 const petugasSchema = z.object({
   nik: z.string().min(1, "NIK harus diisi").max(50),
   nama: z.string().min(1, "Nama harus diisi").max(100),
@@ -34,14 +25,11 @@ const petugasSchema = z.object({
   rekening: z.string().min(1, "Rekening harus diisi").max(50),
   kecamatan: z.string().min(1, "Kecamatan harus dipilih").max(100)
 });
-
 type PetugasFormData = z.infer<typeof petugasSchema>;
-
 interface Petugas extends PetugasFormData {
   rowIndex: number;
   no: number;
 }
-
 const MitraKepka = () => {
   const [petugas, setPetugas] = useState<Petugas[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,8 +40,9 @@ const MitraKepka = () => {
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const itemsPerPage = 20;
-
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Fungsi untuk mendapatkan informasi user dari localStorage
   const getCurrentUser = () => {
@@ -74,7 +63,6 @@ const MitraKepka = () => {
     const user = getCurrentUser();
     return user && user.role === "Pejabat Pembuat Komitmen";
   };
-
   const form = useForm<PetugasFormData>({
     resolver: zodResolver(petugasSchema),
     defaultValues: {
@@ -92,16 +80,17 @@ const MitraKepka = () => {
   const fetchPetugas = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
           range: "MASTER.MITRA"
         }
       });
-
       if (error) throw error;
-
       const rows = data.values || [];
       const petugasData = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
@@ -114,7 +103,6 @@ const MitraKepka = () => {
         rekening: row[6] || "",
         kecamatan: row[7] || ""
       }));
-
       setPetugas(petugasData);
     } catch (error: any) {
       toast({
@@ -126,7 +114,6 @@ const MitraKepka = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchPetugas();
   }, []);
@@ -136,38 +123,25 @@ const MitraKepka = () => {
     try {
       const operation = editingPetugas ? "update" : "append";
       const nomorUrut = editingPetugas ? editingPetugas.no : petugas.length > 0 ? Math.max(...petugas.map(p => p.no)) + 1 : 1;
-
       const bodyData: any = {
         spreadsheetId: SPREADSHEET_ID,
         operation,
         range: "MASTER.MITRA",
-        values: [[
-          nomorUrut.toString(), 
-          values.nik, 
-          values.nama, 
-          values.pekerjaan, 
-          values.alamat, 
-          values.bank, 
-          values.rekening, 
-          values.kecamatan
-        ]]
+        values: [[nomorUrut.toString(), values.nik, values.nama, values.pekerjaan, values.alamat, values.bank, values.rekening, values.kecamatan]]
       };
-
       if (editingPetugas) {
         bodyData.rowIndex = editingPetugas.rowIndex;
       }
-
-      const { error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: bodyData
       });
-
       if (error) throw error;
-
       toast({
         title: "Sukses",
         description: `Data mitra berhasil ${editingPetugas ? "diperbarui" : "ditambahkan"}`
       });
-
       setDialogOpen(false);
       form.reset();
       setEditingPetugas(null);
@@ -200,10 +174,11 @@ const MitraKepka = () => {
   const handleDelete = async (pet: Petugas) => {
     const confirmed = window.confirm(`Hapus data ${pet.nama}?`);
     if (!confirmed) return;
-
     try {
       setLoading(true);
-      const { error } = await supabase.functions.invoke("google-sheets", {
+      const {
+        error
+      } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "delete",
@@ -211,14 +186,11 @@ const MitraKepka = () => {
           rowIndex: pet.rowIndex
         }
       });
-
       if (error) throw error;
-
       toast({
         title: "Sukses",
         description: `Data ${pet.nama} berhasil dihapus.`
       });
-
       setPetugas(prev => prev.filter(p => p.rowIndex !== pet.rowIndex));
     } catch (error: any) {
       toast({
@@ -232,24 +204,13 @@ const MitraKepka = () => {
   };
 
   // Filter, sort, dan pagination
-  const filteredPetugas = petugas
-    .filter(p => 
-      Object.values(p).some(v => 
-        v.toString().toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    )
-    .sort((a, b) => {
-      if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
-      if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
-      return 0;
-    });
-
+  const filteredPetugas = petugas.filter(p => Object.values(p).some(v => v.toString().toLowerCase().includes(searchQuery.toLowerCase()))).sort((a, b) => {
+    if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
+    if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
+    return 0;
+  });
   const totalPages = Math.ceil(filteredPetugas.length / itemsPerPage);
-  const paginatedPetugas = filteredPetugas.slice(
-    (page - 1) * itemsPerPage, 
-    page * itemsPerPage
-  );
-
+  const paginatedPetugas = filteredPetugas.slice((page - 1) * itemsPerPage, page * itemsPerPage);
   const handleSort = (field: keyof Petugas) => {
     if (field === sortField) {
       setSortAsc(!sortAsc);
@@ -258,27 +219,24 @@ const MitraKepka = () => {
       setSortAsc(true);
     }
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-primary">Mitra Kepka</h1>
+          <h1 className="text-3xl font-bold text-red-500">Mitra Kepka</h1>
           <p className="text-muted-foreground mt-2">
             Data Mitra Statistik dilinkungan BPS Kabupaten Majalengka Tahun 2025
           </p>
         </div>
 
         {/* Dialog Form untuk Tambah/Edit - Hanya tampil untuk Pejabat Pembuat Komitmen */}
-        {isPejabatPembuatKomitmen() && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditingPetugas(null);
-              form.reset();
-            }
-          }}>
+        {isPejabatPembuatKomitmen() && <Dialog open={dialogOpen} onOpenChange={open => {
+        setDialogOpen(open);
+        if (!open) {
+          setEditingPetugas(null);
+          form.reset();
+        }
+      }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> 
@@ -295,15 +253,9 @@ const MitraKepka = () => {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Input fields kecuali kecamatan */}
-                    {Object.keys(petugasSchema.shape)
-                      .filter(key => key !== "kecamatan")
-                      .map((key) => (
-                        <FormField
-                          key={key}
-                          control={form.control}
-                          name={key as keyof PetugasFormData}
-                          render={({ field }) => (
-                            <FormItem>
+                    {Object.keys(petugasSchema.shape).filter(key => key !== "kecamatan").map(key => <FormField key={key} control={form.control} name={key as keyof PetugasFormData} render={({
+                  field
+                }) => <FormItem>
                               <FormLabel>
                                 {key.charAt(0).toUpperCase() + key.slice(1)}
                               </FormLabel>
@@ -311,17 +263,12 @@ const MitraKepka = () => {
                                 <Input {...field} />
                               </FormControl>
                               <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
+                            </FormItem>} />)}
                     
                     {/* Kecamatan Select */}
-                    <FormField
-                      control={form.control}
-                      name="kecamatan"
-                      render={({ field }) => (
-                        <FormItem>
+                    <FormField control={form.control} name="kecamatan" render={({
+                  field
+                }) => <FormItem>
                           <FormLabel>Kecamatan</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
@@ -330,17 +277,13 @@ const MitraKepka = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {kecamatanList.map((kec) => (
-                                <SelectItem key={kec} value={kec}>
+                              {kecamatanList.map(kec => <SelectItem key={kec} value={kec}>
                                   {kec}
-                                </SelectItem>
-                              ))}
+                                </SelectItem>)}
                             </SelectContent>
                           </Select>
                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        </FormItem>} />
                   </div>
 
                   <Button type="submit" className="w-full">
@@ -349,8 +292,7 @@ const MitraKepka = () => {
                 </form>
               </Form>
             </DialogContent>
-          </Dialog>
-        )}
+          </Dialog>}
 
         {/* Tabel Data */}
         <Card>
@@ -360,51 +302,33 @@ const MitraKepka = () => {
                 <Users className="h-6 w-6 text-primary" />
                 <CardTitle>Daftar Mitra</CardTitle>
               </div>
-              <Input 
-                placeholder="Cari mitra..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-xs"
-              />
+              <Input placeholder="Cari mitra..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="max-w-xs" />
             </div>
           </CardHeader>
 
           <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
+            {loading ? <div className="text-center py-8">
                 <p className="text-muted-foreground">Memuat data...</p>
-              </div>
-            ) : (
-              <>
+              </div> : <>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan", "aksi"].map((col) => (
-                          <TableHead 
-                            key={col} 
-                            onClick={() => col !== "aksi" && handleSort(col as keyof Petugas)}
-                            className={`py-2 ${col !== "aksi" ? "cursor-pointer select-none" : ""}`}
-                          >
+                        {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan", "aksi"].map(col => <TableHead key={col} onClick={() => col !== "aksi" && handleSort(col as keyof Petugas)} className={`py-2 ${col !== "aksi" ? "cursor-pointer select-none" : ""}`}>
                             <div className="flex items-center">
                               {col === "aksi" ? "Aksi" : col.charAt(0).toUpperCase() + col.slice(1)}
                               {col !== "aksi" && <ArrowUpDown className="ml-1 h-3 w-3" />}
                             </div>
-                          </TableHead>
-                        ))}
+                          </TableHead>)}
                       </TableRow>
                     </TableHeader>
 
                     <TableBody>
-                      {paginatedPetugas.length === 0 ? (
-                        <TableRow>
+                      {paginatedPetugas.length === 0 ? <TableRow>
                           <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             Tidak ada data yang ditemukan
                           </TableCell>
-                        </TableRow>
-                      ) : (
-                        paginatedPetugas.map((p) => (
-                          <TableRow key={p.rowIndex}>
+                        </TableRow> : paginatedPetugas.map(p => <TableRow key={p.rowIndex}>
                             <TableCell className="py-2">{p.no}</TableCell>
                             <TableCell className="py-2">{p.nik}</TableCell>
                             <TableCell className="py-2 font-medium">{p.nama}</TableCell>
@@ -428,81 +352,44 @@ const MitraKepka = () => {
                             <TableCell className="py-2">{p.kecamatan}</TableCell>
                             <TableCell className="py-2">
                               <div className="flex gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => handleEdit(p)}
-                                >
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                                 {/* Hanya tampilkan tombol delete untuk Pejabat Pembuat Komitmen */}
-                                {isPejabatPembuatKomitmen() && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => handleDelete(p)}
-                                  >
+                                {isPejabatPembuatKomitmen() && <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
                                     <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                )}
+                                  </Button>}
                               </div>
                             </TableCell>
-                          </TableRow>
-                        ))
-                      )}
+                          </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-between items-center mt-4 text-sm">
+                {totalPages > 1 && <div className="flex justify-between items-center mt-4 text-sm">
                     <p className="text-muted-foreground">
                       Menampilkan {paginatedPetugas.length} dari {filteredPetugas.length} mitra
                     </p>
                     <div className="flex gap-2">
-                      <Button 
-                        disabled={page === 1} 
-                        onClick={() => setPage(1)} 
-                        variant="outline" 
-                        size="sm"
-                      >
+                      <Button disabled={page === 1} onClick={() => setPage(1)} variant="outline" size="sm">
                         Awal
                       </Button>
-                      <Button 
-                        disabled={page === 1} 
-                        onClick={() => setPage(page - 1)} 
-                        variant="outline" 
-                        size="sm"
-                      >
+                      <Button disabled={page === 1} onClick={() => setPage(page - 1)} variant="outline" size="sm">
                         Sebelumnya
                       </Button>
-                      <Button 
-                        disabled={page === totalPages} 
-                        onClick={() => setPage(page + 1)} 
-                        variant="outline" 
-                        size="sm"
-                      >
+                      <Button disabled={page === totalPages} onClick={() => setPage(page + 1)} variant="outline" size="sm">
                         Berikutnya
                       </Button>
-                      <Button 
-                        disabled={page === totalPages} 
-                        onClick={() => setPage(totalPages)} 
-                        variant="outline" 
-                        size="sm"
-                      >
+                      <Button disabled={page === totalPages} onClick={() => setPage(totalPages)} variant="outline" size="sm">
                         Akhir
                       </Button>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  </div>}
+              </>}
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default MitraKepka;
