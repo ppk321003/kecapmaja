@@ -5,20 +5,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeSelector";
-
 interface LayoutProps {
   children: ReactNode;
 }
-
-export function Layout({ children }: LayoutProps) {
-  const { user, logout } = useAuth();
-
-  return (
-    <SidebarProvider>
+export function Layout({
+  children
+}: LayoutProps) {
+  const {
+    user,
+    logout
+  } = useAuth();
+  return <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10" style={{ background: "var(--gradient-header)" }}>
+          <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10" style={{
+          background: "var(--gradient-header)"
+        }}>
             <div className="flex items-center">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
               <h1 className="ml-4 text-lg font-semibold text-primary-foreground">
@@ -31,20 +34,14 @@ export function Layout({ children }: LayoutProps) {
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.role}</span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
-              >
+              <Button variant="ghost" size="sm" onClick={logout} className="text-primary-foreground hover:bg-primary-foreground/10">
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-6 bg-background">{children}</main>
+          <main className="flex-1 p-6 bg-background px-0 py-0">{children}</main>
         </div>
       </div>
-    </SidebarProvider>
-  );
+    </SidebarProvider>;
 }
