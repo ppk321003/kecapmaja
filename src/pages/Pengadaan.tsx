@@ -258,6 +258,47 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
+  const parseDateFromSpreadsheet = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    
+    // Coba berbagai format tanggal
+    const formats = [
+      'yyyy-MM-dd', // Format ISO
+      'dd/MM/yyyy', // Format Indonesia
+      'MM/dd/yyyy', // Format US
+      'yyyy/MM/dd'  // Format lain
+    ];
+    
+    for (const formatStr of formats) {
+      try {
+        const date = new Date(dateString);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    // Jika semua format gagal, coba parsing manual
+    try {
+      // Untuk format "2024-01-15"
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      // Untuk format "15/01/2024"
+      if (dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const [day, month, year] = dateString.split('/').map(Number);
+        return new Date(year, month - 1, day);
+      }
+    } catch {
+      return null;
+    }
+    
+    return null;
+  };
+
   const getNextNumber = async (): Promise<number> => {
     try {
       console.log('🔢 Calculating next number...');
@@ -270,8 +311,8 @@ export default function InputPengadaan() {
         return 1;
       }
 
-      const formMonth = (formData.tanggalUsulan.getMonth() + 1).toString();
-      const formYear = formData.tanggalUsulan.getFullYear().toString();
+      const formMonth = formData.tanggalUsulan.getMonth() + 1;
+      const formYear = formData.tanggalUsulan.getFullYear();
       
       console.log(`📅 Looking for data in month ${formMonth}, year ${formYear}`);
 
@@ -282,21 +323,21 @@ export default function InputPengadaan() {
       const sameMonthData = dataRows.filter((row: any[]) => {
         if (!row || row.length < 3) return false;
         
-        const tanggalUsulan = row[2]; // Kolom C (index 2)
+        const tanggalUsulan = row[2]; // Kolom C (index 2) - Tanggal Usulan
         if (!tanggalUsulan) return false;
         
-        try {
-          const itemDate = new Date(tanggalUsulan);
-          const itemMonth = (itemDate.getMonth() + 1).toString();
-          const itemYear = itemDate.getFullYear().toString();
-          
-          return itemMonth === formMonth && itemYear === formYear;
-        } catch {
-          return false;
-        }
+        const itemDate = parseDateFromSpreadsheet(tanggalUsulan);
+        if (!itemDate) return false;
+        
+        const itemMonth = itemDate.getMonth() + 1;
+        const itemYear = itemDate.getFullYear();
+        
+        console.log(`📊 Comparing: Form ${formMonth}/${formYear} vs Data ${itemMonth}/${itemYear}`);
+        
+        return itemMonth === formMonth && itemYear === formYear;
       });
 
-      console.log(`📊 Found ${sameMonthData.length} data in the same month`);
+      console.log(`📊 Found ${sameMonthData.length} data in the same month and year`);
 
       if (sameMonthData.length === 0) {
         console.log('✅ No data found for this month, starting from 1');
@@ -306,10 +347,13 @@ export default function InputPengadaan() {
       // Ambil nomor tertinggi dari data bulan ini
       const numbers = sameMonthData
         .map((row: any[]) => {
-          const no = parseInt(row[0]); // Kolom A (index 0)
+          const no = parseInt(row[0]); // Kolom A (index 0) - Nomor
+          console.log(`🔢 Row number: ${no}, valid: ${!isNaN(no)}`);
           return isNaN(no) ? 0 : no;
         })
         .filter(no => no > 0);
+
+      console.log(`📈 Valid numbers found: ${numbers}`);
 
       if (numbers.length === 0) {
         console.log('✅ No valid numbers found, starting from 1');
@@ -322,8 +366,30 @@ export default function InputPengadaan() {
       
     } catch (error) {
       console.error('❌ Error calculating next number:', error);
-      // Fallback: return jumlah data + 1
-      return pengadaanData.length + 1;
+      // Fallback: coba dari state local
+      const formMonth = formData.tanggalUsulan.getMonth() + 1;
+      const formYear = formData.tanggalUsulan.getFullYear();
+      
+      const sameMonthData = pengadaanData.filter(item => {
+        try {
+          const itemDate = parseDateFromSpreadsheet(item.tanggalUsulan);
+          if (!itemDate) return false;
+          
+          const itemMonth = itemDate.getMonth() + 1;
+          const itemYear = itemDate.getFullYear();
+          
+          return itemMonth === formMonth && itemYear === formYear;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (sameMonthData.length === 0) return 1;
+      
+      const numbers = sameMonthData.map(item => item.no).filter(no => !isNaN(no));
+      if (numbers.length === 0) return 1;
+      
+      return Math.max(...numbers) + 1;
     }
   };
 
@@ -448,7 +514,7 @@ export default function InputPengadaan() {
 
       toast({
         title: "Berhasil! 🎉",
-        description: `Data pengadaan ${idPengadaan} berhasil disimpan dengan nomor urut ${nextNo}`
+        description: `Data pengadaan ${idPengadaan} berhasil disimpan dengan nomor urut ${nextNo} untuk bulan ${formData.tanggalUsulan.getMonth() + 1}`
       });
       resetForm();
       await loadPengadaanData();
@@ -760,7 +826,8 @@ export default function InputPengadaan() {
     
     if (filterBulan !== "all") {
       try {
-        const date = new Date(item.tanggalUsulan);
+        const date = parseDateFromSpreadsheet(item.tanggalUsulan);
+        if (!date) return false;
         const month = (date.getMonth() + 1).toString();
         return month === filterBulan;
       } catch {
@@ -821,7 +888,8 @@ export default function InputPengadaan() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     try {
-      const date = new Date(dateString);
+      const date = parseDateFromSpreadsheet(dateString);
+      if (!date) return dateString;
       return format(date, "dd MMMM yyyy", { locale: id });
     } catch {
       return dateString;
