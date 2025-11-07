@@ -162,11 +162,9 @@ export default function InputPengadaan() {
   ];
 
   const STATUS_PENGADAAN = [
-    { value: "draft", label: "Draft", color: "bg-gray-100 text-gray-800 border-gray-300" },
-    { value: "usulan", label: "Usulan", color: "bg-blue-50 text-blue-700 border-blue-200" },
-    { value: "proses", label: "Proses", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-    { value: "kontrak", label: "Kontrak", color: "bg-orange-50 text-orange-700 border-orange-200" },
-    { value: "selesai", label: "Selesai", color: "bg-green-50 text-green-700 border-green-200" },
+    { value: "usulan", label: "Usulan (PPK)", color: "bg-blue-50 text-blue-700 border-blue-200" },
+    { value: "proses", label: "Proses (PBJ)", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+    { value: "selesai", label: "Selesai (Bendahara)", color: "bg-green-50 text-green-700 border-green-200" },
     { value: "batal", label: "Batal", color: "bg-red-50 text-red-700 border-red-200" }
   ];
 
