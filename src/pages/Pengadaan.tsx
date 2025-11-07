@@ -258,31 +258,31 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
-const getNextNumber = () => {
-  if (pengadaanData.length === 0) return 1;
-  
-  // Filter data berdasarkan bulan dan tahun yang sama dengan filter aktif
-  const currentMonthData = pengadaanData.filter(item => {
-    try {
-      const itemDate = new Date(item.tanggalUsulan);
-      const itemMonth = (itemDate.getMonth() + 1).toString();
-      const itemYear = itemDate.getFullYear().toString();
-      
-      return itemMonth === filterBulan && itemYear === filterTahun;
-    } catch {
-      return false;
-    }
-  });
+  const getNextNumber = () => {
+    if (pengadaanData.length === 0) return 1;
+    
+    // Filter data berdasarkan bulan dan tahun yang sama dengan filter aktif
+    const currentMonthData = pengadaanData.filter(item => {
+      try {
+        const itemDate = new Date(item.tanggalUsulan);
+        const itemMonth = (itemDate.getMonth() + 1).toString();
+        const itemYear = itemDate.getFullYear().toString();
+        
+        return itemMonth === filterBulan && itemYear === filterTahun;
+      } catch {
+        return false;
+      }
+    });
 
-  if (currentMonthData.length === 0) return 1;
+    if (currentMonthData.length === 0) return 1;
 
-  // Ambil nomor tertinggi dari data bulan ini
-  const numbers = currentMonthData.map(item => item.no).filter(no => !isNaN(no));
-  if (numbers.length === 0) return 1;
-  
-  const maxNo = Math.max(...numbers);
-  return maxNo + 1;
-};
+    // Ambil nomor tertinggi dari data bulan ini
+    const numbers = currentMonthData.map(item => item.no).filter(no => !isNaN(no));
+    if (numbers.length === 0) return 1;
+    
+    const maxNo = Math.max(...numbers);
+    return maxNo + 1;
+  };
 
   const validateForm = (isUsulanOnly: boolean = false): string | null => {
     const requiredFields = ['namaProdukBarangJasa', 'jenisPengadaan', 'namaKegiatanDetilPOK', 'kodePOK'];
