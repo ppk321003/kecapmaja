@@ -258,31 +258,110 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
-const getNextNumber = () => {
-  if (pengadaanData.length === 0) return 1;
-  
-  // Filter data berdasarkan bulan dan tahun yang sama dengan filter aktif
-  const currentMonthData = pengadaanData.filter(item => {
+  const getNextNumber = async (): Promise<number> => {
     try {
-      const itemDate = new Date(item.tanggalUsulan);
-      const itemMonth = (itemDate.getMonth() + 1).toString();
-      const itemYear = itemDate.getFullYear().toString();
+      console.log('🔢 Calculating next number...');
       
-      return itemMonth === filterBulan && itemYear === filterTahun;
-    } catch {
-      return false;
+      // Ambil semua data langsung dari spreadsheet untuk memastikan data terbaru
+      const allData = await getAllData();
+      
+      if (allData.length <= 1) {
+        console.log('✅ No existing data, starting from 1');
+        return 1;
+      }
+
+      const formMonth = formData.tanggalUsulan.getMonth() + 1;
+      const formYear = formData.tanggalUsulan.getFullYear();
+      
+      console.log(`📅 Looking for data in month ${formMonth}, year ${formYear}`);
+
+      // Skip header row (index 0)
+      const dataRows = allData.slice(1);
+      
+      // Filter data berdasarkan bulan dan tahun yang sama dengan form data
+      const sameMonthData = dataRows.filter((row: any[]) => {
+        if (!row || row.length < 3) return false;
+        
+        const tanggalUsulan = row[2]; // Kolom C (index 2) - Tanggal Usulan
+        if (!tanggalUsulan) return false;
+        
+        console.log(`📊 Checking date: ${tanggalUsulan}`);
+        
+        // Parse tanggal dari string (format: YYYY-MM-DD)
+        try {
+          const [year, month, day] = tanggalUsulan.split('-').map(Number);
+          const itemDate = new Date(year, month - 1, day);
+          
+          const itemMonth = itemDate.getMonth() + 1;
+          const itemYear = itemDate.getFullYear();
+          
+          console.log(`📊 Parsed: ${itemMonth}/${itemYear}, Comparing with: ${formMonth}/${formYear}`);
+          
+          return itemMonth === formMonth && itemYear === formYear;
+        } catch (error) {
+          console.error('❌ Error parsing date:', tanggalUsulan, error);
+          return false;
+        }
+      });
+
+      console.log(`📊 Found ${sameMonthData.length} data in the same month and year`);
+
+      if (sameMonthData.length === 0) {
+        console.log('✅ No data found for this month, starting from 1');
+        return 1;
+      }
+
+      // Ambil nomor tertinggi dari data bulan ini
+      const numbers = sameMonthData
+        .map((row: any[]) => {
+          const no = parseInt(row[0]); // Kolom A (index 0) - Nomor
+          console.log(`🔢 Row number: ${no}, valid: ${!isNaN(no)}`);
+          return isNaN(no) ? 0 : no;
+        })
+        .filter(no => no > 0);
+
+      console.log(`📈 Valid numbers found: ${numbers}`);
+
+      if (numbers.length === 0) {
+        console.log('✅ No valid numbers found, starting from 1');
+        return 1;
+      }
+      
+      const maxNo = Math.max(...numbers);
+      console.log(`✅ Highest number found: ${maxNo}, next number: ${maxNo + 1}`);
+      return maxNo + 1;
+      
+    } catch (error) {
+      console.error('❌ Error calculating next number:', error);
+      // Fallback: coba dari state local dengan logika yang sama
+      const formMonth = formData.tanggalUsulan.getMonth() + 1;
+      const formYear = formData.tanggalUsulan.getFullYear();
+      
+      const sameMonthData = pengadaanData.filter(item => {
+        try {
+          const [year, month, day] = item.tanggalUsulan.split('-').map(Number);
+          const itemDate = new Date(year, month - 1, day);
+          
+          const itemMonth = itemDate.getMonth() + 1;
+          const itemYear = itemDate.getFullYear();
+          
+          return itemMonth === formMonth && itemYear === formYear;
+        } catch {
+          return false;
+        }
+      });
+      
+      console.log(`🔄 Fallback: Found ${sameMonthData.length} data in local state`);
+      
+      if (sameMonthData.length === 0) return 1;
+      
+      const numbers = sameMonthData.map(item => item.no).filter(no => !isNaN(no));
+      if (numbers.length === 0) return 1;
+      
+      const maxNo = Math.max(...numbers);
+      return maxNo + 1;
     }
-  });
-
-  if (currentMonthData.length === 0) return 1;
-
-  // Ambil nomor tertinggi dari data bulan ini
-  const numbers = currentMonthData.map(item => item.no).filter(no => !isNaN(no));
-  if (numbers.length === 0) return 1;
-  
-  const maxNo = Math.max(...numbers);
-  return maxNo + 1;
-};
+  };
 
   const validateForm = (isUsulanOnly: boolean = false): string | null => {
     const requiredFields = ['namaProdukBarangJasa', 'jenisPengadaan', 'namaKegiatanDetilPOK', 'kodePOK'];
@@ -326,7 +405,9 @@ const getNextNumber = () => {
       const timestamp = new Date().getTime().toString(36);
       const randomStr = Math.random().toString(36).substr(2, 4).toUpperCase();
       const idPengadaan = `PGD-${formData.tahunAnggaran}-${timestamp}-${randomStr}`;
-      const nextNo = getNextNumber();
+      
+      // Gunakan fungsi getNextNumber yang sudah diperbaiki
+      const nextNo = await getNextNumber();
 
       const dataToSave = [
         nextNo.toString(),
@@ -353,6 +434,7 @@ const getNextNumber = () => {
       ];
 
       console.log('💾 Data to save:', dataToSave);
+      console.log(`📅 Nomor urut: ${nextNo} untuk bulan ${formData.tanggalUsulan.getMonth() + 1} tahun ${formData.tahunAnggaran}`);
 
       if (dataToSave.length !== 21) {
         throw new Error(`Data tidak lengkap. Harus 21 kolom, got ${dataToSave.length}`);
@@ -402,7 +484,7 @@ const getNextNumber = () => {
 
       toast({
         title: "Berhasil! 🎉",
-        description: `Data pengadaan ${idPengadaan} berhasil disimpan`
+        description: `Data pengadaan ${idPengadaan} berhasil disimpan dengan nomor urut ${nextNo} untuk bulan ${formData.tanggalUsulan.getMonth() + 1}`
       });
       resetForm();
       await loadPengadaanData();
@@ -510,7 +592,7 @@ const getNextNumber = () => {
       const rowNumber = rowIndex + 1;
 
       const dataToUpdate = [
-        editingData.no.toString(),
+        editingData.no.toString(), // Tetap gunakan nomor yang sama saat edit
         editingData.id,
         format(formData.tanggalUsulan, 'yyyy-MM-dd'),
         formData.namaProdukBarangJasa,
@@ -714,9 +796,10 @@ const getNextNumber = () => {
     
     if (filterBulan !== "all") {
       try {
-        const date = new Date(item.tanggalUsulan);
-        const month = (date.getMonth() + 1).toString();
-        return month === filterBulan;
+        const [year, month, day] = item.tanggalUsulan.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        const itemMonth = (date.getMonth() + 1).toString();
+        return itemMonth === filterBulan;
       } catch {
         return false;
       }
@@ -775,7 +858,8 @@ const getNextNumber = () => {
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     try {
-      const date = new Date(dateString);
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
       return format(date, "dd MMMM yyyy", { locale: id });
     } catch {
       return dateString;
