@@ -258,45 +258,73 @@ export default function InputPengadaan() {
     return value.replace(/\D/g, "") || "0";
   };
 
-  const getNextNumber = () => {
-    if (pengadaanData.length === 0) return 1;
-    
-    // Ambil bulan dan tahun dari form data yang akan disimpan
-    const formMonth = (formData.tanggalUsulan.getMonth() + 1).toString();
-    const formYear = formData.tanggalUsulan.getFullYear().toString();
-    
-    console.log(`🔍 Mencari nomor urut untuk bulan ${formMonth} tahun ${formYear}`);
-    
-    // Filter data berdasarkan bulan dan tahun yang sama dengan data yang akan disimpan
-    const sameMonthData = pengadaanData.filter(item => {
-      try {
-        const itemDate = new Date(item.tanggalUsulan);
-        const itemMonth = (itemDate.getMonth() + 1).toString();
-        const itemYear = itemDate.getFullYear().toString();
-        
-        return itemMonth === formMonth && itemYear === formYear;
-      } catch {
-        return false;
+  const getNextNumber = async (): Promise<number> => {
+    try {
+      console.log('🔢 Calculating next number...');
+      
+      // Ambil semua data langsung dari spreadsheet untuk memastikan data terbaru
+      const allData = await getAllData();
+      
+      if (allData.length <= 1) {
+        console.log('✅ No existing data, starting from 1');
+        return 1;
       }
-    });
 
-    console.log(`📊 Found ${sameMonthData.length} data in the same month`);
+      const formMonth = (formData.tanggalUsulan.getMonth() + 1).toString();
+      const formYear = formData.tanggalUsulan.getFullYear().toString();
+      
+      console.log(`📅 Looking for data in month ${formMonth}, year ${formYear}`);
 
-    if (sameMonthData.length === 0) {
-      console.log('✅ No data found for this month, starting from 1');
-      return 1;
+      // Skip header row (index 0)
+      const dataRows = allData.slice(1);
+      
+      // Filter data berdasarkan bulan dan tahun yang sama dengan form data
+      const sameMonthData = dataRows.filter((row: any[]) => {
+        if (!row || row.length < 3) return false;
+        
+        const tanggalUsulan = row[2]; // Kolom C (index 2)
+        if (!tanggalUsulan) return false;
+        
+        try {
+          const itemDate = new Date(tanggalUsulan);
+          const itemMonth = (itemDate.getMonth() + 1).toString();
+          const itemYear = itemDate.getFullYear().toString();
+          
+          return itemMonth === formMonth && itemYear === formYear;
+        } catch {
+          return false;
+        }
+      });
+
+      console.log(`📊 Found ${sameMonthData.length} data in the same month`);
+
+      if (sameMonthData.length === 0) {
+        console.log('✅ No data found for this month, starting from 1');
+        return 1;
+      }
+
+      // Ambil nomor tertinggi dari data bulan ini
+      const numbers = sameMonthData
+        .map((row: any[]) => {
+          const no = parseInt(row[0]); // Kolom A (index 0)
+          return isNaN(no) ? 0 : no;
+        })
+        .filter(no => no > 0);
+
+      if (numbers.length === 0) {
+        console.log('✅ No valid numbers found, starting from 1');
+        return 1;
+      }
+      
+      const maxNo = Math.max(...numbers);
+      console.log(`✅ Highest number found: ${maxNo}, next number: ${maxNo + 1}`);
+      return maxNo + 1;
+      
+    } catch (error) {
+      console.error('❌ Error calculating next number:', error);
+      // Fallback: return jumlah data + 1
+      return pengadaanData.length + 1;
     }
-
-    // Ambil nomor tertinggi dari data bulan ini
-    const numbers = sameMonthData.map(item => item.no).filter(no => !isNaN(no));
-    if (numbers.length === 0) {
-      console.log('✅ No valid numbers found, starting from 1');
-      return 1;
-    }
-    
-    const maxNo = Math.max(...numbers);
-    console.log(`✅ Highest number found: ${maxNo}, next number: ${maxNo + 1}`);
-    return maxNo + 1;
   };
 
   const validateForm = (isUsulanOnly: boolean = false): string | null => {
@@ -343,7 +371,7 @@ export default function InputPengadaan() {
       const idPengadaan = `PGD-${formData.tahunAnggaran}-${timestamp}-${randomStr}`;
       
       // Gunakan fungsi getNextNumber yang sudah diperbaiki
-      const nextNo = getNextNumber();
+      const nextNo = await getNextNumber();
 
       const dataToSave = [
         nextNo.toString(),
