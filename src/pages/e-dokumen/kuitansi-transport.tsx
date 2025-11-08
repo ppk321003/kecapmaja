@@ -506,20 +506,8 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 };
 
 const extractDisplayName = (fullText: string) => {
-  // Jika teks sudah mengandung format yang benar, return langsung
-  if (fullText.includes('(') && fullText.includes(')')) {
-    return fullText;
-  }
-  
-  // Jika ada format "kode - nama", proses
   const parts = fullText.split(' - ');
-  if (parts.length > 1) {
-    const kode = parts[0].trim();
-    const nama = parts[1].trim();
-    return `${nama} (${kode})`;
-  }
-  
-  return fullText;
+  return parts.length > 1 ? parts[1] + ` (${parts[0]})` : fullText;
 };
 
 // Main Component
