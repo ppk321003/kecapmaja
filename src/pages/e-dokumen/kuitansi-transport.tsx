@@ -717,12 +717,12 @@ const KuitansiTransportLokal = () => {
     const mitraDetails = data.transportDetails.filter(detail => detail.type === "mitra");
 
     // Ambil data program, kegiatan, dll dari form dan format display name
-    const selectedProgram = programs.find(p => p.id === data.program)?.name || "";
-    const selectedKegiatan = kegiatanList.find(k => k.id === data.kegiatan)?.name || "";
-    const selectedKRO = kroList.find(k => k.id === data.kro)?.name || "";
-    const selectedRO = roList.find(r => r.id === data.ro)?.name || "";
-    const selectedKomponen = komponenList.find(k => k.id === data.komponen)?.name || "";
-    const selectedAkun = akunList.find(a => a.id === data.akun)?.name || "";
+    const selectedProgram = extractDisplayName(programs.find(p => p.id === data.program)?.name || "");
+    const selectedKegiatan = extractDisplayName(kegiatanList.find(k => k.id === data.kegiatan)?.name || "");
+    const selectedKRO = extractDisplayName(kroList.find(k => k.id === data.kro)?.name || "");
+    const selectedRO = extractDisplayName(roList.find(r => r.id === data.ro)?.name || "");
+    const selectedKomponen = extractDisplayName(komponenList.find(k => k.id === data.komponen)?.name || "");
+    const selectedAkun = extractDisplayName(akunList.find(a => a.id === data.akun)?.name || "");
     const pembuatDaftarName = organikList.find(p => p.id === data.pembuatDaftar)?.name || "";
 
     // Gabungkan semua data dengan pemisah |
