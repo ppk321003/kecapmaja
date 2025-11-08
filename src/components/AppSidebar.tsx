@@ -118,9 +118,9 @@ export function AppSidebar() {
                         to={item.url}
                         end
                         className={({ isActive }) =>
-                          isActive
-                            ? "relative text-white font-semibold transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-white before:rounded-r-md"
-                            : "text-white/90 hover:text-white transition-all duration-200"
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
                         }
                       >
                         <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
