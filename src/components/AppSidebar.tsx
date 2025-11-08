@@ -57,6 +57,33 @@ const eDokumenSubItems = [
   { title: "Blanko Visum", url: "https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing", icon: FileCheck, external: true },
 ];
 
+// Komponen Bubble Background dengan Tailwind CSS
+const BubbleBackground = () => {
+  const bubbles = [
+    { size: "w-8 h-8", left: "left-4", delay: "delay-0", duration: "duration-[18s]" },
+    { size: "w-5 h-5", left: "left-1/4", delay: "delay-2000", duration: "duration-[20s]" },
+    { size: "w-6 h-6", left: "left-2/5", delay: "delay-4000", duration: "duration-[16s]" },
+    { size: "w-4 h-4", left: "left-3/5", delay: "delay-6000", duration: "duration-[22s]" },
+    { size: "w-7 h-7", left: "left-4/5", delay: "delay-8000", duration: "duration-[19s]" },
+    { size: "w-5 h-5", left: "left-11/12", delay: "delay-10000", duration: "duration-[17s]" },
+  ];
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {bubbles.map((bubble, index) => (
+        <div
+          key={index}
+          className={`absolute rounded-full bg-white/10 animate-float ${bubble.size} ${bubble.left} ${bubble.delay} ${bubble.duration}`}
+          style={{
+            bottom: '-2rem',
+            animation: `float 15s ease-in-out infinite ${bubble.delay} ${bubble.duration}`
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
@@ -66,20 +93,51 @@ export function AppSidebar() {
 
   return (
     <Sidebar 
-      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col" 
+      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col relative overflow-hidden" 
       style={{ 
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)"
       }}
     >
+      {/* Tambahkan animasi gelembung */}
+      <BubbleBackground />
+      
+      {/* Tambahkan CSS keyframes di sini */}
+      <style>
+        {`
+          @keyframes float {
+            0% {
+              transform: translateY(0) translateX(0) rotate(0deg);
+              opacity: 0.2;
+            }
+            25% {
+              transform: translateY(-80px) translateX(15px) rotate(90deg);
+              opacity: 0.4;
+            }
+            50% {
+              transform: translateY(-160px) translateX(-10px) rotate(180deg);
+              opacity: 0.3;
+            }
+            75% {
+              transform: translateY(-240px) translateX(8px) rotate(270deg);
+              opacity: 0.5;
+            }
+            100% {
+              transform: translateY(-320px) translateX(0) rotate(360deg);
+              opacity: 0.2;
+            }
+          }
+        `}
+      </style>
+      
       <SidebarContent 
-        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto"
+        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto relative z-10 bg-transparent"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}
       >
-        {/* CSS inline untuk hide scrollbar di Webkit browsers */}
+        {/* CSS inline untuk hide scrollbar */}
         <style>
           {`
             .sidebar-content-hidden::-webkit-scrollbar {
@@ -88,8 +146,8 @@ export function AppSidebar() {
           `}
         </style>
         
-        <div className="flex-1 sidebar-content-hidden">
-          <div className="px-5 py-7 border-b border-sidebar-border/30">
+        <div className="flex-1 sidebar-content-hidden bg-transparent">
+          <div className="px-5 py-7 border-b border-sidebar-border/30 relative z-10 bg-transparent">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-sidebar-accent/50 backdrop-blur-sm flex items-center justify-center">
                 <LayoutDashboard className="h-5 w-5 text-sidebar-foreground" />
@@ -101,7 +159,7 @@ export function AppSidebar() {
             </p>
           </div>
 
-          <SidebarGroup className="px-3 py-4">
+          <SidebarGroup className="px-3 py-4 relative z-10 bg-transparent">
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
               Menu Utama
             </SidebarGroupLabel>
@@ -130,7 +188,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup className="px-3 py-2">
+          <SidebarGroup className="px-3 py-2 relative z-10 bg-transparent">
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
                 <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
@@ -195,7 +253,7 @@ export function AppSidebar() {
         </div>
 
         {/* Footer with mini branding */}
-        <div className="mt-auto px-5 py-4 border-t border-sidebar-border/30">
+        <div className="mt-auto px-5 py-4 border-t border-sidebar-border/30 relative z-10 bg-transparent">
           <div className="flex items-center gap-2 text-sidebar-foreground/50">
             <Database className="h-4 w-4" />
             {open && (
