@@ -42,6 +42,16 @@ const SearchableSelect: React.FC<{
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectTriggerRef = useRef<HTMLButtonElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
+
+  // Measure trigger width when it becomes available
+  useEffect(() => {
+    if (selectTriggerRef.current) {
+      const width = selectTriggerRef.current.offsetWidth;
+      setTriggerWidth(width);
+    }
+  }, [isOpen]);
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
@@ -50,14 +60,15 @@ const SearchableSelect: React.FC<{
     );
   }, [options, searchTerm]);
 
-  // Handle input focus dan prevent event bubbling
-  const handleInputClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (inputRef.current) {
-      inputRef.current.focus();
+  // Auto focus input when dropdown opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      // Small delay to ensure the dropdown is fully rendered
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
-  };
+  }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -87,15 +98,20 @@ const SearchableSelect: React.FC<{
       open={isOpen}
       onOpenChange={setIsOpen}
     >
-      <SelectTrigger className="w-full">
+      <SelectTrigger ref={selectTriggerRef} className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent 
-        className="max-h-60 w-[var(--radix-select-trigger-width)] min-w-[200px] max-w-[400px]"
+        className="max-h-60"
+        style={{ 
+          width: triggerWidth ? `${triggerWidth}px` : 'auto',
+          minWidth: 'var(--radix-select-trigger-width)'
+        }}
         position="popper"
         align="start"
       >
-        <div className="p-2 border-b">
+        {/* Sticky search header */}
+        <div className="sticky top-0 z-10 bg-popover p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -103,15 +119,15 @@ const SearchableSelect: React.FC<{
               placeholder="Cari..."
               value={searchTerm}
               onChange={handleInputChange}
-              onClick={handleInputClick}
               onKeyDown={handleInputKeyDown}
               className="pl-8"
-              // Auto focus ketika dropdown dibuka
-              autoFocus
+              // Prevent blur when clicking inside input
+              onMouseDown={(e) => e.preventDefault()}
             />
           </div>
         </div>
-        <div className="max-h-48 overflow-y-auto">
+        
+        <div className="max-h-44 overflow-y-auto">
           {filteredOptions.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground px-2">
               Tidak ada hasil ditemukan
@@ -121,8 +137,6 @@ const SearchableSelect: React.FC<{
               <SelectItem 
                 key={option.id} 
                 value={option.id}
-                // Prevent focus loss ketika memilih item
-                onPointerDown={(e) => e.preventDefault()}
                 className="truncate"
               >
                 {option.name}
@@ -134,6 +148,7 @@ const SearchableSelect: React.FC<{
     </Select>
   );
 };
+
 // Interfaces
 interface Trip {
   kecamatanTujuan: string;
