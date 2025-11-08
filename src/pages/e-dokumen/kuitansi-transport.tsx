@@ -506,12 +506,19 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 };
 
 const extractDisplayName = (fullText: string) => {
+  // Jika teks sudah mengandung format yang benar, return langsung
+  if (fullText.includes('(') && fullText.includes(')')) {
+    return fullText;
+  }
+  
+  // Jika ada format "kode - nama", proses
   const parts = fullText.split(' - ');
   if (parts.length > 1) {
-    // Jika ada kode dan nama, format menjadi: "Nama (Kode)"
-    return `${parts[1].trim()} (${parts[0].trim()})`;
+    const kode = parts[0].trim();
+    const nama = parts[1].trim();
+    return `${nama} (${kode})`;
   }
-  // Jika tidak ada pemisah, kembalikan teks asli
+  
   return fullText;
 };
 
