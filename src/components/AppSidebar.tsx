@@ -57,6 +57,20 @@ const eDokumenSubItems = [
   { title: "Blanko Visum", url: "https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing", icon: FileCheck, external: true },
 ];
 
+// Komponen Bubble Background
+const BubbleBackground = () => {
+  return (
+    <div className="bubble-container">
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={i}
+          className={`bubble bubble-${i + 1}`}
+        />
+      ))}
+    </div>
+  );
+};
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
@@ -66,30 +80,121 @@ export function AppSidebar() {
 
   return (
     <Sidebar 
-      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col" 
+      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col relative overflow-hidden" 
       style={{ 
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)"
       }}
     >
+      {/* Tambahkan animasi gelembung di sini */}
+      <BubbleBackground />
+      
       <SidebarContent 
-        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto"
+        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto relative z-10"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
         }}
       >
-        {/* CSS inline untuk hide scrollbar di Webkit browsers */}
+        {/* CSS inline untuk hide scrollbar dan animasi gelembung */}
         <style>
           {`
             .sidebar-content-hidden::-webkit-scrollbar {
               display: none;
             }
+            
+            /* Bubble Animation */
+            @keyframes float {
+              0% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+                opacity: 0.2;
+              }
+              25% {
+                transform: translateY(-80px) translateX(15px) rotate(90deg);
+                opacity: 0.4;
+              }
+              50% {
+                transform: translateY(-160px) translateX(-10px) rotate(180deg);
+                opacity: 0.3;
+              }
+              75% {
+                transform: translateY(-240px) translateX(8px) rotate(270deg);
+                opacity: 0.5;
+              }
+              100% {
+                transform: translateY(-320px) translateX(0) rotate(360deg);
+                opacity: 0.2;
+              }
+            }
+
+            .bubble-container {
+              position: absolute;
+              inset: 0;
+              overflow: hidden;
+              pointer-events: none;
+              z-index: 0;
+            }
+
+            .bubble {
+              position: absolute;
+              background: rgba(255, 255, 255, 0.1);
+              border-radius: 50%;
+              animation: float 15s ease-in-out infinite;
+              bottom: -50px;
+            }
+
+            .bubble-1 {
+              width: 30px;
+              height: 30px;
+              left: 10%;
+              animation-delay: 0s;
+              animation-duration: 18s;
+            }
+
+            .bubble-2 {
+              width: 20px;
+              height: 20px;
+              left: 25%;
+              animation-delay: 2s;
+              animation-duration: 20s;
+            }
+
+            .bubble-3 {
+              width: 25px;
+              height: 25px;
+              left: 40%;
+              animation-delay: 4s;
+              animation-duration: 16s;
+            }
+
+            .bubble-4 {
+              width: 15px;
+              height: 15px;
+              left: 60%;
+              animation-delay: 6s;
+              animation-duration: 22s;
+            }
+
+            .bubble-5 {
+              width: 22px;
+              height: 22px;
+              left: 75%;
+              animation-delay: 8s;
+              animation-duration: 19s;
+            }
+
+            .bubble-6 {
+              width: 18px;
+              height: 18px;
+              left: 90%;
+              animation-delay: 10s;
+              animation-duration: 17s;
+            }
           `}
         </style>
         
         <div className="flex-1 sidebar-content-hidden">
-          <div className="px-5 py-7 border-b border-sidebar-border/30">
+          <div className="px-5 py-7 border-b border-sidebar-border/30 relative z-10">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-sidebar-accent/50 backdrop-blur-sm flex items-center justify-center">
                 <LayoutDashboard className="h-5 w-5 text-sidebar-foreground" />
@@ -101,7 +206,7 @@ export function AppSidebar() {
             </p>
           </div>
 
-          <SidebarGroup className="px-3 py-4">
+          <SidebarGroup className="px-3 py-4 relative z-10">
             <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
               Menu Utama
             </SidebarGroupLabel>
@@ -130,7 +235,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup className="px-3 py-2">
+          <SidebarGroup className="px-3 py-2 relative z-10">
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
                 <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
@@ -195,7 +300,7 @@ export function AppSidebar() {
         </div>
 
         {/* Footer with mini branding */}
-        <div className="mt-auto px-5 py-4 border-t border-sidebar-border/30">
+        <div className="mt-auto px-5 py-4 border-t border-sidebar-border/30 relative z-10">
           <div className="flex items-center gap-2 text-sidebar-foreground/50">
             <Database className="h-4 w-4" />
             {open && (
