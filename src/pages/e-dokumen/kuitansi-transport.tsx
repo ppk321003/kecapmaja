@@ -507,7 +507,12 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const extractDisplayName = (fullText: string) => {
   const parts = fullText.split(' - ');
-  return parts.length > 1 ? parts[1] + ` (${parts[0]})` : fullText;
+  if (parts.length > 1) {
+    // Jika ada kode dan nama, format menjadi: "Nama (Kode)"
+    return `${parts[1].trim()} (${parts[0].trim()})`;
+  }
+  // Jika tidak ada pemisah, kembalikan teks asli
+  return fullText;
 };
 
 // Main Component
