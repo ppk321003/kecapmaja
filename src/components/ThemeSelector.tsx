@@ -15,7 +15,7 @@ export function ThemeSelector() {
     { value: "blue", label: "Biru", color: "hsl(210 80% 42%)" },
     { value: "green", label: "Hijau", color: "hsl(142 76% 36%)" },
     { value: "orange", label: "Oranye", color: "hsl(28 100% 42%)" },
-    { value: "dark", label: "Dark", color: "hsl(215 30% 12%)" },
+    { value: "black", label: "Hitam", color: "hsl(215 30% 12%)" },
   ] as const;
 
   return (

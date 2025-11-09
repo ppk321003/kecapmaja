@@ -202,7 +202,7 @@
   /* =========================
      DARK THEME (Hanya warna primer/accent jadi hitam)
      ========================= */
-  [data-theme="dark"] {
+  [data-theme="black"] {
     /* Background & text TETAP TERANG seperti tema lainnya */
     --background: 210 20% 98%;
     --foreground: 215 25% 15%;
