@@ -180,59 +180,68 @@
   }
 
   /* =========================
-     DARK THEME (Universal Harmony)
-     ========================= */
-  .dark {
-    --background: 220 25% 10%;
-    --foreground: 210 20% 95%;
-    --card: 220 25% 14%;
-    --card-foreground: 210 20% 92%;
-    --popover: 220 25% 14%;
-    --popover-foreground: 210 20% 92%;
-
-    --primary: 210 80% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 25% 18%;
-    --secondary-foreground: 210 20% 92%;
-    --muted: 220 20% 18%;
-    --muted-foreground: 210 15% 65%;
-    --accent: 200 90% 55%;
-    --accent-foreground: 0 0% 100%;
-    --border: 220 25% 22%;
-    --input: 220 25% 22%;
-    --ring: 210 80% 55%;
-
-    /* Sidebar with rich dark gradients */
-    --sidebar-background: linear-gradient(
-      135deg,
-      hsl(220 40% 6%) 0%,
-      hsl(220 35% 14%) 40%,
-      hsl(210 40% 20%) 100%
-    );
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 195 70% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 40% 24%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 30% 25%;
-    --sidebar-ring: 195 70% 52%;
-
-    --gradient-primary: linear-gradient(
-      135deg,
-      hsl(220 35% 8%) 0%,
-      hsl(220 40% 16%) 50%,
-      hsl(210 45% 24%) 100%
-    );
-    --gradient-header: linear-gradient(to right, hsl(220 35% 10%), hsl(210 45% 22%));
-    --gradient-menu-hover: linear-gradient(
-      90deg,
-      hsl(210 45% 24% / 0.6),
-      hsl(210 45% 24% / 0.3)
-    );
-
-    --shadow-sidebar: 0 4px 24px -4px hsl(220 40% 5% / 0.5);
-    --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
-  }
+   BLACK/DARK THEME 
+   ========================= */
+[data-theme="dark"],
+[data-theme="black"] {
+  --background: 0 0% 5%;
+  --foreground: 0 0% 95%;
+  
+  --card: 0 0% 8%;
+  --card-foreground: 0 0% 95%;
+  
+  --popover: 0 0% 8%;
+  --popover-foreground: 0 0% 95%;
+  
+  --primary: 0 0% 98%;
+  --primary-foreground: 0 0% 9%;
+  
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 98%;
+  
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 63%;
+  
+  --accent: 0 0% 25%;
+  --accent-foreground: 0 0% 98%;
+  
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 0 0% 20%;
+  --input: 0 0% 20%;
+  --ring: 0 0% 83%;
+  
+  --sidebar-background: linear-gradient(
+    135deg,
+    hsl(0 0% 2%) 0%,
+    hsl(0 0% 8%) 50%,
+    hsl(0 0% 15%) 100%
+  );
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 0 0% 2%;
+  --sidebar-accent: 0 0% 25%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 25%;
+  --sidebar-ring: 0 0% 83%;
+  
+  --gradient-primary: linear-gradient(
+    135deg,
+    hsl(0 0% 2%) 0%,
+    hsl(0 0% 12%) 50%,
+    hsl(0 0% 20%) 100%
+  );
+  --gradient-header: linear-gradient(to right, hsl(0 0% 2%), hsl(0 0% 12%));
+  --gradient-menu-hover: linear-gradient(
+    90deg,
+    hsl(0 0% 25% / 0.6),
+    hsl(0 0% 25% / 0.3)
+  );
+  
+  --shadow-sidebar: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+  --shadow-menu-active: inset 3px 0 0 0 hsl(0 0% 100%);
+}
 
   /* =========================
      BASE STYLES & TRANSITIONS
