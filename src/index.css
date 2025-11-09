@@ -180,69 +180,70 @@
   }
 
   /* =========================
-     DARK THEME (Semua Hitam - Header, Sidebar & Konten)
+     DARK THEME (Hanya warna primer/accent jadi hitam)
      ========================= */
   [data-theme="dark"] {
-    /* SEMUA background menjadi hitam */
-    --background: 0 0% 5%;
-    --foreground: 0 0% 95%;
+    /* Background & text TETAP TERANG seperti tema lainnya */
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 5%;
+    --secondary: 210 60% 92%;
+    --secondary-foreground: 215 25% 15%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 15% 45%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
 
-    --accent: 0 0% 25%;
-    --accent-foreground: 0 0% 98%;
+    --border: 210 25% 88%;
+    --input: 210 25% 88%;
 
-    --destructive: 0 62.8% 42%;
-    --destructive-foreground: 0 0% 98%;
+    /* HANYA warna primer & accent yang jadi HITAM */
+    --primary: 0 0% 15%;
+    --primary-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 83%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Sidebar & Header tetap hitam dengan gradien yang lebih gelap */
+    --ring: 0 0% 15%;
+
+    /* Sidebar & Header juga hitam */
     --sidebar-background: linear-gradient(
       135deg,
-      hsl(0 0% 2%) 0%,
-      hsl(0 0% 6%) 50%,
-      hsl(0 0% 10%) 100%
+      hsl(0 0% 5%) 0%,
+      hsl(0 0% 10%) 50%,
+      hsl(0 0% 15%) 100%
     );
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 2%;
-    --sidebar-accent: 0 0% 20%;
+    --sidebar-primary: 0 0% 20%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 0 0% 83%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 0 0% 20%;
 
     --gradient-primary: linear-gradient(
       135deg,
-      hsl(0 0% 2%) 0%,
-      hsl(0 0% 8%) 50%,
-      hsl(0 0% 12%) 100%
+      hsl(0 0% 5%) 0%,
+      hsl(0 0% 12%) 50%,
+      hsl(0 0% 18%) 100%
     );
-    --gradient-header: linear-gradient(to right, hsl(0 0% 2%), hsl(0 0% 8%));
+    --gradient-header: linear-gradient(to right, hsl(0 0% 5%), hsl(0 0% 12%));
     --gradient-menu-hover: linear-gradient(
       90deg,
       hsl(0 0% 20% / 0.6),
       hsl(0 0% 20% / 0.3)
     );
 
-    --shadow-sidebar: 0 4px 20px -4px hsl(0 0% 0% / 0.6);
+    --shadow-sidebar: 0 4px 20px -4px hsl(0 0% 0% / 0.4);
     --shadow-menu-active: inset 3px 0 0 0 hsl(0 0% 100%);
-    --shadow-glass: 0 8px 32px 0 hsl(0 0% 0% / 0.5);
   }
 
   /* =========================
