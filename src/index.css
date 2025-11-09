@@ -4,7 +4,6 @@
 
 /* =====================================================
    DESIGN SYSTEM - THEME VARIABLES (HSL based)
-   Semua warna menggunakan format HSL untuk fleksibilitas.
    ===================================================== */
 
 @layer base {
@@ -100,14 +99,9 @@
     --accent: 158 64% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-
     --border: 140 25% 88%;
-    --input: 140 25% 88%;
     --ring: 142 76% 36%;
 
-    /* Sidebar with gradient colors */
     --sidebar-background: linear-gradient(
       135deg,
       hsl(142 57% 9%) 0%,
@@ -122,7 +116,6 @@
     --sidebar-border: 142 60% 40%;
     --sidebar-ring: 158 64% 52%;
 
-    /* Custom gradients */
     --gradient-primary: linear-gradient(
       135deg,
       hsl(142 57% 9%) 0%,
@@ -136,45 +129,25 @@
       hsl(142 76% 40% / 0.3)
     );
 
-    /* Shadows */
     --shadow-sidebar: 0 4px 20px -4px hsl(142 70% 18% / 0.3);
     --shadow-menu-active: inset 3px 0 0 0 hsl(158 64% 52%);
-    --shadow-glass: 0 8px 32px 0 hsl(142 70% 18% / 0.37);
   }
 
   /* =========================
-     ORANGE THEME (Deep Orange #D67200)
+     ORANGE THEME
      ========================= */
   [data-theme="orange"] {
     --background: 30 20% 98%;
     --foreground: 24 25% 15%;
-
     --card: 0 0% 100%;
     --card-foreground: 24 25% 15%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 24 25% 15%;
-
     --primary: 28 100% 42%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 30 80% 92%;
-    --secondary-foreground: 24 25% 15%;
-
-    --muted: 30 30% 94%;
-    --muted-foreground: 24 15% 45%;
-
     --accent: 25 100% 50%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-
     --border: 30 25% 88%;
-    --input: 30 25% 88%;
     --ring: 28 100% 42%;
 
-    /* Sidebar with gradient colors */
     --sidebar-background: linear-gradient(
       135deg,
       hsl(28 100% 9%) 0%,
@@ -189,7 +162,6 @@
     --sidebar-border: 28 90% 45%;
     --sidebar-ring: 25 100% 50%;
 
-    /* Custom gradients */
     --gradient-primary: linear-gradient(
       135deg,
       hsl(28 100% 9%) 0%,
@@ -203,75 +175,62 @@
       hsl(28 100% 45% / 0.3)
     );
 
-    /* Shadows */
     --shadow-sidebar: 0 4px 20px -4px hsl(28 100% 25% / 0.3);
     --shadow-menu-active: inset 3px 0 0 0 hsl(25 100% 50%);
-    --shadow-glass: 0 8px 32px 0 hsl(28 100% 25% / 0.37);
   }
 
   /* =========================
-     DARK THEME
+     DARK THEME (Universal Harmony)
      ========================= */
   .dark {
-    --background: 215 30% 12%;
+    --background: 220 25% 10%;
     --foreground: 210 20% 95%;
-
-    --card: 215 28% 16%;
-    --card-foreground: 210 20% 95%;
-
-    --popover: 215 28% 16%;
-    --popover-foreground: 210 20% 95%;
+    --card: 220 25% 14%;
+    --card-foreground: 210 20% 92%;
+    --popover: 220 25% 14%;
+    --popover-foreground: 210 20% 92%;
 
     --primary: 210 80% 55%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 215 28% 22%;
-    --secondary-foreground: 210 20% 95%;
-
-    --muted: 215 28% 20%;
-    --muted-foreground: 215 15% 65%;
-
-    --accent: 195 70% 52%;
+    --secondary: 220 25% 18%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 210 15% 65%;
+    --accent: 200 90% 55%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 215 25% 25%;
-    --input: 215 25% 25%;
+    --border: 220 25% 22%;
+    --input: 220 25% 22%;
     --ring: 210 80% 55%;
 
-    /* Sidebar */
+    /* Sidebar with rich dark gradients */
     --sidebar-background: linear-gradient(
       135deg,
-      hsl(210 100% 10%) 0%,
-      hsl(210 100% 18%) 50%,
-      hsl(210 90% 25%) 100%
+      hsl(220 40% 6%) 0%,
+      hsl(220 35% 14%) 40%,
+      hsl(210 40% 20%) 100%
     );
     --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 195 70% 48%;
+    --sidebar-primary: 195 70% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 90% 25%;
+    --sidebar-accent: 220 40% 24%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 80% 28%;
-    --sidebar-ring: 195 70% 48%;
+    --sidebar-border: 220 30% 25%;
+    --sidebar-ring: 195 70% 52%;
 
-    /* Custom gradients */
     --gradient-primary: linear-gradient(
       135deg,
-      hsl(210 100% 15%) 0%,
-      hsl(210 95% 22%) 50%,
-      hsl(195 90% 30%) 100%
+      hsl(220 35% 8%) 0%,
+      hsl(220 40% 16%) 50%,
+      hsl(210 45% 24%) 100%
     );
-    --gradient-header: linear-gradient(to right, hsl(210 100% 15%), hsl(210 90% 25%));
+    --gradient-header: linear-gradient(to right, hsl(220 35% 10%), hsl(210 45% 22%));
     --gradient-menu-hover: linear-gradient(
       90deg,
-      hsl(210 90% 25% / 0.6),
-      hsl(210 90% 25% / 0.3)
+      hsl(210 45% 24% / 0.6),
+      hsl(210 45% 24% / 0.3)
     );
 
-    /* Shadows */
-    --shadow-sidebar: 0 4px 20px -4px hsl(210 100% 8% / 0.5);
+    --shadow-sidebar: 0 4px 24px -4px hsl(220 40% 5% / 0.5);
     --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
   }
 
