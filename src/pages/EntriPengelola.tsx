@@ -483,9 +483,9 @@ export default function EntriPengelola() {
   // Role-based permissions
   const isPPK = userRole === "Pejabat Pembuat Komitmen";
   const canEditPengelola = isPPK;
-  const canEditMitra = true; // Semua role bisa edit mitra
-  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
   const canAddMitra = isPPK; // Hanya PPK yang bisa tambah mitra
+  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
+  // SEMUA ROLE BISA EDIT MITRA - tidak perlu variabel khusus
 
   return (
     <div className="space-y-6">
@@ -766,7 +766,7 @@ export default function EntriPengelola() {
                               <FormControl>
                                 <Input 
                                   {...field} 
-                                  disabled={!!editingMitra} // Disable nomor urut ketika edit
+                                  disabled={!!editingMitra}
                                   className={editingMitra ? "bg-gray-100" : ""}
                                 />
                               </FormControl>
@@ -888,15 +888,15 @@ export default function EntriPengelola() {
           </div>
 
           <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <User className="h-6 w-6 text-primary" />
-                  <CardTitle>Mitra Kepka</CardTitle>
-                  <span className="text-sm text-green-600 font-medium">
-                    {isPPK ? "(PPK - Akses penuh)" : "(Dapat edit)"}
-                  </span>
-                </div>
-              </CardHeader>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-6 w-6 text-primary" />
+                <CardTitle>Mitra Kepka</CardTitle>
+                <span className="text-sm text-green-600 font-medium">
+                  {isPPK ? "(PPK - Akses penuh)" : "(Dapat edit)"}
+                </span>
+              </div>
+            </CardHeader>
             <CardContent>
               {loadingMitra ? (
                 <p className="text-center py-8 text-muted-foreground">Memuat data mitra...</p>

@@ -36,7 +36,7 @@ import EntriPengelola from "./pages/EntriPengelola";
 import DownloadSPKBAST from "./pages/spk-bast/DownloadSPKBAST";
 import DownloadRawData from "./pages/DownloadRawData";
 import Pedoman from "./pages/Pedoman";
-import MitraKepka from "./pages/MitraKepka";
+//import MitraKepka from "./pages/MitraKepka";
 import Linkers from "./pages/Linkers";
 import NotFound from "./pages/NotFound";
 
@@ -79,7 +79,6 @@ const App = () => (
             <Route path="/spk-bast/download-spk-bast" element={<ProtectedRoute><Layout><DownloadSPKBAST /></Layout></ProtectedRoute>} />
             <Route path="/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
             <Route path="/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
-            <Route path="/mitra-kepka" element={<ProtectedRoute><MitraKepka /></ProtectedRoute>} />
             <Route path="/linkers" element={<ProtectedRoute><Layout><Linkers /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
