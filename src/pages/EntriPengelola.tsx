@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { UserCog, Plus, Pencil, Trash2, Users, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -15,6 +16,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+// Daftar kecamatan
+const KECAMATAN_LIST = [
+  "Argapura",
+  "Banjaran",
+  "Bantarujeg",
+  "Cigasong",
+  "Cikijing",
+  "Cingambul",
+  "Dawuan",
+  "Jatitujuh",
+  "Jatiwangi",
+  "Kadipaten",
+  "Kasokandel",
+  "Kertajati",
+  "Lemahsugih",
+  "Leuwimunding",
+  "Ligung",
+  "Maja",
+  "Majalengka",
+  "Malausma",
+  "Palasah",
+  "Panyingkiran",
+  "Rajagaluh",
+  "Sindang",
+  "Sindangwangi",
+  "Sukahaji",
+  "Sumberjaya",
+  "Talaga"
+];
 
 // Schemas
 const pengelolaSchema = z.object({
@@ -31,7 +62,7 @@ const mitraSchema = z.object({
   alamat: z.string().min(1, "Alamat harus diisi").max(200),
   bank: z.string().min(1, "Bank harus diisi").max(100),
   rekening: z.string().min(1, "Rekening harus diisi").max(50),
-  kecamatan: z.string().min(1, "Kecamatan harus diisi").max(100)
+  kecamatan: z.string().min(1, "Kecamatan harus dipilih")
 });
 
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
@@ -733,7 +764,11 @@ export default function EntriPengelola() {
                             <FormItem>
                               <FormLabel>No</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input 
+                                  {...field} 
+                                  disabled={!!editingMitra} // Disable nomor urut ketika edit
+                                  className={editingMitra ? "bg-gray-100" : ""}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -784,9 +819,20 @@ export default function EntriPengelola() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Kecamatan</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Pilih kecamatan" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {KECAMATAN_LIST.map((kecamatan) => (
+                                    <SelectItem key={kecamatan} value={kecamatan}>
+                                      {kecamatan}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <FormMessage />
                             </FormItem>
                           )} 
