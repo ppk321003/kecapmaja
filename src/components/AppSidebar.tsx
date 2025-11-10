@@ -44,6 +44,9 @@ const mainMenuItems = [
   { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
   { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
   { title: "Linkers", url: "/linkers", icon: Link2 },
+];
+
+const additionalMenuItems = [
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
@@ -195,6 +198,32 @@ export function AppSidebar() {
                     </CollapsibleContent>
                   </SidebarMenuItem>
                 </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
+          <SidebarGroup className="px-3 py-2">
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {additionalMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
