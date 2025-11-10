@@ -888,15 +888,15 @@ export default function EntriPengelola() {
           </div>
 
           <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <User className="h-6 w-6 text-primary" />
-                <CardTitle>Mitra Kepka</CardTitle>
-                <span className="text-sm text-green-600 font-medium">
-                  {isPPK ? "(PPK - Akses penuh)" : "(Dapat edit)"}
-                </span>
-              </div>
-            </CardHeader>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <User className="h-6 w-6 text-primary" />
+                  <CardTitle>Mitra Kepka</CardTitle>
+                  <span className="text-sm text-green-600 font-medium">
+                    {isPPK ? "(PPK - Akses penuh)" : "(Dapat edit)"}
+                  </span>
+                </div>
+              </CardHeader>
             <CardContent>
               {loadingMitra ? (
                 <p className="text-center py-8 text-muted-foreground">Memuat data mitra...</p>
@@ -951,9 +951,11 @@ export default function EntriPengelola() {
                           <TableCell className="py-2">{m.rekening}</TableCell>
                           <TableCell className="py-2 text-right">
                             <div className="flex justify-end gap-1">
+                              {/* Tombol Edit - TAMPIL UNTUK SEMUA ROLE */}
                               <Button variant="ghost" size="sm" onClick={() => handleEditMitra(m)}>
                                 <Pencil className="h-3 w-3" />
                               </Button>
+                              {/* Tombol Hapus - HANYA TAMPIL UNTUK PPK */}
                               {canDeleteMitra && (
                                 <Button variant="ghost" size="sm" onClick={() => handleDeleteMitra(m)}>
                                   <Trash2 className="h-3 w-3" />
