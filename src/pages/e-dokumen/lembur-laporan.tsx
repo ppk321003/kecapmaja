@@ -565,7 +565,7 @@ const LemburLaporan = () => {
                       ))}
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={addUraianKegiatan}
                         className="w-full"
@@ -621,7 +621,7 @@ const LemburLaporan = () => {
                       ))}
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={addOutputHasil}
                         className="w-full"
@@ -658,14 +658,14 @@ const LemburLaporan = () => {
                   )}
                 />
 
-                <div className="flex gap-4">
-                  <Button type="button" variant="outline" onClick={() => navigate("/")}>
-                    Batal
-                  </Button>
-                  <Button type="submit" disabled={isLoading} className="bg-teal-700 hover:bg-teal-600">
-                    {isLoading ? "Menyimpan..." : "Simpan"}
-                  </Button>
-                </div>
+              <div className="flex gap-4">
+                <Button type="button" variant="outline" onClick={() => navigate("/")}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Menyimpan..." : "Simpan"}
+                </Button>
+              </div>
               </form>
             </Form>
           </CardContent>
