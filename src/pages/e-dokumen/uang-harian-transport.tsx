@@ -786,7 +786,7 @@ const UangHarianTransport = () => {
                   <Button 
                     type="submit" 
                     disabled={isLoading}
-                    className="min-w-32 bg-teal-600 hover:bg-teal-700"
+                    className="min-w-32"
                   >
                     {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>

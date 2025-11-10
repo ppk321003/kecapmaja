@@ -411,7 +411,7 @@ const TandaTerima = () => {
               <div className="space-y-4 pt-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Daftar Item</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                  <Button type="button" variant="default" size="sm" onClick={handleAddItem}>
                     <Plus className="mr-1 h-4 w-4" /> Tambah Item
                   </Button>
                 </div>
@@ -493,7 +493,7 @@ const TandaTerima = () => {
                 <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")}>
                   Batal
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1 bg-teal-700 hover:bg-teal-600">
+                <Button type="submit" disabled={isLoading} className="flex-1">
                   {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                 </Button>
               </div>

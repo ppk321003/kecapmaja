@@ -648,7 +648,7 @@ const TransportLokal = () => {
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium">Transport Lokal Organik BPS</h2>
-                  <Button type="button" onClick={addOrganik} className="bg-teal-700 hover:bg-teal-600">
+                  <Button type="button" onClick={addOrganik} variant="default">
                     Tambah Organik
                   </Button>
                 </div>
@@ -738,7 +738,7 @@ const TransportLokal = () => {
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium">Transport Lokal Mitra Statistik</h2>
-                  <Button type="button" onClick={addMitra} className="bg-teal-700 hover:bg-teal-600">
+                  <Button type="button" onClick={addMitra} variant="default">
                     Tambah Mitra
                   </Button>
                 </div>
@@ -827,14 +827,10 @@ const TransportLokal = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Total Keseluruhan (Rp)</Label>
-                    <Input value={calculateGrandTotal().toLocaleString('id-ID')} readOnly className="font-bold text-lg" />
-                  </div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/e-dokumen/buat")}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isLoading} className="w-full bg-teal-700 hover:bg-teal-600">
+                  <Button type="submit" disabled={isLoading} className="w-full">
                     {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>

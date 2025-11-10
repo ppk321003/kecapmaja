@@ -512,7 +512,7 @@ const SuratKeputusan = () => {
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isLoading} className="bg-teal-700 hover:bg-teal-600">
+                  <Button type="submit" disabled={isLoading}>
                     {isLoading ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>

@@ -659,7 +659,7 @@ const LemburLaporan = () => {
                 />
 
               <div className="flex gap-4">
-                <Button type="button" variant="outline" onClick={() => navigate("/")}>
+                <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")}>
                   Batal
                 </Button>
                 <Button type="submit" disabled={isLoading}>

@@ -545,12 +545,11 @@ const SuratPernyataan = () => {
                     </FormItem>
                   )} 
                 />
-
                 <div className="flex justify-end gap-4 pt-6 border-t">
                   <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isLoading} className="bg-teal-600 hover:bg-teal-700">
+                  <Button type="submit" disabled={isLoading}>
                     {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>
