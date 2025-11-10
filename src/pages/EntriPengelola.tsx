@@ -449,20 +449,24 @@ export default function EntriPengelola() {
     setCurrentPage(1);
   };
 
-  const canEditPengelola = userRole === "Pejabat Pembuat Komitmen";
-  const canEditMitra = userRole === "Pejabat Pembuat Komitmen";
+  // Role-based permissions
+  const isPPK = userRole === "Pejabat Pembuat Komitmen";
+  const canEditPengelola = isPPK;
+  const canEditMitra = true; // Semua role bisa edit mitra
+  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
+  const canAddMitra = isPPK; // Hanya PPK yang bisa tambah mitra
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Master Data</h1>
+          <h1 className="text-3xl font-bold text-red-500">Padamel-3210 | Mitra Kepka</h1>
           <p className="text-muted-foreground mt-2">
             Kelola data pengelola anggaran, organik BPS, dan mitra Kepka
           </p>
           {userRole && (
             <p className="text-sm text-blue-600 mt-1">
-              Role: {userRole} {canEditPengelola && "(Dapat mengedit semua data)"}
+              Role: {userRole} {isPPK && "(PPK - Akses penuh)"} {!isPPK && "(Dapat edit mitra)"}
             </p>
           )}
         </div>
@@ -701,138 +705,140 @@ export default function EntriPengelola() {
               />
             </div>
             
-            <Dialog open={mitraDialogOpen} onOpenChange={(open) => {
-              setMitraDialogOpen(open);
-              if (!open) {
-                setEditingMitra(null);
-                mitraForm.reset();
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Tambah Mitra
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{editingMitra ? "Edit" : "Tambah"} Data Mitra Kepka</DialogTitle>
-                </DialogHeader>
-                <Form {...mitraForm}>
-                  <form onSubmit={mitraForm.handleSubmit(onSubmitMitra)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="no" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>No</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="nik" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>NIK</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="nama" 
-                        render={({ field }) => (
-                          <FormItem className="col-span-2">
-                            <FormLabel>Nama</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="pekerjaan" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pekerjaan</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="kecamatan" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Kecamatan</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="alamat" 
-                        render={({ field }) => (
-                          <FormItem className="col-span-2">
-                            <FormLabel>Alamat</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="bank" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Bank</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={mitraForm.control} 
-                        name="rekening" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rekening</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                    </div>
-                    <Button type="submit" className="w-full">
-                      {editingMitra ? "Update" : "Tambah"}
-                    </Button>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            {canAddMitra && (
+              <Dialog open={mitraDialogOpen} onOpenChange={(open) => {
+                setMitraDialogOpen(open);
+                if (!open) {
+                  setEditingMitra(null);
+                  mitraForm.reset();
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Tambah Mitra
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{editingMitra ? "Edit" : "Tambah"} Data Mitra Kepka</DialogTitle>
+                  </DialogHeader>
+                  <Form {...mitraForm}>
+                    <form onSubmit={mitraForm.handleSubmit(onSubmitMitra)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="no" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>No</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="nik" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>NIK</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="nama" 
+                          render={({ field }) => (
+                            <FormItem className="col-span-2">
+                              <FormLabel>Nama</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="pekerjaan" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Pekerjaan</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="kecamatan" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Kecamatan</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="alamat" 
+                          render={({ field }) => (
+                            <FormItem className="col-span-2">
+                              <FormLabel>Alamat</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="bank" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Bank</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                        <FormField 
+                          control={mitraForm.control} 
+                          name="rekening" 
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Rekening</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} 
+                        />
+                      </div>
+                      <Button type="submit" className="w-full">
+                        {editingMitra ? "Update" : "Tambah"}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <Card>
@@ -841,7 +847,7 @@ export default function EntriPengelola() {
                 <User className="h-6 w-6 text-primary" />
                 <CardTitle>Mitra Kepka</CardTitle>
                 <span className="text-sm text-green-600 font-medium">
-                  (Semua role dapat mengedit)
+                  {isPPK ? "(PPK - Akses penuh)" : "(Dapat edit)"}
                 </span>
               </div>
             </CardHeader>
@@ -850,12 +856,12 @@ export default function EntriPengelola() {
                 <p className="text-center py-8 text-muted-foreground">Memuat data mitra...</p>
               ) : (
                 <>
-                  <Table>
+                  <Table className="compact-table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>No</TableHead>
+                        <TableHead className="w-12">No</TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50 w-40"
                           onClick={() => handleSort("nama")}
                         >
                           <div className="flex items-center gap-1">
@@ -866,10 +872,10 @@ export default function EntriPengelola() {
                             )}
                           </div>
                         </TableHead>
-                        <TableHead>NIK</TableHead>
-                        <TableHead>Alamat</TableHead>
+                        <TableHead className="w-24">NIK</TableHead>
+                        <TableHead className="w-48">Alamat</TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-gray-50 w-32"
                           onClick={() => handleSort("kecamatan")}
                         >
                           <div className="flex items-center gap-1">
@@ -880,30 +886,34 @@ export default function EntriPengelola() {
                             )}
                           </div>
                         </TableHead>
-                        <TableHead>Pekerjaan</TableHead>
-                        <TableHead>Bank</TableHead>
-                        <TableHead>Rekening</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
+                        <TableHead className="w-32">Pekerjaan</TableHead>
+                        <TableHead className="w-24">Bank</TableHead>
+                        <TableHead className="w-28">Rekening</TableHead>
+                        <TableHead className="text-right w-20">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedMitra.map((m, index) => (
-                        <TableRow key={m.rowIndex}>
-                          <TableCell>{m.no}</TableCell>
-                          <TableCell className="font-medium">{m.nama}</TableCell>
-                          <TableCell>{m.nik}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{m.alamat}</TableCell>
-                          <TableCell>{m.kecamatan}</TableCell>
-                          <TableCell>{m.pekerjaan}</TableCell>
-                          <TableCell>{m.bank}</TableCell>
-                          <TableCell>{m.rekening}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditMitra(m)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteMitra(m)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                        <TableRow key={m.rowIndex} className="h-12 hover:bg-gray-50">
+                          <TableCell className="py-2">{m.no}</TableCell>
+                          <TableCell className="py-2 font-medium">{m.nama}</TableCell>
+                          <TableCell className="py-2">{m.nik}</TableCell>
+                          <TableCell className="py-2 max-w-[200px] truncate" title={m.alamat}>{m.alamat}</TableCell>
+                          <TableCell className="py-2">{m.kecamatan}</TableCell>
+                          <TableCell className="py-2">{m.pekerjaan}</TableCell>
+                          <TableCell className="py-2">{m.bank}</TableCell>
+                          <TableCell className="py-2">{m.rekening}</TableCell>
+                          <TableCell className="py-2 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleEditMitra(m)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              {canDeleteMitra && (
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteMitra(m)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
