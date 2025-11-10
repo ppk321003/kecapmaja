@@ -250,7 +250,7 @@ function EditTanggalModal({
           <Button variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
             <Save className="h-4 w-4 mr-2" />
             Simpan Perubahan
           </Button>
@@ -636,7 +636,7 @@ export default function BlockTanggal() {
         if (!currentPJ.includes(userRole)) {
           currentPJ.push(userRole);
         }
-        penanggungJawab = currentPJ.join(', ');
+        penanggungJawab = currentPJ.filter(pj => pj).join(', ');
       }
       rowData[17] = penanggungJawab;
 
@@ -1281,8 +1281,8 @@ export default function BlockTanggal() {
             Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik Kabupaten Majalengka
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <UserCheck className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-muted-foreground">Login sebagai: <strong className="text-blue-600">{userRole}</strong></span>
+            <UserCheck className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground">Login sebagai: <strong className="text-primary">{userRole}</strong></span>
             {!canUserTag && (
               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md flex items-center gap-1">
                 <Ban className="h-3 w-3" />
@@ -1331,15 +1331,15 @@ export default function BlockTanggal() {
             {/* Input Kegiatan */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-500" />
+                <AlertCircle className="h-4 w-4 text-destructive" />
                 Nama Kegiatan
-                <span className="text-red-500">*</span>
+                <span className="text-destructive">*</span>
               </label>
               <Input 
                 value={kegiatanInput} 
                 onChange={e => setKegiatanInput(e.target.value)} 
                 placeholder="Masukkan nama kegiatan..." 
-                className="border-blue-200 focus:border-blue-400 w-full" 
+                className="w-full" 
               />
             </div>
 
@@ -1383,7 +1383,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addOrganik} 
                 disabled={!selectedOrganik || !kegiatanInput.trim()} 
-                className="bg-blue-600 hover:bg-blue-400 flex-1" 
+                className="flex-1" 
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1392,7 +1392,7 @@ export default function BlockTanggal() {
               <Button 
                 onClick={addMitra} 
                 disabled={!selectedMitra || !kegiatanInput.trim()} 
-                className="bg-blue-600 hover:bg-blue-400 flex-1" 
+                className="flex-1" 
                 size="lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1428,7 +1428,7 @@ export default function BlockTanggal() {
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <CardTitle>
-              Daftar Perjalanan Dinas - <span className="text-red-500">{bulan}</span> <span className="text-red-500">{tahun}</span>
+              Daftar Perjalanan Dinas - <span className="text-primary">{bulan}</span> <span className="text-primary">{tahun}</span>
             </CardTitle>
           </div>
           <CardDescription>
@@ -1461,9 +1461,9 @@ export default function BlockTanggal() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {data.isOrganik ? (
-                            <Building2 className="h-4 w-4 text-blue-600" />
+                            <Building2 className="h-4 w-4 text-primary" />
                           ) : (
-                            <MapPin className="h-4 w-4 text-green-600" />
+                            <MapPin className="h-4 w-4 text-primary" />
                           )}
                           <div>
                             <div className="font-medium">
@@ -1527,7 +1527,7 @@ export default function BlockTanggal() {
                                       <Button 
                                         variant="outline" 
                                         size="icon" 
-                                        className="h-8 w-8 bg-green-50 hover:bg-green-100 border-green-200 text-green-600 hover:text-green-700" 
+                                        className="h-8 w-8" 
                                         onClick={() => openDatePicker(index)}
                                       >
                                         <Plus className="h-3.5 w-3.5" />
@@ -1565,7 +1565,7 @@ export default function BlockTanggal() {
                                         </div>
                                         <Button 
                                           onClick={saveDates} 
-                                          className="w-full bg-green-600 hover:bg-green-700" 
+                                          className="w-full" 
                                           disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
                                         >
                                           <Save className="h-4 w-4 mr-2" />
@@ -1588,7 +1588,7 @@ export default function BlockTanggal() {
                                   <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    className="h-8 w-8 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600 hover:text-blue-700" 
+                                    className="h-8 w-8" 
                                     onClick={() => openEditModal(index)}
                                     disabled={!canEditThisData}
                                   >
@@ -1609,7 +1609,7 @@ export default function BlockTanggal() {
                                     <Button 
                                       variant="outline" 
                                       size="icon" 
-                                      className="h-8 w-8 bg-red-50 hover:bg-red-100 border-red-200 text-red-600 hover:text-red-700" 
+                                      className="h-8 w-8" 
                                       onClick={() => requestDeleteData(index)}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
