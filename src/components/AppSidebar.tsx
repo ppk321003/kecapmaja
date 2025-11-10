@@ -42,7 +42,7 @@ const mainMenuItems = [
   { title: "Pengadaan", url: "/Pengadaan", icon: Users },
   { title: "SBML", url: "/entri-sbml", icon: Database },
   { title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
-  { title: "Pengelola Anggaran", url: "/entri-pengelola", icon: UserCog },
+  { title: "Pengelola & Padamel3210", url: "/entri-pengelola", icon: UserCog },
   { title: "Linkers", url: "/linkers", icon: Link2 },
 ];
 
