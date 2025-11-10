@@ -522,7 +522,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const extractDisplayName = (fullText: string) => {
   const parts = fullText.split(' - ');
-  return parts.length > 1 ? parts[1] + ` (${parts[0]})` : fullText;
+  return parts.length > 1 ? parts[1] : fullText;
 };
 
 // Main Component
