@@ -1051,7 +1051,7 @@ const KuitansiTransportLokal = () => {
               <CardContent>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Organik BPS</h3>
-                  <Button type="button" onClick={addOrganik} variant="outline">Tambah Organik</Button>
+                  <Button type="button" onClick={addOrganik} variant="default">Tambah Organik</Button>
                 </div>
                 
                 {organikGroups.map((group, groupIndex) => (
@@ -1080,7 +1080,7 @@ const KuitansiTransportLokal = () => {
               <CardContent>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Mitra Statistik</h3>
-                  <Button type="button" onClick={addMitra} variant="outline">Tambah Mitra</Button>
+                  <Button type="button" onClick={addMitra} variant="default">Tambah Mitra</Button>
                 </div>
                 
                 {mitraGroups.map((group, groupIndex) => (
@@ -1113,14 +1113,14 @@ const KuitansiTransportLokal = () => {
             </Card>
 
             {/* Submit Button */}
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
-                Batal
-              </Button>
-              <Button type="submit" disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0} className="bg-teal-600 hover:bg-teal-700">
-                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0}>
+              {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+            </Button>
+          </div>
           </form>
         </Form>
       </div>
