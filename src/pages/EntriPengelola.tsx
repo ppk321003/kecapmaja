@@ -53,12 +53,17 @@ export default function EntriPengelola() {
   
   const { toast } = useToast();
 
-  // Get user role from localStorage
+  // Get user role from localStorage - FIXED: using correct key
   useEffect(() => {
-    const userData = localStorage.getItem("user");
+    const userData = localStorage.getItem("simaja_user");
     if (userData) {
-      const user = JSON.parse(userData);
-      setUserRole(user.role || "");
+      try {
+        const user = JSON.parse(userData);
+        setUserRole(user.role || "");
+        console.log("User role detected:", user.role); // Debug log
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
     }
   }, []);
 
@@ -240,6 +245,8 @@ export default function EntriPengelola() {
     o.pangkat.toLowerCase().includes(searchOrganik.toLowerCase())
   );
 
+  const canEdit = userRole === "Pejabat Pembuat Komitmen";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -248,9 +255,14 @@ export default function EntriPengelola() {
           <p className="text-muted-foreground mt-2">
             Daftar pengelola anggaran dan data organik BPS Kabupaten Majalengka
           </p>
+          {userRole && (
+            <p className="text-sm text-blue-600 mt-1">
+              Role: {userRole} {canEdit && "(Dapat mengedit data pengelola)"}
+            </p>
+          )}
         </div>
         
-        {activeTab === "pengelola" && userRole === "Pejabat Pembuat Komitmen" && (
+        {activeTab === "pengelola" && canEdit && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) {
@@ -348,6 +360,11 @@ export default function EntriPengelola() {
               <div className="flex items-center gap-2">
                 <UserCog className="h-6 w-6 text-primary" />
                 <CardTitle>Daftar Pengelola Anggaran</CardTitle>
+                {canEdit && (
+                  <span className="text-sm text-green-600 font-medium">
+                    (Edit Mode)
+                  </span>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -361,7 +378,7 @@ export default function EntriPengelola() {
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
                       <TableHead>Jabatan</TableHead>
-                      {userRole === "Pejabat Pembuat Komitmen" && (
+                      {canEdit && (
                         <TableHead className="text-right">Aksi</TableHead>
                       )}
                     </TableRow>
@@ -373,7 +390,7 @@ export default function EntriPengelola() {
                         <TableCell>{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
-                        {userRole === "Pejabat Pembuat Komitmen" && (
+                        {canEdit && (
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                               <Pencil className="h-4 w-4" />
@@ -387,7 +404,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredPengelola.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={userRole === "Pejabat Pembuat Komitmen" ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={canEdit ? 5 : 4} className="text-center py-8 text-muted-foreground">
                           {searchPengelola ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data pengelola anggaran"}
                         </TableCell>
                       </TableRow>
@@ -426,24 +443,24 @@ export default function EntriPengelola() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>No</TableHead>
-                      <TableHead>NIP BPS</TableHead>
-                      <TableHead>NIP</TableHead>
                       <TableHead>Nama</TableHead>
-                      <TableHead>Jabatan</TableHead>
+                      <TableHead>NIP</TableHead>
+                      <TableHead>NIP BPS</TableHead>
                       <TableHead>Gol. Akhir</TableHead>
                       <TableHead>Pangkat</TableHead>
+                      <TableHead>Jabatan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredOrganik.map((o, index) => (
                       <TableRow key={o.rowIndex}>
                         <TableCell>{o.no}</TableCell>
-                        <TableCell>{o.nipBps}</TableCell>
-                        <TableCell>{o.nip}</TableCell>
                         <TableCell className="font-medium">{o.nama}</TableCell>
-                        <TableCell>{o.jabatan}</TableCell>
+                        <TableCell>{o.nip}</TableCell>
+                        <TableCell>{o.nipBps}</TableCell>
                         <TableCell>{o.golAkhir}</TableCell>
                         <TableCell>{o.pangkat}</TableCell>
+                        <TableCell>{o.jabatan}</TableCell>
                       </TableRow>
                     ))}
                     {filteredOrganik.length === 0 && (
