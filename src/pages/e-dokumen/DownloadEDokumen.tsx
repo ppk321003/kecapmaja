@@ -52,7 +52,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -84,7 +84,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -116,7 +116,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -151,7 +151,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -206,7 +206,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -261,7 +261,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -296,7 +296,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -328,7 +328,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -366,7 +366,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -398,7 +398,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -430,7 +430,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -465,7 +465,7 @@ const DownloadDokumen = () => {
       render: value => <Tooltip>
               <TooltipTrigger asChild>
                 <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -551,7 +551,7 @@ const DownloadDokumen = () => {
             <TabsTrigger 
               key={doc.id} 
               value={doc.id} 
-              className="whitespace-nowrap text-neutral-100 bg-teal-700 hover:bg-teal-600 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
+              className="whitespace-nowrap text-primary-foreground bg-primary hover:bg-primary/90 px-[15px] mx-[6px] py-[8px] my-[5px] rounded-3xl"
             >
               {doc.title}
             </TabsTrigger>
@@ -563,7 +563,7 @@ const DownloadDokumen = () => {
             {/* Search and Page Size Controls */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder={`Cari ${doc.title.toLowerCase()}...`}
                   value={searchTerm}
@@ -573,7 +573,7 @@ const DownloadDokumen = () => {
               </div>
               
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-sm text-gray-600 whitespace-nowrap">Tampilkan:</span>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Tampilkan:</span>
                 <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                   <SelectTrigger className="w-24">
                     <SelectValue />
@@ -600,7 +600,7 @@ const DownloadDokumen = () => {
               </div>
             ) : isError ? (
               <div className="text-center p-8">
-                <p className="text-red-500">Gagal memuat data. Silakan coba lagi.</p>
+                <p className="text-destructive">Gagal memuat data. Silakan coba lagi.</p>
               </div>
             ) : (
               <>
@@ -613,7 +613,7 @@ const DownloadDokumen = () => {
                 {/* Pagination Controls */}
                 {pageSize > 0 && totalItems > 0 && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalItems)} dari {totalItems} data
                     </div>
                     
@@ -639,7 +639,7 @@ const DownloadDokumen = () => {
                         Sebelumnya
                       </Button>
                       
-                      <span className="text-sm text-gray-600 mx-2">
+                      <span className="text-sm text-muted-foreground mx-2">
                         Halaman {currentPage} dari {totalPages}
                       </span>
                       
