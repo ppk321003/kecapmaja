@@ -509,7 +509,11 @@ const SuratKeputusan = () => {
                 </div>
 
                 <div className="flex justify-end space-x-4">
-                  <Button type="button" variant="outline" onClick={() => form.reset()}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => window.location.href = "https://kecapmaja.vercel.app/e-dokumen/buat"}
+                  >
                     Batal
                   </Button>
                   <Button type="submit" disabled={isLoading}>
