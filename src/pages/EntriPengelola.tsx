@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { UserCog, Plus, Pencil, Trash2, Users, Search } from "lucide-react";
+import { UserCog, Plus, Pencil, Trash2, Users, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,13 +16,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
+// Schemas
 const pengelolaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
   nip: z.string().min(1, "NIP harus diisi").max(50),
   jabatan: z.string().min(1, "Jabatan harus diisi").max(100)
 });
 
+const mitraSchema = z.object({
+  no: z.string().min(1, "No harus diisi").max(10),
+  nik: z.string().min(1, "NIK harus diisi").max(50),
+  nama: z.string().min(1, "Nama harus diisi").max(100),
+  pekerjaan: z.string().min(1, "Pekerjaan harus diisi").max(100),
+  alamat: z.string().min(1, "Alamat harus diisi").max(200),
+  bank: z.string().min(1, "Bank harus diisi").max(100),
+  rekening: z.string().min(1, "Rekening harus diisi").max(50),
+  kecamatan: z.string().min(1, "Kecamatan harus diisi").max(100)
+});
+
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
+type MitraFormData = z.infer<typeof mitraSchema>;
 
 interface Pengelola extends PengelolaFormData {
   rowIndex: number;
@@ -39,40 +52,69 @@ interface Organik {
   pangkat: string;
 }
 
+interface Mitra extends MitraFormData {
+  rowIndex: number;
+}
+
 export default function EntriPengelola() {
+  // State untuk semua data
   const [pengelola, setPengelola] = useState<Pengelola[]>([]);
   const [organik, setOrganik] = useState<Organik[]>([]);
+  const [mitra, setMitra] = useState<Mitra[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
+  const [loadingMitra, setLoadingMitra] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [mitraDialogOpen, setMitraDialogOpen] = useState(false);
   const [editingPengelola, setEditingPengelola] = useState<Pengelola | null>(null);
+  const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
   const [userRole, setUserRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState("pengelola");
   const [searchPengelola, setSearchPengelola] = useState("");
   const [searchOrganik, setSearchOrganik] = useState("");
+  const [searchMitra, setSearchMitra] = useState("");
   
+  // State untuk pagination dan sorting Mitra
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<keyof Mitra>("nama");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const itemsPerPage = 20;
+
   const { toast } = useToast();
 
-  // Get user role from localStorage - FIXED: using correct key
+  // Get user role from localStorage
   useEffect(() => {
     const userData = localStorage.getItem("simaja_user");
     if (userData) {
       try {
         const user = JSON.parse(userData);
         setUserRole(user.role || "");
-        console.log("User role detected:", user.role); // Debug log
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
     }
   }, []);
 
-  const form = useForm<PengelolaFormData>({
+  const pengelolaForm = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
     defaultValues: {
       nama: "",
       nip: "",
       jabatan: ""
+    }
+  });
+
+  const mitraForm = useForm<MitraFormData>({
+    resolver: zodResolver(mitraSchema),
+    defaultValues: {
+      no: "",
+      nik: "",
+      nama: "",
+      pekerjaan: "",
+      alamat: "",
+      bank: "",
+      rekening: "",
+      kecamatan: ""
     }
   });
 
@@ -118,7 +160,7 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.ORGANIK!A:I" // A-I untuk kolom NO. sampai Pangkat
+          range: "MASTER.ORGANIK!A:I"
         }
       });
       
@@ -132,7 +174,7 @@ export default function EntriPengelola() {
         nip: row[2] || "",
         nama: row[3] || "",
         jabatan: row[4] || "",
-        golAkhir: row[6] || "", // Skip kecamatan (index 5)
+        golAkhir: row[6] || "",
         pangkat: row[7] || ""
       }));
       
@@ -148,18 +190,60 @@ export default function EntriPengelola() {
     }
   };
 
+  // Fetch data Mitra Kepka
+  const fetchMitra = async () => {
+    try {
+      setLoadingMitra(true);
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_SPREADSHEET_ID,
+          operation: "read",
+          range: "MASTER.MITRA!A:H"
+        }
+      });
+      
+      if (error) throw error;
+      
+      const rows = data.values || [];
+      const mitraData = rows.slice(1).map((row: any[], index: number) => ({
+        rowIndex: index + 2,
+        no: row[0] || "",
+        nik: row[1] || "",
+        nama: row[2] || "",
+        pekerjaan: row[3] || "",
+        alamat: row[4] || "",
+        bank: row[5] || "",
+        rekening: row[6] || "",
+        kecamatan: row[7] || ""
+      }));
+      
+      setMitra(mitraData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingMitra(false);
+    }
+  };
+
   useEffect(() => {
     fetchPengelola();
   }, []);
 
-  // Fetch organik data when tab is switched
+  // Fetch data when tab is switched
   useEffect(() => {
     if (activeTab === "organik" && organik.length === 0) {
       fetchOrganik();
+    } else if (activeTab === "mitra" && mitra.length === 0) {
+      fetchMitra();
     }
-  }, [activeTab, organik.length]);
+  }, [activeTab, organik.length, mitra.length]);
 
-  const onSubmit = async (values: PengelolaFormData) => {
+  // Pengelola Anggaran CRUD
+  const onSubmitPengelola = async (values: PengelolaFormData) => {
     try {
       const operation = editingPengelola ? "update" : "append";
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -182,7 +266,7 @@ export default function EntriPengelola() {
       });
       
       setDialogOpen(false);
-      form.reset();
+      pengelolaForm.reset();
       setEditingPengelola(null);
       fetchPengelola();
     } catch (error: any) {
@@ -194,13 +278,13 @@ export default function EntriPengelola() {
     }
   };
 
-  const handleEdit = (pengelola: Pengelola) => {
+  const handleEditPengelola = (pengelola: Pengelola) => {
     setEditingPengelola(pengelola);
-    form.reset(pengelola);
+    pengelolaForm.reset(pengelola);
     setDialogOpen(true);
   };
 
-  const handleDelete = async (pengelola: Pengelola) => {
+  const handleDeletePengelola = async (pengelola: Pengelola) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     
     try {
@@ -229,6 +313,88 @@ export default function EntriPengelola() {
     }
   };
 
+  // Mitra Kepka CRUD
+  const onSubmitMitra = async (values: MitraFormData) => {
+    try {
+      const operation = editingMitra ? "update" : "append";
+      const rowData = [
+        values.no,
+        values.nik,
+        values.nama,
+        values.pekerjaan,
+        values.alamat,
+        values.bank,
+        values.rekening,
+        values.kecamatan
+      ];
+
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_SPREADSHEET_ID,
+          operation,
+          range: "MASTER.MITRA",
+          values: [rowData],
+          ...(editingMitra && {
+            rowIndex: editingMitra.rowIndex
+          })
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sukses",
+        description: `Data mitra berhasil ${editingMitra ? "diperbarui" : "ditambahkan"}`
+      });
+      
+      setMitraDialogOpen(false);
+      mitraForm.reset();
+      setEditingMitra(null);
+      fetchMitra();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditMitra = (mitra: Mitra) => {
+    setEditingMitra(mitra);
+    mitraForm.reset(mitra);
+    setMitraDialogOpen(true);
+  };
+
+  const handleDeleteMitra = async (mitra: Mitra) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus data mitra ini?")) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_SPREADSHEET_ID,
+          operation: "delete",
+          rowIndex: mitra.rowIndex
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sukses",
+        description: "Data mitra berhasil dihapus"
+      });
+      
+      fetchMitra();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   // Filter data based on search
   const filteredPengelola = pengelola.filter(p => 
     p.nama.toLowerCase().includes(searchPengelola.toLowerCase()) ||
@@ -245,114 +411,159 @@ export default function EntriPengelola() {
     o.pangkat.toLowerCase().includes(searchOrganik.toLowerCase())
   );
 
-  const canEdit = userRole === "Pejabat Pembuat Komitmen";
+  const filteredMitra = mitra.filter(m =>
+    m.nama.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.nik.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.pekerjaan.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.alamat.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.bank.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.kecamatan.toLowerCase().includes(searchMitra.toLowerCase())
+  );
+
+  // Sorting untuk Mitra
+  const sortedMitra = [...filteredMitra].sort((a, b) => {
+    if (!sortField) return 0;
+    
+    const aValue = a[sortField]?.toString().toLowerCase() || "";
+    const bValue = b[sortField]?.toString().toLowerCase() || "";
+    
+    if (sortDirection === "asc") {
+      return aValue.localeCompare(bValue);
+    } else {
+      return bValue.localeCompare(aValue);
+    }
+  });
+
+  // Pagination untuk Mitra
+  const totalPages = Math.ceil(sortedMitra.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedMitra = sortedMitra.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleSort = (field: keyof Mitra) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const canEditPengelola = userRole === "Pejabat Pembuat Komitmen";
+  const canEditMitra = userRole === "Pejabat Pembuat Komitmen";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Pengelola Anggaran & Organik BPS</h1>
+          <h1 className="text-3xl font-bold text-red-500">Master Data</h1>
           <p className="text-muted-foreground mt-2">
-            Daftar pengelola anggaran dan data organik BPS Kabupaten Majalengka
+            Kelola data pengelola anggaran, organik BPS, dan mitra Kepka
           </p>
           {userRole && (
             <p className="text-sm text-blue-600 mt-1">
-              Role: {userRole} {canEdit && "(Dapat mengedit data pengelola)"}
+              Role: {userRole} {canEditPengelola && "(Dapat mengedit semua data)"}
             </p>
           )}
         </div>
-        
-        {activeTab === "pengelola" && canEdit && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditingPengelola(null);
-              form.reset();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Pengelola
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingPengelola ? "Edit" : "Tambah"} Pengelola Anggaran</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField 
-                    control={form.control} 
-                    name="nama" 
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} 
-                  />
-                  <FormField 
-                    control={form.control} 
-                    name="nip" 
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>NIP</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} 
-                  />
-                  <FormField 
-                    control={form.control} 
-                    name="jabatan" 
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Jabatan</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} 
-                  />
-                  <Button type="submit" className="w-full">
-                    {editingPengelola ? "Update" : "Tambah"}
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pengelola" className="flex items-center gap-2">
             <UserCog className="h-4 w-4" />
-            Daftar Pengelola Anggaran
+            Pengelola Anggaran
           </TabsTrigger>
           <TabsTrigger value="organik" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Organik BPS Kab. Majalengka
+            Organik BPS
+          </TabsTrigger>
+          <TabsTrigger value="mitra" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Mitra Kepka
           </TabsTrigger>
         </TabsList>
 
         {/* Tab Pengelola Anggaran */}
         <TabsContent value="pengelola" className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari nama, NIP, atau jabatan..."
-              value={searchPengelola}
-              onChange={(e) => setSearchPengelola(e.target.value)}
-              className="max-w-sm"
-            />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari nama, NIP, atau jabatan..."
+                value={searchPengelola}
+                onChange={(e) => setSearchPengelola(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            
+            {canEditPengelola && (
+              <Dialog open={dialogOpen} onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) {
+                  setEditingPengelola(null);
+                  pengelolaForm.reset();
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Tambah Pengelola
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingPengelola ? "Edit" : "Tambah"} Pengelola Anggaran</DialogTitle>
+                  </DialogHeader>
+                  <Form {...pengelolaForm}>
+                    <form onSubmit={pengelolaForm.handleSubmit(onSubmitPengelola)} className="space-y-4">
+                      <FormField 
+                        control={pengelolaForm.control} 
+                        name="nama" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nama</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={pengelolaForm.control} 
+                        name="nip" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NIP</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={pengelolaForm.control} 
+                        name="jabatan" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Jabatan</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <Button type="submit" className="w-full">
+                        {editingPengelola ? "Update" : "Tambah"}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <Card>
@@ -360,7 +571,7 @@ export default function EntriPengelola() {
               <div className="flex items-center gap-2">
                 <UserCog className="h-6 w-6 text-primary" />
                 <CardTitle>Daftar Pengelola Anggaran</CardTitle>
-                {canEdit && (
+                {canEditPengelola && (
                   <span className="text-sm text-green-600 font-medium">
                     (Edit Mode)
                   </span>
@@ -378,7 +589,7 @@ export default function EntriPengelola() {
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
                       <TableHead>Jabatan</TableHead>
-                      {canEdit && (
+                      {canEditPengelola && (
                         <TableHead className="text-right">Aksi</TableHead>
                       )}
                     </TableRow>
@@ -390,12 +601,12 @@ export default function EntriPengelola() {
                         <TableCell>{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
-                        {canEdit && (
+                        {canEditPengelola && (
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditPengelola(p)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeletePengelola(p)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -404,7 +615,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredPengelola.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canEdit ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={canEditPengelola ? 5 : 4} className="text-center py-8 text-muted-foreground">
                           {searchPengelola ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data pengelola anggaran"}
                         </TableCell>
                       </TableRow>
@@ -472,6 +683,286 @@ export default function EntriPengelola() {
                     )}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab Mitra Kepka */}
+        <TabsContent value="mitra" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari nama, NIK, pekerjaan, alamat, bank, atau kecamatan..."
+                value={searchMitra}
+                onChange={(e) => setSearchMitra(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            
+            <Dialog open={mitraDialogOpen} onOpenChange={(open) => {
+              setMitraDialogOpen(open);
+              if (!open) {
+                setEditingMitra(null);
+                mitraForm.reset();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah Mitra
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{editingMitra ? "Edit" : "Tambah"} Data Mitra Kepka</DialogTitle>
+                </DialogHeader>
+                <Form {...mitraForm}>
+                  <form onSubmit={mitraForm.handleSubmit(onSubmitMitra)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="no" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>No</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="nik" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NIK</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="nama" 
+                        render={({ field }) => (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Nama</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="pekerjaan" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pekerjaan</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="kecamatan" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Kecamatan</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="alamat" 
+                        render={({ field }) => (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Alamat</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="bank" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="rekening" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Rekening</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                    </div>
+                    <Button type="submit" className="w-full">
+                      {editingMitra ? "Update" : "Tambah"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-6 w-6 text-primary" />
+                <CardTitle>Mitra Kepka</CardTitle>
+                <span className="text-sm text-green-600 font-medium">
+                  (Semua role dapat mengedit)
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingMitra ? (
+                <p className="text-center py-8 text-muted-foreground">Memuat data mitra...</p>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => handleSort("nama")}
+                        >
+                          <div className="flex items-center gap-1">
+                            Nama
+                            <ArrowUpDown className="h-4 w-4" />
+                            {sortField === "nama" && (
+                              <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                            )}
+                          </div>
+                        </TableHead>
+                        <TableHead>NIK</TableHead>
+                        <TableHead>Alamat</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => handleSort("kecamatan")}
+                        >
+                          <div className="flex items-center gap-1">
+                            Kecamatan
+                            <ArrowUpDown className="h-4 w-4" />
+                            {sortField === "kecamatan" && (
+                              <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                            )}
+                          </div>
+                        </TableHead>
+                        <TableHead>Pekerjaan</TableHead>
+                        <TableHead>Bank</TableHead>
+                        <TableHead>Rekening</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedMitra.map((m, index) => (
+                        <TableRow key={m.rowIndex}>
+                          <TableCell>{m.no}</TableCell>
+                          <TableCell className="font-medium">{m.nama}</TableCell>
+                          <TableCell>{m.nik}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{m.alamat}</TableCell>
+                          <TableCell>{m.kecamatan}</TableCell>
+                          <TableCell>{m.pekerjaan}</TableCell>
+                          <TableCell>{m.bank}</TableCell>
+                          <TableCell>{m.rekening}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditMitra(m)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteMitra(m)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {paginatedMitra.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                            {searchMitra ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data mitra"}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Menampilkan {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedMitra.length)} dari {sortedMitra.length} data
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm mx-2">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
