@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2, Search, Plus, Loader2 } from "lucide-react";
+import { CalendarIcon, Trash2, Search, Plus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -1113,30 +1113,14 @@ const KuitansiTransportLokal = () => {
             </Card>
 
             {/* Submit Button */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => window.history.back()}
-              disabled={isSubmitting}
-            >
-              Batal
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="min-w-24 bg-primary hover:bg-primary/90"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                "Simpan"
-              )}
-            </Button>
-          </div>
+            <div className="flex justify-end gap-4">
+              <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0} className="bg-teal-600 hover:bg-teal-700">
+                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>
