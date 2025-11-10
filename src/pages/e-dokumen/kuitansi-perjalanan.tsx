@@ -1126,29 +1126,28 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
 
                 {/* Submit Buttons */}
                 <div className="flex space-x-4 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate("/e-dokumen/buat")}
-                    disabled={isLoading}
-                  >
-                    Batal
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="bg-teal-800 hover:bg-teal-700"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Menyimpan...
-                      </>
-                    ) : (
-                      "Simpan Dokumen"
-                    )}
-                  </Button>
-                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate("/e-dokumen/buat")}
+                  disabled={isLoading}
+                >
+                  Batal
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Dokumen"
+                  )}
+                </Button>
+              </div>
               </CardContent>
             </Card>
           </form>

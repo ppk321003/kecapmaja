@@ -702,14 +702,14 @@ const DokumenPengadaan = () => {
             </Card>
 
             {/* Submit Buttons */}
-            <div className="flex gap-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/e-dokumen/buat")}>
-                Batal
-              </Button>
-              <Button type="submit" disabled={isLoading} className="flex-1 bg-teal-800 hover:bg-teal-700">
-                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
-              </Button>
-            </div>
+          <div className="flex gap-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/e-dokumen/buat")}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={isLoading} className="flex-1">
+              {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+            </Button>
+          </div>
           </div>
         </form>
       </div>
