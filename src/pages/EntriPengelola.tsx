@@ -13,6 +13,7 @@ import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
@@ -99,7 +100,6 @@ export default function EntriPengelola() {
   const [mitraDialogOpen, setMitraDialogOpen] = useState(false);
   const [editingPengelola, setEditingPengelola] = useState<Pengelola | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
-  const [userRole, setUserRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState("pengelola");
   const [searchPengelola, setSearchPengelola] = useState("");
   const [searchOrganik, setSearchOrganik] = useState("");
@@ -112,19 +112,14 @@ export default function EntriPengelola() {
   const itemsPerPage = 20;
 
   const { toast } = useToast();
+  const { user } = useAuth(); // Gunakan useAuth hook
 
-  // Get user role from localStorage
-  useEffect(() => {
-    const userData = localStorage.getItem("simaja_user");
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        setUserRole(user.role || "");
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
-    }
-  }, []);
+  // Role-based permissions
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  const canEditPengelola = isPPK;
+  const canAddMitra = isPPK; // Hanya PPK yang bisa tambah mitra
+  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
+  // SEMUA ROLE BISA EDIT MITRA - tidak perlu variabel khusus
 
   const pengelolaForm = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
@@ -480,13 +475,6 @@ export default function EntriPengelola() {
     setCurrentPage(1);
   };
 
-  // Role-based permissions
-  const isPPK = userRole === "Pejabat Pembuat Komitmen";
-  const canEditPengelola = isPPK;
-  const canAddMitra = isPPK; // Hanya PPK yang bisa tambah mitra
-  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
-  // SEMUA ROLE BISA EDIT MITRA - tidak perlu variabel khusus
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -495,9 +483,9 @@ export default function EntriPengelola() {
           <p className="text-muted-foreground mt-2">
             Kelola data pengelola anggaran, organik BPS, dan mitra Kepka
           </p>
-          {userRole && (
+          {user && (
             <p className="text-sm text-blue-600 mt-1">
-              Role: {userRole} {isPPK && "(PPK - Akses penuh)"} {!isPPK && "(Dapat edit mitra)"}
+              Role: {user.role} {isPPK && "(PPK - Akses penuh)"} {!isPPK && "(Dapat edit mitra)"}
             </p>
           )}
         </div>
