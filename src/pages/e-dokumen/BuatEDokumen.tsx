@@ -79,27 +79,26 @@ export default function BuatEDokumen() {
     rowColor: "orange"
   }];
 
-  const getColorClasses = rowColor => {
+  const getColorClasses = (rowColor) => {
     const colors = {
       blue: {
         icon: "text-blue-600",
-        button: "bg-blue-500 hover:bg-blue-500",
+        button: "bg-primary hover:bg-primary/90 text-primary-foreground",
         border: "border-blue-100"
       },
       green: {
         icon: "text-green-600",
-        button: "bg-blue-500 hover:bg-blue-500",
+        button: "bg-primary hover:bg-primary/90 text-primary-foreground", 
         border: "border-green-100"
       },
       orange: {
         icon: "text-orange-600",
-        button: "bg-blue-500 hover:bg-blue-500",
+        button: "bg-primary hover:bg-primary/90 text-primary-foreground",
         border: "border-orange-100"
       }
     };
     return colors[rowColor] || colors.blue;
   };
-
   return (
     <div className="space-y-8 p-6">
       <div className="text-center space-y-3">
