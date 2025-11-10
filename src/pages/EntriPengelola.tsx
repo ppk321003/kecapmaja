@@ -22,25 +22,21 @@ const pengelolaSchema = z.object({
   jabatan: z.string().min(1, "Jabatan harus diisi").max(100)
 });
 
-const organikSchema = z.object({
-  no: z.string().min(1, "No harus diisi").max(10),
-  nipBps: z.string().min(1, "NIP BPS harus diisi").max(50),
-  nip: z.string().min(1, "NIP harus diisi").max(50),
-  nama: z.string().min(1, "Nama harus diisi").max(100),
-  jabatan: z.string().min(1, "Jabatan harus diisi").max(100),
-  golAkhir: z.string().min(1, "Gol. Akhir harus diisi").max(50),
-  pangkat: z.string().min(1, "Pangkat harus diisi").max(100)
-});
-
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
-type OrganikFormData = z.infer<typeof organikSchema>;
 
 interface Pengelola extends PengelolaFormData {
   rowIndex: number;
 }
 
-interface Organik extends OrganikFormData {
+interface Organik {
   rowIndex: number;
+  no: string;
+  nipBps: string;
+  nip: string;
+  nama: string;
+  jabatan: string;
+  golAkhir: string;
+  pangkat: string;
 }
 
 export default function EntriPengelola() {
@@ -49,9 +45,7 @@ export default function EntriPengelola() {
   const [loading, setLoading] = useState(true);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [organikDialogOpen, setOrganikDialogOpen] = useState(false);
   const [editingPengelola, setEditingPengelola] = useState<Pengelola | null>(null);
-  const [editingOrganik, setEditingOrganik] = useState<Organik | null>(null);
   const [userRole, setUserRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState("pengelola");
   const [searchPengelola, setSearchPengelola] = useState("");
@@ -59,39 +53,26 @@ export default function EntriPengelola() {
   
   const { toast } = useToast();
 
-  // Get user role from localStorage
+  // Get user role from localStorage - FIXED: using correct key
   useEffect(() => {
     const userData = localStorage.getItem("simaja_user");
     if (userData) {
       try {
         const user = JSON.parse(userData);
         setUserRole(user.role || "");
-        console.log("User role detected:", user.role);
+        console.log("User role detected:", user.role); // Debug log
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
     }
   }, []);
 
-  const pengelolaForm = useForm<PengelolaFormData>({
+  const form = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
     defaultValues: {
       nama: "",
       nip: "",
       jabatan: ""
-    }
-  });
-
-  const organikForm = useForm<OrganikFormData>({
-    resolver: zodResolver(organikSchema),
-    defaultValues: {
-      no: "",
-      nipBps: "",
-      nip: "",
-      nama: "",
-      jabatan: "",
-      golAkhir: "",
-      pangkat: ""
     }
   });
 
@@ -137,7 +118,7 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.ORGANIK!A:I"
+          range: "MASTER.ORGANIK!A:I" // A-I untuk kolom NO. sampai Pangkat
         }
       });
       
@@ -178,8 +159,7 @@ export default function EntriPengelola() {
     }
   }, [activeTab, organik.length]);
 
-  // Pengelola Anggaran CRUD
-  const onSubmitPengelola = async (values: PengelolaFormData) => {
+  const onSubmit = async (values: PengelolaFormData) => {
     try {
       const operation = editingPengelola ? "update" : "append";
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -202,7 +182,7 @@ export default function EntriPengelola() {
       });
       
       setDialogOpen(false);
-      pengelolaForm.reset();
+      form.reset();
       setEditingPengelola(null);
       fetchPengelola();
     } catch (error: any) {
@@ -214,13 +194,13 @@ export default function EntriPengelola() {
     }
   };
 
-  const handleEditPengelola = (pengelola: Pengelola) => {
+  const handleEdit = (pengelola: Pengelola) => {
     setEditingPengelola(pengelola);
-    pengelolaForm.reset(pengelola);
+    form.reset(pengelola);
     setDialogOpen(true);
   };
 
-  const handleDeletePengelola = async (pengelola: Pengelola) => {
+  const handleDelete = async (pengelola: Pengelola) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     
     try {
@@ -240,89 +220,6 @@ export default function EntriPengelola() {
       });
       
       fetchPengelola();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Organik BPS CRUD
-  const onSubmitOrganik = async (values: OrganikFormData) => {
-    try {
-      const operation = editingOrganik ? "update" : "append";
-      // Include empty string for kecamatan (index 5) to maintain column structure
-      const rowData = [
-        values.no,
-        values.nipBps,
-        values.nip,
-        values.nama,
-        values.jabatan,
-        "", // Kecamatan (empty since we're not using it)
-        values.golAkhir,
-        values.pangkat
-      ];
-
-      const { error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
-          operation,
-          range: "MASTER.ORGANIK",
-          values: [rowData],
-          ...(editingOrganik && {
-            rowIndex: editingOrganik.rowIndex
-          })
-        }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Sukses",
-        description: `Data organik BPS berhasil ${editingOrganik ? "diperbarui" : "ditambahkan"}`
-      });
-      
-      setOrganikDialogOpen(false);
-      organikForm.reset();
-      setEditingOrganik(null);
-      fetchOrganik();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleEditOrganik = (organik: Organik) => {
-    setEditingOrganik(organik);
-    organikForm.reset(organik);
-    setOrganikDialogOpen(true);
-  };
-
-  const handleDeleteOrganik = async (organik: Organik) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus data organik ini?")) return;
-    
-    try {
-      const { error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
-          operation: "delete",
-          rowIndex: organik.rowIndex
-        }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Sukses",
-        description: "Data organik BPS berhasil dihapus"
-      });
-      
-      fetchOrganik();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -360,10 +257,78 @@ export default function EntriPengelola() {
           </p>
           {userRole && (
             <p className="text-sm text-blue-600 mt-1">
-              Role: {userRole} {canEdit && "(Dapat mengedit semua data)"}
+              Role: {userRole} {canEdit && "(Dapat mengedit data pengelola)"}
             </p>
           )}
         </div>
+        
+        {activeTab === "pengelola" && canEdit && (
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingPengelola(null);
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Pengelola
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingPengelola ? "Edit" : "Tambah"} Pengelola Anggaran</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField 
+                    control={form.control} 
+                    name="nama" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                  <FormField 
+                    control={form.control} 
+                    name="nip" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>NIP</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                  <FormField 
+                    control={form.control} 
+                    name="jabatan" 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jabatan</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                  <Button type="submit" className="w-full">
+                    {editingPengelola ? "Update" : "Tambah"}
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -380,84 +345,14 @@ export default function EntriPengelola() {
 
         {/* Tab Pengelola Anggaran */}
         <TabsContent value="pengelola" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama, NIP, atau jabatan..."
-                value={searchPengelola}
-                onChange={(e) => setSearchPengelola(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            
-            {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => {
-                setDialogOpen(open);
-                if (!open) {
-                  setEditingPengelola(null);
-                  pengelolaForm.reset();
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tambah Pengelola
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingPengelola ? "Edit" : "Tambah"} Pengelola Anggaran</DialogTitle>
-                  </DialogHeader>
-                  <Form {...pengelolaForm}>
-                    <form onSubmit={pengelolaForm.handleSubmit(onSubmitPengelola)} className="space-y-4">
-                      <FormField 
-                        control={pengelolaForm.control} 
-                        name="nama" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nama</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={pengelolaForm.control} 
-                        name="nip" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>NIP</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <FormField 
-                        control={pengelolaForm.control} 
-                        name="jabatan" 
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Jabatan</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} 
-                      />
-                      <Button type="submit" className="w-full">
-                        {editingPengelola ? "Update" : "Tambah"}
-                      </Button>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            )}
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari nama, NIP, atau jabatan..."
+              value={searchPengelola}
+              onChange={(e) => setSearchPengelola(e.target.value)}
+              className="max-w-sm"
+            />
           </div>
 
           <Card>
@@ -497,10 +392,10 @@ export default function EntriPengelola() {
                         <TableCell>{p.jabatan}</TableCell>
                         {canEdit && (
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditPengelola(p)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeletePengelola(p)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -523,138 +418,14 @@ export default function EntriPengelola() {
 
         {/* Tab Organik BPS */}
         <TabsContent value="organik" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama, NIP, jabatan, golongan, atau pangkat..."
-                value={searchOrganik}
-                onChange={(e) => setSearchOrganik(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            
-            {canEdit && (
-              <Dialog open={organikDialogOpen} onOpenChange={(open) => {
-                setOrganikDialogOpen(open);
-                if (!open) {
-                  setEditingOrganik(null);
-                  organikForm.reset();
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tambah Organik
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{editingOrganik ? "Edit" : "Tambah"} Data Organik BPS</DialogTitle>
-                  </DialogHeader>
-                  <Form {...organikForm}>
-                    <form onSubmit={organikForm.handleSubmit(onSubmitOrganik)} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField 
-                          control={organikForm.control} 
-                          name="no" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>No</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="nipBps" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>NIP BPS</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="nip" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>NIP</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="nama" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nama</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="jabatan" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Jabatan</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="golAkhir" 
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Gol. Akhir</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                        <FormField 
-                          control={organikForm.control} 
-                          name="pangkat" 
-                          render={({ field }) => (
-                            <FormItem className="col-span-2">
-                              <FormLabel>Pangkat</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} 
-                        />
-                      </div>
-                      <Button type="submit" className="w-full">
-                        {editingOrganik ? "Update" : "Tambah"}
-                      </Button>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            )}
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari nama, NIP, jabatan, golongan, atau pangkat..."
+              value={searchOrganik}
+              onChange={(e) => setSearchOrganik(e.target.value)}
+              className="max-w-sm"
+            />
           </div>
 
           <Card>
@@ -662,11 +433,6 @@ export default function EntriPengelola() {
               <div className="flex items-center gap-2">
                 <Users className="h-6 w-6 text-primary" />
                 <CardTitle>Organik BPS Kabupaten Majalengka</CardTitle>
-                {canEdit && (
-                  <span className="text-sm text-green-600 font-medium">
-                    (Edit Mode)
-                  </span>
-                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -683,9 +449,6 @@ export default function EntriPengelola() {
                       <TableHead>Gol. Akhir</TableHead>
                       <TableHead>Pangkat</TableHead>
                       <TableHead>Jabatan</TableHead>
-                      {canEdit && (
-                        <TableHead className="text-right">Aksi</TableHead>
-                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -698,21 +461,11 @@ export default function EntriPengelola() {
                         <TableCell>{o.golAkhir}</TableCell>
                         <TableCell>{o.pangkat}</TableCell>
                         <TableCell>{o.jabatan}</TableCell>
-                        {canEdit && (
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditOrganik(o)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteOrganik(o)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        )}
                       </TableRow>
                     ))}
                     {filteredOrganik.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           {searchOrganik ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data organik"}
                         </TableCell>
                       </TableRow>
