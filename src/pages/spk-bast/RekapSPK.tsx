@@ -61,7 +61,6 @@ interface RekapSPKRow {
     namaKegiatan: string;
     nilaiRealisasi: string;
   }[];
-  spreadsheetRowIndex?: number;
 }
 
 type SortField = 'namaMitra' | 'jumlah';
@@ -231,7 +230,7 @@ export default function RekapSPKBAST() {
         const hargaSatuan = row[9]?.toString() || "";
         const realisasi = row[15]?.toString() || "";
         const nikPetugas = row[22]?.toString() || "";
-        const statusTTD = row[23]?.toString() || "Belum ditandatangani"; // Kolom X
+        const statusTTD = row[23]?.toString() || "Belum ditandatangani";
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
@@ -273,8 +272,7 @@ export default function RekapSPKBAST() {
             warnings: [],
             detailPendataan: [],
             detailPemeriksaan: [],
-            detailPengolahan: [],
-            spreadsheetRowIndex: i + 1
+            detailPengolahan: []
           });
         }
 
@@ -350,13 +348,14 @@ export default function RekapSPKBAST() {
         return newData;
       });
 
-      // Update spreadsheet - kita perlu mencari semua baris yang terkait dengan petugas ini
+      // Update spreadsheet
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TUGAS_SPREADSHEET_ID,
-          operation: 'update-status',
+          operation: 'update-status-bulk',
           range: 'Sheet1',
           nik: item.nik,
+          nama: item.namaMitra,
           status: newStatus
         }
       });
@@ -435,7 +434,7 @@ export default function RekapSPKBAST() {
         'Status': row.statusTTD
       }));
 
-      // Simulasikan ekspor Excel (bisa disesuaikan dengan library ekspor)
+      // Simulasi ekspor CSV
       const csvContent = [
         ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status'],
         ...exportData.map(row => [
