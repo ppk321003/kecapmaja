@@ -492,7 +492,7 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-  // PERBAIKAN: Gunakan struktur yang sesuai dengan edge function yang ada
+  // PERBAIKAN: Debug dan perbaikan struktur data untuk edge function
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
@@ -533,21 +533,64 @@ export default function RekapSPKBAST() {
           : row
       ));
 
-      // PERBAIKAN: Gunakan struktur yang sesuai dengan edge function update-status
-      for (const mapping of relevantMappings) {
-        const updateResult = await callEdgeFunction("update-status", {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
-          rowIndex: mapping.rowIndex,
-          petugasIndex: mapping.petugasIndex,
-          status: newStatus
-        });
-        console.log("✅ Update result for mapping:", mapping, updateResult);
+      // PERBAIKAN: Coba berbagai struktur data untuk edge function
+      let updateSuccess = false;
+      
+      // Coba approach 1: update-status dengan struktur sederhana
+      try {
+        for (const mapping of relevantMappings) {
+          const updateResult = await callEdgeFunction("update-status", {
+            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            rowIndex: mapping.rowIndex,
+            columnIndex: 23, // Kolom status TTD
+            value: newStatus,
+            petugasIndex: mapping.petugasIndex
+          });
+          console.log("✅ Update result for mapping:", mapping, updateResult);
+        }
+        updateSuccess = true;
+      } catch (error1) {
+        console.log("❌ Approach 1 failed, trying approach 2...");
+        
+        // Coba approach 2: update-cell langsung
+        try {
+          for (const mapping of relevantMappings) {
+            const updateResult = await callEdgeFunction("update-cell", {
+              spreadsheetId: TUGAS_SPREADSHEET_ID,
+              range: `Sheet1!W${mapping.rowIndex + 1}`, // Kolom W (23) untuk status TTD
+              value: newStatus
+            });
+            console.log("✅ Update cell result for mapping:", mapping, updateResult);
+          }
+          updateSuccess = true;
+        } catch (error2) {
+          console.log("❌ Approach 2 failed, trying approach 3...");
+          
+          // Coba approach 3: update dengan struktur yang lebih lengkap
+          try {
+            const updateResult = await callEdgeFunction("update-status-bulk", {
+              spreadsheetId: TUGAS_SPREADSHEET_ID,
+              nama: item.namaMitra,
+              nik: item.nik,
+              status: newStatus,
+              periode: currentPeriode,
+              rowIndices: relevantMappings.map(m => m.rowIndex)
+            });
+            console.log("✅ Update bulk result:", updateResult);
+            updateSuccess = true;
+          } catch (error3) {
+            console.log("❌ All approaches failed");
+            throw new Error("Semua metode update gagal");
+          }
+        }
       }
 
-      toast({
-        title: "Berhasil",
-        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
-      });
+      if (updateSuccess) {
+        toast({
+          title: "Berhasil",
+          description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
+        });
+      }
 
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
@@ -708,21 +751,27 @@ export default function RekapSPKBAST() {
     if (!sbmlData) return null;
     return (
       <div className="flex items-center justify-between gap-6 w-full">
-        <div className="text-sm font-semibold text-gray-700 whitespace-nowrap">
-          SBML {sbmlData.tahunAnggaran}
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500 text-white rounded-lg p-3">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="text-lg font-bold text-gray-900">STANDAR BIAYA MASUKAN LAINNYA</div>
+            <div className="text-sm font-semibold text-blue-600">TAHUN ANGGARAN {sbmlData.tahunAnggaran}</div>
+          </div>
         </div>
-        <div className="flex items-center gap-4 flex-1 justify-between">
-          <div className="flex flex-col items-center text-center">
-            <span className="text-xs text-blue-600 font-medium">Pendataan</span>
-            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPendata)}</span>
+        <div className="flex items-center gap-6 flex-1 justify-end">
+          <div className="flex flex-col items-center text-center bg-blue-50 rounded-lg p-3 min-w-[140px]">
+            <span className="text-base font-bold text-blue-800">PENDATAAN</span>
+            <span className="text-lg font-bold text-blue-900">{formatRupiah(sbmlData.sbmlPendata)}</span>
           </div>
-          <div className="flex flex-col items-center text-center">
-            <span className="text-xs text-green-600 font-medium">Pemeriksaan</span>
-            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPemeriksa)}</span>
+          <div className="flex flex-col items-center text-center bg-green-50 rounded-lg p-3 min-w-[140px]">
+            <span className="text-base font-bold text-green-800">PEMERIKSAAN</span>
+            <span className="text-lg font-bold text-green-900">{formatRupiah(sbmlData.sbmlPemeriksa)}</span>
           </div>
-          <div className="flex flex-col items-center text-center">
-            <span className="text-xs text-purple-600 font-medium">Pengolahan</span>
-            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPengolah)}</span>
+          <div className="flex flex-col items-center text-center bg-purple-50 rounded-lg p-3 min-w-[140px]">
+            <span className="text-base font-bold text-purple-800">PENGOLAHAN</span>
+            <span className="text-lg font-bold text-purple-900">{formatRupiah(sbmlData.sbmlPengolah)}</span>
           </div>
         </div>
       </div>
@@ -738,10 +787,10 @@ export default function RekapSPKBAST() {
         </p>
       </div>
 
-      {/* Card SBML - Dipisah menjadi card terpisah */}
+      {/* Card SBML - Dipisah menjadi card terpisah dengan tampilan yang lebih mencolok */}
       {sbmlBadgeContent && (
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
+        <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg">
+          <CardContent className="p-6">
             {sbmlBadgeContent}
           </CardContent>
         </Card>
