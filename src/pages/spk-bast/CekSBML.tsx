@@ -402,28 +402,27 @@ export default function CekSBML() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
 
-// Tambahkan state untuk input yang sedang diedit
-const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
-  // Hanya ambil angka saja dan konversi ke number
-  const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
-  
-  setData(prev => {
-    const newData = [...prev];
-    const item = newData[index];
-    const updatedItem = {
-      ...item,
-      pekerjaanProvinsi: numericValue,
-      jumlah: item.pendataan + item.pemeriksaan + item.pengolahan + numericValue
-    };
-    if (sbmlData) {
-      const warnings = validateRow(updatedItem, sbmlData);
-      updatedItem.warnings = warnings;
-      updatedItem.isExceeded = warnings.length > 0;
-    }
-    newData[index] = updatedItem;
-    return newData;
-  });
-}, [sbmlData, validateRow]);
+  const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
+    // Hanya ambil angka saja dan konversi ke number
+    const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
+    
+    setData(prev => {
+      const newData = [...prev];
+      const item = newData[index];
+      const updatedItem = {
+        ...item,
+        pekerjaanProvinsi: numericValue,
+        jumlah: item.pendataan + item.pemeriksaan + item.pengolahan + numericValue
+      };
+      if (sbmlData) {
+        const warnings = validateRow(updatedItem, sbmlData);
+        updatedItem.warnings = warnings;
+        updatedItem.isExceeded = warnings.length > 0;
+      }
+      newData[index] = updatedItem;
+      return newData;
+    });
+  }, [sbmlData, validateRow]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -656,17 +655,17 @@ const handlePekerjaanProvinsiChange = useCallback((index: number, value: string)
                         </HonorTooltip>
                       </TableCell>
                       
-<TableCell className="px-4 min-w-[150px]">
-  <div className="flex justify-end">
-    <Input 
-      type="text" 
-      value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')} 
-      onChange={e => handlePekerjaanProvinsiChange(index, e.target.value)} 
-      className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
-      placeholder="0"
-    />
-  </div>
-</TableCell>
+                      <TableCell className="px-4 min-w-[150px]">
+                        <div className="flex justify-end">
+                          <Input 
+                            type="text" 
+                            value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')} 
+                            onChange={e => handlePekerjaanProvinsiChange(index, e.target.value)} 
+                            className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
+                            placeholder="0"
+                          />
+                        </div>
+                      </TableCell>
                       
                       <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
                         {formatRupiah(row.jumlah)}
@@ -782,18 +781,18 @@ const HonorTooltip = ({
           <div className={`font-semibold mb-2 text-center ${isExceeded ? 'text-red-700' : 'text-gray-700'}`}>
             {title}
           </div>
-        <div className="space-y-2">
-          {details.map((detail, index) => (
-            <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
-              <div className="font-medium text-gray-900 mb-1 break-words leading-tight max-w-full">
-                {detail.namaKegiatan}
+          <div className="space-y-2">
+            {details.map((detail, index) => (
+              <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
+                <div className="font-medium text-gray-900 mb-1 break-words leading-tight max-w-full">
+                  {detail.namaKegiatan}
+                </div>
+                <div className="text-green-600 font-semibold">
+                  {detail.jumlahUnit} {detail.satuan} × {detail.hargaSatuanFormatted} = {detail.nilaiRealisasi}
+                </div>
               </div>
-              <div className="text-green-600 font-semibold">
-                {detail.jumlahUnit} {detail.satuan} × {detail.hargaSatuanFormatted} = {detail.nilaiRealisasi}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
           <div className={`absolute w-3 h-3 transform rotate-45 ${rowIndex < 4 ? 'bottom-full -translate-y-1/2 border-b border-r' : 'top-full -translate-y-1/2 border-t border-l'} left-1/2 -translate-x-1/2 ${isExceeded ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}></div>
         </div>
       )}
