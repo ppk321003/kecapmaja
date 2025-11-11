@@ -788,9 +788,9 @@ export default function RekapSPKBAST() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-red-500">Rekap SPK & BAST</h1>
+        <h1 className="text-3xl font-bold text-red-500">Cek SBML & Rekap SPK-BAST</h1>
         <p className="text-muted-foreground mt-2">
-          Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor BPS Kab. Majalengka
+          Monitoring Cek SBML dan Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor BPS Kab. Majalengka
         </p>
       </div>
 
@@ -898,7 +898,7 @@ export default function RekapSPKBAST() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-6 w-6 text-primary" />
-              <CardTitle>Rekap SPK & BAST</CardTitle>
+              <CardTitle>Cek SBML & Rekap SPK-BAST</CardTitle>
               {filteredAndSortedData.length > 0 && (
                 <Badge variant="secondary" className="text-sm">
                   {filteredAndSortedData.length} Petugas
