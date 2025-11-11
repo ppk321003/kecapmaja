@@ -109,11 +109,11 @@ export default function RekapSPKBAST() {
     return periode.trim().replace(/\s+/g, ' ');
   }, []);
 
-  // Fungsi yang lebih robust untuk memanggil edge function dengan berbagai format
+  // Fungsi yang lebih robust untuk memanggil edge function
   const callEdgeFunction = useCallback(async (operation: string, body: any, retries = 3): Promise<any> => {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`, body);
+        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`);
         
         const result = await supabase.functions.invoke("google-sheets", {
           body: {
@@ -196,7 +196,7 @@ export default function RekapSPKBAST() {
     }
   }, [callEdgeFunction]);
 
-  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, periode: string) => {
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
@@ -237,6 +237,7 @@ export default function RekapSPKBAST() {
         if (masterMap.has(masterKey)) {
           kecamatan = masterMap.get(masterKey)!.kecamatan;
         } else {
+          // Cari dengan nama saja jika NIK tidak cocok
           for (const [key, value] of masterMap.entries()) {
             if (key.toLowerCase().startsWith(nama.toLowerCase() + '_')) {
               kecamatan = value.kecamatan;
@@ -336,7 +337,7 @@ export default function RekapSPKBAST() {
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
-          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, periode);
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
           
           for (const petugas of processedPetugas) {
             petugasTugas.push({
@@ -357,11 +358,43 @@ export default function RekapSPKBAST() {
       console.log("✅ Rows yang match filter:", matchCount);
       console.log("👤 Total petugas tugas:", petugasTugas.length);
 
-      // Group data by petugas
+      // DEBUG: Log detail pengelompokan
+      console.log("🔍 Debug pengelompokan data:");
+      const debugMap = new Map();
+      for (const petugas of petugasTugas) {
+        const key = `${petugas.nama}_${petugas.nik}`;
+        if (!debugMap.has(key)) {
+          debugMap.set(key, {
+            fungsi: new Set(),
+            kegiatan: new Set(),
+            totalHonor: 0
+          });
+        }
+        const existing = debugMap.get(key);
+        existing.fungsi.add(petugas.role);
+        existing.kegiatan.add(petugas.namaKegiatan);
+        existing.totalHonor += petugas.honor;
+      }
+
+      // Log detail setiap petugas
+      for (const [key, value] of debugMap.entries()) {
+        console.log(`Petugas: ${key}, fungsi count: ${value.fungsi.size}`);
+        for (const fungsi of value.fungsi) {
+          const kegiatanPerFungsi = petugasTugas
+            .filter(p => `${p.nama}_${p.nik}` === key && p.role === fungsi)
+            .map(p => p.namaKegiatan);
+          const honorPerFungsi = petugasTugas
+            .filter(p => `${p.nama}_${p.nik}` === key && p.role === fungsi)
+            .reduce((sum, p) => sum + p.honor, 0);
+          console.log(`  - ${fungsi}: ${kegiatanPerFungsi.length} kegiatan, ${honorPerFungsi} anggaran`);
+        }
+      }
+
+      // Group data by petugas dengan perbaikan logic
       const groupedData = new Map<string, RekapSPKRow>();
       
       for (const petugas of petugasTugas) {
-        const key = `${petugas.nama.toLowerCase()}_${petugas.nik}`;
+        const key = `${petugas.nama}_${petugas.nik}`;
         
         if (!groupedData.has(key)) {
           groupedData.set(key, {
@@ -387,20 +420,25 @@ export default function RekapSPKBAST() {
           nilaiRealisasi: petugas.nilaiRealisasi
         };
 
-        if (roleLower.includes('pendataan')) {
+        // PERBAIKAN: Logic pengelompokan yang lebih akurat
+        if (roleLower.includes('pendataan') || roleLower.includes('petugas pendataan')) {
           existing.pendataan += petugas.honor;
           existing.detailPendataan.push(detailItem);
-        } else if (roleLower.includes('pemeriksaan')) {
+        } else if (roleLower.includes('pemeriksaan') || roleLower.includes('petugas pemeriksaan')) {
           existing.pemeriksaan += petugas.honor;
           existing.detailPemeriksaan.push(detailItem);
-        } else if (roleLower.includes('pengolah')) {
+        } else if (roleLower.includes('pengolah') || roleLower.includes('petugas pengolahan')) {
           existing.pengolahan += petugas.honor;
           existing.detailPengolahan.push(detailItem);
+        } else {
+          // Default ke pendataan jika tidak ada kecocokan
+          existing.pendataan += petugas.honor;
+          existing.detailPendataan.push(detailItem);
         }
 
-        // Update status jika ada yang lebih baru
-        if (petugas.statusTTD === "Sudah ditandatangani") {
-          existing.statusTTD = "Sudah ditandatangani";
+        // Update status TTD - gunakan status terbaru jika ada
+        if (petugas.statusTTD && petugas.statusTTD !== "Belum diproses") {
+          existing.statusTTD = petugas.statusTTD;
         }
       }
 
@@ -410,6 +448,12 @@ export default function RekapSPKBAST() {
       });
 
       console.log("🎉 Final data length:", finalData.length);
+      console.log("📈 Summary:");
+      console.log("  - Total petugas:", finalData.length);
+      console.log("  - Total pendataan:", finalData.reduce((sum, row) => sum + row.pendataan, 0));
+      console.log("  - Total pemeriksaan:", finalData.reduce((sum, row) => sum + row.pemeriksaan, 0));
+      console.log("  - Total pengolahan:", finalData.reduce((sum, row) => sum + row.pengolahan, 0));
+      console.log("  - Total keseluruhan:", finalData.reduce((sum, row) => sum + row.jumlah, 0));
 
       setData(finalData);
 
