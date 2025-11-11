@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
@@ -88,6 +89,7 @@ export default function RekapSPKBAST() {
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
@@ -420,79 +422,79 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-    // PERBAIKAN: Fungsi update dengan menggunakan operation yang sudah ada
-    const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
+  // PERBAIKAN: Fungsi update dengan menggunakan operation yang sudah ada
+  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
     try {
-        // Cari item berdasarkan identifier unik, bukan index
-        const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
-        
-        if (!item) {
+      // Cari item berdasarkan identifier unik, bukan index
+      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
+      
+      if (!item) {
         throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
-        }
+      }
 
-        console.log("🔄 UPDATE REQUEST DETAILS:");
-        console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
-        console.log("   New status:", newStatus);
+      console.log("🔄 UPDATE REQUEST DETAILS:");
+      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+      console.log("   New status:", newStatus);
 
-        if (!item.allMappings || item.allMappings.length === 0) {
+      if (!item.allMappings || item.allMappings.length === 0) {
         throw new Error("Tidak ditemukan mapping ke spreadsheet");
-        }
+      }
 
-        const currentPeriode = `${filterBulan} ${filterTahun}`;
-        
-        // Filter mappings yang sesuai dengan periode yang dipilih
-        const relevantMappings = item.allMappings.filter(mapping => {
+      const currentPeriode = `${filterBulan} ${filterTahun}`;
+      
+      // Filter mappings yang sesuai dengan periode yang dipilih
+      const relevantMappings = item.allMappings.filter(mapping => {
         const mappingPeriode = cleanPeriode(mapping.periode);
         const currentPeriodeClean = cleanPeriode(currentPeriode);
         return mappingPeriode === currentPeriodeClean;
-        });
+      });
 
-        if (relevantMappings.length === 0) {
+      if (relevantMappings.length === 0) {
         console.warn("⚠️ No mappings found for current period, using all mappings");
         relevantMappings.push(...item.allMappings);
-        }
+      }
 
-        console.log("   Relevant mappings:", relevantMappings);
+      console.log("   Relevant mappings:", relevantMappings);
 
-        // Update local state
-        setData(prev => prev.map(row => 
+      // Update local state
+      setData(prev => prev.map(row => 
         row.namaMitra === namaMitra && row.nik === nik 
-            ? { ...row, statusTTD: newStatus }
-            : row
-        ));
+          ? { ...row, statusTTD: newStatus }
+          : row
+      ));
 
-        // PERBAIKAN: Gunakan update-status-bulk yang sudah ada
-        const updateResult = await callEdgeFunction("update-status-bulk", {
+      // PERBAIKAN: Gunakan update-status-bulk yang sudah ada
+      const updateResult = await callEdgeFunction("update-status-bulk", {
         spreadsheetId: TUGAS_SPREADSHEET_ID,
         nama: item.namaMitra,
         nik: item.nik,
         status: newStatus,
         periode: currentPeriode,
         mappings: relevantMappings
-        });
+      });
 
-        console.log("✅ Update result:", updateResult);
+      console.log("✅ Update result:", updateResult);
 
-        toast({
+      toast({
         title: "Berhasil",
         description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
-        });
+      });
 
     } catch (error: any) {
-        console.error("❌ Error updating status:", error);
-        
-        // Refresh data untuk rollback
-        fetchData();
+      console.error("❌ Error updating status:", error);
+      
+      // Refresh data untuk rollback
+      fetchData();
 
-        toast({
+      toast({
         title: "Error",
         description: "Gagal mengubah status: " + error.message,
         variant: "destructive"
-        });
+      });
     }
-    }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -508,9 +510,19 @@ export default function RekapSPKBAST() {
     
     let filteredData = data;
     
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filteredData = filteredData.filter(row => 
+        row.namaMitra.toLowerCase().includes(query) ||
+        row.nik.toLowerCase().includes(query) ||
+        row.kecamatan.toLowerCase().includes(query)
+      );
+    }
+    
     // Apply status filter
     if (statusFilter !== "semua") {
-      filteredData = data.filter(row => row.statusTTD === statusFilter);
+      filteredData = filteredData.filter(row => row.statusTTD === statusFilter);
     }
     
     // Apply sorting
@@ -537,7 +549,7 @@ export default function RekapSPKBAST() {
       ...item,
       no: index + 1
     }));
-  }, [data, sortField, sortDirection, statusFilter]);
+  }, [data, sortField, sortDirection, statusFilter, searchQuery]);
 
   const handleExportExcel = useCallback(async () => {
     if (!isPPK) {
@@ -616,12 +628,16 @@ export default function RekapSPKBAST() {
     };
   }, [filteredAndSortedData]);
 
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-red-500">Rekap SPK & BAST</h1>
         <p className="text-muted-foreground mt-2">
-          Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima
+          Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor BPS Kab. Majalengka
         </p>
       </div>
 
@@ -641,11 +657,11 @@ export default function RekapSPKBAST() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex gap-3 items-center flex-wrap">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
             <div className="space-y-1">
               <label className="text-xs font-medium">Bulan</label>
               <Select value={filterBulan} onValueChange={setFilterBulan}>
-                <SelectTrigger className="w-32 h-8 text-sm">
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Pilih Bulan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -661,7 +677,7 @@ export default function RekapSPKBAST() {
             <div className="space-y-1">
               <label className="text-xs font-medium">Tahun</label>
               <Select value={filterTahun} onValueChange={setFilterTahun}>
-                <SelectTrigger className="w-24 h-8 text-sm">
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
@@ -677,7 +693,7 @@ export default function RekapSPKBAST() {
             <div className="space-y-1">
               <label className="text-xs font-medium">Status TTD</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40 h-8 text-sm">
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -688,7 +704,27 @@ export default function RekapSPKBAST() {
               </Select>
             </div>
 
-            <Button onClick={fetchData} disabled={loading} className="h-8 px-4 text-sm mt-5">
+            <div className="space-y-1 lg:col-span-2">
+              <label className="text-xs font-medium">Cari Nama/NIK/Kecamatan</label>
+              <div className="relative">
+                <Input
+                  placeholder="Cari petugas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 text-sm pr-8"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Button onClick={fetchData} disabled={loading} className="h-8 px-4 text-sm">
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
           </div>
@@ -697,7 +733,7 @@ export default function RekapSPKBAST() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-6 w-6 text-primary" />
               <CardTitle>Rekap SPK & BAST</CardTitle>
@@ -707,11 +743,25 @@ export default function RekapSPKBAST() {
                 </Badge>
               )}
             </div>
-            {statusFilter !== "semua" && (
-              <Badge variant="outline" className="text-sm">
-                Filter: {statusFilter === "Sudah ditandatangani" ? "Sudah TTD" : "Belum TTD"}
-              </Badge>
-            )}
+            
+            <div className="flex flex-wrap gap-2 items-center">
+              {searchQuery && (
+                <Badge variant="outline" className="text-sm">
+                  Pencarian: "{searchQuery}"
+                  <button 
+                    onClick={handleClearSearch}
+                    className="ml-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {statusFilter !== "semua" && (
+                <Badge variant="outline" className="text-sm">
+                  Filter: {statusFilter === "Sudah ditandatangani" ? "Sudah TTD" : "Belum TTD"}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -722,7 +772,11 @@ export default function RekapSPKBAST() {
           ) : filteredAndSortedData.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                {filterBulan && filterTahun ? "Tidak ada data untuk periode yang dipilih" : "Pilih bulan dan tahun untuk menampilkan data"}
+                {filterBulan && filterTahun 
+                  ? searchQuery || statusFilter !== "semua" 
+                    ? "Tidak ada data yang sesuai dengan filter pencarian" 
+                    : "Tidak ada data untuk periode yang dipilih"
+                  : "Pilih bulan dan tahun untuk menampilkan data"}
               </p>
             </div>
           ) : (
