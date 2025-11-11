@@ -63,12 +63,13 @@ interface RekapSPKRow {
     namaKegiatan: string;
     nilaiRealisasi: string;
   }[];
-  // PERBAIKAN: Simpan semua mappings untuk petugas ini
   allMappings: {
     rowIndex: number;
     petugasIndex: number;
     namaKegiatan: string;
     statusTTD: string;
+    periode: string;
+    role: string;
   }[];
 }
 
@@ -160,8 +161,7 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
-  // PERBAIKAN: Simpan mapping yang lebih detail
-  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string) => {
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string, periode: string, role: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
@@ -213,8 +213,8 @@ export default function RekapSPKBAST() {
           statusTTD: statusItem,
           rowIndex: rowIndex,
           petugasIndex: j,
-          periode: "",
-          role: "",
+          periode: periode,
+          role: role,
           namaKegiatan: namaKegiatan
         });
       }
@@ -299,7 +299,7 @@ export default function RekapSPKBAST() {
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
-          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, i, namaKegiatan);
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, i, namaKegiatan, periode, role);
           
           for (const petugas of processedPetugas) {
             petugasTugas.push({
@@ -314,7 +314,7 @@ export default function RekapSPKBAST() {
       console.log("✅ Rows yang match filter:", matchCount);
       console.log("👤 Total petugas tugas:", petugasTugas.length);
 
-      // PERBAIKAN: Group data dengan menyimpan semua mappings
+      // Group data dengan menyimpan semua mappings
       const groupedData = new Map<string, RekapSPKRow>();
       
       for (const petugas of petugasTugas) {
@@ -330,7 +330,7 @@ export default function RekapSPKBAST() {
             pemeriksaan: 0,
             pengolahan: 0,
             jumlah: 0,
-            statusTTD: "Belum ditandatangani", // Default
+            statusTTD: "Belum ditandatangani",
             detailPendataan: [],
             detailPemeriksaan: [],
             detailPengolahan: [],
@@ -360,12 +360,14 @@ export default function RekapSPKBAST() {
           existing.detailPendataan.push(detailItem);
         }
 
-        // Simpan semua mappings
+        // Simpan semua mappings dengan informasi lengkap
         existing.allMappings.push({
           rowIndex: petugas.rowIndex,
           petugasIndex: petugas.petugasIndex,
           namaKegiatan: petugas.namaKegiatan,
-          statusTTD: petugas.statusTTD
+          statusTTD: petugas.statusTTD,
+          periode: petugas.periode,
+          role: petugas.role
         });
 
         // Tentukan status TTD overall: jika ada satu saja "Sudah ditandatangani", maka overall "Sudah ditandatangani"
@@ -385,7 +387,10 @@ export default function RekapSPKBAST() {
       finalData.forEach((item, index) => {
         console.log(`📋 Petugas ${index + 1}: ${item.namaMitra} (${item.nik})`);
         console.log(`   Status: ${item.statusTTD}`);
-        console.log(`   Mappings:`, item.allMappings);
+        console.log(`   Total Mappings: ${item.allMappings.length}`);
+        item.allMappings.forEach((mapping, idx) => {
+          console.log(`   Mapping ${idx + 1}: row ${mapping.rowIndex}, index ${mapping.petugasIndex}, ${mapping.namaKegiatan}`);
+        });
       });
 
       setData(finalData);
@@ -415,50 +420,65 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-  // PERBAIKAN: Fungsi update dengan mapping yang tepat
-  const handleStatusChange = useCallback(async (index: number, newStatus: string) => {
+  // PERBAIKAN: Fungsi update dengan identifier unik (nama + nik) daripada index
+  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
     try {
-      const item = data[index];
+      // Cari item berdasarkan identifier unik, bukan index
+      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
       
+      if (!item) {
+        throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
+      }
+
       console.log("🔄 UPDATE REQUEST DETAILS:");
       console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
       console.log("   New status:", newStatus);
-      console.log("   All mappings:", item.allMappings);
 
       if (!item.allMappings || item.allMappings.length === 0) {
         throw new Error("Tidak ditemukan mapping ke spreadsheet");
       }
 
+      const currentPeriode = `${filterBulan} ${filterTahun}`;
+      
+      // Filter mappings yang sesuai dengan periode yang dipilih
+      const relevantMappings = item.allMappings.filter(mapping => {
+        const mappingPeriode = cleanPeriode(mapping.periode);
+        const currentPeriodeClean = cleanPeriode(currentPeriode);
+        return mappingPeriode === currentPeriodeClean;
+      });
+
+      if (relevantMappings.length === 0) {
+        console.warn("⚠️ No mappings found for current period, using all mappings");
+        relevantMappings.push(...item.allMappings);
+      }
+
+      console.log("   Relevant mappings:", relevantMappings);
+
       // Update local state
-      setData(prev => {
-        const newData = [...prev];
-        newData[index] = { 
-          ...newData[index], 
-          statusTTD: newStatus,
-          // Update semua mappings dengan status baru
-          allMappings: newData[index].allMappings.map(mapping => ({
-            ...mapping,
-            statusTTD: newStatus
-          }))
-        };
-        return newData;
+      setData(prev => prev.map(row => 
+        row.namaMitra === namaMitra && row.nik === nik 
+          ? { ...row, statusTTD: newStatus }
+          : row
+      ));
+
+      // Update setiap mapping yang relevan
+      const updatePromises = relevantMappings.map(async (mapping) => {
+        console.log(`   Updating mapping: row ${mapping.rowIndex}, petugasIndex ${mapping.petugasIndex}`);
+        
+        return await callEdgeFunction("update-status-specific", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          rowIndex: mapping.rowIndex,
+          petugasIndex: mapping.petugasIndex,
+          status: newStatus,
+          nama: item.namaMitra,
+          nik: item.nik
+        });
       });
 
-      // Kirim update ke edge function dengan semua mappings
-      const updateResult = await callEdgeFunction("update-status-bulk", {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        nama: item.namaMitra,
-        nik: item.nik,
-        status: newStatus,
-        periode: `${filterBulan} ${filterTahun}`,
-        // PERBAIKAN: Kirim semua mappings yang perlu diupdate
-        mappings: item.allMappings
-      });
-
-      console.log("✅ Update result:", updateResult);
+      const results = await Promise.all(updatePromises);
+      console.log("✅ All update results:", results);
 
       toast({
         title: "Berhasil",
@@ -468,8 +488,8 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
       
-      // Rollback local state
-      setData(prev => prev);
+      // Refresh data untuk rollback
+      fetchData();
 
       toast({
         title: "Error",
@@ -477,7 +497,7 @@ export default function RekapSPKBAST() {
         variant: "destructive"
       });
     }
-  }, [data, isPPK, filterBulan, filterTahun, toast, callEdgeFunction]);
+  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -488,7 +508,6 @@ export default function RekapSPKBAST() {
     }
   }, [sortField, sortDirection]);
 
-  // PERBAIKAN: Filter data berdasarkan status
   const filteredAndSortedData = useMemo(() => {
     if (!data.length) return [];
     
@@ -799,7 +818,7 @@ export default function RekapSPKBAST() {
                               <Switch
                                 checked={row.statusTTD === "Sudah ditandatangani"}
                                 onCheckedChange={(checked) => 
-                                  handleStatusChange(index, checked ? "Sudah ditandatangani" : "Belum ditandatangani")
+                                  handleStatusChange(row.namaMitra, row.nik, checked ? "Sudah ditandatangani" : "Belum ditandatangani")
                                 }
                                 className="data-[state=checked]:bg-green-600"
                               />
