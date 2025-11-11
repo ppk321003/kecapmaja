@@ -184,6 +184,7 @@ export default function RekapSPKBAST() {
 
     try {
       setLoading(true);
+      // PERBAIKAN: Format periode sesuai dengan spreadsheet
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
 
@@ -240,7 +241,7 @@ export default function RekapSPKBAST() {
       console.log("🗺️ Master petugas map size:", masterPetugas.size);
 
       let matchCount = 0;
-      // Process tugas data
+      // Process tugas data - DENGAN DEBUG DETAIL
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 24) continue;
@@ -254,6 +255,17 @@ export default function RekapSPKBAST() {
         const nikPetugas = row[22]?.toString() || "";
         const statusTTD = row[23]?.toString() || "Belum diproses";
 
+        // DEBUG: Log untuk melihat data aktual
+        if (i <= 5) { // Log hanya 5 baris pertama untuk debug
+          console.log(`📝 Row ${i}:`, {
+            periode,
+            namaKegiatan: namaKegiatan.substring(0, 50) + '...',
+            namaPetugas: namaPetugas.substring(0, 30) + '...',
+            match: periode === cleanedPeriodeFilter
+          });
+        }
+
+        // PERBAIKAN: Gunakan cleanedPeriodeFilter yang sesuai format spreadsheet
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
@@ -344,7 +356,7 @@ export default function RekapSPKBAST() {
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}`,
+          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Coba pilih periode lain.`,
           variant: "destructive"
         });
       }
@@ -385,7 +397,8 @@ export default function RekapSPKBAST() {
           range: 'Sheet1',
           nik: item.nik,
           nama: item.namaMitra,
-          status: newStatus
+          status: newStatus,
+          periode: `${filterBulan} ${filterTahun}`
         }
       });
 
@@ -404,7 +417,7 @@ export default function RekapSPKBAST() {
         variant: "destructive"
       });
     }
-  }, [data, isPPK, toast]);
+  }, [data, isPPK, filterBulan, filterTahun, toast]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
