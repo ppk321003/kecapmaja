@@ -185,13 +185,12 @@ export default function RekapSPKBAST() {
 
       console.log("🔍 Fetching data untuk periode:", cleanedPeriodeFilter);
 
-      // PERBAIKAN: Gunakan range yang sama seperti di Cek SBML
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: TUGAS_SPREADSHEET_ID,
             operation: "read",
-            range: "Sheet1" // SAMA PERSIS dengan Cek SBML
+            range: "Sheet1"
           }
         }),
         supabase.functions.invoke("google-sheets", {
@@ -203,14 +202,30 @@ export default function RekapSPKBAST() {
         })
       ]);
 
-      if (tugasResult.error) throw tugasResult.error;
-      if (masterResult.error) throw masterResult.error;
+      if (tugasResult.error) {
+        console.error("❌ Error fetching tugas:", tugasResult.error);
+        throw tugasResult.error;
+      }
+      if (masterResult.error) {
+        console.error("❌ Error fetching master:", masterResult.error);
+        throw masterResult.error;
+      }
 
       const tugasRows = tugasResult.data?.values || [];
       const masterRows = masterResult.data?.values || [];
       
       console.log("📊 Total rows dari spreadsheet:", tugasRows.length);
       console.log("👥 Total master petugas:", masterRows.length);
+
+      // DEBUG: Tampilkan semua periode unik yang ada di spreadsheet
+      const uniquePeriods = new Set();
+      for (let i = 1; i < Math.min(tugasRows.length, 50); i++) {
+        const row = tugasRows[i];
+        if (row && row[2]) {
+          uniquePeriods.add(row[2]);
+        }
+      }
+      console.log("📅 Periode unik di spreadsheet (50 baris pertama):", Array.from(uniquePeriods));
 
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
@@ -237,7 +252,7 @@ export default function RekapSPKBAST() {
       console.log("🗺️ Master petugas map size:", masterPetugas.size);
 
       let matchCount = 0;
-      // Process tugas data
+      // Process tugas data dengan debugging detail
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 24) continue;
@@ -251,15 +266,23 @@ export default function RekapSPKBAST() {
         const nikPetugas = row[22]?.toString() || "";
         const statusTTD = row[23]?.toString() || "Belum diproses";
 
-        // Debug: log beberapa baris pertama untuk melihat data
-        if (i <= 3) {
+        // DEBUG: Tampilkan beberapa baris pertama untuk melihat format data
+        if (i <= 5) {
           console.log(`📝 Sample row ${i}:`, {
             periode,
             role,
             namaKegiatan: namaKegiatan.substring(0, 30),
             namaPetugas: namaPetugas.substring(0, 20),
-            statusTTD
+            hargaSatuan,
+            realisasi,
+            statusTTD,
+            match: periode === cleanedPeriodeFilter
           });
+        }
+
+        // DEBUG: Log jika periode match tapi format berbeda
+        if (periode.includes(filterBulan) && periode.includes(filterTahun) && periode !== cleanedPeriodeFilter) {
+          console.log(`🔄 Periode similar but different format: "${periode}" vs "${cleanedPeriodeFilter}"`);
         }
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
@@ -284,6 +307,31 @@ export default function RekapSPKBAST() {
 
       console.log("✅ Rows yang match filter:", matchCount);
       console.log("👤 Total petugas tugas:", petugasTugas.length);
+
+      // Jika tidak ada match, coba cari dengan format yang berbeda
+      if (matchCount === 0) {
+        console.log("🔎 Mencari dengan format periode alternatif...");
+        const alternativeFormats = [
+          `SPK Bulan ${filterBulan} ${filterTahun}`,
+          `SPK ${filterBulan} ${filterTahun}`,
+          `${filterBulan} ${filterTahun} SPK`,
+          `Bulan ${filterBulan} ${filterTahun}`
+        ];
+        
+        for (const altFormat of alternativeFormats) {
+          let altMatchCount = 0;
+          for (let i = 1; i < tugasRows.length; i++) {
+            const row = tugasRows[i];
+            if (!row || row.length < 24) continue;
+            
+            const periode = cleanPeriode(row[2]?.toString() || "");
+            if (periode === altFormat) {
+              altMatchCount++;
+            }
+          }
+          console.log(`Format "${altFormat}": ${altMatchCount} matches`);
+        }
+      }
 
       // Group data by petugas
       const groupedData = new Map<string, RekapSPKRow>();
@@ -350,7 +398,7 @@ export default function RekapSPKBAST() {
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}`,
+          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Cek console untuk detail.`,
           variant: "destructive"
         });
       }
@@ -367,6 +415,7 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast]);
 
+  // ... (sisa kode tetap sama)
   const handleToggleStatus = useCallback(async (index: number) => {
     if (!isPPK) return;
 
@@ -376,14 +425,12 @@ export default function RekapSPKBAST() {
         ? "Belum ditandatangani" 
         : "Sudah ditandatangani";
 
-      // Update local state
       setData(prev => {
         const newData = [...prev];
         newData[index] = { ...newData[index], statusTTD: newStatus };
         return newData;
       });
 
-      // Update spreadsheet
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TUGAS_SPREADSHEET_ID,
@@ -527,7 +574,6 @@ export default function RekapSPKBAST() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-red-500">Rekap SPK & BAST</h1>
         <p className="text-muted-foreground mt-2">
@@ -535,7 +581,6 @@ export default function RekapSPKBAST() {
         </p>
       </div>
 
-      {/* Filter Section */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between text-base">
@@ -592,7 +637,6 @@ export default function RekapSPKBAST() {
         </CardContent>
       </Card>
 
-      {/* Results Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
