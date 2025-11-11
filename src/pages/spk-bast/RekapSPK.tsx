@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download, Filter } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, Download, Filter, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const SBML_SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk"; // Tambahkan SBML spreadsheet
 
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunList = Array.from({ length: 9 }, (_, i) => (2024 + i).toString());
@@ -46,6 +47,13 @@ interface MasterPetugas {
   kecamatan: string;
 }
 
+interface SBMLData {
+  tahunAnggaran: string;
+  sbmlPendata: number;
+  sbmlPemeriksa: number;
+  sbmlPengolah: number;
+}
+
 interface DetailKegiatan {
   namaKegiatan: string;
   nilaiRealisasi: string;
@@ -65,6 +73,8 @@ interface RekapSPKRow {
   pengolahan: number;
   jumlah: number;
   statusTTD: string;
+  isExceeded: boolean; // Tambahkan field untuk SBML warning
+  warnings: string[]; // Tambahkan field untuk detail warnings
   detailPendataan: DetailKegiatan[];
   detailPemeriksaan: DetailKegiatan[];
   detailPengolahan: DetailKegiatan[];
@@ -90,6 +100,7 @@ export default function RekapSPKBAST() {
   const [data, setData] = useState<RekapSPKRow[]>([]);
   const [filterBulan, setFilterBulan] = useState("");
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
+  const [sbmlData, setSbmlData] = useState<SBMLData | null>(null); // Tambahkan state SBML
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
@@ -123,10 +134,87 @@ export default function RekapSPKBAST() {
     return result;
   }, [parseHonor]);
 
+  // Tambahkan fungsi fetchSBMLData dari Skrip 1
+  const fetchSBMLData = useCallback(async (tahun: string) => {
+    try {
+      const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SBML_SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1"
+        }
+      });
+      if (error) throw error;
+      const rows = sbmlResponse?.values || [];
+      if (rows.length > 1) {
+        const sbmlForYear = rows.find((row: any[]) => row[1] === tahun);
+        if (sbmlForYear) {
+          setSbmlData({
+            tahunAnggaran: sbmlForYear[1],
+            sbmlPendata: parseHonor(sbmlForYear[2]),
+            sbmlPemeriksa: parseHonor(sbmlForYear[3]),
+            sbmlPengolah: parseHonor(sbmlForYear[4])
+          });
+        } else {
+          const latestSBML = rows[1];
+          setSbmlData({
+            tahunAnggaran: latestSBML[1],
+            sbmlPendata: parseHonor(latestSBML[2]),
+            sbmlPemeriksa: parseHonor(latestSBML[3]),
+            sbmlPengolah: parseHonor(latestSBML[4])
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching SBML data:", error);
+    }
+  }, [parseHonor]);
+
+  // Tambahkan fungsi validateRow dari Skrip 1
+  const validateRow = useCallback((item: RekapSPKRow, sbml: SBMLData) => {
+    const warnings: string[] = [];
+    if (item.pendataan > sbml.sbmlPendata) {
+      warnings.push(`Pendataan: ${formatRupiah(item.pendataan)} > ${formatRupiah(sbml.sbmlPendata)}`);
+    }
+    if (item.pemeriksaan > sbml.sbmlPemeriksa) {
+      warnings.push(`Pemeriksaan: ${formatRupiah(item.pemeriksaan)} > ${formatRupiah(sbml.sbmlPemeriksa)}`);
+    }
+    if (item.pengolahan > sbml.sbmlPengolah) {
+      warnings.push(`Pengolahan: ${formatRupiah(item.pengolahan)} > ${formatRupiah(sbml.sbmlPengolah)}`);
+    }
+    if (item.jumlah > sbml.sbmlPendata) {
+      warnings.push(`Total: ${formatRupiah(item.jumlah)} > ${formatRupiah(sbml.sbmlPendata)}`);
+    }
+    return warnings;
+  }, [formatRupiah]);
+
   const cleanPeriode = useCallback((periode: string): string => {
     if (!periode) return '';
     return periode.trim().replace(/\s+/g, ' ');
   }, []);
+
+  // Tambahkan SBML badge content dari Skrip 1
+  const sbmlBadgeContent = useMemo(() => {
+    if (!sbmlData) return null;
+    return (
+      <div className="flex flex-col gap-1 ml-auto">
+        <div className="text-xs font-semibold text-center text-gray-700 mb-1">
+          SBML {sbmlData.tahunAnggaran}
+        </div>
+        <div className="flex flex-col gap-1">
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200 text-blue-700">
+            <span className="font-medium">Pendataan:</span> {formatRupiah(sbmlData.sbmlPendata)}
+          </Badge>
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-green-50 border-green-200 text-green-700">
+            <span className="font-medium">Pemeriksaan:</span> {formatRupiah(sbmlData.sbmlPemeriksa)}
+          </Badge>
+          <Badge variant="outline" className="text-xs py-1 px-2 bg-purple-50 border-purple-200 text-purple-700">
+            <span className="font-medium">Pengolahan:</span> {formatRupiah(sbmlData.sbmlPengolah)}
+          </Badge>
+        </div>
+      </div>
+    );
+  }, [sbmlData, formatRupiah]);
 
   // Fungsi yang lebih robust untuk memanggil edge function
   const callEdgeFunction = useCallback(async (operation: string, body: any, retries = 3): Promise<any> => {
@@ -346,6 +434,8 @@ export default function RekapSPKBAST() {
             pengolahan: 0,
             jumlah: 0,
             statusTTD: "Belum ditandatangani",
+            isExceeded: false, // Default value
+            warnings: [], // Default value
             detailPendataan: [],
             detailPemeriksaan: [],
             detailPengolahan: [],
@@ -395,8 +485,17 @@ export default function RekapSPKBAST() {
         }
       }
 
+      // MODIFIKASI: Tambahkan validasi SBML seperti di Skrip 1
       const finalData = Array.from(groupedData.values()).map(item => {
         item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan;
+        
+        // Validasi terhadap SBML
+        if (sbmlData) {
+          const warnings = validateRow(item, sbmlData);
+          item.warnings = warnings;
+          item.isExceeded = warnings.length > 0;
+        }
+        
         return item;
       });
 
@@ -406,6 +505,7 @@ export default function RekapSPKBAST() {
       finalData.forEach((item, index) => {
         console.log(`📋 Petugas ${index + 1}: ${item.namaMitra} (${item.nik})`);
         console.log(`   Status: ${item.statusTTD}`);
+        console.log(`   SBML Warning: ${item.isExceeded}`);
         console.log(`   Total Mappings: ${item.allMappings.length}`);
         item.allMappings.forEach((mapping, idx) => {
           console.log(`   Mapping ${idx + 1}: row ${mapping.rowIndex}, index ${mapping.petugasIndex}, ${mapping.namaKegiatan}`);
@@ -437,7 +537,7 @@ export default function RekapSPKBAST() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
+  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
   // PERBAIKAN: Fungsi update dengan menggunakan operation yang sudah ada
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
@@ -587,11 +687,12 @@ export default function RekapSPKBAST() {
         'Pemeriksaan': formatRupiah(row.pemeriksaan),
         'Pengolahan': formatRupiah(row.pengolahan),
         'Jumlah': formatRupiah(row.jumlah),
-        'Status': row.statusTTD
+        'Status': row.statusTTD,
+        'Peringatan SBML': row.isExceeded ? 'YA' : 'TIDAK'
       }));
 
       const csvContent = [
-        ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status'],
+        ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status', 'Peringatan SBML'],
         ...exportData.map(row => [
           row.No,
           row['Nama Mitra Statistik'],
@@ -600,7 +701,8 @@ export default function RekapSPKBAST() {
           row.Pemeriksaan,
           row.Pengolahan,
           row.Jumlah,
-          row.Status
+          row.Status,
+          row['Peringatan SBML']
         ])
       ].map(row => row.join(',')).join('\n');
 
@@ -628,6 +730,13 @@ export default function RekapSPKBAST() {
       });
     }
   }, [filteredAndSortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
+
+  // MODIFIKASI: Tambahkan useEffect untuk fetch SBML data
+  useEffect(() => {
+    if (filterTahun) {
+      fetchSBMLData(filterTahun);
+    }
+  }, [filterTahun, fetchSBMLData]);
 
   useEffect(() => {
     if (filterBulan && filterTahun) {
@@ -745,6 +854,13 @@ export default function RekapSPKBAST() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
           </div>
+
+          {/* MODIFIKASI: Tambahkan SBML badge di sini */}
+          {sbmlBadgeContent && (
+            <div className="mt-4 flex justify-end">
+              {sbmlBadgeContent}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -825,11 +941,16 @@ export default function RekapSPKBAST() {
                       </button>
                     </TableHead>
                     <TableHead className="w-48 text-center">Status TTD</TableHead>
+                    {/* MODIFIKASI: Tambahkan kolom status SBML */}
+                    <TableHead className="w-16 text-center">SBML</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedData.map((row, index) => (
-                    <TableRow key={`${row.namaMitra}_${row.nik}_${index}`}>
+                    <TableRow 
+                      key={`${row.namaMitra}_${row.nik}_${index}`} 
+                      className={row.isExceeded ? "bg-red-50" : ""} // MODIFIKASI: Tambahkan background merah untuk warning
+                    >
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">
                         <div>
@@ -839,25 +960,47 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       <TableCell className="min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
+                      {/* MODIFIKASI: Tambahkan warna merah dan tooltip untuk nilai yang melebihi SBML */}
                       <TableCell className="text-right">
-                        <HonorTooltip details={row.detailPendataan} title="Detail Pendataan" rowIndex={index}>
-                          <span>{formatRupiah(row.pendataan)}</span>
+                        <HonorTooltip 
+                          details={row.detailPendataan} 
+                          title="Detail Pendataan" 
+                          isExceeded={row.pendataan > (sbmlData?.sbmlPendata || 0)} 
+                          rowIndex={index}
+                        >
+                          <span className={row.pendataan > (sbmlData?.sbmlPendata || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pendataan)}
+                          </span>
                         </HonorTooltip>
                       </TableCell>
                       
                       <TableCell className="text-right">
-                        <HonorTooltip details={row.detailPemeriksaan} title="Detail Pemeriksaan" rowIndex={index}>
-                          <span>{formatRupiah(row.pemeriksaan)}</span>
+                        <HonorTooltip 
+                          details={row.detailPemeriksaan} 
+                          title="Detail Pemeriksaan" 
+                          isExceeded={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0)} 
+                          rowIndex={index}
+                        >
+                          <span className={row.pemeriksaan > (sbmlData?.sbmlPemeriksa || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pemeriksaan)}
+                          </span>
                         </HonorTooltip>
                       </TableCell>
                       
                       <TableCell className="text-right">
-                        <HonorTooltip details={row.detailPengolahan} title="Detail Pengolahan" rowIndex={index}>
-                          <span>{formatRupiah(row.pengolahan)}</span>
+                        <HonorTooltip 
+                          details={row.detailPengolahan} 
+                          title="Detail Pengolahan" 
+                          isExceeded={row.pengolahan > (sbmlData?.sbmlPengolah || 0)} 
+                          rowIndex={index}
+                        >
+                          <span className={row.pengolahan > (sbmlData?.sbmlPengolah || 0) ? "text-red-600 font-semibold" : ""}>
+                            {formatRupiah(row.pengolahan)}
+                          </span>
                         </HonorTooltip>
                       </TableCell>
                       
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
                         {formatRupiah(row.jumlah)}
                       </TableCell>
                       
@@ -895,6 +1038,21 @@ export default function RekapSPKBAST() {
                           )}
                         </div>
                       </TableCell>
+
+                      {/* MODIFIKASI: Tambahkan kolom status SBML */}
+                      <TableCell className="text-center">
+                        {row.isExceeded ? (
+                          <StatusTooltip content={row.warnings} rowIndex={index}>
+                            <div className="flex justify-center">
+                              <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                            </div>
+                          </StatusTooltip>
+                        ) : (
+                          <div className="flex justify-center">
+                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   
@@ -916,6 +1074,7 @@ export default function RekapSPKBAST() {
                         {formatRupiah(totals.jumlah)}
                       </TableCell>
                       <TableCell></TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -928,15 +1087,48 @@ export default function RekapSPKBAST() {
   );
 }
 
-// Komponen Tooltip untuk Detail Honor dengan format baru
+// MODIFIKASI: Tambahkan komponen StatusTooltip dari Skrip 1
+const StatusTooltip = ({
+  content,
+  children,
+  rowIndex
+}: {
+  content: string[];
+  children: React.ReactNode;
+  rowIndex: number;
+}) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <div onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)} className="cursor-help">
+        {children}
+      </div>
+      {showTooltip && (
+        <div className={`absolute z-50 w-80 p-3 text-sm text-white bg-gray-900 rounded-lg shadow-lg ${rowIndex < 4 ? 'top-full mt-2' : 'bottom-full mb-2'} left-1/2 transform -translate-x-1/2`}>
+          <div className="font-semibold mb-2 text-center">Melebihi SBML:</div>
+          <div className="space-y-1">
+            {content.map((warning, index) => (
+              <div key={index} className="text-xs break-words">• {warning}</div>
+            ))}
+          </div>
+          <div className={`absolute w-3 h-3 bg-gray-900 transform rotate-45 ${rowIndex < 4 ? 'bottom-full -translate-y-1/2' : 'top-full -translate-y-1/2'} left-1/2 -translate-x-1/2`}></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// MODIFIKASI: Update komponen HonorTooltip untuk menerima prop isExceeded
 const HonorTooltip = ({
   details,
   title,
+  isExceeded,
   rowIndex,
   children
 }: {
   details: DetailKegiatan[];
   title: string;
+  isExceeded?: boolean;
   rowIndex: number;
   children: React.ReactNode;
 }) => {
@@ -956,10 +1148,14 @@ const HonorTooltip = ({
         {children}
       </div>
       {showTooltip && (
-        <div className={`absolute z-50 w-96 p-3 text-sm bg-white border border-gray-200 rounded-lg shadow-lg ${
+        <div className={`absolute z-50 w-96 p-3 text-sm rounded-lg shadow-lg ${
           rowIndex < 4 ? 'top-full mt-2' : 'bottom-full mb-2'
-        } left-1/2 transform -translate-x-1/2`}>
-          <div className="font-semibold mb-2 text-center text-gray-700">
+        } left-1/2 transform -translate-x-1/2 ${
+          isExceeded ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
+        }`}>
+          <div className={`font-semibold mb-2 text-center ${
+            isExceeded ? 'text-red-700' : 'text-gray-700'
+          }`}>
             {title}
           </div>
           <div className="space-y-2">
@@ -974,11 +1170,13 @@ const HonorTooltip = ({
               </div>
             ))}
           </div>
-          <div className={`absolute w-3 h-3 bg-white border border-gray-200 transform rotate-45 ${
+          <div className={`absolute w-3 h-3 transform rotate-45 ${
             rowIndex < 4 
               ? 'bottom-full -translate-y-1/2 border-b border-r' 
               : 'top-full -translate-y-1/2 border-t border-l'
-          } left-1/2 -translate-x-1/2`}></div>
+          } left-1/2 -translate-x-1/2 ${
+            isExceeded ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'
+          }`}></div>
         </div>
       )}
     </div>
