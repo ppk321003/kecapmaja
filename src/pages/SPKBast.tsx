@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Target, CheckSquare, DollarSign, UserCog, CheckCircle, Download, Database, BookOpen, FileText, ClipboardCheck, FileCheck } from "lucide-react";
+import { Users, Target, CheckSquare, DollarSign, UserCog, CheckCircle, Download, Database, BookOpen, FileText, ClipboardCheck, FileCheck, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function SPKBast() {
   const navigate = useNavigate();
   
-  // Enhanced color variants with better gradients and hover effects
+  // Enhanced color variants with better gradients and hover effects - now with 4 colors
   const cardColors = [
     { 
       bg: "bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950",
@@ -28,6 +28,13 @@ export default function SPKBast() {
       icon: "text-amber-600 dark:text-amber-400",
       border: "border-amber-200 dark:border-amber-800",
       button: "bg-amber-600 hover:bg-amber-700 text-white"
+    },
+    { 
+      bg: "bg-gradient-to-br from-purple-50 via-white to-purple-50 dark:from-purple-950 dark:via-purple-900 dark:to-purple-950",
+      hover: "hover:from-purple-100 hover:via-purple-50 hover:to-purple-100 dark:hover:from-purple-800 dark:hover:via-purple-700 dark:hover:to-purple-800",
+      icon: "text-purple-600 dark:text-purple-400",
+      border: "border-purple-200 dark:border-purple-800",
+      button: "bg-purple-600 hover:bg-purple-700 text-white"
     }
   ];
 
@@ -49,6 +56,12 @@ export default function SPKBast() {
       url: "/spk-bast/download-spk-bast",
       icon: FileText,
       description: "Unduh dokumen Surat Perjanjian Kerja dan Berita Acara Serah Terima"
+    },
+    {
+      title: "Rekap SPK & BAST",
+      url: "/spk-bast/rekap-spk",
+      icon: BarChart3,
+      description: "Lihat rekapitulasi dan laporan data SPK & BAST yang telah dibuat"
     }
   ];
   
@@ -67,8 +80,8 @@ export default function SPKBast() {
         </p>
       </div>
 
-      {/* Enhanced Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {/* Enhanced Cards Grid - Now 4 columns on large screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {spkBastMenuItems.map((item, index) => {
           const colors = cardColors[index % cardColors.length];
           
@@ -79,7 +92,7 @@ export default function SPKBast() {
                 group relative overflow-hidden border-2 transition-all duration-300 
                 hover:scale-105 hover:shadow-2xl 
                 ${colors.bg} ${colors.border} ${colors.hover}
-                min-h-[280px] flex flex-col
+                min-h-[260px] flex flex-col
               `}
             >
               {/* Decorative Element */}
@@ -88,14 +101,14 @@ export default function SPKBast() {
               <CardHeader className="relative z-10 pb-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`p-3 rounded-xl bg-white dark:bg-gray-800 shadow-md ${colors.border}`}>
-                    <item.icon className={`h-7 w-7 ${colors.icon}`} />
+                    <item.icon className={`h-6 w-6 ${colors.icon}`} />
                   </div>
                   <div className="text-xs font-medium px-2 py-1 rounded-full bg-white dark:bg-gray-800 text-muted-foreground border">
                     {index + 1}/{spkBastMenuItems.length}
                   </div>
                 </div>
                 
-                <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors">
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors">
                   {item.title}
                 </CardTitle>
                 
@@ -130,7 +143,7 @@ export default function SPKBast() {
       </div>
 
       {/* Additional Info Section */}
-      <div className="max-w-4xl mx-auto mt-12">
+      <div className="max-w-6xl mx-auto mt-12">
         <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-0 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
@@ -143,6 +156,7 @@ export default function SPKBast() {
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   Kelola seluruh proses administrasi kontrak kerja mulai dari perencanaan, verifikasi, hingga serah terima dokumen dalam satu platform yang terintegrasi.
+                  Sekarang dengan fitur rekapitulasi data SPK & BAST untuk analisis yang lebih komprehensif.
                 </p>
               </div>
             </div>
