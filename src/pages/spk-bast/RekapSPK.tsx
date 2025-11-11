@@ -492,6 +492,7 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
+  // PERBAIKAN: Gunakan struktur yang sesuai dengan edge function yang ada
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
@@ -525,23 +526,23 @@ export default function RekapSPKBAST() {
 
       console.log("   Relevant mappings:", relevantMappings);
 
+      // Update local state terlebih dahulu untuk UX yang lebih baik
       setData(prev => prev.map(row => 
         row.namaMitra === namaMitra && row.nik === nik 
           ? { ...row, statusTTD: newStatus }
           : row
       ));
 
-      // PERBAIKAN: Gunakan struktur data yang lebih sederhana
-      const updateResult = await callEdgeFunction("update-status-bulk", {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        updates: relevantMappings.map(mapping => ({
+      // PERBAIKAN: Gunakan struktur yang sesuai dengan edge function update-status
+      for (const mapping of relevantMappings) {
+        const updateResult = await callEdgeFunction("update-status", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
           rowIndex: mapping.rowIndex,
           petugasIndex: mapping.petugasIndex,
           status: newStatus
-        }))
-      });
-
-      console.log("✅ Update result:", updateResult);
+        });
+        console.log("✅ Update result for mapping:", mapping, updateResult);
+      }
 
       toast({
         title: "Berhasil",
@@ -551,6 +552,7 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
       
+      // Refresh data untuk rollback
       fetchData();
 
       toast({
@@ -705,22 +707,22 @@ export default function RekapSPKBAST() {
   const sbmlBadgeContent = useMemo(() => {
     if (!sbmlData) return null;
     return (
-      <div className="flex flex-col gap-2">
-        <div className="text-xs font-semibold text-center text-gray-700">
+      <div className="flex items-center justify-between gap-6 w-full">
+        <div className="text-sm font-semibold text-gray-700 whitespace-nowrap">
           SBML {sbmlData.tahunAnggaran}
         </div>
-        <div className="grid grid-cols-1 gap-1 text-xs">
-          <div className="flex justify-between items-center">
-            <span className="text-blue-600 font-medium">Pendataan:</span>
-            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPendata)}</span>
+        <div className="flex items-center gap-4 flex-1 justify-between">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xs text-blue-600 font-medium">Pendataan</span>
+            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPendata)}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-green-600 font-medium">Pemeriksaan:</span>
-            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPemeriksa)}</span>
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xs text-green-600 font-medium">Pemeriksaan</span>
+            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPemeriksa)}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-purple-600 font-medium">Pengolahan:</span>
-            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPengolah)}</span>
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xs text-purple-600 font-medium">Pengolahan</span>
+            <span className="text-sm font-semibold">{formatRupiah(sbmlData.sbmlPengolah)}</span>
           </div>
         </div>
       </div>
@@ -735,6 +737,15 @@ export default function RekapSPKBAST() {
           Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor BPS Kab. Majalengka
         </p>
       </div>
+
+      {/* Card SBML - Dipisah menjadi card terpisah */}
+      {sbmlBadgeContent && (
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            {sbmlBadgeContent}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-3">
@@ -823,14 +834,6 @@ export default function RekapSPKBAST() {
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
           </div>
-
-          {sbmlBadgeContent && (
-            <div className="mt-4 flex justify-end">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 w-48">
-                {sbmlBadgeContent}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
