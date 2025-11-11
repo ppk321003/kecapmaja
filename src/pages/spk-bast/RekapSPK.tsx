@@ -492,119 +492,127 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-  // PERBAIKAN: Debug dan perbaikan struktur data untuk edge function
-  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
-    if (!isPPK) return;
+// PERBAIKAN: Gunakan operasi 'update' yang sudah ada di edge function
+const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
+  if (!isPPK) return;
 
-    try {
-      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
-      
-      if (!item) {
-        throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
-      }
-
-      console.log("🔄 UPDATE REQUEST DETAILS:");
-      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
-      console.log("   New status:", newStatus);
-
-      if (!item.allMappings || item.allMappings.length === 0) {
-        throw new Error("Tidak ditemukan mapping ke spreadsheet");
-      }
-
-      const currentPeriode = `${filterBulan} ${filterTahun}`;
-      
-      const relevantMappings = item.allMappings.filter(mapping => {
-        const mappingPeriode = cleanPeriode(mapping.periode);
-        const currentPeriodeClean = cleanPeriode(currentPeriode);
-        return mappingPeriode === currentPeriodeClean;
-      });
-
-      if (relevantMappings.length === 0) {
-        console.warn("⚠️ No mappings found for current period, using all mappings");
-        relevantMappings.push(...item.allMappings);
-      }
-
-      console.log("   Relevant mappings:", relevantMappings);
-
-      // Update local state terlebih dahulu untuk UX yang lebih baik
-      setData(prev => prev.map(row => 
-        row.namaMitra === namaMitra && row.nik === nik 
-          ? { ...row, statusTTD: newStatus }
-          : row
-      ));
-
-      // PERBAIKAN: Coba berbagai struktur data untuk edge function
-      let updateSuccess = false;
-      
-      // Coba approach 1: update-status dengan struktur sederhana
-      try {
-        for (const mapping of relevantMappings) {
-          const updateResult = await callEdgeFunction("update-status", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
-            rowIndex: mapping.rowIndex,
-            columnIndex: 23, // Kolom status TTD
-            value: newStatus,
-            petugasIndex: mapping.petugasIndex
-          });
-          console.log("✅ Update result for mapping:", mapping, updateResult);
-        }
-        updateSuccess = true;
-      } catch (error1) {
-        console.log("❌ Approach 1 failed, trying approach 2...");
-        
-        // Coba approach 2: update-cell langsung
-        try {
-          for (const mapping of relevantMappings) {
-            const updateResult = await callEdgeFunction("update-cell", {
-              spreadsheetId: TUGAS_SPREADSHEET_ID,
-              range: `Sheet1!W${mapping.rowIndex + 1}`, // Kolom W (23) untuk status TTD
-              value: newStatus
-            });
-            console.log("✅ Update cell result for mapping:", mapping, updateResult);
-          }
-          updateSuccess = true;
-        } catch (error2) {
-          console.log("❌ Approach 2 failed, trying approach 3...");
-          
-          // Coba approach 3: update dengan struktur yang lebih lengkap
-          try {
-            const updateResult = await callEdgeFunction("update-status-bulk", {
-              spreadsheetId: TUGAS_SPREADSHEET_ID,
-              nama: item.namaMitra,
-              nik: item.nik,
-              status: newStatus,
-              periode: currentPeriode,
-              rowIndices: relevantMappings.map(m => m.rowIndex)
-            });
-            console.log("✅ Update bulk result:", updateResult);
-            updateSuccess = true;
-          } catch (error3) {
-            console.log("❌ All approaches failed");
-            throw new Error("Semua metode update gagal");
-          }
-        }
-      }
-
-      if (updateSuccess) {
-        toast({
-          title: "Berhasil",
-          description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
-        });
-      }
-
-    } catch (error: any) {
-      console.error("❌ Error updating status:", error);
-      
-      // Refresh data untuk rollback
-      fetchData();
-
-      toast({
-        title: "Error",
-        description: "Gagal mengubah status: " + error.message,
-        variant: "destructive"
-      });
+  try {
+    const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
+    
+    if (!item) {
+      throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
     }
-  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+
+    console.log("🔄 UPDATE REQUEST DETAILS:");
+    console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+    console.log("   New status:", newStatus);
+
+    if (!item.allMappings || item.allMappings.length === 0) {
+      throw new Error("Tidak ditemukan mapping ke spreadsheet");
+    }
+
+    const currentPeriode = `${filterBulan} ${filterTahun}`;
+    
+    const relevantMappings = item.allMappings.filter(mapping => {
+      const mappingPeriode = cleanPeriode(mapping.periode);
+      const currentPeriodeClean = cleanPeriode(currentPeriode);
+      return mappingPeriode === currentPeriodeClean;
+    });
+
+    if (relevantMappings.length === 0) {
+      console.warn("⚠️ No mappings found for current period, using all mappings");
+      relevantMappings.push(...item.allMappings);
+    }
+
+    console.log("   Relevant mappings:", relevantMappings);
+
+    // Update local state terlebih dahulu untuk UX yang lebih baik
+    setData(prev => prev.map(row => 
+      row.namaMitra === namaMitra && row.nik === nik 
+        ? { ...row, statusTTD: newStatus }
+        : row
+    ));
+
+    // PERBAIKAN: Gunakan operasi 'update' yang sudah ada di edge function
+    // Kolom status TTD ada di kolom X (index 23), tapi perlu diingat:
+    // - rowIndex di edge function dimulai dari 1 (bukan 0)
+    // - Operasi 'update' akan mengupdate seluruh row, jadi kita perlu baca dulu data yang ada
+    
+    let successCount = 0;
+    
+    for (const mapping of relevantMappings) {
+      try {
+        // Baca data row yang akan diupdate
+        const readResult = await callEdgeFunction("read", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+        });
+
+        const currentRow = readResult?.values?.[0] || [];
+        console.log("📊 Current row data:", currentRow);
+        
+        // Update hanya kolom status TTD (kolom X, index 23)
+        const updatedRow = [...currentRow];
+        
+        // Handle multiple petugas (dipisah oleh |)
+        if (updatedRow[23] && updatedRow[23].includes('|')) {
+          const statusParts = updatedRow[23].split('|').map(s => s.trim());
+          if (mapping.petugasIndex < statusParts.length) {
+            statusParts[mapping.petugasIndex] = newStatus;
+            updatedRow[23] = statusParts.join(' | ');
+          } else {
+            updatedRow[23] = newStatus;
+          }
+        } else {
+          // Single petugas
+          updatedRow[23] = newStatus;
+        }
+        
+        console.log("🆕 Updated row data:", updatedRow);
+        
+        // Update row menggunakan operasi 'update'
+        const updateResult = await callEdgeFunction("update", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          rowIndex: mapping.rowIndex + 1, // +1 karena spreadsheet row dimulai dari 1
+          values: [updatedRow]
+        });
+        
+        console.log("✅ Update result for mapping:", mapping, updateResult);
+        successCount++;
+        
+      } catch (error) {
+        console.error(`❌ Failed to update mapping ${mapping.rowIndex}:`, error);
+        // Continue dengan mapping berikutnya meskipun satu gagal
+      }
+    }
+
+    if (successCount > 0) {
+      toast({
+        title: "Berhasil",
+        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
+      });
+      
+      // Refresh data untuk memastikan konsistensi
+      setTimeout(() => {
+        fetchData();
+      }, 1000);
+    } else {
+      throw new Error("Gagal mengupdate semua data");
+    }
+
+  } catch (error: any) {
+    console.error("❌ Error updating status:", error);
+    
+    // Refresh data untuk rollback
+    fetchData();
+
+    toast({
+      title: "Error",
+      description: "Gagal mengubah status: " + error.message,
+      variant: "destructive"
+    });
+  }
+}, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
