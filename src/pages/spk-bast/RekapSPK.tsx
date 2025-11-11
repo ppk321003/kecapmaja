@@ -47,8 +47,6 @@ interface RekapSPKRow {
   pengolahan: number;
   jumlah: number;
   statusTTD: string;
-  isExceeded: boolean;
-  warnings: string[];
   detailPendataan: {
     namaKegiatan: string;
     nilaiRealisasi: string;
@@ -113,7 +111,6 @@ export default function RekapSPKBAST() {
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
     
-    // Handle status yang mungkin kosong atau tidak sesuai format
     let statusList: string[] = [];
     if (statusTTD && statusTTD.trim() !== '') {
       statusList = statusTTD.split(' | ').map((n: string) => n.trim());
@@ -134,7 +131,6 @@ export default function RekapSPKBAST() {
         const nik = nikList[j] || "";
         const realisasiItem = realisasiList[j] || "0";
         
-        // Handle status - default ke "Belum diproses" jika kosong
         let statusItem = "Belum diproses";
         if (statusList[j] && statusList[j].trim() !== "") {
           statusItem = statusList[j].trim();
@@ -184,18 +180,18 @@ export default function RekapSPKBAST() {
 
     try {
       setLoading(true);
-      // PERBAIKAN: Format periode sesuai dengan spreadsheet
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
 
       console.log("🔍 Fetching data untuk periode:", cleanedPeriodeFilter);
 
+      // PERBAIKAN: Gunakan range yang sama seperti di Cek SBML
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: TUGAS_SPREADSHEET_ID,
             operation: "read",
-            range: "Sheet1!"
+            range: "Sheet1" // SAMA PERSIS dengan Cek SBML
           }
         }),
         supabase.functions.invoke("google-sheets", {
@@ -241,7 +237,7 @@ export default function RekapSPKBAST() {
       console.log("🗺️ Master petugas map size:", masterPetugas.size);
 
       let matchCount = 0;
-      // Process tugas data - DENGAN DEBUG DETAIL
+      // Process tugas data
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 24) continue;
@@ -255,17 +251,17 @@ export default function RekapSPKBAST() {
         const nikPetugas = row[22]?.toString() || "";
         const statusTTD = row[23]?.toString() || "Belum diproses";
 
-        // DEBUG: Log untuk melihat data aktual
-        if (i <= 5) { // Log hanya 5 baris pertama untuk debug
-          console.log(`📝 Row ${i}:`, {
+        // Debug: log beberapa baris pertama untuk melihat data
+        if (i <= 3) {
+          console.log(`📝 Sample row ${i}:`, {
             periode,
-            namaKegiatan: namaKegiatan.substring(0, 50) + '...',
-            namaPetugas: namaPetugas.substring(0, 30) + '...',
-            match: periode === cleanedPeriodeFilter
+            role,
+            namaKegiatan: namaKegiatan.substring(0, 30),
+            namaPetugas: namaPetugas.substring(0, 20),
+            statusTTD
           });
         }
 
-        // PERBAIKAN: Gunakan cleanedPeriodeFilter yang sesuai format spreadsheet
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
@@ -306,8 +302,6 @@ export default function RekapSPKBAST() {
             pengolahan: 0,
             jumlah: 0,
             statusTTD: petugas.statusTTD,
-            isExceeded: false,
-            warnings: [],
             detailPendataan: [],
             detailPemeriksaan: [],
             detailPengolahan: []
@@ -344,7 +338,7 @@ export default function RekapSPKBAST() {
       });
 
       console.log("🎉 Final data length:", finalData.length);
-      console.log("📋 Sample data:", finalData.slice(0, 3));
+      console.log("📋 Sample data:", finalData.slice(0, 2));
 
       setData(finalData);
 
@@ -356,7 +350,7 @@ export default function RekapSPKBAST() {
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Coba pilih periode lain.`,
+          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}`,
           variant: "destructive"
         });
       }
@@ -476,7 +470,6 @@ export default function RekapSPKBAST() {
         'Status': row.statusTTD
       }));
 
-      // Simulasi ekspor CSV
       const csvContent = [
         ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status'],
         ...exportData.map(row => [
