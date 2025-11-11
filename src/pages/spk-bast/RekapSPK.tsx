@@ -209,7 +209,6 @@ export default function RekapSPKBAST() {
       const masterRows = masterResult.data?.values || [];
       
       console.log("📊 Total rows dari spreadsheet:", tugasRows.length);
-      console.log("👥 Total master petugas:", masterRows.length);
 
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
@@ -233,17 +232,12 @@ export default function RekapSPKBAST() {
         }
       }
 
-      console.log("🗺️ Master petugas map size:", masterPetugas.size);
-
       let matchCount = 0;
-      let foundMatches = false;
       
-      // DEBUG: Cari baris yang match dengan periode
-      console.log("🔎 Mencari baris dengan periode:", cleanedPeriodeFilter);
-      
+      // Process tugas data - TAMPILKAN DATA MESKIPUN STATUS KOSONG
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 24) continue;
+        if (!row || row.length < 22) continue;
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";
@@ -252,20 +246,11 @@ export default function RekapSPKBAST() {
         const hargaSatuan = row[9]?.toString() || "";
         const realisasi = row[15]?.toString() || "";
         const nikPetugas = row[22]?.toString() || "";
-        const statusTTD = row[23]?.toString() || "Belum diproses";
-
-        // DEBUG: Tampilkan baris yang match periode
-        if (periode === cleanedPeriodeFilter) {
-          console.log(`✅ FOUND MATCH - Row ${i}:`, {
-            periode,
-            role,
-            namaKegiatan: namaKegiatan.substring(0, 50),
-            namaPetugas: namaPetugas.substring(0, 30),
-            hargaSatuan,
-            realisasi,
-            statusTTD
-          });
-          foundMatches = true;
+        
+        // PERBAIKAN: Handle kolom status yang mungkin undefined/kosong
+        let statusTTD = "Belum diproses";
+        if (row[23] !== undefined && row[23] !== null && row[23].toString().trim() !== "") {
+          statusTTD = row[23].toString().trim();
         }
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
@@ -283,24 +268,6 @@ export default function RekapSPKBAST() {
               namaKegiatan: namaKegiatan,
               nilaiRealisasi: petugas.nilaiRealisasi,
               statusTTD: petugas.statusTTD
-            });
-          }
-        }
-      }
-
-      if (!foundMatches) {
-        console.log("❌ Tidak ditemukan baris dengan periode yang match");
-        // DEBUG: Tampilkan beberapa baris pertama untuk melihat struktur data
-        console.log("📋 Sample data dari 5 baris pertama:");
-        for (let i = 1; i <= Math.min(5, tugasRows.length - 1); i++) {
-          const row = tugasRows[i];
-          if (row && row.length >= 3) {
-            console.log(`Row ${i}:`, {
-              kolom2: row[2], // Periode
-              kolom3: row[3], // Role
-              kolom4: row[4]?.substring(0, 30), // Nama Kegiatan
-              kolom13: row[13]?.substring(0, 20), // Nama Petugas
-              kolom23: row[23] // Status TTD
             });
           }
         }
@@ -362,7 +329,6 @@ export default function RekapSPKBAST() {
       });
 
       console.log("🎉 Final data length:", finalData.length);
-      console.log("📋 Sample data:", finalData.slice(0, 2));
 
       setData(finalData);
 
@@ -374,7 +340,7 @@ export default function RekapSPKBAST() {
       } else {
         toast({
           title: "Info",
-          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Cek console untuk detail.`,
+          description: `Tidak ada data untuk periode ${cleanedPeriodeFilter}. Coba pilih periode lain.`,
           variant: "destructive"
         });
       }
