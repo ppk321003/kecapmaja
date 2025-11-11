@@ -403,16 +403,8 @@ export default function CekSBML() {
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
 
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
-    // Hapus semua karakter non-digit kecuali koma dan titik
-    const cleanedValue = value.replace(/[^\d,.]/g, '');
-    
-    // Konversi ke number, handling koma sebagai decimal separator
-    let numericValue = 0;
-    if (cleanedValue) {
-      // Ganti koma dengan titik untuk parsing number
-      const normalizedValue = cleanedValue.replace(',', '.');
-      numericValue = parseInt(normalizedValue) || 0;
-    }
+    // Hanya ambil angka saja
+    const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
     
     setData(prev => {
       const newData = [...prev];
@@ -668,10 +660,13 @@ export default function CekSBML() {
                           <Input 
                             type="text" 
                             value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')} 
-                            onChange={e => handlePekerjaanProvinsiChange(index, e.target.value)} 
+                            onChange={e => {
+                              // Langsung parse ke number tanpa format saat input
+                              const rawValue = e.target.value.replace(/\D/g, '');
+                              handlePekerjaanProvinsiChange(index, rawValue);
+                            }} 
                             className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
                             placeholder="0"
-                            onFocus={(e) => e.target.select()} // Optional: select all text on focus
                           />
                         </div>
                       </TableCell>
