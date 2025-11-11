@@ -30,7 +30,7 @@ import TandaTerima from "./pages/e-dokumen/tanda-terima";
 import TransportLokal from "./pages/e-dokumen/transport-lokal";
 import UangHarianTransport from "./pages/e-dokumen/uang-harian-transport";
 import EntriTarget from "./pages/spk-bast/EntriTarget";
-import CekSBML from "./pages/spk-bast/CekSBML";
+//import CekSBML from "./pages/spk-bast/CekSBML";
 import RekapSPK from "./pages/spk-bast/RekapSPK";
 import EntriSBML from "./pages/EntriSBML";
 import EntriPengelola from "./pages/EntriPengelola";
@@ -74,7 +74,6 @@ const App = () => (
             <Route path="/e-dokumen/transport-lokal" element={<ProtectedRoute><TransportLokal /></ProtectedRoute>} />
             <Route path="/e-dokumen/uang-harian-transport" element={<ProtectedRoute><UangHarianTransport /></ProtectedRoute>} />
             <Route path="/spk-bast/entri-target" element={<ProtectedRoute><Layout><EntriTarget /></Layout></ProtectedRoute>} />
-            <Route path="/spk-bast/cek-sbml" element={<ProtectedRoute><Layout><CekSBML /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast/rekap-spk" element={<ProtectedRoute><Layout><RekapSPK /></Layout></ProtectedRoute>} />            
             <Route path="/entri-sbml" element={<ProtectedRoute><Layout><EntriSBML /></Layout></ProtectedRoute>} />
             <Route path="/entri-pengelola" element={<ProtectedRoute><Layout><EntriPengelola /></Layout></ProtectedRoute>} />

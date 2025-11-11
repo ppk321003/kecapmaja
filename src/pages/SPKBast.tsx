@@ -28,14 +28,8 @@ export default function SPKBast() {
       icon: "text-amber-600 dark:text-amber-400",
       border: "border-amber-200 dark:border-amber-800",
       button: "bg-amber-600 hover:bg-amber-700 text-white"
-    },
-    { 
-      bg: "bg-gradient-to-br from-purple-50 via-white to-purple-50 dark:from-purple-950 dark:via-purple-900 dark:to-purple-950",
-      hover: "hover:from-purple-100 hover:via-purple-50 hover:to-purple-100 dark:hover:from-purple-800 dark:hover:via-purple-700 dark:hover:to-purple-800",
-      icon: "text-purple-600 dark:text-purple-400",
-      border: "border-purple-200 dark:border-purple-800",
-      button: "bg-purple-600 hover:bg-purple-700 text-white"
     }
+
   ];
 
   const spkBastMenuItems = [
@@ -46,19 +40,13 @@ export default function SPKBast() {
       description: "Input target dan kegiatan yang akan dilaksanakan sesuai rencana kerja"
     },
     {
-      title: "Cek SBML",
-      url: "/spk-bast/cek-sbml",
-      icon: FileCheck,
-      description: "Verifikasi dan pengecekan Standar Biaya Masukan Lainnya dengan akurat"
-    },
-    {
       title: "Download SPK & BAST",
       url: "/spk-bast/download-spk-bast",
       icon: FileText,
       description: "Unduh dokumen Surat Perjanjian Kerja dan Berita Acara Serah Terima"
     },
     {
-      title: "Rekap SPK & BAST",
+      title: "Cek SBML & Rekap SPK-BAST",
       url: "/spk-bast/rekap-spk",
       icon: BarChart3,
       description: "Lihat rekapitulasi dan laporan data SPK & BAST yang telah dibuat"
