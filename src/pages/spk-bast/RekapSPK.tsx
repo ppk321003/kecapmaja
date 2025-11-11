@@ -112,7 +112,12 @@ export default function RekapSPKBAST() {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
-    const statusList = statusTTD.split(' | ').map((n: string) => n.trim());
+    
+    // Handle status yang mungkin kosong atau tidak sesuai format
+    let statusList: string[] = [];
+    if (statusTTD && statusTTD.trim() !== '') {
+      statusList = statusTTD.split(' | ').map((n: string) => n.trim());
+    }
     
     const result: {
       nama: string;
@@ -128,7 +133,15 @@ export default function RekapSPKBAST() {
         const nama = namaList[j].trim();
         const nik = nikList[j] || "";
         const realisasiItem = realisasiList[j] || "0";
-        const statusItem = statusList[j] || "Belum ditandatangani";
+        
+        // Handle status - default ke "Belum diproses" jika kosong
+        let statusItem = "Belum diproses";
+        if (statusList[j] && statusList[j].trim() !== "") {
+          statusItem = statusList[j].trim();
+        } else if (statusTTD && statusTTD.trim() !== "") {
+          statusItem = statusTTD.trim();
+        }
+        
         const honor = calculateHonor(hargaSatuan, realisasiItem);
         const nilaiRealisasi = formatRupiah(honor);
         
@@ -174,6 +187,8 @@ export default function RekapSPKBAST() {
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
 
+      console.log("🔍 Fetching data untuk periode:", cleanedPeriodeFilter);
+
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
           body: {
@@ -196,6 +211,10 @@ export default function RekapSPKBAST() {
 
       const tugasRows = tugasResult.data?.values || [];
       const masterRows = masterResult.data?.values || [];
+      
+      console.log("📊 Total rows dari spreadsheet:", tugasRows.length);
+      console.log("👥 Total master petugas:", masterRows.length);
+
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
@@ -218,6 +237,9 @@ export default function RekapSPKBAST() {
         }
       }
 
+      console.log("🗺️ Master petugas map size:", masterPetugas.size);
+
+      let matchCount = 0;
       // Process tugas data
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
@@ -230,9 +252,10 @@ export default function RekapSPKBAST() {
         const hargaSatuan = row[9]?.toString() || "";
         const realisasi = row[15]?.toString() || "";
         const nikPetugas = row[22]?.toString() || "";
-        const statusTTD = row[23]?.toString() || "Belum ditandatangani";
+        const statusTTD = row[23]?.toString() || "Belum diproses";
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
+          matchCount++;
           const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
           
           for (const petugas of processedPetugas) {
@@ -250,6 +273,9 @@ export default function RekapSPKBAST() {
           }
         }
       }
+
+      console.log("✅ Rows yang match filter:", matchCount);
+      console.log("👤 Total petugas tugas:", petugasTugas.length);
 
       // Group data by petugas
       const groupedData = new Map<string, RekapSPKRow>();
@@ -304,6 +330,9 @@ export default function RekapSPKBAST() {
         item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan;
         return item;
       });
+
+      console.log("🎉 Final data length:", finalData.length);
+      console.log("📋 Sample data:", finalData.slice(0, 3));
 
       setData(finalData);
 
@@ -648,13 +677,17 @@ export default function RekapSPKBAST() {
                             className={`text-xs ${
                               row.statusTTD === "Sudah ditandatangani" 
                                 ? "bg-green-100 text-green-800 hover:bg-green-100" 
-                                : "bg-red-100 text-red-800 hover:bg-red-100"
+                                : row.statusTTD === "Belum ditandatangani"
+                                ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                             }`}
                           >
                             {row.statusTTD === "Sudah ditandatangani" ? (
                               <CheckCircle className="h-3 w-3 mr-1" />
-                            ) : (
+                            ) : row.statusTTD === "Belum ditandatangani" ? (
                               <XCircle className="h-3 w-3 mr-1" />
+                            ) : (
+                              <Search className="h-3 w-3 mr-1" />
                             )}
                             {row.statusTTD}
                           </Badge>
