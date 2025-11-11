@@ -148,54 +148,6 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
-  // Fungsi untuk test berbagai format edge function
-  const testEdgeFunctionFormats = useCallback(async (nama: string, nik: string, status: string, periode: string) => {
-    const testFormats = [
-      // Format 1: Basic dengan periode lengkap
-      {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        nama,
-        nik,
-        status,
-        periode
-      },
-      // Format 2: Dengan bulan dan tahun terpisah
-      {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        nama,
-        nik,
-        status,
-        bulan: periode.split(' ')[0],
-        tahun: periode.split(' ')[1]
-      },
-      // Format 3: Dengan array updates
-      {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        updates: [{
-          nama,
-          nik,
-          status,
-          periode
-        }]
-      }
-    ];
-
-    for (let i = 0; i < testFormats.length; i++) {
-      try {
-        console.log(`🧪 Testing format ${i + 1}:`, testFormats[i]);
-        const result = await callEdgeFunction("update-status-bulk", testFormats[i], 1);
-        console.log(`✅ Format ${i + 1} success:`, result);
-        return result;
-      } catch (error) {
-        console.log(`❌ Format ${i + 1} failed:`, error);
-        if (i === testFormats.length - 1) throw error;
-      }
-    }
-  }, [callEdgeFunction]);
-
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
@@ -482,16 +434,14 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-  const handleToggleStatus = useCallback(async (index: number) => {
+  // PERBAIKAN: Fungsi untuk update status dengan dropdown
+  const handleStatusChange = useCallback(async (index: number, newStatus: string) => {
     if (!isPPK) return;
 
     try {
       const item = data[index];
-      const newStatus = item.statusTTD === "Sudah ditandatangani" 
-        ? "Belum ditandatangani" 
-        : "Sudah ditandatangani";
-
-      // Update local state
+      
+      // Update local state terlebih dahulu
       setData(prev => {
         const newData = [...prev];
         newData[index] = { ...newData[index], statusTTD: newStatus };
@@ -505,13 +455,17 @@ export default function RekapSPKBAST() {
         periode: `${filterBulan} ${filterTahun}`
       });
 
-      // Coba berbagai format untuk menemukan yang sesuai dengan edge function
-      await testEdgeFunctionFormats(
-        item.namaMitra, 
-        item.nik, 
-        newStatus, 
-        `${filterBulan} ${filterTahun}`
-      );
+      // Kirim update ke edge function dengan format yang benar
+      const updateResult = await callEdgeFunction("update-status-bulk", {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        nama: item.namaMitra,
+        nik: item.nik,
+        status: newStatus,
+        periode: `${filterBulan} ${filterTahun}`
+      });
+
+      console.log("✅ Update result:", updateResult);
 
       toast({
         title: "Berhasil",
@@ -521,15 +475,13 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
       
-      // Rollback local state
+      // Rollback local state jika gagal
       setData(prev => {
         const newData = [...prev];
-        newData[index] = { 
-          ...newData[index], 
-          statusTTD: newData[index].statusTTD === "Sudah ditandatangani" 
-            ? "Belum ditandatangani" 
-            : "Sudah ditandatangani" 
-        };
+        const originalStatus = newData[index].statusTTD === "Sudah ditandatangani" 
+          ? "Belum ditandatangani" 
+          : "Sudah ditandatangani";
+        newData[index] = { ...newData[index], statusTTD: originalStatus };
         return newData;
       });
 
@@ -539,7 +491,7 @@ export default function RekapSPKBAST() {
         variant: "destructive"
       });
     }
-  }, [data, isPPK, filterBulan, filterTahun, toast, testEdgeFunctionFormats]);
+  }, [data, isPPK, filterBulan, filterTahun, toast, callEdgeFunction]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -769,7 +721,7 @@ export default function RekapSPKBAST() {
                         )}
                       </button>
                     </TableHead>
-                    <TableHead className="w-32 text-center">Status TTD</TableHead>
+                    <TableHead className="w-40 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -802,7 +754,7 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       
                       <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
+                        <div className="flex flex-col items-center gap-2">
                           <Badge 
                             variant={row.statusTTD === "Sudah ditandatangani" ? "default" : "destructive"}
                             className={`text-xs ${
@@ -824,14 +776,22 @@ export default function RekapSPKBAST() {
                           </Badge>
                           
                           {isPPK && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleStatus(index)}
-                              className="h-6 text-xs"
+                            <Select 
+                              value={row.statusTTD} 
+                              onValueChange={(value) => handleStatusChange(index, value)}
                             >
-                              {row.statusTTD === "Sudah ditandatangani" ? "Batalkan" : "Tandatangani"}
-                            </Button>
+                              <SelectTrigger className="h-7 text-xs w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Belum ditandatangani" className="text-xs">
+                                  Belum ditandatangani
+                                </SelectItem>
+                                <SelectItem value="Sudah ditandatangani" className="text-xs">
+                                  Sudah ditandatangani
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                           )}
                         </div>
                       </TableCell>
