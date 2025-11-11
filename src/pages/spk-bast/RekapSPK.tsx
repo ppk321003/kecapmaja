@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, Download, Bug } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,6 +78,7 @@ export default function RekapSPKBAST() {
   const { toast } = useToast();
 
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  const isAdmin = user?.role === "Administrator";
 
   const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -113,7 +114,7 @@ export default function RekapSPKBAST() {
   const callEdgeFunction = useCallback(async (operation: string, body: any, retries = 3): Promise<any> => {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`);
+        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`, body);
         
         const result = await supabase.functions.invoke("google-sheets", {
           body: {
@@ -147,6 +148,159 @@ export default function RekapSPKBAST() {
       }
     }
   }, []);
+
+  // Fungsi untuk debugging format edge function
+  const debugEdgeFunction = useCallback(async () => {
+    const debugPayloads = [
+      // Format 1: Basic dengan search criteria
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        search: {
+          nama: "Suganda Atmaja",
+          nik: "3210172206760001", 
+          periode: "Oktober 2025"
+        },
+        updates: {
+          status: "Sudah ditandatangani"
+        }
+      },
+      // Format 2: Dengan rowIndex dan columnIndex
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        rowIndex: 1,
+        columnIndex: 23,
+        status: "Sudah ditandatangani"
+      },
+      // Format 3: Dengan cell references
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        updates: [
+          {
+            range: "Sheet1!X2",
+            values: [["Sudah ditandatangani"]]
+          }
+        ]
+      },
+      // Format 4: Simple update dengan nama, nik, status
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        nama: "Suganda Atmaja",
+        nik: "3210172206760001",
+        status: "Sudah ditandatangani"
+      },
+      // Format 5: Dengan operation spesifik
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        target: "status-ttd",
+        data: {
+          nama: "Suganda Atmaja",
+          nik: "3210172206760001",
+          status: "Sudah ditandatangani",
+          periode: "Oktober 2025"
+        }
+      }
+    ];
+
+    const results = [];
+
+    for (let i = 0; i < debugPayloads.length; i++) {
+      try {
+        console.log(`🔧 Testing debug format ${i + 1}:`, debugPayloads[i]);
+        const result = await callEdgeFunction("update-status-bulk", debugPayloads[i], 1);
+        console.log(`✅ Debug format ${i + 1} success:`, result);
+        results.push({ format: i + 1, success: true, data: result });
+      } catch (error: any) {
+        console.log(`❌ Debug format ${i + 1} failed:`, error.message);
+        results.push({ format: i + 1, success: false, error: error.message });
+      }
+      
+      // Delay antara test
+      if (i < debugPayloads.length - 1) {
+        await delay(500);
+      }
+    }
+
+    // Tampilkan summary
+    console.log("📊 Debug Results Summary:");
+    results.forEach(result => {
+      console.log(`  Format ${result.format}: ${result.success ? '✅' : '❌'} ${result.success ? 'Success' : result.error}`);
+    });
+
+    return results;
+  }, [callEdgeFunction]);
+
+  // Fallback menggunakan Google Sheets API langsung
+  const updateStatusDirectly = useCallback(async (nama: string, nik: string, status: string, periode: string) => {
+    try {
+      console.log("🔄 Using direct Google Sheets API update for:", { nama, nik, status, periode });
+      
+      // Dapatkan semua data untuk mencari baris yang sesuai
+      const allData = await callEdgeFunction("read", {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: "Sheet1"
+      });
+
+      const rows = allData?.values || [];
+      const updates = [];
+
+      // Cari semua baris yang sesuai dengan kriteria
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 24) continue;
+
+        const rowPeriode = cleanPeriode(row[2]?.toString() || "");
+        const namaPetugas = row[13]?.toString() || "";
+        const nikPetugas = row[22]?.toString() || "";
+        const statusTTD = row[23]?.toString() || "";
+
+        if (rowPeriode === periode && namaPetugas.includes(nama) && nikPetugas.includes(nik)) {
+          console.log(`📝 Found matching row ${i + 1}:`, { namaPetugas, nikPetugas, statusTTD });
+          
+          // Split existing status
+          const statusList = statusTTD.split(' | ').map(s => s.trim());
+          const namaList = namaPetugas.split(' | ').map(n => n.trim());
+          const nikList = nikPetugas.split(' | ').map(n => n.trim());
+          
+          // Update status untuk petugas yang sesuai
+          const updatedStatusList = namaList.map((n, index) => {
+            const currentNik = nikList[index] || "";
+            if (n === nama && currentNik.includes(nik)) {
+              console.log(`🔄 Updating status for ${n} at position ${index} to ${status}`);
+              return status;
+            }
+            return statusList[index] || "Belum ditandatangani";
+          });
+
+          const newStatusValue = updatedStatusList.join(' | ');
+          console.log(`📋 New status value for row ${i + 1}:`, newStatusValue);
+
+          updates.push({
+            range: `Sheet1!X${i + 1}`, // Kolom X (Status TTD)
+            values: [[newStatusValue]]
+          });
+        }
+      }
+
+      if (updates.length > 0) {
+        console.log(`📤 Sending ${updates.length} updates to Google Sheets`);
+        const result = await callEdgeFunction("update-cells", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          updates: updates
+        });
+        
+        console.log("✅ Direct update successful:", result);
+        return result;
+      } else {
+        throw new Error(`No matching rows found for ${nama} (${nik}) in periode ${periode}`);
+      }
+
+    } catch (error) {
+      console.error("❌ Direct update failed:", error);
+      throw error;
+    }
+  }, [callEdgeFunction, cleanPeriode]);
 
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
@@ -189,7 +343,6 @@ export default function RekapSPKBAST() {
         if (masterMap.has(masterKey)) {
           kecamatan = masterMap.get(masterKey)!.kecamatan;
         } else {
-          // Cari dengan nama saja jika NIK tidak cocok
           for (const [key, value] of masterMap.entries()) {
             if (key.toLowerCase().startsWith(nama.toLowerCase() + '_')) {
               kecamatan = value.kecamatan;
@@ -434,23 +587,16 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-  // PERBAIKAN: Fungsi untuk update status dengan dropdown dan logging detail
-  const handleStatusChange = useCallback(async (index: number, newStatus: string) => {
+  const handleToggleStatus = useCallback(async (index: number) => {
     if (!isPPK) return;
 
     try {
       const item = data[index];
-      
-      // LOGGING DETAIL: Pastikan data yang akan dikirim benar
-      console.log("🔄 UPDATE REQUEST DETAILS:");
-      console.log("   Selected item:", item);
-      console.log("   Index in table:", index);
-      console.log("   New status:", newStatus);
-      console.log("   Period:", `${filterBulan} ${filterTahun}`);
-      console.log("   Nama:", item.namaMitra);
-      console.log("   NIK:", item.nik);
-      
-      // Update local state terlebih dahulu
+      const newStatus = item.statusTTD === "Sudah ditandatangani" 
+        ? "Belum ditandatangani" 
+        : "Sudah ditandatangani";
+
+      // Update local state pertama
       setData(prev => {
         const newData = [...prev];
         newData[index] = { ...newData[index], statusTTD: newStatus };
@@ -464,49 +610,69 @@ export default function RekapSPKBAST() {
         periode: `${filterBulan} ${filterTahun}`
       });
 
-      // Kirim update ke edge function dengan format yang benar
-      const updateResult = await callEdgeFunction("update-status-bulk", {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        nama: item.namaMitra,
-        nik: item.nik,
-        status: newStatus,
-        periode: `${filterBulan} ${filterTahun}`
-      });
-
-      console.log("✅ Update result:", updateResult);
-
-      // PERBAIKAN: Validasi hasil update
-      if (updateResult.success) {
-        console.log(`✅ Successfully updated ${updateResult.updated} rows`);
-        if (updateResult.details) {
-          updateResult.details.forEach((detail: any, idx: number) => {
-            console.log(`   ${idx + 1}. Row ${detail.row}: ${detail.nama} (${detail.nik})`);
-          });
-        }
-      }
+      // Strategy 1: Coba update langsung ke Google Sheets (fallback)
+      await updateStatusDirectly(
+        item.namaMitra,
+        item.nik,
+        newStatus,
+        `${filterBulan} ${filterTahun}`
+      );
 
       toast({
         title: "Berhasil",
-        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" untuk periode ${filterBulan} ${filterTahun}`
+        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
       });
 
     } catch (error: any) {
-      console.error("❌ Error updating status:", error);
+      console.error("❌ Update status failed:", error);
       
-      // Rollback local state jika gagal
+      // Rollback local state
       setData(prev => {
         const newData = [...prev];
-        return newData; // Keep current data as is
+        newData[index] = { 
+          ...newData[index], 
+          statusTTD: newData[index].statusTTD === "Sudah ditandatangani" 
+            ? "Belum ditandatangani" 
+            : "Sudah ditandatangani" 
+        };
+        return newData;
       });
 
       toast({
         title: "Error",
-        description: "Gagal mengubah status: " + error.message,
+        description: "Gagal mengubah status. Silakan coba lagi atau hubungi administrator.",
         variant: "destructive"
       });
     }
-  }, [data, isPPK, filterBulan, filterTahun, toast, callEdgeFunction]);
+  }, [data, isPPK, filterBulan, filterTahun, toast, updateStatusDirectly]);
+
+  const handleDebugEdgeFunction = useCallback(async () => {
+    try {
+      toast({
+        title: "Debug Dimulai",
+        description: "Memulai test edge function..."
+      });
+
+      const results = await debugEdgeFunction();
+      
+      const successCount = results.filter(r => r.success).length;
+      const failedCount = results.filter(r => !r.success).length;
+
+      toast({
+        title: "Debug Selesai",
+        description: `${successCount} format berhasil, ${failedCount} format gagal. Lihat console untuk detail.`,
+        variant: successCount > 0 ? "default" : "destructive"
+      });
+
+    } catch (error: any) {
+      console.error("❌ Debug failed:", error);
+      toast({
+        title: "Debug Error",
+        description: "Gagal melakukan debug: " + error.message,
+        variant: "destructive"
+      });
+    }
+  }, [debugEdgeFunction, toast]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -636,12 +802,20 @@ export default function RekapSPKBAST() {
               <Search className="h-4 w-4" />
               Filter Periode
             </div>
-            {isPPK && (
-              <Button onClick={handleExportExcel} size="sm" className="h-8 gap-2">
-                <Download className="h-4 w-4" />
-                Ekspor Excel
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {isAdmin && (
+                <Button onClick={handleDebugEdgeFunction} size="sm" className="h-8 gap-2" variant="outline">
+                  <Bug className="h-4 w-4" />
+                  Debug
+                </Button>
+              )}
+              {isPPK && (
+                <Button onClick={handleExportExcel} size="sm" className="h-8 gap-2">
+                  <Download className="h-4 w-4" />
+                  Ekspor Excel
+                </Button>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -736,7 +910,7 @@ export default function RekapSPKBAST() {
                         )}
                       </button>
                     </TableHead>
-                    <TableHead className="w-40 text-center">Status TTD</TableHead>
+                    <TableHead className="w-32 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -769,7 +943,7 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       
                       <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-1">
                           <Badge 
                             variant={row.statusTTD === "Sudah ditandatangani" ? "default" : "destructive"}
                             className={`text-xs ${
@@ -791,22 +965,16 @@ export default function RekapSPKBAST() {
                           </Badge>
                           
                           {isPPK && (
-                            <Select 
-                              value={row.statusTTD} 
-                              onValueChange={(value) => handleStatusChange(index, value)}
-                            >
-                              <SelectTrigger className="h-7 text-xs w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Belum ditandatangani" className="text-xs">
-                                  Belum ditandatangani
-                                </SelectItem>
-                                <SelectItem value="Sudah ditandatangani" className="text-xs">
-                                  Sudah ditandatangani
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleStatus(index)}
+                                className="h-6 text-xs"
+                              >
+                                {row.statusTTD === "Sudah ditandatangani" ? "Batalkan" : "Tandatangani"}
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </TableCell>
