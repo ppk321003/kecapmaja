@@ -30,6 +30,10 @@ interface PetugasTugas {
   statusTTD?: string;
   rowIndex: number;
   petugasIndex: number;
+  satuan: string;
+  jumlahUnit: number;
+  hargaSatuan: number;
+  hargaSatuanFormatted: string;
 }
 
 interface MasterPetugas {
@@ -42,6 +46,15 @@ interface MasterPetugas {
   kecamatan: string;
 }
 
+interface DetailKegiatan {
+  namaKegiatan: string;
+  nilaiRealisasi: string;
+  satuan: string;
+  jumlahUnit: number;
+  hargaSatuan: number;
+  hargaSatuanFormatted: string;
+}
+
 interface RekapSPKRow {
   no: number;
   namaMitra: string;
@@ -52,18 +65,9 @@ interface RekapSPKRow {
   pengolahan: number;
   jumlah: number;
   statusTTD: string;
-  detailPendataan: {
-    namaKegiatan: string;
-    nilaiRealisasi: string;
-  }[];
-  detailPemeriksaan: {
-    namaKegiatan: string;
-    nilaiRealisasi: string;
-  }[];
-  detailPengolahan: {
-    namaKegiatan: string;
-    nilaiRealisasi: string;
-  }[];
+  detailPendataan: DetailKegiatan[];
+  detailPemeriksaan: DetailKegiatan[];
+  detailPengolahan: DetailKegiatan[];
   allMappings: {
     rowIndex: number;
     petugasIndex: number;
@@ -163,7 +167,7 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
-  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string, periode: string, role: string) => {
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, satuan: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string, periode: string, role: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
@@ -175,11 +179,15 @@ export default function RekapSPKBAST() {
     
     const result: PetugasTugas[] = [];
 
+    const hargaSatuanNum = parseHonor(hargaSatuan);
+    const hargaSatuanFormatted = formatRupiah(hargaSatuanNum);
+
     for (let j = 0; j < namaList.length; j++) {
       if (namaList[j]) {
         const nama = namaList[j].trim();
         const nik = nikList[j] || "";
         const realisasiItem = realisasiList[j] || "0";
+        const jumlahUnit = parseInt(realisasiItem) || 0;
         
         let statusItem = "Belum ditandatangani";
         if (statusList[j] && statusList[j].trim() !== "") {
@@ -217,12 +225,16 @@ export default function RekapSPKBAST() {
           petugasIndex: j,
           periode: periode,
           role: role,
-          namaKegiatan: namaKegiatan
+          namaKegiatan: namaKegiatan,
+          satuan: satuan,
+          jumlahUnit: jumlahUnit,
+          hargaSatuan: hargaSatuanNum,
+          hargaSatuanFormatted: hargaSatuanFormatted
         });
       }
     }
     return result;
-  }, [calculateHonor, formatRupiah]);
+  }, [calculateHonor, formatRupiah, parseHonor]);
 
   const fetchData = useCallback(async () => {
     if (!filterBulan || !filterTahun) {
@@ -291,6 +303,7 @@ export default function RekapSPKBAST() {
         const namaKegiatan = row[4]?.toString() || "";
         const namaPetugas = row[13]?.toString() || "";
         const hargaSatuan = row[9]?.toString() || "";
+        const satuan = row[10]?.toString() || "";
         const realisasi = row[15]?.toString() || "";
         const nikPetugas = row[22]?.toString() || "";
         
@@ -301,7 +314,7 @@ export default function RekapSPKBAST() {
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
-          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, i, namaKegiatan, periode, role);
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, satuan, statusTTD, masterPetugas, i, namaKegiatan, periode, role);
           
           for (const petugas of processedPetugas) {
             petugasTugas.push({
@@ -342,9 +355,13 @@ export default function RekapSPKBAST() {
 
         const existing = groupedData.get(key)!;
         const roleLower = petugas.role.toLowerCase();
-        const detailItem = {
+        const detailItem: DetailKegiatan = {
           namaKegiatan: petugas.namaKegiatan,
-          nilaiRealisasi: petugas.nilaiRealisasi
+          nilaiRealisasi: petugas.nilaiRealisasi,
+          satuan: petugas.satuan,
+          jumlahUnit: petugas.jumlahUnit,
+          hargaSatuan: petugas.hargaSatuan,
+          hargaSatuanFormatted: petugas.hargaSatuanFormatted
         };
 
         // Kelompokkan berdasarkan role
@@ -911,17 +928,14 @@ export default function RekapSPKBAST() {
   );
 }
 
-// Komponen Tooltip untuk Detail Honor
+// Komponen Tooltip untuk Detail Honor dengan format baru
 const HonorTooltip = ({
   details,
   title,
   rowIndex,
   children
 }: {
-  details: {
-    namaKegiatan: string;
-    nilaiRealisasi: string;
-  }[];
+  details: DetailKegiatan[];
   title: string;
   rowIndex: number;
   children: React.ReactNode;
@@ -955,7 +969,7 @@ const HonorTooltip = ({
                   {detail.namaKegiatan}
                 </div>
                 <div className="text-green-600 font-semibold">
-                  {detail.nilaiRealisasi}
+                  {detail.jumlahUnit} {detail.satuan} × {detail.hargaSatuanFormatted} = {detail.nilaiRealisasi}
                 </div>
               </div>
             ))}
