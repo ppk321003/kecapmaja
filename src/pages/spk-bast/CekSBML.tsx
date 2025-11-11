@@ -779,18 +779,18 @@ const HonorTooltip = ({
           <div className={`font-semibold mb-2 text-center ${isExceeded ? 'text-red-700' : 'text-gray-700'}`}>
             {title}
           </div>
-          <div className="space-y-3">
-            {details.map((detail, index) => (
-              <div key={index} className="border-b border-gray-100 pb-2 last:border-b-0">
-                <div className="font-medium text-gray-900 mb-2 break-words leading-tight max-w-full text-left">
-                  {detail.namaKegiatan}
+            <div className="space-y-2">
+              {details.map((detail, index) => (
+                <div key={index} className="text-xs border-b border-gray-100 pb-2 last:border-b-0">
+                  <div className="font-medium text-gray-900 mb-1 break-words leading-tight max-w-full">
+                    {detail.namaKegiatan}
+                  </div>
+                  <div className="text-green-600 font-semibold">
+                    {detail.jumlahUnit} {detail.satuan} × {detail.hargaSatuanFormatted} = {detail.nilaiRealisasi}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 text-left">
-                  {detail.jumlahUnit} {detail.satuan} × {detail.hargaSatuanFormatted} = {detail.nilaiRealisasi}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           <div className={`absolute w-3 h-3 transform rotate-45 ${rowIndex < 4 ? 'bottom-full -translate-y-1/2 border-b border-r' : 'top-full -translate-y-1/2 border-t border-l'} left-1/2 -translate-x-1/2 ${isExceeded ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}></div>
         </div>
       )}
