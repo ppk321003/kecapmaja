@@ -420,84 +420,79 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-  // PERBAIKAN: Fungsi update dengan identifier unik (nama + nik) daripada index
-  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
+    // PERBAIKAN: Fungsi update dengan menggunakan operation yang sudah ada
+    const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
     try {
-      // Cari item berdasarkan identifier unik, bukan index
-      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
-      
-      if (!item) {
+        // Cari item berdasarkan identifier unik, bukan index
+        const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
+        
+        if (!item) {
         throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
-      }
+        }
 
-      console.log("🔄 UPDATE REQUEST DETAILS:");
-      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
-      console.log("   New status:", newStatus);
+        console.log("🔄 UPDATE REQUEST DETAILS:");
+        console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+        console.log("   New status:", newStatus);
 
-      if (!item.allMappings || item.allMappings.length === 0) {
+        if (!item.allMappings || item.allMappings.length === 0) {
         throw new Error("Tidak ditemukan mapping ke spreadsheet");
-      }
+        }
 
-      const currentPeriode = `${filterBulan} ${filterTahun}`;
-      
-      // Filter mappings yang sesuai dengan periode yang dipilih
-      const relevantMappings = item.allMappings.filter(mapping => {
+        const currentPeriode = `${filterBulan} ${filterTahun}`;
+        
+        // Filter mappings yang sesuai dengan periode yang dipilih
+        const relevantMappings = item.allMappings.filter(mapping => {
         const mappingPeriode = cleanPeriode(mapping.periode);
         const currentPeriodeClean = cleanPeriode(currentPeriode);
         return mappingPeriode === currentPeriodeClean;
-      });
+        });
 
-      if (relevantMappings.length === 0) {
+        if (relevantMappings.length === 0) {
         console.warn("⚠️ No mappings found for current period, using all mappings");
         relevantMappings.push(...item.allMappings);
-      }
+        }
 
-      console.log("   Relevant mappings:", relevantMappings);
+        console.log("   Relevant mappings:", relevantMappings);
 
-      // Update local state
-      setData(prev => prev.map(row => 
+        // Update local state
+        setData(prev => prev.map(row => 
         row.namaMitra === namaMitra && row.nik === nik 
-          ? { ...row, statusTTD: newStatus }
-          : row
-      ));
+            ? { ...row, statusTTD: newStatus }
+            : row
+        ));
 
-      // Update setiap mapping yang relevan
-      const updatePromises = relevantMappings.map(async (mapping) => {
-        console.log(`   Updating mapping: row ${mapping.rowIndex}, petugasIndex ${mapping.petugasIndex}`);
-        
-        return await callEdgeFunction("update-status-specific", {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
-          rowIndex: mapping.rowIndex,
-          petugasIndex: mapping.petugasIndex,
-          status: newStatus,
-          nama: item.namaMitra,
-          nik: item.nik
+        // PERBAIKAN: Gunakan update-status-bulk yang sudah ada
+        const updateResult = await callEdgeFunction("update-status-bulk", {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        nama: item.namaMitra,
+        nik: item.nik,
+        status: newStatus,
+        periode: currentPeriode,
+        mappings: relevantMappings
         });
-      });
 
-      const results = await Promise.all(updatePromises);
-      console.log("✅ All update results:", results);
+        console.log("✅ Update result:", updateResult);
 
-      toast({
+        toast({
         title: "Berhasil",
         description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
-      });
+        });
 
     } catch (error: any) {
-      console.error("❌ Error updating status:", error);
-      
-      // Refresh data untuk rollback
-      fetchData();
+        console.error("❌ Error updating status:", error);
+        
+        // Refresh data untuk rollback
+        fetchData();
 
-      toast({
+        toast({
         title: "Error",
         description: "Gagal mengubah status: " + error.message,
         variant: "destructive"
-      });
+        });
     }
-  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+    }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
