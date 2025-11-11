@@ -403,18 +403,8 @@ export default function CekSBML() {
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
 
 // Tambahkan state untuk input yang sedang diedit
-const [editingValues, setEditingValues] = useState<{[key: string]: string}>({});
-
 const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
-  // Simpan nilai mentah (tanpa format) untuk editing
-  setEditingValues(prev => ({
-    ...prev,
-    [index]: value
-  }));
-}, []);
-
-const handlePekerjaanProvinsiBlur = useCallback((index: number, value: string) => {
-  // Saat input kehilangan fokus, konversi ke number
+  // Hanya ambil angka saja dan konversi ke number
   const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
   
   setData(prev => {
@@ -432,13 +422,6 @@ const handlePekerjaanProvinsiBlur = useCallback((index: number, value: string) =
     }
     newData[index] = updatedItem;
     return newData;
-  });
-  
-  // Hapus dari editing values
-  setEditingValues(prev => {
-    const newValues = {...prev};
-    delete newValues[index];
-    return newValues;
   });
 }, [sbmlData, validateRow]);
 
@@ -677,12 +660,8 @@ const handlePekerjaanProvinsiBlur = useCallback((index: number, value: string) =
   <div className="flex justify-end">
     <Input 
       type="text" 
-      value={editingValues[index] !== undefined 
-        ? editingValues[index] 
-        : (row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID'))
-      } 
+      value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')} 
       onChange={e => handlePekerjaanProvinsiChange(index, e.target.value)} 
-      onBlur={e => handlePekerjaanProvinsiBlur(index, e.target.value)}
       className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
       placeholder="0"
     />
