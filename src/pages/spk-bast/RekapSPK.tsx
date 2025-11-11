@@ -492,127 +492,126 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-// PERBAIKAN: Gunakan operasi 'update' yang sudah ada di edge function
-const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
-  if (!isPPK) return;
+  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
+    if (!isPPK) return;
 
-  try {
-    const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
-    
-    if (!item) {
-      throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
-    }
+    try {
+      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
+      
+      if (!item) {
+        throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
+      }
 
-    console.log("🔄 UPDATE REQUEST DETAILS:");
-    console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
-    console.log("   New status:", newStatus);
+      console.log("🔄 UPDATE REQUEST DETAILS:");
+      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+      console.log("   New status:", newStatus);
 
-    if (!item.allMappings || item.allMappings.length === 0) {
-      throw new Error("Tidak ditemukan mapping ke spreadsheet");
-    }
+      if (!item.allMappings || item.allMappings.length === 0) {
+        throw new Error("Tidak ditemukan mapping ke spreadsheet");
+      }
 
-    const currentPeriode = `${filterBulan} ${filterTahun}`;
-    
-    const relevantMappings = item.allMappings.filter(mapping => {
-      const mappingPeriode = cleanPeriode(mapping.periode);
-      const currentPeriodeClean = cleanPeriode(currentPeriode);
-      return mappingPeriode === currentPeriodeClean;
-    });
+      const currentPeriode = `${filterBulan} ${filterTahun}`;
+      
+      const relevantMappings = item.allMappings.filter(mapping => {
+        const mappingPeriode = cleanPeriode(mapping.periode);
+        const currentPeriodeClean = cleanPeriode(currentPeriode);
+        return mappingPeriode === currentPeriodeClean;
+      });
 
-    if (relevantMappings.length === 0) {
-      console.warn("⚠️ No mappings found for current period, using all mappings");
-      relevantMappings.push(...item.allMappings);
-    }
+      if (relevantMappings.length === 0) {
+        console.warn("⚠️ No mappings found for current period, using all mappings");
+        relevantMappings.push(...item.allMappings);
+      }
 
-    console.log("   Relevant mappings:", relevantMappings);
+      console.log("   Relevant mappings:", relevantMappings);
 
-    // Update local state terlebih dahulu untuk UX yang lebih baik
-    setData(prev => prev.map(row => 
-      row.namaMitra === namaMitra && row.nik === nik 
-        ? { ...row, statusTTD: newStatus }
-        : row
-    ));
+      // Update local state terlebih dahulu untuk UX yang lebih baik
+      setData(prev => prev.map(row => 
+        row.namaMitra === namaMitra && row.nik === nik 
+          ? { ...row, statusTTD: newStatus }
+          : row
+      ));
 
-    // PERBAIKAN: Gunakan operasi 'update' yang sudah ada di edge function
-    // Kolom status TTD ada di kolom X (index 23), tapi perlu diingat:
-    // - rowIndex di edge function dimulai dari 1 (bukan 0)
-    // - Operasi 'update' akan mengupdate seluruh row, jadi kita perlu baca dulu data yang ada
-    
-    let successCount = 0;
-    
-    for (const mapping of relevantMappings) {
-      try {
-        // Baca data row yang akan diupdate
-        const readResult = await callEdgeFunction("read", {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
-          range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
-        });
+      // PERBAIKAN: Gunakan operasi 'update' yang sudah ada di edge function
+      // Kolom status TTD ada di kolom X (index 23), tapi perlu diingat:
+      // - rowIndex di edge function dimulai dari 1 (bukan 0)
+      // - Operasi 'update' akan mengupdate seluruh row, jadi kita perlu baca dulu data yang ada
+      
+      let successCount = 0;
+      
+      for (const mapping of relevantMappings) {
+        try {
+          // Baca data row yang akan diupdate
+          const readResult = await callEdgeFunction("read", {
+            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+          });
 
-        const currentRow = readResult?.values?.[0] || [];
-        console.log("📊 Current row data:", currentRow);
-        
-        // Update hanya kolom status TTD (kolom X, index 23)
-        const updatedRow = [...currentRow];
-        
-        // Handle multiple petugas (dipisah oleh |)
-        if (updatedRow[23] && updatedRow[23].includes('|')) {
-          const statusParts = updatedRow[23].split('|').map(s => s.trim());
-          if (mapping.petugasIndex < statusParts.length) {
-            statusParts[mapping.petugasIndex] = newStatus;
-            updatedRow[23] = statusParts.join(' | ');
+          const currentRow = readResult?.values?.[0] || [];
+          console.log("📊 Current row data:", currentRow);
+          
+          // Update hanya kolom status TTD (kolom X, index 23)
+          const updatedRow = [...currentRow];
+          
+          // Handle multiple petugas (dipisah oleh |)
+          if (updatedRow[23] && updatedRow[23].includes('|')) {
+            const statusParts = updatedRow[23].split('|').map(s => s.trim());
+            if (mapping.petugasIndex < statusParts.length) {
+              statusParts[mapping.petugasIndex] = newStatus;
+              updatedRow[23] = statusParts.join(' | ');
+            } else {
+              updatedRow[23] = newStatus;
+            }
           } else {
+            // Single petugas
             updatedRow[23] = newStatus;
           }
-        } else {
-          // Single petugas
-          updatedRow[23] = newStatus;
+          
+          console.log("🆕 Updated row data:", updatedRow);
+          
+          // Update row menggunakan operasi 'update'
+          const updateResult = await callEdgeFunction("update", {
+            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            rowIndex: mapping.rowIndex + 1, // +1 karena spreadsheet row dimulai dari 1
+            values: [updatedRow]
+          });
+          
+          console.log("✅ Update result for mapping:", mapping, updateResult);
+          successCount++;
+          
+        } catch (error) {
+          console.error(`❌ Failed to update mapping ${mapping.rowIndex}:`, error);
+          // Continue dengan mapping berikutnya meskipun satu gagal
         }
-        
-        console.log("🆕 Updated row data:", updatedRow);
-        
-        // Update row menggunakan operasi 'update'
-        const updateResult = await callEdgeFunction("update", {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
-          rowIndex: mapping.rowIndex + 1, // +1 karena spreadsheet row dimulai dari 1
-          values: [updatedRow]
+      }
+
+      if (successCount > 0) {
+        toast({
+          title: "Berhasil",
+          description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
         });
         
-        console.log("✅ Update result for mapping:", mapping, updateResult);
-        successCount++;
-        
-      } catch (error) {
-        console.error(`❌ Failed to update mapping ${mapping.rowIndex}:`, error);
-        // Continue dengan mapping berikutnya meskipun satu gagal
+        // Refresh data untuk memastikan konsistensi
+        setTimeout(() => {
+          fetchData();
+        }, 1000);
+      } else {
+        throw new Error("Gagal mengupdate semua data");
       }
-    }
 
-    if (successCount > 0) {
-      toast({
-        title: "Berhasil",
-        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
-      });
+    } catch (error: any) {
+      console.error("❌ Error updating status:", error);
       
-      // Refresh data untuk memastikan konsistensi
-      setTimeout(() => {
-        fetchData();
-      }, 1000);
-    } else {
-      throw new Error("Gagal mengupdate semua data");
+      // Refresh data untuk rollback
+      fetchData();
+
+      toast({
+        title: "Error",
+        description: "Gagal mengubah status: " + error.message,
+        variant: "destructive"
+      });
     }
-
-  } catch (error: any) {
-    console.error("❌ Error updating status:", error);
-    
-    // Refresh data untuk rollback
-    fetchData();
-
-    toast({
-      title: "Error",
-      description: "Gagal mengubah status: " + error.message,
-      variant: "destructive"
-    });
-  }
-}, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -970,8 +969,10 @@ const handleStatusChange = useCallback(async (namaMitra: string, nik: string, ne
                         )}
                       </button>
                     </TableHead>
-                    <TableHead className="w-48 text-center">Status TTD</TableHead>
+                    {/* PERUBAHAN: Pindahkan SBML sebelum Status TTD */}
                     <TableHead className="w-16 text-center">SBML</TableHead>
+                    {/* PERUBAHAN: Status TTD dipindahkan ke paling akhir */}
+                    <TableHead className="w-48 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1032,6 +1033,22 @@ const handleStatusChange = useCallback(async (namaMitra: string, nik: string, ne
                         {formatRupiah(row.jumlah)}
                       </TableCell>
                       
+                      {/* PERUBAHAN: Pindahkan SBML sebelum Status TTD */}
+                      <TableCell className="text-center">
+                        {row.isExceeded ? (
+                          <StatusTooltip content={row.warnings} rowIndex={index}>
+                            <div className="flex justify-center">
+                              <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                            </div>
+                          </StatusTooltip>
+                        ) : (
+                          <div className="flex justify-center">
+                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* PERUBAHAN: Status TTD dipindahkan ke paling akhir */}
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center gap-3">
                           <Badge 
@@ -1065,20 +1082,6 @@ const handleStatusChange = useCallback(async (namaMitra: string, nik: string, ne
                             </div>
                           )}
                         </div>
-                      </TableCell>
-
-                      <TableCell className="text-center">
-                        {row.isExceeded ? (
-                          <StatusTooltip content={row.warnings} rowIndex={index}>
-                            <div className="flex justify-center">
-                              <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                            </div>
-                          </StatusTooltip>
-                        ) : (
-                          <div className="flex justify-center">
-                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                          </div>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))}
