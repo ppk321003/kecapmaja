@@ -653,8 +653,7 @@ export default function CekSBML() {
                             {formatRupiah(row.pengolahan)}
                           </span>
                         </HonorTooltip>
-                      </TableCell>
-                      
+                      </TableCell>         
                       <TableCell className="px-4 min-w-[150px]">
                         <div className="flex justify-end">
                           <Input 
@@ -670,7 +669,6 @@ export default function CekSBML() {
                           />
                         </div>
                       </TableCell>
-                      
                       <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
                         {formatRupiah(row.jumlah)}
                       </TableCell>
