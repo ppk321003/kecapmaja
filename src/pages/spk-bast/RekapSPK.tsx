@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download, Filter, AlertTriangle } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, Download, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-const SBML_SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk"; // Tambahkan SBML spreadsheet
+const SBML_SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
 
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunList = Array.from({ length: 9 }, (_, i) => (2024 + i).toString());
@@ -73,8 +73,8 @@ interface RekapSPKRow {
   pengolahan: number;
   jumlah: number;
   statusTTD: string;
-  isExceeded: boolean; // Tambahkan field untuk SBML warning
-  warnings: string[]; // Tambahkan field untuk detail warnings
+  isExceeded: boolean;
+  warnings: string[];
   detailPendataan: DetailKegiatan[];
   detailPemeriksaan: DetailKegiatan[];
   detailPengolahan: DetailKegiatan[];
@@ -91,7 +91,6 @@ interface RekapSPKRow {
 type SortField = 'namaMitra' | 'jumlah';
 type SortDirection = 'asc' | 'desc';
 
-// Fungsi untuk delay (menghindari rate limiting)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function RekapSPKBAST() {
@@ -100,7 +99,7 @@ export default function RekapSPKBAST() {
   const [data, setData] = useState<RekapSPKRow[]>([]);
   const [filterBulan, setFilterBulan] = useState("");
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [sbmlData, setSbmlData] = useState<SBMLData | null>(null); // Tambahkan state SBML
+  const [sbmlData, setSbmlData] = useState<SBMLData | null>(null);
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
@@ -134,7 +133,6 @@ export default function RekapSPKBAST() {
     return result;
   }, [parseHonor]);
 
-  // Tambahkan fungsi fetchSBMLData dari Skrip 1
   const fetchSBMLData = useCallback(async (tahun: string) => {
     try {
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
@@ -170,7 +168,6 @@ export default function RekapSPKBAST() {
     }
   }, [parseHonor]);
 
-  // Tambahkan fungsi validateRow dari Skrip 1
   const validateRow = useCallback((item: RekapSPKRow, sbml: SBMLData) => {
     const warnings: string[] = [];
     if (item.pendataan > sbml.sbmlPendata) {
@@ -193,30 +190,6 @@ export default function RekapSPKBAST() {
     return periode.trim().replace(/\s+/g, ' ');
   }, []);
 
-  // Tambahkan SBML badge content dari Skrip 1
-  const sbmlBadgeContent = useMemo(() => {
-    if (!sbmlData) return null;
-    return (
-      <div className="flex flex-col gap-1 ml-auto">
-        <div className="text-xs font-semibold text-center text-gray-700 mb-1">
-          SBML {sbmlData.tahunAnggaran}
-        </div>
-        <div className="flex flex-col gap-1">
-          <Badge variant="outline" className="text-xs py-1 px-2 bg-blue-50 border-blue-200 text-blue-700">
-            <span className="font-medium">Pendataan:</span> {formatRupiah(sbmlData.sbmlPendata)}
-          </Badge>
-          <Badge variant="outline" className="text-xs py-1 px-2 bg-green-50 border-green-200 text-green-700">
-            <span className="font-medium">Pemeriksaan:</span> {formatRupiah(sbmlData.sbmlPemeriksa)}
-          </Badge>
-          <Badge variant="outline" className="text-xs py-1 px-2 bg-purple-50 border-purple-200 text-purple-700">
-            <span className="font-medium">Pengolahan:</span> {formatRupiah(sbmlData.sbmlPengolah)}
-          </Badge>
-        </div>
-      </div>
-    );
-  }, [sbmlData, formatRupiah]);
-
-  // Fungsi yang lebih robust untuk memanggil edge function
   const callEdgeFunction = useCallback(async (operation: string, body: any, retries = 3): Promise<any> => {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
@@ -293,7 +266,6 @@ export default function RekapSPKBAST() {
         if (masterMap.has(masterKey)) {
           kecamatan = masterMap.get(masterKey)!.kecamatan;
         } else {
-          // Cari dengan nama saja jika NIK tidak cocok
           for (const [key, value] of masterMap.entries()) {
             if (key.toLowerCase().startsWith(nama.toLowerCase() + '_')) {
               kecamatan = value.kecamatan;
@@ -360,7 +332,6 @@ export default function RekapSPKBAST() {
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
-      // Process master data
       for (let i = 1; i < masterRows.length; i++) {
         const row = masterRows[i];
         if (row && row[2]) {
@@ -381,7 +352,6 @@ export default function RekapSPKBAST() {
 
       let matchCount = 0;
       
-      // Process tugas data
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 22) continue;
@@ -417,7 +387,6 @@ export default function RekapSPKBAST() {
       console.log("✅ Rows yang match filter:", matchCount);
       console.log("👤 Total petugas tugas:", petugasTugas.length);
 
-      // Group data dengan menyimpan semua mappings
       const groupedData = new Map<string, RekapSPKRow>();
       
       for (const petugas of petugasTugas) {
@@ -434,8 +403,8 @@ export default function RekapSPKBAST() {
             pengolahan: 0,
             jumlah: 0,
             statusTTD: "Belum ditandatangani",
-            isExceeded: false, // Default value
-            warnings: [], // Default value
+            isExceeded: false,
+            warnings: [],
             detailPendataan: [],
             detailPemeriksaan: [],
             detailPengolahan: [],
@@ -454,7 +423,6 @@ export default function RekapSPKBAST() {
           hargaSatuanFormatted: petugas.hargaSatuanFormatted
         };
 
-        // Kelompokkan berdasarkan role
         if (roleLower.includes('pendataan') || roleLower.includes('petugas pendataan')) {
           existing.pendataan += petugas.honor;
           existing.detailPendataan.push(detailItem);
@@ -469,7 +437,6 @@ export default function RekapSPKBAST() {
           existing.detailPendataan.push(detailItem);
         }
 
-        // Simpan semua mappings dengan informasi lengkap
         existing.allMappings.push({
           rowIndex: petugas.rowIndex,
           petugasIndex: petugas.petugasIndex,
@@ -479,17 +446,14 @@ export default function RekapSPKBAST() {
           role: petugas.role
         });
 
-        // Tentukan status TTD overall: jika ada satu saja "Sudah ditandatangani", maka overall "Sudah ditandatangani"
         if (petugas.statusTTD === "Sudah ditandatangani") {
           existing.statusTTD = "Sudah ditandatangani";
         }
       }
 
-      // MODIFIKASI: Tambahkan validasi SBML seperti di Skrip 1
       const finalData = Array.from(groupedData.values()).map(item => {
         item.jumlah = item.pendataan + item.pemeriksaan + item.pengolahan;
         
-        // Validasi terhadap SBML
         if (sbmlData) {
           const warnings = validateRow(item, sbmlData);
           item.warnings = warnings;
@@ -501,17 +465,6 @@ export default function RekapSPKBAST() {
 
       console.log("🎉 Final data length:", finalData.length);
       
-      // Debug: Log mapping untuk setiap petugas
-      finalData.forEach((item, index) => {
-        console.log(`📋 Petugas ${index + 1}: ${item.namaMitra} (${item.nik})`);
-        console.log(`   Status: ${item.statusTTD}`);
-        console.log(`   SBML Warning: ${item.isExceeded}`);
-        console.log(`   Total Mappings: ${item.allMappings.length}`);
-        item.allMappings.forEach((mapping, idx) => {
-          console.log(`   Mapping ${idx + 1}: row ${mapping.rowIndex}, index ${mapping.petugasIndex}, ${mapping.namaKegiatan}`);
-        });
-      });
-
       setData(finalData);
 
       if (finalData.length > 0) {
@@ -539,12 +492,10 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-  // PERBAIKAN: Fungsi update dengan menggunakan operation yang sudah ada
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
 
     try {
-      // Cari item berdasarkan identifier unik, bukan index
       const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
       
       if (!item) {
@@ -561,7 +512,6 @@ export default function RekapSPKBAST() {
 
       const currentPeriode = `${filterBulan} ${filterTahun}`;
       
-      // Filter mappings yang sesuai dengan periode yang dipilih
       const relevantMappings = item.allMappings.filter(mapping => {
         const mappingPeriode = cleanPeriode(mapping.periode);
         const currentPeriodeClean = cleanPeriode(currentPeriode);
@@ -575,21 +525,20 @@ export default function RekapSPKBAST() {
 
       console.log("   Relevant mappings:", relevantMappings);
 
-      // Update local state
       setData(prev => prev.map(row => 
         row.namaMitra === namaMitra && row.nik === nik 
           ? { ...row, statusTTD: newStatus }
           : row
       ));
 
-      // PERBAIKAN: Gunakan update-status-bulk yang sudah ada
+      // PERBAIKAN: Gunakan struktur data yang lebih sederhana
       const updateResult = await callEdgeFunction("update-status-bulk", {
         spreadsheetId: TUGAS_SPREADSHEET_ID,
-        nama: item.namaMitra,
-        nik: item.nik,
-        status: newStatus,
-        periode: currentPeriode,
-        mappings: relevantMappings
+        updates: relevantMappings.map(mapping => ({
+          rowIndex: mapping.rowIndex,
+          petugasIndex: mapping.petugasIndex,
+          status: newStatus
+        }))
       });
 
       console.log("✅ Update result:", updateResult);
@@ -602,7 +551,6 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
       
-      // Refresh data untuk rollback
       fetchData();
 
       toast({
@@ -627,7 +575,6 @@ export default function RekapSPKBAST() {
     
     let filteredData = data;
     
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filteredData = filteredData.filter(row => 
@@ -637,12 +584,10 @@ export default function RekapSPKBAST() {
       );
     }
     
-    // Apply status filter
     if (statusFilter !== "semua") {
       filteredData = filteredData.filter(row => row.statusTTD === statusFilter);
     }
     
-    // Apply sorting
     const sorted = [...filteredData].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -731,7 +676,6 @@ export default function RekapSPKBAST() {
     }
   }, [filteredAndSortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
 
-  // MODIFIKASI: Tambahkan useEffect untuk fetch SBML data
   useEffect(() => {
     if (filterTahun) {
       fetchSBMLData(filterTahun);
@@ -757,6 +701,31 @@ export default function RekapSPKBAST() {
   const handleClearSearch = () => {
     setSearchQuery("");
   };
+
+  const sbmlBadgeContent = useMemo(() => {
+    if (!sbmlData) return null;
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="text-xs font-semibold text-center text-gray-700">
+          SBML {sbmlData.tahunAnggaran}
+        </div>
+        <div className="grid grid-cols-1 gap-1 text-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-blue-600 font-medium">Pendataan:</span>
+            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPendata)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-green-600 font-medium">Pemeriksaan:</span>
+            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPemeriksa)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-purple-600 font-medium">Pengolahan:</span>
+            <span className="font-semibold">{formatRupiah(sbmlData.sbmlPengolah)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }, [sbmlData, formatRupiah]);
 
   return (
     <div className="space-y-6">
@@ -855,10 +824,11 @@ export default function RekapSPKBAST() {
             </Button>
           </div>
 
-          {/* MODIFIKASI: Tambahkan SBML badge di sini */}
           {sbmlBadgeContent && (
             <div className="mt-4 flex justify-end">
-              {sbmlBadgeContent}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 w-48">
+                {sbmlBadgeContent}
+              </div>
             </div>
           )}
         </CardContent>
@@ -941,7 +911,6 @@ export default function RekapSPKBAST() {
                       </button>
                     </TableHead>
                     <TableHead className="w-48 text-center">Status TTD</TableHead>
-                    {/* MODIFIKASI: Tambahkan kolom status SBML */}
                     <TableHead className="w-16 text-center">SBML</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -949,7 +918,7 @@ export default function RekapSPKBAST() {
                   {filteredAndSortedData.map((row, index) => (
                     <TableRow 
                       key={`${row.namaMitra}_${row.nik}_${index}`} 
-                      className={row.isExceeded ? "bg-red-50" : ""} // MODIFIKASI: Tambahkan background merah untuk warning
+                      className={row.isExceeded ? "bg-red-50" : ""}
                     >
                       <TableCell className="font-medium">{row.no}</TableCell>
                       <TableCell className="font-medium min-w-[150px]">
@@ -960,7 +929,6 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       <TableCell className="min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
-                      {/* MODIFIKASI: Tambahkan warna merah dan tooltip untuk nilai yang melebihi SBML */}
                       <TableCell className="text-right">
                         <HonorTooltip 
                           details={row.detailPendataan} 
@@ -1039,7 +1007,6 @@ export default function RekapSPKBAST() {
                         </div>
                       </TableCell>
 
-                      {/* MODIFIKASI: Tambahkan kolom status SBML */}
                       <TableCell className="text-center">
                         {row.isExceeded ? (
                           <StatusTooltip content={row.warnings} rowIndex={index}>
@@ -1087,7 +1054,6 @@ export default function RekapSPKBAST() {
   );
 }
 
-// MODIFIKASI: Tambahkan komponen StatusTooltip dari Skrip 1
 const StatusTooltip = ({
   content,
   children,
@@ -1118,7 +1084,6 @@ const StatusTooltip = ({
   );
 };
 
-// MODIFIKASI: Update komponen HonorTooltip untuk menerima prop isExceeded
 const HonorTooltip = ({
   details,
   title,
