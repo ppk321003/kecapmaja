@@ -676,7 +676,7 @@ const handlePekerjaanProvinsiBlur = useCallback((index: number, value: string) =
 <TableCell className="px-4 min-w-[150px]">
   <div className="flex justify-end">
     <Input 
-      type="text" 
+      type="number" 
       value={editingValues[index] !== undefined 
         ? editingValues[index] 
         : (row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID'))
