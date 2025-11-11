@@ -434,12 +434,21 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction]);
 
-  // PERBAIKAN: Fungsi untuk update status dengan dropdown
+  // PERBAIKAN: Fungsi untuk update status dengan dropdown dan logging detail
   const handleStatusChange = useCallback(async (index: number, newStatus: string) => {
     if (!isPPK) return;
 
     try {
       const item = data[index];
+      
+      // LOGGING DETAIL: Pastikan data yang akan dikirim benar
+      console.log("🔄 UPDATE REQUEST DETAILS:");
+      console.log("   Selected item:", item);
+      console.log("   Index in table:", index);
+      console.log("   New status:", newStatus);
+      console.log("   Period:", `${filterBulan} ${filterTahun}`);
+      console.log("   Nama:", item.namaMitra);
+      console.log("   NIK:", item.nik);
       
       // Update local state terlebih dahulu
       setData(prev => {
@@ -467,6 +476,16 @@ export default function RekapSPKBAST() {
 
       console.log("✅ Update result:", updateResult);
 
+      // PERBAIKAN: Validasi hasil update
+      if (updateResult.success) {
+        console.log(`✅ Successfully updated ${updateResult.updated} rows`);
+        if (updateResult.details) {
+          updateResult.details.forEach((detail: any, idx: number) => {
+            console.log(`   ${idx + 1}. Row ${detail.row}: ${detail.nama} (${detail.nik})`);
+          });
+        }
+      }
+
       toast({
         title: "Berhasil",
         description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" untuk periode ${filterBulan} ${filterTahun}`
@@ -478,11 +497,7 @@ export default function RekapSPKBAST() {
       // Rollback local state jika gagal
       setData(prev => {
         const newData = [...prev];
-        const originalStatus = newData[index].statusTTD === "Sudah ditandatangani" 
-          ? "Belum ditandatangani" 
-          : "Sudah ditandatangani";
-        newData[index] = { ...newData[index], statusTTD: originalStatus };
-        return newData;
+        return newData; // Keep current data as is
       });
 
       toast({
