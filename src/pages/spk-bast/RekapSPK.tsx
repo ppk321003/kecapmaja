@@ -2,12 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, Download, Filter } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
@@ -25,9 +27,8 @@ interface PetugasTugas {
   namaKegiatan: string;
   nilaiRealisasi: string;
   statusTTD?: string;
-  // PERBAIKAN: Tambahkan identifier unik untuk setiap entri
-  rowIndex?: number;
-  petugasIndex?: number;
+  rowIndex: number;
+  petugasIndex: number;
 }
 
 interface MasterPetugas {
@@ -62,10 +63,12 @@ interface RekapSPKRow {
     namaKegiatan: string;
     nilaiRealisasi: string;
   }[];
-  // PERBAIKAN: Tambahkan mapping ke spreadsheet
-  spreadsheetMapping?: {
+  // PERBAIKAN: Simpan semua mappings untuk petugas ini
+  allMappings: {
     rowIndex: number;
     petugasIndex: number;
+    namaKegiatan: string;
+    statusTTD: string;
   }[];
 }
 
@@ -83,6 +86,7 @@ export default function RekapSPKBAST() {
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [statusFilter, setStatusFilter] = useState<string>("semua");
   const { toast } = useToast();
 
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
@@ -156,8 +160,8 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
-  // PERBAIKAN: Simpan mapping ke spreadsheet untuk setiap petugas
-  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number) => {
+  // PERBAIKAN: Simpan mapping yang lebih detail
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
@@ -167,16 +171,7 @@ export default function RekapSPKBAST() {
       statusList = statusTTD.split(' | ').map((n: string) => n.trim());
     }
     
-    const result: {
-      nama: string;
-      nik: string;
-      kecamatan: string;
-      honor: number;
-      nilaiRealisasi: string;
-      statusTTD: string;
-      rowIndex: number;
-      petugasIndex: number;
-    }[] = [];
+    const result: PetugasTugas[] = [];
 
     for (let j = 0; j < namaList.length; j++) {
       if (namaList[j]) {
@@ -184,7 +179,7 @@ export default function RekapSPKBAST() {
         const nik = nikList[j] || "";
         const realisasiItem = realisasiList[j] || "0";
         
-        let statusItem = "Belum diproses";
+        let statusItem = "Belum ditandatangani";
         if (statusList[j] && statusList[j].trim() !== "") {
           statusItem = statusList[j].trim();
         } else if (statusTTD && statusTTD.trim() !== "") {
@@ -217,7 +212,10 @@ export default function RekapSPKBAST() {
           nilaiRealisasi: nilaiRealisasi,
           statusTTD: statusItem,
           rowIndex: rowIndex,
-          petugasIndex: j
+          petugasIndex: j,
+          periode: "",
+          role: "",
+          namaKegiatan: namaKegiatan
         });
       }
     }
@@ -281,7 +279,7 @@ export default function RekapSPKBAST() {
 
       let matchCount = 0;
       
-      // Process tugas data - TAMPILKAN DATA MESKIPUN STATUS KOSONG
+      // Process tugas data
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 22) continue;
@@ -294,30 +292,20 @@ export default function RekapSPKBAST() {
         const realisasi = row[15]?.toString() || "";
         const nikPetugas = row[22]?.toString() || "";
         
-        // PERBAIKAN: Handle kolom status yang mungkin undefined/kosong
-        let statusTTD = "Belum diproses";
+        let statusTTD = "Belum ditandatangani";
         if (row[23] !== undefined && row[23] !== null && row[23].toString().trim() !== "") {
           statusTTD = row[23].toString().trim();
         }
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
-          // PERBAIKAN: Simpan rowIndex untuk mapping
-          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, i);
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, i, namaKegiatan);
           
           for (const petugas of processedPetugas) {
             petugasTugas.push({
-              nama: petugas.nama,
-              nik: petugas.nik,
-              kecamatan: petugas.kecamatan,
+              ...petugas,
               role: role.trim(),
-              honor: petugas.honor,
-              periode: periode,
-              namaKegiatan: namaKegiatan,
-              nilaiRealisasi: petugas.nilaiRealisasi,
-              statusTTD: petugas.statusTTD,
-              rowIndex: petugas.rowIndex,
-              petugasIndex: petugas.petugasIndex
+              periode: periode
             });
           }
         }
@@ -326,39 +314,7 @@ export default function RekapSPKBAST() {
       console.log("✅ Rows yang match filter:", matchCount);
       console.log("👤 Total petugas tugas:", petugasTugas.length);
 
-      // DEBUG: Log detail pengelompokan
-      console.log("🔍 Debug pengelompokan data:");
-      const debugMap = new Map();
-      for (const petugas of petugasTugas) {
-        const key = `${petugas.nama}_${petugas.nik}`;
-        if (!debugMap.has(key)) {
-          debugMap.set(key, {
-            fungsi: new Set(),
-            kegiatan: new Set(),
-            totalHonor: 0,
-            mappings: [] // Simpan semua mapping
-          });
-        }
-        const existing = debugMap.get(key);
-        existing.fungsi.add(petugas.role);
-        existing.kegiatan.add(petugas.namaKegiatan);
-        existing.totalHonor += petugas.honor;
-        existing.mappings.push({
-          rowIndex: petugas.rowIndex,
-          petugasIndex: petugas.petugasIndex,
-          kegiatan: petugas.namaKegiatan
-        });
-      }
-
-      // Log detail setiap petugas
-      for (const [key, value] of debugMap.entries()) {
-        console.log(`Petugas: ${key}, fungsi count: ${value.fungsi.size}, mappings: ${value.mappings.length}`);
-        value.mappings.forEach((mapping: any, idx: number) => {
-          console.log(`   Mapping ${idx + 1}: Row ${mapping.rowIndex}, Index ${mapping.petugasIndex}, Kegiatan: ${mapping.kegiatan}`);
-        });
-      }
-
-      // PERBAIKAN: Group data dengan menyimpan mapping ke spreadsheet
+      // PERBAIKAN: Group data dengan menyimpan semua mappings
       const groupedData = new Map<string, RekapSPKRow>();
       
       for (const petugas of petugasTugas) {
@@ -374,11 +330,11 @@ export default function RekapSPKBAST() {
             pemeriksaan: 0,
             pengolahan: 0,
             jumlah: 0,
-            statusTTD: petugas.statusTTD,
+            statusTTD: "Belum ditandatangani", // Default
             detailPendataan: [],
             detailPemeriksaan: [],
             detailPengolahan: [],
-            spreadsheetMapping: [] // Simpan mapping ke spreadsheet
+            allMappings: []
           });
         }
 
@@ -389,7 +345,7 @@ export default function RekapSPKBAST() {
           nilaiRealisasi: petugas.nilaiRealisasi
         };
 
-        // PERBAIKAN: Logic pengelompokan yang lebih akurat
+        // Kelompokkan berdasarkan role
         if (roleLower.includes('pendataan') || roleLower.includes('petugas pendataan')) {
           existing.pendataan += petugas.honor;
           existing.detailPendataan.push(detailItem);
@@ -400,22 +356,21 @@ export default function RekapSPKBAST() {
           existing.pengolahan += petugas.honor;
           existing.detailPengolahan.push(detailItem);
         } else {
-          // Default ke pendataan jika tidak ada kecocokan
           existing.pendataan += petugas.honor;
           existing.detailPendataan.push(detailItem);
         }
 
-        // Simpan mapping ke spreadsheet
-        if (petugas.rowIndex !== undefined && petugas.petugasIndex !== undefined) {
-          existing.spreadsheetMapping!.push({
-            rowIndex: petugas.rowIndex,
-            petugasIndex: petugas.petugasIndex
-          });
-        }
+        // Simpan semua mappings
+        existing.allMappings.push({
+          rowIndex: petugas.rowIndex,
+          petugasIndex: petugas.petugasIndex,
+          namaKegiatan: petugas.namaKegiatan,
+          statusTTD: petugas.statusTTD
+        });
 
-        // Update status TTD - gunakan status terbaru jika ada
-        if (petugas.statusTTD && petugas.statusTTD !== "Belum diproses") {
-          existing.statusTTD = petugas.statusTTD;
+        // Tentukan status TTD overall: jika ada satu saja "Sudah ditandatangani", maka overall "Sudah ditandatangani"
+        if (petugas.statusTTD === "Sudah ditandatangani") {
+          existing.statusTTD = "Sudah ditandatangani";
         }
       }
 
@@ -425,17 +380,12 @@ export default function RekapSPKBAST() {
       });
 
       console.log("🎉 Final data length:", finalData.length);
-      console.log("📈 Summary:");
-      console.log("  - Total petugas:", finalData.length);
-      console.log("  - Total pendataan:", finalData.reduce((sum, row) => sum + row.pendataan, 0));
-      console.log("  - Total pemeriksaan:", finalData.reduce((sum, row) => sum + row.pemeriksaan, 0));
-      console.log("  - Total pengolahan:", finalData.reduce((sum, row) => sum + row.pengolahan, 0));
-      console.log("  - Total keseluruhan:", finalData.reduce((sum, row) => sum + row.jumlah, 0));
-
-      // Log mapping untuk debug
+      
+      // Debug: Log mapping untuk setiap petugas
       finalData.forEach((item, index) => {
-        console.log(`📋 Petugas ${index + 1}: ${item.namaMitra}`);
-        console.log(`   Mappings:`, item.spreadsheetMapping);
+        console.log(`📋 Petugas ${index + 1}: ${item.namaMitra} (${item.nik})`);
+        console.log(`   Status: ${item.statusTTD}`);
+        console.log(`   Mappings:`, item.allMappings);
       });
 
       setData(finalData);
@@ -472,25 +422,31 @@ export default function RekapSPKBAST() {
     try {
       const item = data[index];
       
-      // PERBAIKAN: Gunakan mapping ke spreadsheet untuk update yang tepat
-      if (!item.spreadsheetMapping || item.spreadsheetMapping.length === 0) {
-        throw new Error("Tidak ditemukan mapping ke spreadsheet untuk petugas ini");
+      console.log("🔄 UPDATE REQUEST DETAILS:");
+      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+      console.log("   New status:", newStatus);
+      console.log("   All mappings:", item.allMappings);
+
+      if (!item.allMappings || item.allMappings.length === 0) {
+        throw new Error("Tidak ditemukan mapping ke spreadsheet");
       }
 
-      console.log("🔄 UPDATE REQUEST DETAILS:");
-      console.log("   Selected item:", item.namaMitra, "NIK:", item.nik);
-      console.log("   New status:", newStatus);
-      console.log("   Period:", `${filterBulan} ${filterTahun}`);
-      console.log("   Spreadsheet mappings:", item.spreadsheetMapping);
-
-      // Update local state terlebih dahulu
+      // Update local state
       setData(prev => {
         const newData = [...prev];
-        newData[index] = { ...newData[index], statusTTD: newStatus };
+        newData[index] = { 
+          ...newData[index], 
+          statusTTD: newStatus,
+          // Update semua mappings dengan status baru
+          allMappings: newData[index].allMappings.map(mapping => ({
+            ...mapping,
+            statusTTD: newStatus
+          }))
+        };
         return newData;
       });
 
-      // PERBAIKAN: Kirim mapping yang tepat ke edge function
+      // Kirim update ke edge function dengan semua mappings
       const updateResult = await callEdgeFunction("update-status-bulk", {
         spreadsheetId: TUGAS_SPREADSHEET_ID,
         range: 'Sheet1',
@@ -498,8 +454,8 @@ export default function RekapSPKBAST() {
         nik: item.nik,
         status: newStatus,
         periode: `${filterBulan} ${filterTahun}`,
-        // PERBAIKAN: Kirim mapping spesifik
-        mappings: item.spreadsheetMapping
+        // PERBAIKAN: Kirim semua mappings yang perlu diupdate
+        mappings: item.allMappings
       });
 
       console.log("✅ Update result:", updateResult);
@@ -512,7 +468,7 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("❌ Error updating status:", error);
       
-      // Rollback local state jika gagal
+      // Rollback local state
       setData(prev => prev);
 
       toast({
@@ -532,10 +488,19 @@ export default function RekapSPKBAST() {
     }
   }, [sortField, sortDirection]);
 
-  const sortedData = useMemo(() => {
+  // PERBAIKAN: Filter data berdasarkan status
+  const filteredAndSortedData = useMemo(() => {
     if (!data.length) return [];
     
-    return [...data].sort((a, b) => {
+    let filteredData = data;
+    
+    // Apply status filter
+    if (statusFilter !== "semua") {
+      filteredData = data.filter(row => row.statusTTD === statusFilter);
+    }
+    
+    // Apply sorting
+    const sorted = [...filteredData].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
       
@@ -552,11 +517,13 @@ export default function RekapSPKBAST() {
       } else {
         return aValue < bValue ? 1 : -1;
       }
-    }).map((item, index) => ({
+    });
+    
+    return sorted.map((item, index) => ({
       ...item,
       no: index + 1
     }));
-  }, [data, sortField, sortDirection]);
+  }, [data, sortField, sortDirection, statusFilter]);
 
   const handleExportExcel = useCallback(async () => {
     if (!isPPK) {
@@ -569,7 +536,7 @@ export default function RekapSPKBAST() {
     }
 
     try {
-      const exportData = sortedData.map(row => ({
+      const exportData = filteredAndSortedData.map(row => ({
         'No': row.no,
         'Nama Mitra Statistik': row.namaMitra,
         'Kecamatan': row.kecamatan,
@@ -617,7 +584,7 @@ export default function RekapSPKBAST() {
         variant: "destructive"
       });
     }
-  }, [sortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
+  }, [filteredAndSortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
 
   useEffect(() => {
     if (filterBulan && filterTahun) {
@@ -626,14 +593,14 @@ export default function RekapSPKBAST() {
   }, [filterBulan, filterTahun, fetchData]);
 
   const totals = useMemo(() => {
-    if (data.length === 0) return null;
+    if (filteredAndSortedData.length === 0) return null;
     return {
-      pendataan: data.reduce((sum, row) => sum + row.pendataan, 0),
-      pemeriksaan: data.reduce((sum, row) => sum + row.pemeriksaan, 0),
-      pengolahan: data.reduce((sum, row) => sum + row.pengolahan, 0),
-      jumlah: data.reduce((sum, row) => sum + row.jumlah, 0)
+      pendataan: filteredAndSortedData.reduce((sum, row) => sum + row.pendataan, 0),
+      pemeriksaan: filteredAndSortedData.reduce((sum, row) => sum + row.pemeriksaan, 0),
+      pengolahan: filteredAndSortedData.reduce((sum, row) => sum + row.pengolahan, 0),
+      jumlah: filteredAndSortedData.reduce((sum, row) => sum + row.jumlah, 0)
     };
-  }, [data]);
+  }, [filteredAndSortedData]);
 
   return (
     <div className="space-y-6">
@@ -649,7 +616,7 @@ export default function RekapSPKBAST() {
           <CardTitle className="flex items-center justify-between text-base">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4" />
-              Filter Periode
+              Filter Data
             </div>
             {isPPK && (
               <Button onClick={handleExportExcel} size="sm" className="h-8 gap-2">
@@ -693,6 +660,20 @@ export default function RekapSPKBAST() {
               </Select>
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Status TTD</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40 h-8 text-sm">
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua" className="text-sm">Semua Status</SelectItem>
+                  <SelectItem value="Sudah ditandatangani" className="text-sm">Sudah Ditandatangani</SelectItem>
+                  <SelectItem value="Belum ditandatangani" className="text-sm">Belum Ditandatangani</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button onClick={fetchData} disabled={loading} className="h-8 px-4 text-sm mt-5">
               {loading ? "Memuat..." : "Cari Data"}
             </Button>
@@ -702,12 +683,19 @@ export default function RekapSPKBAST() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-6 w-6 text-primary" />
-            <CardTitle>Rekap SPK & BAST</CardTitle>
-            {data.length > 0 && (
-              <Badge variant="secondary" className="text-sm">
-                {data.length} Petugas Ditemukan
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-primary" />
+              <CardTitle>Rekap SPK & BAST</CardTitle>
+              {filteredAndSortedData.length > 0 && (
+                <Badge variant="secondary" className="text-sm">
+                  {filteredAndSortedData.length} Petugas
+                </Badge>
+              )}
+            </div>
+            {statusFilter !== "semua" && (
+              <Badge variant="outline" className="text-sm">
+                Filter: {statusFilter === "Sudah ditandatangani" ? "Sudah TTD" : "Belum TTD"}
               </Badge>
             )}
           </div>
@@ -717,7 +705,7 @@ export default function RekapSPKBAST() {
             <div className="text-center py-8">
               <p className="text-muted-foreground">Memuat data...</p>
             </div>
-          ) : data.length === 0 ? (
+          ) : filteredAndSortedData.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 {filterBulan && filterTahun ? "Tidak ada data untuk periode yang dipilih" : "Pilih bulan dan tahun untuk menampilkan data"}
@@ -751,14 +739,19 @@ export default function RekapSPKBAST() {
                         )}
                       </button>
                     </TableHead>
-                    <TableHead className="w-40 text-center">Status TTD</TableHead>
+                    <TableHead className="w-48 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.map((row, index) => (
+                  {filteredAndSortedData.map((row, index) => (
                     <TableRow key={`${row.namaMitra}_${row.nik}_${index}`}>
                       <TableCell className="font-medium">{row.no}</TableCell>
-                      <TableCell className="font-medium min-w-[150px]">{row.namaMitra}</TableCell>
+                      <TableCell className="font-medium min-w-[150px]">
+                        <div>
+                          <div>{row.namaMitra}</div>
+                          <div className="text-xs text-muted-foreground">{row.nik}</div>
+                        </div>
+                      </TableCell>
                       <TableCell className="min-w-[120px]">{row.kecamatan || "-"}</TableCell>
                       
                       <TableCell className="text-right">
@@ -784,44 +777,36 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       
                       <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-3">
                           <Badge 
                             variant={row.statusTTD === "Sudah ditandatangani" ? "default" : "destructive"}
-                            className={`text-xs ${
+                            className={`text-xs px-3 py-1 ${
                               row.statusTTD === "Sudah ditandatangani" 
-                                ? "bg-green-100 text-green-800 hover:bg-green-100" 
-                                : row.statusTTD === "Belum ditandatangani"
-                                ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" 
+                                : "bg-red-100 text-red-800 hover:bg-red-100 border-red-200"
                             }`}
                           >
                             {row.statusTTD === "Sudah ditandatangani" ? (
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                            ) : row.statusTTD === "Belum ditandatangani" ? (
-                              <XCircle className="h-3 w-3 mr-1" />
+                              <CheckCircle className="h-3 w-3 mr-1 inline" />
                             ) : (
-                              <Search className="h-3 w-3 mr-1" />
+                              <XCircle className="h-3 w-3 mr-1 inline" />
                             )}
                             {row.statusTTD}
                           </Badge>
                           
                           {isPPK && (
-                            <Select 
-                              value={row.statusTTD} 
-                              onValueChange={(value) => handleStatusChange(index, value)}
-                            >
-                              <SelectTrigger className="h-7 text-xs w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Belum ditandatangani" className="text-xs">
-                                  Belum ditandatangani
-                                </SelectItem>
-                                <SelectItem value="Sudah ditandatangani" className="text-xs">
-                                  Sudah ditandatangani
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={row.statusTTD === "Sudah ditandatangani"}
+                                onCheckedChange={(checked) => 
+                                  handleStatusChange(index, checked ? "Sudah ditandatangani" : "Belum ditandatangani")
+                                }
+                                className="data-[state=checked]:bg-green-600"
+                              />
+                              <Label className="text-xs">
+                                {row.statusTTD === "Sudah ditandatangani" ? "Batalkan" : "Tandatangani"}
+                              </Label>
+                            </div>
                           )}
                         </div>
                       </TableCell>
