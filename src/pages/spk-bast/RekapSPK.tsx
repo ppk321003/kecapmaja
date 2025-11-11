@@ -109,11 +109,11 @@ export default function RekapSPKBAST() {
     return periode.trim().replace(/\s+/g, ' ');
   }, []);
 
-  // Fungsi yang lebih robust untuk memanggil edge function
+  // Fungsi yang lebih robust untuk memanggil edge function dengan berbagai format
   const callEdgeFunction = useCallback(async (operation: string, body: any, retries = 3): Promise<any> => {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`);
+        console.log(`📡 Attempt ${attempt}: Calling edge function for ${operation}`, body);
         
         const result = await supabase.functions.invoke("google-sheets", {
           body: {
@@ -125,9 +125,8 @@ export default function RekapSPKBAST() {
         if (result.error) {
           console.error(`❌ Edge function error (attempt ${attempt}):`, result.error);
           
-          // Jika masih ada percobaan lagi, tunggu sebentar sebelum retry
           if (attempt < retries) {
-            await delay(1000 * attempt); // Exponential backoff
+            await delay(1000 * attempt);
             continue;
           }
           
@@ -149,7 +148,55 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
-  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>) => {
+  // Fungsi untuk test berbagai format edge function
+  const testEdgeFunctionFormats = useCallback(async (nama: string, nik: string, status: string, periode: string) => {
+    const testFormats = [
+      // Format 1: Basic dengan periode lengkap
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        nama,
+        nik,
+        status,
+        periode
+      },
+      // Format 2: Dengan bulan dan tahun terpisah
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        nama,
+        nik,
+        status,
+        bulan: periode.split(' ')[0],
+        tahun: periode.split(' ')[1]
+      },
+      // Format 3: Dengan array updates
+      {
+        spreadsheetId: TUGAS_SPREADSHEET_ID,
+        range: 'Sheet1',
+        updates: [{
+          nama,
+          nik,
+          status,
+          periode
+        }]
+      }
+    ];
+
+    for (let i = 0; i < testFormats.length; i++) {
+      try {
+        console.log(`🧪 Testing format ${i + 1}:`, testFormats[i]);
+        const result = await callEdgeFunction("update-status-bulk", testFormats[i], 1);
+        console.log(`✅ Format ${i + 1} success:`, result);
+        return result;
+      } catch (error) {
+        console.log(`❌ Format ${i + 1} failed:`, error);
+        if (i === testFormats.length - 1) throw error;
+      }
+    }
+  }, [callEdgeFunction]);
+
+  const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, statusTTD: string, masterMap: Map<string, MasterPetugas>, periode: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const realisasiList = realisasi.split(' | ').map((n: string) => n.trim());
@@ -228,7 +275,6 @@ export default function RekapSPKBAST() {
 
       console.log("🔍 Fetching data untuk periode:", cleanedPeriodeFilter);
 
-      // Gunakan fungsi yang lebih robust untuk memanggil edge function
       const [tugasResult, masterResult] = await Promise.all([
         callEdgeFunction("read", {
           spreadsheetId: TUGAS_SPREADSHEET_ID,
@@ -290,7 +336,7 @@ export default function RekapSPKBAST() {
 
         if (periode === cleanedPeriodeFilter && namaPetugas && hargaSatuan && realisasi) {
           matchCount++;
-          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas);
+          const processedPetugas = processPetugasData(namaPetugas, nikPetugas, hargaSatuan, realisasi, statusTTD, masterPetugas, periode);
           
           for (const petugas of processedPetugas) {
             petugasTugas.push({
@@ -408,25 +454,30 @@ export default function RekapSPKBAST() {
         return newData;
       });
 
-      // Update spreadsheet dengan retry mechanism
-      await callEdgeFunction("update-status-bulk", {
-        spreadsheetId: TUGAS_SPREADSHEET_ID,
-        range: 'Sheet1',
-        nik: item.nik,
+      console.log("🔄 Updating status for:", {
         nama: item.namaMitra,
+        nik: item.nik,
         status: newStatus,
         periode: `${filterBulan} ${filterTahun}`
       });
 
+      // Coba berbagai format untuk menemukan yang sesuai dengan edge function
+      await testEdgeFunctionFormats(
+        item.namaMitra, 
+        item.nik, 
+        newStatus, 
+        `${filterBulan} ${filterTahun}`
+      );
+
       toast({
         title: "Berhasil",
-        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}"`
+        description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" untuk periode ${filterBulan} ${filterTahun}`
       });
 
     } catch (error: any) {
-      console.error("Error updating status:", error);
+      console.error("❌ Error updating status:", error);
       
-      // Rollback local state jika update gagal
+      // Rollback local state
       setData(prev => {
         const newData = [...prev];
         newData[index] = { 
@@ -444,7 +495,7 @@ export default function RekapSPKBAST() {
         variant: "destructive"
       });
     }
-  }, [data, isPPK, filterBulan, filterTahun, toast, callEdgeFunction]);
+  }, [data, isPPK, filterBulan, filterTahun, toast, testEdgeFunctionFormats]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
