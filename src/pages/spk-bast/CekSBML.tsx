@@ -402,27 +402,45 @@ export default function CekSBML() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
 
-  const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
-    // Hanya ambil angka saja
-    const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
-    
-    setData(prev => {
-      const newData = [...prev];
-      const item = newData[index];
-      const updatedItem = {
-        ...item,
-        pekerjaanProvinsi: numericValue,
-        jumlah: item.pendataan + item.pemeriksaan + item.pengolahan + numericValue
-      };
-      if (sbmlData) {
-        const warnings = validateRow(updatedItem, sbmlData);
-        updatedItem.warnings = warnings;
-        updatedItem.isExceeded = warnings.length > 0;
-      }
-      newData[index] = updatedItem;
-      return newData;
-    });
-  }, [sbmlData, validateRow]);
+// Tambahkan state untuk input yang sedang diedit
+const [editingValues, setEditingValues] = useState<{[key: string]: string}>({});
+
+const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
+  // Simpan nilai mentah untuk editing
+  setEditingValues(prev => ({
+    ...prev,
+    [index]: value
+  }));
+}, []);
+
+const handlePekerjaanProvinsiBlur = useCallback((index: number, value: string) => {
+  // Saat input kehilangan fokus, konversi ke number
+  const numericValue = parseInt(value.replace(/\D/g, '')) || 0;
+  
+  setData(prev => {
+    const newData = [...prev];
+    const item = newData[index];
+    const updatedItem = {
+      ...item,
+      pekerjaanProvinsi: numericValue,
+      jumlah: item.pendataan + item.pemeriksaan + item.pengolahan + numericValue
+    };
+    if (sbmlData) {
+      const warnings = validateRow(updatedItem, sbmlData);
+      updatedItem.warnings = warnings;
+      updatedItem.isExceeded = warnings.length > 0;
+    }
+    newData[index] = updatedItem;
+    return newData;
+  });
+  
+  // Hapus dari editing values
+  setEditingValues(prev => {
+    const newValues = {...prev};
+    delete newValues[index];
+    return newValues;
+  });
+}, [sbmlData, validateRow]);
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -653,22 +671,24 @@ export default function CekSBML() {
                             {formatRupiah(row.pengolahan)}
                           </span>
                         </HonorTooltip>
-                      </TableCell>         
-                      <TableCell className="px-4 min-w-[150px]">
-                        <div className="flex justify-end">
-                          <Input 
-                            type="text" 
-                            value={row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID')} 
-                            onChange={e => {
-                              // Langsung parse ke number tanpa format saat input
-                              const rawValue = e.target.value.replace(/\D/g, '');
-                              handlePekerjaanProvinsiChange(index, rawValue);
-                            }} 
-                            className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
-                            placeholder="0"
-                          />
-                        </div>
                       </TableCell>
+                      
+<TableCell className="px-4 min-w-[150px]">
+  <div className="flex justify-end">
+    <Input 
+      type="text" 
+      value={editingValues[index] !== undefined 
+        ? editingValues[index] 
+        : (row.pekerjaanProvinsi === 0 ? "" : row.pekerjaanProvinsi.toLocaleString('id-ID'))
+      } 
+      onChange={e => handlePekerjaanProvinsiChange(index, e.target.value)} 
+      onBlur={e => handlePekerjaanProvinsiBlur(index, e.target.value)}
+      className="text-right w-32 h-9 text-sm font-medium border-gray-300 focus:border-blue-500" 
+      placeholder="0"
+    />
+  </div>
+</TableCell>
+                      
                       <TableCell className={`text-right font-semibold ${row.jumlah > (sbmlData?.sbmlPendata || 0) ? "text-red-600" : ""}`}>
                         {formatRupiah(row.jumlah)}
                       </TableCell>
