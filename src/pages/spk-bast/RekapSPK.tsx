@@ -195,7 +195,7 @@ export default function RekapSPKBAST() {
           body: {
             spreadsheetId: TUGAS_SPREADSHEET_ID,
             operation: "read",
-            range: "Sheet1!A:X"
+            range: "Sheet1!"
           }
         }),
         supabase.functions.invoke("google-sheets", {
