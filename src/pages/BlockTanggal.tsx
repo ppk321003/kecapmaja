@@ -534,7 +534,22 @@ export default function BlockTanggal() {
     return penanggungJawabList.includes(userRole);
   };
 
-  // PERBAIKAN: Load master data dengan mapping kolom yang benar
+  useEffect(() => {
+    const userData = localStorage.getItem("simaja_user");
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserRole(user.role || "User");
+    }
+    loadMasterMitra();
+    loadMasterOrganik();
+  }, []);
+
+  useEffect(() => {
+    if (mitraList.length > 0 || organikList.length > 0) {
+      loadExistingData();
+    }
+  }, [bulan, tahun, mitraList, organikList]);
+
   const loadMasterMitra = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -549,15 +564,13 @@ export default function BlockTanggal() {
 
       const rows = data.values || [];
       const mitraData: Mitra[] = rows.slice(1).map((row: any[]) => ({
-        nama: row[2] || "",    // Kolom C - Nama
-        nik: row[1] || "",     // Kolom B - NIK
-        kecamatan: row[7] || "" // Kolom H - Kecamatan
+        nama: row[2] || "",
+        nik: row[1] || "",
+        kecamatan: row[7] || ""
       }));
 
-      console.log('📋 Loaded mitra data:', mitraData.slice(0, 3));
       setMitraList(mitraData);
     } catch (error: any) {
-      console.error('❌ Error loading master mitra:', error);
       toast({
         title: "Error",
         description: "Gagal memuat data master mitra",
@@ -580,15 +593,13 @@ export default function BlockTanggal() {
 
       const rows = data.values || [];
       const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
-        nama: row[3] || "",    // Kolom D - Nama
-        nip: row[2] || "",     // Kolom C - NIP
-        jabatan: row[4] || ""  // Kolom E - Jabatan
+        nama: row[3] || "",
+        nip: row[2] || "",
+        jabatan: row[4] || ""
       }));
 
-      console.log('📋 Loaded organik data:', organikData.slice(0, 3));
       setOrganikList(organikData);
     } catch (error: any) {
-      console.error('❌ Error loading master organik:', error);
       toast({
         title: "Error",
         description: "Gagal memuat data master organik",
@@ -596,22 +607,6 @@ export default function BlockTanggal() {
       });
     }
   };
-
-  useEffect(() => {
-    const userData = localStorage.getItem("simaja_user");
-    if (userData) {
-      const user = JSON.parse(userData);
-      setUserRole(user.role || "User");
-    }
-    loadMasterMitra();
-    loadMasterOrganik();
-  }, []);
-
-  useEffect(() => {
-    if (mitraList.length > 0 || organikList.length > 0) {
-      loadExistingData();
-    }
-  }, [bulan, tahun, mitraList, organikList]);
 
   const loadExistingData = async () => {
     try {
@@ -627,21 +622,14 @@ export default function BlockTanggal() {
 
       const rows = data.values || [];
       const currentData = rows.filter((row: any[]) => row[1] === tahun.toString() && row[2] === bulan);
-      
-      console.log('📊 Existing data found:', currentData.length);
-
       const newDataRows: DataRow[] = [];
 
       currentData.forEach((row: any[], rowIndex: number) => {
         const nama = row[3] || "";
-        const nik = row[4] || ""; // Kolom E - NIP/NIK
+        const nik = row[4] || "";
         const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
-        
-        // Cek apakah ini organik berdasarkan NIP
-        const isOrganik = organikList.some(org => org.nip === nik);
+        const isOrganik = organikList.some(org => org.nama === nama);
         const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
-
-        console.log('📝 Processing row:', { rowIndex: rowIndex + 2, nama, nik, isOrganik });
 
         const blocks: BlockData = {};
         let kegiatanText = "";
@@ -685,7 +673,7 @@ export default function BlockTanggal() {
             no: newDataRows.length + 1,
             nama,
             nik,
-            kecamatan: isOrganik ? organikList.find(org => org.nip === nik)?.jabatan || "" : mitraList.find(m => m.nik === nik)?.kecamatan || "",
+            kecamatan: isOrganik ? organikList.find(org => org.nama === nama)?.jabatan || "" : mitraList.find(m => m.nik === nik)?.kecamatan || "",
             kegiatan: kegiatanText,
             penanggungJawab,
             blocks,
@@ -738,7 +726,6 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN: Fungsi save dengan penanganan NIP/NIK yang benar
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0) => {
     try {
       if (!canUserTag && operation !== 'delete') {
@@ -772,7 +759,7 @@ export default function BlockTanggal() {
 
       const rowData = [...existingRow];
 
-      // **PERBAIKAN UTAMA: Pastikan semua kolom dasar terisi dengan benar**
+      // PERBAIKAN: Pastikan semua kolom dasar terisi dengan benar
       if (operation === 'create') {
         rowData[0] = data.no.toString();                    // No (A)
         rowData[1] = tahun.toString();                      // Tahun (B)
@@ -1052,7 +1039,6 @@ export default function BlockTanggal() {
     }
   };
 
-  // PERBAIKAN: Fungsi addMitra dengan debug log
   const addMitra = async () => {
     if (!selectedMitra || !kegiatanInput.trim()) {
       toast({
@@ -1088,13 +1074,6 @@ export default function BlockTanggal() {
       spreadsheetRowIndex: nextRowIndex
     };
 
-    // **DEBUG: Log data sebelum menyimpan**
-    console.log('➕ Adding mitra:', {
-      nama: selected.nama,
-      nik: selected.nik,
-      rowIndex: nextRowIndex
-    });
-
     try {
       await saveToSpreadsheet(newRow, 'create');
       const newData = [...dataRows, newRow];
@@ -1116,7 +1095,6 @@ export default function BlockTanggal() {
     }
   };
 
-  // PERBAIKAN: Fungsi addOrganik dengan debug log
   const addOrganik = async () => {
     if (!selectedOrganik || !kegiatanInput.trim()) {
       toast({
@@ -1151,13 +1129,6 @@ export default function BlockTanggal() {
       isOrganik: true,
       spreadsheetRowIndex: nextRowIndex
     };
-
-    // **DEBUG: Log data sebelum menyimpan**
-    console.log('➕ Adding organik:', {
-      nama: selected.nama,
-      nip: selected.nip,
-      rowIndex: nextRowIndex
-    });
 
     try {
       await saveToSpreadsheet(newRow, 'create');
