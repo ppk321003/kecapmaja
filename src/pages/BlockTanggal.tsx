@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +58,7 @@ const tahunOptions = [2024, 2025, 2026];
 // PERBAIKAN: Mapping role ke kolom spreadsheet - DIPERBAIKI untuk menghindari konflik kolom
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': {
-    kegiatanCols: [6, 18, 30, 42, 54, 66, 78, 90, 102, 114], // DIPINDAH mulai kolom 6
+    kegiatanCols: [6, 18, 30, 42, 54, 66, 78, 90, 102, 114],
     tanggalCols: [12, 24, 36, 48, 60, 72, 84, 96, 108, 120],
     maxKegiatan: 10,
     color: 'text-gray-600',
@@ -107,9 +108,9 @@ const ROLE_MAPPING = {
 };
 
 // PERBAIKAN: Kolom khusus - DIPINDAH untuk menghindari konflik
-const PENANGGUNG_JAWAB_COL = 126; // Kolom 126
-const TOTAL_TANGGAL_COL = 127;    // Kolom 127
-const KECAMATAN_JABATAN_COL = 5;  // PERBAIKAN: Kolom khusus untuk Jabatan/Kecamatan
+const PENANGGUNG_JAWAB_COL = 126;
+const TOTAL_TANGGAL_COL = 127;
+const KECAMATAN_JABATAN_COL = 5;
 
 const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
 const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
@@ -175,7 +176,141 @@ const getKegiatanByRole = (data: DataRow, role: string): { kegiatan: string; ind
     .sort((a, b) => a.index - b.index);
 };
 
-// Komponen Modal Edit Tanggal
+// Komponen Modal Hapus Kegiatan (DIPERBAIKI)
+function HapusKegiatanModal({
+  isOpen,
+  onClose,
+  data,
+  onSave
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  data: DataRow;
+  onSave: (selectedKegiatanIndices: number[]) => void;
+}) {
+  const [selectedKegiatanIndices, setSelectedKegiatanIndices] = useState<number[]>([]);
+  const { toast } = useToast();
+  const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
+  
+  const userKegiatan = getKegiatanByRole(data, userRole);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedKegiatanIndices([]);
+    }
+  }, [isOpen]);
+
+  const handleSave = () => {
+    if (selectedKegiatanIndices.length === 0) {
+      toast({
+        title: "Error",
+        description: "Pilih minimal satu kegiatan untuk dihapus",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onSave(selectedKegiatanIndices);
+    onClose();
+  };
+
+  const toggleKegiatan = (index: number) => {
+    setSelectedKegiatanIndices(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedKegiatanIndices.length === userKegiatan.length) {
+      setSelectedKegiatanIndices([]);
+    } else {
+      setSelectedKegiatanIndices(userKegiatan.map(k => k.index));
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5" />
+            Hapus Kegiatan untuk {data.nama}
+          </DialogTitle>
+          <DialogDescription>
+            Pilih kegiatan yang ingin dihapus. Tindakan ini tidak dapat dibatalkan.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-3">
+          {userKegiatan.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              Tidak ada kegiatan untuk dihapus
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Pilih Kegiatan:</label>
+                <Button variant="outline" size="sm" onClick={selectAll}>
+                  {selectedKegiatanIndices.length === userKegiatan.length ? "Batal Pilih Semua" : "Pilih Semua"}
+                </Button>
+              </div>
+              
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                {userKegiatan.map((kegiatan) => (
+                  <div 
+                    key={kegiatan.index}
+                    className={`flex items-center gap-3 p-3 border-b cursor-pointer hover:bg-gray-50 ${
+                      selectedKegiatanIndices.includes(kegiatan.index) ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => toggleKegiatan(kegiatan.index)}
+                  >
+                    <div className={`flex items-center justify-center w-5 h-5 border rounded ${
+                      selectedKegiatanIndices.includes(kegiatan.index) 
+                        ? 'bg-primary border-primary' 
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedKegiatanIndices.includes(kegiatan.index) && (
+                        <Checkbox className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{kegiatan.kegiatan}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Tanggal: {kegiatan.dates.join(', ')} | Slot {kegiatan.index + 1}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                Terpilih: {selectedKegiatanIndices.length} dari {userKegiatan.length} kegiatan
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={handleSave} 
+            disabled={selectedKegiatanIndices.length === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Hapus {selectedKegiatanIndices.length > 0 ? `(${selectedKegiatanIndices.length})` : ''}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Komponen Modal Edit Tanggal (DIPERBAIKI)
 function EditTanggalModal({
   isOpen,
   onClose,
@@ -202,6 +337,7 @@ function EditTanggalModal({
       
       if (userKegiatan.length > 0) {
         const firstKegiatan = userKegiatan[0];
+        // PERBAIKAN: Otomatis isi dengan nama kegiatan yang sebenarnya
         setKegiatanInput(firstKegiatan.kegiatan);
         setKegiatanIndex(firstKegiatan.index);
         
@@ -290,6 +426,7 @@ function EditTanggalModal({
                 setKegiatanIndex(index);
                 const selectedKegiatan = userKegiatan.find(k => k.index === index);
                 if (selectedKegiatan) {
+                  // PERBAIKAN: Otomatis isi dengan nama kegiatan yang sebenarnya
                   setKegiatanInput(selectedKegiatan.kegiatan);
                   const monthIndex = bulanOptions.indexOf(bulan);
                   const dates = selectedKegiatan.dates.map(t => 
@@ -370,7 +507,7 @@ function EditTanggalModal({
   );
 }
 
-// Komponen Modal Tambah Kegiatan
+// Komponen Modal Tambah Kegiatan/Tanggal (DIGABUNG)
 function TambahKegiatanModal({
   isOpen,
   onClose,
@@ -380,29 +517,32 @@ function TambahKegiatanModal({
   isOpen: boolean;
   onClose: () => void;
   data: DataRow;
-  onSave: (selectedDates: Date[], kegiatan: string, kegiatanIndex: number) => void;
+  onSave: (selectedDates: Date[], kegiatan: string, kegiatanIndex: number, isNewKegiatan: boolean) => void;
 }) {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [kegiatanInput, setKegiatanInput] = useState("");
+  const [selectedKegiatanIndex, setSelectedKegiatanIndex] = useState<number>(-1);
+  const [isNewKegiatan, setIsNewKegiatan] = useState(true);
   const { toast } = useToast();
   const userRole = localStorage.getItem("simaja_user") ? JSON.parse(localStorage.getItem("simaja_user")!).role : "";
   const bulan = new Date().toLocaleString('id-ID', { month: 'long' });
   const tahun = new Date().getFullYear();
 
+  const userKegiatan = getKegiatanByRole(data, userRole);
+  const availableSlot = getAvailableKegiatanSlot(data, userRole);
+
   useEffect(() => {
     if (isOpen) {
       setSelectedDates([]);
       setKegiatanInput("");
+      setSelectedKegiatanIndex(-1);
+      setIsNewKegiatan(true);
     }
   }, [isOpen]);
 
   const isDateInSelectedMonth = (date: Date) => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return isSameMonth(date, new Date(tahun, monthIndex)) && isSameYear(date, new Date(tahun, monthIndex));
-  };
-
-  const getAvailableSlot = () => {
-    return getAvailableKegiatanSlot(data, userRole);
   };
 
   const handleSave = () => {
@@ -424,22 +564,34 @@ function TambahKegiatanModal({
       });
       return;
     }
+
+    let kegiatanIndexToUse: number;
     
-    const availableSlot = getAvailableSlot();
-    if (availableSlot === -1) {
-      toast({
-        title: "Error",
-        description: "Anda sudah mencapai batas maksimal kegiatan untuk bulan ini",
-        variant: "destructive"
-      });
-      return;
+    if (isNewKegiatan) {
+      if (availableSlot === -1) {
+        toast({
+          title: "Error",
+          description: "Anda sudah mencapai batas maksimal kegiatan untuk bulan ini",
+          variant: "destructive"
+        });
+        return;
+      }
+      kegiatanIndexToUse = availableSlot;
+    } else {
+      if (selectedKegiatanIndex === -1) {
+        toast({
+          title: "Error",
+          description: "Pilih kegiatan yang akan ditambahi tanggal",
+          variant: "destructive"
+        });
+        return;
+      }
+      kegiatanIndexToUse = selectedKegiatanIndex;
     }
     
-    onSave(filteredDates, kegiatanInput, availableSlot);
+    onSave(filteredDates, kegiatanInput, kegiatanIndexToUse, isNewKegiatan);
     onClose();
   };
-
-  const availableSlot = getAvailableSlot();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -447,21 +599,70 @@ function TambahKegiatanModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Tambah Kegiatan Baru untuk {data.nama}
+            Tambah Kegiatan/Tanggal untuk {data.nama}
           </DialogTitle>
           <DialogDescription>
-            Tambahkan kegiatan baru. Slot tersedia: {availableSlot + 1}
+            {availableSlot !== -1 ? "Tambah kegiatan baru atau tambah tanggal ke kegiatan yang sudah ada" : "Tambah tanggal ke kegiatan yang sudah ada"}
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
+          {availableSlot !== -1 && (
+            <div>
+              <label className="text-sm font-medium">Jenis Penambahan</label>
+              <Select 
+                value={isNewKegiatan ? "new" : "existing"} 
+                onValueChange={(value) => setIsNewKegiatan(value === "new")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih jenis" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">Kegiatan Baru</SelectItem>
+                  <SelectItem value="existing">Tambah Tanggal ke Kegiatan Existing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {!isNewKegiatan && userKegiatan.length > 0 && (
+            <div>
+              <label className="text-sm font-medium">Pilih Kegiatan Existing</label>
+              <Select 
+                value={selectedKegiatanIndex.toString()} 
+                onValueChange={(value) => {
+                  const index = parseInt(value);
+                  setSelectedKegiatanIndex(index);
+                  const selectedKegiatan = userKegiatan.find(k => k.index === index);
+                  if (selectedKegiatan) {
+                    setKegiatanInput(selectedKegiatan.kegiatan);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kegiatan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userKegiatan.map((kegiatan) => (
+                    <SelectItem key={kegiatan.index} value={kegiatan.index.toString()}>
+                      {kegiatan.kegiatan} (Slot {kegiatan.index + 1})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
-            <label className="text-sm font-medium">Nama Kegiatan Baru</label>
+            <label className="text-sm font-medium">
+              {isNewKegiatan ? "Nama Kegiatan Baru" : "Nama Kegiatan"}
+            </label>
             <Input 
               value={kegiatanInput} 
               onChange={e => setKegiatanInput(e.target.value)} 
-              placeholder="Masukkan nama kegiatan baru" 
+              placeholder={isNewKegiatan ? "Masukkan nama kegiatan baru" : "Nama kegiatan"} 
               className="mt-1" 
+              disabled={!isNewKegiatan && selectedKegiatanIndex !== -1}
             />
           </div>
 
@@ -479,6 +680,7 @@ function TambahKegiatanModal({
             </div>
             <div className="text-xs text-muted-foreground mt-2">
               • Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+              {isNewKegiatan && availableSlot !== -1 && ` | Slot tersedia: ${availableSlot + 1}`}
             </div>
           </div>
         </div>
@@ -489,7 +691,7 @@ function TambahKegiatanModal({
           </Button>
           <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
             <Save className="h-4 w-4 mr-2" />
-            Tambah Kegiatan
+            {isNewKegiatan ? 'Tambah Kegiatan' : 'Tambah Tanggal'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -511,7 +713,7 @@ export default function BlockTanggal() {
   const [kegiatanInput, setKegiatanInput] = useState("");
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeleteDataDialog, setShowDeleteDataDialog] = useState(false);
+  const [showDeleteKegiatanDialog, setShowDeleteKegiatanDialog] = useState(false);
   const [dataToDelete, setDataToDelete] = useState<number | null>(null);
   const [selectedDataForDates, setSelectedDataForDates] = useState<number | null>(null);
   const [searchTermMitra, setSearchTermMitra] = useState("");
@@ -615,7 +817,7 @@ export default function BlockTanggal() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:DW" // PERBAIKAN: Diperlebar hingga kolom DW
+          range: "Sheet1!A:DW"
         }
       });
 
@@ -628,7 +830,8 @@ export default function BlockTanggal() {
       currentData.forEach((row: any[], rowIndex: number) => {
         const nama = row[3] || "";
         const nik = row[4] || "";
-        const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || ""; // PERBAIKAN: Ambil dari kolom khusus
+        // PERBAIKAN: Ambil Jabatan/Kecamatan dari kolom yang benar
+        const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || "";
         const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
         const isOrganik = organikList.some(org => org.nama === nama);
         const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
@@ -675,7 +878,8 @@ export default function BlockTanggal() {
             no: newDataRows.length + 1,
             nama,
             nik,
-            kecamatan: kecamatanJabatan, // PERBAIKAN: Gunakan data dari kolom khusus
+            // PERBAIKAN: Simpan Jabatan/Kecamatan yang benar
+            kecamatan: kecamatanJabatan,
             kegiatan: kegiatanText,
             penanggungJawab,
             blocks,
@@ -745,11 +949,11 @@ export default function BlockTanggal() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}` // PERBAIKAN: Diperlebar
+          range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
         }
       });
 
-      let existingRow = new Array(127).fill(""); // PERBAIKAN: Diperbesar
+      let existingRow = new Array(127).fill("");
       if (!readError && existingData?.values?.[0]) {
         existingRow = [...existingData.values[0]];
         while (existingRow.length < 127) {
@@ -765,8 +969,9 @@ export default function BlockTanggal() {
         rowData[1] = tahun.toString();
         rowData[2] = bulan;
         rowData[3] = data.nama;
-        rowData[4] = data.nik; // NIP/NIK
-        rowData[KECAMATAN_JABATAN_COL - 1] = data.kecamatan; // PERBAIKAN: Simpan Jabatan/Kecamatan
+        rowData[4] = data.nik;
+        // PERBAIKAN: Simpan Jabatan/Kecamatan di kolom yang benar
+        rowData[KECAMATAN_JABATAN_COL - 1] = data.kecamatan;
       }
 
       if (operation !== 'delete' && roleMapping) {
@@ -854,155 +1059,84 @@ export default function BlockTanggal() {
     }
   };
 
-  const deleteUserRoleData = async (data: DataRow, kegiatanIndex?: number) => {
+  const deleteKegiatan = async (data: DataRow, kegiatanIndices: number[]) => {
     try {
       if (!canUserTag) {
         throw new Error(`Role ${userRole} tidak diperbolehkan melakukan delete`);
       }
 
-      if (kegiatanIndex !== undefined) {
-        return await deleteSpecificKegiatan(data, kegiatanIndex);
-      }
+      const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
+      if (!roleMapping) throw new Error(`Role ${userRole} tidak valid`);
 
-      const rolesInData = new Set();
-      Object.values(data.blocks).forEach(block => {
-        rolesInData.add(block.role);
+      const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
+        }
       });
 
-      const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
+      if (readError) throw readError;
 
-      if (isOnlyRole) {
-        await saveToSpreadsheet(data, 'delete');
-        return 'delete';
-      } else {
-        return await deleteAllUserKegiatan(data);
+      let existingRow = new Array(127).fill("");
+      if (existingData?.values?.[0]) {
+        existingRow = [...existingData.values[0]];
+        while (existingRow.length < 127) {
+          existingRow.push("");
+        }
       }
+
+      const rowData = [...existingRow];
+
+      // Hapus data untuk setiap kegiatan index yang dipilih
+      kegiatanIndices.forEach(kegiatanIndex => {
+        const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
+        const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
+        
+        if (kegiatanCol < rowData.length) rowData[kegiatanCol] = "";
+        if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
+      });
+
+      // Update jumlah tanggal terpakai
+      const remainingBlocks = Object.keys(data.blocks).filter(key => {
+        const block = data.blocks[key];
+        return !(block.role === userRole && kegiatanIndices.includes(block.kegiatanIndex));
+      }).length;
+      rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
+
+      // Hapus user role dari penanggung jawab jika semua kegiatan dihapus
+      const remainingUserKegiatan = getKegiatanByRole(data, userRole).filter(k => 
+        !kegiatanIndices.includes(k.index)
+      );
+      
+      let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
+      if (remainingUserKegiatan.length === 0) {
+        const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
+        penanggungJawab = currentPJ.join(', ');
+      }
+      rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
+
+      // Update spreadsheet
+      const requestBody = {
+        spreadsheetId: SPREADSHEET_ID,
+        operation: "update",
+        rowIndex: data.spreadsheetRowIndex,
+        values: [rowData]
+      };
+
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: requestBody
+      });
+
+      if (result?.error) {
+        throw new Error(result.error.message || `Gagal delete kegiatan`);
+      }
+
+      return 'update';
     } catch (error: any) {
-      console.error('❌ Error in deleteUserRoleData:', error);
+      console.error('❌ Error in deleteKegiatan:', error);
       throw error;
     }
-  };
-
-  const deleteAllUserKegiatan = async (data: DataRow) => {
-    const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
-    if (!roleMapping) throw new Error(`Role ${userRole} tidak valid`);
-
-    const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: SPREADSHEET_ID,
-        operation: "read",
-        range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
-      }
-    });
-
-    if (readError) throw readError;
-
-    let existingRow = new Array(127).fill("");
-    if (existingData?.values?.[0]) {
-      existingRow = [...existingData.values[0]];
-      while (existingRow.length < 127) {
-        existingRow.push("");
-      }
-    }
-
-    const rowData = [...existingRow];
-
-    // Hapus semua data role user dari spreadsheet
-    for (let i = 0; i < roleMapping.maxKegiatan; i++) {
-      const kegiatanCol = roleMapping.kegiatanCols[i] - 1;
-      const tanggalCol = roleMapping.tanggalCols[i] - 1;
-      
-      if (kegiatanCol < rowData.length) rowData[kegiatanCol] = "";
-      if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
-    }
-
-    // Hapus user role dari penanggung jawab
-    let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
-    const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
-    penanggungJawab = currentPJ.join(', ');
-    rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
-
-    // Update jumlah tanggal terpakai
-    const remainingBlocks = Object.keys(data.blocks).filter(key => {
-      const block = data.blocks[key];
-      return block.role !== userRole;
-    }).length;
-    rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
-
-    // Update spreadsheet
-    const requestBody = {
-      spreadsheetId: SPREADSHEET_ID,
-      operation: "update",
-      rowIndex: data.spreadsheetRowIndex,
-      values: [rowData]
-    };
-
-    const result = await supabase.functions.invoke("google-sheets", {
-      body: requestBody
-    });
-
-    if (result?.error) {
-      throw new Error(result.error.message || `Gagal update data setelah delete`);
-    }
-
-    return 'update';
-  };
-
-  const deleteSpecificKegiatan = async (data: DataRow, kegiatanIndex: number) => {
-    const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
-    if (!roleMapping) throw new Error(`Role ${userRole} tidak valid`);
-
-    const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: SPREADSHEET_ID,
-        operation: "read",
-        range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
-      }
-    });
-
-    if (readError) throw readError;
-
-    let existingRow = new Array(127).fill("");
-    if (existingData?.values?.[0]) {
-      existingRow = [...existingData.values[0]];
-      while (existingRow.length < 127) {
-        existingRow.push("");
-      }
-    }
-
-    const rowData = [...existingRow];
-
-    // Hapus data spesifik untuk kegiatan index
-    const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
-    const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
-    
-    if (kegiatanCol < rowData.length) rowData[kegiatanCol] = "";
-    if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
-
-    // Update jumlah tanggal terpakai
-    const remainingBlocks = Object.keys(data.blocks).filter(key => {
-      const block = data.blocks[key];
-      return !(block.role === userRole && block.kegiatanIndex === kegiatanIndex);
-    }).length;
-    rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
-
-    // Update spreadsheet
-    const requestBody = {
-      spreadsheetId: SPREADSHEET_ID,
-      operation: "update",
-      rowIndex: data.spreadsheetRowIndex,
-      values: [rowData]
-    };
-
-    const result = await supabase.functions.invoke("google-sheets", {
-      body: requestBody
-    });
-
-    if (result?.error) {
-      throw new Error(result.error.message || `Gagal delete kegiatan spesifik`);
-    }
-
-    return 'update';
   };
 
   const getNextRowIndex = async (): Promise<number> => {
@@ -1050,6 +1184,7 @@ export default function BlockTanggal() {
       no: dataRows.length + 1,
       nama: selected.nama,
       nik: selected.nik,
+      // PERBAIKAN: Simpan kecamatan untuk mitra
       kecamatan: selected.kecamatan,
       kegiatan: kegiatanInput,
       penanggungJawab: userRole,
@@ -1106,6 +1241,7 @@ export default function BlockTanggal() {
       no: dataRows.length + 1,
       nama: selected.nama,
       nik: selected.nip,
+      // PERBAIKAN: Simpan jabatan untuk organik
       kecamatan: selected.jabatan,
       kegiatan: kegiatanInput,
       penanggungJawab: userRole,
@@ -1149,7 +1285,7 @@ export default function BlockTanggal() {
     }));
   };
 
-  const requestDeleteData = (dataIndex: number) => {
+  const requestDeleteKegiatan = (dataIndex: number) => {
     const data = dataRows[dataIndex];
     if (!canUserEditData(data)) {
       toast({
@@ -1161,10 +1297,10 @@ export default function BlockTanggal() {
     }
 
     setDataToDelete(dataIndex);
-    setShowDeleteDataDialog(true);
+    setShowDeleteKegiatanDialog(true);
   };
 
-  const deleteData = async () => {
+  const handleDeleteKegiatan = async (kegiatanIndices: number[]) => {
     if (dataToDelete === null) return;
 
     const data = dataRows[dataToDelete];
@@ -1178,56 +1314,25 @@ export default function BlockTanggal() {
     }
 
     try {
-      const deleteResult = await deleteUserRoleData(data);
+      await deleteKegiatan(data, kegiatanIndices);
+      
+      // Reload data untuk update tampilan
+      await loadExistingData();
+      
+      toast({
+        title: "Sukses",
+        description: `${kegiatanIndices.length} kegiatan berhasil dihapus`
+      });
 
-      if (deleteResult === 'delete') {
-        const newData = [...dataRows];
-        newData.splice(dataToDelete, 1);
-        const sortedData = sortData(newData);
-        setDataRows(sortedData);
-
-        if (data.isOrganik) {
-          setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
-        } else {
-          setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
-        }
-
-        toast({
-          title: "Sukses",
-          description: "Data berhasil dihapus (seluruh baris)"
-        });
-      } else {
-        await loadExistingData();
-        toast({
-          title: "Sukses",
-          description: "Data role Anda berhasil dihapus"
-        });
-      }
-
-      setShowDeleteDataDialog(false);
+      setShowDeleteKegiatanDialog(false);
       setDataToDelete(null);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Gagal menghapus data: " + error.message,
+        description: "Gagal menghapus kegiatan: " + error.message,
         variant: "destructive"
       });
     }
-  };
-
-  const openDatePicker = (dataIndex: number) => {
-    const data = dataRows[dataIndex];
-    if (!canUserTag) {
-      toast({
-        title: "Akses Ditolak",
-        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setSelectedDataForDates(dataIndex);
-    setSelectedDates([]);
   };
 
   const openEditModal = (dataIndex: number) => {
@@ -1251,16 +1356,6 @@ export default function BlockTanggal() {
       toast({
         title: "Akses Ditolak",
         description: "Anda tidak memiliki akses untuk menambah kegiatan",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const availableSlot = getAvailableKegiatanSlot(data, userRole);
-    if (availableSlot === -1) {
-      toast({
-        title: "Peringatan",
-        description: `Anda sudah mencapai batas maksimal ${ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING]?.maxKegiatan || 10} kegiatan untuk bulan ini`,
         variant: "destructive"
       });
       return;
@@ -1326,7 +1421,7 @@ export default function BlockTanggal() {
     }
   };
 
-  const handleTambahKegiatan = async (selectedDates: Date[], kegiatan: string, kegiatanIndex: number) => {
+  const handleTambahKegiatan = async (selectedDates: Date[], kegiatan: string, kegiatanIndex: number, isNewKegiatan: boolean) => {
     if (!dataToEdit) return;
 
     const newData = [...dataRows];
@@ -1334,20 +1429,44 @@ export default function BlockTanggal() {
     if (dataIndex === -1) return;
 
     const data = newData[dataIndex];
+    const originalData = { ...data, blocks: { ...data.blocks } };
 
     try {
       const monthIndex = bulanOptions.indexOf(bulan);
       const tanggalStrings = selectedDates.map(date => date.getDate().toString());
 
-      // Tambahkan tanggal baru
-      tanggalStrings.forEach(tanggal => {
-        const blockKey = generateBlockKey(tanggal, userRole, kegiatanIndex);
-        data.blocks[blockKey] = {
-          kegiatan: kegiatan,
-          role: userRole,
-          kegiatanIndex: kegiatanIndex
-        };
-      });
+      if (isNewKegiatan) {
+        // Untuk kegiatan baru, tambahkan semua tanggal
+        tanggalStrings.forEach(tanggal => {
+          const blockKey = generateBlockKey(tanggal, userRole, kegiatanIndex);
+          data.blocks[blockKey] = {
+            kegiatan: kegiatan,
+            role: userRole,
+            kegiatanIndex: kegiatanIndex
+          };
+        });
+      } else {
+        // Untuk tambah tanggal ke existing, hanya tambahkan tanggal yang belum ada
+        const existingDates = new Set(
+          Object.keys(data.blocks)
+            .filter(key => {
+              const block = data.blocks[key];
+              return block.role === userRole && block.kegiatanIndex === kegiatanIndex;
+            })
+            .map(key => parseBlockKey(key).tanggal)
+        );
+
+        tanggalStrings.forEach(tanggal => {
+          if (!existingDates.has(tanggal)) {
+            const blockKey = generateBlockKey(tanggal, userRole, kegiatanIndex);
+            data.blocks[blockKey] = {
+              kegiatan: kegiatan,
+              role: userRole,
+              kegiatanIndex: kegiatanIndex
+            };
+          }
+        });
+      }
 
       await saveToSpreadsheet(data, 'update', kegiatanIndex);
       
@@ -1358,12 +1477,15 @@ export default function BlockTanggal() {
       
       toast({
         title: "Sukses",
-        description: "Kegiatan baru berhasil ditambahkan"
+        description: isNewKegiatan ? "Kegiatan baru berhasil ditambahkan" : "Tanggal berhasil ditambahkan ke kegiatan"
       });
     } catch (error: any) {
+      newData[dataIndex] = originalData;
+      setDataRows([...newData]);
+      
       toast({
         title: "Error",
-        description: "Gagal menambah kegiatan: " + error.message,
+        description: "Gagal menambah: " + error.message,
         variant: "destructive"
       });
     }
@@ -1372,146 +1494,6 @@ export default function BlockTanggal() {
   const isDateInSelectedMonth = (date: Date) => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return isSameMonth(date, new Date(tahun, monthIndex)) && isSameYear(date, new Date(tahun, monthIndex));
-  };
-
-  const getBlockedDatesForCurrentUser = (currentDataIndex: number | null): Date[] => {
-    if (currentDataIndex === null) return [];
-    
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const userBlockedDates: Date[] = [];
-    const currentData = dataRows[currentDataIndex];
-    
-    if (!currentData) return [];
-
-    Object.keys(currentData.blocks).forEach(key => {
-      const block = currentData.blocks[key];
-      if (block.role === userRole) {
-        const { tanggal } = parseBlockKey(key);
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        if (isDateInSelectedMonth(date)) {
-          userBlockedDates.push(date);
-        }
-      }
-    });
-
-    return userBlockedDates;
-  };
-
-  const saveDates = async () => {
-    if (selectedDataForDates === null) {
-      toast({
-        title: "Error",
-        description: "Tidak ada data yang dipilih",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!canUserTag) {
-      toast({
-        title: "Akses Ditolak",
-        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const filteredDates = selectedDates.filter(isDateInSelectedMonth);
-    if (filteredDates.length === 0) {
-      toast({
-        title: "Error",
-        description: "Pilih minimal satu tanggal dalam bulan " + bulan,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!kegiatanInput.trim()) {
-      toast({
-        title: "Error",
-        description: "Masukkan nama kegiatan",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const newData = [...dataRows];
-    const dataIndex = selectedDataForDates;
-    const data = newData[dataIndex];
-    const originalData = { ...data, blocks: { ...data.blocks } };
-
-    try {
-      const tanggalStrings = filteredDates.map(date => date.getDate().toString());
-      const availableSlot = getAvailableKegiatanSlot(data, userRole);
-
-      if (availableSlot === -1) {
-        toast({
-          title: "Error",
-          description: "Tidak ada slot kegiatan tersedia",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const conflictingDates = [];
-      for (const tanggal of tanggalStrings) {
-        // Cek konflik dengan semua role
-        const existingBlock = Object.keys(data.blocks).find(key => {
-          const { tanggal: existingTanggal } = parseBlockKey(key);
-          return existingTanggal === tanggal;
-        });
-        if (existingBlock) {
-          conflictingDates.push(tanggal);
-        }
-      }
-
-      if (conflictingDates.length > 0) {
-        toast({
-          title: "Konflik Tanggal",
-          description: `Tanggal ${conflictingDates.join(', ')} sudah digunakan. Silakan pilih tanggal lain`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Tambahkan tanggal baru
-      tanggalStrings.forEach(tanggal => {
-        const blockKey = generateBlockKey(tanggal, userRole, availableSlot);
-        data.blocks[blockKey] = {
-          kegiatan: kegiatanInput,
-          role: userRole,
-          kegiatanIndex: availableSlot
-        };
-      });
-
-      // Update penanggung jawab
-      const currentPJ = data.penanggungJawab.split(',').map(pj => pj.trim());
-      if (!currentPJ.includes(userRole)) {
-        currentPJ.push(userRole);
-      }
-      data.penanggungJawab = currentPJ.filter(pj => pj).join(', ');
-
-      await saveToSpreadsheet(data, 'update', availableSlot);
-
-      const sortedData = sortData(newData);
-      setDataRows(sortedData);
-      setSelectedDates([]);
-      setSelectedDataForDates(null);
-      
-      toast({
-        title: "Sukses",
-        description: "Tanggal berhasil disimpan"
-      });
-    } catch (error: any) {
-      newData[dataIndex] = originalData;
-      setDataRows([...newData]);
-      
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan tanggal: " + error.message,
-        variant: "destructive"
-      });
-    }
   };
 
   const getBlockedDatesCount = (data: DataRow) => {
@@ -1533,7 +1515,6 @@ export default function BlockTanggal() {
     return mapping?.borderColor || 'border-gray-200';
   };
 
-  // Fungsi untuk mendapatkan semua kegiatan dari semua role dalam format yang diinginkan
   const getAllKegiatanFormatted = (data: DataRow) => {
     const allKegiatan: { kegiatan: string; role: string; dates: string[] }[] = [];
     
@@ -1752,7 +1733,6 @@ export default function BlockTanggal() {
                 {dataRows.map((data, index) => {
                   const canEditThisData = canUserEditData(data);
                   const userKegiatan = getKegiatanByRole(data, userRole);
-                  const availableSlot = getAvailableKegiatanSlot(data, userRole);
                   const allKegiatan = getAllKegiatanFormatted(data);
                   
                   return (
@@ -1778,7 +1758,8 @@ export default function BlockTanggal() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {data.kecamatan}
+                        {/* PERBAIKAN: Tampilkan Jabatan/Kecamatan yang benar */}
+                        {data.kecamatan || "-"}
                       </TableCell>
                       <TableCell>
                         <div className="max-w-[600px]">
@@ -1813,63 +1794,8 @@ export default function BlockTanggal() {
                       {canUserTag && (
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {/* Tombol Tambah Tanggal/Kegiatan */}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        className="h-8 w-8" 
-                                        onClick={() => openDatePicker(index)}
-                                      >
-                                        <Plus className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-4" align="start">
-                                      <div className="space-y-4">
-                                        <div className="text-sm font-medium">
-                                          {availableSlot !== -1 ? "Tambah Kegiatan untuk" : "Tambah Tanggal untuk"} {data.nama}
-                                        </div>
-                                        <CalendarComponent 
-                                          mode="multiple" 
-                                          selected={selectedDates} 
-                                          onSelect={setSelectedDates} 
-                                          className="rounded-md border" 
-                                          locale={id} 
-                                          month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                                        />
-                                        <Input 
-                                          placeholder="Nama kegiatan" 
-                                          value={kegiatanInput} 
-                                          onChange={e => setKegiatanInput(e.target.value)} 
-                                        />
-                                        <div className="text-xs text-muted-foreground">
-                                          Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
-                                          {availableSlot !== -1 && ` | Slot tersedia: ${availableSlot + 1}`}
-                                        </div>
-                                        <Button 
-                                          onClick={saveDates} 
-                                          className="w-full" 
-                                          disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
-                                        >
-                                          <Save className="h-4 w-4 mr-2" />
-                                          Simpan
-                                        </Button>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Tambah Kegiatan/Tanggal</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-
-                            {/* Tombol Tambah Kegiatan Baru */}
-                            {availableSlot !== -1 && userKegiatan.length > 0 && (
+                            {/* PERBAIKAN: Hanya 1 tombol tambah */}
+                            {canEditThisData && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1879,11 +1805,11 @@ export default function BlockTanggal() {
                                       className="h-8 w-8" 
                                       onClick={() => openTambahKegiatanModal(index)}
                                     >
-                                      <FileText className="h-3.5 w-3.5" />
+                                      <Plus className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Tambah Kegiatan Baru</p>
+                                    <p>Tambah Kegiatan/Tanggal</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -1911,7 +1837,7 @@ export default function BlockTanggal() {
                             )}
 
                             {/* Tombol Hapus */}
-                            {canEditThisData && (
+                            {canEditThisData && userKegiatan.length > 0 && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1919,13 +1845,13 @@ export default function BlockTanggal() {
                                       variant="outline" 
                                       size="icon" 
                                       className="h-8 w-8" 
-                                      onClick={() => requestDeleteData(index)}
+                                      onClick={() => requestDeleteKegiatan(index)}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Hapus Data</p>
+                                    <p>Hapus Kegiatan</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -1966,40 +1892,17 @@ export default function BlockTanggal() {
         />
       )}
 
-      <Dialog open={showDeleteDataDialog} onOpenChange={setShowDeleteDataDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Data</DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus data ini? 
-              {dataToDelete !== null && dataRows[dataToDelete] && (
-                <>{" "}
-                  {(() => {
-                    const data = dataRows[dataToDelete];
-                    const rolesInData = new Set();
-                    Object.values(data.blocks).forEach(block => {
-                      rolesInData.add(block.role);
-                    });
-                    const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
-                    return isOnlyRole 
-                      ? "Seluruh data akan dihapus dari sistem." 
-                      : "Hanya data dari role Anda yang akan dihapus, data dari role lain tetap dipertahankan.";
-                  })()}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDataDialog(false)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={deleteData}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Hapus Data
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {dataToDelete !== null && (
+        <HapusKegiatanModal 
+          isOpen={showDeleteKegiatanDialog} 
+          onClose={() => {
+            setShowDeleteKegiatanDialog(false);
+            setDataToDelete(null);
+          }} 
+          data={dataRows[dataToDelete]} 
+          onSave={handleDeleteKegiatan} 
+        />
+      )}
     </div>
   );
 }
