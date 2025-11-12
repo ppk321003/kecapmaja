@@ -1765,111 +1765,111 @@ export default function BlockTanggal() {
                       <TableCell>
                         {data.kecamatan}
                       </TableCell>
-<TableCell>
-  <div className="max-w-[380px]">
-    {allKegiatan.length > 0 ? (
-      <div className="space-y-1">
-        {/* Tampilkan maksimal 2 kegiatan */}
-        {allKegiatan.slice(0, 2).map((item, idx) => {
-          const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-          const shortName = {
-            'Pejabat Pembuat Komitmen': 'PPK',
-            'Fungsi Sosial': 'Sosial',
-            'Fungsi Neraca': 'Neraca',
-            'Fungsi Produksi': 'Produksi',
-            'Fungsi Distribusi': 'Distribusi',
-            'Fungsi IPDS': 'IPDS'
-          }[item.role] || item.role.substring(0, 3).toUpperCase();
+                      <TableCell>
+                        <div className="max-w-[380px]">
+                          {allKegiatan.length > 0 ? (
+                            <div className="space-y-1">
+                              {/* Tampilkan maksimal 2 kegiatan */}
+                              {allKegiatan.slice(0, 2).map((item, idx) => {
+                                const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                                const shortName = {
+                                  'Pejabat Pembuat Komitmen': 'PPK',
+                                  'Fungsi Sosial': 'Sosial',
+                                  'Fungsi Neraca': 'Neraca',
+                                  'Fungsi Produksi': 'Produksi',
+                                  'Fungsi Distribusi': 'Distribusi',
+                                  'Fungsi IPDS': 'IPDS'
+                                }[item.role] || item.role.substring(0, 3).toUpperCase();
 
-          return (
-            <TooltipProvider key={idx} delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 cursor-default select-none ${mapping?.bgColor || 'bg-gray-100'} ${mapping?.borderColor ? 'border' : 'border border-transparent'}`}
-                  >
-                    <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
-                      [{shortName}]
-                    </span>
-                    <span className="truncate max-w-[160px]" title={item.kegiatan}>
-                      {item.kegiatan}
-                    </span>
-                    <span className="text-gray-500">
-                      ({item.dates.join(', ')})
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-xs">
-                  <div className="space-y-1 text-sm">
-                    <div className="font-semibold text-gray-900">
-                      {item.kegiatan}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      Role: <span className="font-medium">{item.role}</span>
-                    </div>
-                    <div className="text-xs font-medium text-green-600">
-                      Tanggal: {item.dates.join(', ')}
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        })}
+                                return (
+                                  <TooltipProvider key={idx} delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div
+                                          className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 cursor-default select-none ${mapping?.bgColor || 'bg-gray-100'} ${mapping?.borderColor ? 'border' : 'border border-transparent'}`}
+                                        >
+                                          <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
+                                            [{shortName}]
+                                          </span>
+                                          <span className="truncate max-w-[160px]" title={item.kegiatan}>
+                                            {item.kegiatan}
+                                          </span>
+                                          <span className="text-gray-500">
+                                            ({item.dates.join(', ')})
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-xs">
+                                        <div className="space-y-1 text-sm">
+                                          <div className="font-semibold text-gray-900">
+                                            {item.kegiatan}
+                                          </div>
+                                          <div className="text-xs text-gray-600">
+                                            Role: <span className="font-medium">{item.role}</span>
+                                          </div>
+                                          <div className="text-xs font-medium text-green-600">
+                                            Tanggal: {item.dates.join(', ')}
+                                          </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })}
 
-        {/* Badge +X lainnya → HANYA KLIK (tidak ada Tooltip saat hover) */}
-        {allKegiatan.length > 2 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
-              >
-                +{allKegiatan.length - 2} lainnya
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 p-3" align="start">
-              <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
-                {allKegiatan.map((item, idx) => {
-                  const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                  const shortName = {
-                    'Pejabat Pembuat Komitmen': 'PPK',
-                    'Fungsi Sosial': 'Sosial',
-                    'Fungsi Neraca': 'Neraca',
-                    'Fungsi Produksi': 'Produksi',
-                    'Fungsi Distribusi': 'Distribusi',
-                    'Fungsi IPDS': 'IPDS'
-                  }[item.role] || item.role.substring(0, 3).toUpperCase();
+                              {/* Badge +X lainnya → HANYA KLIK (tidak ada Tooltip saat hover) */}
+                              {allKegiatan.length > 2 && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
+                                    >
+                                      +{allKegiatan.length - 2} lainnya
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72 p-3" align="start">
+                                    <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
+                                      {allKegiatan.map((item, idx) => {
+                                        const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                                        const shortName = {
+                                          'Pejabat Pembuat Komitmen': 'PPK',
+                                          'Fungsi Sosial': 'Sosial',
+                                          'Fungsi Neraca': 'Neraca',
+                                          'Fungsi Produksi': 'Produksi',
+                                          'Fungsi Distribusi': 'Distribusi',
+                                          'Fungsi IPDS': 'IPDS'
+                                        }[item.role] || item.role.substring(0, 3).toUpperCase();
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
-                    >
-                      <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
-                        [{shortName}]
-                      </span>
-                      <span className="font-medium truncate flex-1" title={item.kegiatan}>
-                        {item.kegiatan}
-                      </span>
-                      <span className="text-gray-500">
-                        ({item.dates.join(', ')})
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
-    ) : (
-      <span className="text-xs text-muted-foreground">—</span>
-    )}
-  </div>
-</TableCell>
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
+                                          >
+                                            <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
+                                              [{shortName}]
+                                            </span>
+                                            <span className="font-medium truncate flex-1" title={item.kegiatan}>
+                                              {item.kegiatan}
+                                            </span>
+                                            <span className="text-gray-500">
+                                              ({item.dates.join(', ')})
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
                           {getBlockedDatesCount(data)}
