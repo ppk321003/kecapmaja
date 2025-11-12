@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox"; // PERBAIKAN: Import Checkbox dari shadcn/ui
 import { useToast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle } from "lucide-react";
+import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle, Check } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSameMonth, isSameYear } from "date-fns";
@@ -266,15 +266,11 @@ function HapusKegiatanModal({
                     }`}
                     onClick={() => toggleKegiatan(kegiatan.index)}
                   >
-                    <div className={`flex items-center justify-center w-5 h-5 border rounded ${
-                      selectedKegiatanIndices.includes(kegiatan.index) 
-                        ? 'bg-primary border-primary' 
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedKegiatanIndices.includes(kegiatan.index) && (
-                        <Checkbox className="h-3 w-3 text-white" />
-                      )}
-                    </div>
+                    {/* PERBAIKAN: Gunakan Checkbox dari shadcn/ui */}
+                    <Checkbox 
+                      checked={selectedKegiatanIndices.includes(kegiatan.index)}
+                      onCheckedChange={() => toggleKegiatan(kegiatan.index)}
+                    />
                     <div className="flex-1">
                       <div className="font-medium text-sm">{kegiatan.kegiatan}</div>
                       <div className="text-xs text-muted-foreground">
