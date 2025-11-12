@@ -1782,7 +1782,7 @@ export default function BlockTanggal() {
           }[item.role] || item.role.substring(0, 3).toUpperCase();
 
           return (
-            <TooltipProvider key={idx}>
+            <TooltipProvider key={idx} delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
@@ -1817,62 +1817,52 @@ export default function BlockTanggal() {
           );
         })}
 
-        {/* Badge +X lainnya → Tooltip juga muncul saat hover */}
+        {/* Badge +X lainnya → HANYA KLIK (tidak ada Tooltip saat hover) */}
         {allKegiatan.length > 2 && (
-          <TooltipProvider>
-            <Tooltip>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
-                    >
-                      +{allKegiatan.length - 2} lainnya
-                    </Button>
-                  </TooltipTrigger>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-3" align="start">
-                  <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
-                  <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
-                    {allKegiatan.map((item, idx) => {
-                      const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                      const shortName = {
-                        'Pejabat Pembuat Komitmen': 'PPK',
-                        'Fungsi Sosial': 'Sosial',
-                        'Fungsi Neraca': 'Neraca',
-                        'Fungsi Produksi': 'Produksi',
-                        'Fungsi Distribusi': 'Distribusi',
-                        'Fungsi IPDS': 'IPDS'
-                      }[item.role] || item.role.substring(0, 3).toUpperCase();
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
+              >
+                +{allKegiatan.length - 2} lainnya
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3" align="start">
+              <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
+                {allKegiatan.map((item, idx) => {
+                  const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                  const shortName = {
+                    'Pejabat Pembuat Komitmen': 'PPK',
+                    'Fungsi Sosial': 'Sosial',
+                    'Fungsi Neraca': 'Neraca',
+                    'Fungsi Produksi': 'Produksi',
+                    'Fungsi Distribusi': 'Distribusi',
+                    'Fungsi IPDS': 'IPDS'
+                  }[item.role] || item.role.substring(0, 3).toUpperCase();
 
-                      return (
-                        <div
-                          key={idx}
-                          className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
-                        >
-                          <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
-                            [{shortName}]
-                          </span>
-                          <span className="font-medium truncate flex-1" title={item.kegiatan}>
-                            {item.kegiatan}
-                          </span>
-                          <span className="text-gray-500">
-                            ({item.dates.join(', ')})
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-xs">
-                <p className="font-semibold text-sm">Ada {allKegiatan.length - 2} kegiatan tersembunyi</p>
-                <p className="text-xs text-gray-600 mt-1">Klik untuk melihat detail lengkap</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
+                    >
+                      <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
+                        [{shortName}]
+                      </span>
+                      <span className="font-medium truncate flex-1" title={item.kegiatan}>
+                        {item.kegiatan}
+                      </span>
+                      <span className="text-gray-500">
+                        ({item.dates.join(', ')})
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
     ) : (
