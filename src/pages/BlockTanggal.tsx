@@ -54,51 +54,51 @@ const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunOptions = [2024, 2025, 2026];
 
-// Mapping role ke kolom spreadsheet - DIPERBAIKI SESUAI STRUKTUR HEADER
+// PERBAIKAN: Mapping role ke kolom spreadsheet - DIPERBAIKI untuk menghindari konflik kolom
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': {
-    kegiatanCols: [5, 17, 29, 41, 53, 65, 77, 89, 101, 113],
-    tanggalCols: [11, 23, 35, 47, 59, 71, 83, 95, 107, 119],
+    kegiatanCols: [6, 18, 30, 42, 54, 66, 78, 90, 102, 114], // DIPINDAH mulai kolom 6
+    tanggalCols: [12, 24, 36, 48, 60, 72, 84, 96, 108, 120],
     maxKegiatan: 10,
     color: 'text-gray-600',
     bgColor: 'bg-gray-100',
     borderColor: 'border-gray-200'
   },
   'Fungsi Neraca': {
-    kegiatanCols: [6, 18, 30, 42, 54, 66, 78, 90, 102, 114],
-    tanggalCols: [12, 24, 36, 48, 60, 72, 84, 96, 108, 120],
+    kegiatanCols: [7, 19, 31, 43, 55, 67, 79, 91, 103, 115],
+    tanggalCols: [13, 25, 37, 49, 61, 73, 85, 97, 109, 121],
     maxKegiatan: 10,
     color: 'text-purple-600',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-200'
   },
   'Fungsi Distribusi': {
-    kegiatanCols: [7, 19, 31, 43, 55, 67, 79, 91, 103, 115],
-    tanggalCols: [13, 25, 37, 49, 61, 73, 85, 97, 109, 121],
+    kegiatanCols: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
+    tanggalCols: [14, 26, 38, 50, 62, 74, 86, 98, 110, 122],
     maxKegiatan: 10,
     color: 'text-orange-600',
     bgColor: 'bg-orange-100',
     borderColor: 'border-orange-200'
   },
   'Fungsi Produksi': {
-    kegiatanCols: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
-    tanggalCols: [14, 26, 38, 50, 62, 74, 86, 98, 110, 122],
+    kegiatanCols: [9, 21, 33, 45, 57, 69, 81, 93, 105, 117],
+    tanggalCols: [15, 27, 39, 51, 63, 75, 87, 99, 111, 123],
     maxKegiatan: 10,
     color: 'text-green-600',
     bgColor: 'bg-green-100',
     borderColor: 'border-green-200'
   },
   'Fungsi Sosial': {
-    kegiatanCols: [9, 21, 33, 45, 57, 69, 81, 93, 105, 117],
-    tanggalCols: [15, 27, 39, 51, 63, 75, 87, 99, 111, 123],
+    kegiatanCols: [10, 22, 34, 46, 58, 70, 82, 94, 106, 118],
+    tanggalCols: [16, 28, 40, 52, 64, 76, 88, 100, 112, 124],
     maxKegiatan: 10,
     color: 'text-blue-600',
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-200'
   },
   'Fungsi IPDS': {
-    kegiatanCols: [10, 22, 34, 46, 58, 70, 82, 94, 106, 118],
-    tanggalCols: [16, 28, 40, 52, 64, 76, 88, 100, 112, 124],
+    kegiatanCols: [11, 23, 35, 47, 59, 71, 83, 95, 107, 119],
+    tanggalCols: [17, 29, 41, 53, 65, 77, 89, 101, 113, 125],
     maxKegiatan: 10,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-100',
@@ -106,9 +106,10 @@ const ROLE_MAPPING = {
   }
 };
 
-// Kolom khusus
-const PENANGGUNG_JAWAB_COL = 125;
-const TOTAL_TANGGAL_COL = 126;
+// PERBAIKAN: Kolom khusus - DIPINDAH untuk menghindari konflik
+const PENANGGUNG_JAWAB_COL = 126; // Kolom 126
+const TOTAL_TANGGAL_COL = 127;    // Kolom 127
+const KECAMATAN_JABATAN_COL = 5;  // PERBAIKAN: Kolom khusus untuk Jabatan/Kecamatan
 
 const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
 const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
@@ -614,7 +615,7 @@ export default function BlockTanggal() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:DV"
+          range: "Sheet1!A:DW" // PERBAIKAN: Diperlebar hingga kolom DW
         }
       });
 
@@ -627,6 +628,7 @@ export default function BlockTanggal() {
       currentData.forEach((row: any[], rowIndex: number) => {
         const nama = row[3] || "";
         const nik = row[4] || "";
+        const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || ""; // PERBAIKAN: Ambil dari kolom khusus
         const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
         const isOrganik = organikList.some(org => org.nama === nama);
         const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
@@ -673,7 +675,7 @@ export default function BlockTanggal() {
             no: newDataRows.length + 1,
             nama,
             nik,
-            kecamatan: isOrganik ? organikList.find(org => org.nama === nama)?.jabatan || "" : mitraList.find(m => m.nik === nik)?.kecamatan || "",
+            kecamatan: kecamatanJabatan, // PERBAIKAN: Gunakan data dari kolom khusus
             kegiatan: kegiatanText,
             penanggungJawab,
             blocks,
@@ -726,6 +728,7 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
+  // PERBAIKAN: Fungsi save yang diperbaiki untuk menghindari konflik kolom
   const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0) => {
     try {
       if (!canUserTag && operation !== 'delete') {
@@ -742,26 +745,28 @@ export default function BlockTanggal() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `Sheet1!A${data.spreadsheetRowIndex}:DV${data.spreadsheetRowIndex}`
+          range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}` // PERBAIKAN: Diperlebar
         }
       });
 
-      let existingRow = new Array(126).fill("");
+      let existingRow = new Array(127).fill(""); // PERBAIKAN: Diperbesar
       if (!readError && existingData?.values?.[0]) {
         existingRow = [...existingData.values[0]];
-        while (existingRow.length < 126) {
+        while (existingRow.length < 127) {
           existingRow.push("");
         }
       }
 
       const rowData = [...existingRow];
 
+      // PERBAIKAN: Pastikan data dasar selalu disimpan dengan benar
       if (operation === 'create') {
         rowData[0] = data.no.toString();
         rowData[1] = tahun.toString();
         rowData[2] = bulan;
         rowData[3] = data.nama;
-        rowData[4] = data.nik;
+        rowData[4] = data.nik; // NIP/NIK
+        rowData[KECAMATAN_JABATAN_COL - 1] = data.kecamatan; // PERBAIKAN: Simpan Jabatan/Kecamatan
       }
 
       if (operation !== 'delete' && roleMapping) {
@@ -771,6 +776,11 @@ export default function BlockTanggal() {
 
         const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
         const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
+
+        // PERBAIKAN: Pastikan tidak menimpa kolom NIP/NIK (kolom 4)
+        if (kegiatanCol === 4) {
+          throw new Error(`Konflik kolom: kegiatanCol tidak boleh sama dengan kolom NIP/NIK`);
+        }
 
         // Update kegiatan
         rowData[kegiatanCol] = kegiatanInput || data.kegiatan;
@@ -881,16 +891,16 @@ export default function BlockTanggal() {
       body: {
         spreadsheetId: SPREADSHEET_ID,
         operation: "read",
-        range: `Sheet1!A${data.spreadsheetRowIndex}:DV${data.spreadsheetRowIndex}`
+        range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
       }
     });
 
     if (readError) throw readError;
 
-    let existingRow = new Array(126).fill("");
+    let existingRow = new Array(127).fill("");
     if (existingData?.values?.[0]) {
       existingRow = [...existingData.values[0]];
-      while (existingRow.length < 126) {
+      while (existingRow.length < 127) {
         existingRow.push("");
       }
     }
@@ -946,16 +956,16 @@ export default function BlockTanggal() {
       body: {
         spreadsheetId: SPREADSHEET_ID,
         operation: "read",
-        range: `Sheet1!A${data.spreadsheetRowIndex}:DV${data.spreadsheetRowIndex}`
+        range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
       }
     });
 
     if (readError) throw readError;
 
-    let existingRow = new Array(126).fill("");
+    let existingRow = new Array(127).fill("");
     if (existingData?.values?.[0]) {
       existingRow = [...existingData.values[0]];
-      while (existingRow.length < 126) {
+      while (existingRow.length < 127) {
         existingRow.push("");
       }
     }
