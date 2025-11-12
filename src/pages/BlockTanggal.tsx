@@ -1742,23 +1742,26 @@ export default function BlockTanggal() {
                       <TableCell className="text-center font-medium">
                         {data.no}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {data.isOrganik ? (
-                            <Building2 className="h-4 w-4 text-primary" />
-                          ) : (
-                            <MapPin className="h-4 w-4 text-primary" />
-                          )}
-                          <div>
-                            <div className="font-medium">
-                              {data.nama}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {data.isOrganik ? `NIP: ${data.nik}` : `NIK: ${data.nik}`}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
+<TableCell>
+  <div className="flex items-center gap-2">
+    {data.isOrganik ? (
+      <Building2 className="h-4 w-4 text-primary" />
+    ) : (
+      <MapPin className="h-4 w-4 text-primary" />
+    )}
+    <div>
+      <div className="font-medium">
+        {data.nama}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {data.isOrganik 
+          ? `NIP: ${organikList.find(org => org.nama === data.nama)?.nip || data.nik}`
+          : `NIK: ${mitraList.find(mitra => mitra.nama === data.nama)?.nik || data.nik}`
+        }
+      </div>
+    </div>
+  </div>
+</TableCell>
                       <TableCell>
                         {data.kecamatan}
                       </TableCell>
