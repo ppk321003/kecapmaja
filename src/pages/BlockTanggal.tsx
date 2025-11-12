@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle, MoreHorizontal } from "lucide-react";
+import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSameMonth, isSameYear } from "date-fns";
@@ -54,7 +54,7 @@ const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunOptions = [2024, 2025, 2026];
 
-// Mapping role ke kolom spreadsheet - SESUAI HEADER
+// Mapping role ke kolom spreadsheet - DIPERBAIKI SESUAI STRUKTUR HEADER
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': {
     kegiatanCols: [5, 17, 29, 41, 53, 65, 77, 89, 101, 113],
@@ -144,6 +144,36 @@ const getAvailableKegiatanSlot = (data: DataRow, role: string): number => {
   return -1;
 };
 
+const getKegiatanByRole = (data: DataRow, role: string): { kegiatan: string; index: number; dates: string[] }[] => {
+  const roleMapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
+  if (!roleMapping) return [];
+
+  const kegiatanMap = new Map<number, { kegiatan: string; dates: string[] }>();
+
+  Object.entries(data.blocks).forEach(([key, block]) => {
+    if (block.role === role) {
+      const { tanggal, kegiatanIndex } = parseBlockKey(key);
+      
+      if (!kegiatanMap.has(kegiatanIndex)) {
+        kegiatanMap.set(kegiatanIndex, { 
+          kegiatan: block.kegiatan, 
+          dates: [] 
+        });
+      }
+      
+      kegiatanMap.get(kegiatanIndex)!.dates.push(tanggal);
+    }
+  });
+
+  return Array.from(kegiatanMap.entries())
+    .map(([index, { kegiatan, dates }]) => ({
+      kegiatan,
+      index,
+      dates: dates.sort((a, b) => parseInt(a) - parseInt(b))
+    }))
+    .sort((a, b) => a.index - b.index);
+};
+
 // Komponen Modal Edit Tanggal
 function EditTanggalModal({
   isOpen,
@@ -170,12 +200,10 @@ function EditTanggalModal({
       const userKegiatan = getKegiatanByRole(data, userRole);
       
       if (userKegiatan.length > 0) {
-        // Default ke kegiatan pertama untuk edit
         const firstKegiatan = userKegiatan[0];
         setKegiatanInput(firstKegiatan.kegiatan);
         setKegiatanIndex(firstKegiatan.index);
         
-        // Load dates untuk kegiatan ini
         const datesForKegiatan = firstKegiatan.dates.map(tanggal => 
           new Date(tahun, monthIndex, parseInt(tanggal))
         ).filter(date => isSameMonth(date, new Date(tahun, monthIndex)));
@@ -468,37 +496,6 @@ function TambahKegiatanModal({
   );
 }
 
-// Fungsi untuk mendapatkan daftar kegiatan per role
-const getKegiatanByRole = (data: DataRow, role: string): { kegiatan: string; index: number; dates: string[] }[] => {
-  const roleMapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
-  if (!roleMapping) return [];
-
-  const kegiatanMap = new Map<number, { kegiatan: string; dates: string[] }>();
-
-  Object.entries(data.blocks).forEach(([key, block]) => {
-    if (block.role === role) {
-      const { tanggal, kegiatanIndex } = parseBlockKey(key);
-      
-      if (!kegiatanMap.has(kegiatanIndex)) {
-        kegiatanMap.set(kegiatanIndex, { 
-          kegiatan: block.kegiatan, 
-          dates: [] 
-        });
-      }
-      
-      kegiatanMap.get(kegiatanIndex)!.dates.push(tanggal);
-    }
-  });
-
-  return Array.from(kegiatanMap.entries())
-    .map(([index, { kegiatan, dates }]) => ({
-      kegiatan,
-      index,
-      dates: dates.sort((a, b) => parseInt(a) - parseInt(b))
-    }))
-    .sort((a, b) => a.index - b.index);
-};
-
 export default function BlockTanggal() {
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
   const [organikList, setOrganikList] = useState<Organik[]>([]);
@@ -637,6 +634,7 @@ export default function BlockTanggal() {
         const blocks: BlockData = {};
         let kegiatanText = "";
 
+        // Process semua role dan slot kegiatan
         Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
           for (let kegiatanIndex = 0; kegiatanIndex < mapping.maxKegiatan; kegiatanIndex++) {
             const kegiatanCol = mapping.kegiatanCols[kegiatanIndex] - 1;
@@ -647,6 +645,7 @@ export default function BlockTanggal() {
               const tanggal = row[tanggalCol] || "";
 
               if (kegiatan && tanggal) {
+                // Process multiple tanggal (dipisah koma)
                 tanggal.split(',').forEach((t: string) => {
                   const trimmedT = t.trim();
                   if (trimmedT) {
@@ -659,10 +658,11 @@ export default function BlockTanggal() {
                   }
                 });
 
+                // Untuk kegiatan text, kita simpan dengan format yang lebih sederhana
                 if (kegiatanText) {
                   kegiatanText += " | ";
                 }
-                kegiatanText += `${kegiatan} (${role}-${kegiatanIndex + 1})`;
+                kegiatanText += `${kegiatan} (${role})`;
               }
             }
           }
@@ -681,15 +681,18 @@ export default function BlockTanggal() {
             spreadsheetRowIndex: rowIndex + 2
           });
         } else {
+          // Merge blocks dengan existing data
           Object.entries(blocks).forEach(([key, blockData]) => {
             newDataRows[existingIndex].blocks[key] = blockData;
           });
 
+          // Update kegiatan text
           const existingKegiatanList = newDataRows[existingIndex].kegiatan.split(' | ').filter(k => k.trim() !== "");
           const newKegiatanList = kegiatanText.split(' | ').filter(k => k.trim() !== "");
           const combinedKegiatan = [...new Set([...existingKegiatanList, ...newKegiatanList])].join(' | ');
           newDataRows[existingIndex].kegiatan = combinedKegiatan;
 
+          // Update penanggung jawab
           const existingPJ = newDataRows[existingIndex].penanggungJawab.split(',').map(pj => pj.trim());
           const newPJ = penanggungJawab.split(',').map(pj => pj.trim());
           const combinedPJ = [...new Set([...existingPJ, ...newPJ])].join(', ');
@@ -734,6 +737,7 @@ export default function BlockTanggal() {
         throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
       }
 
+      // Baca data existing
       const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -768,8 +772,10 @@ export default function BlockTanggal() {
         const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
         const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
 
+        // Update kegiatan
         rowData[kegiatanCol] = kegiatanInput || data.kegiatan;
 
+        // Ambil tanggal hanya untuk kegiatan index ini dan role ini
         const relevantDates = Object.keys(data.blocks)
           .filter(key => {
             const block = data.blocks[key];
@@ -783,6 +789,7 @@ export default function BlockTanggal() {
         rowData[tanggalCol] = relevantDates;
       }
 
+      // Update penanggung jawab
       let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || data.penanggungJawab;
       if (operation !== 'delete') {
         const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
@@ -793,6 +800,7 @@ export default function BlockTanggal() {
       }
       rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
 
+      // Update jumlah total tanggal terpakai
       const totalTanggal = Object.keys(data.blocks).length;
       rowData[TOTAL_TANGGAL_COL - 1] = totalTanggal.toString();
 
@@ -889,6 +897,7 @@ export default function BlockTanggal() {
 
     const rowData = [...existingRow];
 
+    // Hapus semua data role user dari spreadsheet
     for (let i = 0; i < roleMapping.maxKegiatan; i++) {
       const kegiatanCol = roleMapping.kegiatanCols[i] - 1;
       const tanggalCol = roleMapping.tanggalCols[i] - 1;
@@ -897,17 +906,20 @@ export default function BlockTanggal() {
       if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
     }
 
+    // Hapus user role dari penanggung jawab
     let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
     const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
     penanggungJawab = currentPJ.join(', ');
     rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
 
+    // Update jumlah tanggal terpakai
     const remainingBlocks = Object.keys(data.blocks).filter(key => {
       const block = data.blocks[key];
       return block.role !== userRole;
     }).length;
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
+    // Update spreadsheet
     const requestBody = {
       spreadsheetId: SPREADSHEET_ID,
       operation: "update",
@@ -950,18 +962,21 @@ export default function BlockTanggal() {
 
     const rowData = [...existingRow];
 
+    // Hapus data spesifik untuk kegiatan index
     const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
     const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
     
     if (kegiatanCol < rowData.length) rowData[kegiatanCol] = "";
     if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
 
+    // Update jumlah tanggal terpakai
     const remainingBlocks = Object.keys(data.blocks).filter(key => {
       const block = data.blocks[key];
       return !(block.role === userRole && block.kegiatanIndex === kegiatanIndex);
     }).length;
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
+    // Update spreadsheet
     const requestBody = {
       spreadsheetId: SPREADSHEET_ID,
       operation: "update",
@@ -1278,19 +1293,6 @@ export default function BlockTanggal() {
         };
       });
 
-      // Update kegiatan text
-      const kegiatanList = data.kegiatan.split(' | ').filter(k => {
-        const isFromOtherRoleOrDifferentIndex = !Object.values(data.blocks).some(block => 
-          block.kegiatan === k && block.role === userRole && block.kegiatanIndex === kegiatanIndex
-        );
-        return isFromOtherRoleOrDifferentIndex;
-      });
-
-      if (kegiatan && !kegiatanList.includes(`${kegiatan} (${userRole}-${kegiatanIndex + 1})`)) {
-        kegiatanList.push(`${kegiatan} (${userRole}-${kegiatanIndex + 1})`);
-      }
-      data.kegiatan = kegiatanList.join(' | ');
-
       await saveToSpreadsheet(data, 'update', kegiatanIndex);
       
       const sortedData = sortData(newData);
@@ -1336,11 +1338,6 @@ export default function BlockTanggal() {
           kegiatanIndex: kegiatanIndex
         };
       });
-
-      // Update kegiatan text
-      const kegiatanList = data.kegiatan.split(' | ').filter(k => k.trim() !== "");
-      kegiatanList.push(`${kegiatan} (${userRole}-${kegiatanIndex + 1})`);
-      data.kegiatan = kegiatanList.join(' | ');
 
       await saveToSpreadsheet(data, 'update', kegiatanIndex);
       
@@ -1477,13 +1474,6 @@ export default function BlockTanggal() {
         };
       });
 
-      // Update kegiatan text
-      const existingKegiatanList = data.kegiatan.split(' | ').filter(k => k.trim() !== "");
-      if (!existingKegiatanList.includes(`${kegiatanInput} (${userRole}-${availableSlot + 1})`)) {
-        existingKegiatanList.push(`${kegiatanInput} (${userRole}-${availableSlot + 1})`);
-      }
-      data.kegiatan = existingKegiatanList.join(' | ');
-
       // Update penanggung jawab
       const currentPJ = data.penanggungJawab.split(',').map(pj => pj.trim());
       if (!currentPJ.includes(userRole)) {
@@ -1531,6 +1521,24 @@ export default function BlockTanggal() {
   const getKegiatanBorderColor = (role: string): string => {
     const mapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
     return mapping?.borderColor || 'border-gray-200';
+  };
+
+  // Fungsi untuk mendapatkan semua kegiatan dari semua role dalam format yang diinginkan
+  const getAllKegiatanFormatted = (data: DataRow) => {
+    const allKegiatan: { kegiatan: string; role: string; dates: string[] }[] = [];
+    
+    Object.entries(ROLE_MAPPING).forEach(([role]) => {
+      const roleKegiatan = getKegiatanByRole(data, role);
+      roleKegiatan.forEach(kegiatan => {
+        allKegiatan.push({
+          kegiatan: kegiatan.kegiatan,
+          role: role,
+          dates: kegiatan.dates
+        });
+      });
+    });
+
+    return allKegiatan;
   };
 
   const filteredAvailableMitra = useMemo(() => {
@@ -1735,6 +1743,7 @@ export default function BlockTanggal() {
                   const canEditThisData = canUserEditData(data);
                   const userKegiatan = getKegiatanByRole(data, userRole);
                   const availableSlot = getAvailableKegiatanSlot(data, userRole);
+                  const allKegiatan = getAllKegiatanFormatted(data);
                   
                   return (
                     <TableRow key={`${data.nik}-${data.isOrganik}`}>
@@ -1763,30 +1772,19 @@ export default function BlockTanggal() {
                       </TableCell>
                       <TableCell>
                         <div className="max-w-[600px]">
-                          {Object.keys(data.blocks).length > 0 ? (
-                            <div className="grid grid-cols-1 gap-2">
-                              {Object.entries(ROLE_MAPPING).map(([role, mapping]) => {
-                                const roleKegiatan = getKegiatanByRole(data, role);
-                                if (roleKegiatan.length === 0) return null;
-                                
+                          {allKegiatan.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {allKegiatan.map((item, idx) => {
+                                const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
                                 return (
-                                  <div key={role} className="space-y-2">
-                                    <div className={`text-sm font-medium ${mapping.color}`}>
-                                      {role}
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-1">
-                                      {roleKegiatan.map((kegiatan, idx) => (
-                                        <div key={idx} className={`p-2 rounded-lg border ${mapping.borderColor} ${mapping.bgColor}`}>
-                                          <div className="space-y-1">
-                                            <div className={`text-sm font-medium break-words ${mapping.color}`}>
-                                              {kegiatan.kegiatan}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                              Slot {kegiatan.index + 1} - Tanggal: {kegiatan.dates.join(', ')}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
+                                  <div key={idx} className={`p-2 rounded-lg border ${mapping?.borderColor || 'border-gray-200'} ${mapping?.bgColor || 'bg-gray-100'}`}>
+                                    <div className="space-y-1">
+                                      <div className="text-sm font-medium break-words text-gray-800">
+                                        {item.kegiatan}
+                                      </div>
+                                      <div className={`text-xs font-medium ${mapping?.color || 'text-gray-600'}`}>
+                                        {item.role} - Tanggal: {item.dates.join(', ')}
+                                      </div>
                                     </div>
                                   </div>
                                 );
