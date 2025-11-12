@@ -55,7 +55,6 @@ const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunOptions = [2024, 2025, 2026];
 
-// PERBAIKAN: Mapping role ke kolom spreadsheet - DIPERBAIKI untuk menghindari konflik kolom
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': {
     kegiatanCols: [6, 18, 30, 42, 54, 66, 78, 90, 102, 114],
@@ -107,15 +106,13 @@ const ROLE_MAPPING = {
   }
 };
 
-// PERBAIKAN: Kolom khusus - DIPINDAH untuk menghindari konflik
 const PENANGGUNG_JAWAB_COL = 126;
 const TOTAL_TANGGAL_COL = 127;
-const KECAMATAN_JABATAN_COL = 5; // PERBAIKAN: Kolom khusus untuk Jabatan/Kecamatan
+const KECAMATAN_JABATAN_COL = 5;
 
 const ALLOWED_ROLES = Object.keys(ROLE_MAPPING);
 const DISABLED_ROLES = ['Bendahara', 'Pejabat Pengadaan'];
 
-// Fungsi utility
 const generateBlockKey = (tanggal: string, role: string, kegiatanIndex: number) => {
   return `${tanggal}-${role}-${kegiatanIndex}`;
 };
@@ -176,7 +173,6 @@ const getKegiatanByRole = (data: DataRow, role: string): { kegiatan: string; ind
     .sort((a, b) => a.index - b.index);
 };
 
-// Komponen Modal Edit Tanggal
 function EditTanggalModal({
   isOpen,
   onClose,
@@ -371,7 +367,6 @@ function EditTanggalModal({
   );
 }
 
-// Komponen Modal Tambah Kegiatan
 function TambahKegiatanModal({
   isOpen,
   onClose,
@@ -629,8 +624,6 @@ export default function BlockTanggal() {
       currentData.forEach((row: any[], rowIndex: number) => {
         const nama = row[3] || "";
         const nik = row[4] || "";
-        
-        // PERBAIKAN: Ambil data Jabatan/Kecamatan dari kolom yang benar
         const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || "";
         const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
         const isOrganik = organikList.some(org => org.nama === nama);
@@ -639,7 +632,6 @@ export default function BlockTanggal() {
         const blocks: BlockData = {};
         let kegiatanText = "";
 
-        // Process semua role dan slot kegiatan
         Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
           for (let kegiatanIndex = 0; kegiatanIndex < mapping.maxKegiatan; kegiatanIndex++) {
             const kegiatanCol = mapping.kegiatanCols[kegiatanIndex] - 1;
@@ -650,7 +642,6 @@ export default function BlockTanggal() {
               const tanggal = row[tanggalCol] || "";
               
               if (kegiatan && tanggal) {
-                // Process multiple tanggal (dipisah koma)
                 tanggal.split(',').forEach((t: string) => {
                   const trimmedT = t.trim();
                   if (trimmedT) {
@@ -663,7 +654,6 @@ export default function BlockTanggal() {
                   }
                 });
 
-                // Untuk kegiatan text, kita simpan dengan format yang lebih sederhana
                 if (kegiatanText) {
                   kegiatanText += " | ";
                 }
@@ -678,7 +668,7 @@ export default function BlockTanggal() {
             no: newDataRows.length + 1,
             nama,
             nik,
-            kecamatan: kecamatanJabatan, // PERBAIKAN: Gunakan data dari kolom khusus
+            kecamatan: kecamatanJabatan,
             kegiatan: kegiatanText,
             penanggungJawab,
             blocks,
@@ -686,18 +676,15 @@ export default function BlockTanggal() {
             spreadsheetRowIndex: rowIndex + 2
           });
         } else {
-          // Merge blocks dengan existing data
           Object.entries(blocks).forEach(([key, blockData]) => {
             newDataRows[existingIndex].blocks[key] = blockData;
           });
           
-          // Update kegiatan text
           const existingKegiatanList = newDataRows[existingIndex].kegiatan.split(' | ').filter(k => k.trim() !== "");
           const newKegiatanList = kegiatanText.split(' | ').filter(k => k.trim() !== "");
           const combinedKegiatan = [...new Set([...existingKegiatanList, ...newKegiatanList])].join(' | ');
           newDataRows[existingIndex].kegiatan = combinedKegiatan;
           
-          // Update penanggung jawab
           const existingPJ = newDataRows[existingIndex].penanggungJawab.split(',').map(pj => pj.trim());
           const newPJ = penanggungJawab.split(',').map(pj => pj.trim());
           const combinedPJ = [...new Set([...existingPJ, ...newPJ])].join(', ');
@@ -731,8 +718,7 @@ export default function BlockTanggal() {
     setAvailableOrganik(availableOrganikData);
   };
 
-  // PERBAIKAN: Fungsi save yang diperbaiki untuk menghindari konflik kolom
-  const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0) => {
+  const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0, kegiatanNama: string = '') => {
     try {
       if (!canUserTag && operation !== 'delete') {
         throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
@@ -743,7 +729,6 @@ export default function BlockTanggal() {
         throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
       }
 
-      // Baca data existing
       const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -762,14 +747,13 @@ export default function BlockTanggal() {
 
       const rowData = [...existingRow];
 
-      // PERBAIKAN: Pastikan data dasar selalu disimpan dengan benar
       if (operation === 'create') {
         rowData[0] = data.no.toString();
         rowData[1] = tahun.toString();
         rowData[2] = bulan;
         rowData[3] = data.nama;
         rowData[4] = data.nik;
-        rowData[KECAMATAN_JABATAN_COL - 1] = data.kecamatan; // PERBAIKAN: Simpan Jabatan/Kecamatan
+        rowData[KECAMATAN_JABATAN_COL - 1] = data.kecamatan;
       }
 
       if (operation !== 'delete' && roleMapping) {
@@ -780,10 +764,12 @@ export default function BlockTanggal() {
         const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
         const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
 
-        // PERBAIKAN: Update kegiatan dengan benar
-        rowData[kegiatanCol] = kegiatanInput;
+        if (kegiatanNama) {
+          rowData[kegiatanCol] = kegiatanNama;
+        } else {
+          rowData[kegiatanCol] = kegiatanInput;
+        }
 
-        // Ambil tanggal hanya untuk kegiatan index ini dan role ini
         const relevantDates = Object.keys(data.blocks)
           .filter(key => {
             const block = data.blocks[key];
@@ -797,7 +783,6 @@ export default function BlockTanggal() {
         rowData[tanggalCol] = relevantDates;
       }
 
-      // Update penanggung jawab
       let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || data.penanggungJawab;
       if (operation !== 'delete') {
         const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
@@ -808,7 +793,6 @@ export default function BlockTanggal() {
       }
       rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
 
-      // Update jumlah total tanggal terpakai
       const totalTanggal = Object.keys(data.blocks).length;
       rowData[TOTAL_TANGGAL_COL - 1] = totalTanggal.toString();
 
@@ -905,7 +889,6 @@ export default function BlockTanggal() {
 
     const rowData = [...existingRow];
 
-    // Hapus semua data role user dari spreadsheet
     for (let i = 0; i < roleMapping.maxKegiatan; i++) {
       const kegiatanCol = roleMapping.kegiatanCols[i] - 1;
       const tanggalCol = roleMapping.tanggalCols[i] - 1;
@@ -914,20 +897,17 @@ export default function BlockTanggal() {
       if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
     }
 
-    // Hapus user role dari penanggung jawab
     let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
     const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj && pj !== userRole);
     penanggungJawab = currentPJ.join(', ');
     rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
 
-    // Update jumlah tanggal terpakai
     const remainingBlocks = Object.keys(data.blocks).filter(key => {
       const block = data.blocks[key];
       return block.role !== userRole;
     }).length;
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
-    // Update spreadsheet
     const requestBody = {
       spreadsheetId: SPREADSHEET_ID,
       operation: "update",
@@ -970,21 +950,18 @@ export default function BlockTanggal() {
 
     const rowData = [...existingRow];
 
-    // Hapus data spesifik untuk kegiatan index
     const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
     const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
     
     if (kegiatanCol < rowData.length) rowData[kegiatanCol] = "";
     if (tanggalCol < rowData.length) rowData[tanggalCol] = "";
 
-    // Update jumlah tanggal terpakai
     const remainingBlocks = Object.keys(data.blocks).filter(key => {
       const block = data.blocks[key];
       return !(block.role === userRole && block.kegiatanIndex === kegiatanIndex);
     }).length;
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
-    // Update spreadsheet
     const requestBody = {
       spreadsheetId: SPREADSHEET_ID,
       operation: "update",
@@ -1276,19 +1253,6 @@ export default function BlockTanggal() {
       const monthIndex = bulanOptions.indexOf(bulan);
       const tanggalStrings = selectedDates.map(date => date.getDate().toString());
 
-      // PERBAIKAN: Update nama kegiatan di semua blok yang sesuai
-      Object.keys(data.blocks).forEach(key => {
-        const block = data.blocks[key];
-        const { kegiatanIndex: existingIndex } = parseBlockKey(key);
-        if (block.role === userRole && existingIndex === kegiatanIndex) {
-          data.blocks[key] = {
-            ...block,
-            kegiatan: kegiatan // PERBAIKAN: Update nama kegiatan
-          };
-        }
-      });
-
-      // Hapus semua tanggal untuk kegiatan index ini
       Object.keys(data.blocks).forEach(key => {
         const block = data.blocks[key];
         const { kegiatanIndex: existingIndex } = parseBlockKey(key);
@@ -1297,7 +1261,6 @@ export default function BlockTanggal() {
         }
       });
 
-      // Tambahkan tanggal baru
       tanggalStrings.forEach(tanggal => {
         const blockKey = generateBlockKey(tanggal, userRole, kegiatanIndex);
         data.blocks[blockKey] = {
@@ -1307,7 +1270,7 @@ export default function BlockTanggal() {
         };
       });
 
-      await saveToSpreadsheet(data, 'update', kegiatanIndex);
+      await saveToSpreadsheet(data, 'update', kegiatanIndex, kegiatan);
       
       const sortedData = sortData(newData);
       setDataRows(sortedData);
@@ -1343,7 +1306,6 @@ export default function BlockTanggal() {
       const monthIndex = bulanOptions.indexOf(bulan);
       const tanggalStrings = selectedDates.map(date => date.getDate().toString());
 
-      // Tambahkan tanggal baru
       tanggalStrings.forEach(tanggal => {
         const blockKey = generateBlockKey(tanggal, userRole, kegiatanIndex);
         data.blocks[blockKey] = {
@@ -1353,7 +1315,7 @@ export default function BlockTanggal() {
         };
       });
 
-      await saveToSpreadsheet(data, 'update', kegiatanIndex);
+      await saveToSpreadsheet(data, 'update', kegiatanIndex, kegiatan);
       
       const sortedData = sortData(newData);
       setDataRows(sortedData);
@@ -1376,27 +1338,6 @@ export default function BlockTanggal() {
   const isDateInSelectedMonth = (date: Date) => {
     const monthIndex = bulanOptions.indexOf(bulan);
     return isSameMonth(date, new Date(tahun, monthIndex)) && isSameYear(date, new Date(tahun, monthIndex));
-  };
-
-  const getBlockedDatesForCurrentUser = (currentDataIndex: number | null): Date[] => {
-    if (currentDataIndex === null) return [];
-    
-    const monthIndex = bulanOptions.indexOf(bulan);
-    const userBlockedDates: Date[] = [];
-    const currentData = dataRows[currentDataIndex];
-    
-    if (!currentData) return [];
-    Object.keys(currentData.blocks).forEach(key => {
-      const block = currentData.blocks[key];
-      if (block.role === userRole) {
-        const { tanggal } = parseBlockKey(key);
-        const date = new Date(tahun, monthIndex, parseInt(tanggal));
-        if (isDateInSelectedMonth(date)) {
-          userBlockedDates.push(date);
-        }
-      }
-    });
-    return userBlockedDates;
   };
 
   const saveDates = async () => {
@@ -1457,7 +1398,6 @@ export default function BlockTanggal() {
 
       const conflictingDates = [];
       for (const tanggal of tanggalStrings) {
-        // Cek konflik dengan semua role
         const existingBlock = Object.keys(data.blocks).find(key => {
           const { tanggal: existingTanggal } = parseBlockKey(key);
           return existingTanggal === tanggal;
@@ -1477,7 +1417,6 @@ export default function BlockTanggal() {
         return;
       }
 
-      // Tambahkan tanggal baru
       tanggalStrings.forEach(tanggal => {
         const blockKey = generateBlockKey(tanggal, userRole, availableSlot);
         data.blocks[blockKey] = {
@@ -1487,14 +1426,13 @@ export default function BlockTanggal() {
         };
       });
 
-      // Update penanggung jawab
       const currentPJ = data.penanggungJawab.split(',').map(pj => pj.trim());
       if (!currentPJ.includes(userRole)) {
         currentPJ.push(userRole);
       }
       data.penanggungJawab = currentPJ.filter(pj => pj).join(', ');
 
-      await saveToSpreadsheet(data, 'update', availableSlot);
+      await saveToSpreadsheet(data, 'update', availableSlot, kegiatanInput);
 
       const sortedData = sortData(newData);
       setDataRows(sortedData);
@@ -1521,22 +1459,6 @@ export default function BlockTanggal() {
     return Object.keys(data.blocks).length;
   };
 
-  const getKegiatanColor = (role: string): string => {
-    const mapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
-    return mapping?.color || 'text-gray-600';
-  };
-
-  const getKegiatanBgColor = (role: string): string => {
-    const mapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
-    return mapping?.bgColor || 'bg-gray-100';
-  };
-
-  const getKegiatanBorderColor = (role: string): string => {
-    const mapping = ROLE_MAPPING[role as keyof typeof ROLE_MAPPING];
-    return mapping?.borderColor || 'border-gray-200';
-  };
-
-  // Fungsi untuk mendapatkan semua kegiatan dari semua role dalam format yang diinginkan
   const getAllKegiatanFormatted = (data: DataRow) => {
     const allKegiatan: { kegiatan: string; role: string; dates: string[] }[] = [];
     
@@ -1583,7 +1505,7 @@ export default function BlockTanggal() {
     );
   }
 
-  return (
+return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
