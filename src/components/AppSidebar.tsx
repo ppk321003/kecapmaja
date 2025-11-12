@@ -42,7 +42,6 @@ const mainMenuItems = [
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "SBML", url: "/entri-sbml", icon: Database },
-  //{ title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
   { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
   { title: "Linkers", url: "/linkers", icon: Link2 },
 ];
@@ -71,26 +70,120 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col"
+      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col relative overflow-hidden"
       style={{
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)",
       }}
     >
+      {/* === BACKGROUND ANIMASI (Gelembung & Kotak) === */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="bubbles">
+          {[...Array(6)].map((_, i) => (
+            <div key={`bubble-${i}`} className={`bubble bubble-${i + 1}`} />
+          ))}
+        </div>
+        <div className="boxes">
+          {[...Array(4)].map((_, i) => (
+            <div key={`box-${i}`} className={`box box-${i + 1}`} />
+          ))}
+        </div>
+      </div>
+
+      {/* === KONTEN SIDEBAR === */}
       <SidebarContent
-        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white"
+        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white relative z-10"
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
         }}
       >
-        <style>
-          {`
-            .sidebar-content-hidden::-webkit-scrollbar {
-              display: none;
+        {/* CSS Scoped untuk animasi */}
+        <style jsx>{`
+          /* Sembunyikan scrollbar */
+          .sidebar-content-hidden::-webkit-scrollbar {
+            display: none;
+          }
+
+          /* Gelembung */
+          .bubbles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+          }
+
+          .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 50%;
+            backdrop-filter: blur(4px);
+            animation: float 6s infinite ease-in-out;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+          }
+
+          .bubble-1 { width: 40px; height: 40px; left: 10%; animation-delay: 0s; }
+          .bubble-2 { width: 60px; height: 60px; left: 20%; animation-delay: 1s; }
+          .bubble-3 { width: 30px; height: 30px; left: 35%; animation-delay: 2.5s; }
+          .bubble-4 { width: 50px; height: 50px; left: 50%; animation-delay: 3.5s; }
+          .bubble-5 { width: 45px; height: 45px; left: 70%; animation-delay: 4.5s; }
+          .bubble-6 { width: 35px; height: 35px; left: 85%; animation-delay: 5s; }
+
+          /* Kotak */
+          .boxes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+          }
+
+          .box {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            animation: drift 8s infinite linear;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+
+          .box-1 { width: 20px; height: 20px; left: 15%; animation-delay: 0s; }
+          .box-2 { width: 30px; height: 30px; left: 40%; animation-delay: 2s; }
+          .box-3 { width: 25px; height: 25px; left: 65%; animation-delay: 4s; }
+          .box-4 { width: 35px; height: 35px; left: 80%; animation-delay: 6s; }
+
+          /* Animasi Gelembung */
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(100vh) scale(0.8) rotate(0deg);
+              opacity: 0;
             }
-          `}
-        </style>
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% {
+              transform: translateY(-100px) scale(1.2) rotate(15deg);
+              opacity: 0;
+            }
+          }
+
+          /* Animasi Kotak */
+          @keyframes drift {
+            0% {
+              transform: translateX(-50px) translateY(100vh) rotate(0deg);
+              opacity: 0;
+            }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% {
+              transform: translateX(calc(100vw + 50px)) translateY(-50px) rotate(360deg);
+              opacity: 0;
+            }
+          }
+
+          /* Nonaktifkan di mobile */
+          @media (max-width: 768px) {
+            .bubble, .box { display: none; }
+          }
+        `}</style>
 
         <div className="flex-1 sidebar-content-hidden">
           {/* HEADER LOGO */}
@@ -122,9 +215,9 @@ export function AppSidebar() {
                         to={item.url}
                         end
                         className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
                         }
                       >
                         <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
@@ -203,7 +296,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
+          {/* MENU TAMBAHAN */}
           <SidebarGroup className="px-3 py-2">
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
@@ -214,9 +307,9 @@ export function AppSidebar() {
                         to={item.url}
                         end
                         className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
                         }
                       >
                         <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
