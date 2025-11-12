@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, Ban, UserCheck, AlertCircle, Search, Filter } from "lucide-react";
+import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, Ban, UserCheck, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSameMonth, isSameYear } from "date-fns";
@@ -523,10 +523,6 @@ export default function BlockTanggal() {
   const [showTambahKegiatanModal, setShowTambahKegiatanModal] = useState(false);
   const [dataToEdit, setDataToEdit] = useState<DataRow | null>(null);
   const [kegiatanToDelete, setKegiatanToDelete] = useState<KegiatanToDelete[]>([]);
-  
-  // TAMBAHAN: State untuk filter dan search
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("semua");
   const { toast } = useToast();
 
   const canUserTag = useMemo(() => {
@@ -558,25 +554,6 @@ export default function BlockTanggal() {
       loadExistingData();
     }
   }, [bulan, tahun, mitraList, organikList]);
-
-  // TAMBAHAN: Filter data berdasarkan role dan search term
-  const filteredDataRows = useMemo(() => {
-    return dataRows.filter(row => {
-      // Filter berdasarkan role
-      const roleMatch = selectedRoleFilter === "semua" || 
-        row.penanggungJawab.toLowerCase().includes(selectedRoleFilter.toLowerCase());
-      
-      // Filter berdasarkan search term (semua kolom)
-      const searchMatch = searchTerm === "" || 
-        row.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.nik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.kegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.penanggungJawab.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return roleMatch && searchMatch;
-    });
-  }, [dataRows, selectedRoleFilter, searchTerm]);
 
   const loadMasterMitra = async () => {
     try {
@@ -1730,54 +1707,14 @@ export default function BlockTanggal() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <CardTitle>
-                Daftar Perjalanan Dinas - <span className="text-primary">{bulan}</span> <span className="text-primary">{tahun}</span>
-              </CardTitle>
-            </div>
-            
-            {/* TAMBAHAN: Filter dan Search Controls */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari semua kolom..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              
-              <Select value={selectedRoleFilter} onValueChange={setSelectedRoleFilter}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semua">Semua Role</SelectItem>
-                  {Object.keys(ROLE_MAPPING).map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <CardTitle>
+              Daftar Perjalanan Dinas - <span className="text-primary">{bulan}</span> <span className="text-primary">{tahun}</span>
+            </CardTitle>
           </div>
           <CardDescription>
             Kelola tanggal block perjalanan dinas untuk organik dan mitra
-            {searchTerm && (
-              <span className="text-primary font-medium">
-                {" "}• Pencarian: "{searchTerm}" ({filteredDataRows.length} hasil)
-              </span>
-            )}
-            {selectedRoleFilter !== "semua" && (
-              <span className="text-primary font-medium">
-                {" "}• Filter: {selectedRoleFilter}
-              </span>
-            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1794,262 +1731,252 @@ export default function BlockTanggal() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDataRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={canUserTag ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                      {searchTerm || selectedRoleFilter !== "semua" 
-                        ? "Tidak ada data yang sesuai dengan filter pencarian" 
-                        : "Belum ada data perjalanan dinas"}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredDataRows.map((data, index) => {
-                    const canEditThisData = canUserEditData(data);
-                    const userKegiatan = getKegiatanByRole(data, userRole);
-                    const availableSlot = getAvailableKegiatanSlot(data, userRole);
-                    const allKegiatan = getAllKegiatanFormatted(data);
-                    
-                    return (
-                      <TableRow key={`${data.nik}-${data.isOrganik}`}>
-                        <TableCell className="text-center font-medium">
-                          {data.no}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {data.isOrganik ? (
-                              <Building2 className="h-4 w-4 text-primary" />
-                            ) : (
-                              <MapPin className="h-4 w-4 text-primary" />
-                            )}
-                            <div>
-                              <div className="font-medium">
-                                {data.nama}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {data.isOrganik 
-                                  ? `NIP: ${organikList.find(org => org.nama === data.nama)?.nip || data.nik}`
-                                  : `NIK: ${mitraList.find(mitra => mitra.nama === data.nama)?.nik || data.nik}`
-                                }
-                              </div>
+                {dataRows.map((data, index) => {
+                  const canEditThisData = canUserEditData(data);
+                  const userKegiatan = getKegiatanByRole(data, userRole);
+                  const availableSlot = getAvailableKegiatanSlot(data, userRole);
+                  const allKegiatan = getAllKegiatanFormatted(data);
+                  
+                  return (
+                    <TableRow key={`${data.nik}-${data.isOrganik}`}>
+                      <TableCell className="text-center font-medium">
+                        {data.no}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {data.isOrganik ? (
+                            <Building2 className="h-4 w-4 text-primary" />
+                          ) : (
+                            <MapPin className="h-4 w-4 text-primary" />
+                          )}
+                          <div>
+                            <div className="font-medium">
+                              {data.nama}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {data.isOrganik 
+                                ? `NIP: ${organikList.find(org => org.nama === data.nama)?.nip || data.nik}`
+                                : `NIK: ${mitraList.find(mitra => mitra.nama === data.nama)?.nik || data.nik}`
+                              }
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {data.kecamatan}
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[380px]">
-                            {allKegiatan.length > 0 ? (
-                              <div className="space-y-1">
-                                {/* Tampilkan maksimal 2 kegiatan */}
-                                {allKegiatan.slice(0, 2).map((item, idx) => {
-                                  const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                                  const shortName = {
-                                    'Pejabat Pembuat Komitmen': 'PPK',
-                                    'Fungsi Sosial': 'Sosial',
-                                    'Fungsi Neraca': 'Neraca',
-                                    'Fungsi Produksi': 'Produksi',
-                                    'Fungsi Distribusi': 'Distribusi',
-                                    'Fungsi IPDS': 'IPDS'
-                                  }[item.role] || item.role.substring(0, 3).toUpperCase();
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {data.kecamatan}
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[380px]">
+                          {allKegiatan.length > 0 ? (
+                            <div className="space-y-1">
+                              {/* Tampilkan maksimal 2 kegiatan */}
+                              {allKegiatan.slice(0, 2).map((item, idx) => {
+                                const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                                const shortName = {
+                                  'Pejabat Pembuat Komitmen': 'PPK',
+                                  'Fungsi Sosial': 'Sosial',
+                                  'Fungsi Neraca': 'Neraca',
+                                  'Fungsi Produksi': 'Produksi',
+                                  'Fungsi Distribusi': 'Distribusi',
+                                  'Fungsi IPDS': 'IPDS'
+                                }[item.role] || item.role.substring(0, 3).toUpperCase();
 
-                                  return (
-                                    <TooltipProvider key={idx} delayDuration={200}>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
+                                return (
+                                  <TooltipProvider key={idx} delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div
+                                          className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 cursor-default select-none ${mapping?.bgColor || 'bg-gray-100'} ${mapping?.borderColor ? 'border' : 'border border-transparent'}`}
+                                        >
+                                          <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
+                                            [{shortName}]
+                                          </span>
+                                          <span className="truncate max-w-[160px]" title={item.kegiatan}>
+                                            {item.kegiatan}
+                                          </span>
+                                          <span className="text-gray-500">
+                                            ({item.dates.join(', ')})
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-xs">
+                                        <div className="space-y-1 text-sm">
+                                          <div className="font-semibold text-gray-900">
+                                            {item.kegiatan}
+                                          </div>
+                                          <div className="text-xs text-gray-600">
+                                            Role: <span className="font-medium">{item.role}</span>
+                                          </div>
+                                          <div className="text-xs font-medium text-green-600">
+                                            Tanggal: {item.dates.join(', ')}
+                                          </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })}
+
+                              {/* Badge +X lainnya → HANYA KLIK (tidak ada Tooltip saat hover) */}
+                              {allKegiatan.length > 2 && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
+                                    >
+                                      +{allKegiatan.length - 2} lainnya
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-72 p-3" align="start">
+                                    <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
+                                      {allKegiatan.map((item, idx) => {
+                                        const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                                        const shortName = {
+                                          'Pejabat Pembuat Komitmen': 'PPK',
+                                          'Fungsi Sosial': 'Sosial',
+                                          'Fungsi Neraca': 'Neraca',
+                                          'Fungsi Produksi': 'Produksi',
+                                          'Fungsi Distribusi': 'Distribusi',
+                                          'Fungsi IPDS': 'IPDS'
+                                        }[item.role] || item.role.substring(0, 3).toUpperCase();
+
+                                        return (
                                           <div
-                                            className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 cursor-default select-none ${mapping?.bgColor || 'bg-gray-100'} ${mapping?.borderColor ? 'border' : 'border border-transparent'}`}
+                                            key={idx}
+                                            className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
                                           >
                                             <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
                                               [{shortName}]
                                             </span>
-                                            <span className="truncate max-w-[160px]" title={item.kegiatan}>
+                                            <span className="font-medium truncate flex-1" title={item.kegiatan}>
                                               {item.kegiatan}
                                             </span>
                                             <span className="text-gray-500">
                                               ({item.dates.join(', ')})
                                             </span>
                                           </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-xs">
-                                          <div className="space-y-1 text-sm">
-                                            <div className="font-semibold text-gray-900">
-                                              {item.kegiatan}
-                                            </div>
-                                            <div className="text-xs text-gray-600">
-                                              Role: <span className="font-medium">{item.role}</span>
-                                            </div>
-                                            <div className="text-xs font-medium text-green-600">
-                                              Tanggal: {item.dates.join(', ')}
-                                            </div>
-                                          </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  );
-                                })}
-
-                                {/* Badge +X lainnya → HANYA KLIK (tidak ada Tooltip saat hover) */}
-                                {allKegiatan.length > 2 && (
+                                        );
+                                      })}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
+                          {getBlockedDatesCount(data)}
+                        </span>
+                      </TableCell>
+                      {canUserTag && (
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 text-xs font-medium text-primary hover:bg-primary/10"
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-8 w-8" 
+                                        onClick={() => openDatePicker(index)}
                                       >
-                                        +{allKegiatan.length - 2} lainnya
+                                        <Plus className="h-3.5 w-3.5" />
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-72 p-3" align="start">
-                                      <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
-                                      <div className="space-y-1.5 max-h-64 overflow-y-auto text-xs">
-                                        {allKegiatan.map((item, idx) => {
-                                          const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                                          const shortName = {
-                                            'Pejabat Pembuat Komitmen': 'PPK',
-                                            'Fungsi Sosial': 'Sosial',
-                                            'Fungsi Neraca': 'Neraca',
-                                            'Fungsi Produksi': 'Produksi',
-                                            'Fungsi Distribusi': 'Distribusi',
-                                            'Fungsi IPDS': 'IPDS'
-                                          }[item.role] || item.role.substring(0, 3).toUpperCase();
-
-                                          return (
-                                            <div
-                                              key={idx}
-                                              className={`flex items-center gap-1.5 rounded px-2 py-1 ${mapping?.bgColor || 'bg-gray-50'}`}
-                                            >
-                                              <span className={`font-bold ${mapping?.color || 'text-gray-700'}`}>
-                                                [{shortName}]
-                                              </span>
-                                              <span className="font-medium truncate flex-1" title={item.kegiatan}>
-                                                {item.kegiatan}
-                                              </span>
-                                              <span className="text-gray-500">
-                                                ({item.dates.join(', ')})
-                                              </span>
-                                            </div>
-                                          );
-                                        })}
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                      <div className="space-y-4">
+                                        <div className="text-sm font-medium">
+                                          {availableSlot !== -1 ? "Tambah Kegiatan untuk" : "Tambah Tanggal untuk"} {data.nama}
+                                        </div>
+                                        <CalendarComponent 
+                                          mode="multiple" 
+                                          selected={selectedDates} 
+                                          onSelect={setSelectedDates} 
+                                          className="rounded-md border" 
+                                          locale={id} 
+                                          month={new Date(tahun, bulanOptions.indexOf(bulan))}
+                                        />
+                                        <Input 
+                                          placeholder="Nama kegiatan" 
+                                          value={kegiatanInput} 
+                                          onChange={e => setKegiatanInput(e.target.value)} 
+                                        />
+                                        <div className="text-xs text-muted-foreground">
+                                          Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
+                                          {availableSlot !== -1 && ` | Slot tersedia: ${availableSlot + 1}`}
+                                        </div>
+                                        <Button 
+                                          onClick={saveDates} 
+                                          className="w-full" 
+                                          disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
+                                        >
+                                          <Save className="h-4 w-4 mr-2" />
+                                          Simpan
+                                        </Button>
                                       </div>
                                     </PopoverContent>
                                   </Popover>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
-                            {getBlockedDatesCount(data)}
-                          </span>
-                        </TableCell>
-                        {canUserTag && (
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Tambah Kegiatan/Tanggal</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            {userKegiatan.length > 0 && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button 
-                                          variant="outline" 
-                                          size="icon" 
-                                          className="h-8 w-8" 
-                                          onClick={() => openDatePicker(index)}
-                                        >
-                                          <Plus className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-4" align="start">
-                                        <div className="space-y-4">
-                                          <div className="text-sm font-medium">
-                                            {availableSlot !== -1 ? "Tambah Kegiatan untuk" : "Tambah Tanggal untuk"} {data.nama}
-                                          </div>
-                                          <CalendarComponent 
-                                            mode="multiple" 
-                                            selected={selectedDates} 
-                                            onSelect={setSelectedDates} 
-                                            className="rounded-md border" 
-                                            locale={id} 
-                                            month={new Date(tahun, bulanOptions.indexOf(bulan))}
-                                          />
-                                          <Input 
-                                            placeholder="Nama kegiatan" 
-                                            value={kegiatanInput} 
-                                            onChange={e => setKegiatanInput(e.target.value)} 
-                                          />
-                                          <div className="text-xs text-muted-foreground">
-                                            Tanggal terpilih: {selectedDates.filter(isDateInSelectedMonth).map(d => d.getDate()).join(', ')}
-                                            {availableSlot !== -1 && ` | Slot tersedia: ${availableSlot + 1}`}
-                                          </div>
-                                          <Button 
-                                            onClick={saveDates} 
-                                            className="w-full" 
-                                            disabled={selectedDates.filter(isDateInSelectedMonth).length === 0 || !kegiatanInput.trim()}
-                                          >
-                                            <Save className="h-4 w-4 mr-2" />
-                                            Simpan
-                                          </Button>
-                                        </div>
-                                      </PopoverContent>
-                                    </Popover>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon" 
+                                      className="h-8 w-8" 
+                                      onClick={() => openEditModal(index)}
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Tambah Kegiatan/Tanggal</p>
+                                    <p>Edit Kegiatan</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
+                            )}
 
-                              {userKegiatan.length > 0 && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        className="h-8 w-8" 
-                                        onClick={() => openEditModal(index)}
-                                      >
-                                        <Edit className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Edit Kegiatan</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-
-                              {canEditThisData && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        className="h-8 w-8" 
-                                        onClick={() => requestDeleteData(index)}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Hapus Data</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })
-                )}
+                            {canEditThisData && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon" 
+                                      className="h-8 w-8" 
+                                      onClick={() => requestDeleteData(index)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Hapus Data</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
