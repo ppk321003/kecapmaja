@@ -807,115 +807,122 @@ export default function BlockTanggal() {
     }
   };
 
-  const loadExistingData = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: "Sheet1!A:DW"
-        }
-      });
+const loadExistingData = async () => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: SPREADSHEET_ID,
+        operation: "read",
+        range: "Sheet1!A:DW"
+      }
+    });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const rows = data.values || [];
-      const currentData = rows.filter((row: any[]) => row[1] === tahun.toString() && row[2] === bulan);
-      const newDataRows: DataRow[] = [];
+    const rows = data.values || [];
+    const currentData = rows.filter((row: any[]) => row[1] === tahun.toString() && row[2] === bulan);
+    const newDataRows: DataRow[] = [];
 
-      currentData.forEach((row: any[], rowIndex: number) => {
-        const nama = row[3] || "";
-        const nik = row[4] || "";
-        // PERBAIKAN: Ambil Jabatan/Kecamatan dari kolom yang benar
-        const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || "";
-        const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
-        const isOrganik = organikList.some(org => org.nama === nama);
-        const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
+    currentData.forEach((row: any[], rowIndex: number) => {
+      const nama = row[3] || "";
+      const nik = row[4] || "";
+      const kecamatanJabatan = row[KECAMATAN_JABATAN_COL - 1] || "";
+      const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
+      const isOrganik = organikList.some(org => org.nama === nama);
 
-        const blocks: BlockData = {};
-        let kegiatanText = "";
+      // PERBAIKAN: Cek duplikasi berdasarkan nama + nik + isOrganik
+      const existingIndex = newDataRows.findIndex(item => 
+        item.nama === nama && 
+        item.nik === nik && 
+        item.isOrganik === isOrganik
+      );
 
-        // Process semua role dan slot kegiatan
-        Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
-          for (let kegiatanIndex = 0; kegiatanIndex < mapping.maxKegiatan; kegiatanIndex++) {
-            const kegiatanCol = mapping.kegiatanCols[kegiatanIndex] - 1;
-            const tanggalCol = mapping.tanggalCols[kegiatanIndex] - 1;
-            
-            if (kegiatanCol < row.length && tanggalCol < row.length) {
-              const kegiatan = row[kegiatanCol] || "";
-              const tanggal = row[tanggalCol] || "";
+      const blocks: BlockData = {};
+      
+      // PERBAIKAN: Hapus kegiatanText karena tidak digunakan dengan benar
+      // Kita akan reconstruct kegiatan dari blocks saja
 
-              if (kegiatan && tanggal) {
-                // Process multiple tanggal (dipisah koma)
-                tanggal.split(',').forEach((t: string) => {
-                  const trimmedT = t.trim();
-                  if (trimmedT) {
-                    const blockKey = generateBlockKey(trimmedT, role, kegiatanIndex);
-                    blocks[blockKey] = {
-                      kegiatan: kegiatan,
-                      role: role,
-                      kegiatanIndex: kegiatanIndex
-                    };
-                  }
-                });
+      // Process semua role dan slot kegiatan
+      Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
+        for (let kegiatanIndex = 0; kegiatanIndex < mapping.maxKegiatan; kegiatanIndex++) {
+          const kegiatanCol = mapping.kegiatanCols[kegiatanIndex] - 1;
+          const tanggalCol = mapping.tanggalCols[kegiatanIndex] - 1;
+          
+          if (kegiatanCol < row.length && tanggalCol < row.length) {
+            const kegiatan = row[kegiatanCol] || "";
+            const tanggal = row[tanggalCol] || "";
 
-                // Untuk kegiatan text, kita simpan dengan format yang lebih sederhana
-                if (kegiatanText) {
-                  kegiatanText += " | ";
+            if (kegiatan && tanggal) {
+              // Process multiple tanggal (dipisah koma)
+              tanggal.split(',').forEach((t: string) => {
+                const trimmedT = t.trim();
+                if (trimmedT) {
+                  const blockKey = generateBlockKey(trimmedT, role, kegiatanIndex);
+                  blocks[blockKey] = {
+                    kegiatan: kegiatan,
+                    role: role,
+                    kegiatanIndex: kegiatanIndex
+                  };
                 }
-                kegiatanText += `${kegiatan} (${role})`;
-              }
+              });
             }
           }
-        });
-
-        if (existingIndex === -1) {
-          newDataRows.push({
-            no: newDataRows.length + 1,
-            nama,
-            nik,
-            // PERBAIKAN: Simpan Jabatan/Kecamatan yang benar
-            kecamatan: kecamatanJabatan,
-            kegiatan: kegiatanText,
-            penanggungJawab,
-            blocks,
-            isOrganik,
-            spreadsheetRowIndex: rowIndex + 2
-          });
-        } else {
-          // Merge blocks dengan existing data
-          Object.entries(blocks).forEach(([key, blockData]) => {
-            newDataRows[existingIndex].blocks[key] = blockData;
-          });
-
-          // Update kegiatan text
-          const existingKegiatanList = newDataRows[existingIndex].kegiatan.split(' | ').filter(k => k.trim() !== "");
-          const newKegiatanList = kegiatanText.split(' | ').filter(k => k.trim() !== "");
-          const combinedKegiatan = [...new Set([...existingKegiatanList, ...newKegiatanList])].join(' | ');
-          newDataRows[existingIndex].kegiatan = combinedKegiatan;
-
-          // Update penanggung jawab
-          const existingPJ = newDataRows[existingIndex].penanggungJawab.split(',').map(pj => pj.trim());
-          const newPJ = penanggungJawab.split(',').map(pj => pj.trim());
-          const combinedPJ = [...new Set([...existingPJ, ...newPJ])].join(', ');
-          newDataRows[existingIndex].penanggungJawab = combinedPJ;
         }
       });
 
-      const sortedData = sortData(newDataRows);
-      setDataRows(sortedData);
-      updateAvailableData(sortedData);
-      setIsLoading(false);
-    } catch (error: any) {
-      console.error("❌ Error loading data:", error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data existing",
-        variant: "destructive"
+      if (existingIndex === -1) {
+        // PERBAIKAN: Buat data baru tanpa menggabungkan
+        newDataRows.push({
+          no: newDataRows.length + 1,
+          nama,
+          nik,
+          kecamatan: kecamatanJabatan,
+          // PERBAIKAN: Kosongkan field kegiatan karena kita akan reconstruct dari blocks
+          kegiatan: "",
+          penanggungJawab,
+          blocks,
+          isOrganik,
+          spreadsheetRowIndex: rowIndex + 2
+        });
+      } else {
+        // PERBAIKAN: Jika ada duplikat, timpa saja dengan data terbaru
+        // Jangan merge karena menyebabkan duplikasi
+        newDataRows[existingIndex] = {
+          ...newDataRows[existingIndex],
+          blocks: { ...blocks }, // Timpa blocks dengan data terbaru
+          penanggungJawab // Timpa penanggung jawab dengan data terbaru
+        };
+      }
+    });
+
+    // PERBAIKAN: Reconstruct kegiatan text dari blocks untuk semua data
+    newDataRows.forEach(data => {
+      const kegiatanMap = new Map<string, string>();
+      
+      Object.values(data.blocks).forEach(block => {
+        const key = `${block.kegiatan}-${block.role}`;
+        if (!kegiatanMap.has(key)) {
+          kegiatanMap.set(key, `${block.kegiatan} (${block.role})`);
+        }
       });
-      setIsLoading(false);
-    }
-  };
+      
+      data.kegiatan = Array.from(kegiatanMap.values()).join(' | ');
+    });
+
+    const sortedData = sortData(newDataRows);
+    setDataRows(sortedData);
+    updateAvailableData(sortedData);
+    setIsLoading(false);
+  } catch (error: any) {
+    console.error("❌ Error loading data:", error);
+    toast({
+      title: "Error",
+      description: "Gagal memuat data existing",
+      variant: "destructive"
+    });
+    setIsLoading(false);
+  }
+};
 
   const updateAvailableData = (currentData: DataRow[]) => {
     const usedNiks = currentData.map(item => item.nik);
