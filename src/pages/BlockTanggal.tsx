@@ -534,6 +534,69 @@ export default function BlockTanggal() {
     return penanggungJawabList.includes(userRole);
   };
 
+  // PERBAIKAN: Load master data dengan mapping kolom yang benar
+  const loadMasterMitra = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_MITRA_SHEET_ID,
+          operation: "read",
+          range: "MASTER.MITRA"
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      const mitraData: Mitra[] = rows.slice(1).map((row: any[]) => ({
+        nama: row[2] || "",    // Kolom C - Nama
+        nik: row[1] || "",     // Kolom B - NIK
+        kecamatan: row[7] || "" // Kolom H - Kecamatan
+      }));
+
+      console.log('📋 Loaded mitra data:', mitraData.slice(0, 3));
+      setMitraList(mitraData);
+    } catch (error: any) {
+      console.error('❌ Error loading master mitra:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data master mitra",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const loadMasterOrganik = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: MASTER_MITRA_SHEET_ID,
+          operation: "read",
+          range: "MASTER.ORGANIK"
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
+        nama: row[3] || "",    // Kolom D - Nama
+        nip: row[2] || "",     // Kolom C - NIP
+        jabatan: row[4] || ""  // Kolom E - Jabatan
+      }));
+
+      console.log('📋 Loaded organik data:', organikData.slice(0, 3));
+      setOrganikList(organikData);
+    } catch (error: any) {
+      console.error('❌ Error loading master organik:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data master organik",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("simaja_user");
     if (userData) {
@@ -550,117 +613,119 @@ export default function BlockTanggal() {
     }
   }, [bulan, tahun, mitraList, organikList]);
 
-const loadMasterMitra = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: MASTER_MITRA_SHEET_ID,
-        operation: "read",
-        range: "MASTER.MITRA"
-      }
-    });
+  const loadExistingData = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: "Sheet1!A:DV"
+        }
+      });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const rows = data.values || [];
-    const mitraData: Mitra[] = rows.slice(1).map((row: any[]) => ({
-      nama: row[2] || "",
-      nik: row[1] || "", // ← KOLOM B (index 1) ADALAH NIK
-      kecamatan: row[7] || ""
-    }));
+      const rows = data.values || [];
+      const currentData = rows.filter((row: any[]) => row[1] === tahun.toString() && row[2] === bulan);
+      
+      console.log('📊 Existing data found:', currentData.length);
 
-    console.log('📋 Loaded mitra data:', mitraData.slice(0, 3)); // Debug: lihat 3 data pertama
-    setMitraList(mitraData);
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: "Gagal memuat data master mitra",
-      variant: "destructive"
-    });
-  }
-};
+      const newDataRows: DataRow[] = [];
 
-const loadMasterOrganik = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: MASTER_MITRA_SHEET_ID,
-        operation: "read",
-        range: "MASTER.ORGANIK"
-      }
-    });
+      currentData.forEach((row: any[], rowIndex: number) => {
+        const nama = row[3] || "";
+        const nik = row[4] || ""; // Kolom E - NIP/NIK
+        const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
+        
+        // Cek apakah ini organik berdasarkan NIP
+        const isOrganik = organikList.some(org => org.nip === nik);
+        const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
 
-    if (error) throw error;
+        console.log('📝 Processing row:', { rowIndex: rowIndex + 2, nama, nik, isOrganik });
 
-    const rows = data.values || [];
-    const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
-      nama: row[3] || "",
-      nip: row[2] || "", // ← KOLOM C (index 2) ADALAH NIP
-      jabatan: row[4] || ""
-    }));
+        const blocks: BlockData = {};
+        let kegiatanText = "";
 
-    console.log('📋 Loaded organik data:', organikData.slice(0, 3)); // Debug: lihat 3 data pertama
-    setOrganikList(organikData);
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: "Gagal memuat data master organik",
-      variant: "destructive"
-    });
-  }
-};
+        // Process semua role dan slot kegiatan
+        Object.entries(ROLE_MAPPING).forEach(([role, mapping]) => {
+          for (let kegiatanIndex = 0; kegiatanIndex < mapping.maxKegiatan; kegiatanIndex++) {
+            const kegiatanCol = mapping.kegiatanCols[kegiatanIndex] - 1;
+            const tanggalCol = mapping.tanggalCols[kegiatanIndex] - 1;
+            
+            if (kegiatanCol < row.length && tanggalCol < row.length) {
+              const kegiatan = row[kegiatanCol] || "";
+              const tanggal = row[tanggalCol] || "";
 
-const loadExistingData = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: SPREADSHEET_ID,
-        operation: "read",
-        range: "Sheet1!A:DV"
-      }
-    });
+              if (kegiatan && tanggal) {
+                // Process multiple tanggal (dipisah koma)
+                tanggal.split(',').forEach((t: string) => {
+                  const trimmedT = t.trim();
+                  if (trimmedT) {
+                    const blockKey = generateBlockKey(trimmedT, role, kegiatanIndex);
+                    blocks[blockKey] = {
+                      kegiatan: kegiatan,
+                      role: role,
+                      kegiatanIndex: kegiatanIndex
+                    };
+                  }
+                });
 
-    if (error) throw error;
-
-    const rows = data.values || [];
-    const currentData = rows.filter((row: any[]) => row[1] === tahun.toString() && row[2] === bulan);
-    const newDataRows: DataRow[] = [];
-
-    console.log('📊 Found current data:', currentData.length, 'rows');
-
-    currentData.forEach((row: any[], rowIndex: number) => {
-      const nama = row[3] || "";
-      const nik = row[4] || ""; // ← KOLOM E (index 4) ADALAH NIP/NIK
-      const penanggungJawab = row[PENANGGUNG_JAWAB_COL - 1] || "";
-      const isOrganik = organikList.some(org => org.nama === nama);
-      const existingIndex = newDataRows.findIndex(item => item.nama === nama && item.nik === nik);
-
-      // Debug: lihat data yang di-load
-      if (rowIndex < 3) {
-        console.log('📝 Sample row data:', {
-          no: row[0],
-          tahun: row[1],
-          bulan: row[2],
-          nama: row[3],
-          nik: row[4],
-          isOrganik
+                // Untuk kegiatan text, kita simpan dengan format yang lebih sederhana
+                if (kegiatanText) {
+                  kegiatanText += " | ";
+                }
+                kegiatanText += `${kegiatan} (${role})`;
+              }
+            }
+          }
         });
-      }
 
-      // ... rest of the function remains the same
-    });
+        if (existingIndex === -1) {
+          newDataRows.push({
+            no: newDataRows.length + 1,
+            nama,
+            nik,
+            kecamatan: isOrganik ? organikList.find(org => org.nip === nik)?.jabatan || "" : mitraList.find(m => m.nik === nik)?.kecamatan || "",
+            kegiatan: kegiatanText,
+            penanggungJawab,
+            blocks,
+            isOrganik,
+            spreadsheetRowIndex: rowIndex + 2
+          });
+        } else {
+          // Merge blocks dengan existing data
+          Object.entries(blocks).forEach(([key, blockData]) => {
+            newDataRows[existingIndex].blocks[key] = blockData;
+          });
 
-    // ... rest of the function
-  } catch (error: any) {
-    console.error("❌ Error loading data:", error);
-    toast({
-      title: "Error",
-      description: "Gagal memuat data existing",
-      variant: "destructive"
-    });
-    setIsLoading(false);
-  }
-};
+          // Update kegiatan text
+          const existingKegiatanList = newDataRows[existingIndex].kegiatan.split(' | ').filter(k => k.trim() !== "");
+          const newKegiatanList = kegiatanText.split(' | ').filter(k => k.trim() !== "");
+          const combinedKegiatan = [...new Set([...existingKegiatanList, ...newKegiatanList])].join(' | ');
+          newDataRows[existingIndex].kegiatan = combinedKegiatan;
+
+          // Update penanggung jawab
+          const existingPJ = newDataRows[existingIndex].penanggungJawab.split(',').map(pj => pj.trim());
+          const newPJ = penanggungJawab.split(',').map(pj => pj.trim());
+          const combinedPJ = [...new Set([...existingPJ, ...newPJ])].join(', ');
+          newDataRows[existingIndex].penanggungJawab = combinedPJ;
+        }
+      });
+
+      const sortedData = sortData(newDataRows);
+      setDataRows(sortedData);
+      updateAvailableData(sortedData);
+      setIsLoading(false);
+    } catch (error: any) {
+      console.error("❌ Error loading data:", error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data existing",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
 
   const updateAvailableData = (currentData: DataRow[]) => {
     const usedNiks = currentData.map(item => item.nik);
@@ -673,66 +738,150 @@ const loadExistingData = async () => {
     setAvailableOrganik(availableOrganikData);
   };
 
-const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0) => {
-  try {
-    if (!canUserTag && operation !== 'delete') {
-      throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
-    }
-
-    const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
-    if (!roleMapping && operation !== 'delete') {
-      throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
-    }
-
-    // Validasi data sebelum menyimpan
-    if (operation === 'create' && (!data.nik || data.nik.trim() === "")) {
-      throw new Error("NIP/NIK tidak boleh kosong");
-    }
-
-    // Baca data existing
-    const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: SPREADSHEET_ID,
-        operation: "read",
-        range: `Sheet1!A${data.spreadsheetRowIndex}:DV${data.spreadsheetRowIndex}`
+  // PERBAIKAN: Fungsi save dengan penanganan NIP/NIK yang benar
+  const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' | 'delete', kegiatanIndex: number = 0) => {
+    try {
+      if (!canUserTag && operation !== 'delete') {
+        throw new Error(`Role ${userRole} tidak diperbolehkan melakukan block tanggal`);
       }
-    });
 
-    // Buat array dengan 126 kolom (A sampai DV) dengan nilai default kosong
-    let existingRow = new Array(126).fill("");
-    
-    if (!readError && existingData?.values?.[0]) {
-      // Jika ada data existing, salin ke array
-      const existingValues = existingData.values[0];
-      for (let i = 0; i < existingValues.length && i < 126; i++) {
-        existingRow[i] = existingValues[i];
+      const roleMapping = ROLE_MAPPING[userRole as keyof typeof ROLE_MAPPING];
+      if (!roleMapping && operation !== 'delete') {
+        throw new Error(`Role ${userRole} tidak memiliki mapping kolom yang valid`);
       }
+
+      // Baca data existing
+      const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `Sheet1!A${data.spreadsheetRowIndex}:DV${data.spreadsheetRowIndex}`
+        }
+      });
+
+      // Buat array dengan 126 kolom (A sampai DV) dengan nilai default kosong
+      let existingRow = new Array(126).fill("");
+      
+      if (!readError && existingData?.values?.[0]) {
+        // Jika ada data existing, salin ke array
+        const existingValues = existingData.values[0];
+        for (let i = 0; i < existingValues.length && i < 126; i++) {
+          existingRow[i] = existingValues[i];
+        }
+      }
+
+      const rowData = [...existingRow];
+
+      // **PERBAIKAN UTAMA: Pastikan semua kolom dasar terisi dengan benar**
+      if (operation === 'create') {
+        rowData[0] = data.no.toString();                    // No (A)
+        rowData[1] = tahun.toString();                      // Tahun (B)
+        rowData[2] = bulan;                                 // Bulan (C)
+        rowData[3] = data.nama;                             // Nama Pelaksana (D)
+        rowData[4] = data.nik;                              // NIP/NIK (E) ← INI YANG DIPERBAIKI
+      } else if (operation === 'update') {
+        // Untuk update, pastikan data dasar tetap ada
+        if (!rowData[0] || rowData[0] === "") rowData[0] = data.no.toString();
+        if (!rowData[1] || rowData[1] === "") rowData[1] = tahun.toString();
+        if (!rowData[2] || rowData[2] === "") rowData[2] = bulan;
+        if (!rowData[3] || rowData[3] === "") rowData[3] = data.nama;
+        if (!rowData[4] || rowData[4] === "") rowData[4] = data.nik; // NIP/NIK
+      }
+
+      if (operation !== 'delete' && roleMapping) {
+        if (kegiatanIndex < 0 || kegiatanIndex >= roleMapping.maxKegiatan) {
+          throw new Error(`Kegiatan index ${kegiatanIndex} tidak valid untuk role ${userRole}`);
+        }
+
+        const kegiatanCol = roleMapping.kegiatanCols[kegiatanIndex] - 1;
+        const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
+
+        // Update kegiatan
+        rowData[kegiatanCol] = kegiatanInput;
+
+        // Ambil tanggal hanya untuk kegiatan index ini dan role ini
+        const relevantDates = Object.keys(data.blocks)
+          .filter(key => {
+            const block = data.blocks[key];
+            return block.role === userRole && 
+                   block.kegiatanIndex === kegiatanIndex;
+          })
+          .map(key => parseBlockKey(key).tanggal)
+          .sort((a, b) => parseInt(a) - parseInt(b))
+          .join(',');
+
+        rowData[tanggalCol] = relevantDates;
+      }
+
+      // Update penanggung jawab
+      let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
+      if (operation !== 'delete') {
+        const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
+        if (!currentPJ.includes(userRole)) {
+          currentPJ.push(userRole);
+        }
+        penanggungJawab = currentPJ.filter(pj => pj).join(', ');
+      }
+      rowData[PENANGGUNG_JAWAB_COL - 1] = penanggungJawab;
+
+      // Update jumlah total tanggal terpakai
+      const totalTanggal = Object.keys(data.blocks).length;
+      rowData[TOTAL_TANGGAL_COL - 1] = totalTanggal.toString();
+
+      // Debug: lihat data yang akan disimpan
+      console.log('💾 Saving to spreadsheet:', {
+        operation,
+        userRole,
+        kegiatanIndex,
+        rowIndex: data.spreadsheetRowIndex,
+        dataBasics: {
+          no: rowData[0],
+          tahun: rowData[1],
+          bulan: rowData[2],
+          nama: rowData[3],
+          nik: rowData[4], // Pastikan NIK ada di sini
+        }
+      });
+
+      let requestBody;
+      if (operation === 'create') {
+        requestBody = {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "append",
+          range: "Sheet1",
+          values: [rowData]
+        };
+      } else if (operation === 'update' && data.spreadsheetRowIndex) {
+        requestBody = {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          rowIndex: data.spreadsheetRowIndex,
+          values: [rowData]
+        };
+      } else if (operation === 'delete' && data.spreadsheetRowIndex) {
+        requestBody = {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "delete",
+          rowIndex: data.spreadsheetRowIndex
+        };
+      } else {
+        throw new Error(`Invalid operation or missing rowIndex: ${operation}`);
+      }
+
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: requestBody
+      });
+
+      if (result?.error) {
+        throw new Error(result.error.message || `Gagal ${operation} data`);
+      }
+
+      return result?.data;
+    } catch (error: any) {
+      console.error('❌ Error saving to spreadsheet:', error);
+      throw error;
     }
-
-    const rowData = [...existingRow];
-
-    // PERBAIKAN: Pastikan semua kolom dasar terisi dengan benar
-    if (operation === 'create') {
-      rowData[0] = data.no.toString();                    // No (A)
-      rowData[1] = tahun.toString();                      // Tahun (B)
-      rowData[2] = bulan;                                 // Bulan (C)
-      rowData[3] = data.nama;                             // Nama Pelaksana (D)
-      rowData[4] = data.nik;                              // NIP/NIK (E) ← INI YANG DIPERBAIKI
-    } else if (operation === 'update') {
-      // Untuk update, pastikan data dasar tetap ada
-      if (!rowData[0] || rowData[0] === "") rowData[0] = data.no.toString();
-      if (!rowData[1] || rowData[1] === "") rowData[1] = tahun.toString();
-      if (!rowData[2] || rowData[2] === "") rowData[2] = bulan;
-      if (!rowData[3] || rowData[3] === "") rowData[3] = data.nama;
-      if (!rowData[4] || rowData[4] === "") rowData[4] = data.nik; // NIP/NIK
-    }
-
-    // ... rest of the function remains the same
-  } catch (error: any) {
-    console.error('❌ Error saving to spreadsheet:', error);
-    throw error;
-  }
-};
+  };
 
   const deleteUserRoleData = async (data: DataRow, kegiatanIndex?: number) => {
     try {
@@ -903,118 +1052,71 @@ const saveToSpreadsheet = async (data: DataRow, operation: 'create' | 'update' |
     }
   };
 
-const addMitra = async () => {
-  if (!selectedMitra || !kegiatanInput.trim()) {
-    toast({
-      title: "Peringatan",
-      description: "Pilih mitra dan isi nama kegiatan",
-      variant: "destructive"
+  // PERBAIKAN: Fungsi addMitra dengan debug log
+  const addMitra = async () => {
+    if (!selectedMitra || !kegiatanInput.trim()) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih mitra dan isi nama kegiatan",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!canUserTag) {
+      toast({
+        title: "Akses Ditolak",
+        description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selected = availableMitra.find(m => m.nama === selectedMitra);
+    if (!selected) return;
+
+    const nextRowIndex = await getNextRowIndex();
+    const newRow: DataRow = {
+      no: dataRows.length + 1,
+      nama: selected.nama,
+      nik: selected.nik, // ← PASTIKAN INI ADA DAN BENAR
+      kecamatan: selected.kecamatan,
+      kegiatan: kegiatanInput,
+      penanggungJawab: userRole,
+      blocks: {},
+      isOrganik: false,
+      spreadsheetRowIndex: nextRowIndex
+    };
+
+    // **DEBUG: Log data sebelum menyimpan**
+    console.log('➕ Adding mitra:', {
+      nama: selected.nama,
+      nik: selected.nik,
+      rowIndex: nextRowIndex
     });
-    return;
-  }
 
-  if (!canUserTag) {
-    toast({
-      title: "Akses Ditolak",
-      description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-      variant: "destructive"
-    });
-    return;
-  }
-
-  const selected = availableMitra.find(m => m.nama === selectedMitra);
-  if (!selected) return;
-
-  const nextRowIndex = await getNextRowIndex();
-  const newRow: DataRow = {
-    no: dataRows.length + 1,
-    nama: selected.nama,
-    nik: selected.nik, // ← AMBIL DARI DATA MITRA YANG SUDAH DILOAD
-    kecamatan: selected.kecamatan,
-    kegiatan: kegiatanInput,
-    penanggungJawab: userRole,
-    blocks: {},
-    isOrganik: false,
-    spreadsheetRowIndex: nextRowIndex
+    try {
+      await saveToSpreadsheet(newRow, 'create');
+      const newData = [...dataRows, newRow];
+      const sortedData = sortData(newData);
+      setDataRows(sortedData);
+      setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
+      setSelectedMitra("");
+      
+      toast({
+        title: "Sukses",
+        description: "Mitra berhasil ditambahkan"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan mitra: " + error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  try {
-    await saveToSpreadsheet(newRow, 'create');
-    const newData = [...dataRows, newRow];
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    setAvailableMitra(availableMitra.filter(m => m.nama !== selectedMitra));
-    setSelectedMitra("");
-    
-    toast({
-      title: "Sukses",
-      description: "Mitra berhasil ditambahkan"
-    });
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: "Gagal menyimpan mitra: " + error.message,
-      variant: "destructive"
-    });
-  }
-};
-
-const addOrganik = async () => {
-  if (!selectedOrganik || !kegiatanInput.trim()) {
-    toast({
-      title: "Peringatan",
-      description: "Pilih organik dan isi nama kegiatan",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  if (!canUserTag) {
-    toast({
-      title: "Akses Ditolak",
-      description: `Role ${userRole} tidak diperbolehkan melakukan block tanggal`,
-      variant: "destructive"
-    });
-    return;
-  }
-
-  const selected = availableOrganik.find(org => org.nama === selectedOrganik);
-  if (!selected) return;
-
-  const nextRowIndex = await getNextRowIndex();
-  const newRow: DataRow = {
-    no: dataRows.length + 1,
-    nama: selected.nama,
-    nik: selected.nip, // ← UNTUK ORGANIK GUNAKAN NIP DARI DATA ORGANIK
-    kecamatan: selected.jabatan,
-    kegiatan: kegiatanInput,
-    penanggungJawab: userRole,
-    blocks: {},
-    isOrganik: true,
-    spreadsheetRowIndex: nextRowIndex
-  };
-
-  try {
-    await saveToSpreadsheet(newRow, 'create');
-    const newData = [...dataRows, newRow];
-    const sortedData = sortData(newData);
-    setDataRows(sortedData);
-    setAvailableOrganik(availableOrganik.filter(org => org.nama !== selectedOrganik));
-    setSelectedOrganik("");
-    
-    toast({
-      title: "Sukses",
-      description: "Organik berhasil ditambahkan"
-    });
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: "Gagal menyimpan organik: " + error.message,
-      variant: "destructive"
-    });
-  }
-};
-
+  // PERBAIKAN: Fungsi addOrganik dengan debug log
   const addOrganik = async () => {
     if (!selectedOrganik || !kegiatanInput.trim()) {
       toast({
@@ -1049,6 +1151,13 @@ const addOrganik = async () => {
       isOrganik: true,
       spreadsheetRowIndex: nextRowIndex
     };
+
+    // **DEBUG: Log data sebelum menyimpan**
+    console.log('➕ Adding organik:', {
+      nama: selected.nama,
+      nip: selected.nip,
+      rowIndex: nextRowIndex
+    });
 
     try {
       await saveToSpreadsheet(newRow, 'create');
