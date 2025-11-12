@@ -54,7 +54,7 @@ const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunOptions = [2024, 2025, 2026];
 
-// Mapping role ke kolom spreadsheet - DIPERBAIKI SESUAI STRUKTUR HEADER
+// Mapping role ke kolom spreadsheet - SESUAI HEADER
 const ROLE_MAPPING = {
   'Pejabat Pembuat Komitmen': {
     kegiatanCols: [5, 17, 29, 41, 53, 65, 77, 89, 101, 113],
@@ -746,22 +746,33 @@ export default function BlockTanggal() {
         }
       });
 
+      // Buat array dengan 126 kolom (A sampai DV) dengan nilai default kosong
       let existingRow = new Array(126).fill("");
+      
       if (!readError && existingData?.values?.[0]) {
-        existingRow = [...existingData.values[0]];
-        while (existingRow.length < 126) {
-          existingRow.push("");
+        // Jika ada data existing, salin ke array
+        const existingValues = existingData.values[0];
+        for (let i = 0; i < existingValues.length && i < 126; i++) {
+          existingRow[i] = existingValues[i];
         }
       }
 
       const rowData = [...existingRow];
 
+      // PERBAIKAN: Pastikan semua kolom dasar terisi dengan benar
       if (operation === 'create') {
-        rowData[0] = data.no.toString();
-        rowData[1] = tahun.toString();
-        rowData[2] = bulan;
-        rowData[3] = data.nama;
-        rowData[4] = data.nik;
+        rowData[0] = data.no.toString();                    // No (A)
+        rowData[1] = tahun.toString();                      // Tahun (B)
+        rowData[2] = bulan;                                 // Bulan (C)
+        rowData[3] = data.nama;                             // Nama Pelaksana (D)
+        rowData[4] = data.nik;                              // NIP/NIK (E) ← INI YANG DIPERBAIKI
+      } else if (operation === 'update') {
+        // Untuk update, pastikan data dasar tetap ada
+        if (!rowData[0] || rowData[0] === "") rowData[0] = data.no.toString();
+        if (!rowData[1] || rowData[1] === "") rowData[1] = tahun.toString();
+        if (!rowData[2] || rowData[2] === "") rowData[2] = bulan;
+        if (!rowData[3] || rowData[3] === "") rowData[3] = data.nama;
+        if (!rowData[4] || rowData[4] === "") rowData[4] = data.nik; // NIP/NIK
       }
 
       if (operation !== 'delete' && roleMapping) {
@@ -773,7 +784,7 @@ export default function BlockTanggal() {
         const tanggalCol = roleMapping.tanggalCols[kegiatanIndex] - 1;
 
         // Update kegiatan
-        rowData[kegiatanCol] = kegiatanInput || data.kegiatan;
+        rowData[kegiatanCol] = kegiatanInput;
 
         // Ambil tanggal hanya untuk kegiatan index ini dan role ini
         const relevantDates = Object.keys(data.blocks)
@@ -790,7 +801,7 @@ export default function BlockTanggal() {
       }
 
       // Update penanggung jawab
-      let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || data.penanggungJawab;
+      let penanggungJawab = rowData[PENANGGUNG_JAWAB_COL - 1] || "";
       if (operation !== 'delete') {
         const currentPJ = penanggungJawab.split(',').map(pj => pj.trim()).filter(pj => pj);
         if (!currentPJ.includes(userRole)) {
@@ -803,6 +814,21 @@ export default function BlockTanggal() {
       // Update jumlah total tanggal terpakai
       const totalTanggal = Object.keys(data.blocks).length;
       rowData[TOTAL_TANGGAL_COL - 1] = totalTanggal.toString();
+
+      // Debug: lihat data yang akan disimpan
+      console.log('💾 Saving to spreadsheet:', {
+        operation,
+        userRole,
+        kegiatanIndex,
+        rowIndex: data.spreadsheetRowIndex,
+        dataBasics: {
+          no: rowData[0],
+          tahun: rowData[1],
+          bulan: rowData[2],
+          nama: rowData[3],
+          nik: rowData[4], // Pastikan NIK ada di sini
+        }
+      });
 
       let requestBody;
       if (operation === 'create') {
@@ -889,9 +915,9 @@ export default function BlockTanggal() {
 
     let existingRow = new Array(126).fill("");
     if (existingData?.values?.[0]) {
-      existingRow = [...existingData.values[0]];
-      while (existingRow.length < 126) {
-        existingRow.push("");
+      const existingValues = existingData.values[0];
+      for (let i = 0; i < existingValues.length && i < 126; i++) {
+        existingRow[i] = existingValues[i];
       }
     }
 
@@ -954,9 +980,9 @@ export default function BlockTanggal() {
 
     let existingRow = new Array(126).fill("");
     if (existingData?.values?.[0]) {
-      existingRow = [...existingData.values[0]];
-      while (existingRow.length < 126) {
-        existingRow.push("");
+      const existingValues = existingData.values[0];
+      for (let i = 0; i < existingValues.length && i < 126; i++) {
+        existingRow[i] = existingValues[i];
       }
     }
 
@@ -1039,7 +1065,7 @@ export default function BlockTanggal() {
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
-      nik: selected.nik,
+      nik: selected.nik, // ← PASTIKAN INI ADA DAN BENAR
       kecamatan: selected.kecamatan,
       kegiatan: kegiatanInput,
       penanggungJawab: userRole,
@@ -1095,7 +1121,7 @@ export default function BlockTanggal() {
     const newRow: DataRow = {
       no: dataRows.length + 1,
       nama: selected.nama,
-      nik: selected.nip,
+      nik: selected.nip, // ← UNTUK ORGANIK GUNAKAN NIP
       kecamatan: selected.jabatan,
       kegiatan: kegiatanInput,
       penanggungJawab: userRole,
