@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, FileText, Ban, UserCheck, AlertCircle } from "lucide-react";
+import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, Ban, UserCheck, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSameMonth, isSameYear } from "date-fns";
@@ -47,6 +47,13 @@ interface DataRow {
   blocks: BlockData;
   isOrganik: boolean;
   spreadsheetRowIndex?: number;
+}
+
+interface KegiatanToDelete {
+  kegiatan: string;
+  index: number;
+  selected: boolean;
+  dates: string[];
 }
 
 const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
@@ -515,6 +522,7 @@ export default function BlockTanggal() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTambahKegiatanModal, setShowTambahKegiatanModal] = useState(false);
   const [dataToEdit, setDataToEdit] = useState<DataRow | null>(null);
+  const [kegiatanToDelete, setKegiatanToDelete] = useState<KegiatanToDelete[]>([]);
   const { toast } = useToast();
 
   const canUserTag = useMemo(() => {
@@ -1135,8 +1143,33 @@ export default function BlockTanggal() {
       return;
     }
 
+    // PERBAIKAN: Siapkan daftar kegiatan untuk dipilih
+    const userKegiatan = getKegiatanByRole(data, userRole);
+    const kegiatanList: KegiatanToDelete[] = userKegiatan.map(kegiatan => ({
+      kegiatan: kegiatan.kegiatan,
+      index: kegiatan.index,
+      dates: kegiatan.dates,
+      selected: false
+    }));
+
+    setKegiatanToDelete(kegiatanList);
     setDataToDelete(dataIndex);
     setShowDeleteDataDialog(true);
+  };
+
+  const toggleKegiatanSelection = (index: number) => {
+    setKegiatanToDelete(prev => 
+      prev.map((item, i) => 
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    );
+  };
+
+  const selectAllKegiatan = () => {
+    const allSelected = kegiatanToDelete.every(item => item.selected);
+    setKegiatanToDelete(prev => 
+      prev.map(item => ({ ...item, selected: !allSelected }))
+    );
   };
 
   const deleteData = async () => {
@@ -1152,31 +1185,59 @@ export default function BlockTanggal() {
       return;
     }
 
+    const selectedKegiatan = kegiatanToDelete.filter(item => item.selected);
+    
+    if (selectedKegiatan.length === 0) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih minimal satu kegiatan untuk dihapus",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const deleteResult = await deleteUserRoleData(data);
-      if (deleteResult === 'delete') {
-        const newData = [...dataRows];
-        newData.splice(dataToDelete, 1);
-        const sortedData = sortData(newData);
-        setDataRows(sortedData);
-        if (data.isOrganik) {
-          setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+      // PERBAIKAN: Hapus hanya kegiatan yang dipilih
+      if (selectedKegiatan.length === kegiatanToDelete.length) {
+        // Jika semua kegiatan dipilih, hapus semua data user
+        const deleteResult = await deleteUserRoleData(data);
+        
+        if (deleteResult === 'delete') {
+          const newData = [...dataRows];
+          newData.splice(dataToDelete, 1);
+          const sortedData = sortData(newData);
+          setDataRows(sortedData);
+          if (data.isOrganik) {
+            setAvailableOrganik([...availableOrganik, organikList.find(org => org.nama === data.nama)!]);
+          } else {
+            setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+          }
+          toast({
+            title: "Sukses",
+            description: "Semua data berhasil dihapus (seluruh baris)"
+          });
         } else {
-          setAvailableMitra([...availableMitra, mitraList.find(m => m.nik === data.nik)!]);
+          await loadExistingData();
+          toast({
+            title: "Sukses",
+            description: "Semua kegiatan role Anda berhasil dihapus"
+          });
         }
-        toast({
-          title: "Sukses",
-          description: "Data berhasil dihapus (seluruh baris)"
-        });
       } else {
+        // Hapus hanya kegiatan yang dipilih
+        for (const kegiatan of selectedKegiatan) {
+          await deleteSpecificKegiatan(data, kegiatan.index);
+        }
         await loadExistingData();
         toast({
           title: "Sukses",
-          description: "Data role Anda berhasil dihapus"
+          description: `Kegiatan terpilih (${selectedKegiatan.length}) berhasil dihapus`
         });
       }
+
       setShowDeleteDataDialog(false);
       setDataToDelete(null);
+      setKegiatanToDelete([]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1505,7 +1566,7 @@ export default function BlockTanggal() {
     );
   }
 
-return (
+  return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1734,7 +1795,6 @@ return (
                       {canUserTag && (
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {/* PERBAIKAN: Hanya satu tombol tambah dengan icon + */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1789,7 +1849,6 @@ return (
                               </Tooltip>
                             </TooltipProvider>
 
-                            {/* Tombol Edit */}
                             {userKegiatan.length > 0 && (
                               <TooltipProvider>
                                 <Tooltip>
@@ -1810,7 +1869,6 @@ return (
                               </TooltipProvider>
                             )}
 
-                            {/* Tombol Hapus */}
                             {canEditThisData && (
                               <TooltipProvider>
                                 <Tooltip>
@@ -1867,35 +1925,78 @@ return (
       )}
 
       <Dialog open={showDeleteDataDialog} onOpenChange={setShowDeleteDataDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Hapus Data</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Hapus Kegiatan
+            </DialogTitle>
             <DialogDescription>
-              Apakah Anda yakin ingin menghapus data ini? 
-              {dataToDelete !== null && dataRows[dataToDelete] && (
-                <>{" "}
-                  {(() => {
-                    const data = dataRows[dataToDelete];
-                    const rolesInData = new Set();
-                    Object.values(data.blocks).forEach(block => {
-                      rolesInData.add(block.role);
-                    });
-                    const isOnlyRole = rolesInData.size === 1 && rolesInData.has(userRole);
-                    return isOnlyRole 
-                      ? "Seluruh data akan dihapus dari sistem." 
-                      : "Hanya data dari role Anda yang akan dihapus, data dari role lain tetap dipertahankan.";
-                  })()}
-                </>
-              )}
+              Pilih kegiatan yang ingin dihapus untuk {dataToDelete !== null && dataRows[dataToDelete]?.nama}
             </DialogDescription>
           </DialogHeader>
+          
+          <div className="space-y-4">
+            {kegiatanToDelete.length > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Pilih Kegiatan:</label>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={selectAllKegiatan}
+                    className="text-xs"
+                  >
+                    {kegiatanToDelete.every(item => item.selected) ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                  </Button>
+                </div>
+                
+                <div className="max-h-60 overflow-y-auto border rounded-lg p-2 space-y-2">
+                  {kegiatanToDelete.map((kegiatan, index) => (
+                    <div key={index} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
+                      <input
+                        type="checkbox"
+                        checked={kegiatan.selected}
+                        onChange={() => toggleKegiatanSelection(index)}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {kegiatan.kegiatan}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Slot {kegiatan.index + 1} - Tanggal: {kegiatan.dates.join(', ')}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  • Dipilih: {kegiatanToDelete.filter(item => item.selected).length} dari {kegiatanToDelete.length} kegiatan
+                  <br />
+                  • {kegiatanToDelete.filter(item => item.selected).length === kegiatanToDelete.length 
+                    ? "Seluruh data akan dihapus dari sistem" 
+                    : "Hanya kegiatan terpilih yang akan dihapus"}
+                </div>
+              </>
+            )}
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDataDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowDeleteDataDialog(false);
+              setKegiatanToDelete([]);
+            }}>
               Batal
             </Button>
-            <Button variant="destructive" onClick={deleteData}>
+            <Button 
+              variant="destructive" 
+              onClick={deleteData}
+              disabled={kegiatanToDelete.filter(item => item.selected).length === 0}
+            >
               <Trash2 className="h-4 w-4 mr-2" />
-              Hapus Data
+              Hapus ({kegiatanToDelete.filter(item => item.selected).length})
             </Button>
           </DialogFooter>
         </DialogContent>
