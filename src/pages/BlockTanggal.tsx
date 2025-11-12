@@ -1742,26 +1742,26 @@ export default function BlockTanggal() {
                       <TableCell className="text-center font-medium">
                         {data.no}
                       </TableCell>
-<TableCell>
-  <div className="flex items-center gap-2">
-    {data.isOrganik ? (
-      <Building2 className="h-4 w-4 text-primary" />
-    ) : (
-      <MapPin className="h-4 w-4 text-primary" />
-    )}
-    <div>
-      <div className="font-medium">
-        {data.nama}
-      </div>
-      <div className="text-xs text-muted-foreground">
-        {data.isOrganik 
-          ? `NIP: ${organikList.find(org => org.nama === data.nama)?.nip || data.nik}`
-          : `NIK: ${mitraList.find(mitra => mitra.nama === data.nama)?.nik || data.nik}`
-        }
-      </div>
-    </div>
-  </div>
-</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {data.isOrganik ? (
+                            <Building2 className="h-4 w-4 text-primary" />
+                          ) : (
+                            <MapPin className="h-4 w-4 text-primary" />
+                          )}
+                          <div>
+                            <div className="font-medium">
+                              {data.nama}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {data.isOrganik 
+                                ? `NIP: ${organikList.find(org => org.nama === data.nama)?.nip || data.nik}`
+                                : `NIK: ${mitraList.find(mitra => mitra.nama === data.nama)?.nik || data.nik}`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {data.kecamatan}
                       </TableCell>
@@ -1769,58 +1769,69 @@ export default function BlockTanggal() {
   <div className="max-w-[400px]">
     {allKegiatan.length > 0 ? (
       <div className="space-y-2">
-        {/* Tampilkan maksimal 2 kegiatan */}
+        {/* Tampilkan maksimal 2 kegiatan seperti sebelumnya */}
         {allKegiatan.slice(0, 2).map((item, idx) => {
           const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
           return (
             <div
               key={idx}
-              className={`p-2 rounded-lg border text-xs ${mapping?.borderColor || 'border-gray-200'} ${mapping?.bgColor || 'bg-gray-100'}`}
+              className={`p-2 rounded-lg border ${mapping?.borderColor || 'border-gray-200'} ${mapping?.bgColor || 'bg-gray-100'}`}
             >
-              <div className="font-medium text-gray-800 break-words">
-                {item.kegiatan}
-              </div>
-              <div className={`text-xs font-medium ${mapping?.color || 'text-gray-600'}`}>
-                {item.role} - {item.dates.join(', ')}
+              <div className="space-y-1">
+                <div className="text-sm font-medium break-words text-gray-800">
+                  {item.kegiatan}
+                </div>
+                <div className={`text-xs font-medium ${mapping?.color || 'text-gray-600'}`}>
+                  {item.role} - Tanggal: {item.dates.join(', ')}
+                </div>
               </div>
             </div>
           );
         })}
 
-        {/* Jika lebih dari 2, tampilkan badge +X */}
+        {/* Jika lebih dari 2 kegiatan → tampilkan badge +X */}
         {allKegiatan.length > 2 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs font-medium mt-1 w-full"
-              >
-                +{allKegiatan.length - 2} kegiatan lainnya
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
-                {allKegiatan.map((item, idx) => {
-                  const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-2 rounded border text-xs ${mapping?.borderColor} ${mapping?.bgColor}`}
+          <TooltipProvider>
+            <Tooltip>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs font-medium mt-1 w-full"
                     >
-                      <div className="font-medium text-gray-800">
-                        {item.kegiatan}
-                      </div>
-                      <div className={`text-xs font-medium ${mapping?.color}`}>
-                        {item.role} - Tanggal: {item.dates.join(', ')}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
+                      +{allKegiatan.length - 2} kegiatan lainnya
+                    </Button>
+                  </TooltipTrigger>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
+                    {allKegiatan.map((item, idx) => {
+                      const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-2 rounded border text-xs ${mapping?.borderColor} ${mapping?.bgColor}`}
+                        >
+                          <div className="font-medium text-gray-800 break-words">
+                            {item.kegiatan}
+                          </div>
+                          <div className={`text-xs font-medium ${mapping?.color}`}>
+                            {item.role} - Tanggal: {item.dates.join(', ')}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <TooltipContent>
+                <p>Klik untuk melihat semua kegiatan</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
     ) : (
