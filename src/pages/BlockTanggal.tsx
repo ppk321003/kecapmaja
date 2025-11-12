@@ -1765,31 +1765,69 @@ export default function BlockTanggal() {
                       <TableCell>
                         {data.kecamatan}
                       </TableCell>
-                      <TableCell>
-                        <div className="max-w-[600px]">
-                          {allKegiatan.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              {allKegiatan.map((item, idx) => {
-                                const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
-                                return (
-                                  <div key={idx} className={`p-2 rounded-lg border ${mapping?.borderColor || 'border-gray-200'} ${mapping?.bgColor || 'bg-gray-100'}`}>
-                                    <div className="space-y-1">
-                                      <div className="text-sm font-medium break-words text-gray-800">
-                                        {item.kegiatan}
-                                      </div>
-                                      <div className={`text-xs font-medium ${mapping?.color || 'text-gray-600'}`}>
-                                        {item.role} - Tanggal: {item.dates.join(', ')}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Belum ada kegiatan</span>
-                          )}
-                        </div>
-                      </TableCell>
+<TableCell>
+  <div className="max-w-[400px]">
+    {allKegiatan.length > 0 ? (
+      <div className="space-y-2">
+        {/* Tampilkan maksimal 2 kegiatan */}
+        {allKegiatan.slice(0, 2).map((item, idx) => {
+          const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+          return (
+            <div
+              key={idx}
+              className={`p-2 rounded-lg border text-xs ${mapping?.borderColor || 'border-gray-200'} ${mapping?.bgColor || 'bg-gray-100'}`}
+            >
+              <div className="font-medium text-gray-800 break-words">
+                {item.kegiatan}
+              </div>
+              <div className={`text-xs font-medium ${mapping?.color || 'text-gray-600'}`}>
+                {item.role} - {item.dates.join(', ')}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Jika lebih dari 2, tampilkan badge +X */}
+        {allKegiatan.length > 2 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs font-medium mt-1 w-full"
+              >
+                +{allKegiatan.length - 2} kegiatan lainnya
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="start">
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                <p className="font-semibold text-sm mb-2">Semua Kegiatan:</p>
+                {allKegiatan.map((item, idx) => {
+                  const mapping = ROLE_MAPPING[item.role as keyof typeof ROLE_MAPPING];
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded border text-xs ${mapping?.borderColor} ${mapping?.bgColor}`}
+                    >
+                      <div className="font-medium text-gray-800">
+                        {item.kegiatan}
+                      </div>
+                      <div className={`text-xs font-medium ${mapping?.color}`}>
+                        {item.role} - Tanggal: {item.dates.join(', ')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    ) : (
+      <span className="text-muted-foreground text-sm">Belum ada kegiatan</span>
+    )}
+  </div>
+</TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
                           {getBlockedDatesCount(data)}
