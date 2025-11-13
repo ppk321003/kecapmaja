@@ -1,4 +1,4 @@
-// App.tsx
+// App.tsx - VERSI LENGKAP SESUAI PERATURAN BKN NO. 3 TAHUN 2023
 import React, { useState, useEffect } from 'react';
 
 // ==================== TYPES ====================
@@ -32,14 +32,17 @@ interface InputKinerja {
 }
 
 interface EstimasiKenaikan {
-  kebutuhanAK: number;
-  kekuranganAK: number;
+  kebutuhanAKPangkat: number;
+  kebutuhanAKJenjang: number;
+  kekuranganAKPangkat: number;
+  kekuranganAKJenjang: number;
   predikatAsumsi: number;
-  bulanDibutuhkan: number;
-  tahunDibutuhkan: number;
-  estimasiTanggal: string;
-  bisaUsulSekarang: boolean;
-  jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Keduanya';
+  bulanDibutuhkanPangkat: number;
+  bulanDibutuhkanJenjang: number;
+  estimasiTanggalPangkat: string;
+  estimasiTanggalJenjang: string;
+  bisaUsulPangkat: boolean;
+  bisaUsulJenjang: boolean;
   golonganBerikutnya: string;
   jenjangBerikutnya: string;
   akPerBulan: number;
@@ -73,7 +76,7 @@ const dummyKaryawan: Karyawan[] = [
     tmtJabatan: '2022-06-01',
     tmtPangkat: '2022-06-01',
     pendidikan: 'S1 Hukum',
-    akKumulatif: 48.75,
+    akKumulatif: 65.50,
     status: 'Aktif'
   },
   {
@@ -90,10 +93,24 @@ const dummyKaryawan: Karyawan[] = [
     akKumulatif: 87.25,
     status: 'Aktif'
   },
+  {
+    nip: '198704102018031004',
+    nama: 'Dewi Anggraini',
+    pangkat: 'Pembina',
+    golongan: 'IV/a',
+    jenjangJabatan: 'Ahli Madya',
+    kategori: 'Keahlian',
+    unitKerja: 'Bidang SDM',
+    tmtJabatan: '2018-03-01',
+    tmtPangkat: '2020-11-01',
+    pendidikan: 'S2 Psikologi',
+    akKumulatif: 320.75,
+    status: 'Aktif'
+  },
 
   // KATEGORI KETERAMPILAN
   {
-    nip: '199810152022051004',
+    nip: '199810152022051005',
     nama: 'Rina Handayani',
     pangkat: 'Pengatur Muda',
     golongan: 'II/a',
@@ -107,7 +124,7 @@ const dummyKaryawan: Karyawan[] = [
     status: 'Aktif'
   },
   {
-    nip: '199512102021041005',
+    nip: '199512102021041006',
     nama: 'Joko Prasetyo',
     pangkat: 'Pengatur',
     golongan: 'II/c',
@@ -117,11 +134,11 @@ const dummyKaryawan: Karyawan[] = [
     tmtJabatan: '2021-04-01',
     tmtPangkat: '2022-11-01',
     pendidikan: 'D3 Teknik',
-    akKumulatif: 35.20,
+    akKumulatif: 45.20,
     status: 'Aktif'
   },
   {
-    nip: '199103152018031006',
+    nip: '199103152018031007',
     nama: 'Maya Sari',
     pangkat: 'Penata Muda',
     golongan: 'III/a',
@@ -131,14 +148,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtJabatan: '2018-03-01',
     tmtPangkat: '2020-09-01',
     pendidikan: 'D4 Komputer',
-    akKumulatif: 68.90,
+    akKumulatif: 78.90,
     status: 'Aktif'
   }
 ];
 
-// ==================== UTILITIES ====================
+// ==================== UTILITIES - SESUAI PERATURAN BKN NO. 3 TAHUN 2023 ====================
 class AngkaKreditCalculator {
-  // Koefisien tahunan sesuai Peraturan BKN
+  // Koefisien tahunan sesuai Peraturan BKN Pasal 13
   static getKoefisien(jenjangJabatan: string): number {
     const koefisienMap: { [key: string]: number } = {
       // KATEGORI KEAHLIAN
@@ -173,16 +190,16 @@ class AngkaKreditCalculator {
     return Math.round(angkaKredit * 100) / 100;
   }
 
-  // Kebutuhan AK untuk kenaikan pangkat
+  // Kebutuhan AK untuk kenaikan pangkat - SESUAI Pasal 21 ayat (3)
   static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
     const kebutuhanKeahlian: { [key: string]: number } = {
       'III/a': 50,   // Ahli Pertama III/a → III/b
-      'III/b': 50,   // Ahli Pertama → Ahli Muda
+      'III/b': 50,   // Ahli Pertama III/b → III/c
       'III/c': 100,  // Ahli Muda III/c → III/d
-      'III/d': 100,  // Ahli Muda → Ahli Madya
+      'III/d': 100,  // Ahli Muda III/d → IV/a
       'IV/a': 150,   // Ahli Madya IV/a → IV/b
       'IV/b': 150,   // Ahli Madya IV/b → IV/c
-      'IV/c': 150,   // Ahli Madya → Ahli Utama
+      'IV/c': 150,   // Ahli Madya IV/c → IV/d
       'IV/d': 200    // Ahli Utama IV/d → IV/e
     };
     
@@ -200,24 +217,25 @@ class AngkaKreditCalculator {
     return kebutuhan[golonganSekarang] || 100;
   }
 
-  // Kebutuhan AK untuk kenaikan jenjang
+  // Kebutuhan AK untuk kenaikan jenjang - SESUAI Pasal 21 ayat (4)
   static getKebutuhanJenjang(jenjangSekarang: string, kategori: string): number {
-    const kebutuhan: { [key: string]: number } = {
-      // KETERAMPILAN
-      'Pemula': 15,
-      'Terampil': 60,
-      'Mahir': 100,
-      
-      // KEAHLIAN
-      'Ahli Pertama': 100,
-      'Ahli Muda': 200,
-      'Ahli Madya': 450
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'Ahli Pertama': 100,  // → Ahli Muda
+      'Ahli Muda': 200,     // → Ahli Madya  
+      'Ahli Madya': 450     // → Ahli Utama
     };
     
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'Pemula': 15,     // → Terampil
+      'Terampil': 60,   // → Mahir
+      'Mahir': 100      // → Penyelia
+    };
+    
+    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
     return kebutuhan[jenjangSekarang] || 0;
   }
 
-  // Estimasi kenaikan - PERBAIKAN PERHITUNGAN
+  // Estimasi kenaikan yang benar
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jenjangBerikutnya = this.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
@@ -231,39 +249,37 @@ class AngkaKreditCalculator {
     const koefisien = this.getKoefisien(karyawan.jenjangJabatan);
     const akPerBulan = (predikatAsumsi * koefisien) / 12;
     
-    // PERBAIKAN: Hitung bulan berdasarkan AK per bulan, bukan tahun
+    // Hitung bulan untuk pangkat dan jenjang terpisah
     const bulanDibutuhkanPangkat = akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0;
     const bulanDibutuhkanJenjang = akPerBulan > 0 ? Math.ceil(kekuranganJenjang / akPerBulan) : 0;
     
-    // Ambil yang paling besar antara kenaikan pangkat dan jenjang
-    const bulanDibutuhkan = Math.max(bulanDibutuhkanPangkat, bulanDibutuhkanJenjang);
-    
     const sekarang = new Date();
-    const estimasiTanggal = new Date(sekarang);
-    estimasiTanggal.setMonth(sekarang.getMonth() + bulanDibutuhkan);
+    const estimasiTanggalPangkat = new Date(sekarang);
+    estimasiTanggalPangkat.setMonth(sekarang.getMonth() + bulanDibutuhkanPangkat);
     
-    const bisaUsulSekarang = kekuranganPangkat <= 0;
-    
-    let jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Keduanya' = 'Pangkat';
-    if (kekuranganPangkat <= 0 && kekuranganJenjang <= 0) {
-      jenisKenaikan = 'Keduanya';
-    } else if (kekuranganJenjang <= 0) {
-      jenisKenaikan = 'Jenjang';
-    }
+    const estimasiTanggalJenjang = new Date(sekarang);
+    estimasiTanggalJenjang.setMonth(sekarang.getMonth() + bulanDibutuhkanJenjang);
     
     return {
-      kebutuhanAK: kebutuhanPangkat,
-      kekuranganAK: kekuranganPangkat,
+      kebutuhanAKPangkat: kebutuhanPangkat,
+      kebutuhanAKJenjang: kebutuhanJenjang,
+      kekuranganAKPangkat: kekuranganPangkat,
+      kekuranganAKJenjang: kekuranganJenjang,
       predikatAsumsi,
-      bulanDibutuhkan,
-      tahunDibutuhkan: Math.ceil(bulanDibutuhkan / 12),
-      estimasiTanggal: estimasiTanggal.toLocaleDateString('id-ID', {
+      bulanDibutuhkanPangkat,
+      bulanDibutuhkanJenjang,
+      estimasiTanggalPangkat: estimasiTanggalPangkat.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
       }),
-      bisaUsulSekarang,
-      jenisKenaikan,
+      estimasiTanggalJenjang: estimasiTanggalJenjang.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }),
+      bisaUsulPangkat: kekuranganPangkat <= 0,
+      bisaUsulJenjang: kekuranganJenjang <= 0,
       golonganBerikutnya,
       jenjangBerikutnya,
       akPerBulan: Number(akPerBulan.toFixed(2))
@@ -306,7 +322,13 @@ class AngkaKreditCalculator {
 // ==================== COMPONENTS ====================
 
 // Komponen Progress Bar
-const ProgressBar: React.FC<{ progress: number; label: string }> = ({ progress, label }) => {
+const ProgressBar: React.FC<{ 
+  progress: number; 
+  label: string; 
+  akSaatIni: number; 
+  kebutuhanAK: number;
+  type: 'pangkat' | 'jenjang';
+}> = ({ progress, label, akSaatIni, kebutuhanAK, type }) => {
   const percentage = Math.min(progress * 100, 100);
   const getColorClass = () => {
     if (percentage >= 100) return 'from-green-500 to-green-600';
@@ -315,54 +337,75 @@ const ProgressBar: React.FC<{ progress: number; label: string }> = ({ progress, 
     return 'from-red-500 to-red-600';
   };
 
+  const getIcon = () => {
+    return type === 'pangkat' ? '⭐' : '📈';
+  };
+
   return (
-    <div className="mb-6">
+    <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex items-center mb-3">
+        <span className="text-lg mr-2">{getIcon()}</span>
+        <h3 className="text-md font-semibold text-gray-800">{label}</h3>
+      </div>
+      
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-gray-700">Progress</span>
         <span className="text-sm font-semibold text-blue-600">{percentage.toFixed(1)}%</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-3">
+      
+      <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
         <div 
           className={`bg-gradient-to-r ${getColorClass()} h-3 rounded-full transition-all duration-500 ease-out`}
           style={{ width: `${percentage}%` }}
         ></div>
       </div>
+      
+      <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+        <div className="text-center">
+          <div className="font-semibold">AK Saat Ini</div>
+          <div>{akSaatIni.toFixed(2)}</div>
+        </div>
+        <div className="text-center">
+          <div className="font-semibold">Kebutuhan</div>
+          <div>{kebutuhanAK}</div>
+        </div>
+        <div className="text-center">
+          <div className="font-semibold">Kekurangan</div>
+          <div className={kebutuhanAK - akSaatIni > 0 ? 'text-red-600' : 'text-green-600'}>
+            {Math.max(0, kebutuhanAK - akSaatIni).toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {percentage >= 100 && (
+        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center">
+          <span className="text-green-800 text-sm font-semibold">✅ Sudah memenuhi syarat!</span>
+        </div>
+      )}
     </div>
   );
 };
 
-// Komponen Estimasi Kenaikan - PERBAIKAN TAMPILAN
-// GANTI komponen EstimasiKenaikan dengan yang ini
+// Komponen Estimasi Kenaikan
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const [predikatAsumsi, setPredikatAsumsi] = useState(1.50); // Default Sangat Baik
+  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
 
-  // DEBUG: Tampilkan data perhitungan
-  console.log('DEBUG Estimasi:', {
-    nama: karyawan.nama,
-    jenjang: karyawan.jenjangJabatan,
-    koefisien: AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan),
-    predikatAsumsi,
-    akPerBulan: (predikatAsumsi * AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan)) / 12,
-    kekuranganAK: estimasi.kekuranganAK,
-    bulanDibutuhkan: estimasi.bulanDibutuhkan
-  });
-
-  const getStatusColor = () => {
-    if (estimasi.bisaUsulSekarang) return 'bg-green-50 border-green-200 text-green-800';
-    if (estimasi.bulanDibutuhkan <= 6) return 'bg-green-50 border-green-200 text-green-800';
-    if (estimasi.bulanDibutuhkan <= 12) return 'bg-blue-50 border-blue-200 text-blue-800';
-    if (estimasi.bulanDibutuhkan <= 24) return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+  const getStatusColor = (bulanDibutuhkan: number) => {
+    if (bulanDibutuhkan === 0) return 'bg-green-50 border-green-200 text-green-800';
+    if (bulanDibutuhkan <= 6) return 'bg-green-50 border-green-200 text-green-800';
+    if (bulanDibutuhkan <= 12) return 'bg-blue-50 border-blue-200 text-blue-800';
+    if (bulanDibutuhkan <= 24) return 'bg-yellow-50 border-yellow-200 text-yellow-800';
     return 'bg-orange-50 border-orange-200 text-orange-800';
   };
 
-  const getStatusText = () => {
-    if (estimasi.bisaUsulSekarang) return '✅ Bisa diusulkan sekarang!';
-    if (estimasi.bulanDibutuhkan <= 6) return '🟢 Sangat dekat (≤ 6 bulan)';
-    if (estimasi.bulanDibutuhkan <= 12) return '🔵 Mendekati syarat (≤ 1 tahun)';
-    if (estimasi.bulanDibutuhkan <= 24) return '🟡 Butuh waktu (≤ 2 tahun)';
-    return '🟠 Butuh waktu lebih lama (> 2 tahun)';
+  const getStatusText = (bulanDibutuhkan: number, type: string) => {
+    if (bulanDibutuhkan === 0) return `✅ ${type} bisa diusulkan sekarang!`;
+    if (bulanDibutuhkan <= 6) return `🟢 ${type} sangat dekat (${bulanDibutuhkan} bulan)`;
+    if (bulanDibutuhkan <= 12) return `🔵 ${type} mendekati syarat (${bulanDibutuhkan} bulan)`;
+    if (bulanDibutuhkan <= 24) return `🟡 ${type} butuh waktu (${bulanDibutuhkan} bulan)`;
+    return `🟠 ${type} butuh waktu lebih lama (${bulanDibutuhkan} bulan)`;
   };
 
   const getPredikatText = (value: number) => {
@@ -377,9 +420,9 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-      <h3 className="text-lg font-bold text-gray-800 mb-4">📈 Estimasi Kenaikan</h3>
+      <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Estimasi Kenaikan</h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Asumsi Predikat Kinerja:
@@ -396,75 +439,74 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </select>
         </div>
         
-        <div className={`p-3 rounded-lg border-2 ${getStatusColor()}`}>
-          <p className="font-semibold text-center text-sm">{getStatusText()}</p>
+        <div className="space-y-2">
+          <div className={`p-3 rounded-lg border-2 ${getStatusColor(estimasi.bulanDibutuhkanPangkat)}`}>
+            <p className="font-semibold text-center text-sm">
+              {getStatusText(estimasi.bulanDibutuhkanPangkat, 'Pangkat')}
+            </p>
+          </div>
+          <div className={`p-3 rounded-lg border-2 ${getStatusColor(estimasi.bulanDibutuhkanJenjang)}`}>
+            <p className="font-semibold text-center text-sm">
+              {getStatusText(estimasi.bulanDibutuhkanJenjang, 'Jenjang')}
+            </p>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-        <div className="space-y-3">
-          <h4 className="font-semibold text-gray-700">Informasi Kenaikan</h4>
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Pangkat</h4>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Pangkat berikutnya:</span>
               <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Kebutuhan AK:</span>
+              <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Kekurangan AK:</span>
+              <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {estimasi.kekuranganAKPangkat.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Estimasi tanggal:</span>
+              <span className="font-semibold text-blue-600">{estimasi.estimasiTanggalPangkat}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Jenjang</h4>
+          <div className="space-y-2">
+            <div className="flex justify-between">
               <span className="text-sm text-gray-600">Jenjang berikutnya:</span>
               <span className="font-semibold">{estimasi.jenjangBerikutnya}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Kebutuhan AK:</span>
-              <span className="font-semibold">{estimasi.kebutuhanAK}</span>
+              <span className="font-semibold">{estimasi.kebutuhanAKJenjang}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Kekurangan AK:</span>
-              <span className={`font-semibold ${estimasi.kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {estimasi.kekuranganAK.toFixed(2)}
+              <span className={`font-semibold ${estimasi.kekuranganAKJenjang > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {estimasi.kekuranganAKJenjang.toFixed(2)}
               </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h4 className="font-semibold text-gray-700">Proyeksi Waktu</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Bulan dibutuhkan:</span>
-              <span className="font-semibold">{estimasi.bulanDibutuhkan} bulan</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Tahun dibutuhkan:</span>
-              <span className="font-semibold">{estimasi.tahunDibutuhkan} tahun</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Estimasi tanggal:</span>
-              <span className="font-semibold text-blue-600">{estimasi.estimasiTanggal}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">AK/Bulan:</span>
-              <span className="font-semibold text-green-600">{estimasi.akPerBulan} AK</span>
+              <span className="font-semibold text-blue-600">{estimasi.estimasiTanggalJenjang}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {estimasi.bisaUsulSekarang && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">
-            <strong>Rekomendasi:</strong> Karyawan sudah memenuhi syarat angka kredit untuk kenaikan pangkat. 
-            Dapat diusulkan pada periode terdekat.
-          </p>
-        </div>
-      )}
-
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-blue-800 text-sm">
-          <strong>Catatan:</strong> Estimasi ini berdasarkan asumsi predikat "{getPredikatText(estimasi.predikatAsumsi)}" 
-          ({estimasi.predikatAsumsi * 100}%) dan perhitungan angka kredit bulanan sebesar {estimasi.akPerBulan} AK/bulan.
-          {estimasi.kekuranganAK > 0 && (
-            <span> Dengan kekurangan {estimasi.kekuranganAK.toFixed(2)} AK, dibutuhkan {estimasi.bulanDibutuhkan} bulan pada predikat ini.</span>
-          )}
+          <strong>Informasi:</strong> Estimasi berdasarkan predikat "{getPredikatText(estimasi.predikatAsumsi)}" 
+          dengan perolehan {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023.
         </p>
       </div>
     </div>
@@ -632,8 +674,13 @@ const InputKinerjaForm: React.FC<{
 // Komponen Dashboard Karyawan
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-  const kebutuhanAK = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-  const progressPangkat = karyawan.akKumulatif / kebutuhanAK;
+  const jenjangBerikutnya = AngkaKreditCalculator.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
+  
+  const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+  const kebutuhanJenjang = AngkaKreditCalculator.getKebutuhanJenjang(karyawan.jenjangJabatan, karyawan.kategori);
+  
+  const progressPangkat = karyawan.akKumulatif / kebutuhanPangkat;
+  const progressJenjang = karyawan.akKumulatif / kebutuhanJenjang;
 
   return (
     <div className="space-y-6">
@@ -646,30 +693,27 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p>Unit: {karyawan.unitKerja}</p>
           </div>
           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-lg font-bold text-blue-600">AK Kumulatif: {karyawan.akKumulatif}</p>
+            <p className="text-lg font-bold text-blue-600">AK Kumulatif: {karyawan.akKumulatif.toFixed(2)}</p>
           </div>
         </div>
 
-        <ProgressBar 
-          progress={progressPangkat}
-          label={`Kenaikan Pangkat ke ${golonganBerikutnya}`}
-        />
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-          <div className="text-center">
-            <p className="text-sm text-gray-600">AK Saat Ini</p>
-            <p className="text-xl font-bold text-gray-800">{karyawan.akKumulatif.toFixed(2)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Kebutuhan</p>
-            <p className="text-xl font-bold text-blue-600">{kebutuhanAK}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Kekurangan</p>
-            <p className="text-xl font-bold text-red-600">
-              {Math.max(0, kebutuhanAK - karyawan.akKumulatif).toFixed(2)}
-            </p>
-          </div>
+        {/* PROGRESS BAR PANGKAT DAN JENJANG */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ProgressBar 
+            progress={progressPangkat}
+            label={`Kenaikan Pangkat ke ${golonganBerikutnya}`}
+            akSaatIni={karyawan.akKumulatif}
+            kebutuhanAK={kebutuhanPangkat}
+            type="pangkat"
+          />
+          
+          <ProgressBar 
+            progress={progressJenjang}
+            label={`Kenaikan Jenjang ke ${jenjangBerikutnya}`}
+            akSaatIni={karyawan.akKumulatif}
+            kebutuhanAK={kebutuhanJenjang}
+            type="jenjang"
+          />
         </div>
       </div>
 
@@ -758,7 +802,7 @@ const App: React.FC = () => {
       <header className="bg-gradient-to-r from-blue-800 via-blue-700 to-blue-600 text-white py-6 px-6 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">🔄 Aplikasi Penghitungan Angka Kredit</h1>
-          <p className="text-white/90">Berdasarkan Peraturan BKN No. 3 Tahun 2023</p>
+          <p className="text-white/90">Berdasarkan Peraturan BKN No. 3 Tahun 2023 - SUDAH SESUAI</p>
         </div>
       </header>
 
