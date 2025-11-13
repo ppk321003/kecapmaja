@@ -40,6 +40,8 @@ interface EstimasiKenaikan {
   estimasiTanggal: string;
   bisaUsulSekarang: boolean;
   jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Keduanya';
+  golonganBerikutnya: string;
+  jenjangBerikutnya: string;
 }
 
 // ==================== DUMMY DATA ====================
@@ -171,46 +173,47 @@ class AngkaKreditCalculator {
   }
 
   // Kebutuhan AK untuk kenaikan pangkat
-  static getKebutuhanPangkat(golonganSekarang: string, golonganTujuan: string): number {
-    const kebutuhan: { [key: string]: number } = {
-      // KATEGORI KETERAMPILAN
-      'II/a_II/b': 15,    // Pemula → Terampil
-      'II/b_II/c': 20,    // Terampil II/b → II/c
-      'II/c_II/d': 20,    // Terampil II/c → II/d
-      'II/d_III/a': 20,   // Terampil → Mahir
-      'III/a_III/b': 50,  // Mahir III/a → III/b
-      'III/b_III/c': 50,  // Mahir → Penyelia
-      'III/c_III/d': 100, // Penyelia III/c → III/d
-      
-      // KATEGORI KEAHLIAN
-      'III/a_III/b': 50,  // Ahli Pertama III/a → III/b
-      'III/b_III/c': 50,  // Ahli Pertama → Ahli Muda
-      'III/c_III/d': 100, // Ahli Muda III/c → III/d
-      'III/d_IV/a': 100,  // Ahli Muda → Ahli Madya
-      'IV/a_IV/b': 150,   // Ahli Madya IV/a → IV/b
-      'IV/b_IV/c': 150,   // Ahli Madya IV/b → IV/c
-      'IV/c_IV/d': 150,   // Ahli Madya → Ahli Utama
-      'IV/d_IV/e': 200    // Ahli Utama IV/d → IV/e
+  static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'III/a': 50,   // Ahli Pertama III/a → III/b
+      'III/b': 50,   // Ahli Pertama → Ahli Muda
+      'III/c': 100,  // Ahli Muda III/c → III/d
+      'III/d': 100,  // Ahli Muda → Ahli Madya
+      'IV/a': 150,   // Ahli Madya IV/a → IV/b
+      'IV/b': 150,   // Ahli Madya IV/b → IV/c
+      'IV/c': 150,   // Ahli Madya → Ahli Utama
+      'IV/d': 200    // Ahli Utama IV/d → IV/e
     };
     
-    return kebutuhan[`${golonganSekarang}_${golonganTujuan}`] || 100;
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'II/a': 15,    // Pemula → Terampil
+      'II/b': 20,    // Terampil II/b → II/c
+      'II/c': 20,    // Terampil II/c → II/d
+      'II/d': 20,    // Terampil → Mahir
+      'III/a': 50,   // Mahir III/a → III/b
+      'III/b': 50,   // Mahir → Penyelia
+      'III/c': 100   // Penyelia III/c → III/d
+    };
+    
+    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
+    return kebutuhan[golonganSekarang] || 100;
   }
 
   // Kebutuhan AK untuk kenaikan jenjang
-  static getKebutuhanJenjang(jenjangSekarang: string, jenjangTujuan: string): number {
+  static getKebutuhanJenjang(jenjangSekarang: string, kategori: string): number {
     const kebutuhan: { [key: string]: number } = {
       // KETERAMPILAN
-      'Pemula_Terampil': 15,
-      'Terampil_Mahir': 60,
-      'Mahir_Penyelia': 100,
+      'Pemula': 15,
+      'Terampil': 60,
+      'Mahir': 100,
       
       // KEAHLIAN
-      'Ahli Pertama_Ahli Muda': 100,
-      'Ahli Muda_Ahli Madya': 200,
-      'Ahli Madya_Ahli Utama': 450
+      'Ahli Pertama': 100,
+      'Ahli Muda': 200,
+      'Ahli Madya': 450
     };
     
-    return kebutuhan[`${jenjangSekarang}_${jenjangTujuan}`] || 0;
+    return kebutuhan[jenjangSekarang] || 0;
   }
 
   // Estimasi kenaikan
@@ -218,8 +221,8 @@ class AngkaKreditCalculator {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jenjangBerikutnya = this.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
     
-    const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, golonganBerikutnya);
-    const kebutuhanJenjang = this.getKebutuhanJenjang(karyawan.jenjangJabatan, jenjangBerikutnya);
+    const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJenjang = this.getKebutuhanJenjang(karyawan.jenjangJabatan, karyawan.kategori);
     
     const kekuranganPangkat = Math.max(0, kebutuhanPangkat - karyawan.akKumulatif);
     const kekuranganJenjang = Math.max(0, kebutuhanJenjang - karyawan.akKumulatif);
@@ -257,7 +260,9 @@ class AngkaKreditCalculator {
         year: 'numeric'
       }),
       bisaUsulSekarang,
-      jenisKenaikan
+      jenisKenaikan,
+      golonganBerikutnya,
+      jenjangBerikutnya
     };
   }
 
@@ -327,8 +332,6 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
-  const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-  const jenjangBerikutnya = AngkaKreditCalculator.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
 
   const getStatusColor = () => {
     if (estimasi.bisaUsulSekarang) return 'bg-green-50 border-green-200 text-green-800';
@@ -370,11 +373,15 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h4 className="font-semibold text-gray-700">Kenaikan Pangkat</h4>
+          <h4 className="font-semibold text-gray-700">Informasi Kenaikan</h4>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Pangkat berikutnya:</span>
-              <span className="font-semibold">{golonganBerikutnya}</span>
+              <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Jenjang berikutnya:</span>
+              <span className="font-semibold">{estimasi.jenjangBerikutnya}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Kebutuhan AK:</span>
@@ -416,11 +423,18 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </p>
         </div>
       )}
+
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-blue-800 text-sm">
+          <strong>Catatan:</strong> Estimasi ini berdasarkan asumsi predikat "{predikatAsumsi === 1.50 ? 'Sangat Baik' : predikatAsumsi === 1.00 ? 'Baik' : predikatAsumsi === 0.75 ? 'Cukup' : 'Kurang'}" 
+          dan perhitungan angka kredit bulanan sebesar {((predikatAsumsi * AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan)) / 12).toFixed(2)} AK/bulan.
+        </p>
+      </div>
     </div>
   );
 };
 
-// Komponen Input Kinerja (tetap sama seperti sebelumnya)
+// Komponen Input Kinerja
 const InputKinerjaForm: React.FC<{ 
   karyawan: Karyawan; 
   onSave: (input: InputKinerja) => void 
@@ -581,7 +595,7 @@ const InputKinerjaForm: React.FC<{
 // Komponen Dashboard Karyawan
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-  const kebutuhanAK = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, golonganBerikutnya);
+  const kebutuhanAK = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
   const progressPangkat = karyawan.akKumulatif / kebutuhanAK;
 
   return (
