@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP SESUAI PERATURAN BKN NO. 3 TAHUN 2023 - REVISI
+// App.tsx - VERSI LENGKAP DENGAN NAVIGASI ATAS DAN FIX PREDIKAT
 import React, { useState, useEffect } from 'react';
 
 // ==================== TYPES ====================
@@ -121,6 +121,27 @@ const dummyKaryawan: Karyawan[] = [
     telepon: '081234567892',
     alamat: 'Jl. Tunjungan No. 789, Surabaya'
   },
+  {
+    nip: '198704102018031004',
+    nama: 'Dewi Anggraini',
+    pangkat: 'Pembina',
+    golongan: 'IV/a',
+    jenjangJabatan: 'Ahli Madya',
+    kategori: 'Keahlian',
+    unitKerja: 'Bidang SDM',
+    tmtJabatan: '2018-03-01',
+    tmtPangkat: '2020-11-01',
+    pendidikan: 'S2 Psikologi',
+    akKumulatif: 320.75,
+    status: 'Aktif',
+    tempatLahir: 'Medan',
+    tanggalLahir: '1987-04-10',
+    jenisKelamin: 'P',
+    agama: 'Islam',
+    email: 'dewi.anggraini@instansi.go.id',
+    telepon: '081234567893',
+    alamat: 'Jl. Gatot Subroto No. 123, Medan'
+  },
 
   // KATEGORI KETERAMPILAN
   {
@@ -141,7 +162,7 @@ const dummyKaryawan: Karyawan[] = [
     jenisKelamin: 'P',
     agama: 'Islam',
     email: 'rina.handayani@instansi.go.id',
-    telepon: '081234567893',
+    telepon: '081234567894',
     alamat: 'Jl. Malioboro No. 321, Yogyakarta'
   },
   {
@@ -162,7 +183,7 @@ const dummyKaryawan: Karyawan[] = [
     jenisKelamin: 'L',
     agama: 'Islam',
     email: 'joko.prasetyo@instansi.go.id',
-    telepon: '081234567894',
+    telepon: '081234567895',
     alamat: 'Jl. Pemuda No. 654, Semarang'
   }
 ];
@@ -583,7 +604,200 @@ const BiodataLengkap: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Estimasi Kenaikan
+// Komponen Kartu Karyawan untuk Grid
+const EmployeeCard: React.FC<{ 
+  karyawan: Karyawan; 
+  isSelected: boolean;
+  onSelect: () => void;
+}> = ({ karyawan, isSelected, onSelect }) => {
+  return (
+    <div 
+      className={`p-4 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+        isSelected 
+          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg border-2 border-blue-400' 
+          : 'bg-white text-gray-800 shadow-md border border-gray-200 hover:shadow-lg'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className={`font-bold text-lg mb-1 ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+            {karyawan.nama}
+          </h3>
+          <p className={`text-sm ${isSelected ? 'text-blue-100' : 'text-gray-600'}`}>
+            {karyawan.nip}
+          </p>
+        </div>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          karyawan.status === 'Aktif' 
+            ? isSelected ? 'bg-white/20 text-white' : 'bg-green-100 text-green-800'
+            : karyawan.status === 'Pensiun'
+            ? isSelected ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'
+            : isSelected ? 'bg-white/20 text-white' : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {karyawan.status}
+        </span>
+      </div>
+      
+      <div className={`space-y-2 text-sm ${isSelected ? 'text-blue-100' : 'text-gray-600'}`}>
+        <div className="flex justify-between">
+          <span>Pangkat:</span>
+          <span className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+            {karyawan.pangkat}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>Golongan:</span>
+          <span className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+            {karyawan.golongan}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>Jenjang:</span>
+          <span className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+            {karyawan.jenjangJabatan}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>Unit:</span>
+          <span className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-800'}`}>
+            {karyawan.unitKerja}
+          </span>
+        </div>
+      </div>
+      
+      <div className={`mt-3 pt-3 border-t ${isSelected ? 'border-blue-400' : 'border-gray-200'}`}>
+        <div className="flex justify-between items-center">
+          <span className={isSelected ? 'text-blue-100' : 'text-gray-600'}>AK Kumulatif:</span>
+          <span className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-blue-600'}`}>
+            {karyawan.akKumulatif.toFixed(2)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Komponen Daftar Karyawan dengan Grid
+const EmployeeGrid: React.FC<{ 
+  karyawanList: Karyawan[]; 
+  onSelect: (karyawan: Karyawan) => void;
+  selectedNip: string | null;
+}> = ({ karyawanList, onSelect, selectedNip }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
+  const [filterStatus, setFilterStatus] = useState<'Semua' | 'Aktif' | 'Pensiun' | 'Mutasi'>('Semua');
+
+  const filteredKaryawan = karyawanList.filter(karyawan => {
+    const matchesSearch = 
+      karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      karyawan.nip.includes(searchTerm) ||
+      karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
+    const matchesStatus = filterStatus === 'Semua' || karyawan.status === filterStatus;
+    
+    return matchesSearch && matchesKategori && matchesStatus;
+  });
+
+  const totalKaryawan = karyawanList.length;
+  const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
+  const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
+  const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Daftar Karyawan</h2>
+          <p className="text-gray-600">Pilih karyawan untuk melihat detail dan input kinerja</p>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+            <div className="text-2xl font-bold text-blue-600">{totalKaryawan}</div>
+            <div className="text-xs text-blue-800">Total</div>
+          </div>
+          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+            <div className="text-2xl font-bold text-green-600">{aktifKaryawan}</div>
+            <div className="text-xs text-green-800">Aktif</div>
+          </div>
+          <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+            <div className="text-2xl font-bold text-purple-600">{keahlianKaryawan}</div>
+            <div className="text-xs text-purple-800">Keahlian</div>
+          </div>
+          <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+            <div className="text-2xl font-bold text-orange-600">{keterampilanKaryawan}</div>
+            <div className="text-xs text-orange-800">Keterampilan</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter dan Pencarian */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Cari Karyawan</label>
+          <input
+            type="text"
+            placeholder="Nama, NIP, atau unit kerja..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter Kategori</label>
+          <select 
+            value={filterKategori}
+            onChange={(e) => setFilterKategori(e.target.value as any)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Semua">Semua Kategori</option>
+            <option value="Keahlian">Keahlian</option>
+            <option value="Keterampilan">Keterampilan</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter Status</label>
+          <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Semua">Semua Status</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Pensiun">Pensiun</option>
+            <option value="Mutasi">Mutasi</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Grid Karyawan */}
+      {filteredKaryawan.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-gray-400 text-6xl mb-4">🔍</div>
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">Tidak ada karyawan ditemukan</h3>
+          <p className="text-gray-500">Coba ubah kata kunci pencarian atau filter</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredKaryawan.map(karyawan => (
+            <EmployeeCard 
+              key={karyawan.nip}
+              karyawan={karyawan}
+              isSelected={selectedNip === karyawan.nip}
+              onSelect={() => onSelect(karyawan)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Komponen Estimasi Kenaikan - FIXED PREDIKAT ISSUE
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
@@ -903,70 +1117,6 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Daftar Karyawan - Minimalis
-const EmployeeList: React.FC<{ 
-  karyawanList: Karyawan[]; 
-  onSelect: (karyawan: Karyawan) => void;
-  selectedNip: string | null;
-}> = ({ karyawanList, onSelect, selectedNip }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredKaryawan = karyawanList.filter(karyawan =>
-    karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    karyawan.nip.includes(searchTerm) ||
-    karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="p-4">
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Cari nama, NIP, atau unit..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-        />
-      </div>
-
-      <h3 className="text-lg font-semibold text-white mb-4">
-        Daftar Karyawan ({filteredKaryawan.length} orang)
-      </h3>
-      <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {filteredKaryawan.map(karyawan => (
-          <div 
-            key={karyawan.nip} 
-            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-              selectedNip === karyawan.nip 
-                ? 'bg-white text-gray-900 shadow-md border border-blue-300' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-            onClick={() => onSelect(karyawan)}
-          >
-            <div className="flex justify-between items-start mb-1">
-              <h4 className="font-medium text-sm">{karyawan.nama}</h4>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                karyawan.status === 'Aktif' 
-                  ? 'bg-green-500/20 text-green-300' 
-                  : karyawan.status === 'Pensiun'
-                  ? 'bg-red-500/20 text-red-300'
-                  : 'bg-yellow-500/20 text-yellow-300'
-              }`}>
-                {karyawan.status}
-              </span>
-            </div>
-            <div className="text-xs opacity-90 space-y-1">
-              <p>{karyawan.pangkat}</p>
-              <p>{karyawan.jenjangJabatan}</p>
-              <p className="font-semibold">AK: {karyawan.akKumulatif.toFixed(2)}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // ==================== MAIN APP ====================
 const App: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>(dummyKaryawan);
@@ -992,9 +1142,6 @@ const App: React.FC = () => {
     }
   };
 
-  const totalKaryawan = karyawanList.length;
-  const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Header */}
@@ -1005,22 +1152,31 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex max-w-7xl mx-auto">
-        {/* Sidebar - Minimalis */}
-        <div className="w-80 min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 to-blue-700 text-white shadow-xl">
-          <EmployeeList 
+      <div className="max-w-7xl mx-auto p-6">
+        {!selectedKaryawan ? (
+          <EmployeeGrid 
             karyawanList={karyawanList} 
             onSelect={setSelectedKaryawan}
-            selectedNip={selectedKaryawan?.nip || null}
+            selectedNip={null}
           />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-6">
-          {selectedKaryawan ? (
-            <>
+        ) : (
+          <>
+            {/* Navigation Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <button 
+                  onClick={() => setSelectedKaryawan(null)}
+                  className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-2"
+                >
+                  <span className="mr-2">←</span>
+                  Kembali ke Daftar Karyawan
+                </button>
+                <h2 className="text-2xl font-bold text-gray-800">{selectedKaryawan.nama}</h2>
+                <p className="text-gray-600">{selectedKaryawan.pangkat} ({selectedKaryawan.golongan}) - {selectedKaryawan.jenjangJabatan}</p>
+              </div>
+              
               {/* Tab Navigation */}
-              <div className="flex space-x-1 mb-6 p-1 bg-gray-200 rounded-lg w-fit">
+              <div className="flex space-x-1 p-1 bg-gray-200 rounded-lg w-fit">
                 <button 
                   className={`px-4 py-2 rounded-md font-medium transition-all ${
                     activeTab === 'dashboard' 
@@ -1042,42 +1198,23 @@ const App: React.FC = () => {
                   📥 Input Kinerja
                 </button>
               </div>
-
-              {/* Tab Content */}
-              <div className="space-y-6">
-                {activeTab === 'dashboard' && (
-                  <EmployeeDashboard karyawan={selectedKaryawan} />
-                )}
-                
-                {activeTab === 'input' && (
-                  <InputKinerjaForm 
-                    karyawan={selectedKaryawan} 
-                    onSave={handleSaveInput} 
-                  />
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <div className="max-w-md mx-auto">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Selamat Datang!</h2>
-                <p className="text-gray-600 mb-8">
-                  Pilih karyawan dari daftar di sebelah kiri untuk melihat dashboard dan input kinerja.
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                    <h3 className="text-2xl font-bold text-blue-600">{totalKaryawan}</h3>
-                    <p className="text-sm text-gray-600">Total Karyawan</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                    <h3 className="text-2xl font-bold text-green-600">{aktifKaryawan}</h3>
-                    <p className="text-sm text-gray-600">Karyawan Aktif</p>
-                  </div>
-                </div>
-              </div>
             </div>
-          )}
-        </div>
+
+            {/* Tab Content */}
+            <div className="space-y-6">
+              {activeTab === 'dashboard' && (
+                <EmployeeDashboard karyawan={selectedKaryawan} />
+              )}
+              
+              {activeTab === 'input' && (
+                <InputKinerjaForm 
+                  karyawan={selectedKaryawan} 
+                  onSave={handleSaveInput} 
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
