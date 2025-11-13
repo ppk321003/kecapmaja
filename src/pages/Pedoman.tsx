@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP SESUAI PERATURAN BKN NO. 3 TAHUN 2023
+// App.tsx - VERSI LENGKAP SESUAI PERATURAN BKN NO. 3 TAHUN 2023 - REVISI
 import React, { useState, useEffect } from 'react';
 
 // ==================== TYPES ====================
@@ -15,6 +15,13 @@ interface Karyawan {
   pendidikan: string;
   akKumulatif: number;
   status: 'Aktif' | 'Pensiun' | 'Mutasi';
+  tempatLahir: string;
+  tanggalLahir: string;
+  jenisKelamin: 'L' | 'P';
+  agama: string;
+  email: string;
+  telepon: string;
+  alamat: string;
 }
 
 interface InputKinerja {
@@ -63,7 +70,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtPangkat: '2023-03-01',
     pendidikan: 'S1 Manajemen',
     akKumulatif: 32.50,
-    status: 'Aktif'
+    status: 'Aktif',
+    tempatLahir: 'Jakarta',
+    tanggalLahir: '1992-09-13',
+    jenisKelamin: 'L',
+    agama: 'Islam',
+    email: 'ahmad.wijaya@instansi.go.id',
+    telepon: '081234567890',
+    alamat: 'Jl. Merdeka No. 123, Jakarta Pusat'
   },
   {
     nip: '199305152022031002',
@@ -77,7 +91,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtPangkat: '2022-06-01',
     pendidikan: 'S1 Hukum',
     akKumulatif: 65.50,
-    status: 'Aktif'
+    status: 'Aktif',
+    tempatLahir: 'Bandung',
+    tanggalLahir: '1993-05-15',
+    jenisKelamin: 'P',
+    agama: 'Islam',
+    email: 'siti.rahma@instansi.go.id',
+    telepon: '081234567891',
+    alamat: 'Jl. Asia Afrika No. 456, Bandung'
   },
   {
     nip: '198811202019032003',
@@ -91,21 +112,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtPangkat: '2021-04-01',
     pendidikan: 'S1 Akuntansi',
     akKumulatif: 87.25,
-    status: 'Aktif'
-  },
-  {
-    nip: '198704102018031004',
-    nama: 'Dewi Anggraini',
-    pangkat: 'Pembina',
-    golongan: 'IV/a',
-    jenjangJabatan: 'Ahli Madya',
-    kategori: 'Keahlian',
-    unitKerja: 'Bidang SDM',
-    tmtJabatan: '2018-03-01',
-    tmtPangkat: '2020-11-01',
-    pendidikan: 'S2 Psikologi',
-    akKumulatif: 320.75,
-    status: 'Aktif'
+    status: 'Aktif',
+    tempatLahir: 'Surabaya',
+    tanggalLahir: '1988-11-20',
+    jenisKelamin: 'L',
+    agama: 'Kristen',
+    email: 'budi.santoso@instansi.go.id',
+    telepon: '081234567892',
+    alamat: 'Jl. Tunjungan No. 789, Surabaya'
   },
 
   // KATEGORI KETERAMPILAN
@@ -121,7 +135,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtPangkat: '2022-05-01',
     pendidikan: 'D3 Administrasi',
     akKumulatif: 8.50,
-    status: 'Aktif'
+    status: 'Aktif',
+    tempatLahir: 'Yogyakarta',
+    tanggalLahir: '1998-10-15',
+    jenisKelamin: 'P',
+    agama: 'Islam',
+    email: 'rina.handayani@instansi.go.id',
+    telepon: '081234567893',
+    alamat: 'Jl. Malioboro No. 321, Yogyakarta'
   },
   {
     nip: '199512102021041006',
@@ -135,21 +156,14 @@ const dummyKaryawan: Karyawan[] = [
     tmtPangkat: '2022-11-01',
     pendidikan: 'D3 Teknik',
     akKumulatif: 45.20,
-    status: 'Aktif'
-  },
-  {
-    nip: '199103152018031007',
-    nama: 'Maya Sari',
-    pangkat: 'Penata Muda',
-    golongan: 'III/a',
-    jenjangJabatan: 'Mahir',
-    kategori: 'Keterampilan',
-    unitKerja: 'Bidang TI',
-    tmtJabatan: '2018-03-01',
-    tmtPangkat: '2020-09-01',
-    pendidikan: 'D4 Komputer',
-    akKumulatif: 78.90,
-    status: 'Aktif'
+    status: 'Aktif',
+    tempatLahir: 'Semarang',
+    tanggalLahir: '1995-12-10',
+    jenisKelamin: 'L',
+    agama: 'Islam',
+    email: 'joko.prasetyo@instansi.go.id',
+    telepon: '081234567894',
+    alamat: 'Jl. Pemuda No. 654, Semarang'
   }
 ];
 
@@ -328,7 +342,8 @@ const ProgressBar: React.FC<{
   akSaatIni: number; 
   kebutuhanAK: number;
   type: 'pangkat' | 'jenjang';
-}> = ({ progress, label, akSaatIni, kebutuhanAK, type }) => {
+  bulanDibutuhkan: number;
+}> = ({ progress, label, akSaatIni, kebutuhanAK, type, bulanDibutuhkan }) => {
   const percentage = Math.min(progress * 100, 100);
   const getColorClass = () => {
     if (percentage >= 100) return 'from-green-500 to-green-600';
@@ -341,11 +356,30 @@ const ProgressBar: React.FC<{
     return type === 'pangkat' ? '⭐' : '📈';
   };
 
+  const getStatusText = () => {
+    if (bulanDibutuhkan === 0) return '✅ Bisa diusulkan sekarang!';
+    if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
+    if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${bulanDibutuhkan} bulan)`;
+    if (bulanDibutuhkan <= 24) return `🟡 Butuh waktu (${bulanDibutuhkan} bulan)`;
+    return `🟠 Butuh waktu lebih lama (${bulanDibutuhkan} bulan)`;
+  };
+
   return (
     <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="flex items-center mb-3">
-        <span className="text-lg mr-2">{getIcon()}</span>
-        <h3 className="text-md font-semibold text-gray-800">{label}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <span className="text-lg mr-2">{getIcon()}</span>
+          <h3 className="text-md font-semibold text-gray-800">{label}</h3>
+        </div>
+        <div className={`text-xs font-medium px-2 py-1 rounded ${
+          bulanDibutuhkan === 0 ? 'bg-green-100 text-green-800' :
+          bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800' :
+          bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800' :
+          bulanDibutuhkan <= 24 ? 'bg-yellow-100 text-yellow-800' :
+          'bg-orange-100 text-orange-800'
+        }`}>
+          {getStatusText()}
+        </div>
       </div>
       
       <div className="flex justify-between items-center mb-2">
@@ -386,27 +420,174 @@ const ProgressBar: React.FC<{
   );
 };
 
+// Komponen Informasi Biodata Lengkap
+const BiodataLengkap: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  const formatTanggal = (tanggal: string) => {
+    return new Date(tanggal).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const hitungUsia = (tanggalLahir: string) => {
+    const today = new Date();
+    const birthDate = new Date(tanggalLahir);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  const hitungMasaKerja = (tmtJabatan: string) => {
+    const today = new Date();
+    const tmt = new Date(tmtJabatan);
+    let years = today.getFullYear() - tmt.getFullYear();
+    let months = today.getMonth() - tmt.getMonth();
+    
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    return { years, months };
+  };
+
+  const masaKerja = hitungMasaKerja(karyawan.tmtJabatan);
+  const usia = hitungUsia(karyawan.tanggalLahir);
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-6">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">👤 Biodata Lengkap</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm uppercase tracking-wide">Data Pribadi</h4>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-gray-500">Nama Lengkap</p>
+                <p className="font-medium">{karyawan.nama}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">NIP</p>
+                <p className="font-medium">{karyawan.nip}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Tempat, Tanggal Lahir</p>
+                <p className="font-medium">{karyawan.tempatLahir}, {formatTanggal(karyawan.tanggalLahir)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Usia</p>
+                <p className="font-medium">{usia} tahun</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Jenis Kelamin</p>
+                <p className="font-medium">{karyawan.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Agama</p>
+                <p className="font-medium">{karyawan.agama}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm uppercase tracking-wide">Data Kepegawaian</h4>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-gray-500">Pangkat / Golongan</p>
+                <p className="font-medium">{karyawan.pangkat} ({karyawan.golongan})</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Jenjang Jabatan</p>
+                <p className="font-medium">{karyawan.jenjangJabatan}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Kategori</p>
+                <p className="font-medium">{karyawan.kategori}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Unit Kerja</p>
+                <p className="font-medium">{karyawan.unitKerja}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Status</p>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  karyawan.status === 'Aktif' 
+                    ? 'bg-green-100 text-green-800' 
+                    : karyawan.status === 'Pensiun'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {karyawan.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm uppercase tracking-wide">Masa Kerja & Pendidikan</h4>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-gray-500">TMT Jabatan</p>
+                <p className="font-medium">{formatTanggal(karyawan.tmtJabatan)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">TMT Pangkat</p>
+                <p className="font-medium">{formatTanggal(karyawan.tmtPangkat)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Masa Kerja</p>
+                <p className="font-medium">{masaKerja.years} tahun {masaKerja.months} bulan</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Pendidikan Terakhir</p>
+                <p className="font-medium">{karyawan.pendidikan}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Angka Kredit</p>
+                <p className="font-bold text-blue-600 text-lg">{karyawan.akKumulatif.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <h4 className="font-semibold text-gray-700 mb-2 text-sm uppercase tracking-wide">Kontak & Alamat</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-500">Email</p>
+            <p className="font-medium">{karyawan.email}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Telepon</p>
+            <p className="font-medium">{karyawan.telepon}</p>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-xs text-gray-500">Alamat</p>
+            <p className="font-medium">{karyawan.alamat}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Komponen Estimasi Kenaikan
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
-
-  const getStatusColor = (bulanDibutuhkan: number) => {
-    if (bulanDibutuhkan === 0) return 'bg-green-50 border-green-200 text-green-800';
-    if (bulanDibutuhkan <= 6) return 'bg-green-50 border-green-200 text-green-800';
-    if (bulanDibutuhkan <= 12) return 'bg-blue-50 border-blue-200 text-blue-800';
-    if (bulanDibutuhkan <= 24) return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-    return 'bg-orange-50 border-orange-200 text-orange-800';
-  };
-
-  const getStatusText = (bulanDibutuhkan: number, type: string) => {
-    if (bulanDibutuhkan === 0) return `✅ ${type} bisa diusulkan sekarang!`;
-    if (bulanDibutuhkan <= 6) return `🟢 ${type} sangat dekat (${bulanDibutuhkan} bulan)`;
-    if (bulanDibutuhkan <= 12) return `🔵 ${type} mendekati syarat (${bulanDibutuhkan} bulan)`;
-    if (bulanDibutuhkan <= 24) return `🟡 ${type} butuh waktu (${bulanDibutuhkan} bulan)`;
-    return `🟠 ${type} butuh waktu lebih lama (${bulanDibutuhkan} bulan)`;
-  };
 
   const getPredikatText = (value: number) => {
     switch(value) {
@@ -439,16 +620,10 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </select>
         </div>
         
-        <div className="space-y-2">
-          <div className={`p-3 rounded-lg border-2 ${getStatusColor(estimasi.bulanDibutuhkanPangkat)}`}>
-            <p className="font-semibold text-center text-sm">
-              {getStatusText(estimasi.bulanDibutuhkanPangkat, 'Pangkat')}
-            </p>
-          </div>
-          <div className={`p-3 rounded-lg border-2 ${getStatusColor(estimasi.bulanDibutuhkanJenjang)}`}>
-            <p className="font-semibold text-center text-sm">
-              {getStatusText(estimasi.bulanDibutuhkanJenjang, 'Jenjang')}
-            </p>
+        <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-center">
+            <p className="text-sm text-blue-700 font-medium">Perolehan AK per Bulan</p>
+            <p className="text-2xl font-bold text-blue-800">{estimasi.akPerBulan}</p>
           </div>
         </div>
       </div>
@@ -505,7 +680,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-blue-800 text-sm">
-          <strong>Informasi:</strong> Estimasi berdasarkan predikat "{getPredikatText(estimasi.predikatAsumsi)}" 
+          <strong>Informasi:</strong> Estimasi berdasarkan predikat "{getPredikatText(predikatAsumsi)}" 
           dengan perolehan {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023.
         </p>
       </div>
@@ -682,8 +857,12 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const progressPangkat = karyawan.akKumulatif / kebutuhanPangkat;
   const progressJenjang = karyawan.akKumulatif / kebutuhanJenjang;
 
+  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
+
   return (
     <div className="space-y-6">
+      <BiodataLengkap karyawan={karyawan} />
+
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
         <div className="mb-6 pb-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{karyawan.nama}</h2>
@@ -705,6 +884,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             akSaatIni={karyawan.akKumulatif}
             kebutuhanAK={kebutuhanPangkat}
             type="pangkat"
+            bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
           />
           
           <ProgressBar 
@@ -713,6 +893,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             akSaatIni={karyawan.akKumulatif}
             kebutuhanAK={kebutuhanJenjang}
             type="jenjang"
+            bulanDibutuhkan={estimasi.bulanDibutuhkanJenjang}
           />
         </div>
       </div>
@@ -722,30 +903,48 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Daftar Karyawan
+// Komponen Daftar Karyawan - Minimalis
 const EmployeeList: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
   selectedNip: string | null;
 }> = ({ karyawanList, onSelect, selectedNip }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredKaryawan = karyawanList.filter(karyawan =>
+    karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    karyawan.nip.includes(searchTerm) ||
+    karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-4">
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Cari nama, NIP, atau unit..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+        />
+      </div>
+
       <h3 className="text-lg font-semibold text-white mb-4">
-        Daftar Karyawan ({karyawanList.length} orang)
+        Daftar Karyawan ({filteredKaryawan.length} orang)
       </h3>
-      <div className="space-y-2">
-        {karyawanList.map(karyawan => (
+      <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+        {filteredKaryawan.map(karyawan => (
           <div 
             key={karyawan.nip} 
             className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
               selectedNip === karyawan.nip 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'bg-blue-500/20 text-white hover:bg-blue-500/30'
+                ? 'bg-white text-gray-900 shadow-md border border-blue-300' 
+                : 'bg-white/10 text-white hover:bg-white/20'
             }`}
             onClick={() => onSelect(karyawan)}
           >
             <div className="flex justify-between items-start mb-1">
-              <h4 className="font-medium">{karyawan.nama}</h4>
+              <h4 className="font-medium text-sm">{karyawan.nama}</h4>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                 karyawan.status === 'Aktif' 
                   ? 'bg-green-500/20 text-green-300' 
@@ -757,7 +956,7 @@ const EmployeeList: React.FC<{
               </span>
             </div>
             <div className="text-xs opacity-90 space-y-1">
-              <p>{karyawan.pangkat} ({karyawan.golongan})</p>
+              <p>{karyawan.pangkat}</p>
               <p>{karyawan.jenjangJabatan}</p>
               <p className="font-semibold">AK: {karyawan.akKumulatif.toFixed(2)}</p>
             </div>
@@ -807,7 +1006,7 @@ const App: React.FC = () => {
       </header>
 
       <div className="flex max-w-7xl mx-auto">
-        {/* Sidebar */}
+        {/* Sidebar - Minimalis */}
         <div className="w-80 min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 to-blue-700 text-white shadow-xl">
           <EmployeeList 
             karyawanList={karyawanList} 
