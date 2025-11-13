@@ -332,24 +332,37 @@ const ProgressBar: React.FC<{ progress: number; label: string }> = ({ progress, 
 };
 
 // Komponen Estimasi Kenaikan - PERBAIKAN TAMPILAN
+// GANTI komponen EstimasiKenaikan dengan yang ini
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
+  const [predikatAsumsi, setPredikatAsumsi] = useState(1.50); // Default Sangat Baik
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
 
+  // DEBUG: Tampilkan data perhitungan
+  console.log('DEBUG Estimasi:', {
+    nama: karyawan.nama,
+    jenjang: karyawan.jenjangJabatan,
+    koefisien: AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan),
+    predikatAsumsi,
+    akPerBulan: (predikatAsumsi * AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan)) / 12,
+    kekuranganAK: estimasi.kekuranganAK,
+    bulanDibutuhkan: estimasi.bulanDibutuhkan
+  });
+
   const getStatusColor = () => {
     if (estimasi.bisaUsulSekarang) return 'bg-green-50 border-green-200 text-green-800';
-    if (estimasi.bulanDibutuhkan <= 6) return 'bg-blue-50 border-blue-200 text-blue-800';
-    if (estimasi.bulanDibutuhkan <= 12) return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+    if (estimasi.bulanDibutuhkan <= 6) return 'bg-green-50 border-green-200 text-green-800';
+    if (estimasi.bulanDibutuhkan <= 12) return 'bg-blue-50 border-blue-200 text-blue-800';
+    if (estimasi.bulanDibutuhkan <= 24) return 'bg-yellow-50 border-yellow-200 text-yellow-800';
     return 'bg-orange-50 border-orange-200 text-orange-800';
   };
 
   const getStatusText = () => {
     if (estimasi.bisaUsulSekarang) return '✅ Bisa diusulkan sekarang!';
     if (estimasi.bulanDibutuhkan <= 6) return '🟢 Sangat dekat (≤ 6 bulan)';
-    if (estimasi.bulanDibutuhkan <= 12) return '🟡 Mendekati syarat (≤ 1 tahun)';
-    if (estimasi.bulanDibutuhkan <= 24) return '🟠 Butuh waktu (≤ 2 tahun)';
-    return '🔴 Butuh waktu lebih lama (> 2 tahun)';
+    if (estimasi.bulanDibutuhkan <= 12) return '🔵 Mendekati syarat (≤ 1 tahun)';
+    if (estimasi.bulanDibutuhkan <= 24) return '🟡 Butuh waktu (≤ 2 tahun)';
+    return '🟠 Butuh waktu lebih lama (> 2 tahun)';
   };
 
   const getPredikatText = (value: number) => {
@@ -439,7 +452,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       {estimasi.bisaUsulSekarang && (
         <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-green-800 text-sm">
-            <strong>Rekomendasi:</strong> Karyawan sudah memenuhi syarat angka kredit untuk kenaikan {estimasi.jenisKenaikan.toLowerCase()}. 
+            <strong>Rekomendasi:</strong> Karyawan sudah memenuhi syarat angka kredit untuk kenaikan pangkat. 
             Dapat diusulkan pada periode terdekat.
           </p>
         </div>
