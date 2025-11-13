@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN RADIO BUTTON PREDIKAT & TAMPILAN SIMPLE
+// App.tsx - VERSI LENGKAP DENGAN TABEL KARYAWAN
 import React, { useState, useEffect } from 'react';
 
 // ==================== TYPES ====================
@@ -121,6 +121,27 @@ const dummyKaryawan: Karyawan[] = [
     telepon: '081234567892',
     alamat: 'Jl. Tunjungan No. 789, Surabaya'
   },
+  {
+    nip: '198704102018031004',
+    nama: 'Dewi Anggraini',
+    pangkat: 'Pembina',
+    golongan: 'IV/a',
+    jenjangJabatan: 'Ahli Madya',
+    kategori: 'Keahlian',
+    unitKerja: 'Bidang SDM',
+    tmtJabatan: '2018-03-01',
+    tmtPangkat: '2020-11-01',
+    pendidikan: 'S2 Psikologi',
+    akKumulatif: 320.75,
+    status: 'Aktif',
+    tempatLahir: 'Medan',
+    tanggalLahir: '1987-04-10',
+    jenisKelamin: 'P',
+    agama: 'Islam',
+    email: 'dewi.anggraini@instansi.go.id',
+    telepon: '081234567893',
+    alamat: 'Jl. Gatot Subroto No. 123, Medan'
+  },
 
   // KATEGORI KETERAMPILAN
   {
@@ -141,7 +162,7 @@ const dummyKaryawan: Karyawan[] = [
     jenisKelamin: 'P',
     agama: 'Islam',
     email: 'rina.handayani@instansi.go.id',
-    telepon: '081234567893',
+    telepon: '081234567894',
     alamat: 'Jl. Malioboro No. 321, Yogyakarta'
   },
   {
@@ -162,8 +183,29 @@ const dummyKaryawan: Karyawan[] = [
     jenisKelamin: 'L',
     agama: 'Islam',
     email: 'joko.prasetyo@instansi.go.id',
-    telepon: '081234567894',
+    telepon: '081234567895',
     alamat: 'Jl. Pemuda No. 654, Semarang'
+  },
+  {
+    nip: '199103152018031007',
+    nama: 'Maya Sari',
+    pangkat: 'Penata Muda',
+    golongan: 'III/a',
+    jenjangJabatan: 'Mahir',
+    kategori: 'Keterampilan',
+    unitKerja: 'Bidang TI',
+    tmtJabatan: '2018-03-01',
+    tmtPangkat: '2020-09-01',
+    pendidikan: 'D4 Komputer',
+    akKumulatif: 78.90,
+    status: 'Aktif',
+    tempatLahir: 'Surakarta',
+    tanggalLahir: '1991-03-15',
+    jenisKelamin: 'P',
+    agama: 'Islam',
+    email: 'maya.sari@instansi.go.id',
+    telepon: '081234567896',
+    alamat: 'Jl. Slamet Riyadi No. 789, Surakarta'
   }
 ];
 
@@ -537,68 +579,6 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Kartu Karyawan Sederhana
-const EmployeeCardSimple: React.FC<{ 
-  karyawan: Karyawan; 
-  isSelected: boolean;
-  onSelect: () => void;
-}> = ({ karyawan, isSelected, onSelect }) => {
-  return (
-    <div 
-      className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
-        isSelected 
-          ? 'bg-blue-50 border-blue-500 shadow-md' 
-          : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
-      }`}
-      onClick={onSelect}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
-          <h3 className={`font-semibold text-sm mb-1 ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>
-            {karyawan.nama}
-          </h3>
-          <p className="text-xs text-gray-600 mb-1">{karyawan.nip}</p>
-        </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          karyawan.status === 'Aktif' 
-            ? 'bg-green-100 text-green-800' 
-            : karyawan.status === 'Pensiun'
-            ? 'bg-red-100 text-red-800'
-            : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {karyawan.status}
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-1 text-xs text-gray-600 mb-2">
-        <div>
-          <span className="text-gray-500">Pangkat:</span>
-          <p className="font-medium">{karyawan.pangkat}</p>
-        </div>
-        <div>
-          <span className="text-gray-500">Golongan:</span>
-          <p className="font-medium">{karyawan.golongan}</p>
-        </div>
-        <div>
-          <span className="text-gray-500">Jenjang:</span>
-          <p className="font-medium">{karyawan.jenjangJabatan}</p>
-        </div>
-        <div>
-          <span className="text-gray-500">Unit:</span>
-          <p className="font-medium">{karyawan.unitKerja}</p>
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-        <span className="text-xs text-gray-500">AK Kumulatif:</span>
-        <span className={`text-sm font-bold ${isSelected ? 'text-blue-600' : 'text-blue-600'}`}>
-          {karyawan.akKumulatif.toFixed(2)}
-        </span>
-      </div>
-    </div>
-  );
-};
-
 // Komponen Radio Button Predikat Kinerja
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
@@ -656,14 +636,16 @@ const PredikatKinerjaRadio: React.FC<{
   );
 };
 
-// Komponen Daftar Karyawan Sederhana
-const EmployeeGridSimple: React.FC<{ 
+// Komponen Tabel Karyawan
+const EmployeeTable: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
   selectedNip: string | null;
 }> = ({ karyawanList, onSelect, selectedNip }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
+  const [sortField, setSortField] = useState<keyof Karyawan>('nama');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const filteredKaryawan = karyawanList.filter(karyawan => {
     const matchesSearch = 
@@ -675,6 +657,38 @@ const EmployeeGridSimple: React.FC<{
     
     return matchesSearch && matchesKategori;
   });
+
+  // Sorting
+  const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortDirection === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    
+    return 0;
+  });
+
+  const handleSort = (field: keyof Karyawan) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: keyof Karyawan) => {
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
 
   const totalKaryawan = karyawanList.length;
   const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
@@ -734,7 +748,7 @@ const EmployeeGridSimple: React.FC<{
         </div>
       </div>
 
-      {/* Grid Karyawan */}
+      {/* Tabel Karyawan */}
       {filteredKaryawan.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-400 text-4xl mb-2">🔍</div>
@@ -742,17 +756,166 @@ const EmployeeGridSimple: React.FC<{
           <p className="text-gray-500 text-xs">Coba ubah kata kunci pencarian</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto">
-          {filteredKaryawan.map(karyawan => (
-            <EmployeeCardSimple 
-              key={karyawan.nip}
-              karyawan={karyawan}
-              isSelected={selectedNip === karyawan.nip}
-              onSelect={() => onSelect(karyawan)}
-            />
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-700">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+              <tr>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('nama')}
+                >
+                  <div className="flex items-center">
+                    Nama
+                    <span className="ml-1 text-xs">{getSortIcon('nama')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('nip')}
+                >
+                  <div className="flex items-center">
+                    NIP
+                    <span className="ml-1 text-xs">{getSortIcon('nip')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('pangkat')}
+                >
+                  <div className="flex items-center">
+                    Pangkat
+                    <span className="ml-1 text-xs">{getSortIcon('pangkat')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('golongan')}
+                >
+                  <div className="flex items-center">
+                    Golongan
+                    <span className="ml-1 text-xs">{getSortIcon('golongan')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('jenjangJabatan')}
+                >
+                  <div className="flex items-center">
+                    Jenjang
+                    <span className="ml-1 text-xs">{getSortIcon('jenjangJabatan')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('kategori')}
+                >
+                  <div className="flex items-center">
+                    Kategori
+                    <span className="ml-1 text-xs">{getSortIcon('kategori')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('unitKerja')}
+                >
+                  <div className="flex items-center">
+                    Unit Kerja
+                    <span className="ml-1 text-xs">{getSortIcon('unitKerja')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('akKumulatif')}
+                >
+                  <div className="flex items-center">
+                    AK Kumulatif
+                    <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center">
+                    Status
+                    <span className="ml-1 text-xs">{getSortIcon('status')}</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedKaryawan.map((karyawan, index) => (
+                <tr 
+                  key={karyawan.nip} 
+                  className={`border-b hover:bg-gray-50 transition-colors ${
+                    selectedNip === karyawan.nip ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {karyawan.nama}
+                  </td>
+                  <td className="px-4 py-3">
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code>
+                  </td>
+                  <td className="px-4 py-3">{karyawan.pangkat}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-semibold">{karyawan.golongan}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      karyawan.jenjangJabatan.includes('Ahli') 
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {karyawan.jenjangJabatan}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      karyawan.kategori === 'Keahlian'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {karyawan.kategori}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs">{karyawan.unitKerja}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-bold text-blue-600">{karyawan.akKumulatif.toFixed(2)}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      karyawan.status === 'Aktif' 
+                        ? 'bg-green-100 text-green-800' 
+                        : karyawan.status === 'Pensiun'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {karyawan.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => onSelect(karyawan)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                    >
+                      Pilih
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {/* Informasi Jumlah Data */}
+      <div className="mt-4 text-xs text-gray-500">
+        Menampilkan {filteredKaryawan.length} dari {totalKaryawan} karyawan
+      </div>
     </div>
   );
 };
@@ -1097,7 +1260,7 @@ const App: React.FC = () => {
 
       <div className="max-w-7xl mx-auto p-4">
         {!selectedKaryawan ? (
-          <EmployeeGridSimple 
+          <EmployeeTable 
             karyawanList={karyawanList} 
             onSelect={setSelectedKaryawan}
             selectedNip={null}
