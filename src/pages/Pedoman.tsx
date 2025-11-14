@@ -391,7 +391,7 @@ const ProgressCard: React.FC<{
       if (bulan <= 0) return '0 bulan';
       const tahun = Math.floor(bulan / 12);
       const bulanSisa = bulan % 12;
-      if (tahun > 0 && bulanSisa > 0) return `${tahun}t ${bulanSisa}b`;
+      if (tahun > 0 && bulanSisa > 0) return `${tahun} tahun ${bulanSisa} bulan`;
       if (tahun > 0) return `${tahun} tahun`;
       return `${bulanSisa} bulan`;
     };
@@ -595,10 +595,10 @@ const BiodataCard: React.FC<{
               </Badge>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">AK Real Saat Ini</Label>
+              <Label className="text-xs text-muted-foreground">AK Akhir Saat Ini</Label>
               <p className="text-2xl font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">
-                Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
+                AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
               </p>
             </div>
           </div>
@@ -692,8 +692,8 @@ const EmployeeTable: React.FC<{
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daftar Karyawan</CardTitle>
-        <CardDescription>Pilih karyawan untuk melihat detail perkembangan karir</CardDescription>
+        <CardTitle>Penghitungan Angka Kreditn</CardTitle>
+        <CardDescription>Berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div className="bg-blue-50 p-4 rounded-lg border">
@@ -806,7 +806,7 @@ const EmployeeTable: React.FC<{
             <div>
               <h4 className="font-semibold text-blue-800">Informasi AK Real</h4>
               <p className="text-blue-700 text-sm">
-                <strong>AK Real = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
               </p>
             </div>
           </div>
@@ -855,7 +855,7 @@ const EstimasiKenaikanCard: React.FC<{
             <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-purple-700 font-medium">AK Real Saat Ini</div>
+            <div className="text-sm text-purple-700 font-medium">AK Akhir Saat Ini</div>
             <div className="text-2xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
           </div>
         </div>
@@ -963,7 +963,7 @@ const EstimasiKenaikanCard: React.FC<{
         <div className="p-4 bg-blue-50 rounded-lg border">
           <p className="text-blue-800 text-sm">
             <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
-            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Real saat ini sudah termasuk
+            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
             akumulasi sejak TMT Jabatan.
           </p>
         </div>
@@ -1172,8 +1172,8 @@ const EmployeeDashboard: React.FC<{
             Progress Kenaikan Karir
           </CardTitle>
           <CardDescription>
-            AK Real Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(2)}</strong>{' '}
-            (Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {estimasi.akTambahan.toFixed(2)})
+            AK Akhir Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(2)}</strong>{' '}
+            (AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {estimasi.akTambahan.toFixed(2)})
           </CardDescription>
         </CardHeader>
         <CardContent>
