@@ -382,6 +382,7 @@ class AngkaKreditCalculator {
 // ==================== COMPONENTS ====================
 
 // Komponen Progress Bar dengan AK Real dan Kebutuhan Kumulatif - DIPERBAIKI
+// GANTI SELURUH KOMPONEN ProgressBar dengan yang ini:
 const ProgressBar: React.FC<{ 
   progress: number; 
   label: string; 
@@ -396,26 +397,42 @@ const ProgressBar: React.FC<{
 }> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK }) => {
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
   
-  // FIX: Progress tidak boleh lebih dari 100%
-  const percentage = isTidakAda ? 0 : Math.min(progress * 100, 100);
-  const kelebihanAK = Math.max(0, akRealSaatIni - kebutuhanAK);
+  // PERBAIKAN: Hitung progress dari AK Real saat ini
+  const progressPercentage = isTidakAda ? 0 : Math.min((akRealSaatIni / kebutuhanAK) * 100, 100);
   
   const getColorClass = () => {
     if (isTidakAda) return 'from-gray-300 to-gray-400';
-    if (percentage >= 100) return 'from-green-500 to-green-600';
-    if (percentage >= 80) return 'from-blue-500 to-blue-600';
-    if (percentage >= 50) return 'from-yellow-500 to-yellow-600';
+    if (progressPercentage >= 100) return 'from-green-500 to-green-600';
+    if (progressPercentage >= 80) return 'from-blue-500 to-blue-600';
+    if (progressPercentage >= 50) return 'from-yellow-500 to-yellow-600';
     return 'from-red-500 to-red-600';
   };
 
-  // FIX: Gunakan kekuranganAK untuk menentukan status, bukan bulanDibutuhkan
+  // PERBAIKAN: Format estimasi waktu yang benar
+  const formatEstimasiWaktu = (bulan: number) => {
+    if (bulan <= 0) return '0 bulan';
+    
+    const tahun = Math.floor(bulan / 12);
+    const bulanSisa = bulan % 12;
+    
+    if (tahun > 0 && bulanSisa > 0) {
+      return `${tahun} tahun ${bulanSisa} bulan`;
+    } else if (tahun > 0) {
+      return `${tahun} tahun`;
+    } else {
+      return `${bulanSisa} bulan`;
+    }
+  };
+
   const getStatusText = () => {
     if (isTidakAda) return 'Sudah level tertinggi';
     if (kekuranganAK <= 0) return '✅ Bisa diusulkan sekarang!';
-    if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
-    if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${bulanDibutuhkan} bulan)`;
-    if (bulanDibutuhkan <= 24) return `🟡 Butuh waktu (${bulanDibutuhkan} bulan)`;
-    return `🟠 Butuh waktu lebih lama (${bulanDibutuhkan} bulan)`;
+    
+    const estimasi = formatEstimasiWaktu(bulanDibutuhkan);
+    if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${estimasi})`;
+    if (bulanDibutuhkan <= 24) return `🟡 Butuh waktu (${estimasi})`;
+    return `🟠 Butuh waktu lebih lama (${estimasi})`;
   };
 
   return (
@@ -449,13 +466,13 @@ const ProgressBar: React.FC<{
         <>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm font-semibold text-blue-600">{percentage.toFixed(1)}%</span>
+            <span className="text-sm font-semibold text-blue-600">{progressPercentage.toFixed(1)}%</span>
           </div>
           
           <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
             <div 
               className={`bg-gradient-to-r ${getColorClass()} h-3 rounded-full transition-all duration-500 ease-out`}
-              style={{ width: `${percentage}%` }}
+              style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
         </>
@@ -491,7 +508,7 @@ const ProgressBar: React.FC<{
         </div>
       </div>
 
-      {percentage >= 100 && !isTidakAda && (
+      {progressPercentage >= 100 && !isTidakAda && (
         <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center">
           <span className="text-green-800 text-sm font-semibold">✅ Sudah memenuhi syarat!</span>
         </div>
@@ -1010,11 +1027,32 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
   const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori);
 
-  const hitungEstimasiTahunBulan = (bulanDibutuhkan: number) => {
-    const tahun = Math.floor(bulanDibutuhkan / 12);
-    const bulan = bulanDibutuhkan % 12;
-    return { tahun, bulan };
-  };
+// Dalam komponen EstimasiKenaikan, GANTI fungsi hitungEstimasiTahunBulan dengan:
+const hitungEstimasiTahunBulan = (bulanDibutuhkan: number) => {
+  if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
+  
+  const tahun = Math.floor(bulanDibutuhkan / 12);
+  const bulan = bulanDibutuhkan % 12;
+  
+  let formatted = '';
+  if (tahun > 0 && bulan > 0) {
+    formatted = `${tahun} tahun ${bulan} bulan`;
+  } else if (tahun > 0) {
+    formatted = `${tahun} tahun`;
+  } else {
+    formatted = `${bulan} bulan`;
+  }
+  
+  return { tahun, bulan, formatted };
+};
+
+// Kemudian GANTI bagian tampilan estimasi:
+<div className="flex justify-between">
+  <span className="text-gray-600">Estimasi waktu:</span>
+  <span className="font-semibold text-blue-600">
+    {estimasiPangkat.formatted}
+  </span>
+</div>
 
   const estimasiPangkat = hitungEstimasiTahunBulan(estimasi.bulanDibutuhkanPangkat);
   const estimasiJabatan = hitungEstimasiTahunBulan(estimasi.bulanDibutuhkanJabatan);
@@ -1333,8 +1371,8 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
   
   // FIX: Progress tidak boleh lebih dari 100%
-  const progressPangkat = kebutuhanPangkat > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkat, 1) : 0;
-  const progressJabatan = kebutuhanJabatan > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanJabatan, 1) : 0;
+const progressPangkat = kebutuhanPangkat > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkat, 1) : 0;
+const progressJabatan = kebutuhanJabatan > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanJabatan, 1) : 0;
 
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
