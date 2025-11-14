@@ -652,12 +652,9 @@ const BiodataCard: React.FC<{
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="font-semibold">{hitungMasaKerja(nipData.tahunMasuk)}</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                TMT: {formatTanggal(nipData.tahunMasuk)}
-              </p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">AK Real Saat Ini</Label>
+              <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
               <p className="text-2xl font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">
                 Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
