@@ -1,5 +1,7 @@
-// App.tsx - VERSI LENGKAP DENGAN TABEL KARYAWAN
+// App.tsx - VERSI DENGAN DATA ASLI DARI GOOGLE SHEETS
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client'; // Sesuaikan dengan path Supabase Anda
+import { useToast } from '@/hooks/use-toast'; // Sesuaikan dengan path toast Anda
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -55,159 +57,9 @@ interface EstimasiKenaikan {
   akPerBulan: number;
 }
 
-// ==================== DUMMY DATA ====================
-const dummyKaryawan: Karyawan[] = [
-  // KATEGORI KEAHLIAN
-  {
-    nip: '199209132023021001',
-    nama: 'Ahmad Wijaya',
-    pangkat: 'Penata Muda',
-    golongan: 'III/a',
-    jenjangJabatan: 'Ahli Pertama',
-    kategori: 'Keahlian',
-    unitKerja: 'Bagian Kepegawaian',
-    tmtJabatan: '2023-03-01',
-    tmtPangkat: '2023-03-01',
-    pendidikan: 'S1 Manajemen',
-    akKumulatif: 32.50,
-    status: 'Aktif',
-    tempatLahir: 'Jakarta',
-    tanggalLahir: '1992-09-13',
-    jenisKelamin: 'L',
-    agama: 'Islam',
-    email: 'ahmad.wijaya@instansi.go.id',
-    telepon: '081234567890',
-    alamat: 'Jl. Merdeka No. 123, Jakarta Pusat'
-  },
-  {
-    nip: '199305152022031002',
-    nama: 'Siti Rahma',
-    pangkat: 'Penata Muda Tk.I',
-    golongan: 'III/b',
-    jenjangJabatan: 'Ahli Pertama',
-    kategori: 'Keahlian',
-    unitKerja: 'Bagian Umum',
-    tmtJabatan: '2022-06-01',
-    tmtPangkat: '2022-06-01',
-    pendidikan: 'S1 Hukum',
-    akKumulatif: 65.50,
-    status: 'Aktif',
-    tempatLahir: 'Bandung',
-    tanggalLahir: '1993-05-15',
-    jenisKelamin: 'P',
-    agama: 'Islam',
-    email: 'siti.rahma@instansi.go.id',
-    telepon: '081234567891',
-    alamat: 'Jl. Asia Afrika No. 456, Bandung'
-  },
-  {
-    nip: '198811202019032003',
-    nama: 'Budi Santoso',
-    pangkat: 'Penata',
-    golongan: 'III/c',
-    jenjangJabatan: 'Ahli Muda',
-    kategori: 'Keahlian',
-    unitKerja: 'Bagian Keuangan',
-    tmtJabatan: '2019-09-01',
-    tmtPangkat: '2021-04-01',
-    pendidikan: 'S1 Akuntansi',
-    akKumulatif: 87.25,
-    status: 'Aktif',
-    tempatLahir: 'Surabaya',
-    tanggalLahir: '1988-11-20',
-    jenisKelamin: 'L',
-    agama: 'Kristen',
-    email: 'budi.santoso@instansi.go.id',
-    telepon: '081234567892',
-    alamat: 'Jl. Tunjungan No. 789, Surabaya'
-  },
-  {
-    nip: '198704102018031004',
-    nama: 'Dewi Anggraini',
-    pangkat: 'Pembina',
-    golongan: 'IV/a',
-    jenjangJabatan: 'Ahli Madya',
-    kategori: 'Keahlian',
-    unitKerja: 'Bidang SDM',
-    tmtJabatan: '2018-03-01',
-    tmtPangkat: '2020-11-01',
-    pendidikan: 'S2 Psikologi',
-    akKumulatif: 320.75,
-    status: 'Aktif',
-    tempatLahir: 'Medan',
-    tanggalLahir: '1987-04-10',
-    jenisKelamin: 'P',
-    agama: 'Islam',
-    email: 'dewi.anggraini@instansi.go.id',
-    telepon: '081234567893',
-    alamat: 'Jl. Gatot Subroto No. 123, Medan'
-  },
-
-  // KATEGORI KETERAMPILAN
-  {
-    nip: '199810152022051005',
-    nama: 'Rina Handayani',
-    pangkat: 'Pengatur Muda',
-    golongan: 'II/a',
-    jenjangJabatan: 'Pemula',
-    kategori: 'Keterampilan',
-    unitKerja: 'Bagian Umum',
-    tmtJabatan: '2022-05-01',
-    tmtPangkat: '2022-05-01',
-    pendidikan: 'D3 Administrasi',
-    akKumulatif: 8.50,
-    status: 'Aktif',
-    tempatLahir: 'Yogyakarta',
-    tanggalLahir: '1998-10-15',
-    jenisKelamin: 'P',
-    agama: 'Islam',
-    email: 'rina.handayani@instansi.go.id',
-    telepon: '081234567894',
-    alamat: 'Jl. Malioboro No. 321, Yogyakarta'
-  },
-  {
-    nip: '199512102021041006',
-    nama: 'Joko Prasetyo',
-    pangkat: 'Pengatur',
-    golongan: 'II/c',
-    jenjangJabatan: 'Terampil',
-    kategori: 'Keterampilan',
-    unitKerja: 'Bagian Logistik',
-    tmtJabatan: '2021-04-01',
-    tmtPangkat: '2022-11-01',
-    pendidikan: 'D3 Teknik',
-    akKumulatif: 45.20,
-    status: 'Aktif',
-    tempatLahir: 'Semarang',
-    tanggalLahir: '1995-12-10',
-    jenisKelamin: 'L',
-    agama: 'Islam',
-    email: 'joko.prasetyo@instansi.go.id',
-    telepon: '081234567895',
-    alamat: 'Jl. Pemuda No. 654, Semarang'
-  },
-  {
-    nip: '199103152018031007',
-    nama: 'Maya Sari',
-    pangkat: 'Penata Muda',
-    golongan: 'III/a',
-    jenjangJabatan: 'Mahir',
-    kategori: 'Keterampilan',
-    unitKerja: 'Bidang TI',
-    tmtJabatan: '2018-03-01',
-    tmtPangkat: '2020-09-01',
-    pendidikan: 'D4 Komputer',
-    akKumulatif: 78.90,
-    status: 'Aktif',
-    tempatLahir: 'Surakarta',
-    tanggalLahir: '1991-03-15',
-    jenisKelamin: 'P',
-    agama: 'Islam',
-    email: 'maya.sari@instansi.go.id',
-    telepon: '081234567896',
-    alamat: 'Jl. Slamet Riyadi No. 789, Surakarta'
-  }
-];
+// ==================== GOOGLE SHEETS CONFIG ====================
+const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
+const SHEET_NAME = "data";
 
 // ==================== UTILITIES - SESUAI PERATURAN BKN NO. 3 TAHUN 2023 ====================
 class AngkaKreditCalculator {
@@ -636,13 +488,13 @@ const PredikatKinerjaRadio: React.FC<{
   );
 };
 
-// Komponen Tabel Karyawan
 // Komponen Tabel Karyawan Sederhana
 const EmployeeTable: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
   selectedNip: string | null;
-}> = ({ karyawanList, onSelect, selectedNip }) => {
+  loading: boolean;
+}> = ({ karyawanList, onSelect, selectedNip, loading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
   const [sortField, setSortField] = useState<keyof Karyawan>('nama');
@@ -695,6 +547,18 @@ const EmployeeTable: React.FC<{
   const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
   const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
   const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
+        <div className="text-center py-8">
+          <div className="text-gray-400 text-4xl mb-2">⏳</div>
+          <h3 className="text-sm font-semibold text-gray-600 mb-1">Memuat data karyawan...</h3>
+          <p className="text-gray-500 text-xs">Sedang mengambil data dari Google Sheets</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
@@ -1198,10 +1062,72 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
 // ==================== MAIN APP ====================
 const App: React.FC = () => {
-  const [karyawanList, setKaryawanList] = useState<Karyawan[]>(dummyKaryawan);
+  const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
   const [inputHistory, setInputHistory] = useState<InputKinerja[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'input'>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Fungsi untuk mengambil data dari Google Sheets
+  const fetchKaryawanData = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `${SHEET_NAME}!A:T` // Sesuaikan range dengan kolom yang ada di spreadsheet
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = data.values || [];
+      
+      // Mapping data dari spreadsheet ke interface Karyawan
+      const karyawanData: Karyawan[] = rows.slice(1) // Skip header row
+        .filter((row: any[]) => row.length > 0 && row[0]) // Filter baris yang tidak kosong
+        .map((row: any[], index: number) => ({
+          nip: row[0]?.toString() || '',
+          nama: row[1]?.toString() || '',
+          pangkat: row[2]?.toString() || '',
+          golongan: row[3]?.toString() || '',
+          jenjangJabatan: row[4]?.toString() || '',
+          kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian',
+          unitKerja: row[6]?.toString() || '',
+          tmtJabatan: row[7]?.toString() || '',
+          tmtPangkat: row[8]?.toString() || '',
+          pendidikan: row[9]?.toString() || '',
+          akKumulatif: parseFloat(row[10]) || 0,
+          status: (row[11]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
+          tempatLahir: row[12]?.toString() || '',
+          tanggalLahir: row[13]?.toString() || '',
+          jenisKelamin: (row[14]?.toString() as 'L' | 'P') || 'L',
+          agama: row[15]?.toString() || '',
+          email: row[16]?.toString() || '',
+          telepon: row[17]?.toString() || '',
+          alamat: row[18]?.toString() || ''
+        }));
+
+      setKaryawanList(karyawanData);
+      
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data dari Google Sheets: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchKaryawanData();
+  }, []);
 
   const handleSaveInput = (newInput: InputKinerja) => {
     setInputHistory([...inputHistory, newInput]);
@@ -1237,6 +1163,7 @@ const App: React.FC = () => {
             karyawanList={karyawanList} 
             onSelect={setSelectedKaryawan}
             selectedNip={null}
+            loading={loading}
           />
         ) : (
           <>
