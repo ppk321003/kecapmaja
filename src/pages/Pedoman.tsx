@@ -812,23 +812,621 @@ const PredikatKinerjaRadio: React.FC<{
 };
 
 // Komponen Tabel Karyawan dengan AK Real
+const EmployeeTable: React.FC<{ 
+  karyawanList: Karyawan[]; 
+  onSelect: (karyawan: Karyawan) => void;
+  selectedNip: string | null;
+  loading: boolean;
+}> = ({ karyawanList, onSelect, selectedNip, loading }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
+  const [sortField, setSortField] = useState<keyof Karyawan>('nama');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Fungsi untuk menghitung AK Real untuk setiap karyawan
+  const getKaryawanWithAKReal = (karyawan: Karyawan) => {
+    const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
+    const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
+    return {
+      ...karyawan,
+      akTambahan,
+      akRealSaatIni
+    };
+  };
+
+  const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
+
+  const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
+    const matchesSearch = 
+      karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      karyawan.nip.includes(searchTerm) ||
+      karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
+    
+    return matchesSearch && matchesKategori;
+  });
+
+  const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortDirection === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    
+    return 0;
+  });
+
+  const handleSort = (field: keyof Karyawan) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: keyof Karyawan) => {
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
+
+  const totalKaryawan = karyawanList.length;
+  const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
+  const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
+  const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
+        <div className="text-center py-8">
+          <div className="text-gray-400 text-4xl mb-2">⏳</div>
+          <h3 className="text-sm font-semibold text-gray-600 mb-1">Memuat data karyawan...</h3>
+          <p className="text-gray-500 text-xs">Sedang mengambil data dari Google Sheets</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-1">Daftar Karyawan</h2>
+          <p className="text-gray-600 text-sm">Pilih karyawan untuk melihat detail</p>
+        </div>
+        
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="bg-blue-50 p-2 rounded border border-blue-200">
+            <div className="text-sm font-bold text-blue-600">{totalKaryawan}</div>
+            <div className="text-xs text-blue-800">Total</div>
+          </div>
+          <div className="bg-green-50 p-2 rounded border border-green-200">
+            <div className="text-sm font-bold text-green-600">{aktifKaryawan}</div>
+            <div className="text-xs text-green-800">Aktif</div>
+          </div>
+          <div className="bg-purple-50 p-2 rounded border border-purple-200">
+            <div className="text-sm font-bold text-purple-600">{keahlianKaryawan}</div>
+            <div className="text-xs text-purple-800">Keahlian</div>
+          </div>
+          <div className="bg-orange-50 p-2 rounded border border-orange-200">
+            <div className="text-sm font-bold text-orange-600">{keterampilanKaryawan}</div>
+            <div className="text-xs text-orange-800">Keterampilan</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter dan Pencarian */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div>
+          <input
+            type="text"
+            placeholder="Cari nama, NIP, atau unit..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        
+        <div>
+          <select 
+            value={filterKategori}
+            onChange={(e) => setFilterKategori(e.target.value as any)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Semua">Semua Kategori</option>
+            <option value="Keahlian">Keahlian</option>
+            <option value="Keterampilan">Keterampilan</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Tabel Karyawan dengan AK Real */}
+      {filteredKaryawan.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-gray-400 text-4xl mb-2">🔍</div>
+          <h3 className="text-sm font-semibold text-gray-600 mb-1">Tidak ada karyawan ditemukan</h3>
+          <p className="text-gray-500 text-xs">Coba ubah kata kunci pencarian</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-700">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+              <tr>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('nama')}
+                >
+                  <div className="flex items-center">
+                    Nama
+                    <span className="ml-1 text-xs">{getSortIcon('nama')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('nip')}
+                >
+                  <div className="flex items-center">
+                    NIP
+                    <span className="ml-1 text-xs">{getSortIcon('nip')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('golongan')}
+                >
+                  <div className="flex items-center">
+                    Golongan
+                    <span className="ml-1 text-xs">{getSortIcon('golongan')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('jabatan')}
+                >
+                  <div className="flex items-center">
+                    Jabatan
+                    <span className="ml-1 text-xs">{getSortIcon('jabatan')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('akKumulatif')}
+                >
+                  <div className="flex items-center">
+                    AK Awal
+                    <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    AK Tambahan
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    AK Real
+                  </div>
+                </th>
+                <th className="px-3 py-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedKaryawan.map((karyawan) => (
+                <tr 
+                  key={karyawan.nip} 
+                  className={`border-b hover:bg-gray-50 transition-colors ${
+                    selectedNip === karyawan.nip ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <td className="px-3 py-2 font-medium text-gray-900">
+                    {karyawan.nama}
+                  </td>
+                  <td className="px-3 py-2">
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="font-semibold text-xs">{karyawan.golongan}</span>
+                  </td>
+                  <td className="text-gray-700 text-xs">{karyawan.jabatan}</td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="text-gray-500 text-xs">{karyawan.akKumulatif.toFixed(2)}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="text-green-600 text-xs font-medium">+{karyawan.akTambahan.toFixed(2)}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="font-bold text-blue-600 text-xs inline-block bg-blue-50 px-2 py-1 rounded">
+                      {karyawan.akRealSaatIni.toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      onClick={() => onSelect(karyawan)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                      title="Lihat detail karyawan"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-4 text-xs text-gray-500">
+        Menampilkan {filteredKaryawan.length} dari {totalKaryawan} karyawan
+      </div>
+
+      {/* Informasi tentang AK Real */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <span className="text-blue-500 mr-2">ℹ️</span>
+          <div>
+            <p className="text-blue-800 text-sm font-medium">Informasi AK Real</p>
+            <p className="text-blue-700 text-xs">
+              <strong>AK Real = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Komponen Estimasi Kenaikan dengan logika baru
+const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
+  
+  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
+  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
+
+  // Format estimasi waktu yang benar
+  const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
+    if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
+    
+    const tahun = Math.floor(bulanDibutuhkan / 12);
+    const bulan = bulanDibutuhkan % 12;
+    
+    let formatted = '';
+    if (tahun > 0 && bulan > 0) {
+      formatted = `${tahun} tahun ${bulan} bulan`;
+    } else if (tahun > 0) {
+      formatted = `${tahun} tahun`;
+    } else {
+      formatted = `${bulan} bulan`;
+    }
+    
+    return { tahun, bulan, formatted };
+  };
+
+  const estimasiPangkat = formatEstimasiWaktu(estimasi.bulanDibutuhkanPangkat);
+  const estimasiJabatan = formatEstimasiWaktu(estimasi.bulanDibutuhkanJabatan);
+
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Estimasi Kenaikan Pangkat dan Jabatan</h3>
+      
+      {/* Informasi AK Real */}
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-sm text-blue-700 font-medium">AK Awal</p>
+            <p className="text-xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-green-700 font-medium">AK Tambahan</p>
+            <p className="text-xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-purple-700 font-medium">AK Real Saat Ini</p>
+            <p className="text-xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</p>
+          </div>
+        </div>
+        <p className="text-xs text-blue-600 mt-2 text-center">
+          *AK Tambahan dihitung sejak TMT Jabatan {new Date(karyawan.tmtJabatan).toLocaleDateString('id-ID')} sampai hari ini
+        </p>
+      </div>
+
+      {/* Informasi Jenis Kenaikan */}
+      {estimasi.isKenaikanJenjang && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <span className="text-yellow-500 mr-2">🎯</span>
+            <div>
+              <p className="text-yellow-800 text-sm font-medium">Kenaikan Jenjang</p>
+              <p className="text-yellow-700 text-xs">
+                Ini adalah kenaikan JENJANG. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan 
+                <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Radio Button Predikat Kinerja */}
+      <div className="mb-6">
+        <PredikatKinerjaRadio 
+          selectedValue={predikatAsumsi}
+          onValueChange={setPredikatAsumsi}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-center">
+            <p className="text-sm text-blue-700 font-medium">Perolehan AK per Bulan</p>
+            <p className="text-xl font-bold text-blue-800">{estimasi.akPerBulan}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="text-center">
+            <p className="text-sm text-green-700 font-medium">Asumsi Predikat Kinerja Terpilih</p>
+            <p className="text-xl font-bold text-green-800">{predikatAsumsi * 100}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="space-y-3">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Pangkat</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Pangkat berikutnya:</span>
+              <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Kebutuhan AK:</span>
+              <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Kekurangan AK:</span>
+              <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {estimasi.kekuranganAKPangkat.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Estimasi waktu:</span>
+              <span className="font-semibold text-blue-600">
+                {estimasiPangkat.formatted}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Status:</span>
+              <span className={`font-semibold ${estimasi.bisaUsulPangkat ? 'text-green-600' : 'text-gray-600'}`}>
+                {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Jabatan</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Jabatan berikutnya:</span>
+              <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Kebutuhan AK:</span>
+              <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Kekurangan AK:</span>
+              <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {estimasi.kekuranganAKJabatan.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Estimasi waktu:</span>
+              <span className="font-semibold text-blue-600">
+                {estimasiJabatan.formatted}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Status:</span>
+              <span className={`font-semibold ${estimasi.bisaUsulJabatan ? 'text-green-600' : 'text-gray-600'}`}>
+                {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Informasi Khusus Kenaikan Jenjang */}
+      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
+        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-green-800 text-sm font-semibold text-center">
+            🎉 SELAMAT! Anda sudah memenuhi syarat kenaikan JENJANG. Dapat mengusulkan kenaikan 
+            <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-blue-800 text-sm">
+          <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% 
+          dengan perolehan {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023.
+          AK Real saat ini sudah termasuk akumulasi sejak TMT Jabatan.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Komponen Input Kinerja
+const InputKinerjaForm: React.FC<{ 
+  karyawan: Karyawan; 
+  onSave: (input: InputKinerja) => void 
+}> = ({ karyawan, onSave }) => {
+  const [formData, setFormData] = useState({
+    periode: new Date().toISOString().slice(0, 7),
+    jenisPenilaian: 'Tahunan' as 'Tahunan' | 'Periodik',
+    bulanPeriodik: 12,
+    predikatKinerja: 1.00,
+    keterangan: ''
+  });
+
+  const handleCalculate = () => {
+    const akDiperoleh = AngkaKreditCalculator.hitungAK(
+      karyawan.jabatan,
+      formData.predikatKinerja,
+      formData.jenisPenilaian === 'Periodik',
+      formData.bulanPeriodik
+    );
+
+    const newInput: InputKinerja = {
+      idInput: `KIN-${Date.now()}`,
+      nip: karyawan.nip,
+      periode: formData.periode,
+      jenisPenilaian: formData.jenisPenilaian,
+      bulanPeriodik: formData.bulanPeriodik,
+      predikatKinerja: formData.predikatKinerja,
+      akDiperoleh: akDiperoleh,
+      jabatanSaatInput: karyawan.jabatan,
+      tanggalInput: new Date().toISOString().split('T')[0],
+      inputOleh: 'Admin',
+      keterangan: formData.keterangan
+    };
+
+    onSave(newInput);
+    
+    setFormData({
+      periode: new Date().toISOString().slice(0, 7),
+      jenisPenilaian: 'Tahunan',
+      bulanPeriodik: 12,
+      predikatKinerja: 1.00,
+      keterangan: ''
+    });
+
+    alert('Data kinerja berhasil disimpan!');
+  };
+
+  const currentKoefisien = AngkaKreditCalculator.getKoefisien(karyawan.jabatan);
+  const calculatedAK = AngkaKreditCalculator.hitungAK(
+    karyawan.jabatan,
+    formData.predikatKinerja,
+    formData.jenisPenilaian === 'Periodik',
+    formData.bulanPeriodik
+  );
+
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">📥 Input Kinerja - {karyawan.nama}</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Periode Penilaian</label>
+          <input 
+            type="month" 
+            value={formData.periode}
+            onChange={(e) => setFormData({...formData, periode: e.target.value})}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Jenis Penilaian</label>
+          <select 
+            value={formData.jenisPenilaian}
+            onChange={(e) => setFormData({
+              ...formData, 
+              jenisPenilaian: e.target.value as 'Tahunan' | 'Periodik'
+            })}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Tahunan">Tahunan</option>
+            <option value="Periodik">Periodik</option>
+          </select>
+        </div>
+
+        {formData.jenisPenilaian === 'Periodik' && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Bulan Periodik</label>
+            <input 
+              type="number" 
+              min="1" 
+              max="11"
+              value={formData.bulanPeriodik}
+              onChange={(e) => setFormData({...formData, bulanPeriodik: parseInt(e.target.value)})}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Radio Button Predikat Kinerja untuk Input */}
+      <div className="mb-4">
+        <PredikatKinerjaRadio 
+          selectedValue={formData.predikatKinerja}
+          onValueChange={(value) => setFormData({...formData, predikatKinerja: value})}
+        />
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <label className="text-sm font-medium text-gray-700">Keterangan</label>
+        <input 
+          type="text" 
+          value={formData.keterangan}
+          onChange={(e) => setFormData({...formData, keterangan: e.target.value})}
+          placeholder="Capaian SKP, evaluasi, dll."
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        <h4 className="font-semibold text-gray-700 mb-2 text-sm">Perhitungan Angka Kredit:</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div>
+            <p className="text-gray-600">Jabatan</p>
+            <p className="font-semibold text-gray-800">{karyawan.jabatan}</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Koefisien</p>
+            <p className="font-semibold text-gray-800">{currentKoefisien}</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Predikat</p>
+            <p className="font-semibold text-gray-800">{formData.predikatKinerja * 100}%</p>
+          </div>
+          <div>
+            <p className="text-gray-600">Hasil AK</p>
+            <p className="font-bold text-blue-600">{calculatedAK}</p>
+          </div>
+        </div>
+      </div>
+      
+      <button 
+        onClick={handleCalculate}
+        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+      >
+        Simpan Data Kinerja
+      </button>
+    </div>
+  );
+};
+
 // Komponen Dashboard Karyawan dengan logika baru
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
-  const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(
-    karyawan.jabatan, 
-    karyawan.kategori, 
-    estimasi.isKenaikanJenjang,
-    karyawan.golongan,
-    estimasi.golonganBerikutnya
-  );
-  const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(
-    karyawan.jabatan, 
-    karyawan.kategori, 
-    estimasi.isKenaikanJenjang,
-    karyawan.golongan,
-    estimasi.golonganBerikutnya
-  );
+  const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
+  const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
   
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
