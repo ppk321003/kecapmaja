@@ -447,7 +447,7 @@ const ProgressCard: React.FC<{
             <div className="text-lg font-bold text-green-600">+{akTambahan.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="font-semibold text-xs text-muted-foreground">AK Real</div>
+            <div className="font-semibold text-xs text-muted-foreground">AK Akhir</div>
             <div className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
           </div>
           {!isTidakAda && (
@@ -755,7 +755,7 @@ const EmployeeTable: React.FC<{
                   <TableHead>Jabatan</TableHead>
                   <TableHead className="text-right">AK Awal</TableHead>
                   <TableHead className="text-right">AK Tambahan</TableHead>
-                  <TableHead className="text-right">AK Real</TableHead>
+                  <TableHead className="text-right">AK Akhir</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -804,7 +804,7 @@ const EmployeeTable: React.FC<{
               <FileText className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <h4 className="font-semibold text-blue-800">Informasi AK Real</h4>
+              <h4 className="font-semibold text-blue-800">Informasi AK Akhir</h4>
               <p className="text-blue-700 text-sm">
                 <strong>AK Akhir = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
               </p>
