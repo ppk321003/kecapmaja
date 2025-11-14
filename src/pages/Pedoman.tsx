@@ -222,19 +222,32 @@ class AngkaKreditCalculator {
   }
 
   // Cek apakah ini kenaikan jenjang (ganti jabatan + pangkat)
-  static isKenaikanJenjang(jabatanSekarang: string, jabatanBerikutnya: string): boolean {
-    const jenjangKeahlian = ['Ahli Pertama', 'Ahli Muda', 'Ahli Madya', 'Ahli Utama'];
-    const jenjangKeterampilan = ['Terampil', 'Mahir', 'Penyelia'];
+static isKenaikanJenjang(jabatanSekarang: string, jabatanBerikutnya: string, golonganSekarang: string, golonganBerikutnya: string): boolean {
+  // Kenaikan jenjang HANYA pada titik-titik tertentu:
+  const titikJenjang = [
+    // Keahlian: Ahli Pertama III/b → Ahli Muda III/c
+    { dari: 'Ahli Pertama', ke: 'Ahli Muda', golDari: 'III/b', golKe: 'III/c' },
     
-    const currentIndexKeahlian = jenjangKeahlian.findIndex(j => jabatanSekarang.includes(j));
-    const nextIndexKeahlian = jenjangKeahlian.findIndex(j => jabatanBerikutnya.includes(j));
+    // Keahlian: Ahli Muda III/d → Ahli Madya IV/a  
+    { dari: 'Ahli Muda', ke: 'Ahli Madya', golDari: 'III/d', golKe: 'IV/a' },
     
-    const currentIndexKeterampilan = jenjangKeterampilan.findIndex(j => jabatanSekarang.includes(j));
-    const nextIndexKeterampilan = jenjangKeterampilan.findIndex(j => jabatanBerikutnya.includes(j));
+    // Keahlian: Ahli Madya IV/c → Ahli Utama IV/d
+    { dari: 'Ahli Madya', ke: 'Ahli Utama', golDari: 'IV/c', golKe: 'IV/d' },
     
-    return (currentIndexKeahlian !== -1 && nextIndexKeahlian === currentIndexKeahlian + 1) ||
-           (currentIndexKeterampilan !== -1 && nextIndexKeterampilan === currentIndexKeterampilan + 1);
-  }
+    // Keterampilan: Terampil II/d → Mahir III/a
+    { dari: 'Terampil', ke: 'Mahir', golDari: 'II/d', golKe: 'III/a' },
+    
+    // Keterampilan: Mahir III/b → Penyelia III/c
+    { dari: 'Mahir', ke: 'Penyelia', golDari: 'III/b', golKe: 'III/c' }
+  ];
+
+  return titikJenjang.some(titik => 
+    jabatanSekarang.includes(titik.dari) &&
+    jabatanBerikutnya.includes(titik.ke) &&
+    golonganSekarang === titik.golDari &&
+    golonganBerikutnya === titik.golKe
+  );
+}
 
   // Estimasi kenaikan yang BENAR dengan logika terbaru
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
