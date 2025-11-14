@@ -637,6 +637,7 @@ const PredikatKinerjaRadio: React.FC<{
 };
 
 // Komponen Tabel Karyawan
+// Komponen Tabel Karyawan Sederhana
 const EmployeeTable: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
@@ -748,7 +749,7 @@ const EmployeeTable: React.FC<{
         </div>
       </div>
 
-      {/* Tabel Karyawan */}
+      {/* Tabel Karyawan - Kolom Sederhana */}
       {filteredKaryawan.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-400 text-4xl mb-2">🔍</div>
@@ -807,38 +808,11 @@ const EmployeeTable: React.FC<{
                 </th>
                 <th 
                   className="px-4 py-3 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('kategori')}
-                >
-                  <div className="flex items-center">
-                    Kategori
-                    <span className="ml-1 text-xs">{getSortIcon('kategori')}</span>
-                  </div>
-                </th>
-                <th 
-                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('unitKerja')}
-                >
-                  <div className="flex items-center">
-                    Unit Kerja
-                    <span className="ml-1 text-xs">{getSortIcon('unitKerja')}</span>
-                  </div>
-                </th>
-                <th 
-                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('akKumulatif')}
                 >
                   <div className="flex items-center">
                     AK Kumulatif
                     <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
-                  </div>
-                </th>
-                <th 
-                  className="px-4 py-3 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center">
-                    Status
-                    <span className="ml-1 text-xs">{getSortIcon('status')}</span>
                   </div>
                 </th>
                 <th className="px-4 py-3">Aksi</th>
@@ -853,7 +827,27 @@ const EmployeeTable: React.FC<{
                   }`}
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">
-                    {karyawan.nama}
+                    <div>
+                      <div>{karyawan.nama}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          karyawan.status === 'Aktif' 
+                            ? 'bg-green-100 text-green-800' 
+                            : karyawan.status === 'Pensiun'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {karyawan.status}
+                        </span>
+                        <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                          karyawan.kategori === 'Keahlian'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {karyawan.kategori}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code>
@@ -866,41 +860,20 @@ const EmployeeTable: React.FC<{
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       karyawan.jenjangJabatan.includes('Ahli') 
                         ? 'bg-purple-100 text-purple-800'
+                        : karyawan.jenjangJabatan.includes('Penyelia')
+                        ? 'bg-indigo-100 text-indigo-800'
                         : 'bg-orange-100 text-orange-800'
                     }`}>
                       {karyawan.jenjangJabatan}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      karyawan.kategori === 'Keahlian'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {karyawan.kategori}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs">{karyawan.unitKerja}</span>
-                  </td>
-                  <td className="px-4 py-3">
                     <span className="font-bold text-blue-600">{karyawan.akKumulatif.toFixed(2)}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      karyawan.status === 'Aktif' 
-                        ? 'bg-green-100 text-green-800' 
-                        : karyawan.status === 'Pensiun'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {karyawan.status}
-                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => onSelect(karyawan)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
                     >
                       Pilih
                     </button>
