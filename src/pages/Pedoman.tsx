@@ -657,7 +657,7 @@ const BiodataCard: React.FC<{
               <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
               <p className="text-2xl font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">
-                Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
+                Awal: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
               </p>
             </div>
           </div>
@@ -809,13 +809,13 @@ const EmployeeTable: React.FC<{
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
-                  <TableHead className="w-[200px]">NIP</TableHead>
+                  <TableHead className="w-[220px]">NIP</TableHead>
                   <TableHead>Golongan</TableHead>
                   <TableHead>Jabatan</TableHead>
                   <TableHead className="text-right">AK Awal</TableHead>
                   <TableHead className="text-right">AK Tambahan</TableHead>
                   <TableHead className="text-right">AK Real</TableHead>
-                  <TableHead className="text-right w-[70px]">Aksi</TableHead> {/* Sesuaikan width */}
+                  <TableHead className="text-right w-[70px]">Detail</TableHead> {/* Sesuaikan width */}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -866,9 +866,9 @@ const EmployeeTable: React.FC<{
               <FileText className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <h4 className="font-semibold text-blue-800">Informasi AK Akhir</h4>
+              <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
               <p className="text-blue-700 text-sm">
-                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
               </p>
             </div>
           </div>
