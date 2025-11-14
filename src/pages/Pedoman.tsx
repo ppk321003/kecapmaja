@@ -680,7 +680,7 @@ const EmployeeTable: React.FC<{
     </div>;
   return <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
-        <div><h2 className="text-xl font-bold text-gray-800 mb-1">Penghitungan Angka Kredit</h2><p className="font-bold text-red-500 text-3xl">Berdasarkan Peraturan BKN No. 3 Tahun 2023</p></div>
+        <div><h2 className="font-bold text-red-500 text-3xl">Penghitungan Angka Kredit</h2><p className="text-gray-600 text-sm">Berdasarkan Peraturan BKN No. 3 Tahun 2023</p></div>
         <div className="grid grid-cols-4 gap-2 text-center">
           <div className="bg-blue-50 p-2 rounded border border-blue-200"><div className="text-sm font-bold text-blue-600">{totalKaryawan}</div><div className="text-xs text-blue-800">Total</div></div>
           <div className="bg-green-50 p-2 rounded border border-green-200"><div className="text-sm font-bold text-green-600">{aktifKaryawan}</div><div className="text-xs text-green-800">Aktif</div></div>
