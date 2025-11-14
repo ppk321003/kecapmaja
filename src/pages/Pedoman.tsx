@@ -293,21 +293,21 @@ class AngkaKreditCalculator {
     if (isKenaikanJenjang) {
       if (kategori === 'Keahlian') {
         if (jabatanSekarang.includes('Pertama') && golonganSekarang === 'III/b') {
-          return "Kenaikan JENJANG: Butuh 100 AK kumulatif untuk naik ke Ahli Muda. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Ahli Muda. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
         } else if (jabatanSekarang.includes('Muda') && golonganSekarang === 'III/d') {
-          return "Kenaikan JENJANG: Butuh 200 AK kumulatif untuk naik ke Ahli Madya. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+          return "Kenaikan jenjang butuh 200 AK kumulatif untuk naik ke Ahli Madya. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
         } else if (jabatanSekarang.includes('Madya') && golonganSekarang === 'IV/c') {
-          return "Kenaikan JENJANG: Butuh 450 AK kumulatif untuk naik ke Ahli Utama. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+          return "Kenaikan jenjang butuh 450 AK kumulatif untuk naik ke Ahli Utama. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
         }
       } else {
         if (jabatanSekarang.includes('Terampil') && golonganSekarang === 'II/d') {
-          return "Kenaikan JENJANG: Butuh 60 AK kumulatif untuk naik ke Mahir. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+          return "Kenaikan jenjang butuh 60 AK kumulatif untuk naik ke Mahir. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
         } else if (jabatanSekarang.includes('Mahir') && golonganSekarang === 'III/b') {
-          return "Kenaikan JENJANG: Butuh 100 AK kumulatif untuk naik ke Penyelia. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Penyelia. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
         }
       }
     }
-    return `Kenaikan PANGKAT reguler ke ${golonganBerikutnya}: Dapat diusulkan terpisah tanpa menunggu kenaikan jabatan.`;
+    return `Kenaikan pangkat ke ${golonganBerikutnya}, dapat diusulkan terpisah tanpa menunggu kenaikan jabatan.`;
   }
 
   static getRekomendasiKarir(karyawan: Karyawan): string {
@@ -377,7 +377,7 @@ const ProgressCard: React.FC<{
     if (bulanDibutuhkan <= 6) return 'default';
     if (bulanDibutuhkan <= 12) return 'secondary';
     if (bulanDibutuhkan <= 24) return 'outline';
-    return 'destructive';
+    return 'secondary';
   };
 
   const getStatusText = () => {
@@ -397,10 +397,10 @@ const ProgressCard: React.FC<{
     };
 
     const estimasi = formatEstimasiWaktu(bulanDibutuhkan);
-    if (bulanDibutuhkan <= 6) return `Sangat dekat (${estimasi})`;
-    if (bulanDibutuhkan <= 12) return `Mendekati (${estimasi})`;
-    if (bulanDibutuhkan <= 24) return `Butuh waktu (${estimasi})`;
-    return `Butuh waktu lama (${estimasi})`;
+    if (bulanDibutuhkan <= 6) return `Estimasi kenaikan Anda sudah sangat dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 12) return `Estimasi kenaikan Anda sudah dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 24) return `Estimasi kenaikan dengan asumsi predikat kinerja Baik (${estimasi})`;
+    return `Estimasi kenaikan dengan asumsi predikat kinerja Baik (${estimasi})`;
   };
 
   const getIcon = () => type === 'pangkat' ? <Award className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />;
