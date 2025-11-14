@@ -300,10 +300,6 @@ const ProgressBar: React.FC<{
     return 'from-red-500 to-red-600';
   };
 
-  const getIcon = () => {
-    return type === 'pangkat' ? '⭐' : '📈';
-  };
-
   const getStatusText = () => {
     if (bulanDibutuhkan === 0) return '✅ Bisa diusulkan sekarang!';
     if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
@@ -503,7 +499,7 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
-      <h3 className="text-lg font-bold text-gray-800 mb-3">👤 Informasi Karyawan</h3>
+      <h3 className="text-lg font-bold text-gray-800 mb-3">Informasi Karyawan</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-2">
@@ -523,6 +519,10 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
         <div className="space-y-2">
           <div>
+            <p className="text-xs text-gray-500">TMT PNS</p>
+            <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
+          </div>
+          <div>
             <p className="text-xs text-gray-500">Pangkat / Golongan</p>
             <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
           </div>
@@ -530,25 +530,22 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="text-xs text-gray-500">TMT Pangkat</p>
             <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p>
           </div>
+        </div>
+
+        <div className="space-y-2">
           <div>
             <p className="text-xs text-gray-500">Jabatan</p>
             <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
           </div>
-        </div>
-
-        <div className="space-y-2">
           <div>
             <p className="text-xs text-gray-500">TMT Jabatan</p>
             <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Unit Kerja</p>
+            <p className="text-xs text-gray-500">Fungsi Kegiatan</p>
             <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">TMT PNS</p>
-            <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
-          </div>
+
         </div>
 
         <div className="space-y-2">
@@ -887,7 +884,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div className="text-center">
             <p className="text-sm text-blue-700 font-medium">Perolehan AK per Bulan</p>
@@ -899,15 +896,6 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           <div className="text-center">
             <p className="text-sm text-green-700 font-medium">Predikat Terpilih</p>
             <p className="text-xl font-bold text-green-800">{predikatAsumsi * 100}%</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-          <div className="text-center">
-            <p className="text-sm text-purple-700 font-medium">Estimasi dalam Bulan</p>
-            <p className="text-xl font-bold text-purple-800">
-              Pangkat: {estimasi.bulanDibutuhkanPangkat} | Jabatan: {estimasi.bulanDibutuhkanJabatan}
-            </p>
           </div>
         </div>
       </div>
