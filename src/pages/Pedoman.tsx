@@ -131,7 +131,7 @@ class AngkaKreditCalculator {
     return Number(akTambahan.toFixed(2));
   }
 
-  // Hitung AK Real saat ini (AK Database + AK Tambahan)
+  // Hitung AK Real saat ini (AK Awal + AK Tambahan)
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
     const akReal = karyawan.akKumulatif + akTambahan;
@@ -433,7 +433,7 @@ const ProgressBar: React.FC<{
       
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600 mb-3">
         <div className="text-center">
-          <div className="font-semibold">AK Database</div>
+          <div className="font-semibold">AK Awal</div>
           <div className="text-gray-500">{akSaatIni.toFixed(2)}</div>
         </div>
         <div className="text-center">
@@ -885,7 +885,7 @@ const EmployeeTable: React.FC<{
                   onClick={() => handleSort('akKumulatif')}
                 >
                   <div className="flex items-center">
-                    AK Database
+                    AK Awal
                     <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
                   </div>
                 </th>
@@ -964,7 +964,7 @@ const EmployeeTable: React.FC<{
           <div>
             <p className="text-blue-800 text-sm font-medium">Informasi AK Real</p>
             <p className="text-blue-700 text-xs">
-              <strong>AK Real = AK Database + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+              <strong>AK Real = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
             </p>
           </div>
         </div>
@@ -996,7 +996,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-sm text-blue-700 font-medium">AK Database</p>
+            <p className="text-sm text-blue-700 font-medium">AK Awal</p>
             <p className="text-xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</p>
           </div>
           <div>
