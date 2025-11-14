@@ -376,7 +376,7 @@ const ProgressCard: React.FC<{
     if (bisaUsul) return 'default';
     if (bulanDibutuhkan <= 6) return 'default';
     if (bulanDibutuhkan <= 12) return 'secondary';
-    if (bulanDibutuhkan <= 24) return 'outline';
+    if (bulanDibutuhkan <= 24) return 'destructive';
     return 'destructive';
   };
 
@@ -482,7 +482,35 @@ const ProgressCard: React.FC<{
     </Card>
   );
 };
-
+const hitungMasaKerja = (tahunMasuk: string) => {
+  if (!tahunMasuk) return '-';
+  
+  try {
+    const masuk = new Date(tahunMasuk);
+    const sekarang = new Date();
+    
+    if (isNaN(masuk.getTime())) return '-';
+    
+    const tahun = sekarang.getFullYear() - masuk.getFullYear();
+    const bulan = sekarang.getMonth() - masuk.getMonth();
+    
+    let totalBulan = tahun * 12 + bulan;
+    if (totalBulan < 0) totalBulan = 0;
+    
+    const tahunKerja = Math.floor(totalBulan / 12);
+    const bulanKerja = totalBulan % 12;
+    
+    if (tahunKerja > 0 && bulanKerja > 0) {
+      return `${tahunKerja} tahun ${bulanKerja} bulan`;
+    } else if (tahunKerja > 0) {
+      return `${tahunKerja} tahun`;
+    } else {
+      return `${bulanKerja} bulan`;
+    }
+  } catch {
+    return '-';
+  }
+};
 const BiodataCard: React.FC<{
   karyawan: Karyawan;
   akRealSaatIni: number;
@@ -524,6 +552,36 @@ const BiodataCard: React.FC<{
     
     const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
     return { tanggalLahir, tahunMasuk, jenisKelamin };
+  };
+
+  const hitungMasaKerja = (tahunMasuk: string) => {
+    if (!tahunMasuk) return '-';
+    
+    try {
+      const masuk = new Date(tahunMasuk);
+      const sekarang = new Date();
+      
+      if (isNaN(masuk.getTime())) return '-';
+      
+      const tahun = sekarang.getFullYear() - masuk.getFullYear();
+      const bulan = sekarang.getMonth() - masuk.getMonth();
+      
+      let totalBulan = tahun * 12 + bulan;
+      if (totalBulan < 0) totalBulan = 0;
+      
+      const tahunKerja = Math.floor(totalBulan / 12);
+      const bulanKerja = totalBulan % 12;
+      
+      if (tahunKerja > 0 && bulanKerja > 0) {
+        return `${tahunKerja} tahun ${bulanKerja} bulan`;
+      } else if (tahunKerja > 0) {
+        return `${tahunKerja} tahun`;
+      } else {
+        return `${bulanKerja} bulan`;
+      }
+    } catch {
+      return '-';
+    }
   };
 
   const nipData = parseNIP(karyawan.nip);
@@ -589,16 +647,20 @@ const BiodataCard: React.FC<{
               <p className="font-medium">{karyawan.pendidikan}</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Kategori</Label>
-              <Badge variant={karyawan.kategori === 'Keahlian' ? 'default' : 'secondary'}>
-                {karyawan.kategori}
-              </Badge>
+              <Label className="text-xs text-muted-foreground">Masa Kerja</Label>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{hitungMasaKerja(nipData.tahunMasuk)}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                TMT: {formatTanggal(nipData.tahunMasuk)}
+              </p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">AK Akhir Saat Ini</Label>
+              <Label className="text-xs text-muted-foreground">AK Real Saat Ini</Label>
               <p className="text-2xl font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">
-                AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
+                Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
               </p>
             </div>
           </div>
