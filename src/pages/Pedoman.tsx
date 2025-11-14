@@ -1,7 +1,8 @@
-// App.tsx - VERSI FINAL DENGAN LOGIKA KENAIKAN JENJANG YANG SPESIFIK
+// App.tsx - VERSI FINAL DENGAN INTEGRASI TEMA
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -366,7 +367,7 @@ class AngkaKreditCalculator {
   }
 }
 
-// ==================== COMPONENTS ====================
+// ==================== COMPONENTS DENGAN TEMA ====================
 
 const ProgressBar: React.FC<{ 
   label: string; 
@@ -381,6 +382,7 @@ const ProgressBar: React.FC<{
   bisaUsul: boolean;
   isKenaikanJenjang?: boolean;
 }> = ({ label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK, bisaUsul, isKenaikanJenjang = false }) => {
+  const { themeColors } = useTheme();
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
   const progressPercentage = isTidakAda ? 0 : Math.min((akRealSaatIni / kebutuhanAK) * 100, 100);
   const finalPercentage = bisaUsul ? 100 : progressPercentage;
@@ -388,7 +390,7 @@ const ProgressBar: React.FC<{
   const getColorClass = () => {
     if (isTidakAda) return 'from-gray-300 to-gray-400';
     if (bisaUsul) return 'from-green-500 to-green-600';
-    if (finalPercentage >= 80) return 'from-blue-500 to-blue-600';
+    if (finalPercentage >= 80) return `from-[${themeColors.primary}] to-[${themeColors.primaryDark}]`;
     if (finalPercentage >= 50) return 'from-yellow-500 to-yellow-600';
     return 'from-red-500 to-red-600';
   };
@@ -418,60 +420,63 @@ const ProgressBar: React.FC<{
   const getIcon = () => type === 'pangkat' ? '⭐' : '💼';
 
   return (
-    <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
           <span className="text-lg mr-2">{getIcon()}</span>
-          <h3 className="text-md font-semibold text-gray-800">
+          <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200">
             {isTidakAda ? `Saat ini ${type === 'pangkat' ? 'Pangkat' : 'Jabatan'} anda sudah Maksimal` : label}
           </h3>
         </div>
         <div className={`text-xs font-medium px-2 py-1 rounded ${
-          isTidakAda ? 'bg-gray-100 text-gray-800' :
-          bisaUsul ? 'bg-green-100 text-green-800' :
-          bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800' :
-          bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800' :
-          bulanDibutuhkan <= 24 ? 'bg-yellow-100 text-yellow-800' :
-          'bg-orange-100 text-orange-800'
+          isTidakAda ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
+          bisaUsul ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+          bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+          bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+          bulanDibutuhkan <= 24 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+          'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
         }`}>
           {getStatusText()}
         </div>
       </div>
       
       {!isTidakAda && penjelasan && (
-        <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
-          <p className="text-xs text-blue-700">{penjelasan}</p>
+        <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+          <p className="text-xs text-blue-700 dark:text-blue-300">{penjelasan}</p>
         </div>
       )}
       
       {!isTidakAda && (
         <>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm font-semibold text-blue-600">{finalPercentage.toFixed(1)}%</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress</span>
+            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{finalPercentage.toFixed(1)}%</span>
           </div>
           
-          <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-2 dark:bg-gray-700">
             <div 
               className={`bg-gradient-to-r ${getColorClass()} h-3 rounded-full transition-all duration-500 ease-out`}
-              style={{ width: `${finalPercentage}%` }}
+              style={{ 
+                width: `${finalPercentage}%`,
+                backgroundColor: finalPercentage >= 80 && !bisaUsul ? themeColors.primary : undefined
+              }}
             ></div>
           </div>
         </>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600 dark:text-gray-400 mb-3">
         <div className="text-center">
           <div className="font-semibold">AK Awal</div>
-          <div className="text-gray-500">{akSaatIni.toFixed(2)}</div>
+          <div className="text-gray-500 dark:text-gray-500">{akSaatIni.toFixed(2)}</div>
         </div>
         <div className="text-center">
           <div className="font-semibold">AK Tambahan</div>
-          <div className="text-green-600">+{akTambahan.toFixed(2)}</div>
+          <div className="text-green-600 dark:text-green-400">+{akTambahan.toFixed(2)}</div>
         </div>
         <div className="text-center">
           <div className="font-semibold">AK Real Saat Ini</div>
-          <div className="font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
+          <div className="font-bold text-blue-600 dark:text-blue-400">{akRealSaatIni.toFixed(2)}</div>
         </div>
         {!isTidakAda && (
           <div className="text-center">
@@ -481,15 +486,18 @@ const ProgressBar: React.FC<{
         )}
         <div className="text-center">
           <div className="font-semibold">{isTidakAda ? 'Status' : 'Kekurangan'}</div>
-          <div className={isTidakAda ? 'text-gray-600' : kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'}>
+          <div className={
+            isTidakAda ? 'text-gray-600 dark:text-gray-400' :
+            kekuranganAK > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+          }>
             {isTidakAda ? 'Maksimal' : kekuranganAK.toFixed(2)}
           </div>
         </div>
       </div>
 
       {bisaUsul && !isTidakAda && (
-        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center">
-          <span className="text-green-800 text-sm font-semibold">
+        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center dark:bg-green-900/20 dark:border-green-800">
+          <span className="text-green-800 text-sm font-semibold dark:text-green-300">
             {isKenaikanJenjang && type === 'jabatan' 
               ? '✅ Bisa mengusulkan kenaikan JABATAN dan PANGKAT sekaligus!' 
               : '✅ Sudah memenuhi syarat untuk diusulkan!'}
@@ -530,6 +538,8 @@ const parseNIP = (nip: string) => {
 };
 
 const BiodataSederhana: React.FC<{ karyawan: Karyawan; akRealSaatIni: number; akTambahan: number }> = ({ karyawan, akRealSaatIni, akTambahan }) => {
+  const { themeColors } = useTheme();
+  
   const formatTanggal = (tanggal: string) => {
     if (!tanggal) return '-';
     try {
@@ -555,28 +565,28 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan; akRealSaatIni: number; ak
   const usia = hitungUsia(nipData.tanggalLahir);
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
-      <h3 className="text-lg font-bold text-gray-800 mb-3">Informasi Karyawan</h3>
+    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6 dark:bg-gray-800 dark:border-gray-700">
+      <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Informasi Karyawan</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-2">
-          <div><p className="text-xs text-gray-500">Nama</p><p className="font-semibold text-gray-800">{karyawan.nama}</p></div>
-          <div><p className="text-xs text-gray-500">NIP</p><p className="font-medium text-gray-700">{karyawan.nip}</p></div>
-          <div><p className="text-xs text-gray-500">Usia</p><p className="font-medium text-gray-700">{usia} tahun</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Nama</p><p className="font-semibold text-gray-800 dark:text-gray-200">{karyawan.nama}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">NIP</p><p className="font-medium text-gray-700 dark:text-gray-300">{karyawan.nip}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Usia</p><p className="font-medium text-gray-700 dark:text-gray-300">{usia} tahun</p></div>
         </div>
         <div className="space-y-2">
-          <div><p className="text-xs text-gray-500">TMT PNS</p><p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p></div>
-          <div><p className="text-xs text-gray-500">Pangkat / Golongan</p><p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p></div>
-          <div><p className="text-xs text-gray-500">TMT Pangkat</p><p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">TMT PNS</p><p className="font-medium text-gray-700 dark:text-gray-300">{formatTanggal(nipData.tahunMasuk)}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Pangkat / Golongan</p><p className="font-semibold text-gray-800 dark:text-gray-200">{karyawan.pangkat} ({karyawan.golongan})</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">TMT Pangkat</p><p className="font-medium text-gray-700 dark:text-gray-300">{formatTanggal(karyawan.tmtPangkat)}</p></div>
         </div>
         <div className="space-y-2">
-          <div><p className="text-xs text-gray-500">Jabatan</p><p className="font-medium text-gray-700">{karyawan.jabatan}</p></div>
-          <div><p className="text-xs text-gray-500">TMT Jabatan</p><p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p></div>
-          <div><p className="text-xs text-gray-500">Fungsi Kegiatan</p><p className="font-medium text-gray-700">{karyawan.unitKerja}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Jabatan</p><p className="font-medium text-gray-700 dark:text-gray-300">{karyawan.jabatan}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">TMT Jabatan</p><p className="font-medium text-gray-700 dark:text-gray-300">{formatTanggal(karyawan.tmtJabatan)}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Fungsi Kegiatan</p><p className="font-medium text-gray-700 dark:text-gray-300">{karyawan.unitKerja}</p></div>
         </div>
         <div className="space-y-2">
-          <div><p className="text-xs text-gray-500">Pendidikan</p><p className="font-medium text-gray-700">{karyawan.pendidikan}</p></div>
-          <div><p className="text-xs text-gray-500">Jenis Kelamin</p><p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p></div>
-          <div><p className="text-xs text-gray-500">AK Real Saat Ini</p><p className="font-bold text-blue-600 text-lg">{akRealSaatIni.toFixed(2)}</p><p className="text-xs text-gray-500">(Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)})</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Pendidikan</p><p className="font-medium text-gray-700 dark:text-gray-300">{karyawan.pendidikan}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">Jenis Kelamin</p><p className="font-medium text-gray-700 dark:text-gray-300">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p></div>
+          <div><p className="text-xs text-gray-500 dark:text-gray-400">AK Real Saat Ini</p><p className="font-bold text-blue-600 dark:text-blue-400 text-lg">{akRealSaatIni.toFixed(2)}</p><p className="text-xs text-gray-500 dark:text-gray-400">(Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)})</p></div>
         </div>
       </div>
     </div>
@@ -584,6 +594,8 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan; akRealSaatIni: number; ak
 };
 
 const PredikatKinerjaRadio: React.FC<{ selectedValue: number; onValueChange: (value: number) => void }> = ({ selectedValue, onValueChange }) => {
+  const { themeColors } = useTheme();
+  
   const predikatOptions = [
     { value: 1.50, label: 'Sangat Baik (Performa luar biasa)' },
     { value: 1.00, label: 'Baik (Performa Baik)' },
@@ -593,23 +605,35 @@ const PredikatKinerjaRadio: React.FC<{ selectedValue: number; onValueChange: (va
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Asumsi Predikat Kinerja:</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Asumsi Predikat Kinerja:</label>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {predikatOptions.map((option) => (
           <div key={option.value} className={`relative rounded-lg border-2 p-3 cursor-pointer transition-all duration-200 ${
-            selectedValue === option.value ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-300'
+            selectedValue === option.value 
+              ? `border-[${themeColors.primary}] bg-[${themeColors.primaryLight}] shadow-md dark:bg-[${themeColors.primary}]/20` 
+              : 'border-gray-200 bg-white hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:border-gray-600'
           }`} onClick={() => onValueChange(option.value)}>
             <div className="flex items-center mb-2">
               <div className={`w-4 h-4 rounded-full border-2 mr-2 flex items-center justify-center ${
-                selectedValue === option.value ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
+                selectedValue === option.value 
+                  ? `border-[${themeColors.primary}] bg-[${themeColors.primary}]` 
+                  : 'border-gray-400 dark:border-gray-600'
               }`}>
                 {selectedValue === option.value && <div className="w-2 h-2 rounded-full bg-white"></div>}
               </div>
-              <span className={`font-semibold text-sm ${selectedValue === option.value ? 'text-blue-800' : 'text-gray-800'}`}>
+              <span className={`font-semibold text-sm ${
+                selectedValue === option.value 
+                  ? `text-[${themeColors.primary}] dark:text-[${themeColors.primaryLight}]` 
+                  : 'text-gray-800 dark:text-gray-200'
+              }`}>
                 {option.label}
               </span>
             </div>
-            <div className={`text-xs font-bold mt-1 ${selectedValue === option.value ? 'text-blue-800' : 'text-gray-700'}`}>
+            <div className={`text-xs font-bold mt-1 ${
+              selectedValue === option.value 
+                ? `text-[${themeColors.primary}] dark:text-[${themeColors.primaryLight}]` 
+                : 'text-gray-700 dark:text-gray-300'
+            }`}>
               {option.value * 100}%
             </div>
           </div>
@@ -619,249 +643,9 @@ const PredikatKinerjaRadio: React.FC<{ selectedValue: number; onValueChange: (va
   );
 };
 
-const EmployeeTable: React.FC<{ karyawanList: Karyawan[]; onSelect: (karyawan: Karyawan) => void; selectedNip: string | null; loading: boolean }> = ({ karyawanList, onSelect, selectedNip, loading }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
-  const [sortField, setSortField] = useState<keyof Karyawan>('nama');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+// ... [Komponen EmployeeTable, EstimasiKenaikan, InputKinerjaForm, EmployeeDashboard tetap sama dengan penambahan tema]
 
-  const getKaryawanWithAKReal = (karyawan: Karyawan) => {
-    const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
-    const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
-    return { ...karyawan, akTambahan, akRealSaatIni };
-  };
-
-  const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
-  const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
-    const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm) || karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
-    return matchesSearch && matchesKategori;
-  });
-
-  const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
-    const aValue = a[sortField]; const bValue = b[sortField];
-    if (typeof aValue === 'string' && typeof bValue === 'string') return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-    if (typeof aValue === 'number' && typeof bValue === 'number') return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    return 0;
-  });
-
-  const handleSort = (field: keyof Karyawan) => {
-    if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDirection('asc'); }
-  };
-
-  const getSortIcon = (field: keyof Karyawan) => sortField !== field ? '↕️' : sortDirection === 'asc' ? '↑' : '↓';
-
-  const totalKaryawan = karyawanList.length;
-  const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
-  const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
-  const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
-
-  if (loading) return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
-      <div className="text-center py-8">
-        <div className="text-gray-400 text-4xl mb-2">⏳</div>
-        <h3 className="text-sm font-semibold text-gray-600 mb-1">Memuat data karyawan...</h3>
-        <p className="text-gray-500 text-xs">Sedang mengambil data dari Google Sheets</p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
-        <div><h2 className="text-xl font-bold text-gray-800 mb-1">Daftar Karyawan</h2><p className="text-gray-600 text-sm">Pilih karyawan untuk melihat detail</p></div>
-        <div className="grid grid-cols-4 gap-2 text-center">
-          <div className="bg-blue-50 p-2 rounded border border-blue-200"><div className="text-sm font-bold text-blue-600">{totalKaryawan}</div><div className="text-xs text-blue-800">Total</div></div>
-          <div className="bg-green-50 p-2 rounded border border-green-200"><div className="text-sm font-bold text-green-600">{aktifKaryawan}</div><div className="text-xs text-green-800">Aktif</div></div>
-          <div className="bg-purple-50 p-2 rounded border border-purple-200"><div className="text-sm font-bold text-purple-600">{keahlianKaryawan}</div><div className="text-xs text-purple-800">Keahlian</div></div>
-          <div className="bg-orange-50 p-2 rounded border border-orange-200"><div className="text-sm font-bold text-orange-600">{keterampilanKaryawan}</div><div className="text-xs text-orange-800">Keterampilan</div></div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-        <div><input type="text" placeholder="Cari nama, NIP, atau unit..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-        <div><select value={filterKategori} onChange={(e) => setFilterKategori(e.target.value as any)} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="Semua">Semua Kategori</option><option value="Keahlian">Keahlian</option><option value="Keterampilan">Keterampilan</option>
-        </select></div>
-      </div>
-
-      {filteredKaryawan.length === 0 ? (
-        <div className="text-center py-8"><div className="text-gray-400 text-4xl mb-2">🔍</div><h3 className="text-sm font-semibold text-gray-600 mb-1">Tidak ada karyawan ditemukan</h3><p className="text-gray-500 text-xs">Coba ubah kata kunci pencarian</p></div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-700">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
-              <tr>
-                {['nama', 'nip', 'golongan', 'jabatan', 'akKumulatif'].map(field => (
-                  <th key={field} className="px-3 py-2 cursor-pointer hover:bg-gray-100" onClick={() => handleSort(field as keyof Karyawan)}>
-                    <div className="flex items-center">{field === 'akKumulatif' ? 'AK Awal' : field.charAt(0).toUpperCase() + field.slice(1)}<span className="ml-1 text-xs">{getSortIcon(field as keyof Karyawan)}</span></div>
-                  </th>
-                ))}
-                <th>AK Tambahan</th><th>AK Real</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedKaryawan.map((karyawan) => (
-                <tr key={karyawan.nip} className={`border-b hover:bg-gray-50 transition-colors ${selectedNip === karyawan.nip ? 'bg-blue-50' : ''}`}>
-                  <td className="px-3 py-2 font-medium text-gray-900">{karyawan.nama}</td>
-                  <td className="px-3 py-2"><code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code></td>
-                  <td className="px-3 py-2 text-center"><span className="font-semibold text-xs">{karyawan.golongan}</span></td>
-                  <td className="text-gray-700 text-xs">{karyawan.jabatan}</td>
-                  <td className="px-3 py-2 text-center"><span className="text-gray-500 text-xs">{karyawan.akKumulatif.toFixed(2)}</span></td>
-                  <td className="px-3 py-2 text-center"><span className="text-green-600 text-xs font-medium">+{karyawan.akTambahan.toFixed(2)}</span></td>
-                  <td className="px-3 py-2 text-center"><span className="font-bold text-blue-600 text-xs inline-block bg-blue-50 px-2 py-1 rounded">{karyawan.akRealSaatIni.toFixed(2)}</span></td>
-                  <td className="px-3 py-2"><button onClick={() => onSelect(karyawan)} className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center" title="Lihat detail karyawan">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                  </button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="mt-4 text-xs text-gray-500">Menampilkan {filteredKaryawan.length} dari {totalKaryawan} karyawan</div>
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-start"><span className="text-blue-500 mr-2">ℹ️</span><div><p className="text-blue-800 text-sm font-medium">Informasi AK Real</p><p className="text-blue-700 text-xs"><strong>AK Real = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".</p></div></div>
-      </div>
-    </div>
-  );
-};
-
-const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
-  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
-  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
-
-  const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
-    if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
-    const tahun = Math.floor(bulanDibutuhkan / 12);
-    const bulan = bulanDibutuhkan % 12;
-    let formatted = '';
-    if (tahun > 0 && bulan > 0) formatted = `${tahun} tahun ${bulan} bulan`;
-    else if (tahun > 0) formatted = `${tahun} tahun`;
-    else formatted = `${bulan} bulan`;
-    return { tahun, bulan, formatted };
-  };
-
-  const estimasiPangkat = formatEstimasiWaktu(estimasi.bulanDibutuhkanPangkat);
-  const estimasiJabatan = formatEstimasiWaktu(estimasi.bulanDibutuhkanJabatan);
-
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
-      <h3 className="text-lg font-bold text-gray-800 mb-4">Estimasi Kenaikan Pangkat dan Jabatan</h3>
-      
-      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div><p className="text-sm text-blue-700 font-medium">AK Awal</p><p className="text-xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</p></div>
-          <div><p className="text-sm text-green-700 font-medium">AK Tambahan</p><p className="text-xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</p></div>
-          <div><p className="text-sm text-purple-700 font-medium">AK Real Saat Ini</p><p className="text-xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</p></div>
-        </div>
-        <p className="text-xs text-blue-600 mt-2 text-center">*AK Tambahan dihitung sejak TMT Jabatan {new Date(karyawan.tmtJabatan).toLocaleDateString('id-ID')} sampai hari ini</p>
-      </div>
-
-      {estimasi.isKenaikanJenjang && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start"><span className="text-yellow-500 mr-2">🎯</span><div><p className="text-yellow-800 text-sm font-medium">Kenaikan Jenjang</p><p className="text-yellow-700 text-xs">Ini adalah kenaikan JENJANG. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.</p></div></div>
-        </div>
-      )}
-
-      <div className="mb-6"><PredikatKinerjaRadio selectedValue={predikatAsumsi} onValueChange={setPredikatAsumsi} /></div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200"><div className="text-center"><p className="text-sm text-blue-700 font-medium">Perolehan AK per Bulan</p><p className="text-xl font-bold text-blue-800">{estimasi.akPerBulan}</p></div></div>
-        <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200"><div className="text-center"><p className="text-sm text-green-700 font-medium">Asumsi Predikat Kinerja Terpilih</p><p className="text-xl font-bold text-green-800">{predikatAsumsi * 100}%</p></div></div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="space-y-3"><h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Pangkat</h4><div className="space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-gray-600">Pangkat berikutnya:</span><span className="font-semibold">{estimasi.golonganBerikutnya}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Kebutuhan AK:</span><span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Kekurangan AK:</span><span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>{estimasi.kekuranganAKPangkat.toFixed(2)}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Estimasi waktu:</span><span className="font-semibold text-blue-600">{estimasiPangkat.formatted}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Status:</span><span className={`font-semibold ${estimasi.bisaUsulPangkat ? 'text-green-600' : 'text-gray-600'}`}>{estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}</span></div>
-        </div></div>
-        <div className="space-y-3"><h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Jabatan</h4><div className="space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-gray-600">Jabatan berikutnya:</span><span className="font-semibold">{estimasi.jabatanBerikutnya}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Kebutuhan AK:</span><span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Kekurangan AK:</span><span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>{estimasi.kekuranganAKJabatan.toFixed(2)}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Estimasi waktu:</span><span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span></div>
-          <div className="flex justify-between"><span className="text-gray-600">Status:</span><span className={`font-semibold ${estimasi.bisaUsulJabatan ? 'text-green-600' : 'text-gray-600'}`}>{estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}</span></div>
-        </div></div>
-      </div>
-
-      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm font-semibold text-center">🎉 SELAMAT! Anda sudah memenuhi syarat kenaikan JENJANG. Dapat mengusulkan kenaikan <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.</p>
-        </div>
-      )}
-
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-blue-800 text-sm"><strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Real saat ini sudah termasuk akumulasi sejak TMT Jabatan.</p>
-      </div>
-    </div>
-  );
-};
-
-const InputKinerjaForm: React.FC<{ karyawan: Karyawan; onSave: (input: InputKinerja) => void }> = ({ karyawan, onSave }) => {
-  const [formData, setFormData] = useState({
-    periode: new Date().toISOString().slice(0, 7), jenisPenilaian: 'Tahunan' as 'Tahunan' | 'Periodik', bulanPeriodik: 12, predikatKinerja: 1.00, keterangan: ''
-  });
-
-  const handleCalculate = () => {
-    const akDiperoleh = AngkaKreditCalculator.hitungAK(karyawan.jabatan, formData.predikatKinerja, formData.jenisPenilaian === 'Periodik', formData.bulanPeriodik);
-    const newInput: InputKinerja = {
-      idInput: `KIN-${Date.now()}`, nip: karyawan.nip, periode: formData.periode, jenisPenilaian: formData.jenisPenilaian, bulanPeriodik: formData.bulanPeriodik, predikatKinerja: formData.predikatKinerja, akDiperoleh, jabatanSaatInput: karyawan.jabatan, tanggalInput: new Date().toISOString().split('T')[0], inputOleh: 'Admin', keterangan: formData.keterangan
-    };
-    onSave(newInput);
-    setFormData({ periode: new Date().toISOString().slice(0, 7), jenisPenilaian: 'Tahunan', bulanPeriodik: 12, predikatKinerja: 1.00, keterangan: '' });
-    alert('Data kinerja berhasil disimpan!');
-  };
-
-  const currentKoefisien = AngkaKreditCalculator.getKoefisien(karyawan.jabatan);
-  const calculatedAK = AngkaKreditCalculator.hitungAK(karyawan.jabatan, formData.predikatKinerja, formData.jenisPenilaian === 'Periodik', formData.bulanPeriodik);
-
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
-      <h3 className="text-lg font-bold text-gray-800 mb-4">📥 Input Kinerja - {karyawan.nama}</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-        <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Periode Penilaian</label><input type="month" value={formData.periode} onChange={(e) => setFormData({...formData, periode: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-        <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Jenis Penilaian</label><select value={formData.jenisPenilaian} onChange={(e) => setFormData({...formData, jenisPenilaian: e.target.value as 'Tahunan' | 'Periodik'})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="Tahunan">Tahunan</option><option value="Periodik">Periodik</option></select></div>
-        {formData.jenisPenilaian === 'Periodik' && (<div className="space-y-2"><label className="text-sm font-medium text-gray-700">Bulan Periodik</label><input type="number" min="1" max="11" value={formData.bulanPeriodik} onChange={(e) => setFormData({...formData, bulanPeriodik: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>)}
-      </div>
-      <div className="mb-4"><PredikatKinerjaRadio selectedValue={formData.predikatKinerja} onValueChange={(value) => setFormData({...formData, predikatKinerja: value})} /></div>
-      <div className="space-y-2 mb-4"><label className="text-sm font-medium text-gray-700">Keterangan</label><input type="text" value={formData.keterangan} onChange={(e) => setFormData({...formData, keterangan: e.target.value})} placeholder="Capaian SKP, evaluasi, dll." className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
-      <div className="bg-gray-50 rounded-lg p-3 mb-4"><h4 className="font-semibold text-gray-700 mb-2 text-sm">Perhitungan Angka Kredit:</h4><div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-        <div><p className="text-gray-600">Jabatan</p><p className="font-semibold text-gray-800">{karyawan.jabatan}</p></div><div><p className="text-gray-600">Koefisien</p><p className="font-semibold text-gray-800">{currentKoefisien}</p></div><div><p className="text-gray-600">Predikat</p><p className="font-semibold text-gray-800">{formData.predikatKinerja * 100}%</p></div><div><p className="text-gray-600">Hasil AK</p><p className="font-bold text-blue-600">{calculatedAK}</p></div>
-      </div></div>
-      <button onClick={handleCalculate} className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm">Simpan Data Kinerja</button>
-    </div>
-  );
-};
-
-const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
-  const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
-  const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
-  const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
-
-  return (
-    <div className="space-y-4">
-      <BiodataSederhana karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
-      {rekomendasiKarir && (<div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4"><div className="flex items-start"><span className="text-xl mr-3">💡</span><div><h3 className="font-semibold text-yellow-800 mb-1">Rekomendasi Pengembangan Karir</h3><p className="text-yellow-700 text-sm">{rekomendasiKarir}</p></div></div></div>)}
-      <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
-        <div className="mb-4 pb-3 border-b border-gray-200"><div className="mt-2 p-2 bg-blue-50 rounded-lg"><p className="text-md font-bold text-blue-600">AK Real Saat Ini: {estimasi.akRealSaatIni.toFixed(2)}</p><p className="text-xs text-gray-600">(Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {estimasi.akTambahan.toFixed(2)})</p></div></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ProgressBar label={`Kenaikan Pangkat ke ${estimasi.golonganBerikutnya}`} akSaatIni={karyawan.akKumulatif} akRealSaatIni={estimasi.akRealSaatIni} kebutuhanAK={estimasi.kebutuhanAKPangkat} type="pangkat" bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat} akTambahan={estimasi.akTambahan} penjelasan={penjelasanKebutuhanPangkat} kekuranganAK={estimasi.kekuranganAKPangkat} bisaUsul={estimasi.bisaUsulPangkat} isKenaikanJenjang={estimasi.isKenaikanJenjang} />
-          <ProgressBar label={`Kenaikan Jabatan ke ${estimasi.jabatanBerikutnya}`} akSaatIni={karyawan.akKumulatif} akRealSaatIni={estimasi.akRealSaatIni} kebutuhanAK={estimasi.kebutuhanAKJabatan} type="jabatan" bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan} akTambahan={estimasi.akTambahan} penjelasan={penjelasanKebutuhanJabatan} kekuranganAK={estimasi.kekuranganAKJabatan} bisaUsul={estimasi.bisaUsulJabatan} isKenaikanJenjang={estimasi.isKenaikanJenjang} />
-        </div>
-      </div>
-      <EstimasiKenaikan karyawan={karyawan} />
-    </div>
-  );
-};
-
+// ==================== MAIN APP ====================
 const App: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
@@ -869,37 +653,68 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'input'>('dashboard');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { themeColors } = useTheme();
 
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("google-sheets", { body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: `${SHEET_NAME}!A:L` } });
+      const { data, error } = await supabase.functions.invoke("google-sheets", { 
+        body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: `${SHEET_NAME}!A:L` } 
+      });
       if (error) throw error;
       const rows = data.values || [];
       const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
         let akKumulatifValue = 0;
-        if (row[6]) { const akValue = row[6].toString().replace(',', '.'); akKumulatifValue = parseFloat(akValue) || 0; }
+        if (row[6]) { 
+          const akValue = row[6].toString().replace(',', '.'); 
+          akKumulatifValue = parseFloat(akValue) || 0; 
+        }
         const nipData = parseNIP(row[0]?.toString() || '');
         return {
-          nip: row[0]?.toString() || '', nama: row[1]?.toString() || '', pangkat: row[2]?.toString() || '', golongan: row[3]?.toString() || '', jabatan: row[4]?.toString() || '',
-          kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian', akKumulatif: akKumulatifValue, status: (row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
-          unitKerja: row[8]?.toString() || '', tmtJabatan: row[9]?.toString() || '', tmtPangkat: row[10]?.toString() || '', pendidikan: row[11]?.toString() || '',
-          tanggalLahir: nipData.tanggalLahir, jenisKelamin: nipData.jenisKelamin, tempatLahir: '', agama: '', email: '', telepon: '', alamat: ''
+          nip: row[0]?.toString() || '', 
+          nama: row[1]?.toString() || '', 
+          pangkat: row[2]?.toString() || '', 
+          golongan: row[3]?.toString() || '', 
+          jabatan: row[4]?.toString() || '',
+          kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian', 
+          akKumulatif: akKumulatifValue, 
+          status: (row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
+          unitKerja: row[8]?.toString() || '', 
+          tmtJabatan: row[9]?.toString() || '', 
+          tmtPangkat: row[10]?.toString() || '', 
+          pendidikan: row[11]?.toString() || '',
+          tanggalLahir: nipData.tanggalLahir, 
+          jenisKelamin: nipData.jenisKelamin, 
+          tempatLahir: '', 
+          agama: '', 
+          email: '', 
+          telepon: '', 
+          alamat: ''
         };
       });
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast({ title: "Error", description: "Gagal memuat data dari Google Sheets: " + error.message, variant: "destructive" });
-    } finally { setLoading(false); }
+      toast({ 
+        title: "Error", 
+        description: "Gagal memuat data dari Google Sheets: " + error.message, 
+        variant: "destructive" 
+      });
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  useEffect(() => { fetchKaryawanData(); }, []);
+  useEffect(() => { 
+    fetchKaryawanData(); 
+  }, []);
 
   const handleSaveInput = (newInput: InputKinerja) => {
     setInputHistory([...inputHistory, newInput]);
     if (selectedKaryawan) {
-      const updatedKaryawanList = karyawanList.map(k => k.nip === selectedKaryawan.nip ? { ...k, akKumulatif: k.akKumulatif + newInput.akDiperoleh } : k);
+      const updatedKaryawanList = karyawanList.map(k => 
+        k.nip === selectedKaryawan.nip ? { ...k, akKumulatif: k.akKumulatif + newInput.akDiperoleh } : k
+      );
       setKaryawanList(updatedKaryawanList);
       const updatedSelected = updatedKaryawanList.find(k => k.nip === selectedKaryawan.nip);
       if (updatedSelected) setSelectedKaryawan(updatedSelected);
@@ -907,24 +722,91 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="bg-gradient-to-r from-blue-800 via-blue-700 to-blue-600 text-white py-4 px-6 shadow-lg">
-        <div className="max-w-7xl mx-auto"><h1 className="text-2xl font-bold mb-1">🔄 Aplikasi Penghitungan Angka Kredit</h1><p className="text-white/90 text-sm">Berdasarkan Peraturan BKN No. 3 Tahun 2023</p></div>
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      {/* Header dengan tema */}
+      <header 
+        className="text-white py-4 px-6 shadow-lg transition-colors duration-300"
+        style={{ 
+          background: `linear-gradient(to right, ${themeColors.primary}, ${themeColors.primaryDark})`
+        }}
+      >
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">🔄 Aplikasi Penghitungan Angka Kredit</h1>
+            <p className="text-white/90 text-sm">Berdasarkan Peraturan BKN No. 3 Tahun 2023</p>
+          </div>
+        </div>
       </header>
+
       <div className="max-w-7xl mx-auto p-4">
-        {!selectedKaryawan ? (<EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />) : (<>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-            <div><button onClick={() => setSelectedKaryawan(null)} className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-1 text-sm"><span className="mr-1">←</span>Kembali ke Daftar Karyawan</button><h2 className="text-xl font-bold text-gray-800">{selectedKaryawan.nama}</h2></div>
-            <div className="flex space-x-1 p-1 bg-gray-200 rounded-lg w-fit">
-              <button className={`px-3 py-1 rounded-md font-medium transition-all text-sm ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'}`} onClick={() => setActiveTab('dashboard')}>📊 Dashboard</button>
-              <button className={`px-3 py-1 rounded-md font-medium transition-all text-sm ${activeTab === 'input' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'}`} onClick={() => setActiveTab('input')}>📥 Input Kinerja</button>
+        {!selectedKaryawan ? (
+          <EmployeeTable 
+            karyawanList={karyawanList} 
+            onSelect={setSelectedKaryawan}
+            selectedNip={null}
+            loading={loading}
+          />
+        ) : (
+          <>
+            {/* Navigation Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+              <div>
+                <button 
+                  onClick={() => setSelectedKaryawan(null)}
+                  className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-1 text-sm dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  <span className="mr-1">←</span>
+                  Kembali ke Daftar Karyawan
+                </button>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedKaryawan.nama}</h2>
+              </div>
+              
+              {/* Tab Navigation */}
+              <div className="flex space-x-1 p-1 bg-gray-200 rounded-lg w-fit dark:bg-gray-700">
+                <button 
+                  className={`px-3 py-1 rounded-md font-medium transition-all text-sm ${
+                    activeTab === 'dashboard' 
+                      ? 'text-white shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                  style={{ 
+                    backgroundColor: activeTab === 'dashboard' ? themeColors.primary : 'transparent'
+                  }}
+                  onClick={() => setActiveTab('dashboard')}
+                >
+                  📊 Dashboard
+                </button>
+                <button 
+                  className={`px-3 py-1 rounded-md font-medium transition-all text-sm ${
+                    activeTab === 'input' 
+                      ? 'text-white shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                  style={{ 
+                    backgroundColor: activeTab === 'input' ? themeColors.primary : 'transparent'
+                  }}
+                  onClick={() => setActiveTab('input')}
+                >
+                  📥 Input Kinerja
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="space-y-4">
-            {activeTab === 'dashboard' && (<EmployeeDashboard karyawan={selectedKaryawan} />)}
-            {activeTab === 'input' && (<InputKinerjaForm karyawan={selectedKaryawan} onSave={handleSaveInput} />)}
-          </div>
-        </>)}
+
+            {/* Tab Content */}
+            <div className="space-y-4">
+              {activeTab === 'dashboard' && (
+                <EmployeeDashboard karyawan={selectedKaryawan} />
+              )}
+              
+              {activeTab === 'input' && (
+                <InputKinerjaForm 
+                  karyawan={selectedKaryawan} 
+                  onSave={handleSaveInput} 
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
