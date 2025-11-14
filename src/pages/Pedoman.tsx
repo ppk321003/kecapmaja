@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN PERBAIKAN
+// App.tsx - VERSI LENGKAP DENGAN INFORMASI KARYAWAN SEBELUMNYA
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +24,6 @@ interface Karyawan {
   email: string;
   telepon: string;
   alamat: string;
-  fungsiKegiatan: string;
 }
 
 interface InputKinerja {
@@ -487,7 +486,7 @@ const parseNIP = (nip: string) => {
   };
 };
 
-// Komponen Informasi Biodata Sederhana dengan Layout Baru
+// Komponen Informasi Biodata Sederhana - VERSI SEBELUMNYA
 const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const formatTanggal = (tanggal: string) => {
     if (!tanggal) return '-';
@@ -537,102 +536,94 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
     }
   };
 
+  const hitungMasaKerja = (tmtJabatan: string) => {
+    if (!tmtJabatan) return { years: 0, months: 0 };
+    try {
+      const today = new Date();
+      const tmt = new Date(tmtJabatan);
+      if (isNaN(tmt.getTime())) return { years: 0, months: 0 };
+      
+      let years = today.getFullYear() - tmt.getFullYear();
+      let months = today.getMonth() - tmt.getMonth();
+      
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      return { years, months };
+    } catch {
+      return { years: 0, months: 0 };
+    }
+  };
+
   // Parse data dari NIP
   const nipData = parseNIP(karyawan.nip);
   const usia = hitungUsia(nipData.tanggalLahir);
+  const masaKerja = hitungMasaKerja(nipData.tahunMasuk);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 border-b pb-3">👤 Informasi Karyawan</h3>
+    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
+      <h3 className="text-lg font-bold text-gray-800 mb-3">👤 Informasi Karyawan</h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Kolom Kiri */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Nama</div>
-            <div className="col-span-2">
-              <p className="font-semibold text-gray-800 text-lg">{karyawan.nama}</p>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs text-gray-500">Nama</p>
+            <p className="font-semibold text-gray-800">{karyawan.nama}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">NIP</div>
-            <div className="col-span-2">
-              <p className="font-mono text-gray-700 bg-gray-50 px-3 py-1 rounded text-sm">{karyawan.nip}</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">NIP</p>
+            <p className="font-medium text-gray-700">{karyawan.nip}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Usia</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{usia} tahun</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">TMT PNS</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Pangkat / Golongan</div>
-            <div className="col-span-2">
-              <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">Usia</p>
+            <p className="font-medium text-gray-700">{usia} tahun</p>
           </div>
         </div>
 
-        {/* Kolom Kanan */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">TMT Pangkat</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p>
-            </div>
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs text-gray-500">Pangkat / Golongan</p>
+            <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Jabatan</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">TMT Pangkat</p>
+            <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">TMT Jabatan</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">Jabatan</p>
+            <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Fungsi Kegiatan</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{karyawan.fungsiKegiatan || '-'}</p>
-            </div>
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs text-gray-500">TMT Jabatan</p>
+            <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Pendidikan</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{karyawan.pendidikan}</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">Unit Kerja</p>
+            <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
           </div>
-
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">Jenis Kelamin</div>
-            <div className="col-span-2">
-              <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
-            </div>
+          <div>
+            <p className="text-xs text-gray-500">TMT PNS</p>
+            <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-3 gap-4 items-start">
-            <div className="text-sm text-gray-500 font-medium">AK Kumulatif</div>
-            <div className="col-span-2">
-              <p className="font-bold text-blue-600 text-xl">{karyawan.akKumulatif.toFixed(2)}</p>
-            </div>
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs text-gray-500">Pendidikan</p>
+            <p className="font-medium text-gray-700">{karyawan.pendidikan}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Jenis Kelamin</p>
+            <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">AK Kumulatif</p>
+            <p className="font-bold text-blue-600 text-lg">{karyawan.akKumulatif.toFixed(2)}</p>
           </div>
         </div>
       </div>
@@ -1286,7 +1277,7 @@ const App: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:M` // Sesuaikan range dengan kolom yang ada di spreadsheet
+          range: `${SHEET_NAME}!A:L` // Kembali ke range semula
         }
       });
 
@@ -1323,7 +1314,6 @@ const App: React.FC = () => {
             tmtJabatan: row[9]?.toString() || '',
             tmtPangkat: row[10]?.toString() || '',
             pendidikan: row[11]?.toString() || '',
-            fungsiKegiatan: row[12]?.toString() || '',
             // Data dari NIP
             tanggalLahir: nipData.tanggalLahir,
             jenisKelamin: nipData.jenisKelamin,
