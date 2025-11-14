@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN ESTIMASI TAHUN DAN BULAN
+// App.tsx - VERSI LENGKAP DENGAN PERHITUNGAN AK REAL-TIME
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +55,8 @@ interface EstimasiKenaikan {
   golonganBerikutnya: string;
   jabatanBerikutnya: string;
   akPerBulan: number;
+  akRealSaatIni: number;
+  akTambahan: number;
 }
 
 // ==================== GOOGLE SHEETS CONFIG ====================
@@ -65,7 +67,6 @@ const SHEET_NAME = "data";
 class AngkaKreditCalculator {
   // Koefisien tahunan sesuai Peraturan BKN Pasal 13 - DISESUAIKAN
   static getKoefisien(jabatan: string): number {
-    // Mapping berdasarkan kata kunci yang ada di jabatan lembaga Anda
     const koefisienMap: { [key: string]: number } = {
       // KATEGORI KEAHLIAN - Statistisi
       'Ahli Pertama': 12.5,
@@ -92,20 +93,59 @@ class AngkaKreditCalculator {
       'Fungsional Umum': 5.0
     };
     
-    // Cari koefisien berdasarkan kata kunci dalam jabatan
     for (const [key, value] of Object.entries(koefisienMap)) {
       if (jabatan.includes(key)) {
         return value;
       }
     }
     
-    // Default berdasarkan kategori
     if (jabatan.includes('Ahli')) return 12.5;
     if (jabatan.includes('Penyelia')) return 25.0;
     if (jabatan.includes('Mahir')) return 12.5;
     if (jabatan.includes('Terampil')) return 8.0;
     
     return 12.5;
+  }
+
+  // Hitung AK tambahan sejak TMT Jabatan sampai hari ini
+  static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
+    const tmtJabatan = new Date(karyawan.tmtJabatan);
+    const hariIni = new Date();
+    
+    // Jika TMT masih di masa depan, tidak ada AK tambahan
+    if (tmtJabatan > hariIni) {
+      return 0;
+    }
+    
+    // Hitung selisih bulan antara TMT Jabatan dan hari ini
+    const selisihBulan = this.hitungSelisihBulan(tmtJabatan, hariIni);
+    
+    if (selisihBulan <= 0) {
+      return 0;
+    }
+    
+    const koefisien = this.getKoefisien(karyawan.jabatan);
+    const akPerBulan = (predikatAsumsi * koefisien) / 12;
+    const akTambahan = selisihBulan * akPerBulan;
+    
+    return Number(akTambahan.toFixed(2));
+  }
+
+  // Hitung AK Real saat ini (AK Database + AK Tambahan)
+  static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
+    const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
+    const akReal = karyawan.akKumulatif + akTambahan;
+    return Number(akReal.toFixed(2));
+  }
+
+  // Hitung selisih bulan antara dua tanggal
+  static hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
+    const tahunAwal = tanggalAwal.getFullYear();
+    const bulanAwal = tanggalAwal.getMonth();
+    const tahunAkhir = tanggalAkhir.getFullYear();
+    const bulanAkhir = tanggalAkhir.getMonth();
+    
+    return (tahunAkhir - tahunAwal) * 12 + (bulanAkhir - bulanAwal);
   }
 
   static hitungAK(
@@ -166,7 +206,6 @@ class AngkaKreditCalculator {
       'Penyelia': 0     // Sudah level tertinggi
     };
     
-    // Cari kebutuhan berdasarkan kata kunci dalam jabatan
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
         if (jabatanSekarang.includes(key)) {
@@ -181,10 +220,10 @@ class AngkaKreditCalculator {
       }
     }
     
-    return 0; // Default jika tidak ditemukan
+    return 0;
   }
 
-  // Estimasi kenaikan yang benar
+  // Estimasi kenaikan yang BENAR dengan AK Real
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
@@ -192,13 +231,16 @@ class AngkaKreditCalculator {
     const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
     const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     
-    const kekuranganPangkat = Math.max(0, kebutuhanPangkat - karyawan.akKumulatif);
-    const kekuranganJabatan = Math.max(0, kebutuhanJabatan - karyawan.akKumulatif);
+    // Hitung AK Real saat ini (termasuk AK tambahan sejak TMT)
+    const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
+    const akRealSaatIni = this.hitungAKRealSaatIni(karyawan, predikatAsumsi);
+    
+    const kekuranganPangkat = Math.max(0, kebutuhanPangkat - akRealSaatIni);
+    const kekuranganJabatan = Math.max(0, kebutuhanJabatan - akRealSaatIni);
     
     const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = (predikatAsumsi * koefisien) / 12;
     
-    // Hitung bulan untuk pangkat dan jabatan terpisah
     const bulanDibutuhkanPangkat = akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0;
     const bulanDibutuhkanJabatan = akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 0;
     
@@ -231,7 +273,9 @@ class AngkaKreditCalculator {
       bisaUsulJabatan: kekuranganJabatan <= 0,
       golonganBerikutnya,
       jabatanBerikutnya,
-      akPerBulan: Number(akPerBulan.toFixed(2))
+      akPerBulan: Number(akPerBulan.toFixed(2)),
+      akRealSaatIni,
+      akTambahan
     };
   }
 
@@ -255,16 +299,15 @@ class AngkaKreditCalculator {
       'Ahli Pertama': 'Ahli Muda',
       'Ahli Muda': 'Ahli Madya', 
       'Ahli Madya': 'Ahli Utama',
-      'Ahli Utama': 'Tidak Ada' // Sudah level tertinggi
+      'Ahli Utama': 'Tidak Ada'
     };
     
     const progressionKeterampilan: { [key: string]: string } = {
       'Terampil': 'Mahir',
       'Mahir': 'Penyelia',
-      'Penyelia': 'Tidak Ada' // Sudah level tertinggi
+      'Penyelia': 'Tidak Ada'
     };
 
-    // Cari jabatan berikutnya berdasarkan kata kunci
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(progressionKeahlian)) {
         if (jabatanSekarang.includes(key)) {
@@ -282,19 +325,16 @@ class AngkaKreditCalculator {
     return 'Tidak Diketahui';
   }
 
-  // Fungsi rekomendasi karir
   static getRekomendasiKarir(karyawan: Karyawan): string {
     if (karyawan.kategori === 'Keterampilan') {
       const pendidikan = karyawan.pendidikan.toLowerCase();
       
-      // Cek apakah pendidikan masih di bawah D4/S1
       const isPendidikanRendah = 
         pendidikan.includes('sma') || pendidikan.includes('smk') || 
         pendidikan.includes('d1') || pendidikan.includes('d2') || 
         pendidikan.includes('d3') || pendidikan.includes('diploma') ||
         pendidikan.includes('slta');
       
-      // Cek apakah sudah pendidikan tinggi
       const isPendidikanTinggi = 
         pendidikan.includes('d4') || pendidikan.includes('s1') || 
         pendidikan.includes('sarjana') || pendidikan.includes('s2') ||
@@ -310,7 +350,6 @@ class AngkaKreditCalculator {
       }
     }
     
-    // Untuk yang sudah di jalur keahlian
     if (karyawan.kategori === 'Keahlian') {
       const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
       if (jabatanBerikutnya === 'Tidak Ada') {
@@ -324,21 +363,20 @@ class AngkaKreditCalculator {
 
 // ==================== COMPONENTS ====================
 
-// Komponen Progress Bar dengan Perbaikan Logika
+// Komponen Progress Bar dengan AK Real
 const ProgressBar: React.FC<{ 
   progress: number; 
   label: string; 
-  akSaatIni: number; 
+  akSaatIni: number;
+  akRealSaatIni: number;
   kebutuhanAK: number;
   type: 'pangkat' | 'jabatan';
   bulanDibutuhkan: number;
-}> = ({ progress, label, akSaatIni, kebutuhanAK, type, bulanDibutuhkan }) => {
-  // PERBAIKAN: Handle kasus dimana tidak ada jabatan/pangkat berikutnya
+  akTambahan: number;
+}> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan }) => {
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
-  
-  // PERBAIKAN: Jangan hitung progress jika kebutuhanAK = 0
   const percentage = isTidakAda ? 0 : Math.min(progress * 100, 100);
-  const kelebihanAK = Math.max(0, akSaatIni - kebutuhanAK);
+  const kelebihanAK = Math.max(0, akRealSaatIni - kebutuhanAK);
   
   const getColorClass = () => {
     if (isTidakAda) return 'from-gray-300 to-gray-400';
@@ -393,10 +431,18 @@ const ProgressBar: React.FC<{
         </>
       )}
       
-      <div className={`grid ${isTidakAda ? 'grid-cols-3' : 'grid-cols-4'} gap-2 text-xs text-gray-600`}>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600 mb-3">
         <div className="text-center">
-          <div className="font-semibold">AK Saat Ini</div>
-          <div>{akSaatIni.toFixed(2)}</div>
+          <div className="font-semibold">AK Database</div>
+          <div className="text-gray-500">{akSaatIni.toFixed(2)}</div>
+        </div>
+        <div className="text-center">
+          <div className="font-semibold">AK Tambahan</div>
+          <div className="text-green-600">+{akTambahan.toFixed(2)}</div>
+        </div>
+        <div className="text-center">
+          <div className="font-semibold">AK Real Saat Ini</div>
+          <div className="font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
         </div>
         {!isTidakAda && (
           <div className="text-center">
@@ -408,15 +454,9 @@ const ProgressBar: React.FC<{
           <div className="font-semibold">{isTidakAda ? 'Status' : 'Kekurangan'}</div>
           <div className={
             isTidakAda ? 'text-gray-600' :
-            kebutuhanAK - akSaatIni > 0 ? 'text-red-600' : 'text-green-600'
+            kebutuhanAK - akRealSaatIni > 0 ? 'text-red-600' : 'text-green-600'
           }>
-            {isTidakAda ? 'Maksimal' : Math.max(0, kebutuhanAK - akSaatIni).toFixed(2)}
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="font-semibold">Kelebihan</div>
-          <div className={kelebihanAK > 0 ? 'text-green-600' : 'text-gray-600'}>
-            {kelebihanAK.toFixed(2)}
+            {isTidakAda ? 'Maksimal' : Math.max(0, kebutuhanAK - akRealSaatIni).toFixed(2)}
           </div>
         </div>
       </div>
@@ -440,7 +480,6 @@ const parseNIP = (nip: string) => {
     };
   }
 
-  // Format: 19840803 201101 1 010
   const parts = nip.split(' ');
   if (parts.length < 3) {
     return {
@@ -450,11 +489,10 @@ const parseNIP = (nip: string) => {
     };
   }
 
-  const tglLahirStr = parts[0]; // 19840803
-  const tahunMasukStr = parts[1]; // 201101
-  const jenisKelaminStr = parts[2]; // 1
+  const tglLahirStr = parts[0];
+  const tahunMasukStr = parts[1];
+  const jenisKelaminStr = parts[2];
 
-  // Parse tanggal lahir: YYYYMMDD
   let tanggalLahir = '';
   if (tglLahirStr.length === 8) {
     const tahun = tglLahirStr.substring(0, 4);
@@ -463,7 +501,6 @@ const parseNIP = (nip: string) => {
     tanggalLahir = `${tahun}-${bulan}-${tanggal}`;
   }
 
-  // Parse tahun masuk: YYYYMM
   let tahunMasuk = '';
   if (tahunMasukStr.length === 6) {
     const tahun = tahunMasukStr.substring(0, 4);
@@ -471,7 +508,6 @@ const parseNIP = (nip: string) => {
     tahunMasuk = `${tahun}-${bulan}-01`;
   }
 
-  // Parse jenis kelamin
   const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
 
   return {
@@ -481,15 +517,13 @@ const parseNIP = (nip: string) => {
   };
 };
 
-// Komponen Informasi Biodata Sederhana - VERSI SEBELUMNYA
-const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+// Komponen Informasi Biodata Sederhana
+const BiodataSederhana: React.FC<{ karyawan: Karyawan; akRealSaatIni: number; akTambahan: number }> = ({ karyawan, akRealSaatIni, akTambahan }) => {
   const formatTanggal = (tanggal: string) => {
     if (!tanggal) return '-';
     try {
-      // Handle berbagai format tanggal
       const date = new Date(tanggal);
       if (isNaN(date.getTime())) {
-        // Jika format MM/DD/YYYY
         const parts = tanggal.split('/');
         if (parts.length === 3) {
           const newDate = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
@@ -531,31 +565,9 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
     }
   };
 
-  const hitungMasaKerja = (tmtJabatan: string) => {
-    if (!tmtJabatan) return { years: 0, months: 0 };
-    try {
-      const today = new Date();
-      const tmt = new Date(tmtJabatan);
-      if (isNaN(tmt.getTime())) return { years: 0, months: 0 };
-      
-      let years = today.getFullYear() - tmt.getFullYear();
-      let months = today.getMonth() - tmt.getMonth();
-      
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      
-      return { years, months };
-    } catch {
-      return { years: 0, months: 0 };
-    }
-  };
-
   // Parse data dari NIP
   const nipData = parseNIP(karyawan.nip);
   const usia = hitungUsia(nipData.tanggalLahir);
-  const masaKerja = hitungMasaKerja(nipData.tahunMasuk);
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
@@ -605,7 +617,6 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="text-xs text-gray-500">Fungsi Kegiatan</p>
             <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
           </div>
-
         </div>
 
         <div className="space-y-2">
@@ -618,8 +629,11 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">AK Kumulatif</p>
-            <p className="font-bold text-blue-600 text-lg">{karyawan.akKumulatif.toFixed(2)}</p>
+            <p className="text-xs text-gray-500">AK Real Saat Ini</p>
+            <p className="font-bold text-blue-600 text-lg">{akRealSaatIni.toFixed(2)}</p>
+            <p className="text-xs text-gray-500">
+              (Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)})
+            </p>
           </div>
         </div>
       </div>
@@ -627,7 +641,7 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Radio Button Predikat Kinerja yang Disederhanakan
+// Komponen Radio Button Predikat Kinerja
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
   onValueChange: (value: number) => void;
@@ -671,9 +685,6 @@ const PredikatKinerjaRadio: React.FC<{
                 {option.label}
               </span>
             </div>
-            <div className={`text-xs ${selectedValue === option.value ? 'text-blue-700' : 'text-gray-600'}`}>
-              {option.description}
-            </div>
             <div className={`text-xs font-bold mt-1 ${selectedValue === option.value ? 'text-blue-800' : 'text-gray-700'}`}>
               {option.value * 100}%
             </div>
@@ -684,7 +695,7 @@ const PredikatKinerjaRadio: React.FC<{
   );
 };
 
-// Komponen Tabel Karyawan yang Lebih Compact
+// Komponen Tabel Karyawan
 const EmployeeTable: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
@@ -707,7 +718,6 @@ const EmployeeTable: React.FC<{
     return matchesSearch && matchesKategori;
   });
 
-  // Sorting
   const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
@@ -809,7 +819,7 @@ const EmployeeTable: React.FC<{
         </div>
       </div>
 
-      {/* Tabel Karyawan - Kolom Sederhana */}
+      {/* Tabel Karyawan */}
       {filteredKaryawan.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-400 text-4xl mb-2">🔍</div>
@@ -850,15 +860,6 @@ const EmployeeTable: React.FC<{
                 </th>
                 <th 
                   className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('pangkat')}
-                >
-                  <div className="flex items-center">
-                    Pangkat
-                    <span className="ml-1 text-xs">{getSortIcon('pangkat')}</span>
-                  </div>
-                </th>
-                <th 
-                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('jabatan')}
                 >
                   <div className="flex items-center">
@@ -879,7 +880,7 @@ const EmployeeTable: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {sortedKaryawan.map((karyawan, index) => (
+              {sortedKaryawan.map((karyawan) => (
                 <tr 
                   key={karyawan.nip} 
                   className={`border-b hover:bg-gray-50 transition-colors ${
@@ -895,10 +896,7 @@ const EmployeeTable: React.FC<{
                   <td className="px-3 py-2 text-center">
                     <span className="font-semibold text-xs">{karyawan.golongan}</span>
                   </td>
-                  <td className="text-gray-700 text-xs">{karyawan.pangkat}</td>
-                  <td className="px-3 py-2">
-                    <span className="text-gray-700 text-xs">{karyawan.jabatan}</span>
-                  </td>
+                  <td className="text-gray-700 text-xs">{karyawan.jabatan}</td>
                   <td className="px-3 py-2 text-center">
                     <span className="font-bold text-blue-600 text-xs inline-block">{karyawan.akKumulatif.toFixed(2)}</span>
                   </td>
@@ -920,7 +918,6 @@ const EmployeeTable: React.FC<{
         </div>
       )}
 
-      {/* Informasi Jumlah Data */}
       <div className="mt-4 text-xs text-gray-500">
         Menampilkan {filteredKaryawan.length} dari {totalKaryawan} karyawan
       </div>
@@ -928,13 +925,12 @@ const EmployeeTable: React.FC<{
   );
 };
 
-// Komponen Estimasi Kenaikan dengan Radio Button dan Estimasi Tahun+Bulan
+// Komponen Estimasi Kenaikan dengan AK Real
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
 
-  // Fungsi untuk menghitung estimasi tahun dan bulan
   const hitungEstimasiTahunBulan = (bulanDibutuhkan: number) => {
     const tahun = Math.floor(bulanDibutuhkan / 12);
     const bulan = bulanDibutuhkan % 12;
@@ -948,6 +944,27 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
       <h3 className="text-lg font-bold text-gray-800 mb-4">Estimasi Kenaikan Pangkat dan Jabatan</h3>
       
+      {/* Informasi AK Real */}
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-sm text-blue-700 font-medium">AK Database</p>
+            <p className="text-xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-green-700 font-medium">AK Tambahan</p>
+            <p className="text-xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-purple-700 font-medium">AK Real Saat Ini</p>
+            <p className="text-xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</p>
+          </div>
+        </div>
+        <p className="text-xs text-blue-600 mt-2 text-center">
+          *AK Tambahan dihitung sejak TMT Jabatan {new Date(karyawan.tmtJabatan).toLocaleDateString('id-ID')} sampai hari ini
+        </p>
+      </div>
+
       {/* Radio Button Predikat Kinerja */}
       <div className="mb-6">
         <PredikatKinerjaRadio 
@@ -1048,13 +1065,14 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         <p className="text-blue-800 text-sm">
           <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% 
           dengan perolehan {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023.
+          AK Real saat ini sudah termasuk akumulasi sejak TMT Jabatan.
         </p>
       </div>
     </div>
   );
 };
 
-// Komponen Input Kinerja dengan Radio Button
+// Komponen Input Kinerja
 const InputKinerjaForm: React.FC<{ 
   karyawan: Karyawan; 
   onSave: (input: InputKinerja) => void 
@@ -1206,7 +1224,7 @@ const InputKinerjaForm: React.FC<{
   );
 };
 
-// Komponen Dashboard Karyawan
+// Komponen Dashboard Karyawan dengan AK Real
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
   const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
@@ -1214,17 +1232,21 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
   const kebutuhanJabatan = AngkaKreditCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
   
-  const progressPangkat = kebutuhanPangkat > 0 ? karyawan.akKumulatif / kebutuhanPangkat : 0;
-  const progressJabatan = kebutuhanJabatan > 0 ? karyawan.akKumulatif / kebutuhanJabatan : 0;
-
+  // Hitung AK Real untuk progress bar
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
+  const progressPangkat = kebutuhanPangkat > 0 ? estimasi.akRealSaatIni / kebutuhanPangkat : 0;
+  const progressJabatan = kebutuhanJabatan > 0 ? estimasi.akRealSaatIni / kebutuhanJabatan : 0;
+
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
   return (
     <div className="space-y-4">
-      <BiodataSederhana karyawan={karyawan} />
+      <BiodataSederhana 
+        karyawan={karyawan} 
+        akRealSaatIni={estimasi.akRealSaatIni}
+        akTambahan={estimasi.akTambahan}
+      />
 
-      {/* Tampilkan Rekomendasi Karir jika ada */}
       {rekomendasiKarir && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <div className="flex items-start">
@@ -1240,28 +1262,35 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
         <div className="mb-4 pb-3 border-b border-gray-200">
           <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-            <p className="text-md font-bold text-blue-600">AK Kumulatif: {karyawan.akKumulatif.toFixed(2)}</p>
+            <p className="text-md font-bold text-blue-600">AK Real Saat Ini: {estimasi.akRealSaatIni.toFixed(2)}</p>
+            <p className="text-xs text-gray-600">
+              (Database: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {estimasi.akTambahan.toFixed(2)})
+            </p>
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JABATAN */}
+        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan AK Real */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
             progress={progressPangkat}
             label={`Kenaikan Pangkat ke ${golonganBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
+            akRealSaatIni={estimasi.akRealSaatIni}
             kebutuhanAK={kebutuhanPangkat}
             type="pangkat"
             bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
+            akTambahan={estimasi.akTambahan}
           />
           
           <ProgressBar 
             progress={progressJabatan}
             label={`Kenaikan Jabatan ke ${jabatanBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
+            akRealSaatIni={estimasi.akRealSaatIni}
             kebutuhanAK={kebutuhanJabatan}
             type="jabatan"
             bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
+            akTambahan={estimasi.akTambahan}
           />
         </div>
       </div>
@@ -1280,7 +1309,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fungsi untuk mengambil data dari Google Sheets - REVISI
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
@@ -1289,7 +1317,7 @@ const App: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:L` // Kembali ke range semula
+          range: `${SHEET_NAME}!A:L`
         }
       });
 
@@ -1297,20 +1325,17 @@ const App: React.FC = () => {
 
       const rows = data.values || [];
       
-      console.log('Data dari Google Sheets:', rows); // Debug log
+      console.log('Data dari Google Sheets:', rows);
       
-      // Mapping data dari spreadsheet ke interface Karyawan - REVISI
-      const karyawanData: Karyawan[] = rows.slice(1) // Skip header row
-        .filter((row: any[]) => row.length > 0 && row[0]) // Filter baris yang tidak kosong
+      const karyawanData: Karyawan[] = rows.slice(1)
+        .filter((row: any[]) => row.length > 0 && row[0])
         .map((row: any[], index: number) => {
-          // Konversi format angka (ganti koma dengan titik dan parse float)
           let akKumulatifValue = 0;
           if (row[6]) {
             const akValue = row[6].toString().replace(',', '.');
             akKumulatifValue = parseFloat(akValue) || 0;
           }
 
-          // Parse data dari NIP
           const nipData = parseNIP(row[0]?.toString() || '');
           
           return {
@@ -1326,10 +1351,8 @@ const App: React.FC = () => {
             tmtJabatan: row[9]?.toString() || '',
             tmtPangkat: row[10]?.toString() || '',
             pendidikan: row[11]?.toString() || '',
-            // Data dari NIP
             tanggalLahir: nipData.tanggalLahir,
             jenisKelamin: nipData.jenisKelamin,
-            // Data opsional
             tempatLahir: '',
             agama: '',
             email: '',
@@ -1338,7 +1361,7 @@ const App: React.FC = () => {
           };
         });
 
-      console.log('Data karyawan yang diproses:', karyawanData); // Debug log
+      console.log('Data karyawan yang diproses:', karyawanData);
       setKaryawanList(karyawanData);
       
     } catch (error: any) {
