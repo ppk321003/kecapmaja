@@ -368,7 +368,7 @@ const ProgressCard: React.FC<{
     if (bisaUsul) return 'bg-green-500';
     if (finalPercentage >= 80) return 'bg-blue-500';
     if (finalPercentage >= 50) return 'bg-yellow-500';
-    return 'bg-grey-300';
+    return 'bg-grey-500';
   };
 
   const getStatusVariant = () => {
