@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN AK REAL DI TABEL
+// App.tsx - VERSI DIPERBAIKI DENGAN KEBUTUHAN AK KUMLULATIF YANG BENAR
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -63,33 +63,23 @@ interface EstimasiKenaikan {
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "data";
 
-// ==================== UTILITIES - SESUAI JENJANG LEMBAGA ANDA ====================
+// ==================== UTILITIES - SESUAI PERATURAN BKN ====================
 class AngkaKreditCalculator {
-  // Koefisien tahunan sesuai Peraturan BKN Pasal 13 - DISESUAIKAN
+  // Koefisien tahunan sesuai Peraturan BKN Pasal 13
   static getKoefisien(jabatan: string): number {
     const koefisienMap: { [key: string]: number } = {
-      // KATEGORI KEAHLIAN - Statistisi
+      // KATEGORI KEAHLIAN
       'Ahli Pertama': 12.5,
       'Ahli Muda': 25.0,
       'Ahli Madya': 37.5,
       'Ahli Utama': 50.0,
-      
-      // KATEGORI KEAHLIAN - Pranata Komputer
-      'Pranata Komputer Ahli Pertama': 12.5,
-      'Pranata Komputer Ahli Muda': 25.0,
-      'Pranata Komputer Ahli Madya': 37.5,
-      'Pranata Komputer Ahli Utama': 50.0,
       
       // KATEGORI KETERAMPILAN
       'Terampil': 8.0,
       'Mahir': 12.5,
       'Penyelia': 25.0,
       
-      // JABATAN STRUKTURAL
-      'Kepala BPS': 50.0,
-      'Kepala Subbagian Umum': 37.5,
-      
-      // FUNGSIONAL UMUM
+      // Default
       'Fungsional Umum': 5.0
     };
     
@@ -112,12 +102,10 @@ class AngkaKreditCalculator {
     const tmtJabatan = new Date(karyawan.tmtJabatan);
     const hariIni = new Date();
     
-    // Jika TMT masih di masa depan, tidak ada AK tambahan
     if (tmtJabatan > hariIni) {
       return 0;
     }
     
-    // Hitung selisih bulan antara TMT Jabatan dan hari ini
     const selisihBulan = this.hitungSelisihBulan(tmtJabatan, hariIni);
     
     if (selisihBulan <= 0) {
@@ -131,7 +119,7 @@ class AngkaKreditCalculator {
     return Number(akTambahan.toFixed(2));
   }
 
-  // Hitung AK Real saat ini (AK Awal + AK Tambahan)
+  // Hitung AK Real saat ini (AK Database + AK Tambahan)
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
     const akReal = karyawan.akKumulatif + akTambahan;
@@ -188,42 +176,51 @@ class AngkaKreditCalculator {
     };
     
     const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-    return kebutuhan[golonganSekarang] || 100;
+    return kebutuhan[golonganSekarang] || 0;
   }
 
-  // Kebutuhan AK untuk kenaikan jabatan - DISESUAIKAN DENGAN JABATAN LEMBAGA ANDA
+  // Kebutuhan AK KUMLULATIF untuk kenaikan jabatan - SESUAI Pasal 21 ayat (4)
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+    // KEBUTUHAN AK KUMLULATIF UNTUK KENAIKAN JENJANG
     const kebutuhanKeahlian: { [key: string]: number } = {
-      'Ahli Pertama': 100,  // → Ahli Muda
-      'Ahli Muda': 200,     // → Ahli Madya  
-      'Ahli Madya': 300,    // → Ahli Utama
+      'Ahli Pertama': 100,  // → Ahli Muda (50 + 50 dari III/a dan III/b)
+      'Ahli Muda': 200,     // → Ahli Madya (100 + 100 dari III/c dan III/d)
+      'Ahli Madya': 450,    // → Ahli Utama (150 + 150 + 150 dari IV/a, IV/b, IV/c)
       'Ahli Utama': 0       // Sudah level tertinggi
     };
     
     const kebutuhanKeterampilan: { [key: string]: number } = {
-      'Terampil': 60,   // → Mahir
-      'Mahir': 100,     // → Penyelia
+      'Terampil': 60,   // → Mahir (20 + 20 + 20 dari II/b, II/c, II/d)
+      'Mahir': 100,     // → Penyelia (50 + 50 dari III/a dan III/b)
       'Penyelia': 0     // Sudah level tertinggi
     };
-    
+
+    // Cari kebutuhan berdasarkan kata kunci dalam jabatan
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
         if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
+      // Default untuk Keahlian
+      if (jabatanSekarang.includes('Pertama')) return 100;
+      if (jabatanSekarang.includes('Muda')) return 200;
+      if (jabatanSekarang.includes('Madya')) return 450;
     } else {
       for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
         if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
+      // Default untuk Keterampilan
+      if (jabatanSekarang.includes('Terampil')) return 60;
+      if (jabatanSekarang.includes('Mahir')) return 100;
     }
     
     return 0;
   }
 
-  // Estimasi kenaikan yang BENAR dengan AK Real
+  // Estimasi kenaikan yang BENAR dengan AK Real dan kebutuhan kumulatif
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
@@ -325,6 +322,26 @@ class AngkaKreditCalculator {
     return 'Tidak Diketahui';
   }
 
+  // Fungsi untuk mendapatkan penjelasan kebutuhan AK
+  static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string): string {
+    if (kategori === 'Keahlian') {
+      if (jabatanSekarang.includes('Pertama')) {
+        return "Kebutuhan 100 AK kumulatif dari perjalanan di jenjang Ahli Pertama (III/a dan III/b)";
+      } else if (jabatanSekarang.includes('Muda')) {
+        return "Kebutuhan 200 AK kumulatif dari perjalanan di jenjang Ahli Muda (III/c dan III/d)";
+      } else if (jabatanSekarang.includes('Madya')) {
+        return "Kebutuhan 450 AK kumulatif dari perjalanan di jenjang Ahli Madya (IV/a, IV/b, dan IV/c)";
+      }
+    } else {
+      if (jabatanSekarang.includes('Terampil')) {
+        return "Kebutuhan 60 AK kumulatif dari perjalanan di jenjang Terampil (II/b, II/c, dan II/d)";
+      } else if (jabatanSekarang.includes('Mahir')) {
+        return "Kebutuhan 100 AK kumulatif dari perjalanan di jenjang Mahir (III/a dan III/b)";
+      }
+    }
+    return "Kebutuhan AK kumulatif untuk kenaikan jenjang";
+  }
+
   static getRekomendasiKarir(karyawan: Karyawan): string {
     if (karyawan.kategori === 'Keterampilan') {
       const pendidikan = karyawan.pendidikan.toLowerCase();
@@ -363,7 +380,7 @@ class AngkaKreditCalculator {
 
 // ==================== COMPONENTS ====================
 
-// Komponen Progress Bar dengan AK Real
+// Komponen Progress Bar dengan AK Real dan Kebutuhan Kumulatif
 const ProgressBar: React.FC<{ 
   progress: number; 
   label: string; 
@@ -373,7 +390,8 @@ const ProgressBar: React.FC<{
   type: 'pangkat' | 'jabatan';
   bulanDibutuhkan: number;
   akTambahan: number;
-}> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan }) => {
+  penjelasan: string;
+}> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan }) => {
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
   const percentage = isTidakAda ? 0 : Math.min(progress * 100, 100);
   const kelebihanAK = Math.max(0, akRealSaatIni - kebutuhanAK);
@@ -415,6 +433,13 @@ const ProgressBar: React.FC<{
         </div>
       </div>
       
+      {/* Penjelasan Kebutuhan */}
+      {!isTidakAda && penjelasan && (
+        <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+          <p className="text-xs text-blue-700">{penjelasan}</p>
+        </div>
+      )}
+      
       {!isTidakAda && (
         <>
           <div className="flex justify-between items-center mb-2">
@@ -433,7 +458,7 @@ const ProgressBar: React.FC<{
       
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600 mb-3">
         <div className="text-center">
-          <div className="font-semibold">AK Awal</div>
+          <div className="font-semibold">AK Database</div>
           <div className="text-gray-500">{akSaatIni.toFixed(2)}</div>
         </div>
         <div className="text-center">
@@ -885,7 +910,7 @@ const EmployeeTable: React.FC<{
                   onClick={() => handleSort('akKumulatif')}
                 >
                   <div className="flex items-center">
-                    AK Awal
+                    AK Database
                     <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
                   </div>
                 </th>
@@ -964,7 +989,7 @@ const EmployeeTable: React.FC<{
           <div>
             <p className="text-blue-800 text-sm font-medium">Informasi AK Real</p>
             <p className="text-blue-700 text-xs">
-              <strong>AK Real = AK Awal + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+              <strong>AK Real = AK Database + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
             </p>
           </div>
         </div>
@@ -973,11 +998,12 @@ const EmployeeTable: React.FC<{
   );
 };
 
-// Komponen Estimasi Kenaikan dengan AK Real
+// Komponen Estimasi Kenaikan dengan penjelasan kebutuhan kumulatif
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
+  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori);
 
   const hitungEstimasiTahunBulan = (bulanDibutuhkan: number) => {
     const tahun = Math.floor(bulanDibutuhkan / 12);
@@ -996,7 +1022,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-sm text-blue-700 font-medium">AK Awal</p>
+            <p className="text-sm text-blue-700 font-medium">AK Database</p>
             <p className="text-xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</p>
           </div>
           <div>
@@ -1012,6 +1038,19 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           *AK Tambahan dihitung sejak TMT Jabatan {new Date(karyawan.tmtJabatan).toLocaleDateString('id-ID')} sampai hari ini
         </p>
       </div>
+
+      {/* Penjelasan Kebutuhan Kumulatif */}
+      {penjelasanKebutuhan && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <span className="text-yellow-500 mr-2">ℹ️</span>
+            <div>
+              <p className="text-yellow-800 text-sm font-medium">Informasi Kebutuhan Kumulatif</p>
+              <p className="text-yellow-700 text-xs">{penjelasanKebutuhan}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Radio Button Predikat Kinerja */}
       <div className="mb-6">
@@ -1272,13 +1311,14 @@ const InputKinerjaForm: React.FC<{
   );
 };
 
-// Komponen Dashboard Karyawan dengan AK Real
+// Komponen Dashboard Karyawan dengan kebutuhan kumulatif
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
   const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
   
   const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
   const kebutuhanJabatan = AngkaKreditCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori);
   
   // Hitung AK Real untuk progress bar
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
@@ -1317,7 +1357,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan AK Real */}
+        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan kebutuhan kumulatif */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
             progress={progressPangkat}
@@ -1328,6 +1368,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             type="pangkat"
             bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
             akTambahan={estimasi.akTambahan}
+            penjelasan={`Kebutuhan ${kebutuhanPangkat} AK untuk kenaikan pangkat ke ${golonganBerikutnya}`}
           />
           
           <ProgressBar 
@@ -1339,6 +1380,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             type="jabatan"
             bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
             akTambahan={estimasi.akTambahan}
+            penjelasan={penjelasanKebutuhan}
           />
         </div>
       </div>
