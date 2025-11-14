@@ -751,7 +751,7 @@ const EmployeeTable: React.FC<{
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Penghitungan Angka Kreditn</CardTitle>
+        <CardTitle>Penghitungan Angka Kredit</CardTitle>
         <CardDescription>Berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
@@ -809,13 +809,13 @@ const EmployeeTable: React.FC<{
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
-                  <TableHead>NIP</TableHead>
+                  <TableHead className="w-[200px]">NIP</TableHead>
                   <TableHead>Golongan</TableHead>
                   <TableHead>Jabatan</TableHead>
-                  <TableHead className="text-right">Angka Kredit Awal</TableHead>
-                  <TableHead className="text-right">Angka Kredit Tambahan</TableHead>
-                  <TableHead className="text-right">Aangka Kredit Akhir</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="text-right">AK Awal</TableHead>
+                  <TableHead className="text-right">AK Tambahan</TableHead>
+                  <TableHead className="text-right">AK Real</TableHead>
+                  <TableHead className="text-right w-[70px]">Aksi</TableHead> {/* Sesuaikan width */}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -823,7 +823,7 @@ const EmployeeTable: React.FC<{
                   <TableRow key={karyawan.nip} className={selectedNip === karyawan.nip ? 'bg-accent' : ''}>
                     <TableCell className="font-medium">{karyawan.nama}</TableCell>
                     <TableCell>
-                      <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
+                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
                         {karyawan.nip}
                       </code>
                     </TableCell>
@@ -841,9 +841,12 @@ const EmployeeTable: React.FC<{
                     <TableCell className="text-right">
                       <Button 
                         size="sm" 
+                        variant="ghost"
                         onClick={() => onSelect(karyawan)}
+                        className="h-8 w-8 p-0 hover:bg-accent"
+                        title="Masuk ke detail karyawan"
                       >
-                        Pilih
+                        <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
