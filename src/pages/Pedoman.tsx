@@ -1,4 +1,4 @@
-// App.tsx - VERSI DIPERBAIKI DENGAN KEBUTUHAN AK KUMLULATIF YANG BENAR
+// App.tsx - VERSI DIPERBAIKI DENGAN FIX PROGRESS DAN ESTIMASI
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -238,8 +238,9 @@ class AngkaKreditCalculator {
     const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = (predikatAsumsi * koefisien) / 12;
     
-    const bulanDibutuhkanPangkat = akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0;
-    const bulanDibutuhkanJabatan = akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 0;
+    // FIX: Jika kekurangan <= 0, maka bulanDibutuhkan = 0
+    const bulanDibutuhkanPangkat = kekuranganPangkat <= 0 ? 0 : (akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0);
+    const bulanDibutuhkanJabatan = kekuranganJabatan <= 0 ? 0 : (akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 0);
     
     const sekarang = new Date();
     const estimasiTanggalPangkat = new Date(sekarang);
@@ -380,7 +381,7 @@ class AngkaKreditCalculator {
 
 // ==================== COMPONENTS ====================
 
-// Komponen Progress Bar dengan AK Real dan Kebutuhan Kumulatif
+// Komponen Progress Bar dengan AK Real dan Kebutuhan Kumulatif - DIPERBAIKI
 const ProgressBar: React.FC<{ 
   progress: number; 
   label: string; 
@@ -391,8 +392,11 @@ const ProgressBar: React.FC<{
   bulanDibutuhkan: number;
   akTambahan: number;
   penjelasan: string;
-}> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan }) => {
+  kekuranganAK: number;
+}> = ({ progress, label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK }) => {
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
+  
+  // FIX: Progress tidak boleh lebih dari 100%
   const percentage = isTidakAda ? 0 : Math.min(progress * 100, 100);
   const kelebihanAK = Math.max(0, akRealSaatIni - kebutuhanAK);
   
@@ -404,9 +408,10 @@ const ProgressBar: React.FC<{
     return 'from-red-500 to-red-600';
   };
 
+  // FIX: Gunakan kekuranganAK untuk menentukan status, bukan bulanDibutuhkan
   const getStatusText = () => {
     if (isTidakAda) return 'Sudah level tertinggi';
-    if (bulanDibutuhkan === 0) return '✅ Bisa diusulkan sekarang!';
+    if (kekuranganAK <= 0) return '✅ Bisa diusulkan sekarang!';
     if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
     if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${bulanDibutuhkan} bulan)`;
     if (bulanDibutuhkan <= 24) return `🟡 Butuh waktu (${bulanDibutuhkan} bulan)`;
@@ -423,7 +428,7 @@ const ProgressBar: React.FC<{
         </div>
         <div className={`text-xs font-medium px-2 py-1 rounded ${
           isTidakAda ? 'bg-gray-100 text-gray-800' :
-          bulanDibutuhkan === 0 ? 'bg-green-100 text-green-800' :
+          kekuranganAK <= 0 ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800' :
           bulanDibutuhkan <= 24 ? 'bg-yellow-100 text-yellow-800' :
@@ -479,9 +484,9 @@ const ProgressBar: React.FC<{
           <div className="font-semibold">{isTidakAda ? 'Status' : 'Kekurangan'}</div>
           <div className={
             isTidakAda ? 'text-gray-600' :
-            kebutuhanAK - akRealSaatIni > 0 ? 'text-red-600' : 'text-green-600'
+            kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'
           }>
-            {isTidakAda ? 'Maksimal' : Math.max(0, kebutuhanAK - akRealSaatIni).toFixed(2)}
+            {isTidakAda ? 'Maksimal' : kekuranganAK.toFixed(2)}
           </div>
         </div>
       </div>
@@ -998,7 +1003,7 @@ const EmployeeTable: React.FC<{
   );
 };
 
-// Komponen Estimasi Kenaikan dengan penjelasan kebutuhan kumulatif
+// Komponen Estimasi Kenaikan dengan penjelasan kebutuhan kumulatif - DIPERBAIKI
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
@@ -1097,8 +1102,10 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <div className="flex justify-between">
               <span className="text-gray-600">Estimasi tahun:</span>
               <span className="font-semibold text-blue-600">
+                {/* FIX: Format tahun dan bulan yang konsisten */}
                 {estimasiPangkat.tahun > 0 ? `${estimasiPangkat.tahun} tahun ` : ''}
-                {estimasiPangkat.bulan > 0 ? `${estimasiPangkat.bulan} bulan` : estimasiPangkat.tahun === 0 ? `${estimasiPangkat.bulan} bulan` : ''}
+                {estimasiPangkat.bulan > 0 ? `${estimasiPangkat.bulan} bulan` : ''}
+                {(estimasiPangkat.tahun === 0 && estimasiPangkat.bulan === 0) ? '0 bulan' : ''}
               </span>
             </div>
             <div className="flex justify-between">
@@ -1132,8 +1139,10 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <div className="flex justify-between">
               <span className="text-gray-600">Estimasi tahun:</span>
               <span className="font-semibold text-blue-600">
+                {/* FIX: Format tahun dan bulan yang konsisten */}
                 {estimasiJabatan.tahun > 0 ? `${estimasiJabatan.tahun} tahun ` : ''}
-                {estimasiJabatan.bulan > 0 ? `${estimasiJabatan.bulan} bulan` : estimasiJabatan.tahun === 0 ? `${estimasiJabatan.bulan} bulan` : ''}
+                {estimasiJabatan.bulan > 0 ? `${estimasiJabatan.bulan} bulan` : ''}
+                {(estimasiJabatan.tahun === 0 && estimasiJabatan.bulan === 0) ? '0 bulan' : ''}
               </span>
             </div>
             <div className="flex justify-between">
@@ -1311,7 +1320,7 @@ const InputKinerjaForm: React.FC<{
   );
 };
 
-// Komponen Dashboard Karyawan dengan kebutuhan kumulatif
+// Komponen Dashboard Karyawan dengan kebutuhan kumulatif - DIPERBAIKI
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
   const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
@@ -1322,8 +1331,10 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   
   // Hitung AK Real untuk progress bar
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
-  const progressPangkat = kebutuhanPangkat > 0 ? estimasi.akRealSaatIni / kebutuhanPangkat : 0;
-  const progressJabatan = kebutuhanJabatan > 0 ? estimasi.akRealSaatIni / kebutuhanJabatan : 0;
+  
+  // FIX: Progress tidak boleh lebih dari 100%
+  const progressPangkat = kebutuhanPangkat > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkat, 1) : 0;
+  const progressJabatan = kebutuhanJabatan > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanJabatan, 1) : 0;
 
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
@@ -1357,7 +1368,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan kebutuhan kumulatif */}
+        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan kebutuhan kumulatif - DIPERBAIKI */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
             progress={progressPangkat}
@@ -1369,6 +1380,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
             akTambahan={estimasi.akTambahan}
             penjelasan={`Kebutuhan ${kebutuhanPangkat} AK untuk kenaikan pangkat ke ${golonganBerikutnya}`}
+            kekuranganAK={estimasi.kekuranganAKPangkat}
           />
           
           <ProgressBar 
@@ -1381,6 +1393,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
             akTambahan={estimasi.akTambahan}
             penjelasan={penjelasanKebutuhan}
+            kekuranganAK={estimasi.kekuranganAKJabatan}
           />
         </div>
       </div>
