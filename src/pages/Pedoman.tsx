@@ -903,15 +903,15 @@ const EmployeeTable: React.FC<{
                     <span className="font-bold text-blue-600 text-xs inline-block">{karyawan.akKumulatif.toFixed(2)}</span>
                   </td>
                   <td className="px-3 py-2">
-<button
-  onClick={() => onSelect(karyawan)}
-  className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
-  title="Lihat detail karyawan"
->
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-  </svg>
-</button>
+                  <button
+                    onClick={() => onSelect(karyawan)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                    title="Lihat detail karyawan"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                   </td>
                 </tr>
               ))}
@@ -1215,7 +1215,6 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
       <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
         <div className="mb-4 pb-3 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800 mb-1">{karyawan.nama}</h2>
           <div className="mt-2 p-2 bg-blue-50 rounded-lg">
             <p className="text-md font-bold text-blue-600">AK Kumulatif: {karyawan.akKumulatif.toFixed(2)}</p>
           </div>
