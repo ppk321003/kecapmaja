@@ -381,7 +381,7 @@ const ProgressCard: React.FC<{
   };
 
   const getStatusText = () => {
-    if (isTidakAda) return 'Level tertinggi';
+    if (isTidakAda) return 'Tingkatan tertinggi';
     if (bisaUsul) {
       if (isKenaikanJenjang && type === 'jabatan') return 'Bisa usul Jabatan & Pangkat!';
       return 'Bisa diusulkan!';
@@ -657,7 +657,7 @@ const BiodataCard: React.FC<{
               <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
               <p className="text-2xl font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">
-                Awal: {karyawan.akKumulatif.toFixed(2)} + Tambahan: {akTambahan.toFixed(2)}
+                AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
               </p>
             </div>
           </div>
@@ -931,8 +931,8 @@ const EstimasiKenaikanCard: React.FC<{
               <div>
                 <h4 className="font-semibold text-yellow-800 mb-1">Kenaikan Jenjang</h4>
                 <p className="text-yellow-700 text-sm">
-                  Ini adalah kenaikan JENJANG. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
-                  <strong>JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.
+                  Ini adalah kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
+                  <strong>Jabatan dan Pangkat</strong>. Pangkat akan mengikuti setelah proses administrasi usulan kenaikan pangkat.
                 </p>
               </div>
             </div>
