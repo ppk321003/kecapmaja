@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronBigRight } from "lucide-react";
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -904,13 +903,13 @@ const EmployeeTable: React.FC<{
                     <span className="font-bold text-blue-600 text-xs inline-block">{karyawan.akKumulatif.toFixed(2)}</span>
                   </td>
                   <td className="px-3 py-2">
-
-                  <button
-                    onClick={() => onSelect(karyawan)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
-                  >
-                    <ExternalLink size={14} />
-                  </button>
+                    <button
+                      onClick={() => onSelect(karyawan)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors flex items-center"
+                    >
+                      <span className="mr-1">→</span>
+                      ""
+                    </button>
                   </td>
                 </tr>
               ))}
