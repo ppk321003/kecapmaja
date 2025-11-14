@@ -292,17 +292,17 @@ class AngkaKreditCalculator {
     if (isKenaikanJenjang) {
       if (kategori === 'Keahlian') {
         if (jabatanSekarang.includes('Pertama') && golonganSekarang === 'III/b') {
-          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Ahli Muda. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
+          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Ahli Muda. Anda dapat mengusulkan kenaikan jabatan kemudian kenaikan pangkat.";
         } else if (jabatanSekarang.includes('Muda') && golonganSekarang === 'III/d') {
-          return "Kenaikan jenjang butuh 200 AK kumulatif untuk naik ke Ahli Madya. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
+          return "Kenaikan jenjang butuh 200 AK kumulatif untuk naik ke Ahli Madya. Anda dapat mengusulkan kenaikan jabatan kemudian kenaikan pangkat.";
         } else if (jabatanSekarang.includes('Madya') && golonganSekarang === 'IV/c') {
-          return "Kenaikan jenjang butuh 450 AK kumulatif untuk naik ke Ahli Utama. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
+          return "Kenaikan jenjang butuh 450 AK kumulatif untuk naik ke Ahli Utama. Anda dapat mengusulkan kenaikan jabatan kemudian kenaikan pangkat.";
         }
       } else {
         if (jabatanSekarang.includes('Terampil') && golonganSekarang === 'II/d') {
-          return "Kenaikan jenjang butuh 60 AK kumulatif untuk naik ke Mahir. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
+          return "Kenaikan jenjang butuh 60 AK kumulatif untuk naik ke Mahir. Anda dapat mengusulkan kenaikan jabatan kemudian kenaikan pangkat.";
         } else if (jabatanSekarang.includes('Mahir') && golonganSekarang === 'III/b') {
-          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Penyelia. Anda dapat mengusulkan kenaikan jabatan dan pangkat.";
+          return "Kenaikan jenjang butuh 100 AK kumulatif untuk naik ke Penyelia. Anda dapat mengusulkan kenaikan jabatan kemudian kenaikan pangkatt.";
         }
       }
     }
@@ -472,7 +472,7 @@ const ProgressCard: React.FC<{
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
             <span className="text-green-800 text-sm font-semibold">
               {isKenaikanJenjang && type === 'jabatan' 
-                ? '✅ Bisa mengusulkan kenaikan JABATAN dan PANGKAT sekaligus!' 
+                ? '✅ Bisa mengusulkan kenaikan JABATAN dan PANGKAT!' 
                 : '✅ Sudah memenuhi syarat untuk diusulkan!'}
             </span>
           </div>
