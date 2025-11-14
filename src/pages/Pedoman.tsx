@@ -364,10 +364,10 @@ const ProgressCard: React.FC<{
 
   const getColorClass = () => {
     if (isTidakAda) return 'bg-gray-400';
-    if (bisaUsul) return 'bg-green-500';
-    if (finalPercentage >= 80) return 'bg-blue-500';
-    if (finalPercentage >= 50) return 'bg-yellow-500';
-    return 'bg-gray-500';
+    if (bisaUsul) return 'bg-gray-400';
+    if (finalPercentage >= 80) return 'bg-gray-400';
+    if (finalPercentage >= 50) return 'bg-gray-400';
+    return 'bg-gray-400';
   };
 
   const getStatusVariant = () => {
