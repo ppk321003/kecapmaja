@@ -300,6 +300,10 @@ const ProgressBar: React.FC<{
     return 'from-red-500 to-red-600';
   };
 
+  const getIcon = () => {
+    return type === 'pangkat' ? '⭐' : '📈';
+  };
+
   const getStatusText = () => {
     if (bulanDibutuhkan === 0) return '✅ Bisa diusulkan sekarang!';
     if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
