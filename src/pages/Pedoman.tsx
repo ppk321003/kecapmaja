@@ -1,4 +1,4 @@
-// App.tsx - VERSI DIPERBAIKI DENGAN FIX PROGRESS DAN ESTIMASI
+// App.tsx - VERSI DIPERBAIKI DENGAN LOGIKA KENAIKAN JABATAN & PANGKAT
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +57,7 @@ interface EstimasiKenaikan {
   akPerBulan: number;
   akRealSaatIni: number;
   akTambahan: number;
+  isKenaikanJenjang: boolean;
 }
 
 // ==================== GOOGLE SHEETS CONFIG ====================
@@ -220,13 +221,35 @@ class AngkaKreditCalculator {
     return 0;
   }
 
-  // Estimasi kenaikan yang BENAR dengan AK Real dan kebutuhan kumulatif
+  // Cek apakah ini kenaikan jenjang (ganti jabatan + pangkat)
+  static isKenaikanJenjang(jabatanSekarang: string, jabatanBerikutnya: string): boolean {
+    const jenjangKeahlian = ['Ahli Pertama', 'Ahli Muda', 'Ahli Madya', 'Ahli Utama'];
+    const jenjangKeterampilan = ['Terampil', 'Mahir', 'Penyelia'];
+    
+    const currentIndexKeahlian = jenjangKeahlian.findIndex(j => jabatanSekarang.includes(j));
+    const nextIndexKeahlian = jenjangKeahlian.findIndex(j => jabatanBerikutnya.includes(j));
+    
+    const currentIndexKeterampilan = jenjangKeterampilan.findIndex(j => jabatanSekarang.includes(j));
+    const nextIndexKeterampilan = jenjangKeterampilan.findIndex(j => jabatanBerikutnya.includes(j));
+    
+    return (currentIndexKeahlian !== -1 && nextIndexKeahlian === currentIndexKeahlian + 1) ||
+           (currentIndexKeterampilan !== -1 && nextIndexKeterampilan === currentIndexKeterampilan + 1);
+  }
+
+  // Estimasi kenaikan yang BENAR dengan logika terbaru
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
     
-    const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const isKenaikanJenjang = this.isKenaikanJenjang(karyawan.jabatan, jabatanBerikutnya);
+    
+    // Untuk kenaikan jenjang, kebutuhan pangkat = kebutuhan jabatan
+    let kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
     const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+    
+    if (isKenaikanJenjang) {
+      kebutuhanPangkat = kebutuhanJabatan; // Sama dengan kebutuhan jabatan
+    }
     
     // Hitung AK Real saat ini (termasuk AK tambahan sejak TMT)
     const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
@@ -238,7 +261,7 @@ class AngkaKreditCalculator {
     const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = (predikatAsumsi * koefisien) / 12;
     
-    // FIX: Jika kekurangan <= 0, maka bulanDibutuhkan = 0
+    // Hitung bulan dibutuhkan
     const bulanDibutuhkanPangkat = kekuranganPangkat <= 0 ? 0 : (akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0);
     const bulanDibutuhkanJabatan = kekuranganJabatan <= 0 ? 0 : (akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 0);
     
@@ -248,6 +271,10 @@ class AngkaKreditCalculator {
     
     const estimasiTanggalJabatan = new Date(sekarang);
     estimasiTanggalJabatan.setMonth(sekarang.getMonth() + bulanDibutuhkanJabatan);
+    
+    // Logika "Bisa Usul" sesuai kesepakatan
+    const bisaUsulJabatan = akRealSaatIni >= kebutuhanJabatan && kebutuhanJabatan > 0;
+    const bisaUsulPangkat = akRealSaatIni >= kebutuhanPangkat && kebutuhanPangkat > 0;
     
     return {
       kebutuhanAKPangkat: kebutuhanPangkat,
@@ -267,13 +294,14 @@ class AngkaKreditCalculator {
         month: 'long',
         year: 'numeric'
       }),
-      bisaUsulPangkat: kekuranganPangkat <= 0,
-      bisaUsulJabatan: kekuranganJabatan <= 0,
+      bisaUsulPangkat,
+      bisaUsulJabatan,
       golonganBerikutnya,
       jabatanBerikutnya,
       akPerBulan: Number(akPerBulan.toFixed(2)),
       akRealSaatIni,
-      akTambahan
+      akTambahan,
+      isKenaikanJenjang
     };
   }
 
@@ -324,23 +352,27 @@ class AngkaKreditCalculator {
   }
 
   // Fungsi untuk mendapatkan penjelasan kebutuhan AK
-  static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string): string {
-    if (kategori === 'Keahlian') {
-      if (jabatanSekarang.includes('Pertama')) {
-        return "Kebutuhan 100 AK kumulatif dari perjalanan di jenjang Ahli Pertama (III/a dan III/b)";
-      } else if (jabatanSekarang.includes('Muda')) {
-        return "Kebutuhan 200 AK kumulatif dari perjalanan di jenjang Ahli Muda (III/c dan III/d)";
-      } else if (jabatanSekarang.includes('Madya')) {
-        return "Kebutuhan 450 AK kumulatif dari perjalanan di jenjang Ahli Madya (IV/a, IV/b, dan IV/c)";
-      }
-    } else {
-      if (jabatanSekarang.includes('Terampil')) {
-        return "Kebutuhan 60 AK kumulatif dari perjalanan di jenjang Terampil (II/b, II/c, dan II/d)";
-      } else if (jabatanSekarang.includes('Mahir')) {
-        return "Kebutuhan 100 AK kumulatif dari perjalanan di jenjang Mahir (III/a dan III/b)";
+  static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string, isKenaikanJenjang: boolean): string {
+    if (isKenaikanJenjang) {
+      if (kategori === 'Keahlian') {
+        if (jabatanSekarang.includes('Pertama')) {
+          return "Kenaikan JENJANG: Butuh 100 AK kumulatif untuk naik ke Ahli Muda. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+        } else if (jabatanSekarang.includes('Muda')) {
+          return "Kenaikan JENJANG: Butuh 200 AK kumulatif untuk naik ke Ahli Madya. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+        } else if (jabatanSekarang.includes('Madya')) {
+          return "Kenaikan JENJANG: Butuh 450 AK kumulatif untuk naik ke Ahli Utama. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+        }
+      } else {
+        if (jabatanSekarang.includes('Terampil')) {
+          return "Kenaikan JENJANG: Butuh 60 AK kumulatif untuk naik ke Mahir. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+        } else if (jabatanSekarang.includes('Mahir')) {
+          return "Kenaikan JENJANG: Butuh 100 AK kumulatif untuk naik ke Penyelia. Dapat mengusulkan kenaikan JABATAN dan PANGKAT sekaligus.";
+        }
       }
     }
-    return "Kebutuhan AK kumulatif untuk kenaikan jenjang";
+    
+    // Untuk kenaikan reguler
+    return "Kenaikan PANGKAT reguler: Dapat diusulkan terpisah tanpa menunggu kenaikan jabatan.";
   }
 
   static getRekomendasiKarir(karyawan: Karyawan): string {
@@ -352,7 +384,7 @@ class AngkaKreditCalculator {
         pendidikan.includes('d1') || pendidikan.includes('d2') || 
         pendidikan.includes('d3') || pendidikan.includes('diploma') ||
         pendidikan.includes('slta');
-      
+
       const isPendidikanTinggi = 
         pendidikan.includes('d4') || pendidikan.includes('s1') || 
         pendidikan.includes('sarjana') || pendidikan.includes('s2') ||
@@ -381,7 +413,7 @@ class AngkaKreditCalculator {
 
 // ==================== COMPONENTS ====================
 
-// PERBAIKAN DI KOMPONEN PROGRESSBAR
+// KOMPONEN PROGRESSBAR DENGAN LOGIKA BARU
 const ProgressBar: React.FC<{ 
   label: string; 
   akSaatIni: number;
@@ -392,24 +424,26 @@ const ProgressBar: React.FC<{
   akTambahan: number;
   penjelasan: string;
   kekuranganAK: number;
-}> = ({ label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK }) => {
+  bisaUsul: boolean;
+  isKenaikanJenjang?: boolean;
+}> = ({ label, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK, bisaUsul, isKenaikanJenjang = false }) => {
   const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
   
-  // PERBAIKAN PENTING: Progress TIDAK BOLEH lebih dari 100%
+  // Progress TIDAK BOLEH lebih dari 100%
   const progressPercentage = isTidakAda ? 0 : Math.min((akRealSaatIni / kebutuhanAK) * 100, 100);
   
-  // PERBAIKAN: Jika sudah memenuhi syarat, progress = 100%
-  const finalPercentage = kekuranganAK <= 0 ? 100 : progressPercentage;
+  // Jika sudah memenuhi syarat, progress = 100%
+  const finalPercentage = bisaUsul ? 100 : progressPercentage;
   
   const getColorClass = () => {
     if (isTidakAda) return 'from-gray-300 to-gray-400';
-    if (finalPercentage >= 100) return 'from-green-500 to-green-600';
+    if (bisaUsul) return 'from-green-500 to-green-600';
     if (finalPercentage >= 80) return 'from-blue-500 to-blue-600';
     if (finalPercentage >= 50) return 'from-yellow-500 to-yellow-600';
     return 'from-red-500 to-red-600';
   };
 
-  // PERBAIKAN: Format estimasi waktu yang benar
+  // Format estimasi waktu yang benar
   const formatEstimasiWaktu = (bulan: number) => {
     if (bulan <= 0) return '0 bulan';
     
@@ -427,7 +461,12 @@ const ProgressBar: React.FC<{
 
   const getStatusText = () => {
     if (isTidakAda) return 'Sudah level tertinggi';
-    if (kekuranganAK <= 0) return '✅ Bisa diusulkan sekarang!';
+    if (bisaUsul) {
+      if (isKenaikanJenjang && type === 'jabatan') {
+        return '✅ Bisa usul JABATAN & PANGKAT sekaligus!';
+      }
+      return '✅ Bisa diusulkan sekarang!';
+    }
     
     const estimasi = formatEstimasiWaktu(bulanDibutuhkan);
     if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${estimasi})`;
@@ -436,17 +475,23 @@ const ProgressBar: React.FC<{
     return `🟠 Butuh waktu lebih lama (${estimasi})`;
   };
 
+  const getIcon = () => {
+    if (type === 'pangkat') return '⭐';
+    return '💼';
+  };
+
   return (
     <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
+          <span className="text-lg mr-2">{getIcon()}</span>
           <h3 className="text-md font-semibold text-gray-800">
             {isTidakAda ? `Saat ini ${type === 'pangkat' ? 'Pangkat' : 'Jabatan'} anda sudah Maksimal` : label}
           </h3>
         </div>
         <div className={`text-xs font-medium px-2 py-1 rounded ${
           isTidakAda ? 'bg-gray-100 text-gray-800' :
-          kekuranganAK <= 0 ? 'bg-green-100 text-green-800' :
+          bisaUsul ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800' :
           bulanDibutuhkan <= 24 ? 'bg-yellow-100 text-yellow-800' :
@@ -509,9 +554,13 @@ const ProgressBar: React.FC<{
         </div>
       </div>
 
-      {finalPercentage >= 100 && !isTidakAda && (
+      {bisaUsul && !isTidakAda && (
         <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center">
-          <span className="text-green-800 text-sm font-semibold">✅ Sudah memenuhi syarat!</span>
+          <span className="text-green-800 text-sm font-semibold">
+            {isKenaikanJenjang && type === 'jabatan' 
+              ? '✅ Bisa mengusulkan kenaikan JABATAN dan PANGKAT sekaligus!' 
+              : '✅ Sudah memenuhi syarat untuk diusulkan!'}
+          </span>
         </div>
       )}
     </div>
@@ -1021,14 +1070,14 @@ const EmployeeTable: React.FC<{
   );
 };
 
-// Komponen Estimasi Kenaikan dengan penjelasan kebutuhan kumulatif - DIPERBAIKI
+// Komponen Estimasi Kenaikan dengan logika baru
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
-  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori);
+  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
 
-  // PERBAIKAN: Format estimasi waktu yang benar
+  // Format estimasi waktu yang benar
   const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
     if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
     
@@ -1075,14 +1124,17 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         </p>
       </div>
 
-      {/* Penjelasan Kebutuhan Kumulatif */}
-      {penjelasanKebutuhan && (
+      {/* Informasi Jenis Kenaikan */}
+      {estimasi.isKenaikanJenjang && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-start">
-            <span className="text-yellow-500 mr-2">ℹ️</span>
+            <span className="text-yellow-500 mr-2">🎯</span>
             <div>
-              <p className="text-yellow-800 text-sm font-medium">Informasi Kebutuhan Kumulatif</p>
-              <p className="text-yellow-700 text-xs">{penjelasanKebutuhan}</p>
+              <p className="text-yellow-800 text-sm font-medium">Kenaikan Jenjang</p>
+              <p className="text-yellow-700 text-xs">
+                Ini adalah kenaikan JENJANG. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan 
+                <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.
+              </p>
             </div>
           </div>
         </div>
@@ -1137,8 +1189,10 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Estimasi tanggal:</span>
-              <span className="font-semibold text-blue-600 text-xs">{estimasi.estimasiTanggalPangkat}</span>
+              <span className="text-gray-600">Status:</span>
+              <span className={`font-semibold ${estimasi.bisaUsulPangkat ? 'text-green-600' : 'text-gray-600'}`}>
+                {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}
+              </span>
             </div>
           </div>
         </div>
@@ -1167,12 +1221,24 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Estimasi tanggal:</span>
-              <span className="font-semibold text-blue-600 text-xs">{estimasi.estimasiTanggalJabatan}</span>
+              <span className="text-gray-600">Status:</span>
+              <span className={`font-semibold ${estimasi.bisaUsulJabatan ? 'text-green-600' : 'text-gray-600'}`}>
+                {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi syarat'}
+              </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Informasi Khusus Kenaikan Jenjang */}
+      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
+        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-green-800 text-sm font-semibold text-center">
+            🎉 SELAMAT! Anda sudah memenuhi syarat kenaikan JENJANG. Dapat mengusulkan kenaikan 
+            <strong> JABATAN dan PANGKAT sekaligus</strong>. Pangkat akan mengikuti 1-2 bulan setelah kenaikan jabatan.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-blue-800 text-sm">
@@ -1337,34 +1403,12 @@ const InputKinerjaForm: React.FC<{
   );
 };
 
-// Komponen Dashboard Karyawan - PERBAIKI BAGIAN INI
+// Komponen Dashboard Karyawan dengan logika baru
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-  const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
-  
-  const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-  const kebutuhanJabatan = AngkaKreditCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-  const penjelasanKebutuhan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori);
-  
-  // Hitung AK Real untuk progress bar
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
+  const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
+  const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang);
   
-  // PERBAIKAN PENTING: Untuk jenjang pertama, gunakan kebutuhan JABATAN bukan PANGKAT
-  const isJenjangPertama = karyawan.jabatan.includes('Pertama') && karyawan.golongan === 'III/b';
-  
-  // PERBAIKAN: Progress pangkat seharusnya menggunakan kebutuhan JENJANG (100) bukan pangkat (50)
-  const kebutuhanPangkatUntukProgress = isJenjangPertama ? kebutuhanJabatan : kebutuhanPangkat;
-  const penjelasanPangkatUntukProgress = isJenjangPertama ? 
-    "Kebutuhan 100 AK kumulatif untuk naik jenjang ke Ahli Muda" : 
-    `Kebutuhan ${kebutuhanPangkat} AK untuk kenaikan pangkat ke ${golonganBerikutnya}`;
-  
-  const progressPangkat = kebutuhanPangkatUntukProgress > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkatUntukProgress, 1) : 0;
-  const progressJabatan = kebutuhanJabatan > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanJabatan, 1) : 0;
-
-  // PERBAIKAN: Hitung ulang kekurangan dengan kebutuhan yang benar
-  const kekuranganPangkatUntukProgress = Math.max(0, kebutuhanPangkatUntukProgress - estimasi.akRealSaatIni);
-  const kekuranganJabatanUntukProgress = Math.max(0, kebutuhanJabatan - estimasi.akRealSaatIni);
-
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
   return (
@@ -1397,30 +1441,34 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* PROGRESS BAR YANG SUDAH DIPERBAIKI */}
+        {/* PROGRESS BAR DENGAN LOGIKA BARU */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
-            label={isJenjangPertama ? `Kenaikan Jenjang ke ${jabatanBerikutnya}` : `Kenaikan Pangkat ke ${golonganBerikutnya}`}
+            label={`Kenaikan Pangkat ke ${estimasi.golonganBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
             akRealSaatIni={estimasi.akRealSaatIni}
-            kebutuhanAK={kebutuhanPangkatUntukProgress}
+            kebutuhanAK={estimasi.kebutuhanAKPangkat}
             type="pangkat"
             bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
             akTambahan={estimasi.akTambahan}
-            penjelasan={penjelasanPangkatUntukProgress}
-            kekuranganAK={kekuranganPangkatUntukProgress}
+            penjelasan={penjelasanKebutuhanPangkat}
+            kekuranganAK={estimasi.kekuranganAKPangkat}
+            bisaUsul={estimasi.bisaUsulPangkat}
+            isKenaikanJenjang={estimasi.isKenaikanJenjang}
           />
           
           <ProgressBar 
-            label={`Kenaikan Jabatan ke ${jabatanBerikutnya}`}
+            label={`Kenaikan Jabatan ke ${estimasi.jabatanBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
             akRealSaatIni={estimasi.akRealSaatIni}
-            kebutuhanAK={kebutuhanJabatan}
+            kebutuhanAK={estimasi.kebutuhanAKJabatan}
             type="jabatan"
             bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
             akTambahan={estimasi.akTambahan}
-            penjelasan={penjelasanKebutuhan}
-            kekuranganAK={kekuranganJabatanUntukProgress}
+            penjelasan={penjelasanKebutuhanJabatan}
+            kekuranganAK={estimasi.kekuranganAKJabatan}
+            bisaUsul={estimasi.bisaUsulJabatan}
+            isKenaikanJenjang={estimasi.isKenaikanJenjang}
           />
         </div>
       </div>
