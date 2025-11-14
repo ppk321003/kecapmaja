@@ -905,22 +905,11 @@ const EmployeeTable: React.FC<{
                   <td className="px-3 py-2">
 <button
   onClick={() => onSelect(karyawan)}
-  className="text-blue-600 hover:text-blue-800 p-1.5 rounded-full hover:bg-blue-50 transition-colors flex items-center justify-center"
+  className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
   title="Lihat detail karyawan"
 >
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-4 w-4"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 5l7 7-7 7"
-    />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
   </svg>
 </button>
                   </td>
