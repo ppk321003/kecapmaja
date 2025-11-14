@@ -483,6 +483,12 @@ const ProgressBar: React.FC<{
   const getStatusText = () => {
     if (isTidakAda) return 'Sudah level tertinggi';
     if (kekuranganAK <= 0) return '✅ Bisa diusulkan sekarang!';
+    
+    const estimasi = formatEstimasiWaktu(bulanDibutuhkan);
+    if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${estimasi})`;
+    if (bulanDibutuhkan <= 24) return `🟡 Butuh waktu (${estimasi})`;
+    return `🟠 Butuh waktu lebih lama (${estimasi})`;
   };
 
   return (
