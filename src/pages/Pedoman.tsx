@@ -917,8 +917,8 @@ const EstimasiKenaikanCard: React.FC<{
             <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-purple-700 font-medium">Angka Kredit Akhir Saat Ini</div>
-            <div className="text-2xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
+            <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
+            <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
           </div>
         </div>
 
