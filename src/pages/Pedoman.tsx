@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN PERBAIKAN SESUAI PERMINTAAN
+// App.tsx - VERSI LENGKAP DENGAN PERBAIKAN
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ interface Karyawan {
   email: string;
   telepon: string;
   alamat: string;
+  fungsiKegiatan: string;
 }
 
 interface InputKinerja {
@@ -156,12 +157,14 @@ class AngkaKreditCalculator {
     const kebutuhanKeahlian: { [key: string]: number } = {
       'Ahli Pertama': 100,  // → Ahli Muda
       'Ahli Muda': 200,     // → Ahli Madya  
-      'Ahli Madya': 300     // → Ahli Utama
+      'Ahli Madya': 300,    // → Ahli Utama
+      'Ahli Utama': 0       // Sudah level tertinggi
     };
     
     const kebutuhanKeterampilan: { [key: string]: number } = {
       'Terampil': 60,   // → Mahir
-      'Mahir': 100      // → Penyelia
+      'Mahir': 100,     // → Penyelia
+      'Penyelia': 0     // Sudah level tertinggi
     };
     
     // Cari kebutuhan berdasarkan kata kunci dalam jabatan
@@ -179,7 +182,7 @@ class AngkaKreditCalculator {
       }
     }
     
-    return 0;
+    return 0; // Default jika tidak ditemukan
   }
 
   // Estimasi kenaikan yang benar
@@ -252,14 +255,16 @@ class AngkaKreditCalculator {
     const progressionKeahlian: { [key: string]: string } = {
       'Ahli Pertama': 'Ahli Muda',
       'Ahli Muda': 'Ahli Madya', 
-      'Ahli Madya': 'Ahli Utama'
+      'Ahli Madya': 'Ahli Utama',
+      'Ahli Utama': 'Tidak Ada' // Sudah level tertinggi
     };
     
     const progressionKeterampilan: { [key: string]: string } = {
       'Terampil': 'Mahir',
-      'Mahir': 'Penyelia'
+      'Mahir': 'Penyelia',
+      'Penyelia': 'Tidak Ada' // Sudah level tertinggi
     };
-    
+
     // Cari jabatan berikutnya berdasarkan kata kunci
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(progressionKeahlian)) {
@@ -275,13 +280,52 @@ class AngkaKreditCalculator {
       }
     }
     
-    return 'Tidak Ada';
+    return 'Tidak Diketahui';
+  }
+
+  // Fungsi rekomendasi karir
+  static getRekomendasiKarir(karyawan: Karyawan): string {
+    if (karyawan.kategori === 'Keterampilan') {
+      const pendidikan = karyawan.pendidikan.toLowerCase();
+      
+      // Cek apakah pendidikan masih di bawah D4/S1
+      const isPendidikanRendah = 
+        pendidikan.includes('sma') || pendidikan.includes('smk') || 
+        pendidikan.includes('d1') || pendidikan.includes('d2') || 
+        pendidikan.includes('d3') || pendidikan.includes('diploma') ||
+        pendidikan.includes('slta');
+      
+      // Cek apakah sudah pendidikan tinggi
+      const isPendidikanTinggi = 
+        pendidikan.includes('d4') || pendidikan.includes('s1') || 
+        pendidikan.includes('sarjana') || pendidikan.includes('s2') ||
+        pendidikan.includes('s3') || pendidikan.includes('magister') ||
+        pendidikan.includes('doktor');
+
+      if (isPendidikanRendah) {
+        return 'REKOMENDASI: Untuk pengembangan karir lebih lanjut, pertimbangkan melanjutkan pendidikan ke D4/S1 untuk dapat beralih ke jalur Keahlian.';
+      }
+      
+      if (isPendidikanTinggi) {
+        return 'REKOMENDASI: Anda sudah memenuhi syarat pendidikan untuk jalur Keahlian. Pertimbangkan untuk mengajukan alih jalur karir.';
+      }
+    }
+    
+    // Untuk yang sudah di jalur keahlian
+    if (karyawan.kategori === 'Keahlian') {
+      const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+      if (jabatanBerikutnya === 'Tidak Ada') {
+        return 'SUKSES: Anda telah mencapai jenjang karir tertinggi di jalur Keahlian. Pertahankan kinerja dan berkontribusi sebagai mentor.';
+      }
+    }
+    
+    return '';
   }
 }
 
 // ==================== COMPONENTS ====================
 
-// Komponen Progress Bar dengan Kelebihan
+// Komponen Progress Bar dengan Perbaikan Logika
 const ProgressBar: React.FC<{ 
   progress: number; 
   label: string; 
@@ -290,10 +334,15 @@ const ProgressBar: React.FC<{
   type: 'pangkat' | 'jabatan';
   bulanDibutuhkan: number;
 }> = ({ progress, label, akSaatIni, kebutuhanAK, type, bulanDibutuhkan }) => {
-  const percentage = Math.min(progress * 100, 100);
+  // PERBAIKAN: Handle kasus dimana tidak ada jabatan/pangkat berikutnya
+  const isTidakAda = label.includes('Tidak Ada') || kebutuhanAK === 0;
+  
+  // PERBAIKAN: Jangan hitung progress jika kebutuhanAK = 0
+  const percentage = isTidakAda ? 0 : Math.min(progress * 100, 100);
   const kelebihanAK = Math.max(0, akSaatIni - kebutuhanAK);
   
   const getColorClass = () => {
+    if (isTidakAda) return 'from-gray-300 to-gray-400';
     if (percentage >= 100) return 'from-green-500 to-green-600';
     if (percentage >= 80) return 'from-blue-500 to-blue-600';
     if (percentage >= 50) return 'from-yellow-500 to-yellow-600';
@@ -305,6 +354,7 @@ const ProgressBar: React.FC<{
   };
 
   const getStatusText = () => {
+    if (isTidakAda) return '🏆 Sudah level tertinggi';
     if (bulanDibutuhkan === 0) return '✅ Bisa diusulkan sekarang!';
     if (bulanDibutuhkan <= 6) return `🟢 Sangat dekat (${bulanDibutuhkan} bulan)`;
     if (bulanDibutuhkan <= 12) return `🔵 Mendekati syarat (${bulanDibutuhkan} bulan)`;
@@ -317,9 +367,12 @@ const ProgressBar: React.FC<{
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
           <span className="text-lg mr-2">{getIcon()}</span>
-          <h3 className="text-md font-semibold text-gray-800">{label}</h3>
+          <h3 className="text-md font-semibold text-gray-800">
+            {isTidakAda ? `🏆 ${type === 'pangkat' ? 'Pangkat' : 'Jabatan'} Tertinggi` : label}
+          </h3>
         </div>
         <div className={`text-xs font-medium px-2 py-1 rounded ${
+          isTidakAda ? 'bg-gray-100 text-gray-800' :
           bulanDibutuhkan === 0 ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 6 ? 'bg-green-100 text-green-800' :
           bulanDibutuhkan <= 12 ? 'bg-blue-100 text-blue-800' :
@@ -330,31 +383,40 @@ const ProgressBar: React.FC<{
         </div>
       </div>
       
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-700">Progress</span>
-        <span className="text-sm font-semibold text-blue-600">{percentage.toFixed(1)}%</span>
-      </div>
+      {!isTidakAda && (
+        <>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-gray-700">Progress</span>
+            <span className="text-sm font-semibold text-blue-600">{percentage.toFixed(1)}%</span>
+          </div>
+          
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div 
+              className={`bg-gradient-to-r ${getColorClass()} h-3 rounded-full transition-all duration-500 ease-out`}
+              style={{ width: `${percentage}%` }}
+            ></div>
+          </div>
+        </>
+      )}
       
-      <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-        <div 
-          className={`bg-gradient-to-r ${getColorClass()} h-3 rounded-full transition-all duration-500 ease-out`}
-          style={{ width: `${percentage}%` }}
-        ></div>
-      </div>
-      
-      <div className="grid grid-cols-4 gap-2 text-xs text-gray-600">
+      <div className={`grid ${isTidakAda ? 'grid-cols-3' : 'grid-cols-4'} gap-2 text-xs text-gray-600`}>
         <div className="text-center">
           <div className="font-semibold">AK Saat Ini</div>
           <div>{akSaatIni.toFixed(2)}</div>
         </div>
+        {!isTidakAda && (
+          <div className="text-center">
+            <div className="font-semibold">Kebutuhan</div>
+            <div>{kebutuhanAK}</div>
+          </div>
+        )}
         <div className="text-center">
-          <div className="font-semibold">Kebutuhan</div>
-          <div>{kebutuhanAK}</div>
-        </div>
-        <div className="text-center">
-          <div className="font-semibold">Kekurangan</div>
-          <div className={kebutuhanAK - akSaatIni > 0 ? 'text-red-600' : 'text-green-600'}>
-            {Math.max(0, kebutuhanAK - akSaatIni).toFixed(2)}
+          <div className="font-semibold">{isTidakAda ? 'Status' : 'Kekurangan'}</div>
+          <div className={
+            isTidakAda ? 'text-gray-600' :
+            kebutuhanAK - akSaatIni > 0 ? 'text-red-600' : 'text-green-600'
+          }>
+            {isTidakAda ? 'Maksimal' : Math.max(0, kebutuhanAK - akSaatIni).toFixed(2)}
           </div>
         </div>
         <div className="text-center">
@@ -365,7 +427,7 @@ const ProgressBar: React.FC<{
         </div>
       </div>
 
-      {percentage >= 100 && (
+      {percentage >= 100 && !isTidakAda && (
         <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-center">
           <span className="text-green-800 text-sm font-semibold">✅ Sudah memenuhi syarat!</span>
         </div>
@@ -425,7 +487,7 @@ const parseNIP = (nip: string) => {
   };
 };
 
-// Komponen Informasi Biodata Sederhana dengan TMT Jabatan dan TMT Pangkat
+// Komponen Informasi Biodata Sederhana dengan Layout Baru
 const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const formatTanggal = (tanggal: string) => {
     if (!tanggal) return '-';
@@ -475,95 +537,102 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
     }
   };
 
-  const hitungMasaKerja = (tmtJabatan: string) => {
-    if (!tmtJabatan) return { years: 0, months: 0 };
-    try {
-      const today = new Date();
-      const tmt = new Date(tmtJabatan);
-      if (isNaN(tmt.getTime())) return { years: 0, months: 0 };
-      
-      let years = today.getFullYear() - tmt.getFullYear();
-      let months = today.getMonth() - tmt.getMonth();
-      
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      
-      return { years, months };
-    } catch {
-      return { years: 0, months: 0 };
-    }
-  };
-
   // Parse data dari NIP
   const nipData = parseNIP(karyawan.nip);
   const usia = hitungUsia(nipData.tanggalLahir);
-  const masaKerja = hitungMasaKerja(nipData.tahunMasuk);
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
-      <h3 className="text-lg font-bold text-gray-800 mb-3">Informasi Karyawan</h3>
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-6">
+      <h3 className="text-xl font-bold text-gray-800 mb-6 border-b pb-3">👤 Informasi Karyawan</h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs text-gray-500">Nama</p>
-            <p className="font-semibold text-gray-800">{karyawan.nama}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Kolom Kiri */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Nama</div>
+            <div className="col-span-2">
+              <p className="font-semibold text-gray-800 text-lg">{karyawan.nama}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">NIP</p>
-            <p className="font-medium text-gray-700">{karyawan.nip}</p>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">NIP</div>
+            <div className="col-span-2">
+              <p className="font-mono text-gray-700 bg-gray-50 px-3 py-1 rounded text-sm">{karyawan.nip}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">Usia</p>
-            <p className="font-medium text-gray-700">{usia} tahun</p>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Usia</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{usia} tahun</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">TMT PNS</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Pangkat / Golongan</div>
+            <div className="col-span-2">
+              <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs text-gray-500">TMT PNS</p>
-            <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Pangkat / Golongan</p>
-            <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">TMT Pangkat</p>
-            <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs text-gray-500">Jabatan</p>
-            <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">TMT Jabatan</p>
-            <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Fungsi Kegiatan</p>
-            <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
+        {/* Kolom Kanan */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">TMT Pangkat</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtPangkat)}</p>
+            </div>
           </div>
 
-        </div>
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Jabatan</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <div>
-            <p className="text-xs text-gray-500">Pendidikan</p>
-            <p className="font-medium text-gray-700">{karyawan.pendidikan}</p>
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">TMT Jabatan</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">Jenis Kelamin</p>
-            <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Fungsi Kegiatan</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{karyawan.fungsiKegiatan || '-'}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">AK Kumulatif</p>
-            <p className="font-bold text-blue-600 text-lg">{karyawan.akKumulatif.toFixed(2)}</p>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Pendidikan</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{karyawan.pendidikan}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">Jenis Kelamin</div>
+            <div className="col-span-2">
+              <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div className="text-sm text-gray-500 font-medium">AK Kumulatif</div>
+            <div className="col-span-2">
+              <p className="font-bold text-blue-600 text-xl">{karyawan.akKumulatif.toFixed(2)}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -888,7 +957,7 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div className="text-center">
             <p className="text-sm text-blue-700 font-medium">Perolehan AK per Bulan</p>
@@ -900,6 +969,15 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           <div className="text-center">
             <p className="text-sm text-green-700 font-medium">Predikat Terpilih</p>
             <p className="text-xl font-bold text-green-800">{predikatAsumsi * 100}%</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="text-center">
+            <p className="text-sm text-purple-700 font-medium">Estimasi dalam Bulan</p>
+            <p className="text-xl font-bold text-purple-800">
+              Pangkat: {estimasi.bulanDibutuhkanPangkat} | Jabatan: {estimasi.bulanDibutuhkanJabatan}
+            </p>
           </div>
         </div>
       </div>
@@ -1132,14 +1210,28 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
   const kebutuhanJabatan = AngkaKreditCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
   
-  const progressPangkat = karyawan.akKumulatif / kebutuhanPangkat;
-  const progressJabatan = karyawan.akKumulatif / kebutuhanJabatan;
+  const progressPangkat = kebutuhanPangkat > 0 ? karyawan.akKumulatif / kebutuhanPangkat : 0;
+  const progressJabatan = kebutuhanJabatan > 0 ? karyawan.akKumulatif / kebutuhanJabatan : 0;
 
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
+  const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
   return (
     <div className="space-y-4">
       <BiodataSederhana karyawan={karyawan} />
+
+      {/* Tampilkan Rekomendasi Karir jika ada */}
+      {rekomendasiKarir && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-start">
+            <span className="text-xl mr-3">💡</span>
+            <div>
+              <h3 className="font-semibold text-yellow-800 mb-1">Rekomendasi Pengembangan Karir</h3>
+              <p className="text-yellow-700 text-sm">{rekomendasiKarir}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
         <div className="mb-4 pb-3 border-b border-gray-200">
@@ -1149,7 +1241,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JABATAN DENGAN KELEBIHAN */}
+        {/* PROGRESS BAR PANGKAT DAN JABATAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
             progress={progressPangkat}
@@ -1194,7 +1286,7 @@ const App: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:L` // Sesuaikan range dengan kolom yang ada di spreadsheet
+          range: `${SHEET_NAME}!A:M` // Sesuaikan range dengan kolom yang ada di spreadsheet
         }
       });
 
@@ -1231,6 +1323,7 @@ const App: React.FC = () => {
             tmtJabatan: row[9]?.toString() || '',
             tmtPangkat: row[10]?.toString() || '',
             pendidikan: row[11]?.toString() || '',
+            fungsiKegiatan: row[12]?.toString() || '',
             // Data dari NIP
             tanggalLahir: nipData.tanggalLahir,
             jenisKelamin: nipData.jenisKelamin,
