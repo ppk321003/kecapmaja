@@ -306,7 +306,7 @@ class AngkaKreditCalculator {
         }
       }
     }
-    return `Kenaikan pangkat ke ${golonganBerikutnya}, dapat diusulkan terpisah tanpa menunggu kenaikan jabatan.`;
+    return;
   }
 
   static getRekomendasiKarir(karyawan: Karyawan): string {
