@@ -602,7 +602,7 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Unit Kerja</p>
+            <p className="text-xs text-gray-500">Fungsi Kegiatan</p>
             <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
           </div>
 
