@@ -907,8 +907,6 @@ const EmployeeTable: React.FC<{
                       onClick={() => onSelect(karyawan)}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors flex items-center"
                     >
-                      <span className="mr-1">→</span>
-                      Masuk
                     </button>
                   </td>
                 </tr>
