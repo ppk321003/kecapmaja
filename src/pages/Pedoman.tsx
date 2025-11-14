@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN DATA ASLI DAN JENJANG SESUAI LEMBAGA
+// App.tsx - VERSI LENGKAP DENGAN PERBAIKAN SESUAI PERMINTAAN
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +9,7 @@ interface Karyawan {
   nama: string;
   pangkat: string;
   golongan: string;
-  jenjangJabatan: string;
+  jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan';
   unitKerja: string;
   tmtJabatan: string;
@@ -34,7 +34,7 @@ interface InputKinerja {
   bulanPeriodik: number;
   predikatKinerja: number;
   akDiperoleh: number;
-  jenjangSaatInput: string;
+  jabatanSaatInput: string;
   tanggalInput: string;
   inputOleh: string;
   keterangan: string;
@@ -42,18 +42,18 @@ interface InputKinerja {
 
 interface EstimasiKenaikan {
   kebutuhanAKPangkat: number;
-  kebutuhanAKJenjang: number;
+  kebutuhanAKJabatan: number;
   kekuranganAKPangkat: number;
-  kekuranganAKJenjang: number;
+  kekuranganAKJabatan: number;
   predikatAsumsi: number;
   bulanDibutuhkanPangkat: number;
-  bulanDibutuhkanJenjang: number;
+  bulanDibutuhkanJabatan: number;
   estimasiTanggalPangkat: string;
-  estimasiTanggalJenjang: string;
+  estimasiTanggalJabatan: string;
   bisaUsulPangkat: boolean;
-  bisaUsulJenjang: boolean;
+  bisaUsulJabatan: boolean;
   golonganBerikutnya: string;
-  jenjangBerikutnya: string;
+  jabatanBerikutnya: string;
   akPerBulan: number;
 }
 
@@ -64,7 +64,7 @@ const SHEET_NAME = "data";
 // ==================== UTILITIES - SESUAI JENJANG LEMBAGA ANDA ====================
 class AngkaKreditCalculator {
   // Koefisien tahunan sesuai Peraturan BKN Pasal 13 - DISESUAIKAN
-  static getKoefisien(jenjangJabatan: string): number {
+  static getKoefisien(jabatan: string): number {
     // Mapping berdasarkan kata kunci yang ada di jabatan lembaga Anda
     const koefisienMap: { [key: string]: number } = {
       // KATEGORI KEAHLIAN - Statistisi
@@ -94,27 +94,27 @@ class AngkaKreditCalculator {
     
     // Cari koefisien berdasarkan kata kunci dalam jabatan
     for (const [key, value] of Object.entries(koefisienMap)) {
-      if (jenjangJabatan.includes(key)) {
+      if (jabatan.includes(key)) {
         return value;
       }
     }
     
     // Default berdasarkan kategori
-    if (jenjangJabatan.includes('Ahli')) return 12.5;
-    if (jenjangJabatan.includes('Penyelia')) return 25.0;
-    if (jenjangJabatan.includes('Mahir')) return 12.5;
-    if (jenjangJabatan.includes('Terampil')) return 8.0;
+    if (jabatan.includes('Ahli')) return 12.5;
+    if (jabatan.includes('Penyelia')) return 25.0;
+    if (jabatan.includes('Mahir')) return 12.5;
+    if (jabatan.includes('Terampil')) return 8.0;
     
     return 12.5;
   }
 
   static hitungAK(
-    jenjangJabatan: string, 
+    jabatan: string, 
     predikat: number, 
     isPeriodik: boolean = false, 
     bulanPeriodik: number = 0
   ): number {
-    const koefisien = this.getKoefisien(jenjangJabatan);
+    const koefisien = this.getKoefisien(jabatan);
     let angkaKredit = predikat * koefisien;
     
     if (isPeriodik && bulanPeriodik > 0) {
@@ -151,8 +151,8 @@ class AngkaKreditCalculator {
     return kebutuhan[golonganSekarang] || 100;
   }
 
-  // Kebutuhan AK untuk kenaikan jenjang - DISESUAIKAN DENGAN JENJANG LEMBAGA ANDA
-  static getKebutuhanJenjang(jenjangSekarang: string, kategori: string): number {
+  // Kebutuhan AK untuk kenaikan jabatan - DISESUAIKAN DENGAN JABATAN LEMBAGA ANDA
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
     const kebutuhanKeahlian: { [key: string]: number } = {
       'Ahli Pertama': 100,  // → Ahli Muda
       'Ahli Muda': 200,     // → Ahli Madya  
@@ -167,13 +167,13 @@ class AngkaKreditCalculator {
     // Cari kebutuhan berdasarkan kata kunci dalam jabatan
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
-        if (jenjangSekarang.includes(key)) {
+        if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
     } else {
       for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
-        if (jenjangSekarang.includes(key)) {
+        if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
@@ -185,50 +185,50 @@ class AngkaKreditCalculator {
   // Estimasi kenaikan yang benar
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-    const jenjangBerikutnya = this.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
+    const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
     
     const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-    const kebutuhanJenjang = this.getKebutuhanJenjang(karyawan.jenjangJabatan, karyawan.kategori);
+    const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     
     const kekuranganPangkat = Math.max(0, kebutuhanPangkat - karyawan.akKumulatif);
-    const kekuranganJenjang = Math.max(0, kebutuhanJenjang - karyawan.akKumulatif);
+    const kekuranganJabatan = Math.max(0, kebutuhanJabatan - karyawan.akKumulatif);
     
-    const koefisien = this.getKoefisien(karyawan.jenjangJabatan);
+    const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = (predikatAsumsi * koefisien) / 12;
     
-    // Hitung bulan untuk pangkat dan jenjang terpisah
+    // Hitung bulan untuk pangkat dan jabatan terpisah
     const bulanDibutuhkanPangkat = akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 0;
-    const bulanDibutuhkanJenjang = akPerBulan > 0 ? Math.ceil(kekuranganJenjang / akPerBulan) : 0;
+    const bulanDibutuhkanJabatan = akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 0;
     
     const sekarang = new Date();
     const estimasiTanggalPangkat = new Date(sekarang);
     estimasiTanggalPangkat.setMonth(sekarang.getMonth() + bulanDibutuhkanPangkat);
     
-    const estimasiTanggalJenjang = new Date(sekarang);
-    estimasiTanggalJenjang.setMonth(sekarang.getMonth() + bulanDibutuhkanJenjang);
+    const estimasiTanggalJabatan = new Date(sekarang);
+    estimasiTanggalJabatan.setMonth(sekarang.getMonth() + bulanDibutuhkanJabatan);
     
     return {
       kebutuhanAKPangkat: kebutuhanPangkat,
-      kebutuhanAKJenjang: kebutuhanJenjang,
+      kebutuhanAKJabatan: kebutuhanJabatan,
       kekuranganAKPangkat: kekuranganPangkat,
-      kekuranganAKJenjang: kekuranganJenjang,
+      kekuranganAKJabatan: kekuranganJabatan,
       predikatAsumsi,
       bulanDibutuhkanPangkat,
-      bulanDibutuhkanJenjang,
+      bulanDibutuhkanJabatan,
       estimasiTanggalPangkat: estimasiTanggalPangkat.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
       }),
-      estimasiTanggalJenjang: estimasiTanggalJenjang.toLocaleDateString('id-ID', {
+      estimasiTanggalJabatan: estimasiTanggalJabatan.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
       }),
       bisaUsulPangkat: kekuranganPangkat <= 0,
-      bisaUsulJenjang: kekuranganJenjang <= 0,
+      bisaUsulJabatan: kekuranganJabatan <= 0,
       golonganBerikutnya,
-      jenjangBerikutnya,
+      jabatanBerikutnya,
       akPerBulan: Number(akPerBulan.toFixed(2))
     };
   }
@@ -248,7 +248,7 @@ class AngkaKreditCalculator {
     return progression[golonganSekarang] || 'Tidak Ada';
   }
 
-  static getJenjangBerikutnya(jenjangSekarang: string, kategori: string): string {
+  static getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
     const progressionKeahlian: { [key: string]: string } = {
       'Ahli Pertama': 'Ahli Muda',
       'Ahli Muda': 'Ahli Madya', 
@@ -260,16 +260,16 @@ class AngkaKreditCalculator {
       'Mahir': 'Penyelia'
     };
     
-    // Cari jenjang berikutnya berdasarkan kata kunci
+    // Cari jabatan berikutnya berdasarkan kata kunci
     if (kategori === 'Keahlian') {
       for (const [key, value] of Object.entries(progressionKeahlian)) {
-        if (jenjangSekarang.includes(key)) {
+        if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
     } else {
       for (const [key, value] of Object.entries(progressionKeterampilan)) {
-        if (jenjangSekarang.includes(key)) {
+        if (jabatanSekarang.includes(key)) {
           return value;
         }
       }
@@ -287,7 +287,7 @@ const ProgressBar: React.FC<{
   label: string; 
   akSaatIni: number; 
   kebutuhanAK: number;
-  type: 'pangkat' | 'jenjang';
+  type: 'pangkat' | 'jabatan';
   bulanDibutuhkan: number;
 }> = ({ progress, label, akSaatIni, kebutuhanAK, type, bulanDibutuhkan }) => {
   const percentage = Math.min(progress * 100, 100);
@@ -366,6 +366,57 @@ const ProgressBar: React.FC<{
   );
 };
 
+// Fungsi untuk parsing NIP
+const parseNIP = (nip: string) => {
+  if (!nip || nip.length < 15) {
+    return {
+      tanggalLahir: '',
+      tahunMasuk: '',
+      jenisKelamin: 'L'
+    };
+  }
+
+  // Format: 19840803 201101 1 010
+  const parts = nip.split(' ');
+  if (parts.length < 3) {
+    return {
+      tanggalLahir: '',
+      tahunMasuk: '',
+      jenisKelamin: 'L'
+    };
+  }
+
+  const tglLahirStr = parts[0]; // 19840803
+  const tahunMasukStr = parts[1]; // 201101
+  const jenisKelaminStr = parts[2]; // 1
+
+  // Parse tanggal lahir: YYYYMMDD
+  let tanggalLahir = '';
+  if (tglLahirStr.length === 8) {
+    const tahun = tglLahirStr.substring(0, 4);
+    const bulan = tglLahirStr.substring(4, 6);
+    const tanggal = tglLahirStr.substring(6, 8);
+    tanggalLahir = `${tahun}-${bulan}-${tanggal}`;
+  }
+
+  // Parse tahun masuk: YYYYMM
+  let tahunMasuk = '';
+  if (tahunMasukStr.length === 6) {
+    const tahun = tahunMasukStr.substring(0, 4);
+    const bulan = tahunMasukStr.substring(4, 6);
+    tahunMasuk = `${tahun}-${bulan}-01`;
+  }
+
+  // Parse jenis kelamin
+  const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
+
+  return {
+    tanggalLahir,
+    tahunMasuk,
+    jenisKelamin
+  };
+};
+
 // Komponen Informasi Biodata Sederhana
 const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const formatTanggal = (tanggal: string) => {
@@ -437,8 +488,10 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
     }
   };
 
-  const masaKerja = hitungMasaKerja(karyawan.tmtJabatan);
-  const usia = hitungUsia(karyawan.tanggalLahir);
+  // Parse data dari NIP
+  const nipData = parseNIP(karyawan.nip);
+  const usia = hitungUsia(nipData.tanggalLahir);
+  const masaKerja = hitungMasaKerja(nipData.tahunMasuk);
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 mb-6">
@@ -466,8 +519,8 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="font-semibold text-gray-800">{karyawan.pangkat} ({karyawan.golongan})</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Jenjang</p>
-            <p className="font-medium text-gray-700">{karyawan.jenjangJabatan}</p>
+            <p className="text-xs text-gray-500">Jabatan</p>
+            <p className="font-medium text-gray-700">{karyawan.jabatan}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Kategori</p>
@@ -481,8 +534,8 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="font-medium text-gray-700">{karyawan.unitKerja}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">TMT Jabatan</p>
-            <p className="font-medium text-gray-700">{formatTanggal(karyawan.tmtJabatan)}</p>
+            <p className="text-xs text-gray-500">TMT PNS</p>
+            <p className="font-medium text-gray-700">{formatTanggal(nipData.tahunMasuk)}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Masa Kerja</p>
@@ -496,16 +549,8 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <p className="font-medium text-gray-700">{karyawan.pendidikan}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Status</p>
-            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              karyawan.status === 'Aktif' 
-                ? 'bg-green-100 text-green-800' 
-                : karyawan.status === 'Pensiun'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {karyawan.status}
-            </span>
+            <p className="text-xs text-gray-500">Jenis Kelamin</p>
+            <p className="font-medium text-gray-700">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">AK Kumulatif</p>
@@ -517,16 +562,16 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Fungsi untuk menentukan warna berdasarkan jenjang jabatan
-const getJenjangColorClass = (jenjangJabatan: string): string => {
-  if (jenjangJabatan.includes('Ahli Pertama')) return 'bg-purple-100 text-purple-800';
-  if (jenjangJabatan.includes('Ahli Muda')) return 'bg-indigo-100 text-indigo-800';
-  if (jenjangJabatan.includes('Ahli Madya')) return 'bg-blue-100 text-blue-800';
-  if (jenjangJabatan.includes('Ahli Utama')) return 'bg-teal-100 text-teal-800';
-  if (jenjangJabatan.includes('Terampil')) return 'bg-orange-100 text-orange-800';
-  if (jenjangJabatan.includes('Mahir')) return 'bg-yellow-100 text-yellow-800';
-  if (jenjangJabatan.includes('Penyelia')) return 'bg-red-100 text-red-800';
-  if (jenjangJabatan.includes('Kepala')) return 'bg-gray-100 text-gray-800';
+// Fungsi untuk menentukan warna berdasarkan jabatan
+const getJabatanColorClass = (jabatan: string): string => {
+  if (jabatan.includes('Ahli Pertama')) return 'bg-purple-100 text-purple-800';
+  if (jabatan.includes('Ahli Muda')) return 'bg-indigo-100 text-indigo-800';
+  if (jabatan.includes('Ahli Madya')) return 'bg-blue-100 text-blue-800';
+  if (jabatan.includes('Ahli Utama')) return 'bg-teal-100 text-teal-800';
+  if (jabatan.includes('Terampil')) return 'bg-orange-100 text-orange-800';
+  if (jabatan.includes('Mahir')) return 'bg-yellow-100 text-yellow-800';
+  if (jabatan.includes('Penyelia')) return 'bg-red-100 text-red-800';
+  if (jabatan.includes('Kepala')) return 'bg-gray-100 text-gray-800';
   return 'bg-gray-100 text-gray-800';
 };
 
@@ -762,11 +807,11 @@ const EmployeeTable: React.FC<{
                 </th>
                 <th 
                   className="px-4 py-3 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('jenjangJabatan')}
+                  onClick={() => handleSort('jabatan')}
                 >
                   <div className="flex items-center">
-                    Jenjang
-                    <span className="ml-1 text-xs">{getSortIcon('jenjangJabatan')}</span>
+                    Jabatan
+                    <span className="ml-1 text-xs">{getSortIcon('jabatan')}</span>
                   </div>
                 </th>
                 <th 
@@ -790,27 +835,7 @@ const EmployeeTable: React.FC<{
                   }`}
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">
-                    <div>
-                      <div>{karyawan.nama}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          karyawan.status === 'Aktif' 
-                            ? 'bg-green-100 text-green-800' 
-                            : karyawan.status === 'Pensiun'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {karyawan.status}
-                        </span>
-                        <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                          karyawan.kategori === 'Keahlian'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {karyawan.kategori}
-                        </span>
-                      </div>
-                    </div>
+                    {karyawan.nama}
                   </td>
                   <td className="px-4 py-3">
                     <code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code>
@@ -821,9 +846,9 @@ const EmployeeTable: React.FC<{
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      getJenjangColorClass(karyawan.jenjangJabatan)
+                      getJabatanColorClass(karyawan.jabatan)
                     }`}>
-                      {karyawan.jenjangJabatan}
+                      {karyawan.jabatan}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -912,25 +937,25 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         </div>
 
         <div className="space-y-3">
-          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Jenjang</h4>
+          <h4 className="font-semibold text-gray-700 border-b pb-2">Kenaikan Jabatan</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600">Jenjang berikutnya:</span>
-              <span className="font-semibold">{estimasi.jenjangBerikutnya}</span>
+              <span className="text-gray-600">Jabatan berikutnya:</span>
+              <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Kebutuhan AK:</span>
-              <span className="font-semibold">{estimasi.kebutuhanAKJenjang}</span>
+              <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Kekurangan AK:</span>
-              <span className={`font-semibold ${estimasi.kekuranganAKJenjang > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {estimasi.kekuranganAKJenjang.toFixed(2)}
+              <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {estimasi.kekuranganAKJabatan.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Estimasi tanggal:</span>
-              <span className="font-semibold text-blue-600 text-xs">{estimasi.estimasiTanggalJenjang}</span>
+              <span className="font-semibold text-blue-600 text-xs">{estimasi.estimasiTanggalJabatan}</span>
             </div>
           </div>
         </div>
@@ -961,7 +986,7 @@ const InputKinerjaForm: React.FC<{
 
   const handleCalculate = () => {
     const akDiperoleh = AngkaKreditCalculator.hitungAK(
-      karyawan.jenjangJabatan,
+      karyawan.jabatan,
       formData.predikatKinerja,
       formData.jenisPenilaian === 'Periodik',
       formData.bulanPeriodik
@@ -975,7 +1000,7 @@ const InputKinerjaForm: React.FC<{
       bulanPeriodik: formData.bulanPeriodik,
       predikatKinerja: formData.predikatKinerja,
       akDiperoleh: akDiperoleh,
-      jenjangSaatInput: karyawan.jenjangJabatan,
+      jabatanSaatInput: karyawan.jabatan,
       tanggalInput: new Date().toISOString().split('T')[0],
       inputOleh: 'Admin',
       keterangan: formData.keterangan
@@ -994,9 +1019,9 @@ const InputKinerjaForm: React.FC<{
     alert('Data kinerja berhasil disimpan!');
   };
 
-  const currentKoefisien = AngkaKreditCalculator.getKoefisien(karyawan.jenjangJabatan);
+  const currentKoefisien = AngkaKreditCalculator.getKoefisien(karyawan.jabatan);
   const calculatedAK = AngkaKreditCalculator.hitungAK(
-    karyawan.jenjangJabatan,
+    karyawan.jabatan,
     formData.predikatKinerja,
     formData.jenisPenilaian === 'Periodik',
     formData.bulanPeriodik
@@ -1070,8 +1095,8 @@ const InputKinerjaForm: React.FC<{
         <h4 className="font-semibold text-gray-700 mb-2 text-sm">Perhitungan Angka Kredit:</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
-            <p className="text-gray-600">Jenjang</p>
-            <p className="font-semibold text-gray-800">{karyawan.jenjangJabatan}</p>
+            <p className="text-gray-600">Jabatan</p>
+            <p className="font-semibold text-gray-800">{karyawan.jabatan}</p>
           </div>
           <div>
             <p className="text-gray-600">Koefisien</p>
@@ -1101,13 +1126,13 @@ const InputKinerjaForm: React.FC<{
 // Komponen Dashboard Karyawan
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
-  const jenjangBerikutnya = AngkaKreditCalculator.getJenjangBerikutnya(karyawan.jenjangJabatan, karyawan.kategori);
+  const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
   
   const kebutuhanPangkat = AngkaKreditCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-  const kebutuhanJenjang = AngkaKreditCalculator.getKebutuhanJenjang(karyawan.jenjangJabatan, karyawan.kategori);
+  const kebutuhanJabatan = AngkaKreditCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
   
   const progressPangkat = karyawan.akKumulatif / kebutuhanPangkat;
-  const progressJenjang = karyawan.akKumulatif / kebutuhanJenjang;
+  const progressJabatan = karyawan.akKumulatif / kebutuhanJabatan;
 
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
 
@@ -1118,17 +1143,12 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
         <div className="mb-4 pb-3 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-800 mb-1">{karyawan.nama}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-1 text-xs text-gray-600">
-            <p>{karyawan.pangkat} ({karyawan.golongan})</p>
-            <p>{karyawan.jenjangJabatan} - {karyawan.kategori}</p>
-            <p>Unit: {karyawan.unitKerja}</p>
-          </div>
           <div className="mt-2 p-2 bg-blue-50 rounded-lg">
             <p className="text-md font-bold text-blue-600">AK Kumulatif: {karyawan.akKumulatif.toFixed(2)}</p>
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JENJANG */}
+        {/* PROGRESS BAR PANGKAT DAN JABATAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
             progress={progressPangkat}
@@ -1140,12 +1160,12 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           />
           
           <ProgressBar 
-            progress={progressJenjang}
-            label={`Kenaikan Jenjang ke ${jenjangBerikutnya}`}
+            progress={progressJabatan}
+            label={`Kenaikan Jabatan ke ${jabatanBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
-            kebutuhanAK={kebutuhanJenjang}
-            type="jenjang"
-            bulanDibutuhkan={estimasi.bulanDibutuhkanJenjang}
+            kebutuhanAK={kebutuhanJabatan}
+            type="jabatan"
+            bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
           />
         </div>
       </div>
@@ -1193,13 +1213,16 @@ const App: React.FC = () => {
             const akValue = row[6].toString().replace(',', '.');
             akKumulatifValue = parseFloat(akValue) || 0;
           }
+
+          // Parse data dari NIP
+          const nipData = parseNIP(row[0]?.toString() || '');
           
           return {
             nip: row[0]?.toString() || '',
             nama: row[1]?.toString() || '',
             pangkat: row[2]?.toString() || '',
             golongan: row[3]?.toString() || '',
-            jenjangJabatan: row[4]?.toString() || '',
+            jabatan: row[4]?.toString() || '',
             kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian',
             akKumulatif: akKumulatifValue,
             status: (row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
@@ -1207,10 +1230,11 @@ const App: React.FC = () => {
             tmtJabatan: row[9]?.toString() || '',
             tmtPangkat: row[10]?.toString() || '',
             pendidikan: row[11]?.toString() || '',
+            // Data dari NIP
+            tanggalLahir: nipData.tanggalLahir,
+            jenisKelamin: nipData.jenisKelamin,
             // Data opsional
             tempatLahir: '',
-            tanggalLahir: '',
-            jenisKelamin: 'L',
             agama: '',
             email: '',
             telepon: '',
@@ -1286,7 +1310,6 @@ const App: React.FC = () => {
                   Kembali ke Daftar Karyawan
                 </button>
                 <h2 className="text-xl font-bold text-gray-800">{selectedKaryawan.nama}</h2>
-                <p className="text-gray-600 text-sm">{selectedKaryawan.pangkat} ({selectedKaryawan.golongan})</p>
               </div>
               
               {/* Tab Navigation */}
