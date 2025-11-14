@@ -362,7 +362,7 @@ const ProgressBar: React.FC<{
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
           <h3 className="text-md font-semibold text-gray-800">
-            {isTidakAda ? `🏆 ${type === 'pangkat' ? 'Pangkat' : 'Jabatan'} Maksimal` : label}
+            {isTidakAda ? `Saat ini ${type === 'pangkat' ? 'Pangkat' : 'Jabatan'} anda sudah Maksimal` : label}
           </h3>
         </div>
         <div className={`text-xs font-medium px-2 py-1 rounded ${
