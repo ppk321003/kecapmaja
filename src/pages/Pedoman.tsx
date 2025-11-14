@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN PERHITUNGAN AK REAL-TIME
+// App.tsx - VERSI LENGKAP DENGAN AK REAL DI TABEL
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -695,7 +695,7 @@ const PredikatKinerjaRadio: React.FC<{
   );
 };
 
-// Komponen Tabel Karyawan
+// Komponen Tabel Karyawan dengan AK Real
 const EmployeeTable: React.FC<{ 
   karyawanList: Karyawan[]; 
   onSelect: (karyawan: Karyawan) => void;
@@ -707,7 +707,20 @@ const EmployeeTable: React.FC<{
   const [sortField, setSortField] = useState<keyof Karyawan>('nama');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const filteredKaryawan = karyawanList.filter(karyawan => {
+  // Fungsi untuk menghitung AK Real untuk setiap karyawan
+  const getKaryawanWithAKReal = (karyawan: Karyawan) => {
+    const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
+    const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
+    return {
+      ...karyawan,
+      akTambahan,
+      akRealSaatIni
+    };
+  };
+
+  const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
+
+  const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
     const matchesSearch = 
       karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       karyawan.nip.includes(searchTerm) ||
@@ -819,7 +832,7 @@ const EmployeeTable: React.FC<{
         </div>
       </div>
 
-      {/* Tabel Karyawan */}
+      {/* Tabel Karyawan dengan AK Real */}
       {filteredKaryawan.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-gray-400 text-4xl mb-2">🔍</div>
@@ -872,8 +885,22 @@ const EmployeeTable: React.FC<{
                   onClick={() => handleSort('akKumulatif')}
                 >
                   <div className="flex items-center">
-                    AK Kumulatif
+                    AK Database
                     <span className="ml-1 text-xs">{getSortIcon('akKumulatif')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    AK Tambahan
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    AK Real
                   </div>
                 </th>
                 <th className="px-3 py-2">Aksi</th>
@@ -898,18 +925,26 @@ const EmployeeTable: React.FC<{
                   </td>
                   <td className="text-gray-700 text-xs">{karyawan.jabatan}</td>
                   <td className="px-3 py-2 text-center">
-                    <span className="font-bold text-blue-600 text-xs inline-block">{karyawan.akKumulatif.toFixed(2)}</span>
+                    <span className="text-gray-500 text-xs">{karyawan.akKumulatif.toFixed(2)}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="text-green-600 text-xs font-medium">+{karyawan.akTambahan.toFixed(2)}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="font-bold text-blue-600 text-xs inline-block bg-blue-50 px-2 py-1 rounded">
+                      {karyawan.akRealSaatIni.toFixed(2)}
+                    </span>
                   </td>
                   <td className="px-3 py-2">
-                  <button
-                    onClick={() => onSelect(karyawan)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
-                    title="Lihat detail karyawan"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+                    <button
+                      onClick={() => onSelect(karyawan)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-xs font-medium transition-colors flex items-center justify-center"
+                      title="Lihat detail karyawan"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -920,6 +955,19 @@ const EmployeeTable: React.FC<{
 
       <div className="mt-4 text-xs text-gray-500">
         Menampilkan {filteredKaryawan.length} dari {totalKaryawan} karyawan
+      </div>
+
+      {/* Informasi tentang AK Real */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start">
+          <span className="text-blue-500 mr-2">ℹ️</span>
+          <div>
+            <p className="text-blue-800 text-sm font-medium">Informasi AK Real</p>
+            <p className="text-blue-700 text-xs">
+              <strong>AK Real = AK Database + AK Tambahan</strong>. AK Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
