@@ -1,7 +1,7 @@
-// App.tsx - VERSI DENGAN DATA ASLI DARI GOOGLE SHEETS
+// App.tsx - VERSI LENGKAP DENGAN DATA ASLI DAN JENJANG SESUAI LEMBAGA
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client'; // Sesuaikan dengan path Supabase Anda
-import { useToast } from '@/hooks/use-toast'; // Sesuaikan dengan path toast Anda
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -61,25 +61,51 @@ interface EstimasiKenaikan {
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "data";
 
-// ==================== UTILITIES - SESUAI PERATURAN BKN NO. 3 TAHUN 2023 ====================
+// ==================== UTILITIES - SESUAI JENJANG LEMBAGA ANDA ====================
 class AngkaKreditCalculator {
-  // Koefisien tahunan sesuai Peraturan BKN Pasal 13
+  // Koefisien tahunan sesuai Peraturan BKN Pasal 13 - DISESUAIKAN
   static getKoefisien(jenjangJabatan: string): number {
+    // Mapping berdasarkan kata kunci yang ada di jabatan lembaga Anda
     const koefisienMap: { [key: string]: number } = {
-      // KATEGORI KEAHLIAN
+      // KATEGORI KEAHLIAN - Statistisi
       'Ahli Pertama': 12.5,
       'Ahli Muda': 25.0,
       'Ahli Madya': 37.5,
       'Ahli Utama': 50.0,
       
+      // KATEGORI KEAHLIAN - Pranata Komputer
+      'Pranata Komputer Ahli Pertama': 12.5,
+      'Pranata Komputer Ahli Muda': 25.0,
+      'Pranata Komputer Ahli Madya': 37.5,
+      'Pranata Komputer Ahli Utama': 50.0,
+      
       // KATEGORI KETERAMPILAN
-      'Pemula': 5.0,
       'Terampil': 8.0,
       'Mahir': 12.5,
-      'Penyelia': 25.0
+      'Penyelia': 25.0,
+      
+      // JABATAN STRUKTURAL
+      'Kepala BPS': 50.0,
+      'Kepala Subbagian Umum': 37.5,
+      
+      // FUNGSIONAL UMUM
+      'Fungsional Umum': 5.0
     };
     
-    return koefisienMap[jenjangJabatan] || 12.5;
+    // Cari koefisien berdasarkan kata kunci dalam jabatan
+    for (const [key, value] of Object.entries(koefisienMap)) {
+      if (jenjangJabatan.includes(key)) {
+        return value;
+      }
+    }
+    
+    // Default berdasarkan kategori
+    if (jenjangJabatan.includes('Ahli')) return 12.5;
+    if (jenjangJabatan.includes('Penyelia')) return 25.0;
+    if (jenjangJabatan.includes('Mahir')) return 12.5;
+    if (jenjangJabatan.includes('Terampil')) return 8.0;
+    
+    return 12.5;
   }
 
   static hitungAK(
@@ -125,22 +151,35 @@ class AngkaKreditCalculator {
     return kebutuhan[golonganSekarang] || 100;
   }
 
-  // Kebutuhan AK untuk kenaikan jenjang - SESUAI Pasal 21 ayat (4)
+  // Kebutuhan AK untuk kenaikan jenjang - DISESUAIKAN DENGAN JENJANG LEMBAGA ANDA
   static getKebutuhanJenjang(jenjangSekarang: string, kategori: string): number {
     const kebutuhanKeahlian: { [key: string]: number } = {
       'Ahli Pertama': 100,  // → Ahli Muda
       'Ahli Muda': 200,     // → Ahli Madya  
-      'Ahli Madya': 450     // → Ahli Utama
+      'Ahli Madya': 300     // → Ahli Utama
     };
     
     const kebutuhanKeterampilan: { [key: string]: number } = {
-      'Pemula': 15,     // → Terampil
       'Terampil': 60,   // → Mahir
       'Mahir': 100      // → Penyelia
     };
     
-    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-    return kebutuhan[jenjangSekarang] || 0;
+    // Cari kebutuhan berdasarkan kata kunci dalam jabatan
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+        if (jenjangSekarang.includes(key)) {
+          return value;
+        }
+      }
+    } else {
+      for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+        if (jenjangSekarang.includes(key)) {
+          return value;
+        }
+      }
+    }
+    
+    return 0;
   }
 
   // Estimasi kenaikan yang benar
@@ -217,13 +256,26 @@ class AngkaKreditCalculator {
     };
     
     const progressionKeterampilan: { [key: string]: string } = {
-      'Pemula': 'Terampil',
       'Terampil': 'Mahir',
       'Mahir': 'Penyelia'
     };
     
-    const progression = kategori === 'Keahlian' ? progressionKeahlian : progressionKeterampilan;
-    return progression[jenjangSekarang] || 'Tidak Ada';
+    // Cari jenjang berikutnya berdasarkan kata kunci
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(progressionKeahlian)) {
+        if (jenjangSekarang.includes(key)) {
+          return value;
+        }
+      }
+    } else {
+      for (const [key, value] of Object.entries(progressionKeterampilan)) {
+        if (jenjangSekarang.includes(key)) {
+          return value;
+        }
+      }
+    }
+    
+    return 'Tidak Ada';
   }
 }
 
@@ -317,38 +369,72 @@ const ProgressBar: React.FC<{
 // Komponen Informasi Biodata Sederhana
 const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const formatTanggal = (tanggal: string) => {
-    return new Date(tanggal).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    if (!tanggal) return '-';
+    try {
+      // Handle berbagai format tanggal
+      const date = new Date(tanggal);
+      if (isNaN(date.getTime())) {
+        // Jika format MM/DD/YYYY
+        const parts = tanggal.split('/');
+        if (parts.length === 3) {
+          const newDate = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+          return newDate.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+        }
+        return tanggal;
+      }
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch {
+      return tanggal;
+    }
   };
 
   const hitungUsia = (tanggalLahir: string) => {
-    const today = new Date();
-    const birthDate = new Date(tanggalLahir);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    if (!tanggalLahir) return 0;
+    try {
+      const today = new Date();
+      const birthDate = new Date(tanggalLahir);
+      if (isNaN(birthDate.getTime())) return 0;
+      
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    } catch {
+      return 0;
     }
-    
-    return age;
   };
 
   const hitungMasaKerja = (tmtJabatan: string) => {
-    const today = new Date();
-    const tmt = new Date(tmtJabatan);
-    let years = today.getFullYear() - tmt.getFullYear();
-    let months = today.getMonth() - tmt.getMonth();
-    
-    if (months < 0) {
-      years--;
-      months += 12;
+    if (!tmtJabatan) return { years: 0, months: 0 };
+    try {
+      const today = new Date();
+      const tmt = new Date(tmtJabatan);
+      if (isNaN(tmt.getTime())) return { years: 0, months: 0 };
+      
+      let years = today.getFullYear() - tmt.getFullYear();
+      let months = today.getMonth() - tmt.getMonth();
+      
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      return { years, months };
+    } catch {
+      return { years: 0, months: 0 };
     }
-    
-    return { years, months };
   };
 
   const masaKerja = hitungMasaKerja(karyawan.tmtJabatan);
@@ -429,6 +515,19 @@ const BiodataSederhana: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       </div>
     </div>
   );
+};
+
+// Fungsi untuk menentukan warna berdasarkan jenjang jabatan
+const getJenjangColorClass = (jenjangJabatan: string): string => {
+  if (jenjangJabatan.includes('Ahli Pertama')) return 'bg-purple-100 text-purple-800';
+  if (jenjangJabatan.includes('Ahli Muda')) return 'bg-indigo-100 text-indigo-800';
+  if (jenjangJabatan.includes('Ahli Madya')) return 'bg-blue-100 text-blue-800';
+  if (jenjangJabatan.includes('Ahli Utama')) return 'bg-teal-100 text-teal-800';
+  if (jenjangJabatan.includes('Terampil')) return 'bg-orange-100 text-orange-800';
+  if (jenjangJabatan.includes('Mahir')) return 'bg-yellow-100 text-yellow-800';
+  if (jenjangJabatan.includes('Penyelia')) return 'bg-red-100 text-red-800';
+  if (jenjangJabatan.includes('Kepala')) return 'bg-gray-100 text-gray-800';
+  return 'bg-gray-100 text-gray-800';
 };
 
 // Komponen Radio Button Predikat Kinerja
@@ -722,11 +821,7 @@ const EmployeeTable: React.FC<{
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      karyawan.jenjangJabatan.includes('Ahli') 
-                        ? 'bg-purple-100 text-purple-800'
-                        : karyawan.jenjangJabatan.includes('Penyelia')
-                        ? 'bg-indigo-100 text-indigo-800'
-                        : 'bg-orange-100 text-orange-800'
+                      getJenjangColorClass(karyawan.jenjangJabatan)
                     }`}>
                       {karyawan.jenjangJabatan}
                     </span>
@@ -1069,7 +1164,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fungsi untuk mengambil data dari Google Sheets
+  // Fungsi untuk mengambil data dari Google Sheets - REVISI
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
@@ -1078,7 +1173,7 @@ const App: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:T` // Sesuaikan range dengan kolom yang ada di spreadsheet
+          range: `${SHEET_NAME}!A:L` // Sesuaikan range dengan kolom yang ada di spreadsheet
         }
       });
 
@@ -1086,31 +1181,44 @@ const App: React.FC = () => {
 
       const rows = data.values || [];
       
-      // Mapping data dari spreadsheet ke interface Karyawan
+      console.log('Data dari Google Sheets:', rows); // Debug log
+      
+      // Mapping data dari spreadsheet ke interface Karyawan - REVISI
       const karyawanData: Karyawan[] = rows.slice(1) // Skip header row
         .filter((row: any[]) => row.length > 0 && row[0]) // Filter baris yang tidak kosong
-        .map((row: any[], index: number) => ({
-          nip: row[0]?.toString() || '',
-          nama: row[1]?.toString() || '',
-          pangkat: row[2]?.toString() || '',
-          golongan: row[3]?.toString() || '',
-          jenjangJabatan: row[4]?.toString() || '',
-          kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian',
-          unitKerja: row[6]?.toString() || '',
-          tmtJabatan: row[7]?.toString() || '',
-          tmtPangkat: row[8]?.toString() || '',
-          pendidikan: row[9]?.toString() || '',
-          akKumulatif: parseFloat(row[10]) || 0,
-          status: (row[11]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
-          tempatLahir: row[12]?.toString() || '',
-          tanggalLahir: row[13]?.toString() || '',
-          jenisKelamin: (row[14]?.toString() as 'L' | 'P') || 'L',
-          agama: row[15]?.toString() || '',
-          email: row[16]?.toString() || '',
-          telepon: row[17]?.toString() || '',
-          alamat: row[18]?.toString() || ''
-        }));
+        .map((row: any[], index: number) => {
+          // Konversi format angka (ganti koma dengan titik dan parse float)
+          let akKumulatifValue = 0;
+          if (row[6]) {
+            const akValue = row[6].toString().replace(',', '.');
+            akKumulatifValue = parseFloat(akValue) || 0;
+          }
+          
+          return {
+            nip: row[0]?.toString() || '',
+            nama: row[1]?.toString() || '',
+            pangkat: row[2]?.toString() || '',
+            golongan: row[3]?.toString() || '',
+            jenjangJabatan: row[4]?.toString() || '',
+            kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian',
+            akKumulatif: akKumulatifValue,
+            status: (row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
+            unitKerja: row[8]?.toString() || '',
+            tmtJabatan: row[9]?.toString() || '',
+            tmtPangkat: row[10]?.toString() || '',
+            pendidikan: row[11]?.toString() || '',
+            // Data opsional
+            tempatLahir: '',
+            tanggalLahir: '',
+            jenisKelamin: 'L',
+            agama: '',
+            email: '',
+            telepon: '',
+            alamat: ''
+          };
+        });
 
+      console.log('Data karyawan yang diproses:', karyawanData); // Debug log
       setKaryawanList(karyawanData);
       
     } catch (error: any) {
