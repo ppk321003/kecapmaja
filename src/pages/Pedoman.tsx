@@ -483,7 +483,7 @@ const ProgressBar: React.FC<{
   const getStatusText = () => {
     if (isTidakAda) return 'Sudah level tertinggi';
     if (kekuranganAK <= 0) return '✅ Bisa diusulkan sekarang!';
- };
+  };
 
   return (
     <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
