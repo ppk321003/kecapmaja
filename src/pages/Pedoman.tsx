@@ -900,7 +900,7 @@ const EmployeeTable: React.FC<{
                     <span className="text-gray-700 text-xs">{karyawan.jabatan}</span>
                   </td>
                   <td className="px-3 py-2">
-                    <span className="font-bold text-blue-600 text-xs">{karyawan.akKumulatif.toFixed(2)}</span>
+                    <span className="font-bold text-blue-600 text-xs center">{karyawan.akKumulatif.toFixed(2)}</span>
                   </td>
                   <td className="px-3 py-2">
                     <button
