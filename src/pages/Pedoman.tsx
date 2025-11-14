@@ -633,9 +633,9 @@ const PredikatKinerjaRadio: React.FC<{
   onValueChange: (value: number) => void;
 }> = ({ selectedValue, onValueChange }) => {
   const predikatOptions = [
-    { value: 1.50, label: 'Sangat Baik (150% - Performa luar biasa)' },
-    { value: 1.00, label: 'Baik (100% - Performa Baik)' },
-    { value: 0.75, label: 'Cukup (75% - Perlu peningkatan)' },
+    { value: 1.50, label: 'Sangat Baik (Performa luar biasa)' },
+    { value: 1.00, label: 'Baik (Performa Baik)' },
+    { value: 0.75, label: 'Cukup (Perlu peningkatan)' },
     { value: 0.50, label: 'Kurang (Perlu perbaikan serius)' }
   ];
 
