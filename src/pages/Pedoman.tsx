@@ -377,13 +377,13 @@ const ProgressCard: React.FC<{
     if (bulanDibutuhkan <= 6) return 'default';
     if (bulanDibutuhkan <= 12) return 'secondary';
     if (bulanDibutuhkan <= 24) return 'outline';
-    return 'secondary';
+    return 'destructive';
   };
 
   const getStatusText = () => {
     if (isTidakAda) return 'Level tertinggi';
     if (bisaUsul) {
-      if (isKenaikanJenjang && type === 'jabatan') return 'Bisa usul JABATAN & PANGKAT!';
+      if (isKenaikanJenjang && type === 'jabatan') return 'Bisa usul Jabatan & Pangkat!';
       return 'Bisa diusulkan!';
     }
     
@@ -397,10 +397,10 @@ const ProgressCard: React.FC<{
     };
 
     const estimasi = formatEstimasiWaktu(bulanDibutuhkan);
-    if (bulanDibutuhkan <= 6) return `Estimasi kenaikan Anda sudah sangat dekat (${estimasi})`;
-    if (bulanDibutuhkan <= 12) return `Estimasi kenaikan Anda sudah dekat (${estimasi})`;
-    if (bulanDibutuhkan <= 24) return `Estimasi kenaikan dengan asumsi predikat kinerja Baik (${estimasi})`;
-    return `Estimasi kenaikan dengan asumsi predikat kinerja Baik (${estimasi})`;
+    if (bulanDibutuhkan <= 6) return `Est. kenaikan sudah sangat dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 12) return `Est. kenaikan sudah dekat (${estimasi})`;
+    if (bulanDibutuhkan <= 24) return `Butuh waktu (${estimasi})`;
+    return `Butuh waktu (${estimasi})`;
   };
 
   const getIcon = () => type === 'pangkat' ? <Award className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />;
