@@ -1,4 +1,4 @@
-// App.tsx - VERSI LENGKAP DENGAN INFORMASI KARYAWAN SEBELUMNYA
+// App.tsx - VERSI LENGKAP DENGAN ESTIMASI TAHUN DAN BULAN
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -928,11 +928,21 @@ const EmployeeTable: React.FC<{
   );
 };
 
-// Komponen Estimasi Kenaikan dengan Radio Button dan Estimasi Bulan
+// Komponen Estimasi Kenaikan dengan Radio Button dan Estimasi Tahun+Bulan
 const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
+
+  // Fungsi untuk menghitung estimasi tahun dan bulan
+  const hitungEstimasiTahunBulan = (bulanDibutuhkan: number) => {
+    const tahun = Math.floor(bulanDibutuhkan / 12);
+    const bulan = bulanDibutuhkan % 12;
+    return { tahun, bulan };
+  };
+
+  const estimasiPangkat = hitungEstimasiTahunBulan(estimasi.bulanDibutuhkanPangkat);
+  const estimasiJabatan = hitungEstimasiTahunBulan(estimasi.bulanDibutuhkanJabatan);
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
@@ -981,6 +991,13 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               </span>
             </div>
             <div className="flex justify-between">
+              <span className="text-gray-600">Estimasi tahun:</span>
+              <span className="font-semibold text-blue-600">
+                {estimasiPangkat.tahun > 0 ? `${estimasiPangkat.tahun} tahun ` : ''}
+                {estimasiPangkat.bulan > 0 ? `${estimasiPangkat.bulan} bulan` : estimasiPangkat.tahun === 0 ? `${estimasiPangkat.bulan} bulan` : ''}
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-gray-600">Estimasi bulan:</span>
               <span className="font-semibold text-blue-600">{estimasi.bulanDibutuhkanPangkat} bulan</span>
             </div>
@@ -1006,6 +1023,13 @@ const EstimasiKenaikan: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <span className="text-gray-600">Kekurangan AK:</span>
               <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {estimasi.kekuranganAKJabatan.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Estimasi tahun:</span>
+              <span className="font-semibold text-blue-600">
+                {estimasiJabatan.tahun > 0 ? `${estimasiJabatan.tahun} tahun ` : ''}
+                {estimasiJabatan.bulan > 0 ? `${estimasiJabatan.bulan} bulan` : estimasiJabatan.tahun === 0 ? `${estimasiJabatan.bulan} bulan` : ''}
               </span>
             </div>
             <div className="flex justify-between">
