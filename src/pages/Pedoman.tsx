@@ -1337,7 +1337,7 @@ const InputKinerjaForm: React.FC<{
   );
 };
 
-// Komponen Dashboard Karyawan dengan kebutuhan kumulatif - DIPERBAIKI
+// Komponen Dashboard Karyawan - PERBAIKI BAGIAN INI
 const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const golonganBerikutnya = AngkaKreditCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
   const jabatanBerikutnya = AngkaKreditCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
@@ -1349,9 +1349,21 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   // Hitung AK Real untuk progress bar
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
   
-  // PERBAIKAN: Progress dihitung dari AK Real saat ini dibagi kebutuhan
-  const progressPangkat = kebutuhanPangkat > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkat, 1) : 0;
+  // PERBAIKAN PENTING: Untuk jenjang pertama, gunakan kebutuhan JABATAN bukan PANGKAT
+  const isJenjangPertama = karyawan.jabatan.includes('Pertama') && karyawan.golongan === 'III/b';
+  
+  // PERBAIKAN: Progress pangkat seharusnya menggunakan kebutuhan JENJANG (100) bukan pangkat (50)
+  const kebutuhanPangkatUntukProgress = isJenjangPertama ? kebutuhanJabatan : kebutuhanPangkat;
+  const penjelasanPangkatUntukProgress = isJenjangPertama ? 
+    "Kebutuhan 100 AK kumulatif untuk naik jenjang ke Ahli Muda" : 
+    `Kebutuhan ${kebutuhanPangkat} AK untuk kenaikan pangkat ke ${golonganBerikutnya}`;
+  
+  const progressPangkat = kebutuhanPangkatUntukProgress > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanPangkatUntukProgress, 1) : 0;
   const progressJabatan = kebutuhanJabatan > 0 ? Math.min(estimasi.akRealSaatIni / kebutuhanJabatan, 1) : 0;
+
+  // PERBAIKAN: Hitung ulang kekurangan dengan kebutuhan yang benar
+  const kekuranganPangkatUntukProgress = Math.max(0, kebutuhanPangkatUntukProgress - estimasi.akRealSaatIni);
+  const kekuranganJabatanUntukProgress = Math.max(0, kebutuhanJabatan - estimasi.akRealSaatIni);
 
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
 
@@ -1385,18 +1397,18 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* PROGRESS BAR PANGKAT DAN JABATAN dengan kebutuhan kumulatif - DIPERBAIKI */}
+        {/* PROGRESS BAR YANG SUDAH DIPERBAIKI */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ProgressBar 
-            label={`Kenaikan Pangkat ke ${golonganBerikutnya}`}
+            label={isJenjangPertama ? `Kenaikan Jenjang ke ${jabatanBerikutnya}` : `Kenaikan Pangkat ke ${golonganBerikutnya}`}
             akSaatIni={karyawan.akKumulatif}
             akRealSaatIni={estimasi.akRealSaatIni}
-            kebutuhanAK={kebutuhanPangkat}
+            kebutuhanAK={kebutuhanPangkatUntukProgress}
             type="pangkat"
             bulanDibutuhkan={estimasi.bulanDibutuhkanPangkat}
             akTambahan={estimasi.akTambahan}
-            penjelasan={`Kebutuhan ${kebutuhanPangkat} AK untuk kenaikan pangkat ke ${golonganBerikutnya}`}
-            kekuranganAK={estimasi.kekuranganAKPangkat}
+            penjelasan={penjelasanPangkatUntukProgress}
+            kekuranganAK={kekuranganPangkatUntukProgress}
           />
           
           <ProgressBar 
@@ -1408,7 +1420,7 @@ const EmployeeDashboard: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             bulanDibutuhkan={estimasi.bulanDibutuhkanJabatan}
             akTambahan={estimasi.akTambahan}
             penjelasan={penjelasanKebutuhan}
-            kekuranganAK={estimasi.kekuranganAKJabatan}
+            kekuranganAK={kekuranganJabatanUntukProgress}
           />
         </div>
       </div>
