@@ -613,16 +613,16 @@ const PredikatKinerjaRadio: React.FC<{
   onValueChange: (value: number) => void;
 }> = ({ selectedValue, onValueChange }) => {
   const predikatOptions = [
-    { value: 1.50, label: 'Sangat Baik', description: 'Performa luar biasa' },
-    { value: 1.00, label: 'Baik', description: 'Performa standar' },
-    { value: 0.75, label: 'Cukup', description: 'Perlu peningkatan' },
-    { value: 0.50, label: 'Kurang', description: 'Perlu perbaikan serius' }
+    { value: 1.50, label: 'Sangat Baik (Performa luar biasa)' },
+    { value: 1.00, label: 'Baik (Performa Baik)' },
+    { value: 0.75, label: 'Cukup (Perlu peningkatan)' },
+    { value: 0.50, label: 'Kurang (Perlu perbaikan serius)' }
   ];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Asumsi Predikat Kinerja</CardTitle>
+        <CardTitle className="text-lg">Estimasi Predikat Kinerja</CardTitle>
         <CardDescription>Pilih predikat kinerja untuk simulasi perhitungan</CardDescription>
       </CardHeader>
       <CardContent>
@@ -753,9 +753,9 @@ const EmployeeTable: React.FC<{
                   <TableHead>NIP</TableHead>
                   <TableHead>Golongan</TableHead>
                   <TableHead>Jabatan</TableHead>
-                  <TableHead className="text-right">AK Awal</TableHead>
-                  <TableHead className="text-right">AK Tambahan</TableHead>
-                  <TableHead className="text-right">AK Akhir</TableHead>
+                  <TableHead className="text-right">Angka Kredit Awal</TableHead>
+                  <TableHead className="text-right">Angka Kredit Tambahan</TableHead>
+                  <TableHead className="text-right">Aangka Kredit Akhir</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -847,15 +847,15 @@ const EstimasiKenaikanCard: React.FC<{
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
           <div className="text-center">
-            <div className="text-sm text-blue-700 font-medium">AK Awal</div>
+            <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
             <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-green-700 font-medium">AK Tambahan</div>
+            <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
             <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-purple-700 font-medium">AK Akhir Saat Ini</div>
+            <div className="text-sm text-purple-700 font-medium">Angka Kredit Akhir Saat Ini</div>
             <div className="text-2xl font-bold text-purple-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
           </div>
         </div>
@@ -889,25 +889,25 @@ const EstimasiKenaikanCard: React.FC<{
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Pangkat berikutnya:</span>
+                <span className="text-muted-foreground">Pangkat berikutnya</span>
                 <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan AK:</span>
+                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
                 <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan AK:</span>
+                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
                 <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {estimasi.kekuranganAKPangkat.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimasi waktu:</span>
+                <span className="text-muted-foreground">Estimasi waktu</span>
                 <span className="font-semibold text-blue-600">{estimasiPangkat.formatted}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-muted-foreground">Status</span>
                 <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'}>
                   {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
@@ -924,25 +924,25 @@ const EstimasiKenaikanCard: React.FC<{
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Jabatan berikutnya:</span>
+                <span className="text-muted-foreground">Jabatan berikutnya</span>
                 <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan AK:</span>
+                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
                 <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan AK:</span>
+                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
                 <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {estimasi.kekuranganAKJabatan.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimasi waktu:</span>
+                <span className="text-muted-foreground">Estimasi waktu</span>
                 <span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-muted-foreground">Status</span>
                 <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'}>
                   {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
