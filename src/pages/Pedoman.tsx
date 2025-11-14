@@ -893,7 +893,7 @@ const EmployeeTable: React.FC<{
                     <code className="text-xs bg-gray-100 px-2 py-1 rounded">{karyawan.nip}</code>
                   </td>
                   <td className="px-3 py-2">
-                    <span className="font-semibold-xs">{karyawan.golongan}</span>
+                    <span className="font-semibold text-xs">{karyawan.golongan}</span>
                   </td>
                   <td className="text-gray-700 text-xs">{karyawan.pangkat}</td>
                   <td className="px-3 py-2">
