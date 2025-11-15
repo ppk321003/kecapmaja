@@ -1486,8 +1486,8 @@ const KarierKu: React.FC = () => {
           email: '',
           telepon: '',
           alamat: '',
-          linkSkJabatan: row[18]?.toString().trim().replace(/^'+|'+$/g, '') || '',
-          linkSkPangkat: row[19]?.toString().trim().replace(/^'+|'+$/g, '') || ''
+          linkSkJabatan: (row[18] && row[18] !== null && row[18] !== 'null' ? row[18].toString().trim().replace(/^'+|'+$/g, '') : '') || '',
+          linkSkPangkat: (row[19] && row[19] !== null && row[19] !== 'null' ? row[19].toString().trim().replace(/^'+|'+$/g, '') : '') || ''
         };
       });
 // Tambahkan komponen debugging sementara
