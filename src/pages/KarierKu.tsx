@@ -21,7 +21,7 @@ interface Karyawan {
   pangkat: string;
   golongan: string;
   jabatan: string;
-  kategori: 'Keahlian' | 'Keterampilan';
+  kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
@@ -57,6 +57,8 @@ interface EstimasiKenaikan {
   akRealSaatIni: number;
   akTambahan: number;
   isKenaikanJenjang: boolean;
+  progressPangkatBulan: number;
+  progressPangkatPersentase: number;
 }
 
 // ==================== GOOGLE SHEETS CONFIG ====================
@@ -65,6 +67,22 @@ const SHEET_NAME = "data";
 
 // ==================== UTILITIES - SESUAI PERATURAN BKN ====================
 class AngkaKreditCalculator {
+  static tentukanKategori(jabatan: string): 'Keahlian' | 'Keterampilan' | 'Reguler' {
+    const jabatanLower = jabatan.toLowerCase();
+    
+    if (jabatanLower.includes('ahli')) {
+      return 'Keahlian';
+    }
+    
+    if (jabatanLower.includes('terampil') || 
+        jabatanLower.includes('mahir') || 
+        jabatanLower.includes('penyelia')) {
+      return 'Keterampilan';
+    }
+    
+    return 'Reguler';
+  }
+
   static getKoefisien(jabatan: string): number {
     const koefisienMap: { [key: string]: number } = {
       'Ahli Pertama': 12.5,
@@ -87,6 +105,9 @@ class AngkaKreditCalculator {
   }
 
   static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
+    // Untuk kategori Reguler, tidak ada AK tambahan untuk jabatan
+    if (karyawan.kategori === 'Reguler') return 0;
+    
     const tmtJabatan = new Date(karyawan.tmtJabatan);
     const hariIni = new Date();
     if (tmtJabatan > hariIni) return 0;
@@ -113,6 +134,8 @@ class AngkaKreditCalculator {
   }
 
   static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk pangkat
+    
     const kebutuhanKeahlian: { [key: string]: number } = {
       'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100,
       'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
@@ -126,6 +149,8 @@ class AngkaKreditCalculator {
   }
 
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk jabatan
+    
     const kebutuhanKeahlian: { [key: string]: number } = {
       'Ahli Pertama': 100, 'Ahli Muda': 200, 'Ahli Madya': 450, 'Ahli Utama': 0
     };
@@ -160,7 +185,68 @@ class AngkaKreditCalculator {
     );
   }
 
+  static hitungProgressPangkatReguler(tmtPangkat: string): { bulan: number; persentase: number } {
+    const tmt = new Date(tmtPangkat);
+    const sekarang = new Date();
+    const selisihBulan = this.hitungSelisihBulan(tmt, sekarang);
+    const persentase = Math.min((selisihBulan / 48) * 100, 100);
+    return { bulan: selisihBulan, persentase };
+  }
+
+  static cekSyaratPendidikan(golonganSekarang: string, pendidikan: string): boolean {
+    const pendidikanLower = pendidikan.toLowerCase();
+    const punyaS2 = pendidikanLower.includes('s-2') || pendidikanLower.includes('s2') || pendidikanLower.includes('magister');
+    const punyaS3 = pendidikanLower.includes('s-3') || pendidikanLower.includes('s3') || pendidikanLower.includes('doktor');
+    
+    // Untuk golongan di bawah III/D, tidak ada requirement pendidikan khusus
+    if (!golonganSekarang.startsWith('IV/') && golonganSekarang !== 'III/d') {
+      return true;
+    }
+    
+    if (golonganSekarang === 'IV/d') {
+      return punyaS3; // IV/D → IV/E wajib S3
+    }
+    
+    // III/D dan IV/A-IV/C wajib S2
+    return punyaS2;
+  }
+
+  static bisaNaikPangkatReguler(golonganSekarang: string, pendidikan: string, progressBulan: number): boolean {
+    const masaKerjaCukup = progressBulan >= 48;
+    const pendidikanCukup = this.cekSyaratPendidikan(golonganSekarang, pendidikan);
+    return masaKerjaCukup && pendidikanCukup;
+  }
+
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
+    // Untuk kategori Reguler, perhitungan khusus
+    if (karyawan.kategori === 'Reguler') {
+      const progressPangkat = this.hitungProgressPangkatReguler(karyawan.tmtPangkat);
+      const bisaUsulPangkat = this.bisaNaikPangkatReguler(karyawan.golongan, karyawan.pendidikan, progressPangkat.bulan);
+      
+      return {
+        kebutuhanAKPangkat: 0,
+        kebutuhanAKJabatan: 0,
+        kekuranganAKPangkat: 0,
+        kekuranganAKJabatan: 0,
+        predikatAsumsi,
+        bulanDibutuhkanPangkat: Math.max(0, 48 - progressPangkat.bulan),
+        bulanDibutuhkanJabatan: 0,
+        estimasiTanggalPangkat: bisaUsulPangkat ? 'Sekarang' : 'Tidak berlaku',
+        estimasiTanggalJabatan: 'Tidak berlaku',
+        bisaUsulPangkat,
+        bisaUsulJabatan: false,
+        golonganBerikutnya: this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori),
+        jabatanBerikutnya: 'Tidak berlaku',
+        akPerBulan: 0,
+        akRealSaatIni: karyawan.akKumulatif,
+        akTambahan: 0,
+        isKenaikanJenjang: false,
+        progressPangkatBulan: progressPangkat.bulan,
+        progressPangkatPersentase: progressPangkat.persentase
+      };
+    }
+
+    // Logika original untuk Keahlian dan Keterampilan
     const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
     const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
     const isKenaikanJenjang = this.isKenaikanJenjang(karyawan.jabatan, jabatanBerikutnya, karyawan.golongan, golonganBerikutnya);
@@ -209,11 +295,21 @@ class AngkaKreditCalculator {
       akPerBulan: Number(akPerBulan.toFixed(2)),
       akRealSaatIni,
       akTambahan,
-      isKenaikanJenjang
+      isKenaikanJenjang,
+      progressPangkatBulan: 0,
+      progressPangkatPersentase: 0
     };
   }
 
   static getGolonganBerikutnya(golonganSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') {
+      const progressionReguler: { [key: string]: string } = {
+        'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+        'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+      };
+      return progressionReguler[golonganSekarang] || 'Tidak Ada';
+    }
+    
     const progressionKeahlian: { [key: string]: string } = {
       'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
       'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
@@ -227,6 +323,8 @@ class AngkaKreditCalculator {
   }
 
   static getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') return 'Tidak berlaku';
+    
     const progressionKeahlian: { [key: string]: string } = {
       'Ahli Pertama': 'Ahli Muda', 'Ahli Muda': 'Ahli Madya', 'Ahli Madya': 'Ahli Utama', 'Ahli Utama': 'Tidak Ada'
     };
@@ -246,6 +344,10 @@ class AngkaKreditCalculator {
   }
 
   static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string, isKenaikanJenjang: boolean, golonganSekarang: string, golonganBerikutnya: string): string {
+    if (kategori === 'Reguler') {
+      return "Jabatan struktural - kenaikan berdasarkan masa kerja 4 tahun";
+    }
+    
     if (isKenaikanJenjang) {
       if (kategori === 'Keahlian') {
         if (jabatanSekarang.includes('Pertama') && golonganSekarang === 'III/b') {
@@ -266,19 +368,67 @@ class AngkaKreditCalculator {
     return '';
   }
 
+  static getTingkatPendidikan(pendidikan: string): string {
+    const pendLower = pendidikan.toLowerCase();
+    
+    if (pendLower.includes('s-3') || pendLower.includes('s3') || pendLower.includes('doktor')) return 'S3';
+    if (pendLower.includes('s-2') || pendLower.includes('s2') || pendLower.includes('magister')) return 'S2';
+    if (pendLower.includes('s-1') || pendLower.includes('s1') || pendLower.includes('sarjana')) return 'S1';
+    if (pendLower.includes('d-iv') || pendLower.includes('div') || pendLower.includes('d4')) return 'D4';
+    if (pendLower.includes('d-iii') || pendLower.includes('diii') || pendLower.includes('d3')) return 'D3';
+    if (pendLower.includes('sma') || pendLower.includes('smk') || pendLower.includes('paket c')) return 'SMA';
+    
+    return 'Tidak Diketahui';
+  }
+
+  static cukupUntukAlihJalur(pendidikan: string): boolean {
+    const tingkat = this.getTingkatPendidikan(pendidikan);
+    return ['D4', 'S1', 'S2', 'S3'].includes(tingkat);
+  }
+
   static getRekomendasiKarir(karyawan: Karyawan): string {
-    if (karyawan.kategori === 'Keterampilan') {
-      const pendidikan = karyawan.pendidikan.toLowerCase();
-      const isPendidikanRendah = pendidikan.includes('sma') || pendidikan.includes('smk') || pendidikan.includes('d1') || pendidikan.includes('d2') || pendidikan.includes('d3') || pendidikan.includes('diploma') || pendidikan.includes('slta');
-      const isPendidikanTinggi = pendidikan.includes('d4') || pendidikan.includes('s1') || pendidikan.includes('sarjana') || pendidikan.includes('s2') || pendidikan.includes('s3') || pendidikan.includes('magister') || pendidikan.includes('doktor');
-      if (isPendidikanRendah) return 'REKOMENDASI: Untuk pengembangan karir lebih lanjut, pertimbangkan melanjutkan pendidikan ke D4/S1 untuk dapat beralih ke jalur Keahlian.';
-      if (isPendidikanTinggi) return 'REKOMENDASI: Anda sudah memenuhi syarat pendidikan untuk jalur Keahlian. Pertimbangkan untuk mengajukan alih jalur karir.';
+    const tingkatPendidikan = this.getTingkatPendidikan(karyawan.pendidikan);
+    
+    if (karyawan.kategori === 'Reguler') {
+      if (karyawan.golongan === 'III/d' && !this.cekSyaratPendidikan('III/d', karyawan.pendidikan)) {
+        return "ANJURAN: Untuk kenaikan pangkat ke golongan IV/A, Anda membutuhkan pendidikan S2. Dengan S2, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
+      }
+      
+      if (karyawan.golongan.startsWith('IV/') && !this.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan)) {
+        return "ANJURAN: Kenaikan pangkat Anda terhambat karena persyaratan pendidikan. Segera rencanakan studi S2/S3 untuk membuka peluang kenaikan ke golongan berikutnya.";
+      }
+      
+      if (tingkatPendidikan === 'SMA') {
+        return "ANJURAN: Tingkatkan pendidikan ke D-IV/S-1 untuk ekspansi karir yang lebih luas dan opsi alih jalur ke Keahlian.";
+      }
     }
+    
+    if (karyawan.kategori === 'Keterampilan') {
+      if (karyawan.golongan === 'III/d') {
+        if (this.cukupUntukAlihJalur(karyawan.pendidikan)) {
+          return "ANJURAN: Segera ajukan alih jalur ke Keahlian untuk akses golongan IV/E. Dengan pendidikan D-IV/S1, Anda sudah memenuhi syarat alih jalur.";
+        } else {
+          return "ANJURAN: Anda telah mencapai puncak karir jalur Keterampilan. Dengan melanjutkan pendidikan ke D-IV/S1, Anda dapat beralih ke jalur Keahlian untuk pengembangan karir yang lebih luas.";
+        }
+      }
+      
+      if (!this.cukupUntukAlihJalur(karyawan.pendidikan)) {
+        return "ANJURAN: Untuk ekspansi karir jangka panjang, pertimbangkan meningkatkan pendidikan ke D-IV/S1 agar dapat beralih ke jalur Keahlian yang memiliki jenjang karir lebih tinggi.";
+      }
+    }
+    
     if (karyawan.kategori === 'Keahlian') {
       const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
-      if (jabatanBerikutnya === 'Tidak Ada') return 'SUKSES: Anda telah mencapai jenjang karir tertinggi di jalur Keahlian. Pertahankan kinerja dan berkontribusi sebagai mentor.';
+      if (jabatanBerikutnya === 'Tidak Ada') {
+        return "SUKSES: Anda telah mencapai jenjang karir tertinggi di jalur Keahlian. Pertahankan kinerja dan berkontribusi sebagai mentor.";
+      }
+      
+      if (tingkatPendidikan === 'D4' || tingkatPendidikan === 'S1') {
+        return "ANJURAN: Dengan pendidikan D-IV/S-1, karir maksimal sampai III/D. Lanjutkan pendidikan ke S-2 untuk akses golongan IV/A hingga IV/E.";
+      }
     }
-    return '';
+    
+    return "Lanjutkan pengembangan kompetensi dan akumulasi angka kredit untuk perkembangan karir yang optimal.";
   }
 }
 
@@ -293,8 +443,8 @@ const DashboardKarierKu: React.FC<{
   };
 
   const karyawanWithEstimasi = karyawanList.map(getKaryawanWithEstimasi);
-  const sudahMemenuhiPangkat = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulPangkat && k.estimasi.kebutuhanAKPangkat > 0);
-  const sudahMemenuhiJabatan = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulJabatan && k.estimasi.kebutuhanAKJabatan > 0);
+  const sudahMemenuhiPangkat = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulPangkat);
+  const sudahMemenuhiJabatan = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulJabatan);
   const akan6BulanPangkat = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulPangkat && k.estimasi.bulanDibutuhkanPangkat > 0 && k.estimasi.bulanDibutuhkanPangkat <= 6);
   const akan6BulanJabatan = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulJabatan && k.estimasi.bulanDibutuhkanJabatan > 0 && k.estimasi.bulanDibutuhkanJabatan <= 6);
 
@@ -636,14 +786,31 @@ const ProgressCard: React.FC<{
   bisaUsul: boolean;
   isKenaikanJenjang?: boolean;
   target: string;
-}> = ({ title, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK, bisaUsul, isKenaikanJenjang = false, target }) => {
+  kategori: string;
+  progressPangkatBulan?: number;
+  progressPangkatPersentase?: number;
+}> = ({ title, akSaatIni, akRealSaatIni, kebutuhanAK, type, bulanDibutuhkan, akTambahan, penjelasan, kekuranganAK, bisaUsul, isKenaikanJenjang = false, target, kategori, progressPangkatBulan = 0, progressPangkatPersentase = 0 }) => {
+  const isReguler = kategori === 'Reguler';
   const isTidakAda = title.includes('Tidak Ada') || kebutuhanAK === 0;
-  const progressPercentage = isTidakAda ? 0 : Math.min(akRealSaatIni / kebutuhanAK * 100, 100);
+  
+  // Untuk Reguler, progress dihitung berdasarkan waktu
+  let progressPercentage = 0;
+  if (isReguler && type === 'pangkat') {
+    progressPercentage = progressPangkatPersentase;
+  } else {
+    progressPercentage = isTidakAda ? 0 : Math.min(akRealSaatIni / kebutuhanAK * 100, 100);
+  }
+  
   const finalPercentage = bisaUsul ? 100 : progressPercentage;
 
   const getStatusVariant = () => {
     if (isTidakAda) return 'secondary';
     if (bisaUsul) return 'default';
+    if (isReguler && type === 'pangkat') {
+      if (progressPangkatPersentase >= 100) return 'default';
+      if (progressPangkatPersentase >= 75) return 'secondary';
+      return 'destructive';
+    }
     if (bulanDibutuhkan <= 6) return 'default';
     if (bulanDibutuhkan <= 12) return 'secondary';
     return 'destructive';
@@ -655,6 +822,14 @@ const ProgressCard: React.FC<{
       if (isKenaikanJenjang && type === 'jabatan') return 'Bisa usul Jabatan & Pangkat!';
       return 'Bisa diusulkan kenaikan Pangkat!';
     }
+    
+    if (isReguler && type === 'pangkat') {
+      if (progressPangkatPersentase >= 100) return 'Bisa usul kenaikan pangkat (4 tahun)';
+      const bulanSisa = 48 - progressPangkatBulan;
+      if (bulanSisa <= 0) return 'Bisa usul kenaikan pangkat';
+      return `Butuh ${bulanSisa} bulan lagi`;
+    }
+    
     const formatEstimasiWaktu = (bulan: number) => {
       if (bulan <= 0) return '0 bulan';
       const tahun = Math.floor(bulan / 12);
@@ -681,6 +856,7 @@ const ProgressCard: React.FC<{
           </div>
           <Badge variant={getStatusVariant() as any} className={
             bisaUsul ? "bg-green-600 hover:bg-green-700 text-white" : 
+            isReguler && progressPangkatPersentase >= 100 ? "bg-green-600 hover:bg-green-700 text-white" :
             bulanDibutuhkan <= 6 ? "bg-blue-600 hover:bg-blue-700 text-white" : 
             "bg-orange-600 hover:bg-orange-700 text-white"
           }>
@@ -691,7 +867,7 @@ const ProgressCard: React.FC<{
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {!isTidakAda && penjelasan && (
+        {penjelasan && (
           <div className="p-3 bg-blue-50 rounded-lg border">
             <p className="text-blue-700 font-sans italic text-xs">{penjelasan}</p>
           </div>
@@ -704,23 +880,32 @@ const ProgressCard: React.FC<{
               <span className="font-semibold">{finalPercentage.toFixed(1)}%</span>
             </div>
             <Progress value={finalPercentage} className="bg-gray-400" />
+            {isReguler && type === 'pangkat' && (
+              <div className="text-xs text-muted-foreground text-center">
+                {progressPangkatBulan} dari 48 bulan ({progressPangkatPersentase.toFixed(1)}%)
+              </div>
+            )}
           </div>
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-          <div className="text-center">
-            <div className="font-semibold text-xs text-muted-foreground">AK Awal</div>
-            <div className="text-lg font-bold">{akSaatIni.toFixed(2)}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-xs text-muted-foreground">AK Tambahan</div>
-            <div className="text-lg font-bold text-green-600">+{akTambahan.toFixed(2)}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-xs text-muted-foreground">AK Akhir</div>
-            <div className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
-          </div>
-          {!isTidakAda && (
+          {!isReguler && (
+            <>
+              <div className="text-center">
+                <div className="font-semibold text-xs text-muted-foreground">AK Awal</div>
+                <div className="text-lg font-bold">{akSaatIni.toFixed(2)}</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-xs text-muted-foreground">AK Tambahan</div>
+                <div className="text-lg font-bold text-green-600">+{akTambahan.toFixed(2)}</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-xs text-muted-foreground">AK Akhir</div>
+                <div className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
+              </div>
+            </>
+          )}
+          {!isTidakAda && !isReguler && (
             <div className="text-center">
               <div className="font-semibold text-xs text-muted-foreground">Kebutuhan</div>
               <div className="text-lg font-bold">{kebutuhanAK}</div>
@@ -728,12 +913,16 @@ const ProgressCard: React.FC<{
           )}
           <div className="text-center">
             <div className="font-semibold text-xs text-muted-foreground">
-              {isTidakAda ? 'Status' : 'Kekurangan'}
+              {isTidakAda ? 'Status' : isReguler ? 'Masa Kerja' : 'Kekurangan'}
             </div>
             <div className={`text-lg font-bold ${
-              isTidakAda ? 'text-gray-600' : kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'
+              isTidakAda ? 'text-gray-600' : 
+              isReguler ? 'text-blue-600' :
+              kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'
             }`}>
-              {isTidakAda ? 'Maksimal' : kekuranganAK.toFixed(2)}
+              {isTidakAda ? 'Maksimal' : 
+               isReguler ? `${progressPangkatBulan} bln` : 
+               kekuranganAK.toFixed(2)}
             </div>
           </div>
         </div>
@@ -744,6 +933,14 @@ const ProgressCard: React.FC<{
               {isKenaikanJenjang && type === 'jabatan' ? 
                 '✅ Bisa mengusulkan kenaikan JABATAN dan PANGKAT!' : 
                 '✅ Sudah memenuhi syarat untuk diusulkan!'}
+            </span>
+          </div>
+        )}
+
+        {isReguler && type === 'pangkat' && progressPangkatPersentase >= 100 && !bisaUsul && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+            <span className="text-yellow-800 text-sm font-semibold">
+              ⚠️ Masa kerja sudah 4 tahun, tetapi belum memenuhi syarat pendidikan untuk kenaikan pangkat
             </span>
           </div>
         )}
@@ -890,9 +1087,11 @@ const BiodataCard: React.FC<{
             <div>
               <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
               <p className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">
-                AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
-              </p>
+              {karyawan.kategori !== 'Reguler' && (
+                <p className="text-xs text-muted-foreground">
+                  AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -904,7 +1103,8 @@ const BiodataCard: React.FC<{
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
   onValueChange: (value: number) => void;
-}> = ({ selectedValue, onValueChange }) => {
+  disabled?: boolean;
+}> = ({ selectedValue, onValueChange, disabled = false }) => {
   const predikatOptions = [{
     value: 1.50,
     label: 'Sangat Baik (Performa luar biasa)'
@@ -922,14 +1122,22 @@ const PredikatKinerjaRadio: React.FC<{
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Estimasi Predikat Kinerja</CardTitle>
-        <CardDescription>Pilih predikat kinerja untuk simulasi perhitungan</CardDescription>
+        <CardDescription>
+          {disabled 
+            ? "Tidak berlaku untuk kategori Reguler" 
+            : "Pilih predikat kinerja untuk simulasi perhitungan"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <RadioGroup value={selectedValue.toString()} onValueChange={value => onValueChange(parseFloat(value))}>
+        <RadioGroup 
+          value={selectedValue.toString()} 
+          onValueChange={value => onValueChange(parseFloat(value))}
+          disabled={disabled}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {predikatOptions.map(option => (
-              <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
-                <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} />
+              <div key={option.value} className={`flex items-center space-x-3 rounded-lg border p-4 ${disabled ? 'opacity-50' : 'hover:bg-accent'}`}>
+                <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} disabled={disabled} />
                 <Label htmlFor={`predikat-${option.value}`} className="flex flex-col">
                   <span className="font-semibold">{option.label}</span>
                   <span className="text-lg font-bold text-blue-600">{option.value * 100}%</span>
@@ -938,6 +1146,13 @@ const PredikatKinerjaRadio: React.FC<{
             ))}
           </div>
         </RadioGroup>
+        {disabled && (
+          <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="text-yellow-700 text-sm">
+              Untuk kategori Reguler, perhitungan AK tidak berlaku. Kenaikan pangkat berdasarkan masa kerja 4 tahun.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -950,7 +1165,7 @@ const EmployeeTable: React.FC<{
   loading: boolean;
 }> = ({ karyawanList, onSelect, selectedNip, loading }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan' | 'Reguler'>('Semua');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
 
   const getKaryawanWithAKReal = (karyawan: Karyawan) => {
@@ -1030,6 +1245,7 @@ const EmployeeTable: React.FC<{
               <SelectItem value="Semua">Semua Kategori</SelectItem>
               <SelectItem value="Keahlian">Keahlian</SelectItem>
               <SelectItem value="Keterampilan">Keterampilan</SelectItem>
+              <SelectItem value="Reguler">Reguler</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1049,6 +1265,9 @@ const EmployeeTable: React.FC<{
                     Nama {getSortIcon('nama')}
                   </TableHead>
                   <TableHead className="w-[220px]">NIP</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('kategori')}>
+                    Kategori {getSortIcon('kategori')}
+                  </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort('golongan')}>
                     Golongan {getSortIcon('golongan')}
                   </TableHead>
@@ -1075,6 +1294,14 @@ const EmployeeTable: React.FC<{
                       <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
                         {karyawan.nip}
                       </code>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <Badge variant={
+                        karyawan.kategori === 'Keahlian' ? 'default' : 
+                        karyawan.kategori === 'Keterampilan' ? 'secondary' : 'outline'
+                      }>
+                        {karyawan.kategori}
+                      </Badge>
                     </TableCell>
                     <TableCell className="py-2">
                       <Badge variant="outline">{karyawan.golongan}</Badge>
@@ -1111,7 +1338,8 @@ const EmployeeTable: React.FC<{
             <div>
               <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
               <p className="text-blue-700 text-sm">
-                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik". 
+                <strong> Untuk kategori Reguler, perhitungan AK tidak berlaku.</strong>
               </p>
             </div>
           </div>
@@ -1126,6 +1354,7 @@ const EstimasiKenaikanCard: React.FC<{
 }> = ({ karyawan }) => {
   const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
+  const isReguler = karyawan.kategori === 'Reguler';
   
   const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
     if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
@@ -1150,22 +1379,37 @@ const EstimasiKenaikanCard: React.FC<{
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
-          <div className="text-center">
-            <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
-            <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
+        {!isReguler && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
+              <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
+              <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
+              <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
-            <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
-            <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
-          </div>
-        </div>
+        )}
 
-        {estimasi.isKenaikanJenjang && (
+        {isReguler && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm text-blue-700 font-medium">Masa Kerja Pangkat</div>
+              <div className="text-2xl font-bold text-blue-800">{estimasi.progressPangkatBulan} bulan</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-green-700 font-medium">Progress Kenaikan</div>
+              <div className="text-2xl font-bold text-green-800">{estimasi.progressPangkatPersentase.toFixed(1)}%</div>
+            </div>
+          </div>
+        )}
+
+        {estimasi.isKenaikanJenjang && !isReguler && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-amber-300">
@@ -1182,7 +1426,11 @@ const EstimasiKenaikanCard: React.FC<{
           </div>
         )}
 
-        <PredikatKinerjaRadio selectedValue={predikatAsumsi} onValueChange={setPredikatAsumsi} />
+        <PredikatKinerjaRadio 
+          selectedValue={predikatAsumsi} 
+          onValueChange={setPredikatAsumsi} 
+          disabled={isReguler}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card>
@@ -1197,16 +1445,38 @@ const EstimasiKenaikanCard: React.FC<{
                 <span className="text-muted-foreground">Pangkat berikutnya</span>
                 <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
-                <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
-                <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {estimasi.kekuranganAKPangkat.toFixed(2)}
-                </span>
-              </div>
+              {!isReguler && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
+                    <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
+                    <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {estimasi.kekuranganAKPangkat.toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              )}
+              {isReguler && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Masa Kerja Saat Ini</span>
+                    <span className="font-semibold">{estimasi.progressPangkatBulan} bulan</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold">{estimasi.progressPangkatPersentase.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Syarat Pendidikan</span>
+                    <span className={`font-semibold ${AngkaKreditCalculator.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan) ? 'text-green-600' : 'text-red-600'}`}>
+                      {AngkaKreditCalculator.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan) ? 'Terpenuhi' : 'Belum'}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Estimasi waktu</span>
                 <span className="font-semibold text-blue-600">{estimasiPangkat.formatted}</span>
@@ -1232,20 +1502,29 @@ const EstimasiKenaikanCard: React.FC<{
                 <span className="text-muted-foreground">Jabatan berikutnya</span>
                 <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
-                <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
-                <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {estimasi.kekuranganAKJabatan.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimasi waktu</span>
-                <span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span>
-              </div>
+              {!isReguler && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
+                    <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
+                    <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {estimasi.kekuranganAKJabatan.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Estimasi waktu</span>
+                    <span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span>
+                  </div>
+                </>
+              )}
+              {isReguler && (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">Tidak berlaku untuk kategori Reguler</p>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
@@ -1258,9 +1537,10 @@ const EstimasiKenaikanCard: React.FC<{
 
         <div className="p-4 bg-blue-50 rounded-lg border">
           <p className="text-blue-800 text-sm">
-            <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
-            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
-            akumulasi sejak TMT Jabatan.
+            <strong>Informasi:</strong> {isReguler 
+              ? "Estimasi untuk kategori Reguler berdasarkan masa kerja 4 tahun dari TMT Pangkat. Kenaikan pangkat memerlukan syarat pendidikan sesuai golongan."
+              : `Estimasi berdasarkan predikat kinerja ${predikatAsumsi * 100}% dengan perolehan ${estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk akumulasi sejak TMT Jabatan.`
+            }
           </p>
         </div>
       </CardContent>
@@ -1455,6 +1735,7 @@ const CompactPDFViewer: React.FC<{
     </div>
   );
 };
+
 const EmployeeDashboard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
@@ -1470,6 +1751,7 @@ const EmployeeDashboard: React.FC<{
   return (
     <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
+      
       {/* PESAN SELAMAT - DITAMPILKAN SETELAH BOX INFORMASI KARYAWAN */}
       {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
         <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
@@ -1491,6 +1773,7 @@ const EmployeeDashboard: React.FC<{
           </CardContent>
         </Card>
       )}
+      
       {rekomendasiKarir && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
@@ -1506,6 +1789,7 @@ const EmployeeDashboard: React.FC<{
           </CardContent>
         </Card>
       )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1513,8 +1797,14 @@ const EmployeeDashboard: React.FC<{
             Progress Kenaikan Karir
           </CardTitle>
           <CardDescription>
-            AK Akhir Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(2)}</strong>{' '}
-            (AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {estimasi.akTambahan.toFixed(2)})
+            {karyawan.kategori === 'Reguler' ? (
+              <>Progress kenaikan pangkat berdasarkan masa kerja 4 tahun dari TMT Pangkat</>
+            ) : (
+              <>
+                AK Akhir Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(2)}</strong>{' '}
+                (AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {estimasi.akTambahan.toFixed(2)})
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1532,6 +1822,9 @@ const EmployeeDashboard: React.FC<{
               bisaUsul={estimasi.bisaUsulPangkat} 
               isKenaikanJenjang={estimasi.isKenaikanJenjang} 
               target={estimasi.golonganBerikutnya} 
+              kategori={karyawan.kategori}
+              progressPangkatBulan={estimasi.progressPangkatBulan}
+              progressPangkatPersentase={estimasi.progressPangkatPersentase}
             />
             <ProgressCard 
               title="Kenaikan Jabatan" 
@@ -1546,6 +1839,7 @@ const EmployeeDashboard: React.FC<{
               bisaUsul={estimasi.bisaUsulJabatan} 
               isKenaikanJenjang={estimasi.isKenaikanJenjang} 
               target={estimasi.jabatanBerikutnya} 
+              kategori={karyawan.kategori}
             />
           </div>
         </CardContent>
@@ -1555,6 +1849,7 @@ const EmployeeDashboard: React.FC<{
     </div>
   );
 };
+
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
@@ -1583,6 +1878,10 @@ const KarierKu: React.FC = () => {
           const akValue = row[6].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
+        
+        const jabatan = row[4]?.toString() || '';
+        const kategori = AngkaKreditCalculator.tentukanKategori(jabatan);
+        
         const parseNIP = (nip: string) => {
           if (!nip || nip.length < 15) return { tanggalLahir: '', tahunMasuk: '', jenisKelamin: 'L' };
           const parts = nip.split(' ');
@@ -1606,17 +1905,19 @@ const KarierKu: React.FC = () => {
             const bulan = tahunMasukStr.substring(4, 6);
             tahunMasuk = `${tahun}-${bulan}-01`;
           }
-                    const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
+          
+          const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
           return { tanggalLahir, tahunMasuk, jenisKelamin };
         };
+        
         const nipData = parseNIP(row[0]?.toString() || '');
         return {
           nip: row[0]?.toString() || '',
           nama: row[1]?.toString() || '',
           pangkat: row[2]?.toString() || '',
           golongan: row[3]?.toString() || '',
-          jabatan: row[4]?.toString() || '',
-          kategori: row[5]?.toString() as 'Keahlian' | 'Keterampilan' || 'Keahlian',
+          jabatan: jabatan,
+          kategori: kategori,
           akKumulatif: akKumulatifValue,
           status: row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
           unitKerja: row[8]?.toString() || '',
@@ -1646,13 +1947,16 @@ const KarierKu: React.FC = () => {
       setLoading(false);
     }
   };
+  
   useEffect(() => {
     fetchKaryawanData();
   }, []);
+  
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
   };
+  
   return (
     <div className="space-y-6">
       {!selectedKaryawan ? (
