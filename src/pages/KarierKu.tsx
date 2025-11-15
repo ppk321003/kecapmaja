@@ -1450,32 +1450,32 @@ const KarierKu: React.FC = () => {
           return { tanggalLahir, tahunMasuk, jenisKelamin };
         };
 
-        const nipData = parseNIP(row[0]?.toString() || '');
+        const nipData = parseNIP(row[1]?.toString() || ''); // NIP di kolom B (index 1)
 
-        return {
-          nip: row[0]?.toString() || '',
-          nama: row[1]?.toString() || '',
-          pangkat: row[2]?.toString() || '',
-          golongan: row[3]?.toString() || '',
-          jabatan: row[4]?.toString() || '',
-          kategori: row[5]?.toString() as 'Keahlian' | 'Keterampilan' || 'Keahlian',
-          akKumulatif: akKumulatifValue,
-          status: row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
-          unitKerja: row[8]?.toString() || '',
-          tmtJabatan: row[9]?.toString() || '',
-          tmtPangkat: row[10]?.toString() || '',
-          pendidikan: row[11]?.toString() || '',
-          tanggalLahir: nipData.tanggalLahir,
-          jenisKelamin: nipData.jenisKelamin,
-          tempatLahir: '',
-          agama: '',
-          email: '',
-          telepon: '',
-          alamat: '',
-          linkSkJabatan: row[12]?.toString() || '',
-          linkSkPangkat: row[13]?.toString() || ''
-        };
-      });
+              return {
+                nip: row[1]?.toString() || '', // Kolom B (NIP)
+                nama: row[3]?.toString() || '', // Kolom D (Nama)
+                pangkat: row[7]?.toString() || '', // Kolom H (Pangkat)
+                golongan: row[6]?.toString() || '', // Kolom G (Gol.Akhir)
+                jabatan: row[4]?.toString() || '', // Kolom E (Jabatan)
+                kategori: row[11]?.toString() as 'Keahlian' | 'Keterampilan' || 'Keahlian', // Kolom L (kategori)
+                akKumulatif: akKumulatifValue,
+                status: row[13]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif', // Kolom N (status)
+                unitKerja: row[14]?.toString() || '', // Kolom O (unitKerja)
+                tmtJabatan: row[15]?.toString() || '', // Kolom P (tmtJabatan)
+                tmtPangkat: row[16]?.toString() || '', // Kolom Q (tmtPangkat)
+                pendidikan: row[17]?.toString() || '', // Kolom R (pendidikan)
+                tanggalLahir: nipData.tanggalLahir,
+                jenisKelamin: nipData.jenisKelamin,
+                tempatLahir: '',
+                agama: '',
+                email: '',
+                telepon: '',
+                alamat: '',
+                linkSkJabatan: row[18]?.toString() || '', // KOLOM S (link SK_Jabatan) - INDEX 18
+                linkSkPangkat: row[19]?.toString() || ''  // KOLOM T (link SK_Pangkat) - INDEX 19
+              };
+            });
 
       setKaryawanList(karyawanData);
     } catch (error: any) {
