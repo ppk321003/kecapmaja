@@ -690,11 +690,7 @@ const ProgressCard: React.FC<{
             {getIcon()}
             <CardTitle className="text-lg">{title}</CardTitle>
           </div>
-          <Badge variant={getStatusVariant() as any}
-             className={
-              bisaUsul ? "bg-green-600 hover:bg-green-700 text-white" : 
-              bulanDibutuhkan <= 6 ? "bg-blue-600 hover:bg-blue-700 text-white" :
-              bulanDibutuhkan <= 24 ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}>
+          <Badge variant={getStatusVariant() as any} className={bisaUsul ? "bg-green-600 hover:bg-green-700 text-white" : bulanDibutuhkan <= 6 ? "bg-blue-600 hover:bg-blue-700 text-white" : bulanDibutuhkan <= 24 ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}>
             {getStatusText()}
           </Badge>
         </div>
@@ -703,7 +699,7 @@ const ProgressCard: React.FC<{
       
       <CardContent className="space-y-4">
         {!isTidakAda && penjelasan && <div className="p-3 bg-blue-50 rounded-lg border">
-            <p className="text-sm text-blue-700">{penjelasan}</p>
+            <p className="text-blue-700 font-sans italic text-xs">{penjelasan}</p>
           </div>}
 
         {!isTidakAda && <div className="space-y-2">
@@ -1172,12 +1168,12 @@ const EstimasiKenaikanCard: React.FC<{
 
         {estimasi.isKenaikanJenjang && <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="bg-yellow-100 p-2 rounded-full">
-                <TrendingUp className="h-4 w-4 text-yellow-600" />
+              <div className="p-2 rounded-full bg-amber-300">
+                <TrendingUp className="h-4 w-4 text-yellow-900" />
               </div>
               <div>
-                <h4 className="font-semibold text-yellow-800 mb-1">Kenaikan Jenjang</h4>
-                <p className="text-yellow-700 text-sm">
+                <h4 className="font-semibold mb-1 text-yellow-900">Kenaikan Jenjang</h4>
+                <p className="text-sm text-yellow-800">
                   Ini adalah kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
                   <strong>Jabatan dan Pangkat</strong>. Kenaikan pangkat akan mengikuti setelah dinyatakan lulus Uji Kompetensi.
                 </p>
