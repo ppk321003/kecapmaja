@@ -428,7 +428,7 @@ const DashboardKarierKu: React.FC<{
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600">
+          <CardTitle className="flex items-center gap-2 text-sky-600">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             Pegawai yang Sudah Memenuhi Syarat Kenaikan Pangkat
           </CardTitle>
@@ -472,7 +472,7 @@ const DashboardKarierKu: React.FC<{
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-500">
+          <CardTitle className="flex items-center gap-2 text-sky-600">
             <CheckCircle2 className="h-5 w-5 text-blue-600" />
             Pegawai yang Sudah Memenuhi Syarat Kenaikan Jabatan
           </CardTitle>
@@ -516,7 +516,7 @@ const DashboardKarierKu: React.FC<{
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-500">
+          <CardTitle className="flex items-center gap-2 text-sky-600">
             <Clock className="h-5 w-5 text-yellow-600" />
             Pegawai yang Akan Memenuhi Syarat dalam 6 Bulan (Pangkat)
           </CardTitle>
@@ -564,7 +564,7 @@ const DashboardKarierKu: React.FC<{
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-500">
+          <CardTitle className="flex items-center gap-2 text-sky-600">
             <Clock className="h-5 w-5 text-orange-600" />
             Pegawai yang Akan Memenuhi Syarat dalam 6 Bulan (Jabatan)
           </CardTitle>
