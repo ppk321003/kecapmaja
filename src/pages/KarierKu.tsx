@@ -691,8 +691,8 @@ const ProgressCard: React.FC<{
             <CardTitle className="text-lg">{title}</CardTitle>
           </div>
           <Badge variant={getStatusVariant() as any}
-             className={bisaUsul ? "bg-green-500 hover:bg-green-600 text-white" : 
-             bulanDibutuhkan <= 6 ? "bg-blue-500 hover:bg-blue-600 text-white" : ""}>
+             className={bisaUsul ? "bg-green-600 hover:bg-green-700 text-white" : 
+             bulanDibutuhkan <= 6 ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}>
             {getStatusText()}
           </Badge>
         </div>
