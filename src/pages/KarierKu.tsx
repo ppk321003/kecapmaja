@@ -666,7 +666,7 @@ const ProgressCard: React.FC<{
     if (isTidakAda) return 'Tingkatan tertinggi';
     if (bisaUsul) {
       if (isKenaikanJenjang && type === 'jabatan') return 'Bisa usul Jabatan & Pangkat!';
-      return 'Bisa diusulkan!';
+      return 'Bisa diusulkan kenaikan Pangkat!';
     }
     const formatEstimasiWaktu = (bulan: number) => {
       if (bulan <= 0) return '0 bulan';
