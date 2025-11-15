@@ -656,8 +656,8 @@ const ProgressCard: React.FC<{
   };
   const getStatusVariant = () => {
     if (isTidakAda) return 'secondary';
-    if (bisaUsul) return 'bg-green-500';
-    if (bulanDibutuhkan <= 6) return 'bg-blue-500';
+    if (bisaUsul) return 'default';
+    if (bulanDibutuhkan <= 6) return 'default';
     if (bulanDibutuhkan <= 12) return 'secondary';
     if (bulanDibutuhkan <= 24) return 'destructive';
     return 'destructive';
@@ -691,6 +691,8 @@ const ProgressCard: React.FC<{
             <CardTitle className="text-lg">{title}</CardTitle>
           </div>
           <Badge variant={getStatusVariant() as any}>
+             className={bisaUsul ? "bg-green-500 hover:bg-green-600 text-white" : 
+             bulanDibutuhkan <= 6 ? "bg-blue-500 hover:bg-blue-600 text-white" : ""}
             {getStatusText()}
           </Badge>
         </div>
