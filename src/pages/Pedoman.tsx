@@ -309,7 +309,7 @@ class AngkaKreditCalculator {
         }
       }
     }
-    return;
+    return '';
   }
 
   static getRekomendasiKarir(karyawan: Karyawan): string {
@@ -808,7 +808,7 @@ const DashboardKarierKu: React.FC<{
                     <TableCell className="py-2 text-xs">
                       {karyawan.bisaUsul ? (
                         <span className="text-green-600 font-medium">Siap Usul</span>
-                      ) : karyawan.estimasi.bulanDibutuhkanPangkat <= 12 ? (
+                      ) : karyawan.estimasi.bulanDibutuhkanPangkat &lt;= 12 ? (
                         <span className="text-blue-600">{karyawan.estimasi.bulanDibutuhkanPangkat} bulan</span>
                       ) : (
                         <span className="text-orange-600">{karyawan.estimasi.bulanDibutuhkanPangkat} bulan</span>
@@ -842,7 +842,7 @@ const DashboardKarierKu: React.FC<{
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm">Dalam Proses: Estimasi > 12 bulan</span>
+                  <span className="text-sm">Dalam Proses: Estimasi &gt; 12 bulan</span>
                 </div>
               </CardContent>
             </Card>
@@ -912,7 +912,7 @@ const TabelIndividu: React.FC<{
         return 0;
     }
     
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue &lt; bValue) return sortDirection === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
@@ -974,7 +974,7 @@ const TabelIndividu: React.FC<{
             <div className="text-sm text-orange-800">Jalur Keterampilan</div>
           </div>
         </div>
-      </CardContent>
+      </CardHeader>
       
       <CardContent>
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -1196,7 +1196,7 @@ const EstimasiKenaikanCard: React.FC<{
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
 
   const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
-    if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
+    if (bulanDibutuhkan &lt;= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
     const tahun = Math.floor(bulanDibutuhkan / 12);
     const bulan = bulanDibutuhkan % 12;
     let formatted = '';
