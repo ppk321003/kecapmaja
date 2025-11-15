@@ -351,21 +351,23 @@ class AngkaKreditCalculator {
 const DashboardKarierKu: React.FC<{
   karyawanList: Karyawan[];
   onSelectKaryawan: (karyawan: Karyawan) => void;
-}> = ({ karyawanList, onSelectKaryawan }) => {
+}> = ({
+  karyawanList,
+  onSelectKaryawan
+}) => {
   const getKaryawanWithEstimasi = (karyawan: Karyawan) => {
     const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
-    return { ...karyawan, estimasi };
+    return {
+      ...karyawan,
+      estimasi
+    };
   };
-
   const karyawanWithEstimasi = karyawanList.map(getKaryawanWithEstimasi);
-  
   const sudahMemenuhiPangkat = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulPangkat && k.estimasi.kebutuhanAKPangkat > 0);
   const sudahMemenuhiJabatan = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulJabatan && k.estimasi.kebutuhanAKJabatan > 0);
   const akan6BulanPangkat = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulPangkat && k.estimasi.bulanDibutuhkanPangkat > 0 && k.estimasi.bulanDibutuhkanPangkat <= 6);
   const akan6BulanJabatan = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulJabatan && k.estimasi.bulanDibutuhkanJabatan > 0 && k.estimasi.bulanDibutuhkanJabatan <= 6);
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Dashboard Kenaikan Karir</CardTitle>
@@ -433,12 +435,9 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan pangkat</CardDescription>
         </CardHeader>
         <CardContent>
-          {sudahMemenuhiPangkat.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+          {sudahMemenuhiPangkat.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               Belum ada pegawai yang memenuhi syarat kenaikan pangkat
-            </div>
-          ) : (
-            <Table>
+            </div> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
@@ -452,8 +451,7 @@ const DashboardKarierKu: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sudahMemenuhiPangkat.map((k, idx) => (
-                  <TableRow key={k.nip}>
+                {sudahMemenuhiPangkat.map((k, idx) => <TableRow key={k.nip}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
@@ -466,11 +464,9 @@ const DashboardKarierKu: React.FC<{
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
 
@@ -483,12 +479,9 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan jabatan</CardDescription>
         </CardHeader>
         <CardContent>
-          {sudahMemenuhiJabatan.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+          {sudahMemenuhiJabatan.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               Belum ada pegawai yang memenuhi syarat kenaikan jabatan
-            </div>
-          ) : (
-            <Table>
+            </div> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
@@ -502,8 +495,7 @@ const DashboardKarierKu: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sudahMemenuhiJabatan.map((k, idx) => (
-                  <TableRow key={k.nip}>
+                {sudahMemenuhiJabatan.map((k, idx) => <TableRow key={k.nip}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
@@ -516,11 +508,9 @@ const DashboardKarierKu: React.FC<{
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
 
@@ -533,12 +523,9 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang diperkirakan akan memenuhi syarat kenaikan pangkat dalam 6 bulan ke depan</CardDescription>
         </CardHeader>
         <CardContent>
-          {akan6BulanPangkat.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+          {akan6BulanPangkat.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               Tidak ada pegawai yang akan memenuhi syarat dalam 6 bulan
-            </div>
-          ) : (
-            <Table>
+            </div> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
@@ -553,8 +540,7 @@ const DashboardKarierKu: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {akan6BulanPangkat.map((k, idx) => (
-                  <TableRow key={k.nip}>
+                {akan6BulanPangkat.map((k, idx) => <TableRow key={k.nip}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
@@ -570,11 +556,9 @@ const DashboardKarierKu: React.FC<{
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
 
@@ -587,12 +571,9 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang diperkirakan akan memenuhi syarat kenaikan jabatan dalam 6 bulan ke depan</CardDescription>
         </CardHeader>
         <CardContent>
-          {akan6BulanJabatan.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+          {akan6BulanJabatan.length === 0 ? <div className="text-center py-8 text-muted-foreground">
               Tidak ada pegawai yang akan memenuhi syarat dalam 6 bulan
-            </div>
-          ) : (
-            <Table>
+            </div> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
@@ -607,8 +588,7 @@ const DashboardKarierKu: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {akan6BulanJabatan.map((k, idx) => (
-                  <TableRow key={k.nip}>
+                {akan6BulanJabatan.map((k, idx) => <TableRow key={k.nip}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
@@ -624,15 +604,12 @@ const DashboardKarierKu: React.FC<{
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
 
 // ==================== COMPONENTS ====================
@@ -977,8 +954,13 @@ const EmployeeTable: React.FC<{
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
-  const [sortConfig, setSortConfig] = useState<{key: string; direction: 'asc' | 'desc' | null}>({key: '', direction: null});
-
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'asc' | 'desc' | null;
+  }>({
+    key: '',
+    direction: null
+  });
   const getKaryawanWithAKReal = (karyawan: Karyawan) => {
     const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
     const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
@@ -994,44 +976,38 @@ const EmployeeTable: React.FC<{
     const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
     return matchesSearch && matchesKategori;
   });
-
   const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
     if (!sortConfig.direction) return 0;
-    
     let aValue: any = a[sortConfig.key as keyof typeof a];
     let bValue: any = b[sortConfig.key as keyof typeof b];
-    
     if (sortConfig.key === 'akKumulatif' || sortConfig.key === 'akTambahan' || sortConfig.key === 'akRealSaatIni') {
       aValue = parseFloat(aValue) || 0;
       bValue = parseFloat(bValue) || 0;
     }
-    
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
-
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' | null = 'asc';
     if (sortConfig.key === key) {
-      if (sortConfig.direction === 'asc') direction = 'desc';
-      else if (sortConfig.direction === 'desc') direction = null;
+      if (sortConfig.direction === 'asc') direction = 'desc';else if (sortConfig.direction === 'desc') direction = null;
     }
-    setSortConfig({ key, direction });
+    setSortConfig({
+      key,
+      direction
+    });
   };
-
   const getSortIcon = (key: string) => {
     if (sortConfig.key !== key || !sortConfig.direction) {
       return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
     }
     return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
   };
-
   const totalKaryawan = karyawanList.length;
   const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
   const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
   const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
-
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -1043,7 +1019,6 @@ const EmployeeTable: React.FC<{
         </CardContent>
       </Card>;
   }
-
   return <Card>
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-red-500">Penghitungan Angka Kredit</CardTitle>
@@ -1502,7 +1477,6 @@ const KarierKu: React.FC = () => {
   const {
     toast
   } = useToast();
-
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
@@ -1597,7 +1571,6 @@ const KarierKu: React.FC = () => {
   useEffect(() => {
     fetchKaryawanData();
   }, []);
-
   const handleSaveInput = (newInput: InputKinerja) => {
     setInputHistory([...inputHistory, newInput]);
     if (selectedKaryawan) {
@@ -1610,17 +1583,15 @@ const KarierKu: React.FC = () => {
       if (updatedSelected) setSelectedKaryawan(updatedSelected);
     }
   };
-
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
   };
-
   return <div className="space-y-6">
       {!selectedKaryawan ? <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Sistem Manajemen Angka Kredit Pegawai</CardTitle>
+              <CardTitle className="text-3xl font-bold text-red-500">Sistem Manajemen Angka Kredit Pegawai</CardTitle>
               <CardDescription>Penghitungan dan monitoring angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
             </CardHeader>
           </Card>
@@ -1638,19 +1609,11 @@ const KarierKu: React.FC = () => {
             </TabsList>
 
             <TabsContent value="dashboardKarir" className="space-y-6">
-              <DashboardKarierKu 
-                karyawanList={karyawanList} 
-                onSelectKaryawan={handleSelectKaryawan}
-              />
+              <DashboardKarierKu karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
             </TabsContent>
 
             <TabsContent value="tabelIndividu" className="space-y-6">
-              <EmployeeTable
-                karyawanList={karyawanList}
-                onSelect={setSelectedKaryawan}
-                selectedNip={null}
-                loading={loading}
-              />
+              <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
             </TabsContent>
           </Tabs>
         </> : <>
