@@ -872,6 +872,7 @@ const EmployeeTable: React.FC<{
   selectedNip: string | null;
   loading: boolean;
 }> = ({ karyawanList, onSelect, selectedNip, loading }) => {
+  console.log('Karyawan list in table:', karyawanList);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
@@ -1401,24 +1402,35 @@ const KarierKu: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchKaryawanData = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: SPREADSHEET_ID,
-          operation: "read",
-          range: `${SHEET_NAME}!A:T`
-        }
-      });
+const fetchKaryawanData = async () => {
+  try {
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:T`
+      }
+    });
 
-      if (error) throw error;
+    if (error) throw error;
+    
+    const rows = data.values || [];
+    console.log('Raw data from sheets:', rows); // Debug log
+    
+    const karyawanData: Karyawan[] = [];
+    
+    // Skip header row (index 0) dan proses dari index 1
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
       
-      const rows = data.values || [];
-      const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
+      // Skip row kosong
+      if (!row || row.length === 0 || !row[0]) continue;
+      
+      try {
         let akKumulatifValue = 0;
-        if (row[6]) {
-          const akValue = row[6].toString().replace(',', '.');
+        if (row[11]) { // Kolom AK Kumulatif - sesuaikan index berdasarkan data aktual
+          const akValue = row[11].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
 
@@ -1452,21 +1464,22 @@ const KarierKu: React.FC = () => {
 
         const nipData = parseNIP(row[0]?.toString() || '');
 
-        return {
+        // Mapping kolom berdasarkan header yang Anda berikan
+        const karyawan: Karyawan = {
           nip: row[0]?.toString() || '',
           nama: row[1]?.toString() || '',
           pangkat: row[2]?.toString() || '',
           golongan: row[3]?.toString() || '',
           jabatan: row[4]?.toString() || '',
-          kategori: row[5]?.toString() as 'Keahlian' | 'Keterampilan' || 'Keahlian',
+          kategori: (row[11]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian', // Kolom 12
           akKumulatif: akKumulatifValue,
-          status: row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
-          unitKerja: row[8]?.toString() || '',
-          tmtJabatan: row[9]?.toString() || '',
-          tmtPangkat: row[10]?.toString() || '',
-          pendidikan: row[11]?.toString() || '',
-          linkSkJabatan: row[17]?.toString() || '', // Kolom 18 (index 17) - Link SK Jabatan
-          linkSkPangkat: row[18]?.toString() || '', // Kolom 19 (index 18) - Link SK Pangkat
+          status: (row[13]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif', // Kolom 14
+          unitKerja: row[14]?.toString() || '', // Kolom 15
+          tmtJabatan: row[15]?.toString() || '', // Kolom 16
+          tmtPangkat: row[16]?.toString() || '', // Kolom 17
+          pendidikan: row[17]?.toString() || '', // Kolom 18
+          linkSkJabatan: row[18]?.toString() || '', // Kolom 19 - Link SK Jabatan
+          linkSkPangkat: row[19]?.toString() || '', // Kolom 20 - Link SK Pangkat
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
@@ -1475,23 +1488,29 @@ const KarierKu: React.FC = () => {
           telepon: '',
           alamat: ''
         };
-      });
-console.log('Row data:', row);
-console.log('SK Jabatan:', row[17]);
-console.log('SK Pangkat:', row[18]);
 
-      setKaryawanList(karyawanData);
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data dari Google Sheets: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+        karyawanData.push(karyawan);
+        console.log(`Processed karyawan ${i}:`, karyawan.nama, 'SK Jabatan:', karyawan.linkSkJabatan); // Debug log
+        
+      } catch (rowError) {
+        console.error(`Error processing row ${i}:`, rowError, row);
+      }
     }
-  };
+
+    setKaryawanList(karyawanData);
+    console.log('Final karyawan data:', karyawanData); // Debug log
+    
+  } catch (error: any) {
+    console.error('Error fetching data:', error);
+    toast({
+      title: "Error",
+      description: "Gagal memuat data dari Google Sheets: " + error.message,
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchKaryawanData();
