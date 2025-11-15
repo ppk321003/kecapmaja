@@ -1212,7 +1212,8 @@ const EstimasiKenaikanCard: React.FC<{
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'}>
+                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'}
+                  className={estimasi.bisaUsulPangkat ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
                   {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
               </div>
@@ -1247,7 +1248,8 @@ const EstimasiKenaikanCard: React.FC<{
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'}>
+                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'}
+                  className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
                   {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
               </div>
