@@ -1194,28 +1194,6 @@ const EstimasiKenaikanCard: React.FC<{
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
-  const cleanUrl = (url: string) => {
-    if (!url) return '';
-    return url.trim().replace(/^'+|'+$/g, '');
-  };
-
-  const isValidUrl = (url: string) => {
-    const cleaned = cleanUrl(url);
-    if (!cleaned) return false;
-    try {
-      new URL(cleaned);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const linkJabatan = cleanUrl(karyawan.linkSkJabatan || '');
-  const linkPangkat = cleanUrl(karyawan.linkSkPangkat || '');
-
-  const hasSkJabatan = isValidUrl(linkJabatan);
-  const hasSkPangkat = isValidUrl(linkPangkat);
-
   return (
     <Card>
       <CardHeader>
@@ -1228,25 +1206,29 @@ const DokumenSKCard: React.FC<{
       <CardContent>
         <div className="space-y-4">
           {/* SK Jabatan */}
-          <Card className={hasSkJabatan ? "border-green-200" : "border-gray-200"}>
+          <Card className={karyawan.linkSkJabatan ? "border-green-200" : "border-gray-200"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${hasSkJabatan ? "bg-green-100" : "bg-gray-100"}`}>
-                    <TrendingUp className={`h-4 w-4 ${hasSkJabatan ? "text-green-600" : "text-gray-400"}`} />
+                  <div className={`p-2 rounded-full ${
+                    karyawan.linkSkJabatan ? "bg-green-100" : "bg-gray-100"
+                  }`}>
+                    <TrendingUp className={`h-4 w-4 ${
+                      karyawan.linkSkJabatan ? "text-green-600" : "text-gray-400"
+                    }`} />
                   </div>
                   <div>
                     <p className="font-medium">SK Jabatan</p>
                     <p className="text-sm text-muted-foreground">
-                      {hasSkJabatan ? "Dokumen tersedia" : "Dokumen belum tersedia"}
+                      {karyawan.linkSkJabatan ? "Dokumen tersedia" : "Dokumen belum tersedia"}
                     </p>
                   </div>
                 </div>
-                {hasSkJabatan && (
+                {karyawan.linkSkJabatan && (
                   <Button size="sm" asChild>
-                    <a
-                      href={linkJabatan}
-                      target="_blank"
+                    <a 
+                      href={karyawan.linkSkJabatan} 
+                      target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
                     >
@@ -1260,25 +1242,29 @@ const DokumenSKCard: React.FC<{
           </Card>
 
           {/* SK Pangkat */}
-          <Card className={hasSkPangkat ? "border-blue-200" : "border-gray-200"}>
+          <Card className={karyawan.linkSkPangkat ? "border-blue-200" : "border-gray-200"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${hasSkPangkat ? "bg-blue-100" : "bg-gray-100"}`}>
-                    <Award className={`h-4 w-4 ${hasSkPangkat ? "text-blue-600" : "text-gray-400"}`} />
+                  <div className={`p-2 rounded-full ${
+                    karyawan.linkSkPangkat ? "bg-blue-100" : "bg-gray-100"
+                  }`}>
+                    <Award className={`h-4 w-4 ${
+                      karyawan.linkSkPangkat ? "text-blue-600" : "text-gray-400"
+                    }`} />
                   </div>
                   <div>
                     <p className="font-medium">SK Pangkat</p>
                     <p className="text-sm text-muted-foreground">
-                      {hasSkPangkat ? "Dokumen tersedia" : "Dokumen belum tersedia"}
+                      {karyawan.linkSkPangkat ? "Dokumen tersedia" : "Dokumen belum tersedia"}
                     </p>
                   </div>
                 </div>
-                {hasSkPangkat && (
+                {karyawan.linkSkPangkat && (
                   <Button size="sm" asChild>
-                    <a
-                      href={linkPangkat}
-                      target="_blank"
+                    <a 
+                      href={karyawan.linkSkPangkat} 
+                      target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
                     >
@@ -1291,7 +1277,7 @@ const DokumenSKCard: React.FC<{
             </CardContent>
           </Card>
 
-          {!hasSkJabatan && !hasSkPangkat && (
+          {!karyawan.linkSkJabatan && !karyawan.linkSkPangkat && (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Belum ada dokumen SK yang tersedia</p>
@@ -1422,7 +1408,7 @@ const KarierKu: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:U`
+          range: `${SHEET_NAME}!A:T`
         }
       });
 
@@ -1478,58 +1464,19 @@ const KarierKu: React.FC = () => {
           unitKerja: row[8]?.toString() || '',
           tmtJabatan: row[9]?.toString() || '',
           tmtPangkat: row[10]?.toString() || '',
-          pendidikan: row[11]?.toString() || '',         
-          linkSkJabatan: (row[12] && row[12] !== null && row[12] !== 'null' ? row[12].toString().trim().replace(/^'+|'+$/g, '') : '') || '',
-          linkSkPangkat: (row[13] && row[13] !== null && row[13] !== 'null' ? row[13].toString().trim().replace(/^'+|'+$/g, '') : '') || ''
+          pendidikan: row[11]?.toString() || '',
+          linkSkJabatan: row[12]?.toString() || '',
+          linkSkPangkat: row[13]?.toString() || '',
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
           agama: '',
           email: '',
           telepon: '',
-          alamat: ''        
+          alamat: ''
         };
       });
-// Tambahkan komponen debugging sementara
-const DebugSKCard: React.FC<{
-  karyawan: Karyawan;
-}> = ({ karyawan }) => {
-  return (
-    <Card className="bg-yellow-50 border-yellow-200">
-      <CardHeader>
-        <CardTitle className="text-yellow-800">Debug Info - Data SK</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2 text-sm">
-          <div>
-            <strong>Nama:</strong> {karyawan.nama}
-          </div>
-          <div>
-            <strong>Link SK Jabatan:</strong> 
-            <span className={karyawan.linkSkJabatan ? "text-green-600" : "text-red-600"}>
-              {karyawan.linkSkJabatan || 'TIDAK ADA'}
-            </span>
-          </div>
-          <div>
-            <strong>Link SK Pangkat:</strong> 
-            <span className={karyawan.linkSkPangkat ? "text-green-600" : "text-red-600"}>
-              {karyawan.linkSkPangkat || 'TIDAK ADA'}
-            </span>
-          </div>
-          <div>
-            <strong>Total Data Karyawan:</strong> {karyawanList.length}
-          </div>
-          <div>
-            <strong>Karyawan dengan SK Jabatan:</strong> {karyawanList.filter(k => k.linkSkJabatan).length}
-          </div>
-          <div>
-            <strong>Karyawan dengan SK Pangkat:</strong> {karyawanList.filter(k => k.linkSkPangkat).length}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
