@@ -15,6 +15,7 @@ import {
   BookOpen,
   FileCheck,
   Link2,
+  Briefcase,
 } from "lucide-react";
 
 import {
@@ -40,15 +41,16 @@ const mainMenuItems = [
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
-  { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
-  { title: "SBML", url: "/entri-sbml", icon: Database },
+  { title: "KarierKu", url: "/KarieKu", icon: Briefcase },
   //{ title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
-  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
+  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
 ];
 
 const additionalMenuItems = [
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
+  { title: "SBML Tahunan", url: "/entriSBML", icon: DownloadIcon },  
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 
