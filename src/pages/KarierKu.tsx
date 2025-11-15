@@ -329,7 +329,7 @@ class AngkaKreditCalculator {
         }
       }
     }
-    return;
+    return '';
   }
   static getRekomendasiKarir(karyawan: Karyawan): string {
     if (karyawan.kategori === 'Keterampilan') {
@@ -1019,8 +1019,6 @@ const EmployeeTable: React.FC<{
       </Card>;
   }
   return <Card>
-      
-      
       <CardContent className="my-[20px]">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
@@ -1257,13 +1255,6 @@ const EstimasiKenaikanCard: React.FC<{
           </Card>
         </div>
 
-        {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-green-800 font-semibold">
-              🎉 SELAMAT!! Anda sudah memenuhi syarat kenaikan jenjang. Apabila lulus Uji Kompetensi anda dapat mengusulkan kenaikan{' '}
-              <strong>JABATAN dan PANGKAT</strong>. 🎉
-            </p>
-          </div>}
-
         <div className="p-4 bg-blue-50 rounded-lg border">
           <p className="text-blue-800 text-sm">
             <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
@@ -1407,8 +1398,29 @@ const EmployeeDashboard: React.FC<{
   const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
+  
   return <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
+
+      {/* PESAN SELAMAT - DITAMPILKAN SETELAH BOX INFORMASI KARYAWAN */}
+      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <Award className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-green-800 mb-2">
+                🎉 SELAMAT!! 🎉
+              </h3>
+              <p className="text-green-700 text-lg font-medium">
+                Anda sudah memenuhi syarat kenaikan jenjang. Apabila lulus Uji Kompetensi anda dapat mengusulkan kenaikan{' '}
+                <strong className="text-green-800">JABATAN dan PANGKAT</strong>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {rekomendasiKarir && <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
