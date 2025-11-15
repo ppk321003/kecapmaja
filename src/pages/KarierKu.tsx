@@ -656,8 +656,8 @@ const ProgressCard: React.FC<{
   };
   const getStatusVariant = () => {
     if (isTidakAda) return 'secondary';
-    if (bisaUsul) return 'default';
-    if (bulanDibutuhkan <= 6) return 'default';
+    if (bisaUsul) return 'bg-green-500';
+    if (bulanDibutuhkan <= 6) return 'bg-blue-500';
     if (bulanDibutuhkan <= 12) return 'secondary';
     if (bulanDibutuhkan <= 24) return 'destructive';
     return 'destructive';
