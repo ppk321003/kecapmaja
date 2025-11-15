@@ -1478,17 +1478,17 @@ const KarierKu: React.FC = () => {
           unitKerja: row[8]?.toString() || '',
           tmtJabatan: row[9]?.toString() || '',
           tmtPangkat: row[10]?.toString() || '',
-          pendidikan: row[11]?.toString() || '',
+          pendidikan: row[11]?.toString() || '',         
+          linkSkJabatan: (row[12] && row[12] !== null && row[12] !== 'null' ? row[12].toString().trim().replace(/^'+|'+$/g, '') : '') || '',
+          linkSkPangkat: (row[13] && row[13] !== null && row[13] !== 'null' ? row[13].toString().trim().replace(/^'+|'+$/g, '') : '') || ''
+        };
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
           agama: '',
           email: '',
           telepon: '',
-          alamat: '',
-          linkSkJabatan: (row[18] && row[18] !== null && row[18] !== 'null' ? row[18].toString().trim().replace(/^'+|'+$/g, '') : '') || '',
-          linkSkPangkat: (row[19] && row[19] !== null && row[19] !== 'null' ? row[19].toString().trim().replace(/^'+|'+$/g, '') : '') || ''
-        };
+          alamat: ''
       });
 // Tambahkan komponen debugging sementara
 const DebugSKCard: React.FC<{
