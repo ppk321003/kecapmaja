@@ -1411,10 +1411,10 @@ const EmployeeDashboard: React.FC<{
                 <Award className="h-8 w-8 text-green-600" />
               </div>
               <h3 className="text-xl font-bold text-green-800 mb-2">
-                🎉 SELAMAT!! 🎉
+                🎉🎉 SELAMAT..!!! 🎉🎉
               </h3>
               <p className="text-green-700 text-lg font-medium">
-                Anda sudah memenuhi syarat kenaikan jenjang. Apabila lulus Uji Kompetensi anda dapat mengusulkan kenaikan{' '}
+                Tahap awal sukses telah Anda raih! Anda berhasil memenuhi target kenaikan jenjang. Tinggal satu langkah lagi - Uji Kompetensi - untuk mewujudkan kenaikan{' '}
                 <strong className="text-green-800">JABATAN dan PANGKAT</strong>.
               </p>
             </div>
