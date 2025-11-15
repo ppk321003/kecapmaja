@@ -1271,34 +1271,23 @@ const EstimasiKenaikanCard: React.FC<{
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
-  const [viewMode, setViewMode] = useState<'single' | 'split'>('single');
-  const [selectedDoc, setSelectedDoc] = useState<'jabatan' | 'pangkat' | null>(null);
-
   const hasJabatan = !!karyawan.linkSkJabatan;
   const hasPangkat = !!karyawan.linkSkPangkat;
-
-  // Auto select first available document
-  useEffect(() => {
-    if (!selectedDoc && viewMode === 'single') {
-      if (hasJabatan) setSelectedDoc('jabatan');
-      else if (hasPangkat) setSelectedDoc('pangkat');
-    }
-  }, [hasJabatan, hasPangkat, selectedDoc, viewMode]);
 
   if (!hasJabatan && !hasPangkat) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <FileText className="h-5 w-5" />
             Dokumen SK
           </CardTitle>
           <CardDescription>Dokumen pendukung karir dan kepangkatan</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">Belum ada dokumen SK yang tersedia</p>
+        <CardContent className="pt-0">
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">Belum ada dokumen SK yang tersedia</p>
             <p className="text-sm">Dokumen akan ditampilkan di sini ketika tersedia</p>
           </div>
         </CardContent>
@@ -1307,220 +1296,159 @@ const DokumenSKCard: React.FC<{
   }
 
   return (
-    <div className="space-y-6">
-      {/* View Mode Selection */}
+    <div className="space-y-4">
+      {/* Quick Actions - Compact */}
       <Card>
-        <CardHeader>
-          <CardTitle>Mode Tampilan Dokumen</CardTitle>
-          <CardDescription>Pilih cara menampilkan dokumen SK</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Single View Mode */}
-            <div 
-              className={`flex-1 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                viewMode === 'single' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setViewMode('single')}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${
-                  viewMode === 'single' ? 'bg-blue-100' : 'bg-gray-100'
-                }`}>
-                  <FileText className={`h-5 w-5 ${
-                    viewMode === 'single' ? 'text-blue-600' : 'text-gray-400'
-                  }`} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Tampilan Tunggal</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Tampilkan satu dokumen sekaligus
-                  </p>
-                </div>
-              </div>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Akses Cepat</span>
             </div>
-
-            {/* Split View Mode */}
-            <div 
-              className={`flex-1 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                viewMode === 'split' 
-                  ? 'border-green-500 bg-green-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setViewMode('split')}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${
-                  viewMode === 'split' ? 'bg-green-100' : 'bg-gray-100'
-                }`}>
-                  <svg className={`h-5 w-5 ${
-                    viewMode === 'split' ? 'text-green-600' : 'text-gray-400'
-                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Tampilan Berdampingan</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Tampilkan kedua dokumen bersebelahan
-                  </p>
-                </div>
-              </div>
+            <div className="flex gap-2">
+              {hasJabatan && (
+                <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+                  <a href={karyawan.linkSkJabatan!} target="_blank" rel="noopener noreferrer">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    SK Jabatan
+                  </a>
+                </Button>
+              )}
+              {hasPangkat && (
+                <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+                  <a href={karyawan.linkSkPangkat!} target="_blank" rel="noopener noreferrer">
+                    <Award className="h-3 w-3 mr-1" />
+                    SK Pangkat
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
-
-          {/* Document Selection for Single View */}
-          {viewMode === 'single' && (
-            <div className="mt-6">
-              <Tabs 
-                value={selectedDoc || ''} 
-                onValueChange={(value) => setSelectedDoc(value as 'jabatan' | 'pangkat')}
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger 
-                    value="jabatan" 
-                    disabled={!hasJabatan}
-                    className="flex items-center gap-2"
-                  >
-                    <TrendingUp className="h-4 w-4" />
-                    SK Jabatan
-                    {!hasJabatan && (
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        Tidak Tersedia
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="pangkat" 
-                    disabled={!hasPangkat}
-                    className="flex items-center gap-2"
-                  >
-                    <Award className="h-4 w-4" />
-                    SK Pangkat
-                    {!hasPangkat && (
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        Tidak Tersedia
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* PDF Viewer Section */}
-      {viewMode === 'single' ? (
-        // Single View
-        <>
-          {selectedDoc === 'jabatan' && hasJabatan && (
-            <PDFViewer 
-              pdfUrl={karyawan.linkSkJabatan!} 
-              title="SK Jabatan" 
-            />
-          )}
-          
-          {selectedDoc === 'pangkat' && hasPangkat && (
-            <PDFViewer 
-              pdfUrl={karyawan.linkSkPangkat!} 
-              title="SK Pangkat" 
-            />
-          )}
-        </>
-      ) : (
-        // Split View
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* SK Jabatan */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                SK Jabatan
-              </h3>
+      {/* Dual PDF View */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* SK Jabatan */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+              SK Jabatan
               {!hasJabatan && (
-                <Badge variant="secondary">Tidak Tersedia</Badge>
+                <Badge variant="secondary" className="ml-2 text-xs">Tidak Tersedia</Badge>
               )}
-            </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
             {hasJabatan ? (
-              <div className="border rounded-lg overflow-hidden">
-                <PDFViewer 
-                  pdfUrl={karyawan.linkSkJabatan!} 
-                  title="SK Jabatan" 
-                />
-              </div>
+              <CompactPDFViewer 
+                pdfUrl={karyawan.linkSkJabatan!} 
+                title="SK Jabatan" 
+              />
             ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mb-4 opacity-50" />
-                  <p>SK Jabatan tidak tersedia</p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Dokumen tidak tersedia</p>
+              </div>
             )}
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* SK Pangkat */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Award className="h-5 w-5 text-green-600" />
-                SK Pangkat
-              </h3>
+        {/* SK Pangkat */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Award className="h-4 w-4 text-green-600" />
+              SK Pangkat
               {!hasPangkat && (
-                <Badge variant="secondary">Tidak Tersedia</Badge>
+                <Badge variant="secondary" className="ml-2 text-xs">Tidak Tersedia</Badge>
               )}
-            </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
             {hasPangkat ? (
-              <div className="border rounded-lg overflow-hidden">
-                <PDFViewer 
-                  pdfUrl={karyawan.linkSkPangkat!} 
-                  title="SK Pangkat" 
-                />
-              </div>
+              <CompactPDFViewer 
+                pdfUrl={karyawan.linkSkPangkat!} 
+                title="SK Pangkat" 
+              />
             ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mb-4 opacity-50" />
-                  <p>SK Pangkat tidak tersedia</p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Dokumen tidak tersedia</p>
+              </div>
             )}
-          </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Compact PDF Viewer Component
+const CompactPDFViewer: React.FC<{
+  pdfUrl: string;
+  title: string;
+}> = ({ pdfUrl, title }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Extract file ID from Google Drive URL
+  const getFileIdFromUrl = (url: string): string | null => {
+    try {
+      const match = url.match(/\/d\/([^\/]+)/) || url.match(/id=([^&]+)/);
+      return match ? match[1] : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const fileId = getFileIdFromUrl(pdfUrl);
+  const embedUrl = fileId 
+    ? `https://drive.google.com/file/d/${fileId}/preview`
+    : `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+
+  return (
+    <div className="space-y-3">
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-1"></div>
+          <p className="text-xs text-muted-foreground">Memuat dokumen...</p>
         </div>
       )}
-
-      {/* Quick Actions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <ExternalLink className="h-4 w-4" />
-            Akses Cepat
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {hasJabatan && (
-              <Button asChild variant="outline" size="sm" className="flex items-center gap-2">
-                <a href={karyawan.linkSkJabatan!} target="_blank" rel="noopener noreferrer">
-                  <TrendingUp className="h-4 w-4" />
-                  Buka SK Jabatan
-                </a>
-              </Button>
-            )}
-            {hasPangkat && (
-              <Button asChild variant="outline" size="sm" className="flex items-center gap-2">
-                <a href={karyawan.linkSkPangkat!} target="_blank" rel="noopener noreferrer">
-                  <Award className="h-4 w-4" />
-                  Buka SK Pangkat
-                </a>
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      
+      <div className="border rounded overflow-hidden bg-white">
+        <iframe 
+          src={embedUrl}
+          className="w-full h-[300px] transition-opacity duration-300"
+          onLoad={() => setIsLoading(false)}
+          style={{ opacity: isLoading ? 0 : 1 }}
+          title={title}
+          allow="autoplay"
+        />
+      </div>
+      
+      <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <FileText className="h-3 w-3" />
+          PDF Viewer
+        </div>
+        <div className="flex gap-1">
+          <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+            <a href={pdfUrl} download target="_blank" rel="noopener noreferrer">
+              <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download
+            </a>
+          </Button>
+          <Button asChild size="sm" className="h-7 text-xs">
+            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Buka
+            </a>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
