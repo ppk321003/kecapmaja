@@ -877,7 +877,7 @@ const BiodataCard: React.FC<{
           
           <div className="space-y-2">
             <div>
-              <Label className="text-xs text-muted-foreground">Pendidikan</Label>
+              <Label className="text-xs text-muted-foreground">Pendidikan Terakhir</Label>
               <p className="font-medium text-sm">{karyawan.pendidikan}</p>
             </div>
             <div>
@@ -1310,7 +1310,7 @@ const DokumenSKCard: React.FC<{
                 <Button asChild variant="outline" size="sm" className="h-8 text-xs">
                   <a href={karyawan.linkSkJabatan!} target="_blank" rel="noopener noreferrer">
                     <TrendingUp className="h-3 w-3 mr-1" />
-                    SK Jabatan
+                    SK Jabatan Terakhir
                   </a>
                 </Button>
               )}
@@ -1318,7 +1318,7 @@ const DokumenSKCard: React.FC<{
                 <Button asChild variant="outline" size="sm" className="h-8 text-xs">
                   <a href={karyawan.linkSkPangkat!} target="_blank" rel="noopener noreferrer">
                     <Award className="h-3 w-3 mr-1" />
-                    SK Pangkat
+                    SK Pangkat Terakhir
                   </a>
                 </Button>
               )}
@@ -1334,7 +1334,7 @@ const DokumenSKCard: React.FC<{
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <TrendingUp className="h-4 w-4 text-blue-600" />
-              SK Jabatan
+              SK Jabatan Terakhir
               {!hasJabatan && (
                 <Badge variant="secondary" className="ml-2 text-xs">Tidak Tersedia</Badge>
               )}
@@ -1344,7 +1344,7 @@ const DokumenSKCard: React.FC<{
             {hasJabatan ? (
               <CompactPDFViewer 
                 pdfUrl={karyawan.linkSkJabatan!} 
-                title="SK Jabatan" 
+                title="SK Jabatan Terakhi" 
               />
             ) : (
               <div className="text-center py-6 text-muted-foreground">
@@ -1360,7 +1360,7 @@ const DokumenSKCard: React.FC<{
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Award className="h-4 w-4 text-green-600" />
-              SK Pangkat
+              SK Pangkat Terakhir
               {!hasPangkat && (
                 <Badge variant="secondary" className="ml-2 text-xs">Tidak Tersedia</Badge>
               )}
@@ -1370,7 +1370,7 @@ const DokumenSKCard: React.FC<{
             {hasPangkat ? (
               <CompactPDFViewer 
                 pdfUrl={karyawan.linkSkPangkat!} 
-                title="SK Pangkat" 
+                title="SK Pangkat Terakhir" 
               />
             ) : (
               <div className="text-center py-6 text-muted-foreground">
