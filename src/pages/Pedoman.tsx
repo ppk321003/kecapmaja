@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,39 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, Home, Users } from 'lucide-react';
-
-// Simple Table Components
-const Table: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <table className={`w-full caption-bottom text-sm ${className}`}>{children}</table>
-);
-
-const TableHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <thead className="[&_tr]:border-b">{children}</thead>
-);
-
-const TableBody: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <tbody className="[&_tr:last-child]:border-0">{children}</tbody>
-);
-
-const TableRow: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <tr className={`border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted ${className}`}>{children}</tr>
-);
-
-const TableHead: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({ 
-  children, 
-  className = '', 
-  onClick 
-}) => (
-  <th className={`h-12 px-4 text-left align-middle font-medium text-muted-foreground ${className}`} onClick={onClick}>
-    {children}
-  </th>
-);
-
-const TableCell: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <td className={`p-4 align-middle ${className}`}>{children}</td>
-);
+import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock } from 'lucide-react';
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -95,9 +68,6 @@ interface EstimasiKenaikan {
   akTambahan: number;
   isKenaikanJenjang: boolean;
 }
-
-type SortField = 'nama' | 'nip' | 'golongan' | 'akKumulatif' | 'akTambahan' | 'akRealSaatIni';
-type SortDirection = 'asc' | 'desc';
 
 // ==================== GOOGLE SHEETS CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
@@ -377,6 +347,294 @@ class AngkaKreditCalculator {
   }
 }
 
+// ==================== NEW COMPONENTS - DASHBOARD ====================
+const DashboardKarierKu: React.FC<{
+  karyawanList: Karyawan[];
+  onSelectKaryawan: (karyawan: Karyawan) => void;
+}> = ({ karyawanList, onSelectKaryawan }) => {
+  const getKaryawanWithEstimasi = (karyawan: Karyawan) => {
+    const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
+    return { ...karyawan, estimasi };
+  };
+
+  const karyawanWithEstimasi = karyawanList.map(getKaryawanWithEstimasi);
+  
+  const sudahMemenuhiPangkat = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulPangkat && k.estimasi.kebutuhanAKPangkat > 0);
+  const sudahMemenuhiJabatan = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulJabatan && k.estimasi.kebutuhanAKJabatan > 0);
+  const akan6BulanPangkat = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulPangkat && k.estimasi.bulanDibutuhkanPangkat > 0 && k.estimasi.bulanDibutuhkanPangkat <= 6);
+  const akan6BulanJabatan = karyawanWithEstimasi.filter(k => !k.estimasi.bisaUsulJabatan && k.estimasi.bulanDibutuhkanJabatan > 0 && k.estimasi.bulanDibutuhkanJabatan <= 6);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Dashboard Kenaikan Karir</CardTitle>
+          <CardDescription>Ringkasan status kenaikan pangkat dan jabatan pegawai</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-800">Memenuhi Syarat Pangkat</p>
+                    <p className="text-3xl font-bold text-green-900">{sudahMemenuhiPangkat.length}</p>
+                  </div>
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Memenuhi Syarat Jabatan</p>
+                    <p className="text-3xl font-bold text-blue-900">{sudahMemenuhiJabatan.length}</p>
+                  </div>
+                  <CheckCircle2 className="h-8 w-8 text-blue-600" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-yellow-50 border-yellow-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Estimasi ≤ 6 Bulan (Pangkat)</p>
+                    <p className="text-3xl font-bold text-yellow-900">{akan6BulanPangkat.length}</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-yellow-600" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-orange-50 border-orange-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">Estimasi ≤ 6 Bulan (Jabatan)</p>
+                    <p className="text-3xl font-bold text-orange-900">{akan6BulanJabatan.length}</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-orange-600" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            Pegawai yang Sudah Memenuhi Syarat Kenaikan Pangkat
+          </CardTitle>
+          <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan pangkat</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sudahMemenuhiPangkat.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Belum ada pegawai yang memenuhi syarat kenaikan pangkat
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>No</TableHead>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>NIP</TableHead>
+                  <TableHead>Pangkat Saat Ini</TableHead>
+                  <TableHead>Pangkat Berikutnya</TableHead>
+                  <TableHead className="text-right">AK Saat Ini</TableHead>
+                  <TableHead className="text-right">Kebutuhan AK</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sudahMemenuhiPangkat.map((k, idx) => (
+                  <TableRow key={k.nip}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{k.nama}</TableCell>
+                    <TableCell><code className="text-xs">{k.nip}</code></TableCell>
+                    <TableCell><Badge variant="outline">{k.golongan}</Badge></TableCell>
+                    <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
+                    <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
+                    <TableCell className="text-center">
+                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-blue-600" />
+            Pegawai yang Sudah Memenuhi Syarat Kenaikan Jabatan
+          </CardTitle>
+          <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan jabatan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sudahMemenuhiJabatan.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Belum ada pegawai yang memenuhi syarat kenaikan jabatan
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>No</TableHead>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>NIP</TableHead>
+                  <TableHead>Jabatan Saat Ini</TableHead>
+                  <TableHead>Jabatan Berikutnya</TableHead>
+                  <TableHead className="text-right">AK Saat Ini</TableHead>
+                  <TableHead className="text-right">Kebutuhan AK</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sudahMemenuhiJabatan.map((k, idx) => (
+                  <TableRow key={k.nip}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{k.nama}</TableCell>
+                    <TableCell><code className="text-xs">{k.nip}</code></TableCell>
+                    <TableCell className="text-sm">{k.jabatan}</TableCell>
+                    <TableCell className="text-sm font-semibold">{k.estimasi.jabatanBerikutnya}</TableCell>
+                    <TableCell className="text-right font-semibold text-blue-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.kebutuhanAKJabatan}</TableCell>
+                    <TableCell className="text-center">
+                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-yellow-600" />
+            Pegawai yang Akan Memenuhi Syarat dalam 6 Bulan (Pangkat)
+          </CardTitle>
+          <CardDescription>Daftar pegawai yang diperkirakan akan memenuhi syarat kenaikan pangkat dalam 6 bulan ke depan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {akan6BulanPangkat.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Tidak ada pegawai yang akan memenuhi syarat dalam 6 bulan
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>No</TableHead>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>NIP</TableHead>
+                  <TableHead>Pangkat Berikutnya</TableHead>
+                  <TableHead className="text-right">AK Saat Ini</TableHead>
+                  <TableHead className="text-right">Kebutuhan</TableHead>
+                  <TableHead className="text-right">Kekurangan</TableHead>
+                  <TableHead>Estimasi</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {akan6BulanPangkat.map((k, idx) => (
+                  <TableRow key={k.nip}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{k.nama}</TableCell>
+                    <TableCell><code className="text-xs">{k.nip}</code></TableCell>
+                    <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
+                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
+                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKPangkat.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {Math.floor(k.estimasi.bulanDibutuhkanPangkat)} bulan
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-orange-600" />
+            Pegawai yang Akan Memenuhi Syarat dalam 6 Bulan (Jabatan)
+          </CardTitle>
+          <CardDescription>Daftar pegawai yang diperkirakan akan memenuhi syarat kenaikan jabatan dalam 6 bulan ke depan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {akan6BulanJabatan.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Tidak ada pegawai yang akan memenuhi syarat dalam 6 bulan
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>No</TableHead>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>NIP</TableHead>
+                  <TableHead>Jabatan Berikutnya</TableHead>
+                  <TableHead className="text-right">AK Saat Ini</TableHead>
+                  <TableHead className="text-right">Kebutuhan</TableHead>
+                  <TableHead className="text-right">Kekurangan</TableHead>
+                  <TableHead>Estimasi</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {akan6BulanJabatan.map((k, idx) => (
+                  <TableRow key={k.nip}>
+                    <TableCell>{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{k.nama}</TableCell>
+                    <TableCell><code className="text-xs">{k.nip}</code></TableCell>
+                    <TableCell className="text-sm">{k.estimasi.jabatanBerikutnya}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.kebutuhanAKJabatan}</TableCell>
+                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKJabatan.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {Math.floor(k.estimasi.bulanDibutuhkanJabatan)} bulan
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 // ==================== COMPONENTS ====================
 
 const ProgressCard: React.FC<{
@@ -406,6 +664,9 @@ const ProgressCard: React.FC<{
   isKenaikanJenjang = false,
   target
 }) => {
+  const {
+    theme
+  } = useTheme();
   const isTidakAda = title.includes('Tidak Ada') || kebutuhanAK === 0;
   const progressPercentage = isTidakAda ? 0 : Math.min(akRealSaatIni / kebutuhanAK * 100, 100);
   const finalPercentage = bisaUsul ? 100 : progressPercentage;
@@ -507,7 +768,6 @@ const ProgressCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const BiodataCard: React.FC<{
   karyawan: Karyawan;
   akRealSaatIni: number;
@@ -663,7 +923,6 @@ const BiodataCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
   onValueChange: (value: number) => void;
@@ -673,20 +932,16 @@ const PredikatKinerjaRadio: React.FC<{
 }) => {
   const predikatOptions = [{
     value: 1.50,
-    label: 'Sangat Baik',
-    description: 'Performa luar biasa'
+    label: 'Sangat Baik (Performa luar biasa)'
   }, {
     value: 1.00,
-    label: 'Baik',
-    description: 'Performa Baik'
+    label: 'Baik (Performa Baik)'
   }, {
     value: 0.75,
-    label: 'Cukup',
-    description: 'Perlu peningkatan'
+    label: 'Cukup (Perlu peningkatan)'
   }, {
     value: 0.50,
-    label: 'Kurang',
-    description: 'Perlu perbaikan serius'
+    label: 'Kurang (Perlu perbaikan serius)'
   }];
   return <Card>
       <CardHeader>
@@ -698,7 +953,7 @@ const PredikatKinerjaRadio: React.FC<{
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {predikatOptions.map(option => <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
                 <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} />
-                <Label htmlFor={`predikat-${option.value}`} className="flex flex-col cursor-pointer">
+                <Label htmlFor={`predikat-${option.value}`} className="flex flex-col">
                   <span className="font-semibold">{option.label}</span>
                   <span className="text-sm text-muted-foreground">{option.description}</span>
                   <span className="text-lg font-bold text-blue-600">{option.value * 100}%</span>
@@ -709,235 +964,6 @@ const PredikatKinerjaRadio: React.FC<{
       </CardContent>
     </Card>;
 };
-
-const DashboardOverview: React.FC<{
-  karyawanList: Karyawan[];
-  onSelectKaryawan: (karyawan: Karyawan) => void;
-}> = ({ karyawanList, onSelectKaryawan }) => {
-  const getKaryawanWithEstimasi = (karyawan: Karyawan) => {
-    const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
-    return { karyawan, estimasi };
-  };
-
-  const karyawanWithEstimasi = karyawanList.map(getKaryawanWithEstimasi);
-
-  const bisaUsulPangkat = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulPangkat && k.estimasi.kebutuhanAKPangkat > 0);
-  const bisaUsulJabatan = karyawanWithEstimasi.filter(k => k.estimasi.bisaUsulJabatan && k.estimasi.kebutuhanAKJabatan > 0);
-  const akanUsulPangkat6Bulan = karyawanWithEstimasi.filter(k => 
-    !k.estimasi.bisaUsulPangkat && 
-    k.estimasi.bulanDibutuhkanPangkat > 0 && 
-    k.estimasi.bulanDibutuhkanPangkat <= 6 &&
-    k.estimasi.kebutuhanAKPangkat > 0
-  );
-  const akanUsulJabatan6Bulan = karyawanWithEstimasi.filter(k => 
-    !k.estimasi.bisaUsulJabatan && 
-    k.estimasi.bulanDibutuhkanJabatan > 0 && 
-    k.estimasi.bulanDibutuhkanJabatan <= 6 &&
-    k.estimasi.kebutuhanAKJabatan > 0
-  );
-
-  const formatEstimasiWaktu = (bulan: number) => {
-    if (bulan <= 0) return '0 bulan';
-    const tahun = Math.floor(bulan / 12);
-    const bulanSisa = bulan % 12;
-    if (tahun > 0 && bulanSisa > 0) return `${tahun} tahun ${bulanSisa} bulan`;
-    if (tahun > 0) return `${tahun} tahun`;
-    return `${bulanSisa} bulan`;
-  };
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold flex items-center gap-2">
-            <Home className="h-8 w-8 text-primary" />
-            Dashboard Kenaikan Pangkat dan Jabatan
-          </CardTitle>
-          <CardDescription className="text-base">
-            Ringkasan karyawan yang memenuhi syarat atau akan memenuhi syarat kenaikan pangkat dan jabatan berdasarkan Peraturan BKN No. 3 Tahun 2023
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <div className="text-3xl font-bold text-green-600">{bisaUsulPangkat.length}</div>
-              <div className="text-sm font-medium text-green-800">Dapat Diusulkan Kenaikan Pangkat</div>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="text-3xl font-bold text-blue-600">{bisaUsulJabatan.length}</div>
-              <div className="text-sm font-medium text-blue-800">Dapat Diusulkan Kenaikan Jabatan</div>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <div className="text-3xl font-bold text-yellow-600">{akanUsulPangkat6Bulan.length}</div>
-              <div className="text-sm font-medium text-yellow-800">Estimasi Pangkat ≤ 6 Bulan</div>
-            </div>
-            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-              <div className="text-3xl font-bold text-orange-600">{akanUsulJabatan6Bulan.length}</div>
-              <div className="text-sm font-medium text-orange-800">Estimasi Jabatan ≤ 6 Bulan</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {bisaUsulPangkat.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-700">
-              <Award className="h-5 w-5" />
-              Karyawan yang Dapat Diusulkan Kenaikan Pangkat
-            </CardTitle>
-            <CardDescription>
-              Daftar karyawan yang telah memenuhi persyaratan angka kredit untuk kenaikan pangkat
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {bisaUsulPangkat.map(({ karyawan, estimasi }) => (
-                <div 
-                  key={karyawan.nip}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => onSelectKaryawan(karyawan)}
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold">{karyawan.nama}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {karyawan.golongan} → {estimasi.golonganBerikutnya} | {karyawan.jabatan}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{karyawan.unitKerja}</div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="default" className="mb-1">AK: {estimasi.akRealSaatIni.toFixed(2)}</Badge>
-                    <div className="text-xs text-muted-foreground">Kebutuhan: {estimasi.kebutuhanAKPangkat}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {bisaUsulJabatan.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-700">
-              <TrendingUp className="h-5 w-5" />
-              Karyawan yang Dapat Diusulkan Kenaikan Jabatan
-            </CardTitle>
-            <CardDescription>
-              Daftar karyawan yang telah memenuhi persyaratan angka kredit untuk kenaikan jabatan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {bisaUsulJabatan.map(({ karyawan, estimasi }) => (
-                <div 
-                  key={karyawan.nip}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => onSelectKaryawan(karyawan)}
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold">{karyawan.nama}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {karyawan.jabatan} → {estimasi.jabatanBerikutnya} | {karyawan.golongan}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{karyawan.unitKerja}</div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="default" className="mb-1">AK: {estimasi.akRealSaatIni.toFixed(2)}</Badge>
-                    <div className="text-xs text-muted-foreground">Kebutuhan: {estimasi.kebutuhanAKJabatan}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {akanUsulPangkat6Bulan.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-700">
-              <Calendar className="h-5 w-5" />
-              Estimasi Kenaikan Pangkat dalam 6 Bulan
-            </CardTitle>
-            <CardDescription>
-              Karyawan yang diperkirakan akan memenuhi syarat kenaikan pangkat dalam waktu 6 bulan ke depan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {akanUsulPangkat6Bulan.map(({ karyawan, estimasi }) => (
-                <div 
-                  key={karyawan.nip}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => onSelectKaryawan(karyawan)}
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold">{karyawan.nama}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {karyawan.golongan} → {estimasi.golonganBerikutnya} | {karyawan.jabatan}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{karyawan.unitKerja}</div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="secondary" className="mb-1">
-                      {formatEstimasiWaktu(estimasi.bulanDibutuhkanPangkat)}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground">
-                      Kekurangan: {estimasi.kekuranganAKPangkat.toFixed(2)} AK
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {akanUsulJabatan6Bulan.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-700">
-              <Calendar className="h-5 w-5" />
-              Estimasi Kenaikan Jabatan dalam 6 Bulan
-            </CardTitle>
-            <CardDescription>
-              Karyawan yang diperkirakan akan memenuhi syarat kenaikan jabatan dalam waktu 6 bulan ke depan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {akanUsulJabatan6Bulan.map(({ karyawan, estimasi }) => (
-                <div 
-                  key={karyawan.nip}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => onSelectKaryawan(karyawan)}
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold">{karyawan.nama}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {karyawan.jabatan} → {estimasi.jabatanBerikutnya} | {karyawan.golongan}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{karyawan.unitKerja}</div>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="secondary" className="mb-1">
-                      {formatEstimasiWaktu(estimasi.bulanDibutuhkanJabatan)}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground">
-                      Kekurangan: {estimasi.kekuranganAKJabatan.toFixed(2)} AK
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-};
-
 const EmployeeTable: React.FC<{
   karyawanList: Karyawan[];
   onSelect: (karyawan: Karyawan) => void;
@@ -951,9 +977,8 @@ const EmployeeTable: React.FC<{
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
-  const [sortField, setSortField] = useState<SortField>('nama');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  
+  const [sortConfig, setSortConfig] = useState<{key: string; direction: 'asc' | 'desc' | null}>({key: '', direction: null});
+
   const getKaryawanWithAKReal = (karyawan: Karyawan) => {
     const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
     const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
@@ -963,25 +988,7 @@ const EmployeeTable: React.FC<{
       akRealSaatIni
     };
   };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
-    return sortDirection === 'asc' ? 
-      <ArrowUp className="h-4 w-4 ml-1 inline" /> : 
-      <ArrowDown className="h-4 w-4 ml-1 inline" />;
-  };
-  
   const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
-  
   const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
     const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm) || karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
@@ -989,24 +996,42 @@ const EmployeeTable: React.FC<{
   });
 
   const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
-    let aValue: any = a[sortField];
-    let bValue: any = b[sortField];
+    if (!sortConfig.direction) return 0;
     
-    if (sortField === 'nama' || sortField === 'nip' || sortField === 'golongan') {
-      aValue = aValue.toString().toLowerCase();
-      bValue = bValue.toString().toLowerCase();
+    let aValue: any = a[sortConfig.key as keyof typeof a];
+    let bValue: any = b[sortConfig.key as keyof typeof b];
+    
+    if (sortConfig.key === 'akKumulatif' || sortConfig.key === 'akTambahan' || sortConfig.key === 'akRealSaatIni') {
+      aValue = parseFloat(aValue) || 0;
+      bValue = parseFloat(bValue) || 0;
     }
     
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' | null = 'asc';
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') direction = 'desc';
+      else if (sortConfig.direction === 'desc') direction = null;
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (sortConfig.key !== key || !sortConfig.direction) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
+    }
+    return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  };
 
   const totalKaryawan = karyawanList.length;
   const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
   const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
   const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
-  
+
   if (loading) {
     return <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -1018,11 +1043,11 @@ const EmployeeTable: React.FC<{
         </CardContent>
       </Card>;
   }
-  
+
   return <Card>
       <CardHeader>
-        <CardTitle className="text-3xl font-bold text-red-500">Tabel Individu Karyawan</CardTitle>
-        <CardDescription>Data lengkap seluruh karyawan dengan perhitungan angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
+        <CardTitle className="text-3xl font-bold text-red-500">Penghitungan Angka Kredit</CardTitle>
+        <CardDescription>Berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div className="bg-blue-50 p-4 rounded-lg border">
@@ -1066,66 +1091,54 @@ const EmployeeTable: React.FC<{
             <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Tidak ada karyawan ditemukan</h3>
             <p className="text-muted-foreground">Coba ubah kata kunci pencarian atau filter</p>
-          </div> : <div className="border rounded-lg overflow-x-auto">
+          </div> : <div className="border rounded-lg">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('nama')}>
-                    <div className="flex items-center">
-                      Nama {getSortIcon('nama')}
-                    </div>
+                <TableRow>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('nama')}>
+                    Nama {getSortIcon('nama')}
                   </TableHead>
-                  <TableHead className="w-[220px] cursor-pointer hover:bg-muted" onClick={() => handleSort('nip')}>
-                    <div className="flex items-center">
-                      NIP {getSortIcon('nip')}
-                    </div>
+                  <TableHead className="w-[220px]">NIP</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('golongan')}>
+                    Golongan {getSortIcon('golongan')}
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted" onClick={() => handleSort('golongan')}>
-                    <div className="flex items-center">
-                      Golongan {getSortIcon('golongan')}
-                    </div>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('jabatan')}>
+                    Jabatan {getSortIcon('jabatan')}
                   </TableHead>
-                  <TableHead>Jabatan</TableHead>
-                  <TableHead className="text-right cursor-pointer hover:bg-muted" onClick={() => handleSort('akKumulatif')}>
-                    <div className="flex items-center justify-end">
-                      AK Awal {getSortIcon('akKumulatif')}
-                    </div>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akKumulatif')}>
+                    AK Awal {getSortIcon('akKumulatif')}
                   </TableHead>
-                  <TableHead className="text-right cursor-pointer hover:bg-muted" onClick={() => handleSort('akTambahan')}>
-                    <div className="flex items-center justify-end">
-                      AK Tambahan {getSortIcon('akTambahan')}
-                    </div>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akTambahan')}>
+                    AK Tambahan {getSortIcon('akTambahan')}
                   </TableHead>
-                  <TableHead className="text-right cursor-pointer hover:bg-muted" onClick={() => handleSort('akRealSaatIni')}>
-                    <div className="flex items-center justify-end">
-                      AK Akhir {getSortIcon('akRealSaatIni')}
-                    </div>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akRealSaatIni')}>
+                    AK Real {getSortIcon('akRealSaatIni')}
                   </TableHead>
                   <TableHead className="text-right w-[70px]">Detail</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedKaryawan.map(karyawan => <TableRow key={karyawan.nip} className={`${selectedNip === karyawan.nip ? 'bg-accent' : ''} hover:bg-accent/50`}>
+                {sortedKaryawan.map(karyawan => <TableRow key={karyawan.nip} className={selectedNip === karyawan.nip ? 'bg-accent' : ''}>
                     <TableCell className="font-medium py-2">{karyawan.nama}</TableCell>
                     <TableCell className="py-2">
-                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-xs whitespace-nowrap">
+                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
                         {karyawan.nip}
                       </code>
                     </TableCell>
                     <TableCell className="py-2">
-                      <Badge variant="outline" className="text-xs">{karyawan.golongan}</Badge>
+                      <Badge variant="outline">{karyawan.golongan}</Badge>
                     </TableCell>
                     <TableCell className="text-sm py-2">{karyawan.jabatan}</TableCell>
                     <TableCell className="text-right py-2">{karyawan.akKumulatif.toFixed(2)}</TableCell>
                     <TableCell className="text-right text-green-600 py-2">+{karyawan.akTambahan.toFixed(2)}</TableCell>
                     <TableCell className="text-right py-2">
-                      <Badge variant="default" className="font-bold text-xs">
+                      <Badge variant="default" className="font-bold">
                         {karyawan.akRealSaatIni.toFixed(2)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right py-2">
-                      <Button size="sm" variant="ghost" onClick={() => onSelect(karyawan)} className="h-7 w-7 p-0 hover:bg-accent" title="Masuk ke detail karyawan">
-                        <LogIn className="h-3.5 w-3.5" />
+                      <Button size="sm" variant="ghost" onClick={() => onSelect(karyawan)} className="h-8 w-8 p-0 hover:bg-accent" title="Masuk ke detail karyawan">
+                        <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>)}
@@ -1145,7 +1158,7 @@ const EmployeeTable: React.FC<{
             <div>
               <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
               <p className="text-blue-700 text-sm">
-                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik". Klik ikon untuk melihat detail perhitungan dan estimasi kenaikan pangkat/jabatan.
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
               </p>
             </div>
           </div>
@@ -1153,7 +1166,6 @@ const EmployeeTable: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const EstimasiKenaikanCard: React.FC<{
   karyawan: Karyawan;
 }> = ({
@@ -1308,7 +1320,6 @@ const EstimasiKenaikanCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const InputKinerjaForm: React.FC<{
   karyawan: Karyawan;
   onSave: (input: InputKinerja) => void;
@@ -1433,7 +1444,6 @@ const InputKinerjaForm: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const EmployeeDashboard: React.FC<{
   karyawan: Karyawan;
 }> = ({
@@ -1482,34 +1492,32 @@ const EmployeeDashboard: React.FC<{
       <EstimasiKenaikanCard karyawan={karyawan} />
     </div>;
 };
-
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
   const [inputHistory, setInputHistory] = useState<InputKinerja[]>([]);
-  const [mainTab, setMainTab] = useState<'dashboard' | 'table'>('dashboard');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'input'>('dashboard');
+  const [mainTab, setMainTab] = useState<'dashboardKarir' | 'tabelIndividu'>('dashboardKarir');
   const [loading, setLoading] = useState(true);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-  
+  const {
+    toast
+  } = useToast();
+
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch dari Google Sheets menggunakan Google Sheets API
-      const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:L?key=YOUR_API_KEY`
-      );
-      
-      if (!response.ok) throw new Error('Failed to fetch data');
-      
-      const result = await response.json();
-      const rows = result.values || [];
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `${SHEET_NAME}!A:L`
+        }
+      });
+      if (error) throw error;
+      const rows = data.values || [];
       const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
         let akKumulatifValue = 0;
         if (row[6]) {
@@ -1577,16 +1585,19 @@ const KarierKu: React.FC = () => {
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      showToast("Gagal memuat data dari Google Sheets: " + error.message);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data dari Google Sheets: " + error.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
-  
   useEffect(() => {
     fetchKaryawanData();
   }, []);
-  
+
   const handleSaveInput = (newInput: InputKinerja) => {
     setInputHistory([...inputHistory, newInput]);
     if (selectedKaryawan) {
@@ -1599,43 +1610,50 @@ const KarierKu: React.FC = () => {
       if (updatedSelected) setSelectedKaryawan(updatedSelected);
     }
   };
-  
+
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
-    setMainTab('table');
-    setActiveTab('dashboard');
+    setMainTab('tabelIndividu');
   };
-  
+
   return <div className="space-y-6">
-      {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-destructive text-destructive-foreground px-6 py-3 rounded-lg shadow-lg">
-          {toastMessage}
-        </div>
-      )}
-      
-      {!selectedKaryawan ? (
-        <Tabs value={mainTab} onValueChange={(value: any) => setMainTab(value)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <Home className="h-4 w-4" />
-              Dashboard KarierKu
-            </TabsTrigger>
-            <TabsTrigger value="table" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Tabel Individu
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="dashboard">
-            <DashboardOverview karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
-          </TabsContent>
-          
-          <TabsContent value="table">
-            <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <>
+      {!selectedKaryawan ? <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Sistem Manajemen Angka Kredit Pegawai</CardTitle>
+              <CardDescription>Penghitungan dan monitoring angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Tabs value={mainTab} onValueChange={(value: any) => setMainTab(value)}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="dashboardKarir" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Dashboard KarierKu
+              </TabsTrigger>
+              <TabsTrigger value="tabelIndividu" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Tabel Individu
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dashboardKarir" className="space-y-6">
+              <DashboardKarierKu 
+                karyawanList={karyawanList} 
+                onSelectKaryawan={handleSelectKaryawan}
+              />
+            </TabsContent>
+
+            <TabsContent value="tabelIndividu" className="space-y-6">
+              <EmployeeTable
+                karyawanList={karyawanList}
+                onSelect={setSelectedKaryawan}
+                selectedNip={null}
+                loading={loading}
+              />
+            </TabsContent>
+          </Tabs>
+        </> : <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={() => setSelectedKaryawan(null)} className="flex items-center gap-2">
@@ -1699,9 +1717,7 @@ const KarierKu: React.FC = () => {
                 </Card>}
             </TabsContent>
           </Tabs>
-        </>
-      )}
+        </>}
     </div>;
 };
-
 export default KarierKu;
