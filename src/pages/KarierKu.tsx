@@ -282,7 +282,7 @@ class AngkaKreditCalculator {
   }
 }
 
-// ==================== NEW COMPONENTS - DASHBOARD ====================
+// ==================== DASHBOARD COMPONENT ====================
 const DashboardKarierKu: React.FC<{
   karyawanList: Karyawan[];
   onSelectKaryawan: (karyawan: Karyawan) => void;
@@ -546,7 +546,6 @@ const DashboardKarierKu: React.FC<{
 };
 
 // ==================== COMPONENTS ====================
-
 const ProgressCard: React.FC<{
   title: string;
   akSaatIni: number;
@@ -825,7 +824,373 @@ const BiodataCard: React.FC<{
   );
 };
 
-// ==================== NEW COMPONENT: DOKUMEN SK CARD ====================
+const PredikatKinerjaRadio: React.FC<{
+  selectedValue: number;
+  onValueChange: (value: number) => void;
+}> = ({ selectedValue, onValueChange }) => {
+  const predikatOptions = [{
+    value: 1.50,
+    label: 'Sangat Baik (Performa luar biasa)'
+  }, {
+    value: 1.00,
+    label: 'Baik (Performa Baik)'
+  }, {
+    value: 0.75,
+    label: 'Cukup (Perlu peningkatan)'
+  }, {
+    value: 0.50,
+    label: 'Kurang (Perlu perbaikan serius)'
+  }];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Estimasi Predikat Kinerja</CardTitle>
+        <CardDescription>Pilih predikat kinerja untuk simulasi perhitungan</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <RadioGroup value={selectedValue.toString()} onValueChange={value => onValueChange(parseFloat(value))}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {predikatOptions.map(option => (
+              <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
+                <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} />
+                <Label htmlFor={`predikat-${option.value}`} className="flex flex-col">
+                  <span className="font-semibold">{option.label}</span>
+                  <span className="text-lg font-bold text-blue-600">{option.value * 100}%</span>
+                </Label>
+              </div>
+            ))}
+          </div>
+        </RadioGroup>
+      </CardContent>
+    </Card>
+  );
+};
+
+const EmployeeTable: React.FC<{
+  karyawanList: Karyawan[];
+  onSelect: (karyawan: Karyawan) => void;
+  selectedNip: string | null;
+  loading: boolean;
+}> = ({ karyawanList, onSelect, selectedNip, loading }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
+
+  const getKaryawanWithAKReal = (karyawan: Karyawan) => {
+    const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
+    const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
+    return { ...karyawan, akTambahan, akRealSaatIni };
+  };
+
+  const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
+  
+  const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
+    const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm) || karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
+    return matchesSearch && matchesKategori;
+  });
+
+  const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
+    if (!sortConfig.direction) return 0;
+    let aValue: any = a[sortConfig.key as keyof typeof a];
+    let bValue: any = b[sortConfig.key as keyof typeof b];
+    
+    if (sortConfig.key === 'akKumulatif' || sortConfig.key === 'akTambahan' || sortConfig.key === 'akRealSaatIni') {
+      aValue = parseFloat(aValue) || 0;
+      bValue = parseFloat(bValue) || 0;
+    }
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' | null = 'asc';
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') direction = 'desc';
+      else if (sortConfig.direction === 'desc') direction = null;
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (sortConfig.key !== key || !sortConfig.direction) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
+    }
+    return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  };
+
+  const totalKaryawan = karyawanList.length;
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold">Memuat data karyawan...</h3>
+            <p className="text-muted-foreground">Sedang mengambil data dari Google Sheets</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="my-[20px]">
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Cari nama, NIP, atau unit kerja..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+          </div>
+          <Select value={filterKategori} onValueChange={(value: any) => setFilterKategori(value)}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="Filter Kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Semua">Semua Kategori</SelectItem>
+              <SelectItem value="Keahlian">Keahlian</SelectItem>
+              <SelectItem value="Keterampilan">Keterampilan</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {sortedKaryawan.length === 0 ? (
+          <div className="text-center py-12">
+            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Tidak ada karyawan ditemukan</h3>
+            <p className="text-muted-foreground">Coba ubah kata kunci pencarian atau filter</p>
+          </div>
+        ) : (
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('nama')}>
+                    Nama {getSortIcon('nama')}
+                  </TableHead>
+                  <TableHead className="w-[220px]">NIP</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('golongan')}>
+                    Golongan {getSortIcon('golongan')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('jabatan')}>
+                    Jabatan {getSortIcon('jabatan')}
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akKumulatif')}>
+                    AK Awal {getSortIcon('akKumulatif')}
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akTambahan')}>
+                    AK Tambahan {getSortIcon('akTambahan')}
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akRealSaatIni')}>
+                    AK Akhir {getSortIcon('akRealSaatIni')}
+                  </TableHead>
+                  <TableHead className="text-right w-[70px]">Detail</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedKaryawan.map(karyawan => (
+                  <TableRow key={karyawan.nip} className={selectedNip === karyawan.nip ? 'bg-accent' : ''}>
+                    <TableCell className="font-medium py-2">{karyawan.nama}</TableCell>
+                    <TableCell className="py-2">
+                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
+                        {karyawan.nip}
+                      </code>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <Badge variant="outline">{karyawan.golongan}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm py-2">{karyawan.jabatan}</TableCell>
+                    <TableCell className="text-right py-2">{karyawan.akKumulatif.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-green-600 py-2">+{karyawan.akTambahan.toFixed(2)}</TableCell>
+                    <TableCell className="text-right py-2">
+                      <Badge variant="default" className="font-bold">
+                        {karyawan.akRealSaatIni.toFixed(2)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <Button size="sm" variant="ghost" onClick={() => onSelect(karyawan)} className="h-8 w-8 p-0 hover:bg-accent" title="Masuk ke detail karyawan">
+                        <LogIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <div className="mt-4 text-sm text-muted-foreground">
+          Menampilkan {sortedKaryawan.length} dari {totalKaryawan} karyawan
+        </div>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border">
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-100 p-2 rounded-full">
+              <FileText className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
+              <p className="text-blue-700 text-sm">
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
+              </p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const EstimasiKenaikanCard: React.FC<{
+  karyawan: Karyawan;
+}> = ({ karyawan }) => {
+  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
+  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
+  
+  const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
+    if (bulanDibutuhkan <= 0) return { tahun: 0, bulan: 0, formatted: '0 bulan' };
+    const tahun = Math.floor(bulanDibutuhkan / 12);
+    const bulan = bulanDibutuhkan % 12;
+    let formatted = '';
+    if (tahun > 0 && bulan > 0) formatted = `${tahun} tahun ${bulan} bulan`;
+    else if (tahun > 0) formatted = `${tahun} tahun`;
+    else formatted = `${bulan} bulan`;
+    return { tahun, bulan, formatted };
+  };
+
+  const estimasiPangkat = formatEstimasiWaktu(estimasi.bulanDibutuhkanPangkat);
+  const estimasiJabatan = formatEstimasiWaktu(estimasi.bulanDibutuhkanJabatan);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Estimasi Kenaikan Pangkat dan Jabatan
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
+          <div className="text-center">
+            <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
+            <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
+            <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
+            <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
+          </div>
+        </div>
+
+        {estimasi.isKenaikanJenjang && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-full bg-amber-300">
+                <TrendingUp className="h-4 w-4 text-yellow-900" />
+              </div>
+              <div>
+                <h4 className="font-semibold mb-1 text-yellow-900">Kenaikan Jenjang</h4>
+                <p className="text-sm text-yellow-800">
+                  Anda akan mendapatkan peluang untuk kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
+                  <strong>Jabatan dan Pangkat</strong>. Kenaikan pangkat akan mengikuti setelah dinyatakan lulus Uji Kompetensi.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <PredikatKinerjaRadio selectedValue={predikatAsumsi} onValueChange={setPredikatAsumsi} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Award className="h-5 w-5" />
+                Kenaikan Pangkat
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pangkat berikutnya</span>
+                <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
+                <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
+                <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {estimasi.kekuranganAKPangkat.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Estimasi waktu</span>
+                <span className="font-semibold text-blue-600">{estimasiPangkat.formatted}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'} className={estimasi.bisaUsulPangkat ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
+                  {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5" />
+                Kenaikan Jabatan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jabatan berikutnya</span>
+                <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
+                <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
+                <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {estimasi.kekuranganAKJabatan.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Estimasi waktu</span>
+                <span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
+                  {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="p-4 bg-blue-50 rounded-lg border">
+          <p className="text-blue-800 text-sm">
+            <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
+            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
+            akumulasi sejak TMT Jabatan.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
@@ -922,454 +1287,6 @@ const DokumenSKCard: React.FC<{
       </CardContent>
     </Card>
   );
-};
-
-const EmployeeTable: React.FC<{
-  karyawanList: Karyawan[];
-  onSelect: (karyawan: Karyawan) => void;
-  selectedNip: string | null;
-  loading: boolean;
-}> = ({
-  karyawanList,
-  onSelect,
-  selectedNip,
-  loading
-}) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'asc' | 'desc' | null;
-  }>({
-    key: '',
-    direction: null
-  });
-  const getKaryawanWithAKReal = (karyawan: Karyawan) => {
-    const akTambahan = AngkaKreditCalculator.hitungAKTambahan(karyawan);
-    const akRealSaatIni = AngkaKreditCalculator.hitungAKRealSaatIni(karyawan);
-    return {
-      ...karyawan,
-      akTambahan,
-      akRealSaatIni
-    };
-  };
-  const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
-  const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
-    const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm) || karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
-    return matchesSearch && matchesKategori;
-  });
-  const sortedKaryawan = [...filteredKaryawan].sort((a, b) => {
-    if (!sortConfig.direction) return 0;
-    let aValue: any = a[sortConfig.key as keyof typeof a];
-    let bValue: any = b[sortConfig.key as keyof typeof b];
-    if (sortConfig.key === 'akKumulatif' || sortConfig.key === 'akTambahan' || sortConfig.key === 'akRealSaatIni') {
-      aValue = parseFloat(aValue) || 0;
-      bValue = parseFloat(bValue) || 0;
-    }
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-  const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' | null = 'asc';
-    if (sortConfig.key === key) {
-      if (sortConfig.direction === 'asc') direction = 'desc';else if (sortConfig.direction === 'desc') direction = null;
-    }
-    setSortConfig({
-      key,
-      direction
-    });
-  };
-  const getSortIcon = (key: string) => {
-    if (sortConfig.key !== key || !sortConfig.direction) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
-    }
-    return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
-  };
-  const totalKaryawan = karyawanList.length;
-  const aktifKaryawan = karyawanList.filter(k => k.status === 'Aktif').length;
-  const keahlianKaryawan = karyawanList.filter(k => k.kategori === 'Keahlian').length;
-  const keterampilanKaryawan = karyawanList.filter(k => k.kategori === 'Keterampilan').length;
-  if (loading) {
-    return <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <h3 className="text-lg font-semibold">Memuat data karyawan...</h3>
-            <p className="text-muted-foreground">Sedang mengambil data dari Google Sheets</p>
-          </div>
-        </CardContent>
-      </Card>;
-  }
-  return <Card>
-      <CardContent className="my-[20px]">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari nama, NIP, atau unit kerja..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-          </div>
-          <Select value={filterKategori} onValueChange={(value: any) => setFilterKategori(value)}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Filter Kategori" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Semua">Semua Kategori</SelectItem>
-              <SelectItem value="Keahlian">Keahlian</SelectItem>
-              <SelectItem value="Keterampilan">Keterampilan</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {sortedKaryawan.length === 0 ? <div className="text-center py-12">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Tidak ada karyawan ditemukan</h3>
-            <p className="text-muted-foreground">Coba ubah kata kunci pencarian atau filter</p>
-          </div> : <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('nama')}>
-                    Nama {getSortIcon('nama')}
-                  </TableHead>
-                  <TableHead className="w-[220px]">NIP</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('golongan')}>
-                    Golongan {getSortIcon('golongan')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('jabatan')}>
-                    Jabatan {getSortIcon('jabatan')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akKumulatif')}>
-                    AK Awal {getSortIcon('akKumulatif')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akTambahan')}>
-                    AK Tambahan {getSortIcon('akTambahan')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akRealSaatIni')}>
-                    AK Akhir {getSortIcon('akRealSaatIni')}
-                  </TableHead>
-                  <TableHead className="text-right w-[70px]">Detail</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedKaryawan.map(karyawan => <TableRow key={karyawan.nip} className={selectedNip === karyawan.nip ? 'bg-accent' : ''}>
-                    <TableCell className="font-medium py-2">{karyawan.nama}</TableCell>
-                    <TableCell className="py-2">
-                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
-                        {karyawan.nip}
-                      </code>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <Badge variant="outline">{karyawan.golongan}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm py-2">{karyawan.jabatan}</TableCell>
-                    <TableCell className="text-right py-2">{karyawan.akKumulatif.toFixed(2)}</TableCell>
-                    <TableCell className="text-right text-green-600 py-2">+{karyawan.akTambahan.toFixed(2)}</TableCell>
-                    <TableCell className="text-right py-2">
-                      <Badge variant="default" className="font-bold">
-                        {karyawan.akRealSaatIni.toFixed(2)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right py-2">
-                      <Button size="sm" variant="ghost" onClick={() => onSelect(karyawan)} className="h-8 w-8 p-0 hover:bg-accent" title="Masuk ke detail karyawan">
-                        <LogIn className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>
-          </div>}
-
-        <div className="mt-4 text-sm text-muted-foreground">
-          Menampilkan {sortedKaryawan.length} dari {totalKaryawan} karyawan
-        </div>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-full">
-              <FileText className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
-              <p className="text-blue-700 text-sm">
-                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik".
-              </p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>;
-};
-const EstimasiKenaikanCard: React.FC<{
-  karyawan: Karyawan;
-}> = ({
-  karyawan
-}) => {
-  const [predikatAsumsi, setPredikatAsumsi] = useState(1.00);
-  const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan, predikatAsumsi);
-  const formatEstimasiWaktu = (bulanDibutuhkan: number) => {
-    if (bulanDibutuhkan <= 0) return {
-      tahun: 0,
-      bulan: 0,
-      formatted: '0 bulan'
-    };
-    const tahun = Math.floor(bulanDibutuhkan / 12);
-    const bulan = bulanDibutuhkan % 12;
-    let formatted = '';
-    if (tahun > 0 && bulan > 0) formatted = `${tahun} tahun ${bulan} bulan`;else if (tahun > 0) formatted = `${tahun} tahun`;else formatted = `${bulan} bulan`;
-    return {
-      tahun,
-      bulan,
-      formatted
-    };
-  };
-  const estimasiPangkat = formatEstimasiWaktu(estimasi.bulanDibutuhkanPangkat);
-  const estimasiJabatan = formatEstimasiWaktu(estimasi.bulanDibutuhkanJabatan);
-  return <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Estimasi Kenaikan Pangkat dan Jabatan
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
-          <div className="text-center">
-            <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
-            <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
-            <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
-            <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
-          </div>
-        </div>
-
-        {estimasi.isKenaikanJenjang && <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-full bg-amber-300">
-                <TrendingUp className="h-4 w-4 text-yellow-900" />
-              </div>
-              <div>
-                <h4 className="font-semibold mb-1 text-yellow-900">Kenaikan Jenjang</h4>
-                <p className="text-sm text-yellow-800">
-                  Anda akan mendapatkan peluang untuk kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
-                  <strong>Jabatan dan Pangkat</strong>. Kenaikan pangkat akan mengikuti setelah dinyatakan lulus Uji Kompetensi.
-                </p>
-              </div>
-            </div>
-          </div>}
-
-        <PredikatKinerjaRadio selectedValue={predikatAsumsi} onValueChange={setPredikatAsumsi} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Award className="h-5 w-5" />
-                Kenaikan Pangkat
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Pangkat berikutnya</span>
-                <span className="font-semibold">{estimasi.golonganBerikutnya}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
-                <span className="font-semibold">{estimasi.kebutuhanAKPangkat}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
-                <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {estimasi.kekuranganAKPangkat.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimasi waktu</span>
-                <span className="font-semibold text-blue-600">{estimasiPangkat.formatted}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'} className={estimasi.bisaUsulPangkat ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
-                  {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <TrendingUp className="h-5 w-5" />
-                Kenaikan Jabatan
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jabatan berikutnya</span>
-                <span className="font-semibold">{estimasi.jabatanBerikutnya}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kebutuhan Angka Kredit</span>
-                <span className="font-semibold">{estimasi.kebutuhanAKJabatan}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
-                <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {estimasi.kekuranganAKJabatan.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimasi waktu</span>
-                <span className="font-semibold text-blue-600">{estimasiJabatan.formatted}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
-                  {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="p-4 bg-blue-50 rounded-lg border">
-          <p className="text-blue-800 text-sm">
-            <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
-            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
-            akumulasi sejak TMT Jabatan.
-          </p>
-        </div>
-      </CardContent>
-    </Card>;
-};
-const InputKinerjaForm: React.FC<{
-  karyawan: Karyawan;
-  onSave: (input: InputKinerja) => void;
-}> = ({
-  karyawan,
-  onSave
-}) => {
-  const [formData, setFormData] = useState({
-    periode: new Date().toISOString().slice(0, 7),
-    jenisPenilaian: 'Tahunan' as 'Tahunan' | 'Periodik',
-    bulanPeriodik: 12,
-    predikatKinerja: 1.00,
-    keterangan: ''
-  });
-  const handleCalculate = () => {
-    const akDiperoleh = AngkaKreditCalculator.hitungAK(karyawan.jabatan, formData.predikatKinerja, formData.jenisPenilaian === 'Periodik', formData.bulanPeriodik);
-    const newInput: InputKinerja = {
-      idInput: `KIN-${Date.now()}`,
-      nip: karyawan.nip,
-      periode: formData.periode,
-      jenisPenilaian: formData.jenisPenilaian,
-      bulanPeriodik: formData.bulanPeriodik,
-      predikatKinerja: formData.predikatKinerja,
-      akDiperoleh,
-      jabatanSaatInput: karyawan.jabatan,
-      tanggalInput: new Date().toISOString().split('T')[0],
-      inputOleh: 'Admin',
-      keterangan: formData.keterangan
-    };
-    onSave(newInput);
-    setFormData({
-      periode: new Date().toISOString().slice(0, 7),
-      jenisPenilaian: 'Tahunan',
-      bulanPeriodik: 12,
-      predikatKinerja: 1.00,
-      keterangan: ''
-    });
-  };
-  const currentKoefisien = AngkaKreditCalculator.getKoefisien(karyawan.jabatan);
-  const calculatedAK = AngkaKreditCalculator.hitungAK(karyawan.jabatan, formData.predikatKinerja, formData.jenisPenilaian === 'Periodik', formData.bulanPeriodik);
-  return <Card>
-      <CardHeader>
-        <CardTitle>Input Kinerja - {karyawan.nama}</CardTitle>
-        <CardDescription>Masukkan data kinerja untuk menghitung angka kredit</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="periode">Periode Penilaian</Label>
-            <Input id="periode" type="month" value={formData.periode} onChange={e => setFormData({
-            ...formData,
-            periode: e.target.value
-          })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="jenisPenilaian">Jenis Penilaian</Label>
-            <Select value={formData.jenisPenilaian} onValueChange={(value: 'Tahunan' | 'Periodik') => setFormData({
-            ...formData,
-            jenisPenilaian: value
-          })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Tahunan">Tahunan</SelectItem>
-                <SelectItem value="Periodik">Periodik</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {formData.jenisPenilaian === 'Periodik' && <div className="space-y-2">
-            <Label htmlFor="bulanPeriodik">Bulan Periodik</Label>
-            <Input id="bulanPeriodik" type="number" min="1" max="11" value={formData.bulanPeriodik} onChange={e => setFormData({
-          ...formData,
-          bulanPeriodik: parseInt(e.target.value)
-        })} />
-          </div>}
-
-        <PredikatKinerjaRadio selectedValue={formData.predikatKinerja} onValueChange={value => setFormData({
-        ...formData,
-        predikatKinerja: value
-      })} />
-
-        <div className="space-y-2">
-          <Label htmlFor="keterangan">Keterangan</Label>
-          <Input id="keterangan" placeholder="Capaian SKP, evaluasi, dll." value={formData.keterangan} onChange={e => setFormData({
-          ...formData,
-          keterangan: e.target.value
-        })} />
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Perhitungan Angka Kredit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-xs text-muted-foreground">Jabatan</Label>
-                <p className="font-semibold">{karyawan.jabatan}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Koefisien</Label>
-                <p className="font-semibold">{currentKoefisien}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Predikat</Label>
-                <p className="font-semibold">{formData.predikatKinerja * 100}%</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Hasil AK</Label>
-                <p className="text-2xl font-bold text-blue-600">{calculatedAK}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Button onClick={handleCalculate} className="w-full">
-          Simpan Data Kinerja
-        </Button>
-      </CardContent>
-    </Card>;
 };
 
 const EmployeeDashboard: React.FC<{
@@ -1476,7 +1393,6 @@ const EmployeeDashboard: React.FC<{
   );
 };
 
-// ==================== MAIN COMPONENT ====================
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
@@ -1492,7 +1408,7 @@ const KarierKu: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:N` // Updated to include new columns
+          range: `${SHEET_NAME}!A:N`
         }
       });
 
@@ -1556,8 +1472,8 @@ const KarierKu: React.FC = () => {
           email: '',
           telepon: '',
           alamat: '',
-          linkSkJabatan: row[12]?.toString() || '', // New column
-          linkSkPangkat: row[13]?.toString() || ''  // New column
+          linkSkJabatan: row[12]?.toString() || '',
+          linkSkPangkat: row[13]?.toString() || ''
         };
       });
 
@@ -1611,71 +1527,7 @@ const KarierKu: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="tabelIndividu" className="space-y-6">
-                            <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
-            </TabsContent>
-          </Tabs>
-        </> : <>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" onClick={() => setSelectedKaryawan(null)} className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Kembali
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-sky-800">{selectedKaryawan.nama}</h1>
-                <p className="text-muted-foreground">{selectedKaryawan.nip}</p>
-              </div>
-            </div>
-            
-            <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full sm:w-auto">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Dashboard
-                </TabsTrigger>
-                <TabsTrigger value="input" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Input Kinerja
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
-            <TabsContent value="dashboard" className="space-y-6">
-              <EmployeeDashboard karyawan={selectedKaryawan} />
-            </TabsContent>
-            
-            <TabsContent value="input" className="space-y-6">
-              <InputKinerjaForm karyawan={selectedKaryawan} onSave={handleSaveInput} />
-              
-              {inputHistory.length > 0 && <Card>
-                  <CardHeader>
-                    <CardTitle>Riwayat Input Kinerja</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Periode</TableHead>
-                          <TableHead>Jenis</TableHead>
-                          <TableHead>Predikat</TableHead>
-                          <TableHead className="text-right">AK Diperoleh</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {inputHistory.filter(input => input.nip === selectedKaryawan.nip).map(input => <TableRow key={input.idInput}>
-                              <TableCell>{input.periode}</TableCell>
-                              <TableCell>{input.jenisPenilaian}</TableCell>
-                              <TableCell>{input.predikatKinerja * 100}%</TableCell>
-                              <TableCell className="text-right font-semibold">
-                                +{input.akDiperoleh}
-                              </TableCell>
-                            </TableRow>)}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>}
+              <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
             </TabsContent>
           </Tabs>
         </>
