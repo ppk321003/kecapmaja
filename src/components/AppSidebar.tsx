@@ -50,7 +50,7 @@ const mainMenuItems = [
 
 const additionalMenuItems = [
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
-  { title: "SBML Tahunan", url: "/entri-SBML", icon: DownloadIcon },  
+  { title: "SBML Tahunan", url: "/entri-SBML", icon: DollarSign },  
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 

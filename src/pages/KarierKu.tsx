@@ -932,7 +932,6 @@ const PredikatKinerjaRadio: React.FC<{
                 <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} />
                 <Label htmlFor={`predikat-${option.value}`} className="flex flex-col">
                   <span className="font-semibold">{option.label}</span>
-                  <span className="text-sm text-muted-foreground">{option.description}</span>
                   <span className="text-lg font-bold text-blue-600">{option.value * 100}%</span>
                 </Label>
               </div>)}
@@ -1065,7 +1064,7 @@ const EmployeeTable: React.FC<{
                     AK Tambahan {getSortIcon('akTambahan')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akRealSaatIni')}>
-                    AK Real {getSortIcon('akRealSaatIni')}
+                    AK Akhir {getSortIcon('akRealSaatIni')}
                   </TableHead>
                   <TableHead className="text-right w-[70px]">Detail</TableHead>
                 </TableRow>
@@ -1569,7 +1568,7 @@ const KarierKu: React.FC = () => {
       {!selectedKaryawan ? <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-red-500">Sistem Manajemen Angka Kredit Pegawai</CardTitle>
+              <CardTitle className="text-3xl font-bold text-red-500">KarierKu-3210</CardTitle>
               <CardDescription>Penghitungan dan monitoring angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
             </CardHeader>
           </Card>
