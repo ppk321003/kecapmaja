@@ -1416,7 +1416,13 @@ const fetchKaryawanData = async () => {
     if (error) throw error;
     
     const rows = data.values || [];
-    console.log('Raw data from sheets:', rows); // Debug log
+    console.log('=== DEBUG RAW DATA ===');
+    console.log('Total rows:', rows.length);
+    if (rows.length > 0) {
+      console.log('Headers:', rows[0]); // Tampilkan header
+      console.log('First data row:', rows[1]); // Tampilkan data pertama
+    }
+    console.log('================');
     
     const karyawanData: Karyawan[] = [];
     
@@ -1429,9 +1435,13 @@ const fetchKaryawanData = async () => {
       
       try {
         let akKumulatifValue = 0;
-        if (row[11]) { // Kolom AK Kumulatif - sesuaikan index berdasarkan data aktual
-          const akValue = row[11].toString().replace(',', '.');
-          akKumulatifValue = parseFloat(akValue) || 0;
+        // Coba beberapa kemungkinan posisi kolom AK
+        if (row[11] && !isNaN(parseFloat(row[11].toString().replace(',', '.')))) {
+          // Jika kolom 12 adalah AK
+          akKumulatifValue = parseFloat(row[11].toString().replace(',', '.')) || 0;
+        } else if (row[6] && !isNaN(parseFloat(row[6].toString().replace(',', '.')))) {
+          // Jika kolom 7 adalah AK (berdasarkan header awal)
+          akKumulatifValue = parseFloat(row[6].toString().replace(',', '.')) || 0;
         }
 
         const parseNIP = (nip: string) => {
@@ -1464,22 +1474,41 @@ const fetchKaryawanData = async () => {
 
         const nipData = parseNIP(row[0]?.toString() || '');
 
-        // Mapping kolom berdasarkan header yang Anda berikan
+        // Cari link SK - coba beberapa kemungkinan posisi
+        let linkSkJabatan = '';
+        let linkSkPangkat = '';
+        
+        // Cari di semua kolom untuk link Google Drive
+        for (let j = 0; j < row.length; j++) {
+          const cellValue = row[j]?.toString() || '';
+          if (cellValue.includes('drive.google.com') || cellValue.includes('https://')) {
+            if (cellValue.includes('Jabatan') || !linkSkJabatan) {
+              linkSkJabatan = cellValue;
+            } else if (cellValue.includes('Pangkat') || !linkSkPangkat) {
+              linkSkPangkat = cellValue;
+            } else if (!linkSkJabatan) {
+              linkSkJabatan = cellValue;
+            } else if (!linkSkPangkat) {
+              linkSkPangkat = cellValue;
+            }
+          }
+        }
+
         const karyawan: Karyawan = {
           nip: row[0]?.toString() || '',
           nama: row[1]?.toString() || '',
           pangkat: row[2]?.toString() || '',
           golongan: row[3]?.toString() || '',
           jabatan: row[4]?.toString() || '',
-          kategori: (row[11]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian', // Kolom 12
+          kategori: (row[5]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian',
           akKumulatif: akKumulatifValue,
-          status: (row[13]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif', // Kolom 14
-          unitKerja: row[14]?.toString() || '', // Kolom 15
-          tmtJabatan: row[15]?.toString() || '', // Kolom 16
-          tmtPangkat: row[16]?.toString() || '', // Kolom 17
-          pendidikan: row[17]?.toString() || '', // Kolom 18
-          linkSkJabatan: row[18]?.toString() || '', // Kolom 19 - Link SK Jabatan
-          linkSkPangkat: row[19]?.toString() || '', // Kolom 20 - Link SK Pangkat
+          status: (row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif',
+          unitKerja: row[8]?.toString() || '',
+          tmtJabatan: row[9]?.toString() || '',
+          tmtPangkat: row[10]?.toString() || '',
+          pendidikan: row[11]?.toString() || '',
+          linkSkJabatan: linkSkJabatan,
+          linkSkPangkat: linkSkPangkat,
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
@@ -1490,7 +1519,10 @@ const fetchKaryawanData = async () => {
         };
 
         karyawanData.push(karyawan);
-        console.log(`Processed karyawan ${i}:`, karyawan.nama, 'SK Jabatan:', karyawan.linkSkJabatan); // Debug log
+        console.log(`Karyawan ${i}: ${karyawan.nama}`, {
+          skJabatan: karyawan.linkSkJabatan,
+          skPangkat: karyawan.linkSkPangkat
+        });
         
       } catch (rowError) {
         console.error(`Error processing row ${i}:`, rowError, row);
@@ -1498,7 +1530,6 @@ const fetchKaryawanData = async () => {
     }
 
     setKaryawanList(karyawanData);
-    console.log('Final karyawan data:', karyawanData); // Debug log
     
   } catch (error: any) {
     console.error('Error fetching data:', error);
