@@ -872,7 +872,6 @@ const EmployeeTable: React.FC<{
   selectedNip: string | null;
   loading: boolean;
 }> = ({ karyawanList, onSelect, selectedNip, loading }) => {
-  console.log('Karyawan list in table:', karyawanList);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Keahlian' | 'Keterampilan'>('Semua');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
@@ -1402,41 +1401,24 @@ const KarierKu: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-const fetchKaryawanData = async () => {
-  try {
-    setLoading(true);
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: SPREADSHEET_ID,
-        operation: "read",
-        range: `${SHEET_NAME}!A:T` // Pastikan ini membaca sampai kolom T
-      }
-    });
+  const fetchKaryawanData = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "read",
+          range: `${SHEET_NAME}!A:N`
+        }
+      });
 
-    if (error) throw error;
-    
-    const rows = data.values || [];
-    console.log('=== DEBUG RAW DATA ===');
-    console.log('Total rows:', rows.length);
-    if (rows.length > 0) {
-      console.log('Headers:', rows[0]); 
-      console.log('First data row length:', rows[1]?.length); // Cek berapa kolom yang terbaca
-      console.log('First data row:', rows[1]);
-    }
-    console.log('================');
-    
-    const karyawanData: Karyawan[] = [];
-    
-    // Skip header row (index 0)
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.length === 0 || !row[0]) continue;
+      if (error) throw error;
       
-      try {
+      const rows = data.values || [];
+      const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
         let akKumulatifValue = 0;
-        // AK Kumulatif di kolom 12 (index 11)
-        if (row[11]) {
-          const akValue = row[11].toString().replace(',', '.');
+        if (row[6]) {
+          const akValue = row[6].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
 
@@ -1468,57 +1450,45 @@ const fetchKaryawanData = async () => {
           return { tanggalLahir, tahunMasuk, jenisKelamin };
         };
 
-        const nipData = parseNIP(row[2]?.toString() || ''); // NIP di kolom 3 (index 2)
+        const nipData = parseNIP(row[0]?.toString() || '');
 
-        const karyawan: Karyawan = {
-          nip: row[2]?.toString() || '', // Kolom 3 - NIP
-          nama: row[3]?.toString() || '', // Kolom 4 - Nama
-          pangkat: row[7]?.toString() || '', // Kolom 8 - Pangkat
-          golongan: row[6]?.toString() || '', // Kolom 7 - Gol.Akhir
-          jabatan: row[4]?.toString() || '', // Kolom 5 - Jabatan
-          kategori: (row[11]?.toString() as 'Keahlian' | 'Keterampilan') || 'Keahlian', // Kolom 12 - kategori
+        return {
+          nip: row[0]?.toString() || '',
+          nama: row[1]?.toString() || '',
+          pangkat: row[2]?.toString() || '',
+          golongan: row[3]?.toString() || '',
+          jabatan: row[4]?.toString() || '',
+          kategori: row[5]?.toString() as 'Keahlian' | 'Keterampilan' || 'Keahlian',
           akKumulatif: akKumulatifValue,
-          status: (row[13]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi') || 'Aktif', // Kolom 14 - status
-          unitKerja: row[14]?.toString() || '', // Kolom 15 - unitKerja
-          tmtJabatan: row[15]?.toString() || '', // Kolom 16 - tmtJabatan
-          tmtPangkat: row[16]?.toString() || '', // Kolom 17 - tmtPangkat
-          pendidikan: row[17]?.toString() || '', // Kolom 18 - pendidikan
-          linkSkJabatan: row[18]?.toString() || '', // Kolom 19 - Link SK Jabatan
-          linkSkPangkat: row[19]?.toString() || '', // Kolom 20 - Link SK Pangkat
+          status: row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
+          unitKerja: row[8]?.toString() || '',
+          tmtJabatan: row[9]?.toString() || '',
+          tmtPangkat: row[10]?.toString() || '',
+          pendidikan: row[11]?.toString() || '',
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
           agama: '',
           email: '',
           telepon: '',
-          alamat: ''
+          alamat: '',
+          linkSkJabatan: row[12]?.toString() || '',
+          linkSkPangkat: row[13]?.toString() || ''
         };
+      });
 
-        karyawanData.push(karyawan);
-        console.log(`Karyawan ${i}: ${karyawan.nama}`, {
-          skJabatan: karyawan.linkSkJabatan,
-          skPangkat: karyawan.linkSkPangkat,
-          rowLength: row.length // Debug: lihat berapa kolom yang terbaca
-        });
-        
-      } catch (rowError) {
-        console.error(`Error processing row ${i}:`, rowError, row);
-      }
+      setKaryawanList(karyawanData);
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data dari Google Sheets: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setKaryawanList(karyawanData);
-    
-  } catch (error: any) {
-    console.error('Error fetching data:', error);
-    toast({
-      title: "Error",
-      description: "Gagal memuat data dari Google Sheets: " + error.message,
-      variant: "destructive"
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchKaryawanData();
