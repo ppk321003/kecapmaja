@@ -1194,6 +1194,28 @@ const EstimasiKenaikanCard: React.FC<{
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
+  const cleanUrl = (url: string) => {
+    if (!url) return '';
+    return url.trim().replace(/^'+|'+$/g, '');
+  };
+
+  const isValidUrl = (url: string) => {
+    const cleaned = cleanUrl(url);
+    if (!cleaned) return false;
+    try {
+      new URL(cleaned);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const linkJabatan = cleanUrl(karyawan.linkSkJabatan || '');
+  const linkPangkat = cleanUrl(karyawan.linkSkPangkat || '');
+
+  const hasSkJabatan = isValidUrl(linkJabatan);
+  const hasSkPangkat = isValidUrl(linkPangkat);
+
   return (
     <Card>
       <CardHeader>
@@ -1206,29 +1228,25 @@ const DokumenSKCard: React.FC<{
       <CardContent>
         <div className="space-y-4">
           {/* SK Jabatan */}
-          <Card className={karyawan.linkSkJabatan ? "border-green-200" : "border-gray-200"}>
+          <Card className={hasSkJabatan ? "border-green-200" : "border-gray-200"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    karyawan.linkSkJabatan ? "bg-green-100" : "bg-gray-100"
-                  }`}>
-                    <TrendingUp className={`h-4 w-4 ${
-                      karyawan.linkSkJabatan ? "text-green-600" : "text-gray-400"
-                    }`} />
+                  <div className={`p-2 rounded-full ${hasSkJabatan ? "bg-green-100" : "bg-gray-100"}`}>
+                    <TrendingUp className={`h-4 w-4 ${hasSkJabatan ? "text-green-600" : "text-gray-400"}`} />
                   </div>
                   <div>
                     <p className="font-medium">SK Jabatan</p>
                     <p className="text-sm text-muted-foreground">
-                      {karyawan.linkSkJabatan ? "Dokumen tersedia" : "Dokumen belum tersedia"}
+                      {hasSkJabatan ? "Dokumen tersedia" : "Dokumen belum tersedia"}
                     </p>
                   </div>
                 </div>
-                {karyawan.linkSkJabatan && (
+                {hasSkJabatan && (
                   <Button size="sm" asChild>
-                    <a 
-                      href={karyawan.linkSkJabatan} 
-                      target="_blank" 
+                    <a
+                      href={linkJabatan}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
                     >
@@ -1242,29 +1260,25 @@ const DokumenSKCard: React.FC<{
           </Card>
 
           {/* SK Pangkat */}
-          <Card className={karyawan.linkSkPangkat ? "border-blue-200" : "border-gray-200"}>
+          <Card className={hasSkPangkat ? "border-blue-200" : "border-gray-200"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    karyawan.linkSkPangkat ? "bg-blue-100" : "bg-gray-100"
-                  }`}>
-                    <Award className={`h-4 w-4 ${
-                      karyawan.linkSkPangkat ? "text-blue-600" : "text-gray-400"
-                    }`} />
+                  <div className={`p-2 rounded-full ${hasSkPangkat ? "bg-blue-100" : "bg-gray-100"}`}>
+                    <Award className={`h-4 w-4 ${hasSkPangkat ? "text-blue-600" : "text-gray-400"}`} />
                   </div>
                   <div>
                     <p className="font-medium">SK Pangkat</p>
                     <p className="text-sm text-muted-foreground">
-                      {karyawan.linkSkPangkat ? "Dokumen tersedia" : "Dokumen belum tersedia"}
+                      {hasSkPangkat ? "Dokumen tersedia" : "Dokumen belum tersedia"}
                     </p>
                   </div>
                 </div>
-                {karyawan.linkSkPangkat && (
+                {hasSkPangkat && (
                   <Button size="sm" asChild>
-                    <a 
-                      href={karyawan.linkSkPangkat} 
-                      target="_blank" 
+                    <a
+                      href={linkPangkat}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2"
                     >
@@ -1277,7 +1291,7 @@ const DokumenSKCard: React.FC<{
             </CardContent>
           </Card>
 
-          {!karyawan.linkSkJabatan && !karyawan.linkSkPangkat && (
+          {!hasSkJabatan && !hasSkPangkat && (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Belum ada dokumen SK yang tersedia</p>
