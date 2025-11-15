@@ -13,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -1272,6 +1271,7 @@ const EstimasiKenaikanCard: React.FC<{
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
+  const [viewMode, setViewMode] = useState<'single' | 'split'>('single');
   const [selectedDoc, setSelectedDoc] = useState<'jabatan' | 'pangkat' | null>(null);
 
   const hasJabatan = !!karyawan.linkSkJabatan;
@@ -1279,11 +1279,11 @@ const DokumenSKCard: React.FC<{
 
   // Auto select first available document
   useEffect(() => {
-    if (!selectedDoc) {
+    if (!selectedDoc && viewMode === 'single') {
       if (hasJabatan) setSelectedDoc('jabatan');
       else if (hasPangkat) setSelectedDoc('pangkat');
     }
-  }, [hasJabatan, hasPangkat, selectedDoc]);
+  }, [hasJabatan, hasPangkat, selectedDoc, viewMode]);
 
   if (!hasJabatan && !hasPangkat) {
     return (
@@ -1308,63 +1308,188 @@ const DokumenSKCard: React.FC<{
 
   return (
     <div className="space-y-6">
-      {/* Document Selection Tabs */}
+      {/* View Mode Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Pilih Dokumen untuk Ditampilkan</CardTitle>
-          <CardDescription>Klik tab untuk melihat dokumen langsung di aplikasi</CardDescription>
+          <CardTitle>Mode Tampilan Dokumen</CardTitle>
+          <CardDescription>Pilih cara menampilkan dokumen SK</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs 
-            value={selectedDoc || ''} 
-            onValueChange={(value) => setSelectedDoc(value as 'jabatan' | 'pangkat')}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger 
-                value="jabatan" 
-                disabled={!hasJabatan}
-                className="flex items-center gap-2"
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Single View Mode */}
+            <div 
+              className={`flex-1 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                viewMode === 'single' 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setViewMode('single')}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  viewMode === 'single' ? 'bg-blue-100' : 'bg-gray-100'
+                }`}>
+                  <FileText className={`h-5 w-5 ${
+                    viewMode === 'single' ? 'text-blue-600' : 'text-gray-400'
+                  }`} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Tampilan Tunggal</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Tampilkan satu dokumen sekaligus
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Split View Mode */}
+            <div 
+              className={`flex-1 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                viewMode === 'split' 
+                  ? 'border-green-500 bg-green-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setViewMode('split')}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  viewMode === 'split' ? 'bg-green-100' : 'bg-gray-100'
+                }`}>
+                  <svg className={`h-5 w-5 ${
+                    viewMode === 'split' ? 'text-green-600' : 'text-gray-400'
+                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Tampilan Berdampingan</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Tampilkan kedua dokumen bersebelahan
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Document Selection for Single View */}
+          {viewMode === 'single' && (
+            <div className="mt-6">
+              <Tabs 
+                value={selectedDoc || ''} 
+                onValueChange={(value) => setSelectedDoc(value as 'jabatan' | 'pangkat')}
+                className="w-full"
               >
-                <TrendingUp className="h-4 w-4" />
-                SK Jabatan
-                {!hasJabatan && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    Tidak Tersedia
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="pangkat" 
-                disabled={!hasPangkat}
-                className="flex items-center gap-2"
-              >
-                <Award className="h-4 w-4" />
-                SK Pangkat
-                {!hasPangkat && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    Tidak Tersedia
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger 
+                    value="jabatan" 
+                    disabled={!hasJabatan}
+                    className="flex items-center gap-2"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    SK Jabatan
+                    {!hasJabatan && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        Tidak Tersedia
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="pangkat" 
+                    disabled={!hasPangkat}
+                    className="flex items-center gap-2"
+                  >
+                    <Award className="h-4 w-4" />
+                    SK Pangkat
+                    {!hasPangkat && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        Tidak Tersedia
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* PDF Viewer Section */}
-      {selectedDoc === 'jabatan' && hasJabatan && (
-        <PDFViewer 
-          pdfUrl={karyawan.linkSkJabatan!} 
-          title="SK Jabatan" 
-        />
-      )}
-      
-      {selectedDoc === 'pangkat' && hasPangkat && (
-        <PDFViewer 
-          pdfUrl={karyawan.linkSkPangkat!} 
-          title="SK Pangkat" 
-        />
+      {viewMode === 'single' ? (
+        // Single View
+        <>
+          {selectedDoc === 'jabatan' && hasJabatan && (
+            <PDFViewer 
+              pdfUrl={karyawan.linkSkJabatan!} 
+              title="SK Jabatan" 
+            />
+          )}
+          
+          {selectedDoc === 'pangkat' && hasPangkat && (
+            <PDFViewer 
+              pdfUrl={karyawan.linkSkPangkat!} 
+              title="SK Pangkat" 
+            />
+          )}
+        </>
+      ) : (
+        // Split View
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* SK Jabatan */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                SK Jabatan
+              </h3>
+              {!hasJabatan && (
+                <Badge variant="secondary">Tidak Tersedia</Badge>
+              )}
+            </div>
+            {hasJabatan ? (
+              <div className="border rounded-lg overflow-hidden">
+                <PDFViewer 
+                  pdfUrl={karyawan.linkSkJabatan!} 
+                  title="SK Jabatan" 
+                />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mb-4 opacity-50" />
+                  <p>SK Jabatan tidak tersedia</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* SK Pangkat */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Award className="h-5 w-5 text-green-600" />
+                SK Pangkat
+              </h3>
+              {!hasPangkat && (
+                <Badge variant="secondary">Tidak Tersedia</Badge>
+              )}
+            </div>
+            {hasPangkat ? (
+              <div className="border rounded-lg overflow-hidden">
+                <PDFViewer 
+                  pdfUrl={karyawan.linkSkPangkat!} 
+                  title="SK Pangkat" 
+                />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mb-4 opacity-50" />
+                  <p>SK Pangkat tidak tersedia</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Quick Actions Card */}
@@ -1399,7 +1524,6 @@ const DokumenSKCard: React.FC<{
     </div>
   );
 };
-
 const EmployeeDashboard: React.FC<{
   karyawan: Karyawan;
 }> = ({ karyawan }) => {
@@ -1415,7 +1539,6 @@ const EmployeeDashboard: React.FC<{
   return (
     <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
-
       {/* PESAN SELAMAT - DITAMPILKAN SETELAH BOX INFORMASI KARYAWAN */}
       {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
         <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
@@ -1437,7 +1560,6 @@ const EmployeeDashboard: React.FC<{
           </CardContent>
         </Card>
       )}
-
       {rekomendasiKarir && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
@@ -1453,7 +1575,6 @@ const EmployeeDashboard: React.FC<{
           </CardContent>
         </Card>
       )}
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1503,7 +1624,6 @@ const EmployeeDashboard: React.FC<{
     </div>
   );
 };
-
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
@@ -1532,7 +1652,6 @@ const KarierKu: React.FC = () => {
           const akValue = row[6].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
-
         const parseNIP = (nip: string) => {
           if (!nip || nip.length < 15) return { tanggalLahir: '', tahunMasuk: '', jenisKelamin: 'L' };
           const parts = nip.split(' ');
@@ -1556,13 +1675,10 @@ const KarierKu: React.FC = () => {
             const bulan = tahunMasukStr.substring(4, 6);
             tahunMasuk = `${tahun}-${bulan}-01`;
           }
-          
-          const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
+                    const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
           return { tanggalLahir, tahunMasuk, jenisKelamin };
         };
-
         const nipData = parseNIP(row[0]?.toString() || '');
-
         return {
           nip: row[0]?.toString() || '',
           nama: row[1]?.toString() || '',
@@ -1587,7 +1703,6 @@ const KarierKu: React.FC = () => {
           linkSkPangkat: row[13]?.toString() || ''
         };
       });
-
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -1600,16 +1715,13 @@ const KarierKu: React.FC = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchKaryawanData();
   }, []);
-
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
   };
-
   return (
     <div className="space-y-6">
       {!selectedKaryawan ? (
@@ -1632,11 +1744,9 @@ const KarierKu: React.FC = () => {
                 Tabel Individu
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value="dashboardKarir" className="space-y-6">
               <DashboardKarierKu karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
             </TabsContent>
-
             <TabsContent value="tabelIndividu" className="space-y-6">
               <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
             </TabsContent>
@@ -1654,8 +1764,7 @@ const KarierKu: React.FC = () => {
                 <h1 className="text-2xl font-bold text-sky-800">{selectedKaryawan.nama}</h1>
                 <p className="text-muted-foreground">{selectedKaryawan.nip}</p>
               </div>
-            </div>
-            
+            </div>            
             <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full sm:w-auto">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
@@ -1669,12 +1778,10 @@ const KarierKu: React.FC = () => {
               </TabsList>
             </Tabs>
           </div>
-
           <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
             <TabsContent value="dashboard" className="space-y-6">
               <EmployeeDashboard karyawan={selectedKaryawan} />
-            </TabsContent>
-            
+            </TabsContent>            
             <TabsContent value="dokumen" className="space-y-6">
               <DokumenSKCard karyawan={selectedKaryawan} />
             </TabsContent>
