@@ -1256,21 +1256,6 @@ const EstimasiKenaikanCard: React.FC<{
             </CardContent>
           </Card>
         </div>
-
-        {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-green-800 font-semibold">
-              🎉 SELAMAT!! Anda sudah memenuhi syarat kenaikan jenjang. Apabila lulus Uji Kompetensi anda dapat mengusulkan kenaikan{' '}
-              <strong>JABATAN dan PANGKAT</strong>. 🎉
-            </p>
-          </div>}
-
-        <div className="p-4 bg-blue-50 rounded-lg border">
-          <p className="text-blue-800 text-sm">
-            <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {predikatAsumsi * 100}% dengan perolehan{' '}
-            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
-            akumulasi sejak TMT Jabatan.
-          </p>
-        </div>
       </CardContent>
     </Card>;
 };
@@ -1410,6 +1395,20 @@ const EmployeeDashboard: React.FC<{
   return <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
 
+        {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+            <p className="text-green-800 font-semibold">
+              🎉 SELAMAT!! Anda sudah memenuhi syarat kenaikan jenjang. Apabila lulus Uji Kompetensi anda dapat mengusulkan kenaikan{' '}
+              <strong>JABATAN dan PANGKAT</strong>. 🎉
+            </p>
+          </div>}
+
+        <div className="p-4 bg-blue-50 rounded-lg border">
+          <p className="text-blue-800 text-sm">
+            <strong>Informasi:</strong> Estimasi berdasarkan predikat kinerja {estimasi.predikatAsumsi * 100}% dengan perolehan{' '}
+            {estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk
+            akumulasi sejak TMT Jabatan.
+          </p>
+        </div>
       {rekomendasiKarir && <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
