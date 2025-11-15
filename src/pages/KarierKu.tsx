@@ -588,7 +588,7 @@ const PDFViewer: React.FC<{
         <div className="border rounded-lg overflow-hidden bg-white">
           <iframe 
             src={embedUrl}
-            className="w-full min-h-[650px] transition-opacity duration-300"
+            className="w-full min-h-[600px] transition-opacity duration-300"
             onLoad={() => setIsLoading(false)}
             style={{ opacity: isLoading ? 0 : 1 }}
             title={title}
@@ -1407,7 +1407,7 @@ const CompactPDFViewer: React.FC<{
     : `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
 
   return (
-    <div className="space-y-3" style={{ height: "650px" }}> {/* Force height di parent */}
+    <div className="space-y-3" style={{ height: "600px" }}> {/* Force height di parent */}
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-1"></div>
@@ -1415,15 +1415,15 @@ const CompactPDFViewer: React.FC<{
         </div>
       )}
       
-      <div className="border rounded overflow-hidden bg-white" style={{ height: "650px" }}> {/* Force height di wrapper */}
+      <div className="border rounded overflow-hidden bg-white" style={{ height: "600px" }}> {/* Force height di wrapper */}
         <iframe 
           src={embedUrl}
           className="w-full h-full transition-opacity duration-300" // Gunakan h-full
           onLoad={() => setIsLoading(false)}
           style={{ 
             opacity: isLoading ? 0 : 1,
-            height: "650px", // Force inline style
-            minHeight: "650px"
+            height: "600px", // Force inline style
+            minHeight: "600px"
           }}
           title={title}
           allow="autoplay"
