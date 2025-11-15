@@ -1408,7 +1408,7 @@ const KarierKu: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:N`
+          range: `${SHEET_NAME}!A:T`
         }
       });
 
@@ -1472,8 +1472,8 @@ const KarierKu: React.FC = () => {
           email: '',
           telepon: '',
           alamat: '',
-          linkSkJabatan: row[14]?.toString() || '',
-          linkSkPangkat: row[15]?.toString() || ''
+          linkSkJabatan: row[12]?.toString() || '',
+          linkSkPangkat: row[13]?.toString() || ''
         };
       });
 
