@@ -1465,8 +1465,8 @@ const KarierKu: React.FC = () => {
           tmtJabatan: row[9]?.toString() || '',
           tmtPangkat: row[10]?.toString() || '',
           pendidikan: row[11]?.toString() || '',
-          linkSkJabatan: row[12]?.toString() || '',
-          linkSkPangkat: row[13]?.toString() || '',
+          linkSkJabatan: row[17]?.toString() || '', // Kolom 18 (index 17) - Link SK Jabatan
+          linkSkPangkat: row[18]?.toString() || '', // Kolom 19 (index 18) - Link SK Pangkat
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
@@ -1476,6 +1476,9 @@ const KarierKu: React.FC = () => {
           alamat: ''
         };
       });
+console.log('Row data:', row);
+console.log('SK Jabatan:', row[17]);
+console.log('SK Pangkat:', row[18]);
 
       setKaryawanList(karyawanData);
     } catch (error: any) {
