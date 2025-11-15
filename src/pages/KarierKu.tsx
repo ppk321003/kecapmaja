@@ -1413,9 +1413,11 @@ const EmployeeDashboard: React.FC<{
               <h3 className="text-xl font-bold text-green-800 mb-2">
                 🎉🎉 SELAMAT..!!! 🎉🎉
               </h3>
+              <p className="text-green-700 text-lg font-medium mb-2">
+                Tahap awal sukses telah Anda raih! Anda berhasil memenuhi target kenaikan jenjang
+              </p>
               <p className="text-green-700 text-lg font-medium">
-                Tahap awal sukses telah Anda raih! Anda berhasil memenuhi target kenaikan jenjang. Tinggal satu langkah lagi - Uji Kompetensi - untuk mewujudkan kenaikan{' '}
-                <strong className="text-green-800">JABATAN dan PANGKAT</strong>.
+                Tinggal satu langkah lagi - Uji Kompetensi - untuk mewujudkan kenaikan <strong className="text-green-800">JABATAN dan PANGKAT</strong>
               </p>
             </div>
           </CardContent>
