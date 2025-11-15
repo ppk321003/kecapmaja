@@ -1601,7 +1601,7 @@ const KarierKu: React.FC = () => {
                 Kembali
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{selectedKaryawan.nama}</h1>
+                <h1 className="text-2xl font-bold text-sky-800">{selectedKaryawan.nama}</h1>
                 <p className="text-muted-foreground">{selectedKaryawan.nip}</p>
               </div>
             </div>
