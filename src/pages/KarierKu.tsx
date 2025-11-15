@@ -1573,7 +1573,7 @@ const KarierKu: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-3xl font-bold text-red-500">KarierKu-3210</CardTitle>
-              <CardDescription>Penghitungan dan monitoring angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
+              <CardDescription>Monitoring dan penghitungan angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
             </CardHeader>
           </Card>
 
