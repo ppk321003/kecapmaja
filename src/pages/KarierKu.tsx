@@ -588,7 +588,7 @@ const PDFViewer: React.FC<{
         <div className="border rounded-lg overflow-hidden bg-white">
           <iframe 
             src={embedUrl}
-            className="w-full h-[500px] transition-opacity duration-300"
+            className="w-full h-[700px] transition-opacity duration-300"
             onLoad={() => setIsLoading(false)}
             style={{ opacity: isLoading ? 0 : 1 }}
             title={title}
