@@ -447,7 +447,7 @@ const DashboardKarierKu: React.FC<{
                   <TableHead>Pangkat Berikutnya</TableHead>
                   <TableHead className="text-right">AK Saat Ini</TableHead>
                   <TableHead className="text-right">Kebutuhan AK</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
+                  <TableHead className="text-center">Pilih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -491,7 +491,7 @@ const DashboardKarierKu: React.FC<{
                   <TableHead>Jabatan Berikutnya</TableHead>
                   <TableHead className="text-right">AK Saat Ini</TableHead>
                   <TableHead className="text-right">Kebutuhan AK</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
+                  <TableHead className="text-center">Pilih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -536,7 +536,7 @@ const DashboardKarierKu: React.FC<{
                   <TableHead className="text-right">Kebutuhan</TableHead>
                   <TableHead className="text-right">Kekurangan</TableHead>
                   <TableHead>Estimasi</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
+                  <TableHead className="text-center">Pilih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -584,7 +584,7 @@ const DashboardKarierKu: React.FC<{
                   <TableHead className="text-right">Kebutuhan</TableHead>
                   <TableHead className="text-right">Kekurangan</TableHead>
                   <TableHead>Estimasi</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
+                  <TableHead className="text-center">Pilih</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
