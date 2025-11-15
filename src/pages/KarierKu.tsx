@@ -1476,7 +1476,46 @@ const KarierKu: React.FC = () => {
           linkSkPangkat: row[19]?.toString() || ''
         };
       });
-
+// Tambahkan komponen debugging sementara
+const DebugSKCard: React.FC<{
+  karyawan: Karyawan;
+}> = ({ karyawan }) => {
+  return (
+    <Card className="bg-yellow-50 border-yellow-200">
+      <CardHeader>
+        <CardTitle className="text-yellow-800">Debug Info - Data SK</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2 text-sm">
+          <div>
+            <strong>Nama:</strong> {karyawan.nama}
+          </div>
+          <div>
+            <strong>Link SK Jabatan:</strong> 
+            <span className={karyawan.linkSkJabatan ? "text-green-600" : "text-red-600"}>
+              {karyawan.linkSkJabatan || 'TIDAK ADA'}
+            </span>
+          </div>
+          <div>
+            <strong>Link SK Pangkat:</strong> 
+            <span className={karyawan.linkSkPangkat ? "text-green-600" : "text-red-600"}>
+              {karyawan.linkSkPangkat || 'TIDAK ADA'}
+            </span>
+          </div>
+          <div>
+            <strong>Total Data Karyawan:</strong> {karyawanList.length}
+          </div>
+          <div>
+            <strong>Karyawan dengan SK Jabatan:</strong> {karyawanList.filter(k => k.linkSkJabatan).length}
+          </div>
+          <div>
+            <strong>Karyawan dengan SK Pangkat:</strong> {karyawanList.filter(k => k.linkSkPangkat).length}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
