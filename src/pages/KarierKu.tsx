@@ -1210,8 +1210,7 @@ const EstimasiKenaikanCard: React.FC<{
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'}
-                  className={estimasi.bisaUsulPangkat ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
+                <Badge variant={estimasi.bisaUsulPangkat ? 'default' : 'secondary'} className={estimasi.bisaUsulPangkat ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
                   {estimasi.bisaUsulPangkat ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
               </div>
@@ -1246,8 +1245,7 @@ const EstimasiKenaikanCard: React.FC<{
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'}
-                  className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
+                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
                   {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
               </div>
@@ -1398,17 +1396,15 @@ const EmployeeDashboard: React.FC<{
   const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
-  
   return <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
 
       {/* PESAN SELAMAT - DITAMPILKAN SETELAH BOX INFORMASI KARYAWAN */}
-      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
+      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <Award className="h-8 w-8 text-green-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-yellow-200">
+                <Award className="h-8 w-8 text-yellow-600" />
               </div>
               <h3 className="text-xl font-bold text-green-800 mb-2">
                 🎉🎉 SELAMAT..!!! 🎉🎉
@@ -1421,8 +1417,7 @@ const EmployeeDashboard: React.FC<{
               </p>
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {rekomendasiKarir && <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
