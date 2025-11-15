@@ -830,7 +830,7 @@ const BiodataCard: React.FC<{
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground">Nama</Label>
@@ -927,7 +927,7 @@ const PredikatKinerjaRadio: React.FC<{
       </CardHeader>
       <CardContent>
         <RadioGroup value={selectedValue.toString()} onValueChange={value => onValueChange(parseFloat(value))}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {predikatOptions.map(option => <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
                 <RadioGroupItem value={option.value.toString()} id={`predikat-${option.value}`} />
                 <Label htmlFor={`predikat-${option.value}`} className="flex flex-col">
@@ -1149,7 +1149,7 @@ const EstimasiKenaikanCard: React.FC<{
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
           <div className="text-center">
             <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
             <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
@@ -1181,7 +1181,7 @@ const EstimasiKenaikanCard: React.FC<{
 
         <PredikatKinerjaRadio selectedValue={predikatAsumsi} onValueChange={setPredikatAsumsi} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
