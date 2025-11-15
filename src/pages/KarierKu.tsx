@@ -1472,8 +1472,8 @@ const KarierKu: React.FC = () => {
           email: '',
           telepon: '',
           alamat: '',
-          linkSkJabatan: row[19]?.toString() || '',
-          linkSkPangkat: row[20]?.toString() || ''
+          linkSkJabatan: row[18]?.toString() || '',
+          linkSkPangkat: row[19]?.toString() || ''
         };
       });
 
