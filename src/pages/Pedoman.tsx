@@ -1020,29 +1020,7 @@ const EmployeeTable: React.FC<{
       </Card>;
   }
   return <Card>
-      <CardHeader>
-        <CardTitle className="text-3xl font-bold text-red-500">Penghitungan Angka Kredit</CardTitle>
-        <CardDescription>Berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <div className="bg-blue-50 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-blue-600">{totalKaryawan}</div>
-            <div className="text-sm text-blue-800">Total Karyawan</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-green-600">{aktifKaryawan}</div>
-            <div className="text-sm text-green-800">Status Aktif</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-purple-600">{keahlianKaryawan}</div>
-            <div className="text-sm text-purple-800">Jalur Keahlian</div>
-          </div>
-          <div className="bg-orange-50 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-orange-600">{keterampilanKaryawan}</div>
-            <div className="text-sm text-orange-800">Jalur Keterampilan</div>
-          </div>
-        </div>
-      </CardHeader>
+      
       
       <CardContent>
         <div className="flex flex-col md:flex-row gap-4 mb-6">
