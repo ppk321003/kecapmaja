@@ -41,7 +41,7 @@ const mainMenuItems = [
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
-  { title: "KarierKu", url: "/KarieKu", icon: Briefcase },
+  { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   //{ title: "Mitra Kepka", url: "/mitra-kepka", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
@@ -50,7 +50,7 @@ const mainMenuItems = [
 
 const additionalMenuItems = [
   { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
-  { title: "SBML Tahunan", url: "/entriSBML", icon: DownloadIcon },  
+  { title: "SBML Tahunan", url: "/entri-SBML", icon: DownloadIcon },  
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 

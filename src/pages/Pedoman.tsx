@@ -21,7 +21,7 @@ export default function DownloadRawData() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-            <p className="text-muted-foreground">FiturPanduan pedoman penggunaan Kecap Maja akan ditambahkan di sini</p>
+            <p className="text-muted-foreground">Panduan pedoman penggunaan Kecap Maja akan ditambahkan di sini</p>
           </div>
         </CardContent>
       </Card>
