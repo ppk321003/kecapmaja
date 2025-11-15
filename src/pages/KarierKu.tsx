@@ -1408,7 +1408,7 @@ const KarierKu: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:T`
+          range: `${SHEET_NAME}!A:U`
         }
       });
 
