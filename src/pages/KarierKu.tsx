@@ -391,44 +391,44 @@ class AngkaKreditCalculator {
     
     if (karyawan.kategori === 'Reguler') {
       if (karyawan.golongan === 'III/d' && !this.cekSyaratPendidikan('III/d', karyawan.pendidikan)) {
-        return "ANJURAN: Untuk kenaikan pangkat ke golongan IV/A, Anda membutuhkan pendidikan S2. Dengan S2, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
+        return "Untuk kenaikan ke pangkat/golongan IV, Anda membutuhkan pendidikan S2. Dengan S2, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
       }
       
       if (karyawan.golongan.startsWith('IV/') && !this.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan)) {
-        return "ANJURAN: Kenaikan pangkat Anda terhambat karena persyaratan pendidikan. Segera rencanakan studi S2/S3 untuk membuka peluang kenaikan ke golongan berikutnya.";
+        return "Kenaikan pangkat/golongan Anda terhambat karena persyaratan pendidikan. Segera rencanakan studi S2/S3 untuk membuka peluang kenaikan ke pangkat/golongan berikutnya.";
       }
       
       if (tingkatPendidikan === 'SMA') {
-        return "ANJURAN: Tingkatkan pendidikan ke D-IV/S-1 untuk ekspansi karir yang lebih luas dan opsi alih jalur ke Keahlian.";
+        return "Tingkatkan pendidikan ke D-IV/S-1 untuk ekspansi karir yang lebih luas dan opsi alih jalur ke Keahlian.";
       }
     }
     
     if (karyawan.kategori === 'Keterampilan') {
       if (karyawan.golongan === 'III/d') {
         if (this.cukupUntukAlihJalur(karyawan.pendidikan)) {
-          return "ANJURAN: Segera ajukan alih jalur ke Keahlian untuk akses golongan IV/E. Dengan pendidikan D-IV/S1, Anda sudah memenuhi syarat alih jalur.";
+          return "Segera ajukan alih jalur ke Keahlian untuk akses pangkat/golongan lebih tinggi. Dengan pendidikan D-IV/S1, Anda sudah memenuhi syarat alih jalur.";
         } else {
-          return "ANJURAN: Anda telah mencapai puncak karir jalur Keterampilan. Dengan melanjutkan pendidikan ke D-IV/S1, Anda dapat beralih ke jalur Keahlian untuk pengembangan karir yang lebih luas.";
+          return "Anda telah mencapai puncak karir jalur Keterampilan. Dengan melanjutkan pendidikan ke D-IV/S1, Anda dapat beralih ke jalur Keahlian untuk pengembangan karir yang lebih luas.";
         }
       }
       
       if (!this.cukupUntukAlihJalur(karyawan.pendidikan)) {
-        return "ANJURAN: Untuk ekspansi karir jangka panjang, pertimbangkan meningkatkan pendidikan ke D-IV/S1 agar dapat beralih ke jalur Keahlian yang memiliki jenjang karir lebih tinggi.";
+        return "Untuk ekspansi karir jangka panjang, pertimbangkan meningkatkan pendidikan ke D-IV/S1 agar dapat beralih ke jalur Keahlian yang memiliki jenjang karir lebih tinggi.";
       }
     }
     
     if (karyawan.kategori === 'Keahlian') {
       const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
       if (jabatanBerikutnya === 'Tidak Ada') {
-        return "SUKSES: Anda telah mencapai jenjang karir tertinggi di jalur Keahlian. Pertahankan kinerja dan berkontribusi sebagai mentor.";
+        return "Anda telah mencapai jenjang karir tertinggi di jalur Keahlian. Pertahankan kinerja dan berkontribusi sebagai mentor.";
       }
       
       if (tingkatPendidikan === 'D4' || tingkatPendidikan === 'S1') {
-        return "ANJURAN: Dengan pendidikan D-IV/S-1, karir maksimal sampai III/D. Lanjutkan pendidikan ke S-2 untuk akses golongan IV/A hingga IV/E.";
+        return "Dengan pendidikan D-IV/S-1, karir maksimal sampai III/D. Lanjutkan pendidikan ke S-2 untuk akses pangkat/golongan IV/A hingga IV/E.";
       }
     }
     
-    return "Lanjutkan pengembangan kompetensi dan akumulasi angka kredit untuk perkembangan karir yang optimal.";
+    return "Terus tingkatkan kompetensi dan optimalkan akumulasi angka kredit untuk menunjang perkembangan karier Anda.";
   }
 }
 
@@ -1149,7 +1149,7 @@ const PredikatKinerjaRadio: React.FC<{
         {disabled && (
           <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
             <p className="text-yellow-700 text-sm">
-              Untuk kategori Reguler, perhitungan AK tidak berlaku. Kenaikan pangkat berdasarkan masa kerja 4 tahun.
+              Untuk kategori Reguler, perhitungan AK tidak berlaku. Kenaikan pangkat berdasarkan masa kerja / TMT pangkat terakhirnya.
             </p>
           </div>
         )}
