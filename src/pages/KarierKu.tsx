@@ -399,14 +399,14 @@ class AngkaKreditCalculator {
       }
       
       if (tingkatPendidikan === 'SMA') {
-        return "Tingkatkan pendidikan ke D-IV/S-1 untuk ekspansi karir yang lebih luas dan opsi alih jalur ke Keahlian.";
+        return "Meningkatkan pendidikan ke D-IV/S-1 akan membuka ruang perkembangan karier yang lebih luas sekaligus memberikan kesempatan untuk mengajukan alih jalur ke Keahlian.";
       }
     }
     
     if (karyawan.kategori === 'Keterampilan') {
       if (karyawan.golongan === 'III/d') {
         if (this.cukupUntukAlihJalur(karyawan.pendidikan)) {
-          return "Segera ajukan alih jalur ke Keahlian untuk akses pangkat/golongan lebih tinggi. Dengan pendidikan D-IV/S1, Anda sudah memenuhi syarat alih jalur.";
+          return "Dengan pendidikan D-IV/S1 yang Anda miliki, Anda telah memenuhi syarat untuk alih jalur ke Keahlian, yang dapat menjadi langkah strategis untuk mencapai jenjang karier yang lebih tinggi.";
         } else {
           return "Anda telah mencapai puncak karir jalur Keterampilan. Dengan melanjutkan pendidikan ke D-IV/S1, Anda dapat beralih ke jalur Keahlian untuk pengembangan karir yang lebih luas.";
         }
@@ -424,11 +424,11 @@ class AngkaKreditCalculator {
       }
       
       if (tingkatPendidikan === 'D4' || tingkatPendidikan === 'S1') {
-        return "Dengan pendidikan D-IV/S-1, karir maksimal sampai III/D. Lanjutkan pendidikan ke S-2 untuk akses pangkat/golongan IV/A hingga IV/E.";
+        return "Peningkatan kompetensi dan Pendidikan akan memperluas kesempatan Anda untuk mencapai jenjang karier yang lebih tinggi.";
       }
     }
     
-    return "Terus tingkatkan kompetensi dan optimalkan akumulasi angka kredit untuk menunjang perkembangan karier Anda.";
+    return "Terus tingkatkan kompetensi untuk menunjang perkembangan karier Anda secara optimal, sekaligus menjadi teladan bagi rekan kerja serta mampu berperan sebagai pembimbing atau mentor bagi yang lain.";
   }
 }
 
@@ -1149,7 +1149,7 @@ const PredikatKinerjaRadio: React.FC<{
         {disabled && (
           <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
             <p className="text-yellow-700 text-sm">
-              Untuk kategori Reguler, perhitungan AK tidak berlaku. Kenaikan pangkat berdasarkan masa kerja / TMT pangkat terakhirnya.
+              Pada kategori Reguler, kenaikan pangkat tidak memakai perhitungan Angka Kredit, tetapi mengikuti masa kerja/TMT pangkat terakhir.
             </p>
           </div>
         )}
