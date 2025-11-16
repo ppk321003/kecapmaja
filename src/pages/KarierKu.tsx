@@ -391,7 +391,7 @@ class AngkaKreditCalculator {
     
     if (karyawan.kategori === 'Reguler') {
       if (karyawan.golongan === 'III/d' && !this.cekSyaratPendidikan('III/d', karyawan.pendidikan)) {
-        return "Untuk kenaikan ke pangkat/golongan IV, Anda membutuhkan pendidikan S2. Dengan S2, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
+        return "Untuk kenaikan ke pangkat/golongan IV, Anda membutuhkan pendidikan lebih tinggi. Dengan pendidikan yang lebih tinggi, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
       }
       
       if (karyawan.golongan.startsWith('IV/') && !this.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan)) {
@@ -424,7 +424,7 @@ class AngkaKreditCalculator {
       }
       
       if (tingkatPendidikan === 'D4' || tingkatPendidikan === 'S1') {
-        return "Peningkatan kompetensi dan Pendidikan akan memperluas kesempatan Anda untuk mencapai jenjang karier yang lebih tinggi.";
+        return "Peningkatan kompetensi dan pendidikan akan membuka peluang lebih besar bagi Anda untuk meraih jenjang karier yang lebih tinggi dan memperkuat kapasitas profesional Anda.";
       }
     }
     
