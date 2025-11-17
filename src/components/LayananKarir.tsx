@@ -204,42 +204,6 @@ class LayananKarirCalculator {
     return new Date();
   }
 
-  // Hitung masa kerja proporsional berdasarkan TMT dan periode semester
-  static calculateMasaKerjaProporsional(
-    tmtJabatan: string, 
-    tahun: number, 
-    semester: 1 | 2
-  ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tmtDate = this.parseTMT(tmtJabatan);
-    const periode = this.calculatePeriodeSemester(tahun, semester);
-    const periodeMulai = this.parseTMT(periode.mulai);
-    const periodeSelesai = this.parseTMT(periode.selesai);
-
-    // Jika TMT setelah periode selesai, tidak ada penilaian
-    if (tmtDate > periodeSelesai) {
-      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
-    }
-
-    // Tentukan tanggal mulai efektif (max antara TMT dan awal periode)
-    const mulaiEfektif = tmtDate > periodeMulai ? tmtDate : periodeMulai;
-    
-    // Hitung selisih bulan
-    const bulanMulai = mulaiEfektif.getMonth();
-    const bulanSelesai = periodeSelesai.getMonth();
-    const tahunMulai = mulaiEfektif.getFullYear();
-    const tahunSelesai = periodeSelesai.getFullYear();
-
-    let masaKerjaBulan = (tahunSelesai - tahunMulai) * 12 + (bulanSelesai - bulanMulai) + 1;
-
-    // Pastikan masa kerja antara 1-6 bulan
-    masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
-
-    // Tentukan jenis penilaian
-    const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
-
-    return { masaKerjaBulan, jenisPenilaian };
-  }
-
   // Generate semester dari TMT Jabatan dengan sistem proporsional BKN
   static generateSemesterFromTMT(tmtJabatan: string): { 
     tahun: number; 
@@ -262,6 +226,8 @@ class LayananKarirCalculator {
     let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
     let currentYear = startYear;
     
+    console.log(`TMT: ${tmtJabatan}, Start Year: ${startYear}, Start Month: ${startMonth}, Start Semester: ${currentSemester}`);
+    
     // Generate semua semester dari TMT sampai sekarang
     while (true) {
       // Hitung masa kerja untuk semester ini
@@ -271,7 +237,7 @@ class LayananKarirCalculator {
         currentSemester
       );
       
-      // Hanya tambahkan jika ada masa kerja
+      // Hanya tambahkan jika ada masa kerja dan semester belum lewat
       if (masaKerjaBulan > 0) {
         semesters.push({ 
           tahun: currentYear, 
@@ -286,8 +252,11 @@ class LayananKarirCalculator {
         new Date(currentYear, 5, 30) : // End of semester 1: June 30
         new Date(currentYear, 11, 31); // End of semester 2: December 31
       
+      console.log(`Checking semester ${currentSemester} ${currentYear}, ends: ${semesterEnd}, now: ${now}`);
+      
       // Jika semester berakhir setelah sekarang, stop
       if (semesterEnd > now) {
+        console.log('Semester is in future, stopping');
         break;
       }
       
@@ -301,11 +270,55 @@ class LayananKarirCalculator {
       
       // Safety break
       if (semesters.length > 20) {
+        console.log('Safety break reached');
         break;
       }
     }
     
+    console.log('Generated semesters:', semesters);
     return semesters;
+  }
+
+  // Hitung masa kerja proporsional berdasarkan TMT dan periode semester
+  static calculateMasaKerjaProporsional(
+    tmtJabatan: string, 
+    tahun: number, 
+    semester: 1 | 2
+  ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
+    const tmtDate = this.parseTMT(tmtJabatan);
+    const periode = this.calculatePeriodeSemester(tahun, semester);
+    const periodeMulai = this.parseTMT(periode.mulai);
+    const periodeSelesai = this.parseTMT(periode.selesai);
+
+    console.log(`Calculating for semester ${semester} ${tahun}`);
+    console.log(`TMT: ${tmtDate}, Periode: ${periodeMulai} to ${periodeSelesai}`);
+
+    // Jika TMT setelah periode selesai, tidak ada penilaian
+    if (tmtDate > periodeSelesai) {
+      console.log('TMT after period end, no assessment');
+      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
+    }
+
+    // Tentukan tanggal mulai efektif (max antara TMT dan awal periode)
+    const mulaiEfektif = tmtDate > periodeMulai ? tmtDate : periodeMulai;
+    
+    // Hitung selisih bulan
+    const bulanMulai = mulaiEfektif.getMonth();
+    const bulanSelesai = periodeSelesai.getMonth();
+    const tahunMulai = mulaiEfektif.getFullYear();
+    const tahunSelesai = periodeSelesai.getFullYear();
+
+    let masaKerjaBulan = (tahunSelesai - tahunMulai) * 12 + (bulanSelesai - bulanMulai) + 1;
+
+    // Pastikan masa kerja antara 1-6 bulan
+    masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
+
+    // Tentukan jenis penilaian
+    const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
+
+    console.log(`Effective start: ${mulaiEfektif}, Masa kerja: ${masaKerjaBulan} bulan, Jenis: ${jenisPenilaian}`);
+    
+    return { masaKerjaBulan, jenisPenilaian };
   }
 
   // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
