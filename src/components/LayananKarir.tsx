@@ -55,7 +55,38 @@ const SHEET_NAME = "konversi_predikat";
 
 // ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
-  static calculateAKFromPredikat(predikat: string, nilaiSKP: number): number {
+  // Tentukan koefisien berdasarkan jabatan dan kategori sesuai skrip utama
+  static getKoefisien(jabatan: string, kategori: string): number {
+    const jabatanLower = jabatan.toLowerCase();
+    
+    // Untuk kategori Reguler, koefisien 0 karena tidak menggunakan AK
+    if (kategori === 'Reguler') return 0;
+
+    // Koefisien untuk kategori Keahlian (Fungsional)
+    if (kategori === 'Keahlian') {
+      if (jabatanLower.includes('ahli utama') || jabatanLower.includes('pembina utama')) return 50.0;
+      if (jabatanLower.includes('ahli madya') || jabatanLower.includes('pembina tingkat i')) return 37.5;
+      if (jabatanLower.includes('ahli muda') || jabatanLower.includes('penata tingkat i')) return 25.0;
+      if (jabatanLower.includes('ahli pertama') || jabatanLower.includes('penata')) return 12.5;
+      
+      // Default untuk jabatan keahlian lainnya
+      return 12.5;
+    }
+    
+    // Koefisien untuk kategori Keterampilan (Pelaksana)
+    if (kategori === 'Keterampilan') {
+      if (jabatanLower.includes('penyelia') || jabatanLower.includes('pengawas')) return 25.0;
+      if (jabatanLower.includes('mahir') || jabatanLower.includes('pelaksana lanjutan')) return 12.5;
+      if (jabatanLower.includes('terampil') || jabatanLower.includes('pelaksana')) return 8.0;
+      
+      // Default untuk jabatan keterampilan lainnya
+      return 8.0;
+    }
+    
+    return 0;
+  }
+
+  static calculateAKFromPredikat(predikat: string, nilaiSKP: number, jabatan: string, kategori: string): number {
     const baseAK = {
       'Sangat Baik': 1.50,
       'Baik': 1.00,
@@ -63,8 +94,13 @@ class LayananKarirCalculator {
       'Kurang': 0.50
     }[predikat] || 1.00;
 
-    let akKonversi = baseAK * 12.5;
+    // Untuk kategori Reguler, tidak ada perhitungan AK
+    if (kategori === 'Reguler') return 0;
+
+    const koefisien = this.getKoefisien(jabatan, kategori);
+    let akKonversi = baseAK * koefisien;
     
+    // Adjust berdasarkan nilai SKP
     if (nilaiSKP >= 90) akKonversi *= 1.2;
     else if (nilaiSKP >= 80) akKonversi *= 1.1;
     else if (nilaiSKP >= 70) akKonversi *= 1.0;
@@ -286,7 +322,8 @@ const EditKonversiModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: KonversiData) => void;
-}> = ({ data, isOpen, onClose, onSave }) => {
+  karyawan: Karyawan;
+}> = ({ data, isOpen, onClose, onSave, karyawan }) => {
   const [formData, setFormData] = useState<Partial<KonversiData>>({});
 
   useEffect(() => {
@@ -302,7 +339,9 @@ const EditKonversiModal: React.FC<{
     if (formData.Tahun && formData.Semester && formData.Predikat && formData['Nilai SKP']) {
       const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(
         formData.Predikat, 
-        formData['Nilai SKP']
+        formData['Nilai SKP'],
+        karyawan.jabatan,
+        karyawan.kategori
       );
       const periode = LayananKarirCalculator.calculatePeriodeSemester(
         formData.Tahun, 
@@ -321,6 +360,15 @@ const EditKonversiModal: React.FC<{
       onSave(finalData);
     }
   };
+
+  const previewAK = formData.Tahun && formData.Semester && formData.Predikat && formData['Nilai SKP'] 
+    ? LayananKarirCalculator.calculateAKFromPredikat(
+        formData.Predikat, 
+        formData['Nilai SKP'],
+        karyawan.jabatan,
+        karyawan.kategori
+      )
+    : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -426,9 +474,15 @@ const EditKonversiModal: React.FC<{
             <div className="p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-700">
                 <strong>Preview Auto-calculate:</strong><br />
-                • AK Konversi: {LayananKarirCalculator.calculateAKFromPredikat(formData.Predikat, formData['Nilai SKP'])}<br />
+                • Koefisien: {LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori)}<br />
+                • AK Konversi: {previewAK}<br />
                 • Periode: {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}
               </p>
+              {karyawan.kategori === 'Reguler' && (
+                <p className="text-sm text-orange-700 mt-2">
+                  <strong>Catatan:</strong> Kategori Reguler tidak menggunakan perhitungan Angka Kredit
+                </p>
+              )}
             </div>
           )}
 
@@ -452,7 +506,8 @@ const GenerateSemesterModal: React.FC<{
   onClose: () => void;
   onGenerate: (semesters: { tahun: number; semester: 1 | 2 }[]) => void;
   tmtJabatan: string;
-}> = ({ isOpen, onClose, onGenerate, tmtJabatan }) => {
+  karyawan: Karyawan;
+}> = ({ isOpen, onClose, onGenerate, tmtJabatan, karyawan }) => {
   const [availableSemesters, setAvailableSemesters] = useState<{ tahun: number; semester: 1 | 2 }[]>([]);
 
   useEffect(() => {
@@ -481,8 +536,15 @@ const GenerateSemesterModal: React.FC<{
           <div className="p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
               <strong>TMT Jabatan:</strong> {tmtJabatan}<br />
-              <strong>Jumlah Semester:</strong> {availableSemesters.length}
+              <strong>Jumlah Semester:</strong> {availableSemesters.length}<br />
+              <strong>Kategori:</strong> {karyawan.kategori}<br />
+              <strong>Koefisien:</strong> {LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori)}
             </p>
+            {karyawan.kategori === 'Reguler' && (
+              <p className="text-sm text-orange-700 mt-2">
+                <strong>Catatan:</strong> Untuk kategori Reguler, data konversi hanya untuk dokumentasi (tidak mempengaruhi perhitungan AK)
+              </p>
+            )}
           </div>
 
           {availableSemesters.length > 0 ? (
@@ -494,17 +556,25 @@ const GenerateSemesterModal: React.FC<{
                     <TableHead>Tahun</TableHead>
                     <TableHead>Semester</TableHead>
                     <TableHead>Periode</TableHead>
+                    <TableHead>AK Estimasi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {availableSemesters.map((semester, index) => {
                     const periode = LayananKarirCalculator.calculatePeriodeSemester(semester.tahun, semester.semester);
+                    const akEstimasi = LayananKarirCalculator.calculateAKFromPredikat(
+                      'Baik', 
+                      95,
+                      karyawan.jabatan,
+                      karyawan.kategori
+                    );
                     return (
                       <TableRow key={`${semester.tahun}-${semester.semester}`}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{semester.tahun}</TableCell>
                         <TableCell>Semester {semester.semester}</TableCell>
                         <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
+                        <TableCell className="text-sm font-semibold">{akEstimasi}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -626,7 +696,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       Semester: semester,
       Predikat: 'Baik' as const,
       'Nilai SKP': 95,
-      'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 95),
+      'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 95, karyawan.jabatan, karyawan.kategori),
       'TMT Mulai': periode.mulai,
       'TMT Selesai': periode.selesai,
       Status: 'Draft' as const,
@@ -682,7 +752,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           Semester: semester.semester,
           Predikat: 'Baik' as const,
           'Nilai SKP': 95,
-          'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 95),
+          'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 95, karyawan.jabatan, karyawan.kategori),
           'TMT Mulai': periode.mulai,
           'TMT Selesai': periode.selesai,
           Status: 'Draft' as const,
@@ -828,6 +898,9 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </CardTitle>
           <CardDescription>
             Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama}
+            {karyawan.kategori === 'Reguler' && (
+              <span className="text-orange-600 font-semibold"> (Kategori Reguler - Data untuk dokumentasi)</span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -918,6 +991,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
+        karyawan={karyawan}
       />
 
       <GenerateSemesterModal
@@ -925,6 +999,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         onClose={() => setGenerateModal(false)}
         onGenerate={handleGenerateSemesters}
         tmtJabatan={karyawan.tmtJabatan}
+        karyawan={karyawan}
       />
     </div>
   );
