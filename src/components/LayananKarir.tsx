@@ -62,32 +62,48 @@ class LayananKarirCalculator {
     const jabatanLower = jabatan.toLowerCase();
     const golonganLower = golongan.toLowerCase();
     
+    console.log('Calculating koefisien for:', { jabatan, kategori, golongan });
+    
     // Untuk kategori Reguler, koefisien 0 karena tidak menggunakan AK
-    if (kategori === 'Reguler') return 0;
+    if (kategori === 'Reguler') {
+      console.log('Kategori Reguler, koefisien: 0');
+      return 0;
+    }
 
     // Koefisien untuk kategori Keahlian (Fungsional)
     if (kategori === 'Keahlian') {
       // Ahli Utama (IV/c - IV/d)
       if (jabatanLower.includes('ahli utama') || golonganLower.includes('iv/c') || golonganLower.includes('iv/d')) {
+        console.log('Ahli Utama, koefisien: 50.0');
         return 50.0;
       }
       // Ahli Madya (IV/a - IV/b)
       if (jabatanLower.includes('ahli madya') || golonganLower.includes('iv/a') || golonganLower.includes('iv/b')) {
+        console.log('Ahli Madya, koefisien: 37.5');
         return 37.5;
       }
       // Ahli Muda (III/c - III/d)
       if (jabatanLower.includes('ahli muda') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
+        console.log('Ahli Muda, koefisien: 25.0');
         return 25.0;
       }
       // Ahli Pertama (III/a - III/b)
       if (jabatanLower.includes('ahli pertama') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
+        console.log('Ahli Pertama, koefisien: 12.5');
         return 12.5;
       }
       
       // Default untuk jabatan keahlian lainnya berdasarkan golongan
-      if (golonganLower.includes('iv/')) return 37.5;
-      if (golonganLower.includes('iii/')) return 12.5;
+      if (golonganLower.includes('iv/')) {
+        console.log('Golongan IV, koefisien: 37.5');
+        return 37.5;
+      }
+      if (golonganLower.includes('iii/')) {
+        console.log('Golongan III, koefisien: 12.5');
+        return 12.5;
+      }
       
+      console.log('Default keahlian, koefisien: 12.5');
       return 12.5;
     }
     
@@ -95,24 +111,35 @@ class LayananKarirCalculator {
     if (kategori === 'Keterampilan') {
       // Penyelia (III/c - III/d)
       if (jabatanLower.includes('penyelia') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
+        console.log('Penyelia, koefisien: 25.0');
         return 25.0;
       }
       // Mahir (III/a - III/b)
       if (jabatanLower.includes('mahir') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
+        console.log('Mahir, koefisien: 12.5');
         return 12.5;
       }
       // Terampil (II/a - II/d)
       if (jabatanLower.includes('terampil') || golonganLower.includes('ii/')) {
+        console.log('Terampil, koefisien: 8.0');
         return 8.0;
       }
       
       // Default untuk jabatan keterampilan lainnya berdasarkan golongan
-      if (golonganLower.includes('iii/')) return 12.5;
-      if (golonganLower.includes('ii/')) return 8.0;
+      if (golonganLower.includes('iii/')) {
+        console.log('Golongan III keterampilan, koefisien: 12.5');
+        return 12.5;
+      }
+      if (golonganLower.includes('ii/')) {
+        console.log('Golongan II keterampilan, koefisien: 8.0');
+        return 8.0;
+      }
       
+      console.log('Default keterampilan, koefisien: 8.0');
       return 8.0;
     }
     
+    console.log('Kategori tidak dikenal, koefisien: 0');
     return 0;
   }
 
@@ -130,7 +157,17 @@ class LayananKarirCalculator {
     }[predikat] || 1.00;
 
     const akProporsional = (koefisienPredikat * koefisienJabatan * masaKerjaBulan) / 12;
-    return Number(akProporsional.toFixed(3));
+    const result = Number(akProporsional.toFixed(3));
+    
+    console.log('AK Proporsional calculation:', {
+      predikat,
+      koefisienPredikat,
+      koefisienJabatan,
+      masaKerjaBulan,
+      result
+    });
+    
+    return result;
   }
 
   // Hitung AK penuh (6 bulan)
@@ -143,7 +180,16 @@ class LayananKarirCalculator {
     }[predikat] || 1.00;
 
     const akPenuh = (koefisienPredikat * koefisienJabatan * 6) / 12;
-    return Number(akPenuh.toFixed(3));
+    const result = Number(akPenuh.toFixed(3));
+    
+    console.log('AK Penuh calculation:', {
+      predikat,
+      koefisienPredikat,
+      koefisienJabatan,
+      result
+    });
+    
+    return result;
   }
 
   static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
@@ -168,6 +214,8 @@ class LayananKarirCalculator {
   }
 
   static parseTMT(tmt: string): Date {
+    console.log('Parsing TMT:', tmt);
+    
     // Coba format MM/DD/YYYY (dari contoh: 10/27/2023)
     const parts1 = tmt.split('/');
     if (parts1.length === 3) {
@@ -178,6 +226,7 @@ class LayananKarirCalculator {
       if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
         const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
+          console.log('Parsed as MM/DD/YYYY:', date);
           return date;
         }
       }
@@ -193,6 +242,7 @@ class LayananKarirCalculator {
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
         const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
+          console.log('Parsed as DD/MM/YYYY:', date);
           return date;
         }
       }
@@ -201,10 +251,12 @@ class LayananKarirCalculator {
     // Fallback: coba parse sebagai Date object biasa
     const fallbackDate = new Date(tmt);
     if (!isNaN(fallbackDate.getTime())) {
+      console.log('Parsed as standard Date:', fallbackDate);
       return fallbackDate;
     }
     
     // Final fallback: current date
+    console.log('Fallback to current date');
     return new Date();
   }
 
@@ -219,13 +271,24 @@ class LayananKarirCalculator {
     const periodeMulai = this.parseTMT(periode.mulai);
     const periodeSelesai = this.parseTMT(periode.selesai);
 
+    console.log('Masa Kerja Calculation:', {
+      tmtJabatan,
+      tmtDate,
+      tahun,
+      semester,
+      periodeMulai,
+      periodeSelesai
+    });
+
     // Jika TMT setelah periode selesai, tidak ada penilaian
     if (tmtDate > periodeSelesai) {
+      console.log('TMT after period end, no assessment');
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
     // Jika TMT sebelum atau sama dengan periode mulai, penilaian penuh
     if (tmtDate <= periodeMulai) {
+      console.log('TMT before period start, full assessment');
       return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
     }
 
@@ -242,6 +305,12 @@ class LayananKarirCalculator {
 
     // Tentukan jenis penilaian
     const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
+    
+    console.log('Proportional assessment:', {
+      diffDays,
+      masaKerjaBulan,
+      jenisPenilaian
+    });
     
     return { masaKerjaBulan, jenisPenilaian };
   }
@@ -262,6 +331,8 @@ class LayananKarirCalculator {
       jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
     }[] = [];
     
+    console.log('Generating semesters from TMT:', { tmtJabatan, startDate, now });
+
     const startYear = startDate.getFullYear();
     const startMonth = startDate.getMonth() + 1;
     
@@ -295,6 +366,11 @@ class LayananKarirCalculator {
         currentYear++;
       }
       
+      // Stop jika tahun lebih dari 5 tahun dari sekarang
+      if (currentYear > now.getFullYear() + 1) {
+        break;
+      }
+      
       // Hitung masa kerja untuk semester ini
       const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
         tmtJabatan,
@@ -302,8 +378,23 @@ class LayananKarirCalculator {
         currentSemester
       );
       
-      // Hanya tambahkan jika ada masa kerja
+      // Hanya tambahkan jika ada masa kerja dan belum lewat dari sekarang
       if (masaKerjaBulan > 0) {
+        const semesterEnd = currentSemester === 1 ? 
+          new Date(currentYear, 5, 30) : // End of semester 1: June 30
+          new Date(currentYear, 11, 31); // End of semester 2: December 31
+        
+        // Jika semester berakhir setelah sekarang, stop
+        if (semesterEnd > now) {
+          semesters.push({ 
+            tahun: currentYear, 
+            semester: currentSemester,
+            masaKerjaBulan,
+            jenisPenilaian
+          });
+          break;
+        }
+        
         semesters.push({ 
           tahun: currentYear, 
           semester: currentSemester,
@@ -312,22 +403,14 @@ class LayananKarirCalculator {
         });
       }
       
-      // Cek apakah semester ini sudah lewat
-      const semesterEnd = currentSemester === 1 ? 
-        new Date(currentYear, 5, 30) : // End of semester 1: June 30
-        new Date(currentYear, 11, 31); // End of semester 2: December 31
-      
-      // Jika semester berakhir setelah sekarang, stop
-      if (semesterEnd > now) {
-        break;
-      }
-      
       // Safety break
-      if (semesters.length > 10) {
+      if (semesters.length > 20) {
+        console.warn('Safety break triggered');
         break;
       }
     }
     
+    console.log('Generated semesters:', semesters);
     return semesters;
   }
 
@@ -341,8 +424,15 @@ class LayananKarirCalculator {
     masaKerjaBulan: number,
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL'
   ): number {
+    console.log('Calculating AK from predikat:', {
+      predikat, nilaiSKP, jabatan, kategori, golongan, masaKerjaBulan, jenisPenilaian
+    });
+
     // Untuk kategori Reguler, tidak ada perhitungan AK
-    if (kategori === 'Reguler') return 0;
+    if (kategori === 'Reguler') {
+      console.log('Reguler category, AK: 0');
+      return 0;
+    }
 
     const koefisien = this.getKoefisien(jabatan, kategori, golongan);
     
@@ -351,8 +441,10 @@ class LayananKarirCalculator {
       akKonversi = this.calculateAKPenuh(predikat, koefisien);
     } else {
       akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
-    }      
-    return Number(akKonversi.toFixed(3));
+    }
+    
+    console.log('Final AK Konversi:', akKonversi);
+    return akKonversi;
   }
 }
 
@@ -385,43 +477,80 @@ const useSpreadsheetAPI = () => {
   };
 
   const readData = async (nip?: string) => {
-    const result = await callAPI('read');
-    const rows = result.values || [];
-    
-    if (rows.length <= 1) return [];
-    
-    const headers = rows[0];
-    const data = rows.slice(1)
-      .filter((row: any[]) => !nip || row[headers.indexOf('NIP')] === nip)
-      .map((row: any[], index: number) => {
-        const obj: KonversiData = { 
-          id: `${SHEET_NAME}_${index + 2}`,
-          rowIndex: index + 2,
-          Last_Update: '',
-          Masa_Kerja_Bulan: 6,
-          Jenis_Penilaian: 'PENUH'
-        } as KonversiData;
+    try {
+      const result = await callAPI('read');
+      const rows = result.values || [];
+      
+      if (rows.length <= 1) return [];
+      
+      const headers = rows[0];
+      console.log('Spreadsheet headers:', headers);
+      
+      const data = rows.slice(1)
+        .filter((row: any[]) => {
+          if (!nip) return true;
+          const nipIndex = headers.indexOf('NIP');
+          return nipIndex >= 0 && row[nipIndex] === nip;
+        })
+        .map((row: any[], index: number) => {
+          const obj: KonversiData = { 
+            id: `${SHEET_NAME}_${index + 2}`,
+            rowIndex: index + 2,
+            Last_Update: '',
+            Masa_Kerja_Bulan: 6,
+            Jenis_Penilaian: 'PENUH'
+          } as KonversiData;
 
-        headers.forEach((header: string, colIndex: number) => {
-          let value = row[colIndex];
-          if (header === 'Tahun' || header === 'Semester' || header === 'Nilai SKP' || header === 'AK Konversi' || header === 'No' || header === 'Masa_Kerja_Bulan') {
-            value = Number(value) || 0;
+          headers.forEach((header: string, colIndex: number) => {
+            let value = row[colIndex];
+            
+            // Handle number conversion with proper formatting
+            if (header === 'Tahun' || header === 'Semester' || header === 'No' || header === 'Banyak_Bulan') {
+              value = Number(value) || 0;
+            }
+            // Handle AK Konversi with comma decimal separator
+            else if (header === 'AK Konversi') {
+              if (typeof value === 'string') {
+                // Convert "12,5" to 12.5
+                value = parseFloat(value.replace(',', '.')) || 0;
+              } else {
+                value = Number(value) || 0;
+              }
+            }
+            // Handle Nilai SKP
+            else if (header === 'Nilai SKP') {
+              value = Number(value) || 0;
+            }
+            // Map Banyak_Bulan to Masa_Kerja_Bulan
+            else if (header === 'Banyak_Bulan') {
+              obj.Masa_Kerja_Bulan = Number(value) || 6;
+            }
+            // Map Keterangan to Jenis_Penilaian
+            else if (header === 'Keterangan') {
+              obj.Jenis_Penilaian = (value === 'PROPORSIONAL' ? 'PROPORSIONAL' : 'PENUH');
+            }
+            
+            // Assign value to object
+            if (header !== 'Banyak_Bulan' && header !== 'Keterangan') {
+              (obj as any)[header] = value;
+            }
+          });
+          
+          // Ensure No is set
+          if (!obj.No || obj.No === 0) {
+            obj.No = index + 1;
           }
-          if (header === 'Jenis_Penilaian') {
-            value = value || 'PENUH';
-          }
-          (obj as any)[header] = value;
+          
+          console.log('Parsed row data:', obj);
+          return obj;
         });
-        
-        if (!obj.No || obj.No === 0) {
-          obj.No = index + 1;
-        }
-        
-        return obj;
-      });
-    
-    console.log(`Loaded ${data.length} records from ${SHEET_NAME}`);
-    return data;
+      
+      console.log(`Loaded ${data.length} records from ${SHEET_NAME}`);
+      return data;
+    } catch (error) {
+      console.error('Error reading data:', error);
+      return [];
+    }
   };
 
   const appendData = async (values: any[]) => {
@@ -628,9 +757,6 @@ const EditKonversiModal: React.FC<{
                   'Cukup': '0.75',
                   'Kurang': '0.50'
                 }[formData.Predikat]})<br />
-                • Nilai SKP: {formData['Nilai SKP']} (Multiplier: {{
-                  90: '1.2', 80: '1.1', 70: '1.0', 60: '0.9'
-                }[Math.floor(formData['Nilai SKP'] || 95 / 10) * 10] || '0.8'})<br />
                 • AK Konversi: {akKonversi}<br />
                 • Periode: {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}
               </p>
@@ -868,7 +994,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const handleAddNew = async () => {
     const now = LayananKarirCalculator.formatDate(new Date());
     const tahun = new Date().getFullYear();
-    const semester = 1;
+    const semester = new Date().getMonth() < 6 ? 1 : 2;
     
     const { masaKerjaBulan, jenisPenilaian } = LayananKarirCalculator.calculateMasaKerjaProporsional(
       karyawan.tmtJabatan,
@@ -1153,7 +1279,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[2023, 2024, 2025].map(year => (
+                  {[2023, 2024, 2025, 2026].map(year => (
                     <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
                   ))}
                 </SelectContent>
