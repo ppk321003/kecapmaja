@@ -168,115 +168,50 @@ class LayananKarirCalculator {
   }
 
   static parseTMT(tmt: string): Date {
-    const parts = tmt.split('/');
-    if (parts.length === 3) {
-      // Coba format DD/MM/YYYY
-      const day = parseInt(parts[0]);
-      const month = parseInt(parts[1]);
-      const year = parseInt(parts[2]);
+    console.log('Parsing TMT:', tmt);
+    
+    // Coba format MM/DD/YYYY (dari contoh: 10/27/2023)
+    const parts1 = tmt.split('/');
+    if (parts1.length === 3) {
+      const month = parseInt(parts1[0]);
+      const day = parseInt(parts1[1]);
+      const year = parseInt(parts1[2]);
+      
+      if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          console.log('Successfully parsed as MM/DD/YYYY:', date);
+          return date;
+        }
+      }
+    }
+    
+    // Coba format DD/MM/YYYY
+    const parts2 = tmt.split('/');
+    if (parts2.length === 3) {
+      const day = parseInt(parts2[0]);
+      const month = parseInt(parts2[1]);
+      const year = parseInt(parts2[2]);
       
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
         const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
-          return date;
-        }
-      }
-      
-      // Coba format MM/DD/YYYY
-      const month2 = parseInt(parts[0]);
-      const day2 = parseInt(parts[1]);
-      const year2 = parseInt(parts[2]);
-      
-      if (!isNaN(day2) && !isNaN(month2) && !isNaN(year2)) {
-        const date = new Date(year2, month2 - 1, day2);
-        if (!isNaN(date.getTime())) {
+          console.log('Successfully parsed as DD/MM/YYYY:', date);
           return date;
         }
       }
     }
     
-    // Fallback
+    // Fallback: coba parse sebagai Date object biasa
     const fallbackDate = new Date(tmt);
     if (!isNaN(fallbackDate.getTime())) {
+      console.log('Successfully parsed as fallback:', fallbackDate);
       return fallbackDate;
     }
     
+    // Final fallback: current date
+    console.log('Using current date as fallback');
     return new Date();
-  }
-
-  // Generate semester dari TMT Jabatan dengan sistem proporsional BKN
-  static generateSemesterFromTMT(tmtJabatan: string): { 
-    tahun: number; 
-    semester: 1 | 2;
-    masaKerjaBulan: number;
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-  }[] {
-    const startDate = this.parseTMT(tmtJabatan);
-    const now = new Date();
-    const semesters: { 
-      tahun: number; 
-      semester: 1 | 2;
-      masaKerjaBulan: number;
-      jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-    }[] = [];
-    
-    const startYear = startDate.getFullYear();
-    const startMonth = startDate.getMonth() + 1;
-    
-    let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
-    let currentYear = startYear;
-    
-    console.log(`TMT: ${tmtJabatan}, Start Year: ${startYear}, Start Month: ${startMonth}, Start Semester: ${currentSemester}`);
-    
-    // Generate semua semester dari TMT sampai sekarang
-    while (true) {
-      // Hitung masa kerja untuk semester ini
-      const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
-        tmtJabatan,
-        currentYear,
-        currentSemester
-      );
-      
-      // Hanya tambahkan jika ada masa kerja dan semester belum lewat
-      if (masaKerjaBulan > 0) {
-        semesters.push({ 
-          tahun: currentYear, 
-          semester: currentSemester,
-          masaKerjaBulan,
-          jenisPenilaian
-        });
-      }
-      
-      // Cek apakah semester ini sudah lewat
-      const semesterEnd = currentSemester === 1 ? 
-        new Date(currentYear, 5, 30) : // End of semester 1: June 30
-        new Date(currentYear, 11, 31); // End of semester 2: December 31
-      
-      console.log(`Checking semester ${currentSemester} ${currentYear}, ends: ${semesterEnd}, now: ${now}`);
-      
-      // Jika semester berakhir setelah sekarang, stop
-      if (semesterEnd > now) {
-        console.log('Semester is in future, stopping');
-        break;
-      }
-      
-      // Pindah ke semester berikutnya
-      if (currentSemester === 1) {
-        currentSemester = 2;
-      } else {
-        currentSemester = 1;
-        currentYear++;
-      }
-      
-      // Safety break
-      if (semesters.length > 20) {
-        console.log('Safety break reached');
-        break;
-      }
-    }
-    
-    console.log('Generated semesters:', semesters);
-    return semesters;
   }
 
   // Hitung masa kerja proporsional berdasarkan TMT dan periode semester
@@ -299,8 +234,14 @@ class LayananKarirCalculator {
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
-    // Tentukan tanggal mulai efektif (max antara TMT dan awal periode)
-    const mulaiEfektif = tmtDate > periodeMulai ? tmtDate : periodeMulai;
+    // Jika TMT sebelum periode mulai, penilaian penuh
+    if (tmtDate <= periodeMulai) {
+      console.log('TMT before period start, full assessment');
+      return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
+    }
+
+    // TMT di tengah periode, hitung proporsional
+    const mulaiEfektif = tmtDate;
     
     // Hitung selisih bulan
     const bulanMulai = mulaiEfektif.getMonth();
@@ -319,6 +260,106 @@ class LayananKarirCalculator {
     console.log(`Effective start: ${mulaiEfektif}, Masa kerja: ${masaKerjaBulan} bulan, Jenis: ${jenisPenilaian}`);
     
     return { masaKerjaBulan, jenisPenilaian };
+  }
+
+  // Generate semester dari TMT Jabatan dengan sistem proporsional BKN
+  static generateSemesterFromTMT(tmtJabatan: string): { 
+    tahun: number; 
+    semester: 1 | 2;
+    masaKerjaBulan: number;
+    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
+  }[] {
+    const startDate = this.parseTMT(tmtJabatan);
+    const now = new Date();
+    const semesters: { 
+      tahun: number; 
+      semester: 1 | 2;
+      masaKerjaBulan: number;
+      jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
+    }[] = [];
+    
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1;
+    
+    // Tentukan semester awal berdasarkan bulan TMT
+    let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
+    let currentYear = startYear;
+
+    console.log(`TMT: ${tmtJabatan}, Start Date: ${startDate}`);
+    console.log(`Start Year: ${startYear}, Start Month: ${startMonth}, Start Semester: ${currentSemester}`);
+    
+    // Mulai dari semester ketika TMT Jabatan
+    const firstSemester = { 
+      tahun: currentYear, 
+      semester: currentSemester,
+      masaKerjaBulan: 0,
+      jenisPenilaian: 'PROPORSIONAL' as 'PENUH' | 'PROPORSIONAL'
+    };
+    
+    const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
+      tmtJabatan,
+      currentYear,
+      currentSemester
+    );
+    
+    if (masaKerjaBulan > 0) {
+      semesters.push({ 
+        tahun: currentYear, 
+        semester: currentSemester,
+        masaKerjaBulan,
+        jenisPenilaian
+      });
+    }
+    
+    // Generate semester berikutnya sampai sekarang
+    while (true) {
+      // Pindah ke semester berikutnya
+      if (currentSemester === 1) {
+        currentSemester = 2;
+      } else {
+        currentSemester = 1;
+        currentYear++;
+      }
+      
+      // Hitung masa kerja untuk semester ini
+      const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
+        tmtJabatan,
+        currentYear,
+        currentSemester
+      );
+      
+      // Hanya tambahkan jika ada masa kerja
+      if (masaKerjaBulan > 0) {
+        semesters.push({ 
+          tahun: currentYear, 
+          semester: currentSemester,
+          masaKerjaBulan,
+          jenisPenilaian
+        });
+      }
+      
+      // Cek apakah semester ini sudah lewat
+      const semesterEnd = currentSemester === 1 ? 
+        new Date(currentYear, 5, 30) : // End of semester 1: June 30
+        new Date(currentYear, 11, 31); // End of semester 2: December 31
+      
+      console.log(`Checking semester ${currentSemester} ${currentYear}, ends: ${semesterEnd}, now: ${now}`);
+      
+      // Jika semester berakhir setelah sekarang, stop
+      if (semesterEnd > now) {
+        console.log('Semester is in future, stopping');
+        break;
+      }
+      
+      // Safety break
+      if (semesters.length > 10) {
+        console.log('Safety break reached');
+        break;
+      }
+    }
+    
+    console.log('Generated semesters:', semesters);
+    return semesters;
   }
 
   // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
