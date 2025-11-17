@@ -351,18 +351,7 @@ class LayananKarirCalculator {
       akKonversi = this.calculateAKPenuh(predikat, koefisien);
     } else {
       akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
-    }
-    
-    // Adjust berdasarkan nilai SKP
-    let multiplier = 1.0;
-    if (nilaiSKP >= 90) multiplier = 1.2;
-    else if (nilaiSKP >= 80) multiplier = 1.1;
-    else if (nilaiSKP >= 70) multiplier = 1.0;
-    else if (nilaiSKP >= 60) multiplier = 0.9;
-    else multiplier = 0.8;
-
-    akKonversi = akKonversi * multiplier;
-    
+    }      
     return Number(akKonversi.toFixed(3));
   }
 }
