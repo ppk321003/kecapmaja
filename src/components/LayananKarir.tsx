@@ -261,7 +261,7 @@ class LayananKarirCalculator {
   }
 
   // Hitung masa kerja proporsional berdasarkan TMT dan periode semester
-  static calculateMasaKerjaProporsional(
+ static calculateMasaKerjaProporsional(
   tmtJabatan: string, 
   tahun: number, 
   semester: 1 | 2
@@ -271,7 +271,7 @@ class LayananKarirCalculator {
   const periodeMulai = this.parseTMT(periode.mulai);
   const periodeSelesai = this.parseTMT(periode.selesai);
 
-  console.log('Masa Kerja Calculation DETAIL:', {
+  console.log('🔍 Masa Kerja Calculation:', {
     tmtJabatan,
     tmtDate: tmtDate.toLocaleDateString('id-ID'),
     tahun,
@@ -292,29 +292,29 @@ class LayananKarirCalculator {
     return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
   }
 
-  // TMT di tengah periode, hitung proporsional
-  const mulaiEfektif = tmtDate;
+  // TMT di tengah periode, hitung bulan proporsional
+  console.log('📅 TMT in the middle of period, calculating proportional months...');
   
-  // Hitung selisih bulan dengan presisi
-  const diffTime = periodeSelesai.getTime() - mulaiEfektif.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const startMonth = tmtDate.getMonth(); // 0-based (Jan=0, Oct=9)
+  const startYear = tmtDate.getFullYear();
+  const endMonth = periodeSelesai.getMonth();
+  const endYear = periodeSelesai.getFullYear();
+
+  // Hitung selisih bulan
+  let masaKerjaBulan = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
   
-  // Hitung bulan dengan pembulatan ke atas
-  let masaKerjaBulan = Math.ceil(diffDays / 30);
-  
-  // Untuk TMT di bulan yang sama dengan periode mulai, tetap hitung 1 bulan
-  if (masaKerjaBulan === 0 && diffDays > 0) {
-    masaKerjaBulan = 1;
-  }
+  console.log('📊 Month calculation:', {
+    startMonth: tmtDate.toLocaleDateString('id-ID'),
+    endMonth: periodeSelesai.toLocaleDateString('id-ID'),
+    calculatedMonths: masaKerjaBulan
+  });
 
   // Pastikan masa kerja antara 1-6 bulan
   masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
 
-  // Tentukan jenis penilaian
   const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
   
-  console.log('Proportional assessment:', {
-    diffDays,
+  console.log('🎯 Final result:', {
     masaKerjaBulan,
     jenisPenilaian
   });
