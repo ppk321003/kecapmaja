@@ -96,12 +96,49 @@ class LayananKarirCalculator {
   }
 
   static parseTMT(tmt: string): Date {
-    // Format: DD/MM/YYYY
-    const parts = tmt.split('/');
-    if (parts.length === 3) {
-      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    console.log('Parsing TMT:', tmt);
+    
+    // Coba format MM/DD/YYYY (dari contoh: 10/27/2023, 4/11/2023)
+    const parts1 = tmt.split('/');
+    if (parts1.length === 3) {
+      const month = parseInt(parts1[0]);
+      const day = parseInt(parts1[1]);
+      const year = parseInt(parts1[2]);
+      
+      if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          console.log('Successfully parsed as MM/DD/YYYY:', date);
+          return date;
+        }
+      }
     }
-    // Fallback to current date if invalid format
+    
+    // Coba format DD/MM/YYYY
+    const parts2 = tmt.split('/');
+    if (parts2.length === 3) {
+      const day = parseInt(parts2[0]);
+      const month = parseInt(parts2[1]);
+      const year = parseInt(parts2[2]);
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          console.log('Successfully parsed as DD/MM/YYYY:', date);
+          return date;
+        }
+      }
+    }
+    
+    // Fallback: coba parse sebagai Date object biasa
+    const fallbackDate = new Date(tmt);
+    if (!isNaN(fallbackDate.getTime())) {
+      console.log('Successfully parsed as fallback:', fallbackDate);
+      return fallbackDate;
+    }
+    
+    // Final fallback: current date
+    console.log('Using current date as fallback');
     return new Date();
   }
 
@@ -110,39 +147,54 @@ class LayananKarirCalculator {
     const now = new Date();
     const semesters: { tahun: number; semester: 1 | 2 }[] = [];
     
-    let currentYear = startDate.getFullYear();
-    let currentSemester: 1 | 2 = startDate.getMonth() < 6 ? 1 : 2;
+    console.log('Start Date:', startDate);
+    console.log('Now:', now);
     
-    // Start from the semester when TMT Jabatan began
-    const startSemester = { tahun: currentYear, semester: currentSemester };
-    semesters.push(startSemester);
+    // Tentukan semester awal berdasarkan bulan TMT Jabatan
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1; // January = 1
     
-    // Generate subsequent semesters until current date
-    let nextYear = currentYear;
-    let nextSemester = currentSemester;
+    let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
+    let currentYear = startYear;
     
+    console.log(`Start: Year ${startYear}, Month ${startMonth}, Semester ${currentSemester}`);
+    
+    // Mulai dari semester ketika TMT Jabatan
+    semesters.push({ tahun: currentYear, semester: currentSemester });
+    
+    // Generate semester berikutnya sampai sekarang
     while (true) {
-      // Move to next semester
-      if (nextSemester === 1) {
-        nextSemester = 2;
+      // Pindah ke semester berikutnya
+      if (currentSemester === 1) {
+        currentSemester = 2;
       } else {
-        nextSemester = 1;
-        nextYear++;
+        currentSemester = 1;
+        currentYear++;
       }
       
-      // Check if we've reached future
-      const semesterEnd = nextSemester === 1 ? 
-        new Date(nextYear, 5, 30) : // End of semester 1: June 30
-        new Date(nextYear, 11, 31); // End of semester 2: December 31
+      // Cek apakah semester ini sudah lewat
+      const semesterEnd = currentSemester === 1 ? 
+        new Date(currentYear, 5, 30) : // End of semester 1: June 30
+        new Date(currentYear, 11, 31); // End of semester 2: December 31
       
-      if (semesterEnd > now) break;
+      console.log(`Checking semester ${currentSemester} ${currentYear}, ends: ${semesterEnd}`);
       
-      semesters.push({ tahun: nextYear, semester: nextSemester });
+      // Jika semester berakhir setelah sekarang, stop
+      if (semesterEnd > now) {
+        console.log('Semester is in future, stopping');
+        break;
+      }
       
-      // Safety break to prevent infinite loop
-      if (semesters.length > 20) break;
+      semesters.push({ tahun: currentYear, semester: currentSemester });
+      
+      // Safety break
+      if (semesters.length > 20) {
+        console.log('Safety break reached');
+        break;
+      }
     }
     
+    console.log('Generated semesters:', semesters);
     return semesters;
   }
 }
@@ -199,7 +251,6 @@ const useSpreadsheetAPI = () => {
           (obj as any)[header] = value;
         });
         
-        // Ensure No is properly set
         if (!obj.No || obj.No === 0) {
           obj.No = index + 1;
         }
@@ -249,7 +300,6 @@ const EditKonversiModal: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.Tahun && formData.Semester && formData.Predikat && formData['Nilai SKP']) {
-      // Auto-calculate AK Konversi and Periode
       const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(
         formData.Predikat, 
         formData['Nilai SKP']
@@ -435,37 +485,43 @@ const GenerateSemesterModal: React.FC<{
             </p>
           </div>
 
-          <div className="max-h-60 overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>No</TableHead>
-                  <TableHead>Tahun</TableHead>
-                  <TableHead>Semester</TableHead>
-                  <TableHead>Periode</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {availableSemesters.map((semester, index) => {
-                  const periode = LayananKarirCalculator.calculatePeriodeSemester(semester.tahun, semester.semester);
-                  return (
-                    <TableRow key={`${semester.tahun}-${semester.semester}`}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{semester.tahun}</TableCell>
-                      <TableCell>Semester {semester.semester}</TableCell>
-                      <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          {availableSemesters.length > 0 ? (
+            <div className="max-h-60 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>No</TableHead>
+                    <TableHead>Tahun</TableHead>
+                    <TableHead>Semester</TableHead>
+                    <TableHead>Periode</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableSemesters.map((semester, index) => {
+                    const periode = LayananKarirCalculator.calculatePeriodeSemester(semester.tahun, semester.semester);
+                    return (
+                      <TableRow key={`${semester.tahun}-${semester.semester}`}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{semester.tahun}</TableCell>
+                        <TableCell>Semester {semester.semester}</TableCell>
+                        <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              <p>Tidak ada semester yang dapat digenerate dari TMT Jabatan ini.</p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <Button onClick={handleGenerate}>
+            <Button onClick={handleGenerate} disabled={availableSemesters.length === 0}>
               Generate {availableSemesters.length} Semester
             </Button>
           </DialogFooter>
@@ -480,7 +536,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const { toast } = useToast();
   const api = useSpreadsheetAPI();
   
-  // States
   const [konversiData, setKonversiData] = useState<KonversiData[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ tahun: 'all', semester: 'all' });
@@ -493,7 +548,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   });
   const [generateModal, setGenerateModal] = useState(false);
 
-  // Load data on mount
   useEffect(() => {
     loadData();
   }, []);
@@ -510,7 +564,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     }
   };
 
-  // Handle Edit
   const handleEdit = (data: KonversiData) => {
     setEditModal({
       isOpen: true,
@@ -518,7 +571,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     });
   };
 
-  // Handle Save from modal
   const handleSave = async (updatedData: KonversiData) => {
     try {
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
@@ -559,7 +611,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     }
   };
 
-  // Add new row
   const handleAddNew = async () => {
     const now = LayananKarirCalculator.formatDate(new Date());
     const tahun = new Date().getFullYear();
@@ -616,7 +667,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     }
   };
 
-  // Generate semesters from TMT Jabatan
   const handleGenerateSemesters = async (semesters: { tahun: number; semester: 1 | 2 }[]) => {
     try {
       const now = LayananKarirCalculator.formatDate(new Date());
@@ -641,7 +691,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         };
       });
 
-      // Save all generated data
       for (const data of newData) {
         const values = [
           data.No,
@@ -705,7 +754,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     );
   };
 
-  // Render Table
   const renderKonversiTable = () => (
     <Table>
       <TableHeader>
@@ -783,7 +831,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Filters */}
           <div className="flex gap-4 mb-4 items-end">
             <div className="flex-1">
               <Label htmlFor="filter-tahun">Tahun</Label>
@@ -836,7 +883,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             </Button>
           </div>
 
-          {/* Data Table */}
           <Card>
             <CardContent className="pt-6">
               {loading ? (
@@ -867,7 +913,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </CardContent>
       </Card>
 
-      {/* Edit Modal */}
       <EditKonversiModal
         data={editModal.data}
         isOpen={editModal.isOpen}
@@ -875,7 +920,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         onSave={handleSave}
       />
 
-      {/* Generate Semester Modal */}
       <GenerateSemesterModal
         isOpen={generateModal}
         onClose={() => setGenerateModal(false)}
