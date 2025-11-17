@@ -272,12 +272,16 @@ const EditableCell = ({
         className="cursor-pointer hover:bg-gray-50 p-1 rounded"
         onClick={() => setIsEditing(true)}
       >
-        {type === 'select' ? (
+        {type === 'select' && field === 'Predikat' ? (
           <Badge variant={
             value === 'Sangat Baik' ? 'default' :
             value === 'Baik' ? 'secondary' :
             value === 'Cukup' ? 'outline' : 'destructive'
           }>
+            {value}
+          </Badge>
+        ) : type === 'select' && field === 'Status' ? (
+          <Badge variant={value === 'Generated' ? 'default' : 'secondary'}>
             {value}
           </Badge>
         ) : (
@@ -383,20 +387,23 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     }
   };
 
-  // Update data locally
+  // Update data locally - FIXED VERSION
   const handleUpdateData = (index: number, field: string, value: any) => {
     const updateDataState = (data: any[]) => {
       const newData = [...data];
       newData[index] = { ...newData[index], [field]: value };
       
-      // Auto-calculate if Predikat or Nilai SKP changes
-      if (activeSection === 'konversi' && (field === 'Predikat' || field === 'Nilai SKP')) {
-        const predikat = field === 'Predikat' ? value : newData[index].Predikat;
-        const nilaiSKP = field === 'Nilai SKP' ? value : newData[index]['Nilai SKP'];
-        const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(predikat, nilaiSKP);
-        newData[index]['AK Konversi'] = akKonversi;
+      // Auto-calculate for konversi section
+      if (activeSection === 'konversi') {
+        // If Predikat or Nilai SKP changes, recalculate AK Konversi
+        if (field === 'Predikat' || field === 'Nilai SKP') {
+          const predikat = field === 'Predikat' ? value : newData[index].Predikat;
+          const nilaiSKP = field === 'Nilai SKP' ? value : newData[index]['Nilai SKP'];
+          const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(predikat, nilaiSKP);
+          newData[index]['AK Konversi'] = akKonversi;
+        }
         
-        // Also update periode if Tahun or Semester changes
+        // If Tahun or Semester changes, recalculate periode
         if (field === 'Tahun' || field === 'Semester') {
           const tahun = field === 'Tahun' ? value : newData[index].Tahun;
           const semester = field === 'Semester' ? value : newData[index].Semester;
