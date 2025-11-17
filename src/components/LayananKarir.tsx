@@ -113,15 +113,9 @@ class LayananKarirCalculator {
 
   static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
     if (semester === 1) {
-      return {
-        mulai: `01/01/${tahun}`,
-        selesai: `30/06/${tahun}`
-      };
+      return { mulai: `01/01/${tahun}`, selesai: `30/06/${tahun}` };
     } else {
-      return {
-        mulai: `01/07/${tahun}`,
-        selesai: `31/12/${tahun}`
-      };
+      return { mulai: `01/07/${tahun}`, selesai: `31/12/${tahun}` };
     }
   }
 
@@ -168,22 +162,19 @@ const useSpreadsheetAPI = () => {
 
   const callAPI = async (operation: string, sheetName: string, data?: any) => {
     try {
-      // Simulasi API call - replace dengan actual API call
-      console.log(`API Call: ${operation} to ${sheetName}`, data);
-      
-      // Untuk testing, return mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (operation === 'read') {
-        return { 
-          values: [
-            ['No', 'NIP', 'Nama', 'Tahun', 'Semester', 'Predikat', 'Nilai SKP', 'AK Konversi', 'TMT Mulai', 'TMT Selesai', 'Status', 'Catatan', 'Last_Update'],
-            ['1', '123456', 'John Doe', '2024', '1', 'Baik', '85', '12.5', '01/01/2024', '30/06/2024', 'Draft', 'Test data', '01/01/2024']
-          ]
-        };
-      }
-      
-      return { success: true };
+      const response = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId: SPREADSHEET_ID,
+          operation,
+          range: sheetName,
+          ...data
+        })
+      });
+
+      if (!response.ok) throw new Error('API call failed');
+      return await response.json();
     } catch (error) {
       toast({
         title: "Error",
@@ -197,32 +188,23 @@ const useSpreadsheetAPI = () => {
   const readData = async (sheetName: string, nip?: string) => {
     const result = await callAPI('read', sheetName);
     const rows = result.values || [];
-    
     if (rows.length <= 1) return [];
-    
+
     const headers = rows[0];
     return rows.slice(1)
       .filter((row: any[]) => !nip || row[1] === nip)
       .map((row: any[], index: number) => {
         const obj: any = { id: index + 2 };
         headers.forEach((header: string, colIndex: number) => {
-          obj[header] = row[colIndex];
+          obj[header] = row[colIndex] ?? '';
         });
         return obj;
       });
   };
 
-  const appendData = async (sheetName: string, values: any[]) => {
-    return await callAPI('append', sheetName, { values });
-  };
-
-  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => {
-    return await callAPI('update', sheetName, { rowIndex, values });
-  };
-
-  const deleteData = async (sheetName: string, rowIndex: number) => {
-    return await callAPI('delete', sheetName, { rowIndex });
-  };
+  const appendData = async (sheetName: string, values: any[]) => callAPI('append', sheetName, { values });
+  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => callAPI('update', sheetName, { rowIndex, values });
+  const deleteData = async (sheetName: string, rowIndex: number) => callAPI('delete', sheetName, { rowIndex });
 
   return { readData, appendData, updateData, deleteData };
 };
@@ -232,23 +214,46 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const { toast } = useToast();
   const api = useSpreadsheetAPI();
   
+  // === PERBAIKAN: Guard jika karyawan belum ada ===
+  if (!karyawan || !karyawan.nip) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Layanan Karir
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-16">
+          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-20 h-20 mx-auto mb-6 opacity-50" />
+          <p className="text-lg font-medium text-muted-foreground">Karyawan belum dipilih</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Silakan pilih karyawan terlebih dahulu untuk melihat data layanan karir.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // States
   const [activeSection, setActiveSection] = useState<'konversi' | 'penetapan' | 'akumulasi'>('konversi');
   const [konversiData, setKonversiData] = useState<KonversiData[]>([]);
   const [penetapanData, setPenetapanData] = useState<PenetapanData[]>([]);
   const [akumulasiData, setAkumulasiData] = useState<AkumulasiData[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingData, setEditingData] = useState<any>(null);
   const [filters, setFilters] = useState({ tahun: '', semester: '' });
 
-  // Load data on mount and when section changes
+  // Load data
   useEffect(() => {
     loadData();
   }, [activeSection]);
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       switch (activeSection) {
         case 'konversi':
@@ -264,17 +269,16 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           setAkumulasiData(akumulasi);
           break;
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Gagal memuat data dari Google Sheets. Periksa koneksi atau akses spreadsheet.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter data based on current filters
   const getFilteredData = () => {
     let data: any[] = [];
-    
     switch (activeSection) {
       case 'konversi':
         data = konversiData.filter(item => 
@@ -283,15 +287,12 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         );
         break;
       case 'penetapan':
-        data = penetapanData.filter(item => 
-          !filters.tahun || item.Tahun.toString() === filters.tahun
-        );
+        data = penetapanData.filter(item => !filters.tahun || item.Tahun.toString() === filters.tahun);
         break;
       case 'akumulasi':
         data = akumulasiData;
         break;
     }
-    
     return data;
   };
 
@@ -307,62 +308,36 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
   const handleDelete = async (data: any) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
-    
     try {
       await api.deleteData(SHEET_NAMES[activeSection], data.id);
-      toast({
-        title: "Sukses",
-        description: "Data berhasil dihapus"
-      });
+      toast({ title: "Sukses", description: "Data berhasil dihapus" });
       loadData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Gagal menghapus data",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Gagal menghapus data", variant: "destructive" });
     }
   };
 
   const handleRegenerate = async (data: any) => {
     try {
       let updatedData = { ...data };
-      
       if (activeSection === 'konversi') {
-        updatedData['AK Konversi'] = LayananKarirCalculator.calculateAKFromPredikat(
-          data.Predikat, 
-          data['Nilai SKP']
-        );
+        updatedData['AK Konversi'] = LayananKarirCalculator.calculateAKFromPredikat(data.Predikat, data['Nilai SKP']);
         updatedData.Last_Update = LayananKarirCalculator.formatDate(new Date());
-        
         const values = Object.values(updatedData).slice(1);
         await api.updateData(SHEET_NAMES.konversi, data.id, [values]);
       }
-      
-      toast({
-        title: "Sukses",
-        description: "Data berhasil di-regenerate"
-      });
+      toast({ title: "Sukses", description: "Data berhasil di-regenerate" });
       loadData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Gagal regenerate data",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Gagal regenerate data", variant: "destructive" });
     }
   };
 
   const handleSave = async (formData: any) => {
     try {
       const now = LayananKarirCalculator.formatDate(new Date());
-      
       if (activeSection === 'konversi') {
-        const periode = LayananKarirCalculator.calculatePeriodeSemester(
-          formData.Tahun, 
-          formData.Semester
-        );
-        
+        const periode = LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester);
         const newData: KonversiData = {
           NIP: karyawan.nip,
           Nama: karyawan.nama,
@@ -370,10 +345,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           Semester: formData.Semester,
           Predikat: formData.Predikat,
           'Nilai SKP': formData['Nilai SKP'],
-          'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat(
-            formData.Predikat, 
-            formData['Nilai SKP']
-          ),
+          'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat(formData.Predikat, formData['Nilai SKP']),
           'TMT Mulai': periode.mulai,
           'TMT Selesai': periode.selesai,
           Status: 'Draft',
@@ -382,30 +354,22 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         };
 
         const values = Object.values(newData);
-        
         if (editingData) {
           await api.updateData(SHEET_NAMES.konversi, editingData.id, [values]);
         } else {
           await api.appendData(SHEET_NAMES.konversi, [values]);
         }
       }
-      
+
       setShowModal(false);
-      toast({
-        title: "Sukses",
-        description: `Data berhasil ${editingData ? 'diupdate' : 'ditambahkan'}`
-      });
+      toast({ title: "Sukses", description: `Data berhasil ${editingData ? 'diupdate' : 'ditambahkan'}` });
       loadData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan data",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Gagal menyimpan data", variant: "destructive" });
     }
   };
 
-  // Render Tables based on active section
+  // Render Tables
   const renderKonversiTable = () => (
     <Table>
       <TableHeader>
@@ -436,28 +400,16 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             </TableCell>
             <TableCell>{data['Nilai SKP']}</TableCell>
             <TableCell className="font-semibold">{data['AK Konversi']}</TableCell>
-            <TableCell className="text-sm">
-              {data['TMT Mulai']} - {data['TMT Selesai']}
-            </TableCell>
+            <TableCell className="text-sm">{data['TMT Mulai']} - {data['TMT Selesai']}</TableCell>
             <TableCell>
-              <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>
-                {data.Status}
-              </Badge>
+              <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>{data.Status}</Badge>
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(data)}>
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(data)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleRegenerate(data)}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(data)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(data)}><Eye className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(data)}><Edit className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => handleRegenerate(data)}><RefreshCw className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(data)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </TableCell>
           </TableRow>
@@ -541,9 +493,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             <TableCell>{data['AK Periode Ini']}</TableCell>
             <TableCell className="font-semibold">{data['Total Kumulatif']}</TableCell>
             <TableCell>{data.Kebutuhan}</TableCell>
-            <TableCell className={
-              data.Selisih >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'
-            }>
+            <TableCell className={data.Selisih >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
               {data.Selisih}
             </TableCell>
             <TableCell>
@@ -578,11 +528,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     </Table>
   );
 
-  // Form Modal Component
+  // Form Modal
   const FormModal = () => {
     const [formData, setFormData] = useState<any>(() => {
       if (editingData) return { ...editingData };
-      
       return {
         Tahun: new Date().getFullYear(),
         Semester: 1,
@@ -618,20 +567,12 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="tahun">Tahun</Label>
-                    <Input
-                      id="tahun"
-                      type="number"
-                      value={formData.Tahun}
-                      onChange={(e) => setFormData({...formData, Tahun: parseInt(e.target.value)})}
-                      required
-                    />
+                    <Input id="tahun" type="number" value={formData.Tahun} onChange={(e) => setFormData({...formData, Tahun: parseInt(e.target.value)})} required />
                   </div>
                   <div>
                     <Label htmlFor="semester">Semester</Label>
-                    <Select value={formData.Semester.toString()} onValueChange={(value) => setFormData({...formData, Semester: parseInt(value)})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={formData.Semester.toString()} onValueChange={(v) => setFormData({...formData, Semester: parseInt(v)})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">Semester 1</SelectItem>
                         <SelectItem value="2">Semester 2</SelectItem>
@@ -643,10 +584,8 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="predikat">Predikat Kinerja</Label>
-                    <Select value={formData.Predikat} onValueChange={(value) => setFormData({...formData, Predikat: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={formData.Predikat} onValueChange={(v) => setFormData({...formData, Predikat: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Sangat Baik">Sangat Baik</SelectItem>
                         <SelectItem value="Baik">Baik</SelectItem>
@@ -657,33 +596,19 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                   </div>
                   <div>
                     <Label htmlFor="nilaiSKP">Nilai SKP</Label>
-                    <Input
-                      id="nilaiSKP"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={formData['Nilai SKP']}
-                      onChange={(e) => setFormData({...formData, 'Nilai SKP': parseFloat(e.target.value)})}
-                      required
-                    />
+                    <Input id="nilaiSKP" type="number" step="0.1" min="0" max="100" value={formData['Nilai SKP']} onChange={(e) => setFormData({...formData, 'Nilai SKP': parseFloat(e.target.value)})} required />
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="catatan">Catatan</Label>
-                  <Input
-                    id="catatan"
-                    value={formData.Catatan || ''}
-                    onChange={(e) => setFormData({...formData, Catatan: e.target.value})}
-                    placeholder="Opsional"
-                  />
+                  <Input id="catatan" value={formData.Catatan || ''} onChange={(e) => setFormData({...formData, Catatan: e.target.value})} placeholder="Opsional" />
                 </div>
 
                 {!editingData && (
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700">
-                      <strong>Auto-calculate:</strong> AK Konversi dan Periode akan dihitung otomatis berdasarkan predikat dan tahun/semester.
+                      <strong>Auto-calculate:</strong> AK Konversi dan Periode akan dihitung otomatis.
                     </p>
                   </div>
                 )}
@@ -691,12 +616,8 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             )}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
-                Batal
-              </Button>
-              <Button type="submit">
-                {editingData ? 'Update Data' : 'Simpan Data'}
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Batal</Button>
+              <Button type="submit">{editingData ? 'Update Data' : 'Simpan Data'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -704,79 +625,43 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     );
   };
 
-  // Fallback UI jika data karyawan tidak tersedia
-  if (!karyawan) {
-    return (
-      <div className="p-8 text-center">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">Data Karyawan Tidak Tersedia</h2>
-          <p className="text-yellow-700">Silakan pilih karyawan terlebih dahulu untuk mengakses layanan karir.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 p-6">
-      {/* Section Navigation */}
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Layanan Karir - Simulasi & Pengajuan
           </CardTitle>
-          <CardDescription>
-            Kelola data konversi predikat, penetapan, dan akumulasi angka kredit untuk {karyawan.nama}
-          </CardDescription>
+          <CardDescription>Kelola data konversi predikat, penetapan, dan akumulasi angka kredit</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Navigation */}
           <div className="flex gap-2 mb-6">
-            <Button
-              variant={activeSection === 'konversi' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('konversi')}
-            >
-              Konversi Predikat
-            </Button>
-            <Button
-              variant={activeSection === 'penetapan' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('penetapan')}
-            >
-              Penetapan AK
-            </Button>
-            <Button
-              variant={activeSection === 'akumulasi' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('akumulasi')}
-            >
-              Akumulasi AK
-            </Button>
+            <Button variant={activeSection === 'konversi' ? 'default' : 'outline'} onClick={() => setActiveSection('konversi')}>Konversi Predikat</Button>
+            <Button variant={activeSection === 'penetapan' ? 'default' : 'outline'} onClick={() => setActiveSection('penetapan')}>Penetapan AK</Button>
+            <Button variant={activeSection === 'akumulasi' ? 'default' : 'outline'} onClick={() => setActiveSection('akumulasi')}>Akumulasi AK</Button>
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-4 mb-4 items-end">
+          {/* Filters & Actions */}
+          <div className="flex gap-4 mb-4 items-end flex-wrap">
             {(activeSection === 'konversi' || activeSection === 'penetapan') && (
-              <div className="flex-1">
-                <Label htmlFor="filter-tahun">Tahun</Label>
-                <Select value={filters.tahun} onValueChange={(value) => setFilters({...filters, tahun: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Semua Tahun" />
-                  </SelectTrigger>
+              <div className="flex-1 min-w-48">
+                <Label>Tahun</Label>
+                <Select value={filters.tahun} onValueChange={(v) => setFilters({...filters, tahun: v})}>
+                  <SelectTrigger><SelectValue placeholder="Semua Tahun" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Semua Tahun</SelectItem>
-                    {[2023, 2024, 2025].map(year => (
-                      <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                    ))}
+                    {[2023, 2024, 2025, 2026].map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             )}
-            
             {activeSection === 'konversi' && (
-              <div className="flex-1">
-                <Label htmlFor="filter-semester">Semester</Label>
-                <Select value={filters.semester} onValueChange={(value) => setFilters({...filters, semester: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Semua Semester" />
-                  </SelectTrigger>
+              <div className="flex-1 min-w-48">
+                <Label>Semester</Label>
+                <Select value={filters.semester} onValueChange={(v) => setFilters({...filters, semester: v})}>
+                  <SelectTrigger><SelectValue placeholder="Semua Semester" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Semua Semester</SelectItem>
                     <SelectItem value="1">Semester 1</SelectItem>
@@ -785,33 +670,34 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 </Select>
               </div>
             )}
-            
-            <Button onClick={loadData} variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Terapkan Filter
-            </Button>
-            
-            <Button onClick={handleAddNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Data
-            </Button>
+            <Button onClick={loadData} variant="outline"><Filter className="h-4 w-4 mr-2" /> Terapkan</Button>
+            <Button onClick={handleAddNew}><Plus className="h-4 w-4 mr-2" /> Tambah Data</Button>
           </div>
 
-          {/* Data Table */}
+          {/* Content */}
           <Card>
             <CardContent className="pt-6">
               {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground mt-2">Memuat data...</p>
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto" />
+                  <p className="mt-4 text-muted-foreground">Memuat data karyawan...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md mx-auto">
+                    <p className="font-medium">Gagal memuat data</p>
+                    <p className="text-sm mt-1">{error}</p>
+                    <Button onClick={loadData} variant="outline" size="sm" className="mt-4">
+                      <RefreshCw className="h-4 w-4 mr-2" /> Coba Lagi
+                    </Button>
+                  </div>
                 </div>
               ) : getFilteredData().length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Tidak ada data ditemukan</p>
-                  <Button onClick={handleAddNew} className="mt-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Data Pertama
+                <div className="text-center py-12 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Belum ada data</p>
+                  <Button onClick={handleAddNew} className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" /> Tambah Data Pertama
                   </Button>
                 </div>
               ) : (
@@ -826,7 +712,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </CardContent>
       </Card>
 
-      {/* Form Modal */}
       <FormModal />
     </div>
   );
