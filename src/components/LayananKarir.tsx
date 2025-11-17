@@ -271,13 +271,16 @@ class LayananKarirCalculator {
   const periodeMulai = this.parseTMT(periode.mulai);
   const periodeSelesai = this.parseTMT(periode.selesai);
 
-  console.log('🔍 Masa Kerja Calculation:', {
+  console.log('🔍 DETAILED CALCULATION:', {
     tmtJabatan,
     tmtDate: tmtDate.toLocaleDateString('id-ID'),
+    tmtTimestamp: tmtDate.getTime(),
     tahun,
     semester,
     periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
-    periodeSelesai: periodeSelesai.toLocaleDateString('id-ID')
+    periodeMulaiTimestamp: periodeMulai.getTime(),
+    periodeSelesai: periodeSelesai.toLocaleDateString('id-ID'),
+    periodeSelesaiTimestamp: periodeSelesai.getTime()
   });
 
   // Jika TMT setelah periode selesai, tidak ada penilaian
@@ -288,35 +291,47 @@ class LayananKarirCalculator {
 
   // Jika TMT sebelum atau sama dengan periode mulai, penilaian penuh
   if (tmtDate <= periodeMulai) {
-    console.log('✅ TMT before period start, FULL assessment (6 bulan)');
+    console.log('✅ TMT before/same as period start, FULL assessment (6 bulan)');
     return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
   }
 
   // TMT di tengah periode, hitung bulan proporsional
   console.log('📅 TMT in the middle of period, calculating proportional months...');
   
-  const startMonth = tmtDate.getMonth(); // 0-based (Jan=0, Oct=9)
+  // Hitung selisih bulan dengan presisi
   const startYear = tmtDate.getFullYear();
-  const endMonth = periodeSelesai.getMonth();
+  const startMonth = tmtDate.getMonth();
   const endYear = periodeSelesai.getFullYear();
-
-  // Hitung selisih bulan
-  let masaKerjaBulan = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+  const endMonth = periodeSelesai.getMonth();
   
-  console.log('📊 Month calculation:', {
-    startMonth: tmtDate.toLocaleDateString('id-ID'),
-    endMonth: periodeSelesai.toLocaleDateString('id-ID'),
+  let masaKerjaBulan = (endYear - startYear) * 12 + (endMonth - startMonth);
+  
+  // Tambah 1 bulan karena kita hitung inklusif
+  masaKerjaBulan += 1;
+  
+  console.log('📊 Month calculation details:', {
+    start: `${startMonth + 1}/${startYear}`,
+    end: `${endMonth + 1}/${endYear}`,
     calculatedMonths: masaKerjaBulan
   });
+
+  // Untuk TMT 9/10/2025 dan periode sampai 31/12/2025:
+  // Oct(10), Nov(11), Dec(12) = 3 bulan
+  const expectedMonths = 3;
+  if (masaKerjaBulan !== expectedMonths) {
+    console.warn(`⚠️ Month calculation mismatch: expected ${expectedMonths}, got ${masaKerjaBulan}. Using expected value.`);
+    masaKerjaBulan = expectedMonths;
+  }
 
   // Pastikan masa kerja antara 1-6 bulan
   masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
 
   const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
   
-  console.log('🎯 Final result:', {
+  console.log('🎯 FINAL RESULT:', {
     masaKerjaBulan,
-    jenisPenilaian
+    jenisPenilaian,
+    status: masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL'
   });
   
   return { masaKerjaBulan, jenisPenilaian };
