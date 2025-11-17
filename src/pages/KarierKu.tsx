@@ -1849,36 +1849,47 @@ const KarierKu: React.FC = () => {
     setMainTab('tabelIndividu');
   };
   return <div className="space-y-6">
-      {!selectedKaryawan ? <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold text-red-500">KarierKu-3210</CardTitle>
-              <CardDescription>Monitoring dan penghitungan angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Tabs value={mainTab} onValueChange={(value: any) => setMainTab(value)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="dashboardKarir" className="flex items-center gap-2">
+      {selectedKaryawan ? <>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => setSelectedKaryawan(null)} className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Kembali
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-sky-800">{selectedKaryawan.nama}</h1>
+              <p className="text-muted-foreground">{selectedKaryawan.nip}</p>
+            </div>
+          </div>            
+          <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full sm:w-auto">
+            <TabsList className="grid w-full grid-cols-3"> {/* GANTI JADI 3 TAB */}
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Dashboard KarierKu
+                Dashboard
               </TabsTrigger>
-              <TabsTrigger value="tabelIndividu" className="flex items-center gap-2">
+              <TabsTrigger value="dokumen" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Tabel Individu
+                Dokumen SK
               </TabsTrigger>
-              <TabsTrigger value="layanan">Layanan Karir</TabsTrigger>
+              <TabsTrigger value="layanan" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Layanan Karir
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="dashboardKarir" className="space-y-6">
-              <DashboardKarierKu karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
-            </TabsContent>
-            <TabsContent value="tabelIndividu" className="space-y-6">
-              <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
-            </TabsContent>
-            <TabsContent value="layanan">
+          </Tabs>
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
+          <TabsContent value="dashboard" className="space-y-6">
+            <EmployeeDashboard karyawan={selectedKaryawan} />
+          </TabsContent>            
+          <TabsContent value="dokumen" className="space-y-6">
+            <DokumenSKCard karyawan={selectedKaryawan} />
+          </TabsContent>
+          <TabsContent value="layanan" className="space-y-6">
             <LayananKarir karyawan={selectedKaryawan} />
           </TabsContent>
-          </Tabs>
+        </Tabs>
         </> : <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
