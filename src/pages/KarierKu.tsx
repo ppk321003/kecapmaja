@@ -66,6 +66,74 @@ interface EstimasiKenaikan {
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "data";
 
+// ==================== UTILITIES - DATE PARSING ====================
+class DateParser {
+  static parseTanggalIndonesia(tanggal: string): Date {
+    if (!tanggal || tanggal.trim() === '') return new Date();
+    
+    // Coba parsing format ISO terlebih dahulu
+    if (tanggal.includes('-')) {
+      const date = new Date(tanggal);
+      if (!isNaN(date.getTime())) return date;
+    }
+    
+    // Mapping nama bulan Indonesia ke angka
+    const bulanMap: { [key: string]: number } = {
+      'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+      'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11,
+      'january': 0, 'february': 1, 'march': 2, 'may': 4, 'june': 5,
+      'july': 6, 'august': 7, 'october': 9, 'december': 11
+    };
+
+    const cleanedDate = tanggal.toLowerCase().trim();
+    
+    // Format: "11 April 2023"
+    const parts = cleanedDate.split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0]);
+      const month = bulanMap[parts[1]];
+      const year = parseInt(parts[2]);
+      
+      if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Format: "11/04/2023" atau "11-04-2023"
+    const separator = cleanedDate.includes('/') ? '/' : '-';
+    const dateParts = cleanedDate.split(separator);
+    if (dateParts.length === 3) {
+      let day, month, year;
+      
+      if (dateParts[0].length === 4) {
+        // Format: "2023/04/11"
+        year = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        day = parseInt(dateParts[2]);
+      } else {
+        // Format: "11/04/2023"
+        day = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        year = parseInt(dateParts[2]);
+      }
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Fallback: coba parsing dengan Date constructor
+    const fallbackDate = new Date(tanggal);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate;
+    }
+    
+    // Jika semua gagal, return tanggal default
+    console.warn(`Tidak bisa parsing tanggal: ${tanggal}, menggunakan tanggal default`);
+    return new Date();
+  }
+}
+
 // ==================== UTILITIES - SESUAI PERATURAN BKN ====================
 class AngkaKreditCalculator {
   static tentukanKategori(jabatan: string): 'Keahlian' | 'Keterampilan' | 'Reguler' {
@@ -105,7 +173,7 @@ class AngkaKreditCalculator {
   static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     // Untuk kategori Reguler, tidak ada AK tambahan untuk jabatan
     if (karyawan.kategori === 'Reguler') return 0;
-    const tmtJabatan = new Date(karyawan.tmtJabatan);
+    const tmtJabatan = DateParser.parseTanggalIndonesia(karyawan.tmtJabatan);
     const hariIni = new Date();
     if (tmtJabatan > hariIni) return 0;
     const selisihBulan = this.hitungSelisihBulan(tmtJabatan, hariIni);
@@ -224,7 +292,7 @@ class AngkaKreditCalculator {
     bulan: number;
     persentase: number;
   } {
-    const tmt = new Date(tmtPangkat);
+    const tmt = DateParser.parseTanggalIndonesia(tmtPangkat);
     const sekarang = new Date();
     const selisihBulan = this.hitungSelisihBulan(tmt, sekarang);
     const persentase = Math.min(selisihBulan / 48 * 100, 100);
@@ -595,7 +663,7 @@ const DashboardKarierKu: React.FC<{
                     <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
                     <TableCell className="text-center">
-                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                      <Button size="sm" variant="ghost"                      onClick={() => onSelectKaryawan(k)}>
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -983,7 +1051,7 @@ const BiodataCard: React.FC<{
   const formatTanggal = (tanggal: string) => {
     if (!tanggal) return '-';
     try {
-      const date = new Date(tanggal);
+      const date = DateParser.parseTanggalIndonesia(tanggal);
       return isNaN(date.getTime()) ? tanggal : date.toLocaleDateString('id-ID');
     } catch {
       return tanggal;
@@ -1027,7 +1095,7 @@ const BiodataCard: React.FC<{
   const hitungMasaKerja = (tahunMasuk: string) => {
     if (!tahunMasuk) return '-';
     try {
-      const masuk = new Date(tahunMasuk);
+      const masuk = DateParser.parseTanggalIndonesia(tahunMasuk);
       const sekarang = new Date();
       if (isNaN(masuk.getTime())) return '-';
       const tahun = sekarang.getFullYear() - masuk.getFullYear();
@@ -1521,7 +1589,7 @@ const EstimasiKenaikanCard: React.FC<{
                 </div>}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-800 text-white" : ""}>
+                <Badge variant={estimasi.bisaUsulJabatan ? 'default' : 'secondary'} className={estimasi.bisaUsulJabatan ? "bg-green-700 hover:bg-green-700 text-white" : ""}>
                   {estimasi.bisaUsulJabatan ? '✅ Bisa diusulkan' : '❌ Belum memenuhi'}
                 </Badge>
               </div>
