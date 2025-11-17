@@ -330,15 +330,10 @@ static generateSemesterFromTMT(tmtJabatan: string): {
 }[] {
   const startDate = this.parseTMT(tmtJabatan);
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const currentSemester: 1 | 2 = currentMonth <= 6 ? 1 : 2;
   
-  console.log('Current date:', { 
-    currentYear, 
-    currentMonth, 
-    currentSemester,
-    now: now.toLocaleDateString('id-ID')
+  console.log('🕐 TIMELINE CHECK:', {
+    sekarang: now.toLocaleDateString('id-ID'),
+    tmtJabatan: startDate.toLocaleDateString('id-ID')
   });
 
   const semesters: { 
@@ -350,58 +345,82 @@ static generateSemesterFromTMT(tmtJabatan: string): {
 
   const startYear = startDate.getFullYear();
   const startMonth = startDate.getMonth() + 1;
-  let currentGenSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
-  let currentGenYear = startYear;
+  let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
+  let currentYear = startYear;
 
-  // Generate hanya sampai MAX 2 semester ke depan dari sekarang
-  const maxFutureSemesters = 2;
-  let generatedCount = 0;
+  // Hanya generate sampai semester BERJALAN saat ini
+  const currentYearNow = now.getFullYear();
+  const currentMonthNow = now.getMonth() + 1;
+  const currentSemesterNow: 1 | 2 = currentMonthNow <= 6 ? 1 : 2;
 
-  while (generatedCount < 20) { // Safety break
-    // Hitung masa kerja untuk semester ini
+  console.log('📅 CURRENT PERIOD:', {
+    currentYearNow,
+    currentMonthNow, 
+    currentSemesterNow
+  });
+
+  while (true) {
+    // Hanya generate jika semester ini SUDAH BERJALAN atau SEDANG BERJALAN
+    const semesterEnd = currentSemester === 1 ? 
+      new Date(currentYear, 5, 30) : // 30 Juni
+      new Date(currentYear, 11, 31); // 31 Desember
+
+    // Stop jika semester berakhir SETELAH waktu sekarang (masih masa depan)
+    if (semesterEnd > now) {
+      // Tapi tetap include semester yang SEDANG BERJALAN
+      const semesterStart = currentSemester === 1 ? 
+        new Date(currentYear, 0, 1) : // 1 Januari
+        new Date(currentYear, 6, 1);  // 1 Juli
+      
+      if (semesterStart <= now) {
+        // Semester SEDANG BERJALAN - include
+        const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
+          tmtJabatan,
+          currentYear,
+          currentSemester
+        );
+        
+        if (masaKerjaBulan > 0) {
+          semesters.push({ 
+            tahun: currentYear, 
+            semester: currentSemester,
+            masaKerjaBulan,
+            jenisPenilaian
+          });
+        }
+      }
+      break;
+    }
+
+    // Semester sudah SELESAI - include
     const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
       tmtJabatan,
-      currentGenYear,
-      currentGenSemester
+      currentYear,
+      currentSemester
     );
     
-    // Hanya tambahkan jika ada masa kerja
     if (masaKerjaBulan > 0) {
-      // Cek apakah semester ini masih relevan (tidak terlalu jauh di masa depan)
-      const semesterEnd = currentGenSemester === 1 ? 
-        new Date(currentGenYear, 5, 30) : // End of semester 1: June 30
-        new Date(currentGenYear, 11, 31); // End of semester 2: December 31
-      
-      const monthsDifference = this.monthsBetween(now, semesterEnd);
-      
-      // Batasi hanya sampai 2 semester ke depan
-      if (monthsDifference <= 12) { // 12 bulan = 2 semester
-        semesters.push({ 
-          tahun: currentGenYear, 
-          semester: currentGenSemester,
-          masaKerjaBulan,
-          jenisPenilaian
-        });
-      }
+      semesters.push({ 
+        tahun: currentYear, 
+        semester: currentSemester,
+        masaKerjaBulan,
+        jenisPenilaian
+      });
     }
 
     // Pindah ke semester berikutnya
-    if (currentGenSemester === 1) {
-      currentGenSemester = 2;
+    if (currentSemester === 1) {
+      currentSemester = 2;
     } else {
-      currentGenSemester = 1;
-      currentGenYear++;
+      currentSemester = 1;
+      currentYear++;
     }
-    
-    generatedCount++;
 
-    // Stop jika sudah melewati batas waktu yang wajar
-    if (currentGenYear > currentYear + 1) {
-      break;
-    }
+    // Safety break
+    if (semesters.length > 10) break;
   }
 
-  console.log('Generated semesters (FIXED):', semesters);
+  console.log('✅ FINAL GENERATED SEMESTERS:', semesters);
   return semesters;
 }
 
