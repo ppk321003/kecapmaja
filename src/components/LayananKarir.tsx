@@ -1,22 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Save, RefreshCw, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Edit, Trash2, Plus, Calendar, Filter, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
+// ==================== TYPES & INTERFACES ====================
 interface Karyawan {
   nip: string;
   nama: string;
   pangkat: string;
   golongan: string;
   jabatan: string;
+  kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
   unitKerja: string;
+  tmtJabatan: string;
+  tmtPangkat: string;
+  pendidikan: string;
+  akKumulatif: number;
 }
 
 interface KonversiData {
-  No?: string;
+  id?: string;
+  No?: number;
   NIP: string;
   Nama: string;
   Tahun: number;
@@ -30,312 +42,628 @@ interface KonversiData {
   Catatan?: string;
   Link_Dokumen?: string;
   Last_Update: string;
-  rowIndex?: number; // -1 = belum ada di Sheets (hanya lokal)
+  // Tambahkan rowIndex ke interface
+  rowIndex?: number;
 }
 
-// Header harus 100% sama dengan baris 1 di tab "konversi_predikat"
-const KONVERSI_HEADERS = [
-  'No', 'NIP', 'Nama', 'Tahun', 'Semester',
-  'Predikat', 'Nilai SKP', 'AK Konversi',
-  'TMT Mulai', 'TMT Selesai', 'Status', 'Catatan',
-  'Link_Dokumen', 'Last_Update'
-];
+interface LayananKarirProps {
+  karyawan: Karyawan;
+}
 
+// ==================== SPREADSHEET CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
-const SHEET_KONVERSI = "konversi_predikat";
+const SHEET_NAME = "konversi_predikat";
 
+// ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
-  static calculateAK(predikat: string, nilaiSKP: number): number {
-    const base = { 'Sangat Baik': 1.5, 'Baik': 1.0, 'Cukup': 0.75, 'Kurang': 0.5 }[predikat] || 1.0;
-    let multiplier = 1.0;
-    if (nilaiSKP >= 91) multiplier = 1.2;
-    else if (nilaiSKP >= 81) multiplier = 1.1;
-    else if (nilaiSKP >= 71) multiplier = 1.0;
-    else if (nilaiSKP >= 61) multiplier = 0.9;
-    else multiplier = 0.8;
-    return Number((base * 12.5 * multiplier).toFixed(2));
+  static calculateAKFromPredikat(predikat: string, nilaiSKP: number): number {
+    const baseAK = {
+      'Sangat Baik': 1.50,
+      'Baik': 1.00,
+      'Cukup': 0.75,
+      'Kurang': 0.50
+    }[predikat] || 1.00;
+
+    let akKonversi = baseAK * 12.5;
+    
+    if (nilaiSKP >= 90) akKonversi *= 1.2;
+    else if (nilaiSKP >= 80) akKonversi *= 1.1;
+    else if (nilaiSKP >= 70) akKonversi *= 1.0;
+    else if (nilaiSKP >= 60) akKonversi *= 0.9;
+    else akKonversi *= 0.8;
+
+    return Number(akKonversi.toFixed(2));
   }
 
-  static getPeriode(tahun: number, semester: 1 | 2) {
-    return semester === 1
-      ? { mulai: `01/01/${tahun}`, selesai: `30/06/${tahun}` }
-      : { mulai: `01/07/${tahun}`, selesai: `31/12/${tahun}` };
+  static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
+    if (semester === 1) {
+      return {
+        mulai: `01/01/${tahun}`,
+        selesai: `30/06/${tahun}`
+      };
+    } else {
+      return {
+        mulai: `01/07/${tahun}`,
+        selesai: `31/12/${tahun}`
+      };
+    }
   }
 
-  static formatDate(date: Date = new Date()): string {
-    return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-
-  static getCurrentYearSemester(): { tahun: number; semester: 1 | 2 } {
-    const now = new Date();
-    return { tahun: now.getFullYear(), semester: now.getMonth() >= 6 ? 2 : 1 };
+  static formatDate(date: Date): string {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 }
 
-const useGoogleSheets = () => {
+// ==================== API FUNCTIONS ====================
+const useSpreadsheetAPI = () => {
   const { toast } = useToast();
 
-  const call = async (operation: string, data: any) => {
+  const callAPI = async (operation: string, data?: any) => {
     try {
-      const res = await fetch('/api/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spreadsheetId: SPREADSHEET_ID, ...data })
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation,
+          range: SHEET_NAME,
+          ...data
+        }
       });
-      if (!res.ok) throw new Error(await res.text());
-      return await res.json();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Gagal akses Google Sheets", variant: "destructive" });
-      throw err;
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('API Error:', error);
+      toast({
+        title: "Error",
+        description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
+      throw error;
     }
   };
 
-  return {
-    read: () => call('read', { range: SHEET_KONVERSI }),
-    append: (values: any[]) => call('append', { range: SHEET_KONVERSI, values: [values] }),
-    update: (rowIndex: number, values: any[]) => call('update', { range: SHEET_KONVERSI, rowIndex, values: [values] }),
-    delete: (rowIndex: number) => call('delete', { range: SHEET_KONVERSI, rowIndex })
+  const readData = async (nip?: string) => {
+    const result = await callAPI('read');
+    const rows = result.values || [];
+    
+    if (rows.length <= 1) return [];
+    
+    const headers = rows[0];
+    const data = rows.slice(1)
+      .filter((row: any[]) => !nip || row[headers.indexOf('NIP')] === nip)
+      .map((row: any[], index: number) => {
+        const obj: KonversiData = { 
+          id: `${SHEET_NAME}_${index + 2}`,
+          rowIndex: index + 2, // Simpan rowIndex untuk update/delete
+          Last_Update: '' // Initialize required field
+        } as KonversiData;
+
+        headers.forEach((header: string, colIndex: number) => {
+          let value = row[colIndex];
+          if (header === 'Tahun' || header === 'Semester' || header === 'Nilai SKP' || header === 'AK Konversi') {
+            value = Number(value) || 0;
+          }
+          if (header === 'No') {
+            value = Number(value) || (index + 1);
+          }
+          (obj as any)[header] = value;
+        });
+        return obj;
+      });
+    
+    console.log(`Loaded ${data.length} records from ${SHEET_NAME}`);
+    return data;
   };
+
+  const appendData = async (values: any[]) => {
+    console.log(`Appending to ${SHEET_NAME}:`, values);
+    return await callAPI('append', { values: [values] });
+  };
+
+  const updateData = async (rowIndex: number, values: any[]) => {
+    console.log(`Updating ${SHEET_NAME} row ${rowIndex}:`, values);
+    return await callAPI('update', { rowIndex, values: [values] });
+  };
+
+  const deleteData = async (rowIndex: number) => {
+    console.log(`Deleting ${SHEET_NAME} row ${rowIndex}`);
+    return await callAPI('delete', { rowIndex });
+  };
+
+  return { readData, appendData, updateData, deleteData };
 };
 
-const LayananKarir: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const { toast } = useToast();
-  const api = useGoogleSheets();
+// ==================== EDIT FORM MODAL ====================
+const EditKonversiModal: React.FC<{
+  data: KonversiData | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: KonversiData) => void;
+}> = ({ data, isOpen, onClose, onSave }) => {
+  const [formData, setFormData] = useState<Partial<KonversiData>>({});
 
-  const [data, setData] = useState<KonversiData[]>([]);
-  const [localChanges, setLocalChanges] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(false);
-
-  // Generate data yang belum ada (dari 2020 sampai semester terakhir)
-  const generateMissingData = (existing: KonversiData[]): KonversiData[] => {
-    const { tahun: currYear, semester: currSem } = LayananKarirCalculator.getCurrentYearSemester();
-    const today = LayananKarirCalculator.formatDate();
-    const result: KonversiData[] = [...existing];
-
-    for (let y = 2020; y <= currYear; y++) {
-      for (let s = 1; s <= 2; s++) {
-        if (y === currYear && s > currSem) continue;
-
-        const already = existing.some(d => d.Tahun === y && d.Semester === s);
-        if (!already) {
-          const periode = LayananKarirCalculator.getPeriode(y, s as 1 | 2);
-          const ak = LayananKarirCalculator.calculateAK('Baik', 80);
-          result.push({
-            NIP: karyawan.nip,
-            Nama: karyawan.nama,
-            Tahun: y,
-            Semester: s as 1 | 2,
-            Predikat: 'Baik',
-            'Nilai SKP': 80,
-            'AK Konversi': ak,
-            'TMT Mulai': periode.mulai,
-            'TMT Selesai': periode.selesai,
-            Status: 'Draft',
-            Last_Update: today,
-            rowIndex: -1
-          });
-        }
-      }
+  useEffect(() => {
+    if (data) {
+      setFormData({ ...data });
+    } else {
+      setFormData({});
     }
-    return result.sort((a, b) => b.Tahun - a.Tahun || b.Semester - a.Semester);
+  }, [data]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.Tahun && formData.Semester && formData.Predikat && formData['Nilai SKP']) {
+      // Auto-calculate AK Konversi and Periode
+      const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(
+        formData.Predikat, 
+        formData['Nilai SKP']
+      );
+      const periode = LayananKarirCalculator.calculatePeriodeSemester(
+        formData.Tahun, 
+        formData.Semester
+      );
+
+      const finalData: KonversiData = {
+        ...data,
+        ...formData,
+        'AK Konversi': akKonversi,
+        'TMT Mulai': periode.mulai,
+        'TMT Selesai': periode.selesai,
+        Last_Update: LayananKarirCalculator.formatDate(new Date())
+      } as KonversiData;
+
+      onSave(finalData);
+    }
   };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {data ? 'Edit Data Konversi' : 'Tambah Data Konversi'}
+          </DialogTitle>
+          <DialogDescription>
+            {data ? 'Edit data konversi predikat kinerja' : 'Tambahkan data konversi predikat kinerja baru'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="tahun">Tahun</Label>
+              <Input
+                id="tahun"
+                type="number"
+                value={formData.Tahun || ''}
+                onChange={(e) => setFormData({...formData, Tahun: parseInt(e.target.value)})}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="semester">Semester</Label>
+              <Select 
+                value={formData.Semester?.toString() || "1"} 
+                onValueChange={(value) => setFormData({...formData, Semester: parseInt(value) as 1 | 2})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Semester 1</SelectItem>
+                  <SelectItem value="2">Semester 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="predikat">Predikat Kinerja</Label>
+              <Select 
+                value={formData.Predikat || "Baik"} 
+                onValueChange={(value) => setFormData({...formData, Predikat: value as any})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sangat Baik">Sangat Baik</SelectItem>
+                  <SelectItem value="Baik">Baik</SelectItem>
+                  <SelectItem value="Cukup">Cukup</SelectItem>
+                  <SelectItem value="Kurang">Kurang</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="nilaiSKP">Nilai SKP</Label>
+              <Input
+                id="nilaiSKP"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={formData['Nilai SKP'] || 95}
+                onChange={(e) => setFormData({...formData, 'Nilai SKP': parseFloat(e.target.value)})}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select 
+              value={formData.Status || "Draft"} 
+              onValueChange={(value) => setFormData({...formData, Status: value as any})}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Draft">Draft</SelectItem>
+                <SelectItem value="Generated">Generated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="catatan">Catatan</Label>
+            <Input
+              id="catatan"
+              value={formData.Catatan || ''}
+              onChange={(e) => setFormData({...formData, Catatan: e.target.value})}
+              placeholder="Opsional"
+            />
+          </div>
+
+          {formData.Tahun && formData.Semester && formData.Predikat && formData['Nilai SKP'] && (
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Preview Auto-calculate:</strong><br />
+                • AK Konversi: {LayananKarirCalculator.calculateAKFromPredikat(formData.Predikat, formData['Nilai SKP'])}<br />
+                • Periode: {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button type="submit">
+              {data ? 'Update Data' : 'Simpan Data'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ==================== MAIN COMPONENT ====================
+const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
+  const { toast } = useToast();
+  const api = useSpreadsheetAPI();
+  
+  // States
+  const [konversiData, setKonversiData] = useState<KonversiData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({ tahun: 'all', semester: 'all' });
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    data: KonversiData | null;
+  }>({
+    isOpen: false,
+    data: null
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await api.read();
-      const rows = res.values || [];
-      const parsed: KonversiData[] = [];
-
-      if (rows.length > 1) {
-        const headers = rows[0];
-        rows.slice(1).forEach((row: any[], idx: number) => {
-          const obj: any = { rowIndex: idx + 2 };
-          KONVERSI_HEADERS.forEach((h, i) => {
-            obj[h] = row[i] ?? '';
-          });
-          // Pastikan tipe data benar
-          obj.Tahun = Number(obj.Tahun) || 0;
-          obj.Semester = Number(obj.Semester) as 1 | 2 || 1;
-          obj['Nilai SKP'] = Number(obj['Nilai SKP']) || 0;
-          obj['AK Konversi'] = Number(obj['AK Konversi']) || 0;
-          parsed.push(obj);
-        });
-      }
-
-      // Filter hanya data karyawan ini + generate yang belum ada
-      const mine = parsed.filter(d => d.NIP === karyawan.nip);
-      setData(generateMissingData(mine));
-      setLocalChanges(new Set());
-    } catch { } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [karyawan.nip]);
-
-  const recalculateAK = (item: KonversiData) => {
-    const newAK = LayananKarirCalculator.calculateAK(item.Predikat, item['Nilai SKP']);
-    const updated = { ...item, 'AK Konversi': newAK, Last_Update: LayananKarirCalculator.formatDate() };
-    setData(prev => prev.map(i => i === item ? updated : i));
-    markChanged(item);
-  };
-
-  const markChanged = (item: KonversiData) => {
-    if (item.rowIndex === -1) {
-      setLocalChanges(prev => new Set(prev).add(Date.now())); // dummy key
-    } else {
-      setLocalChanges(prev => new Set(prev).add(item.rowIndex!));
-    }
-  };
-
-  const handleDelete = async (item: KonversiData) => {
-    if (!confirm('Hapus baris ini?')) return;
-    if (item.rowIndex === -1) {
-      setData(prev => prev.filter(i => i !== item));
-    } else {
-      await api.delete(item.rowIndex!);
-      loadData();
-    }
-    toast({ title: "Sukses", description: "Data dihapus" });
-  };
-
-  const saveAllToSheets = async () => {
-    if (localChanges.size === 0 && !data.some(d => d.Status === 'Draft' && d.rowIndex === -1)) {
-      toast({ title: "Info", description: "Tidak ada perubahan" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      for (const item of data) {
-        const values = KONVERSI_HEADERS.map(h => {
-          if (h === 'Last_Update') return LayananKarirCalculator.formatDate();
-          if (h === 'Status') return 'Generated';
-          if (h === 'Link_Dokumen') return item[h] ?? '';
-          if (h === 'No') return item[h] ?? '';
-          return (item as any)[h] ?? '';
-        });
-
-        if (item.rowIndex === -1) {
-          await api.append(values);
-        } else if (localChanges.has(item.rowIndex!) || item.Status === 'Draft') {
-          await api.update(item.rowIndex!, values);
-        }
-      }
-
-      toast({ title: "Sukses!", description: "Semua data berhasil disimpan ke Google Sheets" });
-      setLocalChanges(new Set());
-      loadData(); // refresh rowIndex
-    } catch {
-      toast({ title: "Gagal", description: "Gagal menyimpan", variant: "destructive" });
+      const data = await api.readData(karyawan.nip);
+      setKonversiData(data);
+    } catch (error) {
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const hasUnsaved = localChanges.size > 0 || data.some(d => d.Status === 'Draft' && d.rowIndex === -1);
+  // Handle Edit
+  const handleEdit = (data: KonversiData) => {
+    setEditModal({
+      isOpen: true,
+      data: data
+    });
+  };
+
+  // Handle Save from modal
+  const handleSave = async (updatedData: KonversiData) => {
+    try {
+      const values = [
+        updatedData.No || '',
+        updatedData.NIP,
+        updatedData.Nama,
+        updatedData.Tahun,
+        updatedData.Semester,
+        updatedData.Predikat,
+        updatedData['Nilai SKP'],
+        updatedData['AK Konversi'],
+        updatedData['TMT Mulai'],
+        updatedData['TMT Selesai'],
+        updatedData.Status,
+        updatedData.Catatan || '',
+        updatedData.Link_Dokumen || '',
+        updatedData.Last_Update
+      ];
+
+      if (updatedData.rowIndex) {
+        await api.updateData(updatedData.rowIndex, values);
+        toast({
+          title: "Sukses",
+          description: "Data berhasil diupdate di Google Sheets"
+        });
+      }
+
+      setEditModal({ isOpen: false, data: null });
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add new row
+  const handleAddNew = async () => {
+    const now = LayananKarirCalculator.formatDate(new Date());
+    const tahun = new Date().getFullYear();
+    const semester = 1;
+    const periode = LayananKarirCalculator.calculatePeriodeSemester(tahun, semester);
+    
+    const newData = {
+      NIP: karyawan.nip,
+      Nama: karyawan.nama,
+      Tahun: tahun,
+      Semester: semester,
+      Predikat: 'Baik' as const,
+      'Nilai SKP': 95,
+      'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 95),
+      'TMT Mulai': periode.mulai,
+      'TMT Selesai': periode.selesai,
+      Status: 'Draft' as const,
+      Catatan: '',
+      Last_Update: now
+    };
+
+    try {
+      const values = [
+        '', // No auto increment
+        newData.NIP,
+        newData.Nama,
+        newData.Tahun,
+        newData.Semester,
+        newData.Predikat,
+        newData['Nilai SKP'],
+        newData['AK Konversi'],
+        newData['TMT Mulai'],
+        newData['TMT Selesai'],
+        newData.Status,
+        newData.Catatan,
+        '', // Link_Dokumen
+        newData.Last_Update
+      ];
+
+      await api.appendData(values);
+      toast({
+        title: "Sukses",
+        description: "Data baru berhasil ditambahkan ke Google Sheets"
+      });
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menambah data",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDelete = async (rowData: KonversiData) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+    
+    try {
+      if (rowData.rowIndex) {
+        await api.deleteData(rowData.rowIndex);
+        toast({
+          title: "Sukses",
+          description: "Data berhasil dihapus dari Google Sheets"
+        });
+        loadData();
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus data",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getFilteredData = () => {
+    return konversiData.filter(item => 
+      (filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun) &&
+      (filters.semester === 'all' || item.Semester?.toString() === filters.semester)
+    );
+  };
+
+  // Render Table
+  const renderKonversiTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Tahun</TableHead>
+          <TableHead>Semester</TableHead>
+          <TableHead>Predikat</TableHead>
+          <TableHead>Nilai SKP</TableHead>
+          <TableHead>AK Konversi</TableHead>
+          <TableHead>Periode</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Aksi</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {getFilteredData().map((data: KonversiData) => (
+          <TableRow key={data.id}>
+            <TableCell>{data.Tahun}</TableCell>
+            <TableCell>{data.Semester}</TableCell>
+            <TableCell>
+              <Badge variant={
+                data.Predikat === 'Sangat Baik' ? 'default' :
+                data.Predikat === 'Baik' ? 'secondary' :
+                data.Predikat === 'Cukup' ? 'outline' : 'destructive'
+              }>
+                {data.Predikat}
+              </Badge>
+            </TableCell>
+            <TableCell>{data['Nilai SKP']}</TableCell>
+            <TableCell className="font-semibold">{data['AK Konversi']}</TableCell>
+            <TableCell className="text-sm">
+              {data['TMT Mulai']} - {data['TMT Selesai']}
+            </TableCell>
+            <TableCell>
+              <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>
+                {data.Status}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleEdit(data)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleDelete(data)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+    <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Layanan Karir - Konversi Predikat</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Konversi Predikat Kinerja
+          </CardTitle>
           <CardDescription>
-            {karyawan.nama} ({karyawan.nip}) • {karyawan.jabatan}
+            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {hasUnsaved && (
-            <div className="flex items-center justify-between bg-amber-50 border border-amber-300 rounded-lg p-4">
-              <div className="flex items-center gap-3 text-amber-800">
-                <AlertCircle className="h-5 w-5" />
-                <span className="font-medium">Ada data belum disimpan permanen ke Google Sheets</span>
-              </div>
-              <Button onClick={saveAllToSheets} disabled={loading} className="font-semibold">
-                <Save className="h-4 w-4 mr-2" />
-                Simpan Semua ke Google Sheets
-              </Button>
-            </div>
-          )}
-
-          {loading && <div className="text-center py-8">Memuat data...</div>}
-
-          {!loading && (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tahun</TableHead>
-                    <TableHead>Sem</TableHead>
-                    <TableHead>Predikat</TableHead>
-                    <TableHead>SKP</TableHead>
-                    <TableHead>AK</TableHead>
-                    <TableHead>Periode</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((d, i) => (
-                    <TableRow key={i} className={d.Status === 'Draft' ? 'bg-yellow-50' : ''}>
-                      <TableCell className="font-medium">{d.Tahun}</TableCell>
-                      <TableCell>{d.Semester}</TableCell>
-                      <TableCell>
-                        <select
-                          value={d.Predikat}
-                          onChange={(e) => {
-                            const updated = { ...d, Predikat: e.target.value as any };
-                            setData(prev => prev.map(x => x === d ? updated : x));
-                            recalculateAK(updated);
-                          }}
-                          className="px-2 py-1 rounded border text-sm"
-                        >
-                          <option>Sangat Baik</option>
-                          <option>Baik</option>
-                          <option>Cukup</option>
-                          <option>Kurang</option>
-                        </select>
-                      </TableCell>
-                      <TableCell>
-                        <input
-                          type="number"
-                          value={d['Nilai SKP']}
-                          onChange={(e) => {
-                            const updated = { ...d, 'Nilai SKP': Number(e.target.value) };
-                            setData(prev => prev.map(x => x === d ? updated : x));
-                            recalculateAK(updated);
-                          }}
-                          className="w-16 px-2 py-1 border rounded text-sm"
-                        />
-                      </TableCell>
-                      <TableCell className="font-bold text-blue-600">{d['AK Konversi']}</TableCell>
-                      <TableCell className="text-xs">
-                        {d['TMT Mulai']} s/d {d['TMT Selesai']}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={d.Status === 'Generated' ? 'default' : 'secondary'}>
-                          {d.Status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => recalculateAK(d)} title="Hitung ulang">
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(d)} title="Hapus">
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+        <CardContent>
+          {/* Filters */}
+          <div className="flex gap-4 mb-4 items-end">
+            <div className="flex-1">
+              <Label htmlFor="filter-tahun">Tahun</Label>
+              <Select 
+                value={filters.tahun} 
+                onValueChange={(value) => setFilters({...filters, tahun: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tahun</SelectItem>
+                  {[2023, 2024, 2025].map(year => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
                   ))}
-                </TableBody>
-              </Table>
+                </SelectContent>
+              </Select>
             </div>
-          )}
+            
+            <div className="flex-1">
+              <Label htmlFor="filter-semester">Semester</Label>
+              <Select 
+                value={filters.semester} 
+                onValueChange={(value) => setFilters({...filters, semester: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Semester</SelectItem>
+                  <SelectItem value="1">Semester 1</SelectItem>
+                  <SelectItem value="2">Semester 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button onClick={loadData} variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
+            
+            <Button onClick={handleAddNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Baru
+            </Button>
+          </div>
+
+          {/* Data Table */}
+          <Card>
+            <CardContent className="pt-6">
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-muted-foreground mt-2">Memuat data dari Google Sheets...</p>
+                </div>
+              ) : getFilteredData().length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Tidak ada data ditemukan</p>
+                  <Button onClick={handleAddNew} className="mt-2">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Data Pertama
+                  </Button>
+                </div>
+              ) : (
+                renderKonversiTable()
+              )}
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
+
+      {/* Edit Modal */}
+      <EditKonversiModal
+        data={editModal.data}
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, data: null })}
+        onSave={handleSave}
+      />
     </div>
   );
 };
