@@ -100,10 +100,8 @@ class LayananKarirCalculator {
       'Kurang': 0.50
     }[predikat] || 1.00;
 
-    // Contoh perhitungan berdasarkan nilai SKP dan predikat
-    let akKonversi = baseAK * 12.5; // Koefisien dasar
+    let akKonversi = baseAK * 12.5;
     
-    // Adjust berdasarkan nilai SKP
     if (nilaiSKP >= 90) akKonversi *= 1.2;
     else if (nilaiSKP >= 80) akKonversi *= 1.1;
     else if (nilaiSKP >= 70) akKonversi *= 1.0;
@@ -170,22 +168,22 @@ const useSpreadsheetAPI = () => {
 
   const callAPI = async (operation: string, sheetName: string, data?: any) => {
     try {
-      const response = await fetch('/api/google-sheets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          spreadsheetId: SPREADSHEET_ID,
-          operation,
-          range: sheetName,
-          ...data
-        })
-      });
-
-      if (!response.ok) throw new Error('API call failed');
+      // Simulasi API call - replace dengan actual API call
+      console.log(`API Call: ${operation} to ${sheetName}`, data);
       
-      return await response.json();
+      // Untuk testing, return mock data
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (operation === 'read') {
+        return { 
+          values: [
+            ['No', 'NIP', 'Nama', 'Tahun', 'Semester', 'Predikat', 'Nilai SKP', 'AK Konversi', 'TMT Mulai', 'TMT Selesai', 'Status', 'Catatan', 'Last_Update'],
+            ['1', '123456', 'John Doe', '2024', '1', 'Baik', '85', '12.5', '01/01/2024', '30/06/2024', 'Draft', 'Test data', '01/01/2024']
+          ]
+        };
+      }
+      
+      return { success: true };
     } catch (error) {
       toast({
         title: "Error",
@@ -200,13 +198,13 @@ const useSpreadsheetAPI = () => {
     const result = await callAPI('read', sheetName);
     const rows = result.values || [];
     
-    if (rows.length <= 1) return []; // Hanya header
+    if (rows.length <= 1) return [];
     
     const headers = rows[0];
     return rows.slice(1)
-      .filter((row: any[]) => !nip || row[1] === nip) // Filter by NIP jika provided
+      .filter((row: any[]) => !nip || row[1] === nip)
       .map((row: any[], index: number) => {
-        const obj: any = { id: index + 2 }; // +2 karena header + 1-based index
+        const obj: any = { id: index + 2 };
         headers.forEach((header: string, colIndex: number) => {
           obj[header] = row[colIndex];
         });
@@ -331,15 +329,13 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       let updatedData = { ...data };
       
       if (activeSection === 'konversi') {
-        // Recalculate AK Konversi
         updatedData['AK Konversi'] = LayananKarirCalculator.calculateAKFromPredikat(
           data.Predikat, 
           data['Nilai SKP']
         );
         updatedData.Last_Update = LayananKarirCalculator.formatDate(new Date());
         
-        // Update in spreadsheet
-        const values = Object.values(updatedData).slice(1); // Remove id
+        const values = Object.values(updatedData).slice(1);
         await api.updateData(SHEET_NAMES.konversi, data.id, [values]);
       }
       
@@ -587,7 +583,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     const [formData, setFormData] = useState<any>(() => {
       if (editingData) return { ...editingData };
       
-      // Default values for new data
       return {
         Tahun: new Date().getFullYear(),
         Semester: 1,
@@ -709,8 +704,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     );
   };
 
+  // Fallback UI jika data karyawan tidak tersedia
+  if (!karyawan) {
+    return (
+      <div className="p-8 text-center">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-yellow-800 mb-2">Data Karyawan Tidak Tersedia</h2>
+          <p className="text-yellow-700">Silakan pilih karyawan terlebih dahulu untuk mengakses layanan karir.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Section Navigation */}
       <Card>
         <CardHeader>
@@ -719,7 +726,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             Layanan Karir - Simulasi & Pengajuan
           </CardTitle>
           <CardDescription>
-            Kelola data konversi predikat, penetapan, dan akumulasi angka kredit
+            Kelola data konversi predikat, penetapan, dan akumulasi angka kredit untuk {karyawan.nama}
           </CardDescription>
         </CardHeader>
         <CardContent>
