@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Eye, Edit, Trash2, RefreshCw, Plus, Calendar, Filter, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // ==================== TYPES & INTERFACES ====================
 interface Karyawan {
@@ -46,41 +48,9 @@ interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
-// ==================== MOCK DATA ====================
-const mockKonversiData: KonversiData[] = [
-  {
-    id: '1',
-    No: 1,
-    NIP: '19680118 198902 1 001',
-    Nama: 'John Doe',
-    Tahun: 2024,
-    Semester: 1,
-    Predikat: 'Baik',
-    'Nilai SKP': 85,
-    'AK Konversi': 12.5,
-    'TMT Mulai': '01/01/2024',
-    'TMT Selesai': '30/06/2024',
-    Status: 'Draft',
-    Catatan: 'Data contoh untuk testing',
-    Last_Update: '01/01/2024'
-  },
-  {
-    id: '2', 
-    No: 2,
-    NIP: '19680118 198902 1 001',
-    Nama: 'John Doe',
-    Tahun: 2024,
-    Semester: 2,
-    Predikat: 'Sangat Baik',
-    'Nilai SKP': 92,
-    'AK Konversi': 18.75,
-    'TMT Mulai': '01/07/2024',
-    'TMT Selesai': '31/12/2024',
-    Status: 'Generated',
-    Catatan: 'Performance excellent',
-    Last_Update: '01/07/2024'
-  }
-];
+// ==================== SPREADSHEET CONFIG ====================
+const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
+const SHEET_NAME = "konversi_predikat";
 
 // ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
@@ -125,175 +95,36 @@ class LayananKarirCalculator {
   }
 }
 
-// ==================== STORAGE MANAGEMENT ====================
-class LocalStorageManager {
-  private static readonly STORAGE_KEY = 'layanan_karir_data';
-
-  static saveData(section: string, data: any[]) {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      const allData = this.loadAllData();
-      allData[section] = data;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allData));
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-    }
-  }
-
-  static loadData(section: string): any[] {
-    if (typeof window === 'undefined') return [];
-    
-    try {
-      const allData = this.loadAllData();
-      return allData[section] || [];
-    } catch (error) {
-      console.error('Error loading from localStorage:', error);
-      return [];
-    }
-  }
-
-  private static loadAllData(): { [key: string]: any[] } {
-    if (typeof window === 'undefined') return {};
-    
-    try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch (error) {
-      return {};
-    }
-  }
-}
-
-// ==================== API FUNCTIONS WITH FALLBACK ====================
+// ==================== API FUNCTIONS ====================
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
-  const [useMockData, setUseMockData] = useState(false);
 
-  // Test if API endpoint exists
-  const testAPI = async (): Promise<boolean> => {
+  const callAPI = async (operation: string, data?: any) => {
     try {
-      const response = await fetch('/api/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operation: 'test' })
-      });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  const callAPI = async (operation: string, sheetName: string, data?: any) => {
-    // If we already know API is not available, use mock immediately
-    if (useMockData) {
-      console.log(`Using mock data for ${operation} on ${sheetName}`);
-      return await mockAPICall(operation, sheetName, data);
-    }
-
-    try {
-      const response = await fetch('/api/google-sheets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          spreadsheetId: "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80",
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: sheetName,
+          range: SHEET_NAME,
           ...data
-        })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
+      if (error) throw error;
       return result;
     } catch (error) {
-      console.warn(`API call failed, switching to mock data:`, error);
-      setUseMockData(true);
-      
-      // Show informative toast
+      console.error('API Error:', error);
       toast({
-        title: "Mode Offline",
-        description: "Menggunakan data lokal. Perubahan tidak disimpan ke server.",
-        variant: "default"
+        title: "Error",
+        description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
       });
-
-      return await mockAPICall(operation, sheetName, data);
+      throw error;
     }
   };
 
-  // Mock API implementation
-  const mockAPICall = async (operation: string, sheetName: string, data?: any) => {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-
-    const storageKey = `mock_${sheetName}`;
-    
-    switch (operation) {
-      case 'read':
-        const storedData = LocalStorageManager.loadData(storageKey);
-        if (storedData.length > 0) {
-          return { values: [getHeaders(sheetName), ...storedData.map((item: any) => Object.values(item))] };
-        }
-        // Return mock data if no stored data
-        const filteredMock = mockKonversiData.filter(item => !data?.nip || item.NIP === data.nip);
-        return { 
-          values: [
-            getHeaders(sheetName),
-            ...filteredMock.map(item => Object.values(item))
-          ] 
-        };
-
-      case 'append':
-        const newItem = {
-          id: Date.now().toString(),
-          No: (LocalStorageManager.loadData(storageKey).length + 1),
-          ...data.values[0]
-        };
-        const currentData = LocalStorageManager.loadData(storageKey);
-        const updatedData = [...currentData, newItem];
-        LocalStorageManager.saveData(storageKey, updatedData);
-        return { success: true };
-
-      case 'update':
-        const allData = LocalStorageManager.loadData(storageKey);
-        const rowIndex = data.rowIndex - 2; // Convert to 0-based index
-        if (rowIndex >= 0 && rowIndex < allData.length) {
-          allData[rowIndex] = { ...allData[rowIndex], ...data.values[0] };
-          LocalStorageManager.saveData(storageKey, allData);
-        }
-        return { success: true };
-
-      case 'delete':
-        const deleteData = LocalStorageManager.loadData(storageKey);
-        const deleteIndex = data.rowIndex - 2;
-        if (deleteIndex >= 0 && deleteIndex < deleteData.length) {
-          deleteData.splice(deleteIndex, 1);
-          LocalStorageManager.saveData(storageKey, deleteData);
-        }
-        return { success: true };
-
-      default:
-        return { success: true };
-    }
-  };
-
-  const getHeaders = (sheetName: string): string[] => {
-    const headers: { [key: string]: string[] } = {
-      'konversi_predikat': [
-        'No', 'NIP', 'Nama', 'Tahun', 'Semester', 'Predikat', 
-        'Nilai SKP', 'AK Konversi', 'TMT Mulai', 'TMT Selesai', 
-        'Status', 'Catatan', 'Last_Update'
-      ]
-    };
-    return headers[sheetName] || [];
-  };
-
-  const readData = async (sheetName: string, nip?: string) => {
-    const result = await callAPI('read', sheetName, { nip });
+  const readData = async (nip?: string) => {
+    const result = await callAPI('read');
     const rows = result.values || [];
     
     if (rows.length <= 1) return [];
@@ -303,35 +134,40 @@ const useSpreadsheetAPI = () => {
       .filter((row: any[]) => !nip || row[headers.indexOf('NIP')] === nip)
       .map((row: any[], index: number) => {
         const obj: any = { 
-          id: `${sheetName}_${index + 2}`,
+          id: `${SHEET_NAME}_${index + 2}`,
           rowIndex: index + 2
         };
         headers.forEach((header: string, colIndex: number) => {
-          obj[header] = row[colIndex];
+          // Convert numeric values properly
+          let value = row[colIndex];
+          if (header === 'Tahun' || header === 'Semester' || header === 'Nilai SKP' || header === 'AK Konversi') {
+            value = Number(value) || 0;
+          }
+          obj[header] = value;
         });
         return obj;
       });
     
-    console.log(`Loaded ${data.length} records from ${sheetName}`);
+    console.log(`Loaded ${data.length} records from ${SHEET_NAME}`);
     return data;
   };
 
-  const appendData = async (sheetName: string, values: any[]) => {
-    console.log(`Appending to ${sheetName}:`, values);
-    return await callAPI('append', sheetName, { values: [values] });
+  const appendData = async (values: any[]) => {
+    console.log(`Appending to ${SHEET_NAME}:`, values);
+    return await callAPI('append', { values: [values] });
   };
 
-  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => {
-    console.log(`Updating ${sheetName} row ${rowIndex}:`, values);
-    return await callAPI('update', sheetName, { rowIndex, values: [values] });
+  const updateData = async (rowIndex: number, values: any[]) => {
+    console.log(`Updating ${SHEET_NAME} row ${rowIndex}:`, values);
+    return await callAPI('update', { rowIndex, values: [values] });
   };
 
-  const deleteData = async (sheetName: string, rowIndex: number) => {
-    console.log(`Deleting ${sheetName} row ${rowIndex}`);
-    return await callAPI('delete', sheetName, { rowIndex });
+  const deleteData = async (rowIndex: number) => {
+    console.log(`Deleting ${SHEET_NAME} row ${rowIndex}`);
+    return await callAPI('delete', { rowIndex });
   };
 
-  return { readData, appendData, updateData, deleteData, useMockData };
+  return { readData, appendData, updateData, deleteData };
 };
 
 // ==================== EDITABLE TABLE COMPONENTS ====================
@@ -446,26 +282,22 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const api = useSpreadsheetAPI();
   
   // States
-  const [activeSection, setActiveSection] = useState<'konversi' | 'penetapan' | 'akumulasi'>('konversi');
   const [konversiData, setKonversiData] = useState<KonversiData[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ tahun: 'all', semester: 'all' });
 
-  // Load data on mount and when section changes
+  // Load data on mount
   useEffect(() => {
     loadData();
-  }, [activeSection]);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.readData('konversi_predikat', karyawan.nip);
+      const data = await api.readData(karyawan.nip);
       setKonversiData(data);
     } catch (error) {
       console.error('Error loading data:', error);
-      // Fallback to mock data if API fails
-      const filteredMock = mockKonversiData.filter(item => item.NIP === karyawan.nip);
-      setKonversiData(filteredMock);
     } finally {
       setLoading(false);
     }
@@ -477,24 +309,21 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       const newData = [...data];
       newData[index] = { ...newData[index], [field]: value };
       
-      // Auto-calculate for konversi section
-      if (activeSection === 'konversi') {
-        // If Predikat or Nilai SKP changes, recalculate AK Konversi
-        if (field === 'Predikat' || field === 'Nilai SKP') {
-          const predikat = field === 'Predikat' ? value : newData[index].Predikat;
-          const nilaiSKP = field === 'Nilai SKP' ? value : newData[index]['Nilai SKP'];
-          const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(predikat, nilaiSKP);
-          newData[index]['AK Konversi'] = akKonversi;
-        }
-        
-        // If Tahun or Semester changes, recalculate periode
-        if (field === 'Tahun' || field === 'Semester') {
-          const tahun = field === 'Tahun' ? value : newData[index].Tahun;
-          const semester = field === 'Semester' ? value : newData[index].Semester;
-          const periode = LayananKarirCalculator.calculatePeriodeSemester(tahun, semester);
-          newData[index]['TMT Mulai'] = periode.mulai;
-          newData[index]['TMT Selesai'] = periode.selesai;
-        }
+      // Auto-calculate when Predikat or Nilai SKP changes
+      if (field === 'Predikat' || field === 'Nilai SKP') {
+        const predikat = field === 'Predikat' ? value : newData[index].Predikat;
+        const nilaiSKP = field === 'Nilai SKP' ? value : newData[index]['Nilai SKP'];
+        const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(predikat, nilaiSKP);
+        newData[index]['AK Konversi'] = akKonversi;
+      }
+      
+      // Auto-calculate periode when Tahun or Semester changes
+      if (field === 'Tahun' || field === 'Semester') {
+        const tahun = field === 'Tahun' ? value : newData[index].Tahun;
+        const semester = field === 'Semester' ? value : newData[index].Semester;
+        const periode = LayananKarirCalculator.calculatePeriodeSemester(tahun, semester);
+        newData[index]['TMT Mulai'] = periode.mulai;
+        newData[index]['TMT Selesai'] = periode.selesai;
       }
       
       return newData;
@@ -509,8 +338,9 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       const now = LayananKarirCalculator.formatDate(new Date());
       const updatedData = { ...rowData, Last_Update: now };
       
+      // Prepare values in exact column order from Google Sheets
       const values = [
-        updatedData.No,
+        updatedData.No || '',
         updatedData.NIP,
         updatedData.Nama,
         updatedData.Tahun,
@@ -525,11 +355,11 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         updatedData.Last_Update
       ];
       
-      await api.updateData('konversi_predikat', rowData.rowIndex, values);
+      await api.updateData(rowData.rowIndex, values);
       
       toast({
         title: "Sukses",
-        description: "Data berhasil disimpan"
+        description: "Data berhasil disimpan ke Google Sheets"
       });
     } catch (error) {
       toast({
@@ -543,16 +373,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   // Add new row
   const handleAddNew = async () => {
     const now = LayananKarirCalculator.formatDate(new Date());
+    const tahun = new Date().getFullYear();
+    const semester = 1;
+    const periode = LayananKarirCalculator.calculatePeriodeSemester(tahun, semester);
+    
     const newData = {
       NIP: karyawan.nip,
       Nama: karyawan.nama,
-      Tahun: new Date().getFullYear(),
-      Semester: 1,
+      Tahun: tahun,
+      Semester: semester,
       Predikat: 'Baik',
       'Nilai SKP': 80,
       'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat('Baik', 80),
-      'TMT Mulai': `01/01/${new Date().getFullYear()}`,
-      'TMT Selesai': `30/06/${new Date().getFullYear()}`,
+      'TMT Mulai': periode.mulai,
+      'TMT Selesai': periode.selesai,
       Status: 'Draft',
       Catatan: '',
       Last_Update: now
@@ -560,7 +394,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
     try {
       const values = [
-        '',
+        '', // No will be auto-incremented
         newData.NIP,
         newData.Nama,
         newData.Tahun,
@@ -575,12 +409,12 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         newData.Last_Update
       ];
 
-      await api.appendData('konversi_predikat', values);
+      await api.appendData(values);
       toast({
         title: "Sukses",
-        description: "Data baru berhasil ditambahkan"
+        description: "Data baru berhasil ditambahkan ke Google Sheets"
       });
-      loadData();
+      loadData(); // Reload to get the new data with proper ID
     } catch (error) {
       toast({
         title: "Error",
@@ -594,10 +428,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     
     try {
-      await api.deleteData('konversi_predikat', rowData.rowIndex);
+      await api.deleteData(rowData.rowIndex);
       toast({
         title: "Sukses",
-        description: "Data berhasil dihapus"
+        description: "Data berhasil dihapus dari Google Sheets"
       });
       loadData();
     } catch (error) {
@@ -616,7 +450,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     );
   };
 
-  // Render Editable Tables
+  // Render Editable Table
   const renderKonversiTable = () => (
     <Table>
       <TableHeader>
@@ -709,60 +543,19 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     </Table>
   );
 
-  // Fallback UI jika data karyawan tidak tersedia
-  if (!karyawan) {
-    return (
-      <div className="p-8 text-center">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">Data Karyawan Tidak Tersedia</h2>
-          <p className="text-yellow-700">Silakan pilih karyawan terlebih dahulu untuk mengakses layanan karir.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Layanan Karir - Inline Editor
-            {api.useMockData && (
-              <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-800">
-                Mode Offline
-              </Badge>
-            )}
+            Konversi Predikat Kinerja
           </CardTitle>
           <CardDescription>
-            {api.useMockData 
-              ? "Menggunakan data lokal. Klik pada data untuk edit, lalu simpan per baris."
-              : "Klik pada data untuk edit, lalu simpan per baris. AK Konversi terhitung otomatis."
-            }
+            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-6">
-            <Button
-              variant={activeSection === 'konversi' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('konversi')}
-            >
-              Konversi Predikat
-            </Button>
-            <Button
-              variant="outline"
-              disabled
-            >
-              Penetapan AK (Coming Soon)
-            </Button>
-            <Button
-              variant="outline"
-              disabled
-            >
-              Akumulasi AK (Coming Soon)
-            </Button>
-          </div>
-
           {/* Filters */}
           <div className="flex gap-4 mb-4 items-end">
             <div className="flex-1">
@@ -817,7 +610,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground mt-2">Memuat data...</p>
+                  <p className="text-muted-foreground mt-2">Memuat data dari Google Sheets...</p>
                 </div>
               ) : getFilteredData().length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
