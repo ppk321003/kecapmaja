@@ -160,26 +160,25 @@ class LayananKarirCalculator {
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
 
-  // Ganti dengan URL Supabase Function kamu
-  const SUPABASE_FUNCTION_URL = "https://tvoj-project.supabase.co/functions/v1/google-sheets";
-  // Atau kalau pakai custom domain:
-  // const SUPABASE_FUNCTION_URL = "https://api.kecapmaja.com/google-sheets";
+  // GANTI INI DENGAN URL SUPABASE FUNCTION KAMU
+  const SUPABASE_FUNCTION_URL = "https://xxxxxxx.supabase.co/functions/v1/google-sheets";
+  // Contoh: https://abcde12345.supabase.co/functions/v1/google-sheets
 
   const callAPI = async (operation: string, sheetName: string, data?: any) => {
     try {
-      console.log(`API Call: ${operation} to ${sheetName}`, data);
+      console.log(`Calling: ${operation} → ${sheetName}`);
 
       const response = await fetch(SUPABASE_FUNCTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Kalau kamu pakai anon key (disarankan)
-          // 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          // Jika kamu pakai anon key (disarankan untuk publik)
+          // 'Authorization': 'Bearer YOUR_ANON_KEY',
         },
         body: JSON.stringify({
           spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: sheetName,        // ← PASTIKAN INI ADA!
+          range: sheetName,   // ← Ini yang tadi undefined karena salah URL
           ...data
         })
       });
@@ -188,26 +187,27 @@ const useSpreadsheetAPI = () => {
       console.log("Response dari Supabase:", result);
 
       if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}`);
+        throw new Error(result.error || "Gagal menghubungi server");
       }
 
       return result;
 
     } catch (error: any) {
-      console.error("Error di callAPI:", error);
+      console.error("API Error:", error);
       toast({
         title: "Koneksi Gagal",
-        description: error.message || "Tidak bisa terhubung ke Google Sheets",
+        description: "Tidak bisa terhubung ke Google Sheets. Cek internet atau URL Supabase.",
         variant: "destructive"
       });
       throw error;
     }
   };
 
+  // Sisanya tetap sama
   const readData = async (sheetName: string, nip?: string) => {
     const result = await callAPI('read', sheetName);
     const rows = result.values || [];
-    if (rows.length === 0) return [];
+    if (rows.length <= 1) return [];
 
     const headers = rows[0];
     return rows.slice(1)
@@ -226,7 +226,7 @@ const useSpreadsheetAPI = () => {
   };
 
   const updateData = async (sheetName: string, rowIndex: number, values: any[]) => {
-    return await callAPI('update', sheetName, { rowIndex, values: [[...values]] });
+    return await callAPI('update', sheetName, { rowIndex, values: [values] });
   };
 
   const deleteData = async (sheetName: string, rowIndex: number) => {
