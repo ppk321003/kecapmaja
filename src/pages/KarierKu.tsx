@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink, HelpCircle, Mail, Phone, MessageCircle, BookOpen } from 'lucide-react';
-import { LayananKarir } from '@/components/LayananKarir';
+import LayananKarir from "@/components/LayananKarir";
 
 // ==================== TYPES ====================
 interface Karyawan {
