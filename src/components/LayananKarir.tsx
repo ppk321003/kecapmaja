@@ -42,52 +42,45 @@ interface KonversiData {
   Last_Update: string;
 }
 
-interface PenetapanData {
-  id?: string;
-  No?: number;
-  NIP: string;
-  Nama: string;
-  Tahun: number;
-  'AK Semester 1': number;
-  'AK Semester 2': number;
-  'AK Tahunan': number;
-  Jabatan: string;
-  Golongan: string;
-  'Tanggal Penetapan': string;
-  Penetap: string;
-  Status: 'Draft' | 'Generated';
-  Link_Dokumen?: string;
-  Last_Update: string;
-}
-
-interface AkumulasiData {
-  id?: string;
-  No?: number;
-  NIP: string;
-  Nama: string;
-  Periode: string;
-  'AK Sebelumnya': number;
-  'AK Periode Ini': number;
-  'Total Kumulatif': number;
-  Kebutuhan: number;
-  Selisih: number;
-  'Status Kenaikan': string;
-  Rekomendasi: string;
-  Link_Dokumen?: string;
-  Last_Update: string;
-}
-
 interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
-// ==================== SPREADSHEET CONFIG ====================
-const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
-const SHEET_NAMES = {
-  konversi: "konversi_predikat",
-  penetapan: "penetapan_ak",
-  akumulasi: "akumulasi_ak"
-};
+// ==================== MOCK DATA ====================
+const mockKonversiData: KonversiData[] = [
+  {
+    id: '1',
+    No: 1,
+    NIP: '19680118 198902 1 001',
+    Nama: 'John Doe',
+    Tahun: 2024,
+    Semester: 1,
+    Predikat: 'Baik',
+    'Nilai SKP': 85,
+    'AK Konversi': 12.5,
+    'TMT Mulai': '01/01/2024',
+    'TMT Selesai': '30/06/2024',
+    Status: 'Draft',
+    Catatan: 'Data contoh untuk testing',
+    Last_Update: '01/01/2024'
+  },
+  {
+    id: '2', 
+    No: 2,
+    NIP: '19680118 198902 1 001',
+    Nama: 'John Doe',
+    Tahun: 2024,
+    Semester: 2,
+    Predikat: 'Sangat Baik',
+    'Nilai SKP': 92,
+    'AK Konversi': 18.75,
+    'TMT Mulai': '01/07/2024',
+    'TMT Selesai': '31/12/2024',
+    Status: 'Generated',
+    Catatan: 'Performance excellent',
+    Last_Update: '01/07/2024'
+  }
+];
 
 // ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
@@ -124,35 +117,6 @@ class LayananKarirCalculator {
     }
   }
 
-  static calculateAKTahunan(akS1: number, akS2: number): number {
-    return Number((akS1 + akS2).toFixed(2));
-  }
-
-  static getKebutuhanAK(golongan: string, jabatan: string): number {
-    const kebutuhan: { [key: string]: number } = {
-      'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100,
-      'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
-    };
-    return kebutuhan[golongan] || 100;
-  }
-
-  static getStatusKenaikan(totalAK: number, kebutuhanAK: number): string {
-    if (totalAK >= kebutuhanAK) return 'Bisa Usul';
-    if (totalAK >= kebutuhanAK * 0.8) return 'Hampir Cukup';
-    if (totalAK >= kebutuhanAK * 0.6) return 'Sedang';
-    return 'Belum Cukup';
-  }
-
-  static getRekomendasi(status: string): string {
-    const rekomendasi: { [key: string]: string } = {
-      'Bisa Usul': 'Segera ajukan usulan kenaikan',
-      'Hampir Cukup': 'Tingkatkan kinerja semester depan',
-      'Sedang': 'Perlu peningkatan signifikan',
-      'Belum Cukup': 'Butuh evaluasi menyeluruh'
-    };
-    return rekomendasi[status] || 'Perlu evaluasi';
-  }
-
   static formatDate(date: Date): string {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -161,11 +125,72 @@ class LayananKarirCalculator {
   }
 }
 
-// ==================== API FUNCTIONS ====================
+// ==================== STORAGE MANAGEMENT ====================
+class LocalStorageManager {
+  private static readonly STORAGE_KEY = 'layanan_karir_data';
+
+  static saveData(section: string, data: any[]) {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const allData = this.loadAllData();
+      allData[section] = data;
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allData));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  }
+
+  static loadData(section: string): any[] {
+    if (typeof window === 'undefined') return [];
+    
+    try {
+      const allData = this.loadAllData();
+      return allData[section] || [];
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      return [];
+    }
+  }
+
+  private static loadAllData(): { [key: string]: any[] } {
+    if (typeof window === 'undefined') return {};
+    
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+      return {};
+    }
+  }
+}
+
+// ==================== API FUNCTIONS WITH FALLBACK ====================
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
+  const [useMockData, setUseMockData] = useState(false);
+
+  // Test if API endpoint exists
+  const testAPI = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'test' })
+      });
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  };
 
   const callAPI = async (operation: string, sheetName: string, data?: any) => {
+    // If we already know API is not available, use mock immediately
+    if (useMockData) {
+      console.log(`Using mock data for ${operation} on ${sheetName}`);
+      return await mockAPICall(operation, sheetName, data);
+    }
+
     try {
       const response = await fetch('/api/google-sheets', {
         method: 'POST',
@@ -173,7 +198,7 @@ const useSpreadsheetAPI = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80",
           operation,
           range: sheetName,
           ...data
@@ -181,24 +206,94 @@ const useSpreadsheetAPI = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'API call failed');
+        throw new Error(`HTTP ${response.status}`);
       }
-      
-      return await response.json();
+
+      const result = await response.json();
+      return result;
     } catch (error) {
-      console.error('API Error:', error);
+      console.warn(`API call failed, switching to mock data:`, error);
+      setUseMockData(true);
+      
+      // Show informative toast
       toast({
-        title: "Error",
-        description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive"
+        title: "Mode Offline",
+        description: "Menggunakan data lokal. Perubahan tidak disimpan ke server.",
+        variant: "default"
       });
-      throw error;
+
+      return await mockAPICall(operation, sheetName, data);
     }
   };
 
+  // Mock API implementation
+  const mockAPICall = async (operation: string, sheetName: string, data?: any) => {
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
+    const storageKey = `mock_${sheetName}`;
+    
+    switch (operation) {
+      case 'read':
+        const storedData = LocalStorageManager.loadData(storageKey);
+        if (storedData.length > 0) {
+          return { values: [getHeaders(sheetName), ...storedData.map((item: any) => Object.values(item))] };
+        }
+        // Return mock data if no stored data
+        const filteredMock = mockKonversiData.filter(item => !data?.nip || item.NIP === data.nip);
+        return { 
+          values: [
+            getHeaders(sheetName),
+            ...filteredMock.map(item => Object.values(item))
+          ] 
+        };
+
+      case 'append':
+        const newItem = {
+          id: Date.now().toString(),
+          No: (LocalStorageManager.loadData(storageKey).length + 1),
+          ...data.values[0]
+        };
+        const currentData = LocalStorageManager.loadData(storageKey);
+        const updatedData = [...currentData, newItem];
+        LocalStorageManager.saveData(storageKey, updatedData);
+        return { success: true };
+
+      case 'update':
+        const allData = LocalStorageManager.loadData(storageKey);
+        const rowIndex = data.rowIndex - 2; // Convert to 0-based index
+        if (rowIndex >= 0 && rowIndex < allData.length) {
+          allData[rowIndex] = { ...allData[rowIndex], ...data.values[0] };
+          LocalStorageManager.saveData(storageKey, allData);
+        }
+        return { success: true };
+
+      case 'delete':
+        const deleteData = LocalStorageManager.loadData(storageKey);
+        const deleteIndex = data.rowIndex - 2;
+        if (deleteIndex >= 0 && deleteIndex < deleteData.length) {
+          deleteData.splice(deleteIndex, 1);
+          LocalStorageManager.saveData(storageKey, deleteData);
+        }
+        return { success: true };
+
+      default:
+        return { success: true };
+    }
+  };
+
+  const getHeaders = (sheetName: string): string[] => {
+    const headers: { [key: string]: string[] } = {
+      'konversi_predikat': [
+        'No', 'NIP', 'Nama', 'Tahun', 'Semester', 'Predikat', 
+        'Nilai SKP', 'AK Konversi', 'TMT Mulai', 'TMT Selesai', 
+        'Status', 'Catatan', 'Last_Update'
+      ]
+    };
+    return headers[sheetName] || [];
+  };
+
   const readData = async (sheetName: string, nip?: string) => {
-    const result = await callAPI('read', sheetName);
+    const result = await callAPI('read', sheetName, { nip });
     const rows = result.values || [];
     
     if (rows.length <= 1) return [];
@@ -236,7 +331,7 @@ const useSpreadsheetAPI = () => {
     return await callAPI('delete', sheetName, { rowIndex });
   };
 
-  return { readData, appendData, updateData, deleteData };
+  return { readData, appendData, updateData, deleteData, useMockData };
 };
 
 // ==================== EDITABLE TABLE COMPONENTS ====================
@@ -269,7 +364,7 @@ const EditableCell = ({
   if (!isEditing) {
     return (
       <div 
-        className="cursor-pointer hover:bg-gray-50 p-1 rounded"
+        className="cursor-pointer hover:bg-gray-50 p-1 rounded min-h-[40px] flex items-center"
         onClick={() => setIsEditing(true)}
       >
         {type === 'select' && field === 'Predikat' ? (
@@ -353,8 +448,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   // States
   const [activeSection, setActiveSection] = useState<'konversi' | 'penetapan' | 'akumulasi'>('konversi');
   const [konversiData, setKonversiData] = useState<KonversiData[]>([]);
-  const [penetapanData, setPenetapanData] = useState<PenetapanData[]>([]);
-  const [akumulasiData, setAkumulasiData] = useState<AkumulasiData[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ tahun: 'all', semester: 'all' });
 
@@ -366,28 +459,19 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      switch (activeSection) {
-        case 'konversi':
-          const konversi = await api.readData(SHEET_NAMES.konversi, karyawan.nip);
-          setKonversiData(konversi);
-          break;
-        case 'penetapan':
-          const penetapan = await api.readData(SHEET_NAMES.penetapan, karyawan.nip);
-          setPenetapanData(penetapan);
-          break;
-        case 'akumulasi':
-          const akumulasi = await api.readData(SHEET_NAMES.akumulasi, karyawan.nip);
-          setAkumulasiData(akumulasi);
-          break;
-      }
+      const data = await api.readData('konversi_predikat', karyawan.nip);
+      setKonversiData(data);
     } catch (error) {
       console.error('Error loading data:', error);
+      // Fallback to mock data if API fails
+      const filteredMock = mockKonversiData.filter(item => item.NIP === karyawan.nip);
+      setKonversiData(filteredMock);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update data locally - FIXED VERSION
+  // Update data locally
   const handleUpdateData = (index: number, field: string, value: any) => {
     const updateDataState = (data: any[]) => {
       const newData = [...data];
@@ -416,46 +500,32 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       return newData;
     };
 
-    switch (activeSection) {
-      case 'konversi':
-        setKonversiData(prev => updateDataState(prev));
-        break;
-      case 'penetapan':
-        setPenetapanData(prev => updateDataState(prev));
-        break;
-      case 'akumulasi':
-        setAkumulasiData(prev => updateDataState(prev));
-        break;
-    }
+    setKonversiData(prev => updateDataState(prev));
   };
 
-  // Save individual row to spreadsheet
+  // Save individual row
   const handleSaveRow = async (rowData: any, index: number) => {
     try {
       const now = LayananKarirCalculator.formatDate(new Date());
       const updatedData = { ...rowData, Last_Update: now };
       
-      let values: any[] = [];
+      const values = [
+        updatedData.No,
+        updatedData.NIP,
+        updatedData.Nama,
+        updatedData.Tahun,
+        updatedData.Semester,
+        updatedData.Predikat,
+        updatedData['Nilai SKP'],
+        updatedData['AK Konversi'],
+        updatedData['TMT Mulai'],
+        updatedData['TMT Selesai'],
+        updatedData.Status,
+        updatedData.Catatan || '',
+        updatedData.Last_Update
+      ];
       
-      if (activeSection === 'konversi') {
-        values = [
-          updatedData.No,
-          updatedData.NIP,
-          updatedData.Nama,
-          updatedData.Tahun,
-          updatedData.Semester,
-          updatedData.Predikat,
-          updatedData['Nilai SKP'],
-          updatedData['AK Konversi'],
-          updatedData['TMT Mulai'],
-          updatedData['TMT Selesai'],
-          updatedData.Status,
-          updatedData.Catatan || '',
-          updatedData.Last_Update
-        ];
-      }
-      
-      await api.updateData(getSheetName(), rowData.rowIndex, values);
+      await api.updateData('konversi_predikat', rowData.rowIndex, values);
       
       toast({
         title: "Sukses",
@@ -505,12 +575,12 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         newData.Last_Update
       ];
 
-      await api.appendData(getSheetName(), values);
+      await api.appendData('konversi_predikat', values);
       toast({
         title: "Sukses",
         description: "Data baru berhasil ditambahkan"
       });
-      loadData(); // Reload to get the new data with proper ID
+      loadData();
     } catch (error) {
       toast({
         title: "Error",
@@ -524,7 +594,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     
     try {
-      await api.deleteData(getSheetName(), rowData.rowIndex);
+      await api.deleteData('konversi_predikat', rowData.rowIndex);
       toast({
         title: "Sukses",
         description: "Data berhasil dihapus"
@@ -539,36 +609,11 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     }
   };
 
-  const getSheetName = (): string => {
-    switch (activeSection) {
-      case 'konversi': return SHEET_NAMES.konversi;
-      case 'penetapan': return SHEET_NAMES.penetapan;
-      case 'akumulasi': return SHEET_NAMES.akumulasi;
-      default: return '';
-    }
-  };
-
   const getFilteredData = () => {
-    let data: any[] = [];
-    
-    switch (activeSection) {
-      case 'konversi':
-        data = konversiData.filter(item => 
-          (filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun) &&
-          (filters.semester === 'all' || item.Semester?.toString() === filters.semester)
-        );
-        break;
-      case 'penetapan':
-        data = penetapanData.filter(item => 
-          filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun
-        );
-        break;
-      case 'akumulasi':
-        data = akumulasiData;
-        break;
-    }
-    
-    return data;
+    return konversiData.filter(item => 
+      (filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun) &&
+      (filters.semester === 'all' || item.Semester?.toString() === filters.semester)
+    );
   };
 
   // Render Editable Tables
@@ -683,9 +728,17 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Layanan Karir - Inline Editor
+            {api.useMockData && (
+              <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-800">
+                Mode Offline
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
-            Klik pada data untuk edit, lalu simpan per baris. AK Konversi terhitung otomatis.
+            {api.useMockData 
+              ? "Menggunakan data lokal. Klik pada data untuk edit, lalu simpan per baris."
+              : "Klik pada data untuk edit, lalu simpan per baris. AK Konversi terhitung otomatis."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -697,59 +750,55 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
               Konversi Predikat
             </Button>
             <Button
-              variant={activeSection === 'penetapan' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('penetapan')}
+              variant="outline"
+              disabled
             >
-              Penetapan AK
+              Penetapan AK (Coming Soon)
             </Button>
             <Button
-              variant={activeSection === 'akumulasi' ? 'default' : 'outline'}
-              onClick={() => setActiveSection('akumulasi')}
+              variant="outline"
+              disabled
             >
-              Akumulasi AK
+              Akumulasi AK (Coming Soon)
             </Button>
           </div>
 
           {/* Filters */}
           <div className="flex gap-4 mb-4 items-end">
-            {(activeSection === 'konversi' || activeSection === 'penetapan') && (
-              <div className="flex-1">
-                <Label htmlFor="filter-tahun">Tahun</Label>
-                <Select 
-                  value={filters.tahun} 
-                  onValueChange={(value) => setFilters({...filters, tahun: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Semua Tahun" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Tahun</SelectItem>
-                    {[2023, 2024, 2025].map(year => (
-                      <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="flex-1">
+              <Label htmlFor="filter-tahun">Tahun</Label>
+              <Select 
+                value={filters.tahun} 
+                onValueChange={(value) => setFilters({...filters, tahun: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tahun</SelectItem>
+                  {[2023, 2024, 2025].map(year => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
-            {activeSection === 'konversi' && (
-              <div className="flex-1">
-                <Label htmlFor="filter-semester">Semester</Label>
-                <Select 
-                  value={filters.semester} 
-                  onValueChange={(value) => setFilters({...filters, semester: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Semua Semester" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Semester</SelectItem>
-                    <SelectItem value="1">Semester 1</SelectItem>
-                    <SelectItem value="2">Semester 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="flex-1">
+              <Label htmlFor="filter-semester">Semester</Label>
+              <Select 
+                value={filters.semester} 
+                onValueChange={(value) => setFilters({...filters, semester: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Semester</SelectItem>
+                  <SelectItem value="1">Semester 1</SelectItem>
+                  <SelectItem value="2">Semester 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             
             <Button onClick={loadData} variant="outline">
               <Filter className="h-4 w-4 mr-2" />
@@ -780,10 +829,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                   </Button>
                 </div>
               ) : (
-                <>
-                  {activeSection === 'konversi' && renderKonversiTable()}
-                  {/* Add similar tables for penetapan and akumulasi */}
-                </>
+                renderKonversiTable()
               )}
             </CardContent>
           </Card>
