@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
-
+import LayananKarir from '@/components/LayananKarier';
 // ==================== TYPES ====================
 interface Karyawan {
   nip: string;
@@ -1867,6 +1867,7 @@ const KarierKu: React.FC = () => {
                 <FileText className="h-4 w-4" />
                 Tabel Individu
               </TabsTrigger>
+              <TabsTrigger value="layanan">Layanan Karir</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboardKarir" className="space-y-6">
               <DashboardKarierKu karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
@@ -1874,6 +1875,9 @@ const KarierKu: React.FC = () => {
             <TabsContent value="tabelIndividu" className="space-y-6">
               <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
             </TabsContent>
+            <TabsContent value="layanan">
+            <LayananKarir karyawan={selectedKaryawan} />
+          </TabsContent>
           </Tabs>
         </> : <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
