@@ -57,28 +57,58 @@ const SHEET_NAME = "konversi_predikat";
 
 // ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
-  // Tentukan koefisien berdasarkan jabatan dan kategori
-  static getKoefisien(jabatan: string, kategori: string): number {
+  // Tentukan koefisien berdasarkan jabatan, kategori, dan golongan
+  static getKoefisien(jabatan: string, kategori: string, golongan: string): number {
     const jabatanLower = jabatan.toLowerCase();
+    const golonganLower = golongan.toLowerCase();
     
     // Untuk kategori Reguler, koefisien 0 karena tidak menggunakan AK
     if (kategori === 'Reguler') return 0;
 
     // Koefisien untuk kategori Keahlian (Fungsional)
     if (kategori === 'Keahlian') {
-      if (jabatanLower.includes('ahli utama') || jabatanLower.includes('pembina utama')) return 50.0;
-      if (jabatanLower.includes('ahli madya') || jabatanLower.includes('pembina tingkat i')) return 37.5;
-      if (jabatanLower.includes('ahli muda') || jabatanLower.includes('penata tingkat i')) return 25.0;
-      if (jabatanLower.includes('ahli pertama') || jabatanLower.includes('penata')) return 12.5;
+      // Ahli Utama (IV/c - IV/d)
+      if (jabatanLower.includes('ahli utama') || golonganLower.includes('iv/c') || golonganLower.includes('iv/d')) {
+        return 50.0;
+      }
+      // Ahli Madya (IV/a - IV/b)
+      if (jabatanLower.includes('ahli madya') || golonganLower.includes('iv/a') || golonganLower.includes('iv/b')) {
+        return 37.5;
+      }
+      // Ahli Muda (III/c - III/d)
+      if (jabatanLower.includes('ahli muda') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
+        return 25.0;
+      }
+      // Ahli Pertama (III/a - III/b)
+      if (jabatanLower.includes('ahli pertama') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
+        return 12.5;
+      }
+      
+      // Default untuk jabatan keahlian lainnya berdasarkan golongan
+      if (golonganLower.includes('iv/')) return 37.5;
+      if (golonganLower.includes('iii/')) return 12.5;
       
       return 12.5;
     }
     
     // Koefisien untuk kategori Keterampilan (Pelaksana)
     if (kategori === 'Keterampilan') {
-      if (jabatanLower.includes('penyelia') || jabatanLower.includes('pengawas')) return 25.0;
-      if (jabatanLower.includes('mahir') || jabatanLower.includes('pelaksana lanjutan')) return 12.5;
-      if (jabatanLower.includes('terampil') || jabatanLower.includes('pelaksana')) return 8.0;
+      // Penyelia (III/c - III/d)
+      if (jabatanLower.includes('penyelia') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
+        return 25.0;
+      }
+      // Mahir (III/a - III/b)
+      if (jabatanLower.includes('mahir') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
+        return 12.5;
+      }
+      // Terampil (II/a - II/d)
+      if (jabatanLower.includes('terampil') || golonganLower.includes('ii/')) {
+        return 8.0;
+      }
+      
+      // Default untuk jabatan keterampilan lainnya berdasarkan golongan
+      if (golonganLower.includes('iii/')) return 12.5;
+      if (golonganLower.includes('ii/')) return 8.0;
       
       return 8.0;
     }
@@ -284,13 +314,14 @@ class LayananKarirCalculator {
     nilaiSKP: number, 
     jabatan: string, 
     kategori: string,
+    golongan: string,
     masaKerjaBulan: number,
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL'
   ): number {
     // Untuk kategori Reguler, tidak ada perhitungan AK
     if (kategori === 'Reguler') return 0;
 
-    const koefisien = this.getKoefisien(jabatan, kategori);
+    const koefisien = this.getKoefisien(jabatan, kategori, golongan);
     
     let akKonversi = 0;
     if (jenisPenilaian === 'PENUH') {
@@ -430,6 +461,7 @@ const EditKonversiModal: React.FC<{
       formData['Nilai SKP'] || 95,
       karyawan.jabatan,
       karyawan.kategori,
+      karyawan.golongan,
       masaKerjaBulan,
       jenisPenilaian
     );
@@ -466,7 +498,7 @@ const EditKonversiModal: React.FC<{
   };
 
   const { akKonversi, masaKerja, jenis } = calculateAK();
-  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori);
+  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -575,6 +607,12 @@ const EditKonversiModal: React.FC<{
                 • Jenis Penilaian: {jenis}<br />
                 • Masa Kerja: {masaKerja} bulan<br />
                 • Koefisien: {koefisien}<br />
+                • Predikat: {formData.Predikat} ({{
+                  'Sangat Baik': '1.50',
+                  'Baik': '1.00', 
+                  'Cukup': '0.75',
+                  'Kurang': '0.50'
+                }[formData.Predikat]})<br />
                 • AK Konversi: {akKonversi}<br />
                 • Periode: {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {LayananKarirCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}
               </p>
@@ -632,7 +670,7 @@ const GenerateSemesterModal: React.FC<{
     onClose();
   };
 
-  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori);
+  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -650,6 +688,7 @@ const GenerateSemesterModal: React.FC<{
               <strong>TMT Jabatan:</strong> {tmtJabatan}<br />
               <strong>Jumlah Semester:</strong> {availableSemesters.length}<br />
               <strong>Kategori:</strong> {karyawan.kategori}<br />
+              <strong>Golongan:</strong> {karyawan.golongan}<br />
               <strong>Koefisien:</strong> {koefisien}<br />
               <strong>Sistem:</strong> Penilaian Proporsional sesuai Peraturan BKN Nomor 3 Tahun 2023
             </p>
@@ -678,6 +717,7 @@ const GenerateSemesterModal: React.FC<{
                       95,
                       karyawan.jabatan,
                       karyawan.kategori,
+                      karyawan.golongan,
                       semester.masaKerjaBulan,
                       semester.jenisPenilaian
                     );
@@ -823,6 +863,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       95,
       karyawan.jabatan,
       karyawan.kategori,
+      karyawan.golongan,
       masaKerjaBulan,
       jenisPenilaian
     );
@@ -901,6 +942,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           95,
           karyawan.jabatan,
           karyawan.kategori,
+          karyawan.golongan,
           semester.masaKerjaBulan,
           semester.jenisPenilaian
         );
@@ -1063,7 +1105,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     </Table>
   );
 
-  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori);
+  const koefisien = LayananKarirCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
     <div className="space-y-6 p-6">
@@ -1135,7 +1177,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
-              <strong>Informasi Karyawan:</strong> {karyawan.kategori} - Koefisien: {koefisien} - TMT Jabatan: {karyawan.tmtJabatan}
+              <strong>Informasi Karyawan:</strong> {karyawan.kategori} - {karyawan.jabatan} - Golongan: {karyawan.golongan} - Koefisien: {koefisien} - TMT Jabatan: {karyawan.tmtJabatan}
             </p>
           </div>
 
