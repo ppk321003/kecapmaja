@@ -160,25 +160,44 @@ class LayananKarirCalculator {
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
 
+  // Ganti dengan URL Supabase Function kamu
+  const SUPABASE_FUNCTION_URL = "https://tvoj-project.supabase.co/functions/v1/google-sheets";
+  // Atau kalau pakai custom domain:
+  // const SUPABASE_FUNCTION_URL = "https://api.kecapmaja.com/google-sheets";
+
   const callAPI = async (operation: string, sheetName: string, data?: any) => {
     try {
-      const response = await fetch('/api/google-sheets', {
+      console.log(`API Call: ${operation} to ${sheetName}`, data);
+
+      const response = await fetch(SUPABASE_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Kalau kamu pakai anon key (disarankan)
+          // 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
           spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: sheetName,
+          range: sheetName,        // ← PASTIKAN INI ADA!
           ...data
         })
       });
 
-      if (!response.ok) throw new Error('API call failed');
-      return await response.json();
-    } catch (error) {
+      const result = await response.json();
+      console.log("Response dari Supabase:", result);
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
+      }
+
+      return result;
+
+    } catch (error: any) {
+      console.error("Error di callAPI:", error);
       toast({
-        title: "Error",
-        description: "Gagal mengakses spreadsheet",
+        title: "Koneksi Gagal",
+        description: error.message || "Tidak bisa terhubung ke Google Sheets",
         variant: "destructive"
       });
       throw error;
@@ -188,23 +207,31 @@ const useSpreadsheetAPI = () => {
   const readData = async (sheetName: string, nip?: string) => {
     const result = await callAPI('read', sheetName);
     const rows = result.values || [];
-    if (rows.length <= 1) return [];
+    if (rows.length === 0) return [];
 
     const headers = rows[0];
     return rows.slice(1)
       .filter((row: any[]) => !nip || row[1] === nip)
       .map((row: any[], index: number) => {
         const obj: any = { id: index + 2 };
-        headers.forEach((header: string, colIndex: number) => {
-          obj[header] = row[colIndex] ?? '';
+        headers.forEach((header: string, i: number) => {
+          obj[header] = row[i] ?? '';
         });
         return obj;
       });
   };
 
-  const appendData = async (sheetName: string, values: any[]) => callAPI('append', sheetName, { values });
-  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => callAPI('update', sheetName, { rowIndex, values });
-  const deleteData = async (sheetName: string, rowIndex: number) => callAPI('delete', sheetName, { rowIndex });
+  const appendData = async (sheetName: string, values: any[]) => {
+    return await callAPI('append', sheetName, { values });
+  };
+
+  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => {
+    return await callAPI('update', sheetName, { rowIndex, values: [[...values]] });
+  };
+
+  const deleteData = async (sheetName: string, rowIndex: number) => {
+    return await callAPI('delete', sheetName, { rowIndex });
+  };
 
   return { readData, appendData, updateData, deleteData };
 };
