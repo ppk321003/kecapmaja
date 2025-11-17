@@ -82,6 +82,14 @@ interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
+// ==================== SPREADSHEET CONFIG ====================
+const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
+const SHEET_NAMES = {
+  konversi: "konversi_predikat",
+  penetapan: "penetapan_ak",
+  akumulasi: "akumulasi_ak"
+};
+
 // ==================== UTILITY FUNCTIONS ====================
 class LayananKarirCalculator {
   static calculateAKFromPredikat(predikat: string, nilaiSKP: number): number {
@@ -154,103 +162,79 @@ class LayananKarirCalculator {
   }
 }
 
-// ==================== MOCK DATA ====================
-const mockKonversiData: KonversiData[] = [
-  {
-    id: '1',
-    No: 1,
-    NIP: '123456',
-    Nama: 'John Doe',
-    Tahun: 2024,
-    Semester: 1,
-    Predikat: 'Baik',
-    'Nilai SKP': 85,
-    'AK Konversi': 12.5,
-    'TMT Mulai': '01/01/2024',
-    'TMT Selesai': '30/06/2024',
-    Status: 'Draft',
-    Catatan: 'Test data',
-    Last_Update: '01/01/2024'
-  }
-];
-
-const mockPenetapanData: PenetapanData[] = [
-  {
-    id: '1',
-    No: 1,
-    NIP: '123456',
-    Nama: 'John Doe',
-    Tahun: 2024,
-    'AK Semester 1': 12.5,
-    'AK Semester 2': 13.0,
-    'AK Tahunan': 25.5,
-    Jabatan: 'Analis SDM',
-    Golongan: 'III/c',
-    'Tanggal Penetapan': '01/07/2024',
-    Penetap: 'Kepala BKD',
-    Status: 'Generated',
-    Last_Update: '01/07/2024'
-  }
-];
-
-const mockAkumulasiData: AkumulasiData[] = [
-  {
-    id: '1',
-    No: 1,
-    NIP: '123456',
-    Nama: 'John Doe',
-    Periode: '2024',
-    'AK Sebelumnya': 50,
-    'AK Periode Ini': 25.5,
-    'Total Kumulatif': 75.5,
-    Kebutuhan: 100,
-    Selisih: -24.5,
-    'Status Kenaikan': 'Sedang',
-    Rekomendasi: 'Perlu peningkatan signifikan',
-    Last_Update: '01/01/2025'
-  }
-];
-
 // ==================== API FUNCTIONS ====================
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
 
-  // Mock API untuk development
-  const readData = async (sheetName: string, nip?: string): Promise<any[]> => {
-    console.log(`Reading data from ${sheetName} for NIP: ${nip}`);
-    
-    // Simulasi loading
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Return mock data berdasarkan sheetName
-    switch (sheetName) {
-      case 'konversi_predikat':
-        return mockKonversiData.filter(item => !nip || item.NIP === nip);
-      case 'penetapan_ak':
-        return mockPenetapanData.filter(item => !nip || item.NIP === nip);
-      case 'akumulasi_ak':
-        return mockAkumulasiData.filter(item => !nip || item.NIP === nip);
-      default:
-        return [];
+  const callAPI = async (operation: string, sheetName: string, data?: any) => {
+    try {
+      const response = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          spreadsheetId: SPREADSHEET_ID,
+          operation,
+          range: sheetName,
+          ...data
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'API call failed');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      toast({
+        title: "Error",
+        description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
+      throw error;
     }
   };
 
-  const appendData = async (sheetName: string, values: any[]): Promise<any> => {
-    console.log(`Appending data to ${sheetName}:`, values);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return { success: true };
+  const readData = async (sheetName: string, nip?: string) => {
+    const result = await callAPI('read', sheetName);
+    const rows = result.values || [];
+    
+    if (rows.length <= 1) return []; // Hanya header
+    
+    const headers = rows[0];
+    const data = rows.slice(1)
+      .filter((row: any[]) => !nip || row[headers.indexOf('NIP')] === nip)
+      .map((row: any[], index: number) => {
+        const obj: any = { 
+          id: index + 2, // +2 karena header + 1-based index
+          rowIndex: index + 2 // Simpan rowIndex untuk update/delete
+        };
+        headers.forEach((header: string, colIndex: number) => {
+          obj[header] = row[colIndex];
+        });
+        return obj;
+      });
+    
+    console.log(`Loaded ${data.length} records from ${sheetName}`);
+    return data;
   };
 
-  const updateData = async (sheetName: string, rowIndex: number, values: any[]): Promise<any> => {
-    console.log(`Updating data in ${sheetName} at row ${rowIndex}:`, values);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return { success: true };
+  const appendData = async (sheetName: string, values: any[]) => {
+    console.log(`Appending to ${sheetName}:`, values);
+    return await callAPI('append', sheetName, { values: [values] });
   };
 
-  const deleteData = async (sheetName: string, rowIndex: number): Promise<any> => {
-    console.log(`Deleting data from ${sheetName} at row ${rowIndex}`);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return { success: true };
+  const updateData = async (sheetName: string, rowIndex: number, values: any[]) => {
+    console.log(`Updating ${sheetName} row ${rowIndex}:`, values);
+    return await callAPI('update', sheetName, { rowIndex, values: [values] });
+  };
+
+  const deleteData = async (sheetName: string, rowIndex: number) => {
+    console.log(`Deleting ${sheetName} row ${rowIndex}`);
+    return await callAPI('delete', sheetName, { rowIndex });
   };
 
   return { readData, appendData, updateData, deleteData };
@@ -281,25 +265,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     try {
       switch (activeSection) {
         case 'konversi':
-          const konversi = await api.readData('konversi_predikat', karyawan.nip);
+          const konversi = await api.readData(SHEET_NAMES.konversi, karyawan.nip);
           setKonversiData(konversi);
           break;
         case 'penetapan':
-          const penetapan = await api.readData('penetapan_ak', karyawan.nip);
+          const penetapan = await api.readData(SHEET_NAMES.penetapan, karyawan.nip);
           setPenetapanData(penetapan);
           break;
         case 'akumulasi':
-          const akumulasi = await api.readData('akumulasi_ak', karyawan.nip);
+          const akumulasi = await api.readData(SHEET_NAMES.akumulasi, karyawan.nip);
           setAkumulasiData(akumulasi);
           break;
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
@@ -312,13 +291,13 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     switch (activeSection) {
       case 'konversi':
         data = konversiData.filter(item => 
-          (filters.tahun === 'all' || item.Tahun.toString() === filters.tahun) &&
-          (filters.semester === 'all' || item.Semester.toString() === filters.semester)
+          (filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun) &&
+          (filters.semester === 'all' || item.Semester?.toString() === filters.semester)
         );
         break;
       case 'penetapan':
         data = penetapanData.filter(item => 
-          filters.tahun === 'all' || item.Tahun.toString() === filters.tahun
+          filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun
         );
         break;
       case 'akumulasi':
@@ -343,7 +322,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     
     try {
-      await api.deleteData(getSheetName(), data.id);
+      await api.deleteData(getSheetName(), data.rowIndex || data.id);
       toast({
         title: "Sukses",
         description: "Data berhasil dihapus"
@@ -363,14 +342,31 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       let updatedData = { ...data };
       
       if (activeSection === 'konversi') {
+        // Recalculate AK Konversi
         updatedData['AK Konversi'] = LayananKarirCalculator.calculateAKFromPredikat(
           data.Predikat, 
           data['Nilai SKP']
         );
         updatedData.Last_Update = LayananKarirCalculator.formatDate(new Date());
         
-        const values = Object.values(updatedData).slice(1);
-        await api.updateData('konversi_predikat', data.id, [values]);
+        // Update in spreadsheet - hanya kirim values tanpa header
+        const values = [
+          updatedData.No,
+          updatedData.NIP,
+          updatedData.Nama,
+          updatedData.Tahun,
+          updatedData.Semester,
+          updatedData.Predikat,
+          updatedData['Nilai SKP'],
+          updatedData['AK Konversi'],
+          updatedData['TMT Mulai'],
+          updatedData['TMT Selesai'],
+          updatedData.Status,
+          updatedData.Catatan || '',
+          updatedData.Last_Update
+        ];
+        
+        await api.updateData(getSheetName(), data.rowIndex || data.id, values);
       }
       
       toast({
@@ -389,9 +385,9 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
   const getSheetName = (): string => {
     switch (activeSection) {
-      case 'konversi': return 'konversi_predikat';
-      case 'penetapan': return 'penetapan_ak';
-      case 'akumulasi': return 'akumulasi_ak';
+      case 'konversi': return SHEET_NAMES.konversi;
+      case 'penetapan': return SHEET_NAMES.penetapan;
+      case 'akumulasi': return SHEET_NAMES.akumulasi;
       default: return '';
     }
   };
@@ -399,6 +395,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const handleSave = async (formData: any) => {
     try {
       const now = LayananKarirCalculator.formatDate(new Date());
+      let values: any[] = [];
       
       if (activeSection === 'konversi') {
         const periode = LayananKarirCalculator.calculatePeriodeSemester(
@@ -406,30 +403,34 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           formData.Semester
         );
         
-        const newData: KonversiData = {
-          NIP: karyawan.nip,
-          Nama: karyawan.nama,
-          Tahun: formData.Tahun,
-          Semester: formData.Semester,
-          Predikat: formData.Predikat,
-          'Nilai SKP': formData['Nilai SKP'],
-          'AK Konversi': LayananKarirCalculator.calculateAKFromPredikat(
-            formData.Predikat, 
-            formData['Nilai SKP']
-          ),
-          'TMT Mulai': periode.mulai,
-          'TMT Selesai': periode.selesai,
-          Status: 'Draft',
-          Catatan: formData.Catatan || '',
-          Last_Update: now
-        };
+        const akKonversi = LayananKarirCalculator.calculateAKFromPredikat(
+          formData.Predikat, 
+          formData['Nilai SKP']
+        );
 
-        const values = Object.values(newData);
+        // Prepare values array sesuai dengan urutan kolom di spreadsheet
+        values = [
+          '', // No akan auto-increment
+          karyawan.nip,
+          karyawan.nama,
+          formData.Tahun,
+          formData.Semester,
+          formData.Predikat,
+          formData['Nilai SKP'],
+          akKonversi,
+          periode.mulai,
+          periode.selesai,
+          'Draft',
+          formData.Catatan || '',
+          now
+        ];
+
+        console.log('Saving data with values:', values);
         
         if (editingData) {
-          await api.updateData('konversi_predikat', editingData.id, [values]);
+          await api.updateData(getSheetName(), editingData.rowIndex || editingData.id, values);
         } else {
-          await api.appendData('konversi_predikat', [values]);
+          await api.appendData(getSheetName(), values);
         }
       }
       
@@ -440,6 +441,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       });
       loadData();
     } catch (error) {
+      console.error('Save error:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan data",
