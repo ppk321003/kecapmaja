@@ -65,7 +65,7 @@ const ProfileHeader: React.FC<{
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="mx-0 px-[10px]">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
             <User className="h-5 w-5 text-blue-600" />
@@ -101,19 +101,7 @@ const ProfileHeader: React.FC<{
         </div>
 
         {/* Progress AK */}
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Progress Angka Kredit</span>
-            <span className="text-sm font-bold text-blue-600">
-              {karyawan.akKumulatif} / 200 AK
-            </span>
-          </div>
-          <Progress value={calculateProgress(karyawan.akKumulatif)} className="h-2" />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>TMT Jabatan: {karyawan.tmtJabatan}</span>
-            <span>TMT Pangkat: {karyawan.tmtPangkat}</span>
-          </div>
-        </div>
+        
       </CardContent>
     </Card>;
 };
@@ -150,25 +138,12 @@ const CareerStats: React.FC<{
     color: "text-purple-600 bg-purple-100",
     suffix: ""
   }];
-  
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  return <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map((stat, index) => {
-        const IconComponent = stat.icon;
-        return (
-          <Card key={index} className="text-center p-4">
-            <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center mx-auto mb-3`}>
-              <IconComponent className="h-6 w-6" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-            <p className="text-xl font-bold text-gray-800">
-              {stat.value} {stat.suffix}
-            </p>
-          </Card>
-        );
-      })}
-    </div>
-  );
+      const IconComponent = stat.icon;
+      return;
+    })}
+    </div>;
 };
 
 // Komponen sementara untuk PenetapanAK dengan improvement

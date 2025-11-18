@@ -39,7 +39,6 @@ interface Karyawan {
   linkSkJabatan?: string;
   linkSkPangkat?: string;
 }
-
 interface EstimasiKenaikan {
   kebutuhanAKPangkat: number;
   kebutuhanAKJabatan: number;
@@ -70,41 +69,57 @@ const SHEET_NAME = "data";
 class DateParser {
   static parseTanggalIndonesia(tanggal: string): Date {
     if (!tanggal || tanggal.trim() === '') return new Date();
-    
+
     // Coba parsing format ISO terlebih dahulu
     if (tanggal.includes('-')) {
       const date = new Date(tanggal);
       if (!isNaN(date.getTime())) return date;
     }
-    
-    // Mapping nama bulan Indonesia ke angka
-    const bulanMap: { [key: string]: number } = {
-      'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
-      'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11,
-      'january': 0, 'february': 1, 'march': 2, 'may': 4, 'june': 5,
-      'july': 6, 'august': 7, 'october': 9, 'december': 11
-    };
 
+    // Mapping nama bulan Indonesia ke angka
+    const bulanMap: {
+      [key: string]: number;
+    } = {
+      'januari': 0,
+      'februari': 1,
+      'maret': 2,
+      'april': 3,
+      'mei': 4,
+      'juni': 5,
+      'juli': 6,
+      'agustus': 7,
+      'september': 8,
+      'oktober': 9,
+      'november': 10,
+      'desember': 11,
+      'january': 0,
+      'february': 1,
+      'march': 2,
+      'may': 4,
+      'june': 5,
+      'july': 6,
+      'august': 7,
+      'october': 9,
+      'december': 11
+    };
     const cleanedDate = tanggal.toLowerCase().trim();
-    
+
     // Format: "11 April 2023"
     const parts = cleanedDate.split(' ');
     if (parts.length === 3) {
       const day = parseInt(parts[0]);
       const month = bulanMap[parts[1]];
       const year = parseInt(parts[2]);
-      
       if (!isNaN(day) && month !== undefined && !isNaN(year)) {
         return new Date(year, month, day);
       }
     }
-    
+
     // Format: "11/04/2023" atau "11-04-2023"
     const separator = cleanedDate.includes('/') ? '/' : '-';
     const dateParts = cleanedDate.split(separator);
     if (dateParts.length === 3) {
       let day, month, year;
-      
       if (dateParts[0].length === 4) {
         // Format: "2023/04/11"
         year = parseInt(dateParts[0]);
@@ -116,18 +131,17 @@ class DateParser {
         month = parseInt(dateParts[1]) - 1;
         year = parseInt(dateParts[2]);
       }
-      
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
         return new Date(year, month, day);
       }
     }
-    
+
     // Fallback: coba parsing dengan Date constructor
     const fallbackDate = new Date(tanggal);
     if (!isNaN(fallbackDate.getTime())) {
       return fallbackDate;
     }
-    
+
     // Jika semua gagal, return tanggal default
     console.warn(`Tidak bisa parsing tanggal: ${tanggal}, menggunakan tanggal default`);
     return new Date();
@@ -146,7 +160,6 @@ class AngkaKreditCalculator {
     }
     return 'Reguler';
   }
-
   static getKoefisien(jabatan: string): number {
     const koefisienMap: {
       [key: string]: number;
@@ -169,7 +182,6 @@ class AngkaKreditCalculator {
     if (jabatan.includes('Terampil')) return 8.0;
     return 12.5;
   }
-
   static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     // Untuk kategori Reguler, tidak ada AK tambahan untuk jabatan
     if (karyawan.kategori === 'Reguler') return 0;
@@ -183,13 +195,11 @@ class AngkaKreditCalculator {
     const akTambahan = selisihBulan * akPerBulan;
     return Number(akTambahan.toFixed(2));
   }
-
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
     const akReal = karyawan.akKumulatif + akTambahan;
     return Number(akReal.toFixed(2));
   }
-
   static hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
     const tahunAwal = tanggalAwal.getFullYear();
     const bulanAwal = tanggalAwal.getMonth();
@@ -197,7 +207,6 @@ class AngkaKreditCalculator {
     const bulanAkhir = tanggalAkhir.getMonth();
     return (tahunAkhir - tahunAwal) * 12 + (bulanAkhir - bulanAwal);
   }
-
   static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
     if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk pangkat
 
@@ -227,7 +236,6 @@ class AngkaKreditCalculator {
     const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
     return kebutuhan[golonganSekarang] || 0;
   }
-
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
     if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk jabatan
 
@@ -257,7 +265,6 @@ class AngkaKreditCalculator {
     }
     return 0;
   }
-
   static isKenaikanJenjang(jabatanSekarang: string, jabatanBerikutnya: string, golonganSekarang: string, golonganBerikutnya: string): boolean {
     const titikJenjang = [{
       dari: 'Ahli Pertama',
@@ -287,7 +294,6 @@ class AngkaKreditCalculator {
     }];
     return titikJenjang.some(titik => jabatanSekarang.includes(titik.dari) && jabatanBerikutnya.includes(titik.ke) && golonganSekarang === titik.golDari && golonganBerikutnya === titik.golKe);
   }
-
   static hitungProgressPangkatReguler(tmtPangkat: string): {
     bulan: number;
     persentase: number;
@@ -301,7 +307,6 @@ class AngkaKreditCalculator {
       persentase
     };
   }
-
   static cekSyaratPendidikan(golonganSekarang: string, pendidikan: string): boolean {
     const pendidikanLower = pendidikan.toLowerCase();
     const punyaS2 = pendidikanLower.includes('s-2') || pendidikanLower.includes('s2') || pendidikanLower.includes('magister');
@@ -318,13 +323,11 @@ class AngkaKreditCalculator {
     // III/D dan IV/A-IV/C wajib S2
     return punyaS2;
   }
-
   static bisaNaikPangkatReguler(golonganSekarang: string, pendidikan: string, progressBulan: number): boolean {
     const masaKerjaCukup = progressBulan >= 48;
     const pendidikanCukup = this.cekSyaratPendidikan(golonganSekarang, pendidikan);
     return masaKerjaCukup && pendidikanCukup;
   }
-
   static hitungEstimasiKenaikan(karyawan: Karyawan, predikatAsumsi: number = 1.00): EstimasiKenaikan {
     // Untuk kategori Reguler, perhitungan khusus
     if (karyawan.kategori === 'Reguler') {
@@ -399,7 +402,6 @@ class AngkaKreditCalculator {
       progressPangkatPersentase: 0
     };
   }
-
   static getGolonganBerikutnya(golonganSekarang: string, kategori: string): string {
     if (kategori === 'Reguler') {
       const progressionReguler: {
@@ -442,7 +444,6 @@ class AngkaKreditCalculator {
     const progression = kategori === 'Keahlian' ? progressionKeahlian : progressionKeterampilan;
     return progression[golonganSekarang] || 'Tidak Ada';
   }
-
   static getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
     if (kategori === 'Reguler') return 'Tidak berlaku';
     const progressionKeahlian: {
@@ -471,7 +472,6 @@ class AngkaKreditCalculator {
     }
     return 'Tidak Diketahui';
   }
-
   static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string, isKenaikanJenjang: boolean, golonganSekarang: string, golonganBerikutnya: string): string {
     if (kategori === 'Reguler') {
       return "Jabatan struktural - kenaikan berdasarkan masa kerja 4 tahun";
@@ -495,7 +495,6 @@ class AngkaKreditCalculator {
     }
     return '';
   }
-
   static getTingkatPendidikan(pendidikan: string): string {
     const pendLower = pendidikan.toLowerCase();
     if (pendLower.includes('s-3') || pendLower.includes('s3') || pendLower.includes('doktor')) return 'S3';
@@ -506,12 +505,10 @@ class AngkaKreditCalculator {
     if (pendLower.includes('sma') || pendLower.includes('smk') || pendLower.includes('paket c')) return 'SMA';
     return 'Tidak Diketahui';
   }
-
   static cukupUntukAlihJalur(pendidikan: string): boolean {
     const tingkat = this.getTingkatPendidikan(pendidikan);
     return ['D4', 'S1', 'S2', 'S3'].includes(tingkat);
   }
-
   static getRekomendasiKarir(karyawan: Karyawan): string {
     const tingkatPendidikan = this.getTingkatPendidikan(karyawan.pendidikan);
     if (karyawan.kategori === 'Reguler') {
@@ -663,7 +660,7 @@ const DashboardKarierKu: React.FC<{
                     <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
                     <TableCell className="text-center">
-                      <Button size="sm" variant="ghost"                      onClick={() => onSelectKaryawan(k)}>
+                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
                         <LogIn className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -882,7 +879,6 @@ const PDFViewer: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const ProgressCard: React.FC<{
   title: string;
   akSaatIni: number;
@@ -1038,7 +1034,6 @@ const ProgressCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const BiodataCard: React.FC<{
   karyawan: Karyawan;
   akRealSaatIni: number;
@@ -1190,7 +1185,6 @@ const BiodataCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
   onValueChange: (value: number) => void;
@@ -1240,7 +1234,6 @@ const PredikatKinerjaRadio: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const EmployeeTable: React.FC<{
   karyawanList: Karyawan[];
   onSelect: (karyawan: Karyawan) => void;
@@ -1424,7 +1417,6 @@ const EmployeeTable: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const EstimasiKenaikanCard: React.FC<{
   karyawan: Karyawan;
 }> = ({
@@ -1605,7 +1597,6 @@ const EstimasiKenaikanCard: React.FC<{
       </CardContent>
     </Card>;
 };
-
 const DokumenSKCard: React.FC<{
   karyawan: Karyawan;
 }> = ({
@@ -1760,7 +1751,6 @@ const CompactPDFViewer: React.FC<{
       </div>
     </div>;
 };
-
 const EmployeeDashboard: React.FC<{
   karyawan: Karyawan;
 }> = ({
@@ -1831,7 +1821,6 @@ const EmployeeDashboard: React.FC<{
       <EstimasiKenaikanCard karyawan={karyawan} />
     </div>;
 };
-
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
@@ -2007,7 +1996,7 @@ const KarierKu: React.FC = () => {
               <DokumenSKCard karyawan={selectedKaryawan} />
             </TabsContent>
             <TabsContent value="layanan" className="space-y-6">
-              <LayananKarir karyawan={selectedKaryawan} />
+              <LayananKarir karyawan={selectedKaryawan} className="mx-0 my-0" />
             </TabsContent>
           </Tabs>
         </>}
