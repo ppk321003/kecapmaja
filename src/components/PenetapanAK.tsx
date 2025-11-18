@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Filter, FileText, Calendar, User } from 'lucide-react';
+import { Edit, Trash2, Plus, Filter, FileText, Calendar, User, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -92,21 +92,72 @@ class PenetapanCalculator {
     );
   }
 
-  // Generate data penetapan dari data konversi (jika diperlukan)
+  // Generate data penetapan dari data konversi
   static generateFromKonversi(
     konversiData: any[], 
-    tahun: number, 
     karyawan: Karyawan
-  ): { akSemester1: number; akSemester2: number; akTahunan: number } {
-    const dataTahun = konversiData.filter(item => item.Tahun === tahun);
-    const semester1 = dataTahun.find(item => item.Semester === 1);
-    const semester2 = dataTahun.find(item => item.Semester === 2);
+  ): { 
+    tahun: number;
+    akSemester1: number; 
+    akSemester2: number; 
+    akTahunan: number;
+    jabatan: string;
+    golongan: string;
+    tanggalPenetapan: string;
+    penetap: string;
+    status: 'Draft' | 'Disetujui' | 'Ditolak';
+  }[] {
+    const years: { [key: number]: { semester1: number; semester2: number } } = {};
+    
+    console.log('🔍 Memproses data konversi untuk penetapan:', konversiData);
+    
+    // Group by tahun dan semester
+    konversiData.forEach(item => {
+      const tahun = item.Tahun;
+      const semester = item.Semester;
+      const akKonversi = item['AK Konversi'] || 0;
+      
+      if (!years[tahun]) {
+        years[tahun] = { semester1: 0, semester2: 0 };
+      }
+      
+      if (semester === 1) {
+        years[tahun].semester1 += akKonversi;
+        console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 1 ${tahun}`);
+      } else if (semester === 2) {
+        years[tahun].semester2 += akKonversi;
+        console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 2 ${tahun}`);
+      }
+    });
 
-    const akSemester1 = semester1 ? semester1['AK Konversi'] : 0;
-    const akSemester2 = semester2 ? semester2['AK Konversi'] : 0;
-    const akTahunan = this.calculateAKTahunan(akSemester1, akSemester2);
+    const result = [];
+    const now = new Date();
 
-    return { akSemester1, akSemester2, akTahunan };
+    for (const [tahunStr, data] of Object.entries(years)) {
+      const tahun = parseInt(tahunStr);
+      const akTahunan = this.calculateAKTahunan(data.semester1, data.semester2);
+      
+      result.push({
+        tahun,
+        akSemester1: data.semester1,
+        akSemester2: data.semester2,
+        akTahunan,
+        jabatan: karyawan.jabatan,
+        golongan: karyawan.golongan,
+        tanggalPenetapan: this.formatDate(now),
+        penetap: 'Pejabat Penetap',
+        status: 'Draft' as const
+      });
+
+      console.log(`🎯 Tahun ${tahun}:`, {
+        semester1: data.semester1,
+        semester2: data.semester2,
+        tahunan: akTahunan
+      });
+    }
+
+    // Urutkan berdasarkan tahun
+    return result.sort((a, b) => a.tahun - b.tahun);
   }
 }
 
@@ -432,6 +483,230 @@ const EditPenetapanModal: React.FC<{
   );
 };
 
+// ==================== GENERATE PENETAPAN MODAL ====================
+const GeneratePenetapanModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onGenerate: (periods: { 
+    tahun: number;
+    akSemester1: number; 
+    akSemester2: number; 
+    akTahunan: number;
+    jabatan: string;
+    golongan: string;
+    tanggalPenetapan: string;
+    penetap: string;
+    status: 'Draft' | 'Disetujui' | 'Ditolak';
+  }[]) => void;
+  karyawan: Karyawan;
+}> = ({ isOpen, onClose, onGenerate, karyawan }) => {
+  const [availablePeriods, setAvailablePeriods] = useState<{ 
+    tahun: number;
+    akSemester1: number; 
+    akSemester2: number; 
+    akTahunan: number;
+    jabatan: string;
+    golongan: string;
+    tanggalPenetapan: string;
+    penetap: string;
+    status: 'Draft' | 'Disetujui' | 'Ditolak';
+  }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadKonversiData();
+    }
+  }, [isOpen]);
+
+  const loadKonversiData = async () => {
+    setLoading(true);
+    try {
+      const konversiData = await readKonversiData(karyawan.nip);
+      console.log('📊 Data konversi yang diload:', konversiData);
+
+      const generatedPeriods = PenetapanCalculator.generateFromKonversi(konversiData, karyawan);
+      console.log('🎯 Periods penetapan yang digenerate:', generatedPeriods);
+      setAvailablePeriods(generatedPeriods);
+    } catch (error) {
+      console.error('Error loading konversi data:', error);
+      setAvailablePeriods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fungsi khusus untuk membaca data konversi
+  const readKonversiData = async (nip?: string) => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: 'read',
+          range: 'konversi_predikat'
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = result.values || [];
+      console.log('📋 Raw data dari spreadsheet konversi_predikat:', rows);
+      
+      if (rows.length <= 1) {
+        console.log('❌ Tidak ada data konversi');
+        return [];
+      }
+      
+      const headers = rows[0];
+      console.log('📝 Headers konversi_predikat:', headers);
+      
+      const data = rows.slice(1)
+        .filter((row: any[]) => {
+          if (!nip) return true;
+          const nipIndex = headers.indexOf('NIP');
+          const rowNIP = nipIndex >= 0 ? row[nipIndex] : null;
+          console.log('🔍 Filtering NIP:', { mencari: nip, ditemukan: rowNIP, match: rowNIP === nip });
+          return rowNIP === nip;
+        })
+        .map((row: any[], index: number) => {
+          const obj: any = {
+            id: `konversi_${index + 2}`,
+            rowIndex: index + 2
+          };
+
+          headers.forEach((header: string, colIndex: number) => {
+            let value = row[colIndex];
+            
+            // Handle number conversion dengan format yang benar
+            if (header === 'Tahun' || header === 'Semester' || header === 'No') {
+              value = Number(value) || 0;
+            }
+            // Handle AK Konversi dengan konversi format desimal
+            else if (header === 'AK Konversi') {
+              value = PenetapanCalculator.parseNumberFromSheet(value);
+              console.log(`💰 AK Konversi: ${row[colIndex]} -> ${value}`);
+            }
+            // Handle Nilai SKP
+            else if (header === 'Nilai SKP') {
+              value = Number(value) || 0;
+            }
+            
+            obj[header] = value;
+          });
+          
+          console.log(`📄 Row ${index + 2}:`, obj);
+          return obj;
+        });
+      
+      console.log(`✅ Loaded ${data.length} records from konversi_predikat for NIP ${nip}`);
+      return data;
+    } catch (error) {
+      console.error('Error reading konversi data:', error);
+      return [];
+    }
+  };
+
+  const handleGenerate = () => {
+    onGenerate(availablePeriods);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Generate Data Penetapan dari Konversi Predikat</DialogTitle>
+          <DialogDescription>
+            Membuat data penetapan angka kredit dari data konversi predikat yang sudah ada untuk {karyawan.nama}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-blue-700">
+                  <strong>NIP:</strong> {karyawan.nip}<br />
+                  <strong>Jabatan:</strong> {karyawan.jabatan}<br />
+                  <strong>Golongan:</strong> {karyawan.golongan}
+                </p>
+              </div>
+              <Button onClick={loadKonversiData} variant="outline" disabled={loading}>
+                {loading ? 'Memuat...' : 'Refresh Data'}
+              </Button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Memuat data konversi predikat...</p>
+            </div>
+          ) : availablePeriods.length > 0 ? (
+            <div className="max-h-96 overflow-y-auto">
+              <div className="mb-4 p-2 bg-green-50 rounded">
+                <p className="text-sm text-green-700">
+                  ✅ Ditemukan {availablePeriods.length} tahun dari data konversi
+                </p>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>No</TableHead>
+                    <TableHead>Tahun</TableHead>
+                    <TableHead>AK Semester 1</TableHead>
+                    <TableHead>AK Semester 2</TableHead>
+                    <TableHead>AK Tahunan</TableHead>
+                    <TableHead>Jabatan</TableHead>
+                    <TableHead>Golongan</TableHead>
+                    <TableHead>Tanggal Penetapan</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availablePeriods.map((period, index) => (
+                    <TableRow key={period.tahun}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-semibold">{period.tahun}</TableCell>
+                      <TableCell className="font-semibold">{period.akSemester1.toFixed(3)}</TableCell>
+                      <TableCell className="font-semibold">{period.akSemester2.toFixed(3)}</TableCell>
+                      <TableCell className="font-semibold text-primary">{period.akTahunan.toFixed(3)}</TableCell>
+                      <TableCell className="text-sm">{period.jabatan}</TableCell>
+                      <TableCell>{period.golongan}</TableCell>
+                      <TableCell className="text-sm">{period.tanggalPenetapan}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{period.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Tidak ada data konversi predikat yang ditemukan untuk NIP {karyawan.nip}</p>
+              <p className="text-sm mt-2">Pastikan data konversi predikat sudah diisi terlebih dahulu</p>
+              <Button onClick={loadKonversiData} variant="outline" className="mt-2">
+                Coba Muat Ulang Data
+              </Button>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button onClick={handleGenerate} disabled={availablePeriods.length === 0 || loading}>
+              Generate {availablePeriods.length} Tahun
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
   const { toast } = useToast();
@@ -447,6 +722,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     isOpen: false,
     data: null
   });
+  const [generateModal, setGenerateModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -523,6 +799,83 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
       isOpen: true,
       data: null
     });
+  };
+
+  const handleGeneratePeriods = async (periods: { 
+    tahun: number;
+    akSemester1: number; 
+    akSemester2: number; 
+    akTahunan: number;
+    jabatan: string;
+    golongan: string;
+    tanggalPenetapan: string;
+    penetap: string;
+    status: 'Draft' | 'Disetujui' | 'Ditolak';
+  }[]) => {
+    try {
+      const now = PenetapanCalculator.formatDate(new Date());
+      const nextNo = penetapanData.length > 0 ? Math.max(...penetapanData.map(d => d.No || 0)) + 1 : 1;
+      
+      for (const [index, period] of periods.entries()) {
+        const newData = {
+          No: nextNo + index,
+          NIP: karyawan.nip,
+          Nama: karyawan.nama,
+          Tahun: period.tahun,
+          'AK Semester 1': period.akSemester1,
+          'AK Semester 2': period.akSemester2,
+          'AK Tahunan': period.akTahunan,
+          Jabatan: period.jabatan,
+          Golongan: period.golongan,
+          'Tanggal Penetapan': period.tanggalPenetapan,
+          Penetap: period.penetap,
+          Status: period.status,
+          Link_Dokumen: '',
+          Last_Update: now
+        };
+
+        // Validasi sebelum save
+        if (!PenetapanCalculator.validatePenetapanData(newData as PenetapanData)) {
+          toast({
+            title: "Error",
+            description: `Data tahun ${period.tahun} tidak valid dan tidak disimpan`,
+            variant: "destructive"
+          });
+          continue;
+        }
+
+        const values = [
+          newData.No,
+          newData.NIP,
+          newData.Nama,
+          newData.Tahun,
+          PenetapanCalculator.formatNumberForSheet(newData['AK Semester 1']),
+          PenetapanCalculator.formatNumberForSheet(newData['AK Semester 2']),
+          PenetapanCalculator.formatNumberForSheet(newData['AK Tahunan']),
+          newData.Jabatan,
+          newData.Golongan,
+          newData['Tanggal Penetapan'],
+          newData.Penetap,
+          newData.Status,
+          newData.Link_Dokumen,
+          newData.Last_Update
+        ];
+
+        await api.appendData(values);
+      }
+
+      toast({
+        title: "Sukses",
+        description: `Berhasil generate ${periods.length} tahun penetapan dari data konversi`
+      });
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal generate data penetapan",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDelete = async (rowData: PenetapanData) => {
@@ -682,6 +1035,11 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
               <Plus className="h-4 w-4 mr-2" />
               Tambah Baru
             </Button>
+
+            <Button onClick={() => setGenerateModal(true)} variant="secondary">
+              <Save className="h-4 w-4 mr-2" />
+              Generate dari Konversi
+            </Button>
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
@@ -712,10 +1070,16 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Tidak ada data penetapan ditemukan</p>
-                  <Button onClick={handleAddNew} className="mt-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Data Pertama
-                  </Button>
+                  <div className="flex gap-2 justify-center mt-2">
+                    <Button onClick={handleAddNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah Data Pertama
+                    </Button>
+                    <Button onClick={() => setGenerateModal(true)} variant="outline">
+                      <Save className="h-4 w-4 mr-2" />
+                      Generate dari Konversi
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 renderPenetapanTable()
@@ -730,6 +1094,13 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
+        karyawan={karyawan}
+      />
+
+      <GeneratePenetapanModal
+        isOpen={generateModal}
+        onClose={() => setGenerateModal(false)}
+        onGenerate={handleGeneratePeriods}
         karyawan={karyawan}
       />
     </div>
