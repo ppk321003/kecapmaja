@@ -109,7 +109,7 @@ class AkumulasiCalculator {
     }
   }
 
-  // Get kebutuhan AK berdasarkan golongan - MENGADOPSI DARI SKRIP UTAMA
+  // Get kebutuhan AK berdasarkan golongan - DIPERBAIKI: konsisten dengan skrip utama
   static getKebutuhanAK(golongan: string, kategori: string): number {
     if (kategori === 'Reguler') return 0;
 
@@ -153,7 +153,7 @@ class AkumulasiCalculator {
     );
   }
 
-  // Generate periode akumulasi dari data konversi dengan logika kenaikan yang benar
+  // Generate periode akumulasi dari data konversi - DIPERBAIKI: gunakan initialAkKumulatif dengan benar
   static generatePeriodeFromKonversi(
     konversiData: any[], 
     karyawan: Karyawan,
@@ -187,22 +187,17 @@ class AkumulasiCalculator {
 
     const kebutuhan = this.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
     
-    // Cari data akumulasi terakhir yang sudah ada
-    const sortedExistingData = [...existingAkumulasiData].sort((a, b) => {
-      const yearA = parseInt(a.Periode?.match(/\d+/)?.[0] || '0');
-      const yearB = parseInt(b.Periode?.match(/\d+/)?.[0] || '0');
-      return yearA - yearB;
-    });
-
-    let akumulasiSebelumnya = sortedExistingData.length > 0 
-      ? sortedExistingData[sortedExistingData.length - 1]['Total Kumulatif']
-      : karyawan.akKumulatif || 0;
+    // DIPERBAIKI: Gunakan initialAkKumulatif dari data master sebagai starting point
+    let akumulasiSebelumnya = karyawan.akKumulatif || 0;
 
     const result = [];
 
     // Urutkan berdasarkan tahun
     const sortedPeriods = Object.entries(periods)
       .sort(([,a], [,b]) => a.tahun - b.tahun);
+
+    console.log('📈 Periods yang dihasilkan:', sortedPeriods);
+    console.log('💰 AK Awal dari data master:', akumulasiSebelumnya);
 
     for (const [periode, data] of sortedPeriods) {
       // Skip periode yang sudah ada di data akumulasi
@@ -212,6 +207,11 @@ class AkumulasiCalculator {
       
       if (isPeriodExists) {
         console.log(`⏩ Skip periode ${periode} karena sudah ada`);
+        // TETAP update akumulasiSebelumnya meskipun periode di-skip
+        const existingData = existingAkumulasiData.find(item => item.Periode === periode);
+        if (existingData) {
+          akumulasiSebelumnya = existingData['Total Kumulatif'];
+        }
         continue;
       }
 
@@ -239,15 +239,23 @@ class AkumulasiCalculator {
         jenisKenaikan
       });
 
+      console.log(`🎯 Period ${periode}:`, {
+        sebelumnya: akumulasiSebelumnya,
+        periodeIni: data.akPeriodeIni,
+        total: totalKumulatif,
+        selisih,
+        status,
+        jenisKenaikan
+      });
+
       // Update akumulasi sebelumnya untuk periode berikutnya
-      // Jika kenaikan jenjang, reset ke 0, jika pangkat lanjut terus
       akumulasiSebelumnya = jenisKenaikan === 'Jenjang' ? 0 : totalKumulatif;
     }
 
     return result;
   }
 
-  // Generate periode semester dari data konversi dengan logika kenaikan yang benar
+  // Generate periode semester dari data konversi - DIPERBAIKI: gunakan initialAkKumulatif dengan benar
   static generateSemesterFromKonversi(
     konversiData: any[], 
     karyawan: Karyawan,
@@ -265,6 +273,8 @@ class AkumulasiCalculator {
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number; semester: number } } = {};
     
+    console.log('🔍 Memproses data konversi untuk akumulasi semester:', konversiData);
+    
     // Group by tahun dan semester
     konversiData.forEach(item => {
       const tahun = item.Tahun;
@@ -280,20 +290,8 @@ class AkumulasiCalculator {
 
     const kebutuhan = this.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
     
-    // Cari data akumulasi terakhir yang sudah ada
-    const sortedExistingData = [...existingAkumulasiData].sort((a, b) => {
-      const yearA = parseInt(a.Periode?.match(/\d{4}/)?.[0] || '0');
-      const yearB = parseInt(b.Periode?.match(/\d{4}/)?.[0] || '0');
-      const semesterA = a.Periode?.includes('Semester 1') ? 1 : 2;
-      const semesterB = b.Periode?.includes('Semester 1') ? 1 : 2;
-      
-      if (yearA !== yearB) return yearA - yearB;
-      return semesterA - semesterB;
-    });
-
-    let akumulasiSebelumnya = sortedExistingData.length > 0 
-      ? sortedExistingData[sortedExistingData.length - 1]['Total Kumulatif']
-      : karyawan.akKumulatif || 0;
+    // DIPERBAIKI: Gunakan initialAkKumulatif dari data master sebagai starting point
+    let akumulasiSebelumnya = karyawan.akKumulatif || 0;
 
     const result = [];
 
@@ -304,6 +302,9 @@ class AkumulasiCalculator {
         return a.semester - b.semester;
       });
 
+    console.log('📈 Periods semester yang dihasilkan:', sortedPeriods);
+    console.log('💰 AK Awal dari data master:', akumulasiSebelumnya);
+
     for (const [periode, data] of sortedPeriods) {
       // Skip periode yang sudah ada di data akumulasi
       const isPeriodExists = existingAkumulasiData.some(item => 
@@ -311,6 +312,12 @@ class AkumulasiCalculator {
       );
       
       if (isPeriodExists) {
+        console.log(`⏩ Skip periode ${periode} karena sudah ada`);
+        // TETAP update akumulasiSebelumnya meskipun periode di-skip
+        const existingData = existingAkumulasiData.find(item => item.Periode === periode);
+        if (existingData) {
+          akumulasiSebelumnya = existingData['Total Kumulatif'];
+        }
         continue;
       }
 
@@ -335,6 +342,15 @@ class AkumulasiCalculator {
         selisih,
         status,
         rekomendasi,
+        jenisKenaikan
+      });
+
+      console.log(`🎯 Period ${periode}:`, {
+        sebelumnya: akumulasiSebelumnya,
+        periodeIni: data.akPeriodeIni,
+        total: totalKumulatif,
+        selisih,
+        status,
         jenisKenaikan
       });
 
@@ -769,6 +785,7 @@ const GenerateAkumulasiModal: React.FC<{
     setLoading(true);
     try {
       const konversiData = await readKonversiData(karyawan.nip);
+      console.log('📊 Data konversi yang diload untuk', karyawan.nama, ':', konversiData);
       
       let generatedPeriods;
       if (generateType === 'tahunan') {
@@ -785,6 +802,7 @@ const GenerateAkumulasiModal: React.FC<{
         );
       }
 
+      console.log('🎯 Periods yang digenerate:', generatedPeriods);
       setAvailablePeriods(generatedPeriods);
     } catch (error) {
       console.error('Error loading konversi data:', error);
@@ -794,6 +812,7 @@ const GenerateAkumulasiModal: React.FC<{
     }
   };
 
+  // DIPERBAIKI: Fungsi membaca data konversi dengan logging yang lebih detail
   const readKonversiData = async (nip?: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -807,18 +826,27 @@ const GenerateAkumulasiModal: React.FC<{
       if (error) throw error;
 
       const rows = result.values || [];
+      console.log('📋 Raw data dari spreadsheet konversi_predikat:', rows);
       
       if (rows.length <= 1) {
+        console.log('❌ Tidak ada data konversi');
         return [];
       }
       
       const headers = rows[0];
+      console.log('📝 Headers konversi_predikat:', headers);
       
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
           const nipIndex = headers.indexOf('NIP');
           const rowNIP = nipIndex >= 0 ? row[nipIndex] : null;
+          console.log('🔍 Filtering NIP:', { 
+            mencari: nip, 
+            ditemukan: rowNIP, 
+            match: rowNIP === nip,
+            row: row
+          });
           return rowNIP === nip;
         })
         .map((row: any[], index: number) => {
@@ -835,6 +863,7 @@ const GenerateAkumulasiModal: React.FC<{
             }
             else if (header === 'AK Konversi') {
               value = AkumulasiCalculator.parseNumberFromSheet(value);
+              console.log(`💰 AK Konversi untuk row ${index + 2}: ${row[colIndex]} -> ${value}`);
             }
             else if (header === 'Nilai SKP') {
               value = Number(value) || 0;
@@ -849,9 +878,11 @@ const GenerateAkumulasiModal: React.FC<{
             obj[header] = value;
           });
           
+          console.log(`📄 Row ${index + 2}:`, obj);
           return obj;
         });
       
+      console.log(`✅ Loaded ${data.length} records from konversi_predikat for NIP ${nip}`);
       return data;
     } catch (error) {
       console.error('Error reading konversi data:', error);
@@ -910,7 +941,7 @@ const GenerateAkumulasiModal: React.FC<{
                 <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}
               </div>
               <div>
-                <strong>Data Existing:</strong> {existingAkumulasiData.length} periode
+                <strong>AK Awal dari Data Master:</strong> {initialAkKumulatif.toFixed(3)}
               </div>
             </div>
           </div>
@@ -925,6 +956,9 @@ const GenerateAkumulasiModal: React.FC<{
               <div className="mb-4 p-2 bg-green-50 rounded">
                 <p className="text-sm text-green-700">
                   ✅ Ditemukan {availablePeriods.length} periode baru dari data konversi
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  AK Awal: {initialAkKumulatif.toFixed(3)} | Kebutuhan: {kebutuhan} AK
                 </p>
               </div>
               <div className="border rounded-lg overflow-hidden">
@@ -1000,6 +1034,11 @@ const GenerateAkumulasiModal: React.FC<{
                   : 'Pastikan data konversi predikat sudah diisi terlebih dahulu'
                 }
               </p>
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="text-yellow-700 text-sm">
+                  <strong>Tips:</strong> Pastikan data konversi predikat untuk NIP {karyawan.nip} sudah diinput di sheet "konversi_predikat" dengan format yang benar.
+                </p>
+              </div>
               <Button onClick={loadKonversiData} variant="outline" className="mt-2">
                 Coba Muat Ulang Data
               </Button>
@@ -1062,6 +1101,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
         const latestData = dataSheet[0];
         if (latestData.akKumulatif !== undefined) {
           setInitialAkKumulatif(latestData.akKumulatif);
+          console.log('✅ Loaded initial AK Kumulatif from data sheet:', latestData.akKumulatif);
         }
       }
     } catch (error) {
