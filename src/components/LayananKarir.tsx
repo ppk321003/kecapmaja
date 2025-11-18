@@ -259,7 +259,12 @@ class LayananKarirCalculator {
 
     // TMT di tengah periode, hitung bulan proporsional yang benar
     console.log('📅 TMT in the middle of period, calculating proportional months...');
-    
+
+    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah TMT (bulan TMT tidak dihitung)
+    const startFromNextMonth = new Date(tmtDate);
+    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
+    startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
+
     // Hitung bulan kerja yang tepat (inklusif)
     let masaKerjaBulan = 0;
     const current = new Date(tmtDate);
