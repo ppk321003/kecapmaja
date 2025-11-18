@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Filter, TrendingUp, Calculator, Target } from 'lucide-react';
+import { Edit, Trash2, Plus, Filter, TrendingUp, Calculator, Target, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -138,6 +138,126 @@ class AkumulasiCalculator {
       data['Total Kumulatif'] < 0 ||
       data.Kebutuhan < 0
     );
+  }
+
+  // Generate periode akumulasi dari data konversi
+  static generatePeriodeFromKonversi(
+    konversiData: any[], 
+    karyawan: Karyawan
+  ): { 
+    periode: string; 
+    akSebelumnya: number; 
+    akPeriodeIni: number;
+    totalKumulatif: number;
+    kebutuhan: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  }[] {
+    const periods: { [key: string]: { akPeriodeIni: number; tahun: number } } = {};
+    
+    // Group by tahun untuk akumulasi tahunan
+    konversiData.forEach(item => {
+      const tahun = item.Tahun;
+      const periodeKey = `Tahun ${tahun}`;
+      
+      if (!periods[periodeKey]) {
+        periods[periodeKey] = { akPeriodeIni: 0, tahun };
+      }
+      periods[periodeKey].akPeriodeIni += item['AK Konversi'] || 0;
+    });
+
+    const kebutuhan = this.getKebutuhanAK(karyawan.golongan);
+    let akumulasiSebelumnya = 0;
+    const result = [];
+
+    // Urutkan berdasarkan tahun
+    const sortedPeriods = Object.entries(periods)
+      .sort(([,a], [,b]) => a.tahun - b.tahun);
+
+    for (const [periode, data] of sortedPeriods) {
+      const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
+      const selisih = this.calculateSelisih(totalKumulatif, kebutuhan);
+      const status = this.determineStatusKenaikan(selisih);
+      const rekomendasi = this.generateRekomendasi(status, selisih);
+
+      result.push({
+        periode,
+        akSebelumnya: akumulasiSebelumnya,
+        akPeriodeIni: data.akPeriodeIni,
+        totalKumulatif,
+        kebutuhan,
+        selisih,
+        status,
+        rekomendasi
+      });
+
+      akumulasiSebelumnya = totalKumulatif;
+    }
+
+    return result;
+  }
+
+  // Generate periode semester dari data konversi
+  static generateSemesterFromKonversi(
+    konversiData: any[], 
+    karyawan: Karyawan
+  ): { 
+    periode: string; 
+    akSebelumnya: number; 
+    akPeriodeIni: number;
+    totalKumulatif: number;
+    kebutuhan: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  }[] {
+    const periods: { [key: string]: { akPeriodeIni: number; tahun: number; semester: number } } = {};
+    
+    // Group by tahun dan semester
+    konversiData.forEach(item => {
+      const tahun = item.Tahun;
+      const semester = item.Semester;
+      const periodeKey = `Semester ${semester} ${tahun}`;
+      
+      if (!periods[periodeKey]) {
+        periods[periodeKey] = { akPeriodeIni: 0, tahun, semester };
+      }
+      periods[periodeKey].akPeriodeIni += item['AK Konversi'] || 0;
+    });
+
+    const kebutuhan = this.getKebutuhanAK(karyawan.golongan);
+    let akumulasiSebelumnya = 0;
+    const result = [];
+
+    // Urutkan berdasarkan tahun dan semester
+    const sortedPeriods = Object.entries(periods)
+      .sort(([,a], [,b]) => {
+        if (a.tahun !== b.tahun) return a.tahun - b.tahun;
+        return a.semester - b.semester;
+      });
+
+    for (const [periode, data] of sortedPeriods) {
+      const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
+      const selisih = this.calculateSelisih(totalKumulatif, kebutuhan);
+      const status = this.determineStatusKenaikan(selisih);
+      const rekomendasi = this.generateRekomendasi(status, selisih);
+
+      result.push({
+        periode,
+        akSebelumnya: akumulasiSebelumnya,
+        akPeriodeIni: data.akPeriodeIni,
+        totalKumulatif,
+        kebutuhan,
+        selisih,
+        status,
+        rekomendasi
+      });
+
+      akumulasiSebelumnya = totalKumulatif;
+    }
+
+    return result;
   }
 }
 
@@ -436,6 +556,221 @@ const EditAkumulasiModal: React.FC<{
   );
 };
 
+// ==================== GENERATE AKUMULASI MODAL ====================
+const GenerateAkumulasiModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onGenerate: (periods: { 
+    periode: string; 
+    akSebelumnya: number; 
+    akPeriodeIni: number;
+    totalKumulatif: number;
+    kebutuhan: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  }[]) => void;
+  karyawan: Karyawan;
+}> = ({ isOpen, onClose, onGenerate, karyawan }) => {
+  const [availablePeriods, setAvailablePeriods] = useState<{ 
+    periode: string; 
+    akSebelumnya: number; 
+    akPeriodeIni: number;
+    totalKumulatif: number;
+    kebutuhan: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generateType, setGenerateType] = useState<'tahunan' | 'semester'>('tahunan');
+
+  useEffect(() => {
+    if (isOpen) {
+      loadKonversiData();
+    }
+  }, [isOpen, generateType]);
+
+  const loadKonversiData = async () => {
+    setLoading(true);
+    try {
+      // Membaca data dari sheet konversi_predikat
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: 'read',
+          range: 'konversi_predikat'
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = result.values || [];
+      if (rows.length <= 1) {
+        setAvailablePeriods([]);
+        return;
+      }
+
+      const headers = rows[0];
+      const konversiData = rows.slice(1)
+        .filter((row: any[]) => {
+          const nipIndex = headers.indexOf('NIP');
+          return nipIndex >= 0 && row[nipIndex] === karyawan.nip;
+        })
+        .map((row: any[], index: number) => {
+          const obj: any = {};
+          headers.forEach((header: string, colIndex: number) => {
+            let value = row[colIndex];
+            
+            if (header === 'Tahun' || header === 'Semester') {
+              value = Number(value) || 0;
+            } else if (header === 'AK Konversi') {
+              value = AkumulasiCalculator.parseNumberFromSheet(value);
+            }
+            
+            obj[header] = value;
+          });
+          return obj;
+        });
+
+      console.log('Loaded konversi data:', konversiData);
+
+      let generatedPeriods;
+      if (generateType === 'tahunan') {
+        generatedPeriods = AkumulasiCalculator.generatePeriodeFromKonversi(konversiData, karyawan);
+      } else {
+        generatedPeriods = AkumulasiCalculator.generateSemesterFromKonversi(konversiData, karyawan);
+      }
+
+      setAvailablePeriods(generatedPeriods);
+    } catch (error) {
+      console.error('Error loading konversi data:', error);
+      setAvailablePeriods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerate = () => {
+    onGenerate(availablePeriods);
+    onClose();
+  };
+
+  const kebutuhan = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Generate Data Akumulasi dari Konversi Predikat</DialogTitle>
+          <DialogDescription>
+            Membuat data akumulasi angka kredit dari data konversi predikat yang sudah ada
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="generate-type">Jenis Akumulasi</Label>
+                <Select 
+                  value={generateType} 
+                  onValueChange={(value: 'tahunan' | 'semester') => setGenerateType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tahunan">Akumulasi Tahunan</SelectItem>
+                    <SelectItem value="semester">Akumulasi per Semester</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={loadKonversiData} variant="outline" disabled={loading}>
+                  {loading ? 'Memuat...' : 'Refresh Data'}
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-blue-700 mt-2">
+              <strong>Kebutuhan Golongan {karyawan.golongan}:</strong> {kebutuhan} AK<br />
+              <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Memuat data konversi predikat...</p>
+            </div>
+          ) : availablePeriods.length > 0 ? (
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>No</TableHead>
+                    <TableHead>Periode</TableHead>
+                    <TableHead>AK Sebelumnya</TableHead>
+                    <TableHead>AK Periode Ini</TableHead>
+                    <TableHead>Total Kumulatif</TableHead>
+                    <TableHead>Kebutuhan</TableHead>
+                    <TableHead>Selisih</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Rekomendasi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availablePeriods.map((period, index) => (
+                    <TableRow key={period.periode}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-semibold">{period.periode}</TableCell>
+                      <TableCell>{period.akSebelumnya.toFixed(3)}</TableCell>
+                      <TableCell className="text-primary font-semibold">
+                        {period.akPeriodeIni.toFixed(3)}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {period.totalKumulatif.toFixed(3)}
+                      </TableCell>
+                      <TableCell>{period.kebutuhan}</TableCell>
+                      <TableCell className={`font-semibold ${period.selisih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {period.selisih.toFixed(3)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          period.status === 'Ya' ? 'default' :
+                          period.status === 'Dipertimbangkan' ? 'secondary' : 'destructive'
+                        }>
+                          {period.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm max-w-xs truncate" title={period.rekomendasi}>
+                        {period.rekomendasi}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              <p>Tidak ada data konversi predikat yang dapat digenerate menjadi akumulasi.</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button onClick={handleGenerate} disabled={availablePeriods.length === 0 || loading}>
+              Generate {availablePeriods.length} Periode
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   const { toast } = useToast();
@@ -451,6 +786,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
     isOpen: false,
     data: null
   });
+  const [generateModal, setGenerateModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -526,6 +862,80 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
       isOpen: true,
       data: null
     });
+  };
+
+  const handleGeneratePeriods = async (periods: { 
+    periode: string; 
+    akSebelumnya: number; 
+    akPeriodeIni: number;
+    totalKumulatif: number;
+    kebutuhan: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  }[]) => {
+    try {
+      const now = AkumulasiCalculator.formatDate(new Date());
+      const nextNo = akumulasiData.length > 0 ? Math.max(...akumulasiData.map(d => d.No || 0)) + 1 : 1;
+      
+      for (const [index, period] of periods.entries()) {
+        const newData = {
+          No: nextNo + index,
+          NIP: karyawan.nip,
+          Nama: karyawan.nama,
+          Periode: period.periode,
+          'AK Sebelumnya': period.akSebelumnya,
+          'AK Periode Ini': period.akPeriodeIni,
+          'Total Kumulatif': period.totalKumulatif,
+          Kebutuhan: period.kebutuhan,
+          Selisih: period.selisih,
+          'Status Kenaikan': period.status,
+          Rekomendasi: period.rekomendasi,
+          Link_Dokumen: '',
+          Last_Update: now
+        };
+
+        // Validasi sebelum save
+        if (!AkumulasiCalculator.validateAkumulasiData(newData as AkumulasiData)) {
+          toast({
+            title: "Error",
+            description: `Data periode ${period.periode} tidak valid dan tidak disimpan`,
+            variant: "destructive"
+          });
+          continue;
+        }
+
+        const values = [
+          newData.No,
+          newData.NIP,
+          newData.Nama,
+          newData.Periode,
+          AkumulasiCalculator.formatNumberForSheet(newData['AK Sebelumnya']),
+          AkumulasiCalculator.formatNumberForSheet(newData['AK Periode Ini']),
+          AkumulasiCalculator.formatNumberForSheet(newData['Total Kumulatif']),
+          AkumulasiCalculator.formatNumberForSheet(newData.Kebutuhan),
+          AkumulasiCalculator.formatNumberForSheet(newData.Selisih),
+          newData['Status Kenaikan'],
+          newData.Rekomendasi,
+          newData.Link_Dokumen,
+          newData.Last_Update
+        ];
+
+        await api.appendData(values);
+      }
+
+      toast({
+        title: "Sukses",
+        description: `Berhasil generate ${periods.length} periode akumulasi dari data konversi`
+      });
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal generate data akumulasi",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDelete = async (rowData: AkumulasiData) => {
@@ -658,10 +1068,10 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Periode</SelectItem>
-                  <SelectItem value="semester 1">Semester 1</SelectItem>
-                  <SelectItem value="semester 2">Semester 2</SelectItem>
-                  <SelectItem value="2024">Tahun 2024</SelectItem>
-                  <SelectItem value="2023">Tahun 2023</SelectItem>
+                  <SelectItem value="semester">Semester</SelectItem>
+                  <SelectItem value="tahun">Tahun</SelectItem>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2023">2023</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -692,6 +1102,11 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
             <Button onClick={handleAddNew}>
               <Plus className="h-4 w-4 mr-2" />
               Tambah Baru
+            </Button>
+
+            <Button onClick={() => setGenerateModal(true)} variant="secondary">
+              <Save className="h-4 w-4 mr-2" />
+              Generate dari Konversi
             </Button>
           </div>
 
@@ -729,10 +1144,16 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <div className="text-center py-8 text-muted-foreground">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Tidak ada data akumulasi ditemukan</p>
-                  <Button onClick={handleAddNew} className="mt-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Data Pertama
-                  </Button>
+                  <div className="flex gap-2 justify-center mt-2">
+                    <Button onClick={handleAddNew}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah Data Pertama
+                    </Button>
+                    <Button onClick={() => setGenerateModal(true)} variant="outline">
+                      <Save className="h-4 w-4 mr-2" />
+                      Generate dari Konversi
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 renderAkumulasiTable()
@@ -747,6 +1168,13 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
+        karyawan={karyawan}
+      />
+
+      <GenerateAkumulasiModal
+        isOpen={generateModal}
+        onClose={() => setGenerateModal(false)}
+        onGenerate={handleGeneratePeriods}
         karyawan={karyawan}
       />
     </div>
