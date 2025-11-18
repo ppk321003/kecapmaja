@@ -226,74 +226,79 @@ class LayananKarirCalculator {
   }
 
   // Hitung masa kerja proporsional berdasarkan TMT dan periode semester - DIPERBAIKI
-  static calculateMasaKerjaProporsional(
-    tmtJabatan: string, 
-    tahun: number, 
-    semester: 1 | 2
-  ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tmtDate = this.parseTMT(tmtJabatan);
-    const periode = this.calculatePeriodeSemester(tahun, semester);
-    const periodeMulai = this.parseTMT(periode.mulai);
-    const periodeSelesai = this.parseTMT(periode.selesai);
+static calculateMasaKerjaProporsional(
+  tmtJabatan: string, 
+  tahun: number, 
+  semester: 1 | 2
+): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
+  const tmtDate = this.parseTMT(tmtJabatan);
+  const periode = this.calculatePeriodeSemester(tahun, semester);
+  const periodeMulai = this.parseTMT(periode.mulai);
+  const periodeSelesai = this.parseTMT(periode.selesai);
+  const sekarang = new Date();
 
-    console.log('🔍 DETAILED CALCULATION:', {
-      tmtJabatan,
-      tmtDate: tmtDate.toLocaleDateString('id-ID'),
-      tahun,
-      semester,
-      periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
-      periodeSelesai: periodeSelesai.toLocaleDateString('id-ID')
-    });
+  console.log('🔍 DETAILED CALCULATION:', {
+    tmtJabatan,
+    tmtDate: tmtDate.toLocaleDateString('id-ID'),
+    tahun,
+    semester,
+    periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
+    periodeSelesai: periodeSelesai.toLocaleDateString('id-ID'),
+    sekarang: sekarang.toLocaleDateString('id-ID')
+  });
 
-    // Jika TMT setelah periode selesai, tidak ada penilaian
-    if (tmtDate > periodeSelesai) {
-      console.log('❌ TMT after period end, no assessment');
-      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
-    }
-
-    // Jika TMT sebelum atau sama dengan periode mulai, penilaian penuh
-    if (tmtDate <= periodeMulai) {
-      console.log('✅ TMT before/same as period start, FULL assessment (6 bulan)');
-      return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
-    }
-
-    // TMT di tengah periode, hitung bulan proporsional yang benar
-    console.log('📅 TMT in the middle of period, calculating proportional months...');
-
-    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah TMT (bulan TMT tidak dihitung)
-    const startFromNextMonth = new Date(tmtDate);
-    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
-    startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
-
-    // Hitung bulan kerja yang tepat (inklusif)
-    let masaKerjaBulan = 0;
-    const current = new Date(tmtDate);
-    
-    while (current <= periodeSelesai) {
-      masaKerjaBulan++;
-      current.setMonth(current.getMonth() + 1);
-    }
-
-    console.log('📊 Accurate month calculation:', {
-      startMonth: tmtDate.getMonth() + 1,
-      endMonth: periodeSelesai.getMonth() + 1,
-      calculatedMonths: masaKerjaBulan
-    });
-
-    // Pastikan masa kerja antara 1-6 bulan
-    masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
-
-    const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
-    
-    console.log('🎯 FINAL RESULT:', {
-      masaKerjaBulan,
-      jenisPenilaian,
-      status: masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL'
-    });
-    
-    return { masaKerjaBulan, jenisPenilaian };
+  // Jika TMT setelah periode selesai, tidak ada penilaian
+  if (tmtDate > periodeSelesai) {
+    console.log('❌ TMT after period end, no assessment');
+    return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
   }
 
+  // Jika TMT sebelum atau sama dengan periode mulai, penilaian penuh
+  if (tmtDate <= periodeMulai) {
+    console.log('✅ TMT before/same as period start, FULL assessment (6 bulan)');
+    return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
+  }
+
+  // TMT di tengah periode, hitung bulan proporsional
+  console.log('📅 TMT in the middle of period, calculating proportional months...');
+  
+  // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah TMT (bulan TMT tidak dihitung)
+  const startFromNextMonth = new Date(tmtDate);
+  startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
+  startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
+  
+  // PERBAIKAN: Untuk semester berjalan, hitung hanya sampai bulan sekarang
+  const endDate = this.isSemesterInProgress(tahun, semester, sekarang) ? 
+    sekarang : periodeSelesai;
+  
+  let masaKerjaBulan = 0;
+  const current = new Date(startFromNextMonth);
+  
+  while (current <= endDate) {
+    masaKerjaBulan++;
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  console.log('📊 Accurate month calculation (EXCLUDING TMT month):', {
+    tmtMonth: tmtDate.getMonth() + 1,
+    startFromMonth: startFromNextMonth.getMonth() + 1,
+    endMonth: endDate.getMonth() + 1,
+    calculatedMonths: masaKerjaBulan
+  });
+
+  // Pastikan masa kerja antara 1-6 bulan
+  masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
+
+  const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
+  
+  console.log('🎯 FINAL RESULT:', {
+    masaKerjaBulan,
+    jenisPenilaian,
+    status: masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL'
+  });
+  
+  return { masaKerjaBulan, jenisPenilaian };
+}
   // Validasi data konversi
   static validateKonversiData(data: KonversiData): boolean {
     return !(
