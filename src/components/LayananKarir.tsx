@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, Star } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
-
 interface Karyawan {
   nip: string;
   nama: string;
@@ -19,30 +18,34 @@ interface Karyawan {
   pendidikan: string;
   akKumulatif: number;
 }
-
 interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
 // Komponen Header yang lebih informatif
-const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+const ProfileHeader: React.FC<{
+  karyawan: Karyawan;
+}> = ({
+  karyawan
+}) => {
   const getKategoriColor = (kategori: string) => {
     switch (kategori) {
-      case 'Keahlian': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Keterampilan': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Reguler': return 'bg-orange-100 text-orange-800 border-orange-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'Keahlian':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Keterampilan':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'Reguler':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-
   const calculateProgress = (akKumulatif: number) => {
     // Asumsi target AK untuk kenaikan pangkat
     const targetAK = 200; // Adjust based on your requirements
-    return Math.min((akKumulatif / targetAK) * 100, 100);
+    return Math.min(akKumulatif / targetAK * 100, 100);
   };
-
-  return (
-    <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+  return <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div className="flex-1">
@@ -112,67 +115,53 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
 
 // Komponen Statistik
-const CareerStats: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const stats = [
-    {
-      label: "Total AK",
-      value: karyawan.akKumulatif,
-      icon: Star,
-      color: "text-yellow-600 bg-yellow-100",
-      suffix: "AK"
-    },
-    {
-      label: "Masa Kerja",
-      value: "3", // You can calculate this from TMT
-      icon: Calendar,
-      color: "text-blue-600 bg-blue-100",
-      suffix: "Tahun"
-    },
-    {
-      label: "Status",
-      value: "Aktif",
-      icon: User,
-      color: "text-green-600 bg-green-100",
-      suffix: ""
-    },
-    {
-      label: "Kategori",
-      value: karyawan.kategori,
-      icon: Award,
-      color: "text-purple-600 bg-purple-100",
-      suffix: ""
-    }
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {stats.map((stat, index) => (
-        <Card key={index} className="text-center">
-          <CardContent className="p-4">
-            <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-              <stat.icon className="h-6 w-6" />
-            </div>
-            <p className="text-2xl font-bold text-gray-800">
-              {stat.value}
-              {stat.suffix && <span className="text-sm">{stat.suffix}</span>}
-            </p>
-            <p className="text-sm text-gray-600">{stat.label}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+const CareerStats: React.FC<{
+  karyawan: Karyawan;
+}> = ({
+  karyawan
+}) => {
+  const stats = [{
+    label: "Total AK",
+    value: karyawan.akKumulatif,
+    icon: Star,
+    color: "text-yellow-600 bg-yellow-100",
+    suffix: "AK"
+  }, {
+    label: "Masa Kerja",
+    value: "3",
+    // You can calculate this from TMT
+    icon: Calendar,
+    color: "text-blue-600 bg-blue-100",
+    suffix: "Tahun"
+  }, {
+    label: "Status",
+    value: "Aktif",
+    icon: User,
+    color: "text-green-600 bg-green-100",
+    suffix: ""
+  }, {
+    label: "Kategori",
+    value: karyawan.kategori,
+    icon: Award,
+    color: "text-purple-600 bg-purple-100",
+    suffix: ""
+  }];
+  return <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {stats.map((stat, index) => {})}
+    </div>;
 };
 
 // Komponen sementara untuk PenetapanAK dengan improvement
-const PenetapanAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <div className="space-y-6">
+const PenetapanAK: React.FC<{
+  karyawan: Karyawan;
+}> = ({
+  karyawan
+}) => {
+  return <div className="space-y-6">
       <Card>
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
           <CardTitle className="flex items-center gap-2 text-green-800">
@@ -200,14 +189,16 @@ const PenetapanAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
 
 // Komponen sementara untuk AkumulasiAK dengan improvement
-const AkumulasiAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <div className="space-y-6">
+const AkumulasiAK: React.FC<{
+  karyawan: Karyawan;
+}> = ({
+  karyawan
+}) => {
+  return <div className="space-y-6">
       <Card>
         <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50">
           <CardTitle className="flex items-center gap-2 text-purple-800">
@@ -235,13 +226,12 @@ const AkumulasiAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
-const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
+const LayananKarir: React.FC<LayananKarirProps> = ({
+  karyawan
+}) => {
   const [activeTab, setActiveTab] = useState('konversi');
-
   const tabConfig = {
     konversi: {
       title: "KONVERSI PREDIKAT",
@@ -262,29 +252,17 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       color: "text-purple-800"
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <ProfileHeader karyawan={karyawan} />
       
       <CareerStats karyawan={karyawan} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
-          {Object.entries(tabConfig).map(([key, config]) => (
-            <TabsTrigger 
-              key={key}
-              value={key} 
-              className={`flex items-center gap-2 transition-all duration-200 ${
-                activeTab === key 
-                  ? `bg-white shadow-sm ${config.color} font-semibold` 
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
+          {Object.entries(tabConfig).map(([key, config]) => <TabsTrigger key={key} value={key} className={`flex items-center gap-2 transition-all duration-200 ${activeTab === key ? `bg-white shadow-sm ${config.color} font-semibold` : 'text-gray-600 hover:text-gray-800'}`}>
               <config.icon className="h-4 w-4" />
               {config.title}
-            </TabsTrigger>
-          ))}
+            </TabsTrigger>)}
         </TabsList>
 
         <TabsContent value="konversi" className="space-y-4">
@@ -299,8 +277,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           <AkumulasiAK karyawan={karyawan} />
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 };
-
 export default LayananKarir;
