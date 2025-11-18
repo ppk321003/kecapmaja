@@ -51,6 +51,7 @@ interface AkumulasiAKProps {
 // ==================== SPREADSHEET CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "akumulasi_ak";
+const DATA_SHEET_NAME = "data";
 
 // ==================== UTILITY FUNCTIONS ====================
 class AkumulasiCalculator {
@@ -299,7 +300,7 @@ const useSpreadsheetAPI = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: SHEET_NAME,
+          range: data?.range || SHEET_NAME,
           ...data
         }
       });
@@ -384,6 +385,49 @@ const useSpreadsheetAPI = () => {
     }
   };
 
+  const readDataSheet = async (nip?: string) => {
+    try {
+      const result = await callAPI('read', { range: DATA_SHEET_NAME });
+      const rows = result.values || [];
+      
+      if (rows.length <= 1) return [];
+      
+      const headers = rows[0];
+      console.log('Data sheet headers:', headers);
+      
+      const data = rows.slice(1)
+        .filter((row: any[]) => {
+          if (!nip) return true;
+          const nipIndex = headers.indexOf('NIP');
+          return nipIndex >= 0 && row[nipIndex] === nip;
+        })
+        .map((row: any[], index: number) => {
+          const obj: any = {
+            id: `${DATA_SHEET_NAME}_${index + 2}`,
+            rowIndex: index + 2
+          };
+
+          headers.forEach((header: string, colIndex: number) => {
+            let value = row[colIndex];
+            
+            if (header === 'akKumulatif') {
+              value = AkumulasiCalculator.parseNumberFromSheet(value);
+            }
+            
+            obj[header] = value;
+          });
+          
+          return obj;
+        });
+      
+      console.log(`Loaded ${data.length} records from ${DATA_SHEET_NAME}`);
+      return data;
+    } catch (error) {
+      console.error('Error reading data sheet:', error);
+      return [];
+    }
+  };
+
   const appendData = async (values: any[]) => {
     console.log(`Appending to ${SHEET_NAME}:`, values);
     return await callAPI('append', { values: [values] });
@@ -399,7 +443,7 @@ const useSpreadsheetAPI = () => {
     return await callAPI('delete', { rowIndex });
   };
 
-  return { readData, appendData, updateData, deleteData };
+  return { readData, readDataSheet, appendData, updateData, deleteData };
 };
 
 // ==================== EDIT FORM MODAL ====================
@@ -409,7 +453,8 @@ const EditAkumulasiModal: React.FC<{
   onClose: () => void;
   onSave: (data: AkumulasiData) => void;
   karyawan: Karyawan;
-}> = ({ data, isOpen, onClose, onSave, karyawan }) => {
+  initialAkKumulatif: number;
+}> = ({ data, isOpen, onClose, onSave, karyawan, initialAkKumulatif }) => {
   const [formData, setFormData] = useState<Partial<AkumulasiData>>({});
 
   useEffect(() => {
@@ -419,16 +464,16 @@ const EditAkumulasiModal: React.FC<{
       const kebutuhan = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan);
       setFormData({
         Periode: `Semester ${new Date().getMonth() < 6 ? 1 : 2} ${new Date().getFullYear()}`,
-        'AK Sebelumnya': karyawan.akKumulatif || 0,
+        'AK Sebelumnya': initialAkKumulatif || 0,
         'AK Periode Ini': 0,
-        'Total Kumulatif': karyawan.akKumulatif || 0,
+        'Total Kumulatif': initialAkKumulatif || 0,
         Kebutuhan: kebutuhan,
-        Selisih: (karyawan.akKumulatif || 0) - kebutuhan,
+        Selisih: (initialAkKumulatif || 0) - kebutuhan,
         'Status Kenaikan': 'Tidak',
         Rekomendasi: ''
       });
     }
-  }, [data, karyawan]);
+  }, [data, karyawan, initialAkKumulatif]);
 
   const calculateValues = (): {
     totalKumulatif: number;
@@ -480,7 +525,7 @@ const EditAkumulasiModal: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {data ? 'Edit Data Akumulasi AK' : 'Tambah Data Akumulasi AK'}
@@ -528,6 +573,9 @@ const EditAkumulasiModal: React.FC<{
                 onChange={(e) => setFormData({...formData, 'AK Sebelumnya': parseFloat(e.target.value)})}
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Nilai awal dari data master: {initialAkKumulatif.toFixed(3)}
+              </p>
             </div>
             <div>
               <Label htmlFor="ak-periode-ini">AK Periode Ini</Label>
@@ -570,7 +618,7 @@ const EditAkumulasiModal: React.FC<{
             </p>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
@@ -599,7 +647,8 @@ const GenerateAkumulasiModal: React.FC<{
     rekomendasi: string;
   }[]) => void;
   karyawan: Karyawan;
-}> = ({ isOpen, onClose, onGenerate, karyawan }) => {
+  initialAkKumulatif: number;
+}> = ({ isOpen, onClose, onGenerate, karyawan, initialAkKumulatif }) => {
   const [availablePeriods, setAvailablePeriods] = useState<{ 
     periode: string; 
     akSebelumnya: number; 
@@ -630,6 +679,24 @@ const GenerateAkumulasiModal: React.FC<{
         generatedPeriods = AkumulasiCalculator.generatePeriodeFromKonversi(konversiData, karyawan);
       } else {
         generatedPeriods = AkumulasiCalculator.generateSemesterFromKonversi(konversiData, karyawan);
+      }
+
+      // Set nilai awal AK Sebelumnya dari data master
+      if (generatedPeriods.length > 0) {
+        generatedPeriods[0].akSebelumnya = initialAkKumulatif;
+        generatedPeriods[0].totalKumulatif = AkumulasiCalculator.calculateTotalKumulatif(
+          initialAkKumulatif, 
+          generatedPeriods[0].akPeriodeIni
+        );
+        generatedPeriods[0].selisih = AkumulasiCalculator.calculateSelisih(
+          generatedPeriods[0].totalKumulatif, 
+          generatedPeriods[0].kebutuhan
+        );
+        generatedPeriods[0].status = AkumulasiCalculator.determineStatusKenaikan(generatedPeriods[0].selisih);
+        generatedPeriods[0].rekomendasi = AkumulasiCalculator.generateRekomendasi(
+          generatedPeriods[0].status, 
+          generatedPeriods[0].selisih
+        );
       }
 
       console.log('🎯 Periods yang digenerate:', generatedPeriods);
@@ -729,7 +796,7 @@ const GenerateAkumulasiModal: React.FC<{
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Generate Data Akumulasi dari Konversi Predikat</DialogTitle>
           <DialogDescription>
@@ -737,9 +804,9 @@ const GenerateAkumulasiModal: React.FC<{
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 space-y-4 overflow-hidden">
           <div className="p-4 bg-blue-50 rounded-lg">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="generate-type">Jenis Akumulasi</Label>
                 <Select 
@@ -763,11 +830,17 @@ const GenerateAkumulasiModal: React.FC<{
                 </Button>
               </div>
             </div>
-            <p className="text-sm text-blue-700 mt-2">
-              <strong>Kebutuhan Golongan {karyawan.golongan}:</strong> {kebutuhan} AK<br />
-              <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}<br />
-              <strong>NIP:</strong> {karyawan.nip}
-            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm text-blue-700">
+              <div>
+                <strong>Kebutuhan Golongan {karyawan.golongan}:</strong> {kebutuhan} AK
+              </div>
+              <div>
+                <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}
+              </div>
+              <div>
+                <strong>AK Awal:</strong> {initialAkKumulatif.toFixed(3)}
+              </div>
+            </div>
           </div>
 
           {loading ? (
@@ -776,57 +849,65 @@ const GenerateAkumulasiModal: React.FC<{
               <p className="text-muted-foreground mt-2">Memuat data konversi predikat...</p>
             </div>
           ) : availablePeriods.length > 0 ? (
-            <div className="max-h-96 overflow-y-auto">
+            <div className="flex-1 overflow-hidden">
               <div className="mb-4 p-2 bg-green-50 rounded">
                 <p className="text-sm text-green-700">
                   ✅ Ditemukan {availablePeriods.length} periode dari data konversi
                 </p>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No</TableHead>
-                    <TableHead>Periode</TableHead>
-                    <TableHead>AK Sebelumnya</TableHead>
-                    <TableHead>AK Periode Ini</TableHead>
-                    <TableHead>Total Kumulatif</TableHead>
-                    <TableHead>Kebutuhan</TableHead>
-                    <TableHead>Selisih</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Rekomendasi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {availablePeriods.map((period, index) => (
-                    <TableRow key={period.periode}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell className="font-semibold">{period.periode}</TableCell>
-                      <TableCell>{period.akSebelumnya.toFixed(3)}</TableCell>
-                      <TableCell className="text-primary font-semibold">
-                        {period.akPeriodeIni.toFixed(3)}
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {period.totalKumulatif.toFixed(3)}
-                      </TableCell>
-                      <TableCell>{period.kebutuhan}</TableCell>
-                      <TableCell className={`font-semibold ${period.selisih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {period.selisih.toFixed(3)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          period.status === 'Ya' ? 'default' :
-                          period.status === 'Dipertimbangkan' ? 'secondary' : 'destructive'
-                        }>
-                          {period.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm max-w-xs truncate" title={period.rekomendasi}>
-                        {period.rekomendasi}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <div className="min-w-full inline-block align-middle">
+                    <div className="overflow-y-auto max-h-96">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-background">
+                          <TableRow>
+                            <TableHead className="whitespace-nowrap">No</TableHead>
+                            <TableHead className="whitespace-nowrap">Periode</TableHead>
+                            <TableHead className="whitespace-nowrap">AK Sebelumnya</TableHead>
+                            <TableHead className="whitespace-nowrap">AK Periode Ini</TableHead>
+                            <TableHead className="whitespace-nowrap">Total Kumulatif</TableHead>
+                            <TableHead className="whitespace-nowrap">Kebutuhan</TableHead>
+                            <TableHead className="whitespace-nowrap">Selisih</TableHead>
+                            <TableHead className="whitespace-nowrap">Status</TableHead>
+                            <TableHead className="whitespace-nowrap">Rekomendasi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {availablePeriods.map((period, index) => (
+                            <TableRow key={period.periode}>
+                              <TableCell className="whitespace-nowrap">{index + 1}</TableCell>
+                              <TableCell className="whitespace-nowrap font-semibold">{period.periode}</TableCell>
+                              <TableCell className="whitespace-nowrap">{period.akSebelumnya.toFixed(3)}</TableCell>
+                              <TableCell className="whitespace-nowrap text-primary font-semibold">
+                                {period.akPeriodeIni.toFixed(3)}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap font-semibold">
+                                {period.totalKumulatif.toFixed(3)}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">{period.kebutuhan}</TableCell>
+                              <TableCell className={`whitespace-nowrap font-semibold ${period.selisih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {period.selisih.toFixed(3)}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                <Badge variant={
+                                  period.status === 'Ya' ? 'default' :
+                                  period.status === 'Dipertimbangkan' ? 'secondary' : 'destructive'
+                                }>
+                                  {period.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm max-w-xs" title={period.rekomendasi}>
+                                <div className="line-clamp-2">{period.rekomendasi}</div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -839,7 +920,7 @@ const GenerateAkumulasiModal: React.FC<{
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
@@ -859,6 +940,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   const api = useSpreadsheetAPI();
   
   const [akumulasiData, setAkumulasiData] = useState<AkumulasiData[]>([]);
+  const [initialAkKumulatif, setInitialAkKumulatif] = useState<number>(karyawan.akKumulatif || 0);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ periode: 'all', status: 'all' });
   const [editModal, setEditModal] = useState<{
@@ -872,6 +954,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
 
   useEffect(() => {
     loadData();
+    loadInitialAkKumulatif();
   }, []);
 
   const loadData = async () => {
@@ -883,6 +966,23 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInitialAkKumulatif = async () => {
+    try {
+      const dataSheet = await api.readDataSheet(karyawan.nip);
+      if (dataSheet.length > 0) {
+        const latestData = dataSheet[0];
+        if (latestData.akKumulatif !== undefined) {
+          setInitialAkKumulatif(latestData.akKumulatif);
+          console.log('✅ Loaded initial AK Kumulatif from data sheet:', latestData.akKumulatif);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading initial AK kumulatif:', error);
+      // Fallback to karyawan.akKumulatif if data sheet reading fails
+      setInitialAkKumulatif(karyawan.akKumulatif || 0);
     }
   };
 
@@ -1063,67 +1163,71 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   };
 
   const renderAkumulasiTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>No</TableHead>
-          <TableHead>Periode</TableHead>
-          <TableHead>AK Sebelumnya</TableHead>
-          <TableHead>AK Periode Ini</TableHead>
-          <TableHead>Total Kumulatif</TableHead>
-          <TableHead>Kebutuhan</TableHead>
-          <TableHead>Selisih</TableHead>
-          <TableHead>Status Kenaikan</TableHead>
-          <TableHead>Rekomendasi</TableHead>
-          <TableHead className="text-right">Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {getFilteredData().map((data: AkumulasiData) => (
-          <TableRow key={data.id}>
-            <TableCell className="font-medium">{data.No}</TableCell>
-            <TableCell className="font-semibold">{data.Periode}</TableCell>
-            <TableCell>{data['AK Sebelumnya']}</TableCell>
-            <TableCell className="text-primary font-semibold">{data['AK Periode Ini']}</TableCell>
-            <TableCell className="font-semibold">{data['Total Kumulatif']}</TableCell>
-            <TableCell>{data.Kebutuhan}</TableCell>
-            <TableCell className={`font-semibold ${getSelisihColor(data.Selisih)}`}>
-              {data.Selisih}
-            </TableCell>
-            <TableCell>
-              <Badge variant={getStatusVariant(data['Status Kenaikan'])}>
-                {data['Status Kenaikan']}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-sm max-w-xs truncate" title={data.Rekomendasi}>
-              {data.Rekomendasi}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleEdit(data)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleDelete(data)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">No</TableHead>
+              <TableHead className="whitespace-nowrap">Periode</TableHead>
+              <TableHead className="whitespace-nowrap">AK Sebelumnya</TableHead>
+              <TableHead className="whitespace-nowrap">AK Periode Ini</TableHead>
+              <TableHead className="whitespace-nowrap">Total Kumulatif</TableHead>
+              <TableHead className="whitespace-nowrap">Kebutuhan</TableHead>
+              <TableHead className="whitespace-nowrap">Selisih</TableHead>
+              <TableHead className="whitespace-nowrap">Status Kenaikan</TableHead>
+              <TableHead className="whitespace-nowrap">Rekomendasi</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {getFilteredData().map((data: AkumulasiData) => (
+              <TableRow key={data.id}>
+                <TableCell className="font-medium whitespace-nowrap">{data.No}</TableCell>
+                <TableCell className="font-semibold whitespace-nowrap">{data.Periode}</TableCell>
+                <TableCell className="whitespace-nowrap">{data['AK Sebelumnya']}</TableCell>
+                <TableCell className="text-primary font-semibold whitespace-nowrap">{data['AK Periode Ini']}</TableCell>
+                <TableCell className="font-semibold whitespace-nowrap">{data['Total Kumulatif']}</TableCell>
+                <TableCell className="whitespace-nowrap">{data.Kebutuhan}</TableCell>
+                <TableCell className={`font-semibold whitespace-nowrap ${getSelisihColor(data.Selisih)}`}>
+                  {data.Selisih}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <Badge variant={getStatusVariant(data['Status Kenaikan'])}>
+                    {data['Status Kenaikan']}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm max-w-xs" title={data.Rekomendasi}>
+                  <div className="line-clamp-2">{data.Rekomendasi}</div>
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  <div className="flex justify-end gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleEdit(data)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDelete(data)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 
   const latestData = getFilteredData().length > 0 ? getFilteredData()[getFilteredData().length - 1] : null;
-  const totalKumulatif = latestData ? latestData['Total Kumulatif'] : karyawan.akKumulatif;
+  const totalKumulatif = latestData ? latestData['Total Kumulatif'] : initialAkKumulatif;
 
   return (
     <div className="space-y-6 p-6">
@@ -1138,8 +1242,8 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 mb-4 items-end">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start sm:items-end">
+            <div className="flex-1 w-full sm:w-auto">
               <Label htmlFor="filter-periode">Periode</Label>
               <Select 
                 value={filters.periode} 
@@ -1158,7 +1262,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
               </Select>
             </div>
             
-            <div className="flex-1">
+            <div className="flex-1 w-full sm:w-auto">
               <Label htmlFor="filter-status">Status Kenaikan</Label>
               <Select 
                 value={filters.status} 
@@ -1176,24 +1280,24 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
               </Select>
             </div>
             
-            <Button onClick={loadData} variant="outline">
+            <Button onClick={loadData} variant="outline" className="w-full sm:w-auto">
               <Filter className="h-4 w-4 mr-2" />
               Refresh Data
             </Button>
             
-            <Button onClick={handleAddNew}>
+            <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Tambah Baru
             </Button>
 
-            <Button onClick={() => setGenerateModal(true)} variant="secondary">
+            <Button onClick={() => setGenerateModal(true)} variant="secondary" className="w-full sm:w-auto">
               <Save className="h-4 w-4 mr-2" />
               Generate dari Konversi
             </Button>
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <div className="grid grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <strong>Total Kumulatif Terkini:</strong><br />
                 <span className="font-semibold text-primary text-lg">{totalKumulatif.toFixed(3)}</span>
@@ -1226,7 +1330,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <div className="text-center py-8 text-muted-foreground">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Tidak ada data akumulasi ditemukan</p>
-                  <div className="flex gap-2 justify-center mt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center mt-2">
                     <Button onClick={handleAddNew}>
                       <Plus className="h-4 w-4 mr-2" />
                       Tambah Data Pertama
@@ -1251,6 +1355,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
         karyawan={karyawan}
+        initialAkKumulatif={initialAkKumulatif}
       />
 
       <GenerateAkumulasiModal
@@ -1258,6 +1363,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
         onClose={() => setGenerateModal(false)}
         onGenerate={handleGeneratePeriods}
         karyawan={karyawan}
+        initialAkKumulatif={initialAkKumulatif}
       />
     </div>
   );
