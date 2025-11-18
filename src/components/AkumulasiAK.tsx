@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Filter, FileText, Calendar, User } from 'lucide-react';
+import { Edit, Trash2, Plus, Filter, TrendingUp, Calculator, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,35 +26,34 @@ interface Karyawan {
   akKumulatif: number;
 }
 
-interface PenetapanData {
+interface AkumulasiData {
   id?: string;
   No?: number;
   NIP: string;
   Nama: string;
-  Tahun: number;
-  'AK Semester 1': number;
-  'AK Semester 2': number;
-  'AK Tahunan': number;
-  Jabatan: string;
-  Golongan: string;
-  'Tanggal Penetapan': string;
-  Penetap: string;
-  Status: 'Draft' | 'Disetujui' | 'Ditolak';
+  Periode: string;
+  'AK Sebelumnya': number;
+  'AK Periode Ini': number;
+  'Total Kumulatif': number;
+  Kebutuhan: number;
+  Selisih: number;
+  'Status Kenaikan': 'Tidak' | 'Ya' | 'Dipertimbangkan';
+  Rekomendasi: string;
   Link_Dokumen?: string;
   Last_Update: string;
   rowIndex?: number;
 }
 
-interface PenetapanAKProps {
+interface AkumulasiAKProps {
   karyawan: Karyawan;
 }
 
 // ==================== SPREADSHEET CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
-const SHEET_NAME = "penetapan_ak";
+const SHEET_NAME = "akumulasi_ak";
 
 // ==================== UTILITY FUNCTIONS ====================
-class PenetapanCalculator {
+class AkumulasiCalculator {
   static formatDate(date: Date): string {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -75,38 +74,70 @@ class PenetapanCalculator {
     return Number(value);
   }
 
-  // Hitung AK Tahunan dari AK Semester 1 dan 2
-  static calculateAKTahunan(akSemester1: number, akSemester2: number): number {
-    return Number((akSemester1 + akSemester2).toFixed(3));
+  // Hitung total kumulatif
+  static calculateTotalKumulatif(akSebelumnya: number, akPeriodeIni: number): number {
+    return Number((akSebelumnya + akPeriodeIni).toFixed(3));
   }
 
-  // Validasi data penetapan
-  static validatePenetapanData(data: PenetapanData): boolean {
+  // Hitung selisih antara total kumulatif dan kebutuhan
+  static calculateSelisih(totalKumulatif: number, kebutuhan: number): number {
+    return Number((totalKumulatif - kebutuhan).toFixed(3));
+  }
+
+  // Tentukan status kenaikan berdasarkan selisih
+  static determineStatusKenaikan(selisih: number): 'Tidak' | 'Ya' | 'Dipertimbangkan' {
+    if (selisih >= 0) return 'Ya';
+    if (selisih >= -10) return 'Dipertimbangkan';
+    return 'Tidak';
+  }
+
+  // Generate rekomendasi berdasarkan status
+  static generateRekomendasi(status: string, selisih: number): string {
+    switch (status) {
+      case 'Ya':
+        return 'Siap untuk diajukan kenaikan pangkat';
+      case 'Dipertimbangkan':
+        return `Perlu tambahan ${Math.abs(selisih).toFixed(3)} AK untuk memenuhi syarat`;
+      case 'Tidak':
+        return `Butuh peningkatan kinerja, kekurangan ${Math.abs(selisih).toFixed(3)} AK`;
+      default:
+        return 'Perlu evaluasi lebih lanjut';
+    }
+  }
+
+  // Get kebutuhan AK berdasarkan golongan
+  static getKebutuhanAK(golongan: string): number {
+    const golonganLower = golongan.toLowerCase();
+    
+    if (golonganLower.includes('iv/d')) return 200;
+    if (golonganLower.includes('iv/c')) return 200;
+    if (golonganLower.includes('iv/b')) return 150;
+    if (golonganLower.includes('iv/a')) return 100;
+    if (golonganLower.includes('iii/d')) return 100;
+    if (golonganLower.includes('iii/c')) return 80;
+    if (golonganLower.includes('iii/b')) return 60;
+    if (golonganLower.includes('iii/a')) return 50;
+    if (golonganLower.includes('ii/d')) return 40;
+    if (golonganLower.includes('ii/c')) return 30;
+    if (golonganLower.includes('ii/b')) return 20;
+    if (golonganLower.includes('ii/a')) return 10;
+    
+    return 100; // Default
+  }
+
+  // Validasi data akumulasi
+  static validateAkumulasiData(data: AkumulasiData): boolean {
     return !(
-      isNaN(data['AK Semester 1']) ||
-      isNaN(data['AK Semester 2']) ||
-      isNaN(data['AK Tahunan']) ||
-      data['AK Semester 1'] < 0 ||
-      data['AK Semester 2'] < 0 ||
-      data['AK Tahunan'] < 0
+      isNaN(data['AK Sebelumnya']) ||
+      isNaN(data['AK Periode Ini']) ||
+      isNaN(data['Total Kumulatif']) ||
+      isNaN(data.Kebutuhan) ||
+      isNaN(data.Selisih) ||
+      data['AK Sebelumnya'] < 0 ||
+      data['AK Periode Ini'] < 0 ||
+      data['Total Kumulatif'] < 0 ||
+      data.Kebutuhan < 0
     );
-  }
-
-  // Generate data penetapan dari data konversi (jika diperlukan)
-  static generateFromKonversi(
-    konversiData: any[], 
-    tahun: number, 
-    karyawan: Karyawan
-  ): { akSemester1: number; akSemester2: number; akTahunan: number } {
-    const dataTahun = konversiData.filter(item => item.Tahun === tahun);
-    const semester1 = dataTahun.find(item => item.Semester === 1);
-    const semester2 = dataTahun.find(item => item.Semester === 2);
-
-    const akSemester1 = semester1 ? semester1['AK Konversi'] : 0;
-    const akSemester2 = semester2 ? semester2['AK Konversi'] : 0;
-    const akTahunan = this.calculateAKTahunan(akSemester1, akSemester2);
-
-    return { akSemester1, akSemester2, akTahunan };
   }
 }
 
@@ -155,33 +186,33 @@ const useSpreadsheetAPI = () => {
           return nipIndex >= 0 && row[nipIndex] === nip;
         })
         .map((row: any[], index: number) => {
-          const obj: PenetapanData = { 
+          const obj: AkumulasiData = { 
             id: `${SHEET_NAME}_${index + 2}`,
             rowIndex: index + 2,
             Last_Update: '',
             NIP: '',
             Nama: '',
-            Tahun: new Date().getFullYear(),
-            'AK Semester 1': 0,
-            'AK Semester 2': 0,
-            'AK Tahunan': 0,
-            Jabatan: '',
-            Golongan: '',
-            'Tanggal Penetapan': '',
-            Penetap: '',
-            Status: 'Draft'
-          } as PenetapanData;
+            Periode: '',
+            'AK Sebelumnya': 0,
+            'AK Periode Ini': 0,
+            'Total Kumulatif': 0,
+            Kebutuhan: 0,
+            Selisih: 0,
+            'Status Kenaikan': 'Tidak',
+            Rekomendasi: ''
+          } as AkumulasiData;
 
           headers.forEach((header: string, colIndex: number) => {
             let value = row[colIndex];
             
             // Handle number conversion dengan format yang benar
-            if (header === 'Tahun' || header === 'No') {
+            if (header === 'No') {
               value = Number(value) || 0;
             }
             // Handle AK values dengan konversi format desimal
-            else if (header === 'AK Semester 1' || header === 'AK Semester 2' || header === 'AK Tahunan') {
-              value = PenetapanCalculator.parseNumberFromSheet(value);
+            else if (header === 'AK Sebelumnya' || header === 'AK Periode Ini' || 
+                     header === 'Total Kumulatif' || header === 'Kebutuhan' || header === 'Selisih') {
+              value = AkumulasiCalculator.parseNumberFromSheet(value);
             }
             
             // Assign value to object
@@ -224,55 +255,70 @@ const useSpreadsheetAPI = () => {
 };
 
 // ==================== EDIT FORM MODAL ====================
-const EditPenetapanModal: React.FC<{
-  data: PenetapanData | null;
+const EditAkumulasiModal: React.FC<{
+  data: AkumulasiData | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: PenetapanData) => void;
+  onSave: (data: AkumulasiData) => void;
   karyawan: Karyawan;
 }> = ({ data, isOpen, onClose, onSave, karyawan }) => {
-  const [formData, setFormData] = useState<Partial<PenetapanData>>({});
+  const [formData, setFormData] = useState<Partial<AkumulasiData>>({});
 
   useEffect(() => {
     if (data) {
       setFormData({ ...data });
     } else {
+      const kebutuhan = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan);
       setFormData({
-        Tahun: new Date().getFullYear(),
-        'AK Semester 1': 0,
-        'AK Semester 2': 0,
-        'AK Tahunan': 0,
-        Jabatan: karyawan.jabatan,
-        Golongan: karyawan.golongan,
-        'Tanggal Penetapan': PenetapanCalculator.formatDate(new Date()),
-        Penetap: 'Pejabat Penetap',
-        Status: 'Draft'
+        Periode: `Semester ${new Date().getMonth() < 6 ? 1 : 2} ${new Date().getFullYear()}`,
+        'AK Sebelumnya': karyawan.akKumulatif || 0,
+        'AK Periode Ini': 0,
+        'Total Kumulatif': karyawan.akKumulatif || 0,
+        Kebutuhan: kebutuhan,
+        Selisih: (karyawan.akKumulatif || 0) - kebutuhan,
+        'Status Kenaikan': 'Tidak',
+        Rekomendasi: ''
       });
     }
   }, [data, karyawan]);
 
-  const calculateAKTahunan = (): number => {
-    const akSem1 = formData['AK Semester 1'] || 0;
-    const akSem2 = formData['AK Semester 2'] || 0;
-    return PenetapanCalculator.calculateAKTahunan(akSem1, akSem2);
+  const calculateValues = (): {
+    totalKumulatif: number;
+    selisih: number;
+    status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
+    rekomendasi: string;
+  } => {
+    const akSebelumnya = formData['AK Sebelumnya'] || 0;
+    const akPeriodeIni = formData['AK Periode Ini'] || 0;
+    const kebutuhan = formData.Kebutuhan || AkumulasiCalculator.getKebutuhanAK(karyawan.golongan);
+
+    const totalKumulatif = AkumulasiCalculator.calculateTotalKumulatif(akSebelumnya, akPeriodeIni);
+    const selisih = AkumulasiCalculator.calculateSelisih(totalKumulatif, kebutuhan);
+    const status = AkumulasiCalculator.determineStatusKenaikan(selisih);
+    const rekomendasi = AkumulasiCalculator.generateRekomendasi(status, selisih);
+
+    return { totalKumulatif, selisih, status, rekomendasi };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.Tahun) {
-      const akTahunan = calculateAKTahunan();
+    if (formData.Periode) {
+      const { totalKumulatif, selisih, status, rekomendasi } = calculateValues();
       
-      const finalData: PenetapanData = {
+      const finalData: AkumulasiData = {
         ...data,
         ...formData,
         NIP: karyawan.nip,
         Nama: karyawan.nama,
-        'AK Tahunan': akTahunan,
-        Last_Update: PenetapanCalculator.formatDate(new Date())
-      } as PenetapanData;
+        'Total Kumulatif': totalKumulatif,
+        Selisih: selisih,
+        'Status Kenaikan': status,
+        Rekomendasi: rekomendasi,
+        Last_Update: AkumulasiCalculator.formatDate(new Date())
+      } as AkumulasiData;
 
       // Validasi sebelum save
-      if (!PenetapanCalculator.validatePenetapanData(finalData)) {
+      if (!AkumulasiCalculator.validateAkumulasiData(finalData)) {
         alert('Data tidak valid! Silakan periksa input Anda.');
         return;
       }
@@ -281,119 +327,71 @@ const EditPenetapanModal: React.FC<{
     }
   };
 
-  const akTahunan = calculateAKTahunan();
+  const { totalKumulatif, selisih, status, rekomendasi } = calculateValues();
+  const kebutuhanDefault = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {data ? 'Edit Data Penetapan AK' : 'Tambah Data Penetapan AK'}
+            {data ? 'Edit Data Akumulasi AK' : 'Tambah Data Akumulasi AK'}
           </DialogTitle>
           <DialogDescription>
-            {data ? 'Edit data penetapan angka kredit' : 'Tambahkan data penetapan angka kredit baru'}
+            {data ? 'Edit data akumulasi angka kredit' : 'Tambahkan data akumulasi angka kredit baru'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="tahun">Tahun</Label>
+              <Label htmlFor="periode">Periode</Label>
               <Input
-                id="tahun"
-                type="number"
-                value={formData.Tahun || ''}
-                onChange={(e) => setFormData({...formData, Tahun: parseInt(e.target.value)})}
+                id="periode"
+                value={formData.Periode || ''}
+                onChange={(e) => setFormData({...formData, Periode: e.target.value})}
+                placeholder="Contoh: Semester 1 2024"
                 required
               />
             </div>
             <div>
-              <Label htmlFor="tanggal-penetapan">Tanggal Penetapan</Label>
+              <Label htmlFor="kebutuhan">Kebutuhan AK</Label>
               <Input
-                id="tanggal-penetapan"
-                type="text"
-                value={formData['Tanggal Penetapan'] || ''}
-                onChange={(e) => setFormData({...formData, 'Tanggal Penetapan': e.target.value})}
-                placeholder="DD/MM/YYYY"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="ak-semester-1">AK Semester 1</Label>
-              <Input
-                id="ak-semester-1"
+                id="kebutuhan"
                 type="number"
                 step="0.001"
                 min="0"
-                value={formData['AK Semester 1'] || 0}
-                onChange={(e) => setFormData({...formData, 'AK Semester 1': parseFloat(e.target.value)})}
+                value={formData.Kebutuhan || kebutuhanDefault}
+                onChange={(e) => setFormData({...formData, Kebutuhan: parseFloat(e.target.value)})}
                 required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="ak-semester-2">AK Semester 2</Label>
+              <Label htmlFor="ak-sebelumnya">AK Sebelumnya</Label>
               <Input
-                id="ak-semester-2"
+                id="ak-sebelumnya"
                 type="number"
                 step="0.001"
                 min="0"
-                value={formData['AK Semester 2'] || 0}
-                onChange={(e) => setFormData({...formData, 'AK Semester 2': parseFloat(e.target.value)})}
+                value={formData['AK Sebelumnya'] || 0}
+                onChange={(e) => setFormData({...formData, 'AK Sebelumnya': parseFloat(e.target.value)})}
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="jabatan">Jabatan</Label>
+              <Label htmlFor="ak-periode-ini">AK Periode Ini</Label>
               <Input
-                id="jabatan"
-                value={formData.Jabatan || karyawan.jabatan}
-                onChange={(e) => setFormData({...formData, Jabatan: e.target.value})}
+                id="ak-periode-ini"
+                type="number"
+                step="0.001"
+                min="0"
+                value={formData['AK Periode Ini'] || 0}
+                onChange={(e) => setFormData({...formData, 'AK Periode Ini': parseFloat(e.target.value)})}
                 required
               />
-            </div>
-            <div>
-              <Label htmlFor="golongan">Golongan</Label>
-              <Input
-                id="golongan"
-                value={formData.Golongan || karyawan.golongan}
-                onChange={(e) => setFormData({...formData, Golongan: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="penetap">Penetap</Label>
-              <Input
-                id="penetap"
-                value={formData.Penetap || ''}
-                onChange={(e) => setFormData({...formData, Penetap: e.target.value})}
-                placeholder="Nama Pejabat Penetap"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={formData.Status || "Draft"} 
-                onValueChange={(value) => setFormData({...formData, Status: value as any})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Draft">Draft</SelectItem>
-                  <SelectItem value="Disetujui">Disetujui</SelectItem>
-                  <SelectItem value="Ditolak">Ditolak</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -410,9 +408,15 @@ const EditPenetapanModal: React.FC<{
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
               <strong>Perhitungan Otomatis:</strong><br />
-              • AK Semester 1: {formData['AK Semester 1'] || 0}<br />
-              • AK Semester 2: {formData['AK Semester 2'] || 0}<br />
-              • AK Tahunan: <strong>{akTahunan}</strong><br />
+              • AK Sebelumnya: {formData['AK Sebelumnya'] || 0}<br />
+              • AK Periode Ini: {formData['AK Periode Ini'] || 0}<br />
+              • Total Kumulatif: <strong>{totalKumulatif}</strong><br />
+              • Kebutuhan: {formData.Kebutuhan || kebutuhanDefault}<br />
+              • Selisih: <strong className={selisih >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {selisih}
+              </strong><br />
+              • Status Kenaikan: <strong>{status}</strong><br />
+              • Rekomendasi: {rekomendasi}<br />
               • NIP: {karyawan.nip}<br />
               • Nama: {karyawan.nama}
             </p>
@@ -433,16 +437,16 @@ const EditPenetapanModal: React.FC<{
 };
 
 // ==================== MAIN COMPONENT ====================
-const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
+const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   const { toast } = useToast();
   const api = useSpreadsheetAPI();
   
-  const [penetapanData, setPenetapanData] = useState<PenetapanData[]>([]);
+  const [akumulasiData, setAkumulasiData] = useState<AkumulasiData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ tahun: 'all', status: 'all' });
+  const [filters, setFilters] = useState({ periode: 'all', status: 'all' });
   const [editModal, setEditModal] = useState<{
     isOpen: boolean;
-    data: PenetapanData | null;
+    data: AkumulasiData | null;
   }>({
     isOpen: false,
     data: null
@@ -456,7 +460,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     setLoading(true);
     try {
       const data = await api.readData(karyawan.nip);
-      setPenetapanData(data);
+      setAkumulasiData(data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -464,31 +468,30 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     }
   };
 
-  const handleEdit = (data: PenetapanData) => {
+  const handleEdit = (data: AkumulasiData) => {
     setEditModal({
       isOpen: true,
       data: data
     });
   };
 
-  const handleSave = async (updatedData: PenetapanData) => {
+  const handleSave = async (updatedData: AkumulasiData) => {
     try {
-      const nextNo = penetapanData.length > 0 ? Math.max(...penetapanData.map(d => d.No || 0)) + 1 : 1;
+      const nextNo = akumulasiData.length > 0 ? Math.max(...akumulasiData.map(d => d.No || 0)) + 1 : 1;
       
       // Format values untuk spreadsheet dengan format desimal yang benar
       const values = [
         updatedData.No || nextNo,
         updatedData.NIP,
         updatedData.Nama,
-        updatedData.Tahun,
-        PenetapanCalculator.formatNumberForSheet(updatedData['AK Semester 1']),
-        PenetapanCalculator.formatNumberForSheet(updatedData['AK Semester 2']),
-        PenetapanCalculator.formatNumberForSheet(updatedData['AK Tahunan']),
-        updatedData.Jabatan,
-        updatedData.Golongan,
-        updatedData['Tanggal Penetapan'],
-        updatedData.Penetap,
-        updatedData.Status,
+        updatedData.Periode,
+        AkumulasiCalculator.formatNumberForSheet(updatedData['AK Sebelumnya']),
+        AkumulasiCalculator.formatNumberForSheet(updatedData['AK Periode Ini']),
+        AkumulasiCalculator.formatNumberForSheet(updatedData['Total Kumulatif']),
+        AkumulasiCalculator.formatNumberForSheet(updatedData.Kebutuhan),
+        AkumulasiCalculator.formatNumberForSheet(updatedData.Selisih),
+        updatedData['Status Kenaikan'],
+        updatedData.Rekomendasi,
         updatedData.Link_Dokumen || '',
         updatedData.Last_Update
       ];
@@ -525,8 +528,8 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     });
   };
 
-  const handleDelete = async (rowData: PenetapanData) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus data penetapan AK ini?')) return;
+  const handleDelete = async (rowData: AkumulasiData) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data akumulasi AK ini?')) return;
     
     try {
       if (rowData.rowIndex) {
@@ -548,54 +551,60 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
   };
 
   const getFilteredData = () => {
-    return penetapanData.filter(item => 
-      (filters.tahun === 'all' || item.Tahun?.toString() === filters.tahun) &&
-      (filters.status === 'all' || item.Status === filters.status)
+    return akumulasiData.filter(item => 
+      (filters.periode === 'all' || item.Periode?.toLowerCase().includes(filters.periode.toLowerCase())) &&
+      (filters.status === 'all' || item['Status Kenaikan'] === filters.status)
     );
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'Disetujui': return 'default';
-      case 'Draft': return 'secondary';
-      case 'Ditolak': return 'destructive';
+      case 'Ya': return 'default';
+      case 'Dipertimbangkan': return 'secondary';
+      case 'Tidak': return 'destructive';
       default: return 'outline';
     }
   };
 
-  const renderPenetapanTable = () => (
+  const getSelisihColor = (selisih: number) => {
+    return selisih >= 0 ? 'text-green-600' : 'text-red-600';
+  };
+
+  const renderAkumulasiTable = () => (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>No</TableHead>
-          <TableHead>Tahun</TableHead>
-          <TableHead>AK Semester 1</TableHead>
-          <TableHead>AK Semester 2</TableHead>
-          <TableHead>AK Tahunan</TableHead>
-          <TableHead>Jabatan</TableHead>
-          <TableHead>Golongan</TableHead>
-          <TableHead>Tanggal Penetapan</TableHead>
-          <TableHead>Penetap</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>Periode</TableHead>
+          <TableHead>AK Sebelumnya</TableHead>
+          <TableHead>AK Periode Ini</TableHead>
+          <TableHead>Total Kumulatif</TableHead>
+          <TableHead>Kebutuhan</TableHead>
+          <TableHead>Selisih</TableHead>
+          <TableHead>Status Kenaikan</TableHead>
+          <TableHead>Rekomendasi</TableHead>
           <TableHead className="text-right">Aksi</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {getFilteredData().map((data: PenetapanData) => (
+        {getFilteredData().map((data: AkumulasiData) => (
           <TableRow key={data.id}>
             <TableCell className="font-medium">{data.No}</TableCell>
-            <TableCell>{data.Tahun}</TableCell>
-            <TableCell className="font-semibold">{data['AK Semester 1']}</TableCell>
-            <TableCell className="font-semibold">{data['AK Semester 2']}</TableCell>
-            <TableCell className="font-semibold text-primary">{data['AK Tahunan']}</TableCell>
-            <TableCell className="text-sm">{data.Jabatan}</TableCell>
-            <TableCell>{data.Golongan}</TableCell>
-            <TableCell className="text-sm">{data['Tanggal Penetapan']}</TableCell>
-            <TableCell className="text-sm">{data.Penetap}</TableCell>
+            <TableCell className="font-semibold">{data.Periode}</TableCell>
+            <TableCell>{data['AK Sebelumnya']}</TableCell>
+            <TableCell className="text-primary font-semibold">{data['AK Periode Ini']}</TableCell>
+            <TableCell className="font-semibold">{data['Total Kumulatif']}</TableCell>
+            <TableCell>{data.Kebutuhan}</TableCell>
+            <TableCell className={`font-semibold ${getSelisihColor(data.Selisih)}`}>
+              {data.Selisih}
+            </TableCell>
             <TableCell>
-              <Badge variant={getStatusVariant(data.Status)}>
-                {data.Status}
+              <Badge variant={getStatusVariant(data['Status Kenaikan'])}>
+                {data['Status Kenaikan']}
               </Badge>
+            </TableCell>
+            <TableCell className="text-sm max-w-xs truncate" title={data.Rekomendasi}>
+              {data.Rekomendasi}
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">
@@ -621,42 +630,44 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     </Table>
   );
 
-  const totalAKTahunan = getFilteredData().reduce((sum, item) => sum + (item['AK Tahunan'] || 0), 0);
+  const latestData = getFilteredData().length > 0 ? getFilteredData()[getFilteredData().length - 1] : null;
+  const totalKumulatif = latestData ? latestData['Total Kumulatif'] : karyawan.akKumulatif;
 
   return (
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Penetapan Angka Kredit
+            <TrendingUp className="h-5 w-5" />
+            Akumulasi Angka Kredit
           </CardTitle>
           <CardDescription>
-            Kelola data penetapan angka kredit untuk {karyawan.nama} - {karyawan.nip}
+            Monitoring akumulasi angka kredit dan status kenaikan pangkat untuk {karyawan.nama} - {karyawan.nip}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-4 items-end">
             <div className="flex-1">
-              <Label htmlFor="filter-tahun">Tahun</Label>
+              <Label htmlFor="filter-periode">Periode</Label>
               <Select 
-                value={filters.tahun} 
-                onValueChange={(value) => setFilters({...filters, tahun: value})}
+                value={filters.periode} 
+                onValueChange={(value) => setFilters({...filters, periode: value})}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Semua Tahun" />
+                  <SelectValue placeholder="Semua Periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[2023, 2024, 2025, 2026].map(year => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                  ))}
+                  <SelectItem value="all">Semua Periode</SelectItem>
+                  <SelectItem value="semester 1">Semester 1</SelectItem>
+                  <SelectItem value="semester 2">Semester 2</SelectItem>
+                  <SelectItem value="2024">Tahun 2024</SelectItem>
+                  <SelectItem value="2023">Tahun 2023</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="flex-1">
-              <Label htmlFor="filter-status">Status</Label>
+              <Label htmlFor="filter-status">Status Kenaikan</Label>
               <Select 
                 value={filters.status} 
                 onValueChange={(value) => setFilters({...filters, status: value})}
@@ -666,9 +677,9 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="Draft">Draft</SelectItem>
-                  <SelectItem value="Disetujui">Disetujui</SelectItem>
-                  <SelectItem value="Ditolak">Ditolak</SelectItem>
+                  <SelectItem value="Ya">Ya</SelectItem>
+                  <SelectItem value="Dipertimbangkan">Dipertimbangkan</SelectItem>
+                  <SelectItem value="Tidak">Tidak</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -685,18 +696,24 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-4 gap-4 text-sm">
               <div>
-                <strong>Informasi Karyawan:</strong><br />
-                {karyawan.jabatan} - {karyawan.golongan}
+                <strong>Total Kumulatif Terkini:</strong><br />
+                <span className="font-semibold text-primary text-lg">{totalKumulatif.toFixed(3)}</span>
               </div>
               <div>
-                <strong>Total AK Tahunan:</strong><br />
-                <span className="font-semibold text-primary">{totalAKTahunan.toFixed(3)}</span>
+                <strong>Kebutuhan Golongan {karyawan.golongan}:</strong><br />
+                <span className="font-semibold">{AkumulasiCalculator.getKebutuhanAK(karyawan.golongan)}</span>
+              </div>
+              <div>
+                <strong>Status Terkini:</strong><br />
+                <Badge variant={latestData ? getStatusVariant(latestData['Status Kenaikan']) : 'outline'}>
+                  {latestData ? latestData['Status Kenaikan'] : 'Belum Ada Data'}
+                </Badge>
               </div>
               <div>
                 <strong>Jumlah Data:</strong><br />
-                {getFilteredData().length} penetapan
+                {getFilteredData().length} periode
               </div>
             </div>
           </div>
@@ -710,22 +727,22 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
                 </div>
               ) : getFilteredData().length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Tidak ada data penetapan ditemukan</p>
+                  <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Tidak ada data akumulasi ditemukan</p>
                   <Button onClick={handleAddNew} className="mt-2">
                     <Plus className="h-4 w-4 mr-2" />
                     Tambah Data Pertama
                   </Button>
                 </div>
               ) : (
-                renderPenetapanTable()
+                renderAkumulasiTable()
               )}
             </CardContent>
           </Card>
         </CardContent>
       </Card>
 
-      <EditPenetapanModal
+      <EditAkumulasiModal
         data={editModal.data}
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, data: null })}
@@ -736,4 +753,4 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
   );
 };
 
-export default PenetapanAK;
+export default AkumulasiAK;
