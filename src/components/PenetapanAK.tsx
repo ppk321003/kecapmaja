@@ -52,6 +52,7 @@ interface PenetapanAKProps {
 // ==================== SPREADSHEET CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "penetapan_ak";
+const DATA_SHEET_NAME = "data";
 
 // ==================== UTILITY FUNCTIONS ====================
 class PenetapanCalculator {
@@ -188,14 +189,14 @@ class PenetapanCalculator {
     return result.sort((a, b) => a.tahun - b.tahun);
   }
 
-  // Ambil data karyawan dari sheet "data"
+  // Ambil data karyawan dari sheet "data" - PERBAIKAN DARI SKRIP KEDUA
   static async getKaryawanDataFromSheet(nip: string): Promise<{ akKumulatif: number; dataLengkap: any }> {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: 'read',
-          range: 'data'
+          range: DATA_SHEET_NAME
         }
       });
 
@@ -212,9 +213,12 @@ class PenetapanCalculator {
       const headers = rows[0];
       console.log('📝 Headers sheet "data":', headers);
       
-      // Cari data karyawan berdasarkan NIP
+      // Cari data karyawan berdasarkan NIP - PENDEKATAN FLEKSIBEL
       const karyawanRow = rows.slice(1).find((row: any[]) => {
-        const nipIndex = headers.indexOf('NIP');
+        // Cari kolom NIP dengan berbagai kemungkinan nama
+        const nipIndex = headers.findIndex((header: string) => 
+          header.toLowerCase().includes('nip')
+        );
         return nipIndex >= 0 && row[nipIndex] === nip;
       });
 
@@ -228,8 +232,8 @@ class PenetapanCalculator {
       headers.forEach((header: string, colIndex: number) => {
         let value = karyawanRow[colIndex];
         
-        // Handle akKumulatif dengan format desimal
-        if (header === 'akKumulatif') {
+        // Handle akKumulatif dengan format desimal - CARI BERDASARKAN NAMA KOLOM
+        if (header.toLowerCase().includes('ak') && header.toLowerCase().includes('kumulatif')) {
           value = this.parseNumberFromSheet(value);
           console.log(`💰 akKumulatif dari sheet: ${karyawanRow[colIndex]} -> ${value}`);
         }
@@ -238,8 +242,18 @@ class PenetapanCalculator {
       });
 
       console.log('✅ Data karyawan ditemukan:', karyawanData);
+      
+      // Cari nilai akKumulatif dari berbagai kemungkinan nama kolom
+      let akKumulatif = 0;
+      for (const [key, value] of Object.entries(karyawanData)) {
+        if (key.toLowerCase().includes('ak') && key.toLowerCase().includes('kumulatif')) {
+          akKumulatif = Number(value) || 0;
+          break;
+        }
+      }
+
       return { 
-        akKumulatif: karyawanData.akKumulatif || 0, 
+        akKumulatif, 
         dataLengkap: karyawanData 
       };
     } catch (error) {
@@ -259,7 +273,7 @@ const useSpreadsheetAPI = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
-          range: SHEET_NAME,
+          range: data?.range || SHEET_NAME,
           ...data
         }
       });
@@ -290,7 +304,9 @@ const useSpreadsheetAPI = () => {
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
-          const nipIndex = headers.indexOf('NIP');
+          const nipIndex = headers.findIndex((header: string) => 
+            header.toLowerCase().includes('nip')
+          );
           return nipIndex >= 0 && row[nipIndex] === nip;
         })
         .map((row: any[], index: number) => {
@@ -344,6 +360,52 @@ const useSpreadsheetAPI = () => {
     }
   };
 
+  // Fungsi untuk membaca data dari sheet "data" - DARI SKRIP KEDUA
+  const readDataSheet = async (nip?: string) => {
+    try {
+      const result = await callAPI('read', { range: DATA_SHEET_NAME });
+      const rows = result.values || [];
+      
+      if (rows.length <= 1) return [];
+      
+      const headers = rows[0];
+      console.log('Data sheet headers:', headers);
+      
+      const data = rows.slice(1)
+        .filter((row: any[]) => {
+          if (!nip) return true;
+          const nipIndex = headers.findIndex((header: string) => 
+            header.toLowerCase().includes('nip')
+          );
+          return nipIndex >= 0 && row[nipIndex] === nip;
+        })
+        .map((row: any[], index: number) => {
+          const obj: any = {
+            id: `${DATA_SHEET_NAME}_${index + 2}`,
+            rowIndex: index + 2
+          };
+
+          headers.forEach((header: string, colIndex: number) => {
+            let value = row[colIndex];
+            
+            if (header.toLowerCase().includes('ak') && header.toLowerCase().includes('kumulatif')) {
+              value = PenetapanCalculator.parseNumberFromSheet(value);
+            }
+            
+            obj[header] = value;
+          });
+          
+          return obj;
+        });
+      
+      console.log(`Loaded ${data.length} records from ${DATA_SHEET_NAME}`);
+      return data;
+    } catch (error) {
+      console.error('Error reading data sheet:', error);
+      return [];
+    }
+  };
+
   const appendData = async (values: any[]) => {
     console.log(`Appending to ${SHEET_NAME}:`, values);
     return await callAPI('append', { values: [values] });
@@ -359,7 +421,7 @@ const useSpreadsheetAPI = () => {
     return await callAPI('delete', { rowIndex });
   };
 
-  return { readData, appendData, updateData, deleteData };
+  return { readData, readDataSheet, appendData, updateData, deleteData };
 };
 
 // ==================== EDIT FORM MODAL ====================
@@ -369,7 +431,8 @@ const EditPenetapanModal: React.FC<{
   onClose: () => void;
   onSave: (data: PenetapanData) => void;
   karyawan: Karyawan;
-}> = ({ data, isOpen, onClose, onSave, karyawan }) => {
+  initialAkKumulatif: number;
+}> = ({ data, isOpen, onClose, onSave, karyawan, initialAkKumulatif }) => {
   const [formData, setFormData] = useState<Partial<PenetapanData>>({});
   const [loadingAkAwal, setLoadingAkAwal] = useState(false);
 
@@ -379,9 +442,9 @@ const EditPenetapanModal: React.FC<{
     } else {
       setFormData({
         Tahun: new Date().getFullYear(),
-        'AK Semester 1': 0,
+        'AK Semester 1': initialAkKumulatif || 0,
         'AK Semester 2': 0,
-        'AK Tahunan': 0,
+        'AK Tahunan': initialAkKumulatif || 0,
         Jabatan: karyawan.jabatan,
         Golongan: karyawan.golongan,
         'Tanggal Penetapan': PenetapanCalculator.formatDate(new Date()),
@@ -389,7 +452,7 @@ const EditPenetapanModal: React.FC<{
         Status: 'Draft'
       });
     }
-  }, [data, karyawan]);
+  }, [data, karyawan, initialAkKumulatif]);
 
   const loadAkKumulatifAwal = async () => {
     setLoadingAkAwal(true);
@@ -505,6 +568,9 @@ const EditPenetapanModal: React.FC<{
                 onChange={(e) => setFormData({...formData, 'AK Semester 1': parseFloat(e.target.value)})}
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Nilai awal dari data master: {initialAkKumulatif.toFixed(3)}
+              </p>
             </div>
             <div>
               <Label htmlFor="ak-semester-2">AK Semester 2</Label>
@@ -622,7 +688,8 @@ const GeneratePenetapanModal: React.FC<{
     status: 'Draft' | 'Disetujui' | 'Ditolak';
   }[]) => void;
   karyawan: Karyawan;
-}> = ({ isOpen, onClose, onGenerate, karyawan }) => {
+  initialAkKumulatif: number;
+}> = ({ isOpen, onClose, onGenerate, karyawan, initialAkKumulatif }) => {
   const [availablePeriods, setAvailablePeriods] = useState<{ 
     tahun: number;
     akSemester1: number; 
@@ -635,7 +702,7 @@ const GeneratePenetapanModal: React.FC<{
     status: 'Draft' | 'Disetujui' | 'Ditolak';
   }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [akKumulatifAwal, setAkKumulatifAwal] = useState<number>(0);
+  const [akKumulatifAwal, setAkKumulatifAwal] = useState<number>(initialAkKumulatif);
 
   useEffect(() => {
     if (isOpen) {
@@ -674,7 +741,7 @@ const GeneratePenetapanModal: React.FC<{
     }
   };
 
-  // Fungsi khusus untuk membaca data konversi
+  // Fungsi khusus untuk membaca data konversi - DARI SKRIP KEDUA
   const readKonversiData = async (nip?: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -701,7 +768,9 @@ const GeneratePenetapanModal: React.FC<{
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
-          const nipIndex = headers.indexOf('NIP');
+          const nipIndex = headers.findIndex((header: string) => 
+            header.toLowerCase().includes('nip')
+          );
           const rowNIP = nipIndex >= 0 ? row[nipIndex] : null;
           console.log('🔍 Filtering NIP:', { mencari: nip, ditemukan: rowNIP, match: rowNIP === nip });
           return rowNIP === nip;
@@ -853,6 +922,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
   const api = useSpreadsheetAPI();
   
   const [penetapanData, setPenetapanData] = useState<PenetapanData[]>([]);
+  const [initialAkKumulatif, setInitialAkKumulatif] = useState<number>(karyawan.akKumulatif || 0);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ tahun: 'all', status: 'all' });
   const [editModal, setEditModal] = useState<{
@@ -866,6 +936,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
 
   useEffect(() => {
     loadData();
+    loadInitialAkKumulatif();
   }, []);
 
   const loadData = async () => {
@@ -877,6 +948,28 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // FUNGSI BARU: Load initial AK Kumulatif dari sheet "data" - DARI SKRIP KEDUA
+  const loadInitialAkKumulatif = async () => {
+    try {
+      const dataSheet = await api.readDataSheet(karyawan.nip);
+      if (dataSheet.length > 0) {
+        const latestData = dataSheet[0];
+        // Cari nilai akKumulatif dari berbagai kemungkinan nama kolom
+        for (const [key, value] of Object.entries(latestData)) {
+          if (key.toLowerCase().includes('ak') && key.toLowerCase().includes('kumulatif')) {
+            setInitialAkKumulatif(Number(value) || 0);
+            console.log('✅ Loaded initial AK Kumulatif from data sheet:', value);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading initial AK kumulatif:', error);
+      // Fallback to karyawan.akKumulatif if data sheet reading fails
+      setInitialAkKumulatif(karyawan.akKumulatif || 0);
     }
   };
 
@@ -1197,6 +1290,9 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
                 {getFilteredData().length} penetapan
               </div>
             </div>
+            <div className="mt-2 text-xs text-blue-600">
+              <strong>AK Kumulatif Awal:</strong> {initialAkKumulatif.toFixed(3)}
+            </div>
           </div>
 
           <Card>
@@ -1235,6 +1331,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
         karyawan={karyawan}
+        initialAkKumulatif={initialAkKumulatif}
       />
 
       <GeneratePenetapanModal
@@ -1242,6 +1339,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
         onClose={() => setGenerateModal(false)}
         onGenerate={handleGeneratePeriods}
         karyawan={karyawan}
+        initialAkKumulatif={initialAkKumulatif}
       />
     </div>
   );
