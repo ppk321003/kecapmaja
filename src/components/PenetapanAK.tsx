@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Filter, FileText, Calendar, User, Save } from 'lucide-react';
+import { Edit, Trash2, Plus, Filter, FileText, Calendar, User, Save, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -56,10 +56,14 @@ const SHEET_NAME = "penetapan_ak";
 // ==================== UTILITY FUNCTIONS ====================
 class PenetapanCalculator {
   static formatDate(date: Date): string {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate();
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const month = monthNames[date.getMonth()];
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${day} ${month} ${year}`;
   }
 
   // Format angka untuk spreadsheet (menggunakan koma desimal)
@@ -73,6 +77,28 @@ class PenetapanCalculator {
       return parseFloat(value.replace(',', '.'));
     }
     return Number(value);
+  }
+
+  // Parse tanggal dari berbagai format
+  static parseDate(dateStr: string): Date {
+    // Coba format "18 November 2025"
+    const parts = dateStr.split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0]);
+      const monthNames = [
+        'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+        'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+      ];
+      const month = monthNames.indexOf(parts[1].toLowerCase());
+      const year = parseInt(parts[2]);
+      
+      if (!isNaN(day) && month !== -1 && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Fallback ke Date constructor
+    return new Date(dateStr);
   }
 
   // Hitung AK Tahunan dari AK Semester 1 dan 2
@@ -95,7 +121,8 @@ class PenetapanCalculator {
   // Generate data penetapan dari data konversi
   static generateFromKonversi(
     konversiData: any[], 
-    karyawan: Karyawan
+    karyawan: Karyawan,
+    akKumulatifAwal: number
   ): { 
     tahun: number;
     akSemester1: number; 
@@ -110,6 +137,7 @@ class PenetapanCalculator {
     const years: { [key: number]: { semester1: number; semester2: number } } = {};
     
     console.log('🔍 Memproses data konversi untuk penetapan:', konversiData);
+    console.log('💰 AK Kumulatif Awal:', akKumulatifAwal);
     
     // Group by tahun dan semester
     konversiData.forEach(item => {
@@ -158,6 +186,66 @@ class PenetapanCalculator {
 
     // Urutkan berdasarkan tahun
     return result.sort((a, b) => a.tahun - b.tahun);
+  }
+
+  // Ambil data karyawan dari sheet "data"
+  static async getKaryawanDataFromSheet(nip: string): Promise<{ akKumulatif: number; dataLengkap: any }> {
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: 'read',
+          range: 'data'
+        }
+      });
+
+      if (error) throw error;
+
+      const rows = result.values || [];
+      console.log('📋 Data karyawan dari sheet "data":', rows);
+      
+      if (rows.length <= 1) {
+        console.log('❌ Tidak ada data karyawan ditemukan');
+        return { akKumulatif: 0, dataLengkap: null };
+      }
+      
+      const headers = rows[0];
+      console.log('📝 Headers sheet "data":', headers);
+      
+      // Cari data karyawan berdasarkan NIP
+      const karyawanRow = rows.slice(1).find((row: any[]) => {
+        const nipIndex = headers.indexOf('NIP');
+        return nipIndex >= 0 && row[nipIndex] === nip;
+      });
+
+      if (!karyawanRow) {
+        console.log(`❌ Data karyawan dengan NIP ${nip} tidak ditemukan`);
+        return { akKumulatif: 0, dataLengkap: null };
+      }
+
+      // Parse data karyawan
+      const karyawanData: any = {};
+      headers.forEach((header: string, colIndex: number) => {
+        let value = karyawanRow[colIndex];
+        
+        // Handle akKumulatif dengan format desimal
+        if (header === 'akKumulatif') {
+          value = this.parseNumberFromSheet(value);
+          console.log(`💰 akKumulatif dari sheet: ${karyawanRow[colIndex]} -> ${value}`);
+        }
+        
+        karyawanData[header] = value;
+      });
+
+      console.log('✅ Data karyawan ditemukan:', karyawanData);
+      return { 
+        akKumulatif: karyawanData.akKumulatif || 0, 
+        dataLengkap: karyawanData 
+      };
+    } catch (error) {
+      console.error('Error membaca data karyawan:', error);
+      return { akKumulatif: 0, dataLengkap: null };
+    }
   }
 }
 
@@ -283,6 +371,7 @@ const EditPenetapanModal: React.FC<{
   karyawan: Karyawan;
 }> = ({ data, isOpen, onClose, onSave, karyawan }) => {
   const [formData, setFormData] = useState<Partial<PenetapanData>>({});
+  const [loadingAkAwal, setLoadingAkAwal] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -301,6 +390,24 @@ const EditPenetapanModal: React.FC<{
       });
     }
   }, [data, karyawan]);
+
+  const loadAkKumulatifAwal = async () => {
+    setLoadingAkAwal(true);
+    try {
+      const { akKumulatif } = await PenetapanCalculator.getKaryawanDataFromSheet(karyawan.nip);
+      console.log('💰 AK Kumulatif Awal yang diload:', akKumulatif);
+      
+      setFormData(prev => ({
+        ...prev,
+        'AK Semester 1': akKumulatif
+      }));
+      
+    } catch (error) {
+      console.error('Gagal memuat AK Kumulatif awal:', error);
+    } finally {
+      setLoadingAkAwal(false);
+    }
+  };
 
   const calculateAKTahunan = (): number => {
     const akSem1 = formData['AK Semester 1'] || 0;
@@ -365,7 +472,7 @@ const EditPenetapanModal: React.FC<{
                 type="text"
                 value={formData['Tanggal Penetapan'] || ''}
                 onChange={(e) => setFormData({...formData, 'Tanggal Penetapan': e.target.value})}
-                placeholder="DD/MM/YYYY"
+                placeholder="18 November 2025"
                 required
               />
             </div>
@@ -373,7 +480,22 @@ const EditPenetapanModal: React.FC<{
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="ak-semester-1">AK Semester 1</Label>
+              <div className="flex items-center gap-2 mb-1">
+                <Label htmlFor="ak-semester-1">AK Semester 1</Label>
+                {!data && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadAkKumulatifAwal}
+                    disabled={loadingAkAwal}
+                    className="h-6 text-xs"
+                  >
+                    <Database className="h-3 w-3 mr-1" />
+                    {loadingAkAwal ? 'Loading...' : 'Ambil dari Data'}
+                  </Button>
+                )}
+              </div>
               <Input
                 id="ak-semester-1"
                 type="number"
@@ -464,6 +586,7 @@ const EditPenetapanModal: React.FC<{
               • AK Semester 1: {formData['AK Semester 1'] || 0}<br />
               • AK Semester 2: {formData['AK Semester 2'] || 0}<br />
               • AK Tahunan: <strong>{akTahunan}</strong><br />
+              • Format Tanggal: 18 November 2025<br />
               • NIP: {karyawan.nip}<br />
               • Nama: {karyawan.nama}
             </p>
@@ -512,27 +635,42 @@ const GeneratePenetapanModal: React.FC<{
     status: 'Draft' | 'Disetujui' | 'Ditolak';
   }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [akKumulatifAwal, setAkKumulatifAwal] = useState<number>(0);
 
   useEffect(() => {
     if (isOpen) {
-      loadKonversiData();
+      loadAkKumulatifAwal();
     }
   }, [isOpen]);
 
-  const loadKonversiData = async () => {
+  const loadAkKumulatifAwal = async () => {
     setLoading(true);
+    try {
+      const { akKumulatif } = await PenetapanCalculator.getKaryawanDataFromSheet(karyawan.nip);
+      console.log('💰 AK Kumulatif Awal:', akKumulatif);
+      setAkKumulatifAwal(akKumulatif);
+      
+      // Setelah dapat AK Kumulatif, load data konversi
+      await loadKonversiData(akKumulatif);
+    } catch (error) {
+      console.error('Error loading AK Kumulatif awal:', error);
+      setAvailablePeriods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadKonversiData = async (akAwal: number) => {
     try {
       const konversiData = await readKonversiData(karyawan.nip);
       console.log('📊 Data konversi yang diload:', konversiData);
 
-      const generatedPeriods = PenetapanCalculator.generateFromKonversi(konversiData, karyawan);
+      const generatedPeriods = PenetapanCalculator.generateFromKonversi(konversiData, karyawan, akAwal);
       console.log('🎯 Periods penetapan yang digenerate:', generatedPeriods);
       setAvailablePeriods(generatedPeriods);
     } catch (error) {
       console.error('Error loading konversi data:', error);
       setAvailablePeriods([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -628,10 +766,11 @@ const GeneratePenetapanModal: React.FC<{
                 <p className="text-sm text-blue-700">
                   <strong>NIP:</strong> {karyawan.nip}<br />
                   <strong>Jabatan:</strong> {karyawan.jabatan}<br />
-                  <strong>Golongan:</strong> {karyawan.golongan}
+                  <strong>Golongan:</strong> {karyawan.golongan}<br />
+                  <strong>AK Kumulatif Awal:</strong> {akKumulatifAwal.toFixed(3)}
                 </p>
               </div>
-              <Button onClick={loadKonversiData} variant="outline" disabled={loading}>
+              <Button onClick={loadAkKumulatifAwal} variant="outline" disabled={loading}>
                 {loading ? 'Memuat...' : 'Refresh Data'}
               </Button>
             </div>
@@ -640,13 +779,14 @@ const GeneratePenetapanModal: React.FC<{
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Memuat data konversi predikat...</p>
+              <p className="text-muted-foreground mt-2">Memuat data konversi predikat dan AK kumulatif...</p>
             </div>
           ) : availablePeriods.length > 0 ? (
             <div className="max-h-96 overflow-y-auto">
               <div className="mb-4 p-2 bg-green-50 rounded">
                 <p className="text-sm text-green-700">
-                  ✅ Ditemukan {availablePeriods.length} tahun dari data konversi
+                  ✅ Ditemukan {availablePeriods.length} tahun dari data konversi<br />
+                  📊 AK Kumulatif Awal: {akKumulatifAwal.toFixed(3)}
                 </p>
               </div>
               <Table>
@@ -687,7 +827,7 @@ const GeneratePenetapanModal: React.FC<{
               <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>Tidak ada data konversi predikat yang ditemukan untuk NIP {karyawan.nip}</p>
               <p className="text-sm mt-2">Pastikan data konversi predikat sudah diisi terlebih dahulu</p>
-              <Button onClick={loadKonversiData} variant="outline" className="mt-2">
+              <Button onClick={loadAkKumulatifAwal} variant="outline" className="mt-2">
                 Coba Muat Ulang Data
               </Button>
             </div>
@@ -762,11 +902,11 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
         PenetapanCalculator.formatNumberForSheet(updatedData['AK Tahunan']),
         updatedData.Jabatan,
         updatedData.Golongan,
-        updatedData['Tanggal Penetapan'],
+        updatedData['Tanggal Penetapan'], // Format: "18 November 2025"
         updatedData.Penetap,
         updatedData.Status,
         updatedData.Link_Dokumen || '',
-        updatedData.Last_Update
+        PenetapanCalculator.formatDate(new Date()) // Last_Update juga format baru
       ];
 
       if (updatedData.rowIndex) {
@@ -827,7 +967,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
           'AK Tahunan': period.akTahunan,
           Jabatan: period.jabatan,
           Golongan: period.golongan,
-          'Tanggal Penetapan': period.tanggalPenetapan,
+          'Tanggal Penetapan': period.tanggalPenetapan, // Format: "18 November 2025"
           Penetap: period.penetap,
           Status: period.status,
           Link_Dokumen: '',
