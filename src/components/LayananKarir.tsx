@@ -93,34 +93,6 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-const CareerStats: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  const stats = [
-    { label: "Total AK", value: karyawan.akKumulatif, icon: Award, color: "text-yellow-600 bg-yellow-100", suffix: "AK" },
-    { label: "Masa Kerja", value: "3", icon: Calendar, color: "text-blue-600 bg-blue-100", suffix: "Tahun" },
-    { label: "Status", value: "Aktif", icon: User, color: "text-green-600 bg-green-100", suffix: "" },
-    { label: "Kategori", value: karyawan.kategori, icon: Award, color: "text-purple-600 bg-purple-100", suffix: "" }
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {stats.map((stat, index) => {
-        const IconComponent = stat.icon;
-        return (
-          <div key={index} className="flex items-center gap-2 p-3 bg-white rounded-lg border">
-            <div className={`p-2 rounded-full ${stat.color}`}>
-              <IconComponent className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">{stat.label}</p>
-              <p className="font-semibold text-sm">{stat.value} {stat.suffix}</p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 const PenetapanAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   return (
     <Card>
@@ -189,29 +161,59 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('konversi');
   
   const tabConfig = {
-    konversi: { title: "KONVERSI PREDIKAT", icon: Calendar, gradient: "from-blue-50 to-cyan-50", color: "text-blue-800" },
-    penetapan: { title: "PENETAPAN AK", icon: FileText, gradient: "from-green-50 to-emerald-50", color: "text-green-800" },
-    akumulasi: { title: "AKUMULASI AK", icon: Award, gradient: "from-purple-50 to-violet-50", color: "text-purple-800" }
+    konversi: { 
+      title: "KONVERSI PREDIKAT", 
+      icon: Calendar, 
+      activeClass: "bg-blue-500 text-white border-blue-600 shadow-md",
+      inactiveClass: "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+    },
+    penetapan: { 
+      title: "PENETAPAN AK", 
+      icon: FileText, 
+      activeClass: "bg-green-500 text-white border-green-600 shadow-md",
+      inactiveClass: "bg-white text-green-600 border-green-200 hover:bg-green-50"
+    },
+    akumulasi: { 
+      title: "AKUMULASI AK", 
+      icon: Award, 
+      activeClass: "bg-purple-500 text-white border-purple-600 shadow-md",
+      inactiveClass: "bg-white text-purple-600 border-purple-200 hover:bg-purple-50"
+    }
   };
 
   return (
     <div className="space-y-4">
       <ProfileHeader karyawan={karyawan} />
-      <CareerStats karyawan={karyawan} />
 
+      {/* Enhanced Tabs dengan visual yang lebih menonjol */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
-          {Object.entries(tabConfig).map(([key, config]) => (
-            <TabsTrigger 
-              key={key} 
-              value={key} 
-              className={`flex items-center gap-2 text-xs transition-all duration-200 ${activeTab === key ? `bg-white shadow-sm ${config.color} font-semibold` : 'text-gray-600 hover:text-gray-800'}`}
-            >
-              <config.icon className="h-3 w-3" />
-              {config.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="bg-white rounded-lg border shadow-sm p-1">
+          <TabsList className="grid w-full grid-cols-3 bg-transparent p-0 gap-1">
+            {Object.entries(tabConfig).map(([key, config]) => (
+              <TabsTrigger 
+                key={key} 
+                value={key} 
+                className={`
+                  flex items-center gap-2 text-sm font-medium py-3 px-4 rounded-md border-2 transition-all duration-200
+                  ${activeTab === key ? config.activeClass : config.inactiveClass}
+                `}
+              >
+                <config.icon className="h-4 w-4" />
+                {config.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {/* Active Tab Indicator */}
+        <div className="flex items-center gap-2 text-sm text-gray-600 px-2">
+          <div className={`w-2 h-2 rounded-full ${activeTab === 'konversi' ? 'bg-blue-500' : activeTab === 'penetapan' ? 'bg-green-500' : 'bg-purple-500'}`}></div>
+          <span className="font-medium">
+            {activeTab === 'konversi' ? 'Konversi Predikat Kinerja' : 
+             activeTab === 'penetapan' ? 'Penetapan Angka Kredit' : 
+             'Akumulasi Angka Kredit'}
+          </span>
+        </div>
 
         <TabsContent value="konversi" className="space-y-3">
           <KonversiPredikat karyawan={karyawan} />
