@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, FileText, TrendingUp, Award } from 'lucide-react';
+import KonversiPredikat from '@/components/KonversiPredikat';
 
 interface Karyawan {
   nip: string;
@@ -77,34 +78,6 @@ const AkumulasiAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen sementara untuk KonversiPredikat
-const KonversiPredikat: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            KONVERSI PREDIKAT KINERJA KE ANGKA KREDIT
-          </CardTitle>
-          <CardDescription>
-            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12">
-            <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">Fitur Sedang Dalam Pengembangan</h3>
-            <p className="text-muted-foreground mb-4">
-              Modul konversi predikat kinerja akan segera tersedia.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('konversi');
 
@@ -139,6 +112,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </TabsList>
 
         <TabsContent value="konversi" className="space-y-4">
+          {/* Ganti dengan komponen KonversiPredikat yang lengkap */}
           <KonversiPredikat karyawan={karyawan} />
         </TabsContent>
 
