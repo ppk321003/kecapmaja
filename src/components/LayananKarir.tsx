@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, FileText, TrendingUp, Award } from 'lucide-react';
-import KonversiPredikat from './KonversiPredikat';
-import PenetapanAK from './PenetapanAK';
-import AkumulasiAK from './AkumulasiAK';
 
 interface Karyawan {
   nip: string;
@@ -23,6 +20,90 @@ interface Karyawan {
 interface LayananKarirProps {
   karyawan: Karyawan;
 }
+
+// Komponen sementara untuk PenetapanAK
+const PenetapanAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            PENETAPAN ANGKA KREDIT
+          </CardTitle>
+          <CardDescription>
+            Kelola data penetapan angka kredit untuk {karyawan.nama}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Fitur Sedang Dalam Pengembangan</h3>
+            <p className="text-muted-foreground mb-4">
+              Modul penetapan angka kredit akan segera tersedia.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Komponen sementara untuk AkumulasiAK
+const AkumulasiAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5" />
+            AKUMULASI ANGKA KREDIT
+          </CardTitle>
+          <CardDescription>
+            Kelola data akumulasi angka kredit untuk {karyawan.nama}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <Award className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Fitur Sedang Dalam Pengembangan</h3>
+            <p className="text-muted-foreground mb-4">
+              Modul akumulasi angka kredit akan segera tersedia.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Komponen sementara untuk KonversiPredikat
+const KonversiPredikat: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            KONVERSI PREDIKAT KINERJA KE ANGKA KREDIT
+          </CardTitle>
+          <CardDescription>
+            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Fitur Sedang Dalam Pengembangan</h3>
+            <p className="text-muted-foreground mb-4">
+              Modul konversi predikat kinerja akan segera tersedia.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('konversi');
