@@ -119,54 +119,56 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Komponen Statistik - DIPERBAIKI
+// Komponen Statistik - TANPA BOX/BORDER
 const CareerStats: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const stats = [
     {
       label: "Total AK",
       value: karyawan.akKumulatif,
       icon: Star,
-      color: "text-yellow-600 bg-yellow-100",
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-100",
       suffix: "AK"
     },
     {
       label: "Masa Kerja",
-      value: "3", // You can calculate this from TMT
+      value: "3",
       icon: Calendar,
-      color: "text-blue-600 bg-blue-100",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
       suffix: "Tahun"
     },
     {
       label: "Status",
       value: "Aktif",
       icon: User,
-      color: "text-green-600 bg-green-100",
+      color: "text-green-600",
+      bgColor: "bg-green-100",
       suffix: ""
     },
     {
       label: "Kategori",
       value: karyawan.kategori,
       icon: Award,
-      color: "text-purple-600 bg-purple-100",
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
       suffix: ""
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
       {stats.map((stat, index) => (
-        <Card key={index} className="text-center">
-          <CardContent className="p-4">
-            <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-              <stat.icon className="h-6 w-6" />
-            </div>
-            <p className="text-2xl font-bold text-gray-800">
-              {stat.value}
-              {stat.suffix && <span className="text-sm"> {stat.suffix}</span>}
-            </p>
-            <p className="text-sm text-gray-600">{stat.label}</p>
-          </CardContent>
-        </Card>
+        <div key={index} className="text-center">
+          <div className={`w-16 h-16 rounded-full ${stat.bgColor} flex items-center justify-center mx-auto mb-3`}>
+            <stat.icon className={`h-7 w-7 ${stat.color}`} />
+          </div>
+          <p className="text-2xl font-bold text-gray-800 mb-1">
+            {stat.value}
+            {stat.suffix && <span className="text-sm font-normal"> {stat.suffix}</span>}
+          </p>
+          <p className="text-sm text-gray-600">{stat.label}</p>
+        </div>
       ))}
     </div>
   );
