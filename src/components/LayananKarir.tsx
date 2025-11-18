@@ -267,10 +267,6 @@ class LayananKarirCalculator {
     while (current <= periodeSelesai) {
       masaKerjaBulan++;
       current.setMonth(current.getMonth() + 1);
-      
-      // Set tanggal ke 1 untuk perbandingan yang tepat
-      current.setDate(1);
-      if (current > periodeSelesai) break;
     }
 
     console.log('📊 Accurate month calculation:', {
@@ -357,6 +353,10 @@ static calculateMasaKerjaHinggaSekarang(
     while (current <= endDate) {
       masaKerjaBulan++;
       current.setMonth(current.getMonth() + 1);
+      
+      // Set tanggal ke 1 untuk perbandingan yang tepat
+      current.setDate(1);
+      if (current > endDate) break;
     }
 
     console.log('📊 Current semester calculation:', {
