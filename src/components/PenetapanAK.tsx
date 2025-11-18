@@ -80,28 +80,6 @@ class PenetapanCalculator {
     return Number(value);
   }
 
-  // Parse tanggal dari berbagai format
-  static parseDate(dateStr: string): Date {
-    // Coba format "18 November 2025"
-    const parts = dateStr.split(' ');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0]);
-      const monthNames = [
-        'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-        'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
-      ];
-      const month = monthNames.indexOf(parts[1].toLowerCase());
-      const year = parseInt(parts[2]);
-      
-      if (!isNaN(day) && month !== -1 && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-    
-    // Fallback ke Date constructor
-    return new Date(dateStr);
-  }
-
   // Hitung AK Tahunan dari AK Semester 1 dan 2
   static calculateAKTahunan(akSemester1: number, akSemester2: number): number {
     return Number((akSemester1 + akSemester2).toFixed(3));
@@ -189,7 +167,7 @@ class PenetapanCalculator {
     return result.sort((a, b) => a.tahun - b.tahun);
   }
 
-  // Ambil data karyawan dari sheet "data" - PERBAIKAN DARI SKRIP KEDUA
+  // Ambil data karyawan dari sheet "data"
   static async getKaryawanDataFromSheet(nip: string): Promise<{ akKumulatif: number; dataLengkap: any }> {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -213,9 +191,8 @@ class PenetapanCalculator {
       const headers = rows[0];
       console.log('📝 Headers sheet "data":', headers);
       
-      // Cari data karyawan berdasarkan NIP - PENDEKATAN FLEKSIBEL
+      // Cari data karyawan berdasarkan NIP
       const karyawanRow = rows.slice(1).find((row: any[]) => {
-        // Cari kolom NIP dengan berbagai kemungkinan nama
         const nipIndex = headers.findIndex((header: string) => 
           header.toLowerCase().includes('nip')
         );
@@ -232,7 +209,7 @@ class PenetapanCalculator {
       headers.forEach((header: string, colIndex: number) => {
         let value = karyawanRow[colIndex];
         
-        // Handle akKumulatif dengan format desimal - CARI BERDASARKAN NAMA KOLOM
+        // Handle akKumulatif dengan format desimal
         if (header.toLowerCase().includes('ak') && header.toLowerCase().includes('kumulatif')) {
           value = this.parseNumberFromSheet(value);
           console.log(`💰 akKumulatif dari sheet: ${karyawanRow[colIndex]} -> ${value}`);
@@ -269,6 +246,8 @@ const useSpreadsheetAPI = () => {
 
   const callAPI = async (operation: string, data?: any) => {
     try {
+      console.log(`📡 Calling API: ${operation}`, data);
+      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -278,10 +257,15 @@ const useSpreadsheetAPI = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ API Error:', error);
+        throw error;
+      }
+      
+      console.log('✅ API Success:', result);
       return result;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('❌ API Call Failed:', error);
       toast({
         title: "Error",
         description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -360,7 +344,7 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  // Fungsi untuk membaca data dari sheet "data" - DARI SKRIP KEDUA
+  // Fungsi untuk membaca data dari sheet "data"
   const readDataSheet = async (nip?: string) => {
     try {
       const result = await callAPI('read', { range: DATA_SHEET_NAME });
@@ -407,8 +391,23 @@ const useSpreadsheetAPI = () => {
   };
 
   const appendData = async (values: any[]) => {
-    console.log(`Appending to ${SHEET_NAME}:`, values);
-    return await callAPI('append', { values: [values] });
+    try {
+      console.log(`📤 Appending ${Array.isArray(values[0]) ? values.length + ' rows' : '1 row'} to ${SHEET_NAME}`);
+      
+      // Handle both single row and multiple rows
+      const dataToAppend = Array.isArray(values[0]) ? values : [values];
+      
+      const result = await callAPI('append', { 
+        values: dataToAppend,
+        range: SHEET_NAME
+      });
+      
+      console.log('✅ Append successful, result:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Append failed:', error);
+      throw error;
+    }
   };
 
   const updateData = async (rowIndex: number, values: any[]) => {
@@ -741,7 +740,7 @@ const GeneratePenetapanModal: React.FC<{
     }
   };
 
-  // Fungsi khusus untuk membaca data konversi - DARI SKRIP KEDUA
+  // Fungsi khusus untuk membaca data konversi
   const readKonversiData = async (nip?: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -951,7 +950,7 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     }
   };
 
-  // FUNGSI BARU: Load initial AK Kumulatif dari sheet "data" - DARI SKRIP KEDUA
+  // FUNGSI BARU: Load initial AK Kumulatif dari sheet "data"
   const loadInitialAkKumulatif = async () => {
     try {
       const dataSheet = await api.readDataSheet(karyawan.nip);
@@ -995,11 +994,11 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
         PenetapanCalculator.formatNumberForSheet(updatedData['AK Tahunan']),
         updatedData.Jabatan,
         updatedData.Golongan,
-        updatedData['Tanggal Penetapan'], // Format: "18 November 2025"
+        updatedData['Tanggal Penetapan'],
         updatedData.Penetap,
         updatedData.Status,
         updatedData.Link_Dokumen || '',
-        PenetapanCalculator.formatDate(new Date()) // Last_Update juga format baru
+        PenetapanCalculator.formatDate(new Date())
       ];
 
       if (updatedData.rowIndex) {
@@ -1034,31 +1033,31 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     });
   };
 
-const handleGeneratePeriods = async (periods: { 
-  tahun: number;
-  akSemester1: number; 
-  akSemester2: number; 
-  akTahunan: number;
-  jabatan: string;
-  golongan: string;
-  tanggalPenetapan: string;
-  penetap: string;
-  status: 'Draft' | 'Disetujui' | 'Ditolak';
-}[]) => {
-  try {
-    const now = PenetapanCalculator.formatDate(new Date());
-    
-    // Cari nomor terakhir yang ada
-    const existingNos = penetapanData.map(d => d.No || 0);
-    const nextNo = existingNos.length > 0 ? Math.max(...existingNos) + 1 : 1;
-    
-    console.log('🚀 Memulai proses generate data penetapan:', periods.length, 'tahun');
-    
-    let successCount = 0;
-    let errorCount = 0;
+  const handleGeneratePeriods = async (periods: { 
+    tahun: number;
+    akSemester1: number; 
+    akSemester2: number; 
+    akTahunan: number;
+    jabatan: string;
+    golongan: string;
+    tanggalPenetapan: string;
+    penetap: string;
+    status: 'Draft' | 'Disetujui' | 'Ditolak';
+  }[]) => {
+    try {
+      const now = PenetapanCalculator.formatDate(new Date());
+      
+      // Cari nomor terakhir yang ada
+      const existingNos = penetapanData.map(d => d.No || 0);
+      const nextNo = existingNos.length > 0 ? Math.max(...existingNos) + 1 : 1;
+      
+      console.log('🚀 Memulai proses generate data penetapan:', periods.length, 'tahun');
+      
+      let successCount = 0;
+      let errorCount = 0;
 
-    for (const [index, period] of periods.entries()) {
-      try {
+      // Siapkan semua data dalam satu batch
+      const allValues = periods.map((period, index) => {
         const newData = {
           No: nextNo + index,
           NIP: karyawan.nip,
@@ -1076,17 +1075,15 @@ const handleGeneratePeriods = async (periods: {
           Last_Update: now
         };
 
-        console.log(`📝 Menyimpan data tahun ${period.tahun}:`, newData);
-
         // Validasi sebelum save
         if (!PenetapanCalculator.validatePenetapanData(newData as PenetapanData)) {
           console.error(`❌ Data tahun ${period.tahun} tidak valid`);
           errorCount++;
-          continue;
+          return null;
         }
 
         // Format values untuk spreadsheet
-        const values = [
+        return [
           newData.No,
           newData.NIP,
           newData.Nama,
@@ -1102,53 +1099,44 @@ const handleGeneratePeriods = async (periods: {
           newData.Link_Dokumen,
           newData.Last_Update
         ];
+      }).filter(Boolean); // Hapus null values
 
-        console.log(`💾 Menyimpan ke spreadsheet:`, values);
+      console.log('📦 Data batch yang akan disimpan:', allValues);
 
-        // Simpan ke spreadsheet
-        await api.appendData(values);
-        successCount++;
-        
-        console.log(`✅ Berhasil menyimpan data tahun ${period.tahun}`);
-
-        // Tambahkan delay kecil antara setiap penyimpanan untuk menghindari rate limit
-        if (index < periods.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-      } catch (error) {
-        console.error(`❌ Gagal menyimpan data tahun ${period.tahun}:`, error);
-        errorCount++;
+      if (allValues.length === 0) {
+        toast({
+          title: "Error",
+          description: "Tidak ada data yang valid untuk disimpan",
+          variant: "destructive"
+        });
+        return;
       }
-    }
 
-    console.log(`📊 Hasil generate: ${successCount} berhasil, ${errorCount} gagal`);
-
-    if (successCount > 0) {
-      toast({
-        title: "Sukses",
-        description: `Berhasil generate ${successCount} tahun penetapan dari data konversi`
-      });
+      // Append semua data sekaligus
+      await api.appendData(allValues);
+      successCount = allValues.length;
       
-      // Reload data setelah semua berhasil disimpan
-      await loadData();
-    } else {
+      console.log(`📊 Hasil generate: ${successCount} berhasil, ${errorCount} gagal`);
+
+      if (successCount > 0) {
+        toast({
+          title: "Sukses",
+          description: `Berhasil generate ${successCount} tahun penetapan dari data konversi`
+        });
+        
+        // Reload data setelah semua berhasil disimpan
+        await loadData();
+      }
+
+    } catch (error) {
+      console.error('Error dalam handleGeneratePeriods:', error);
       toast({
         title: "Error",
-        description: "Gagal generate data penetapan. Tidak ada data yang berhasil disimpan.",
+        description: "Terjadi kesalahan saat generate data penetapan",
         variant: "destructive"
       });
     }
-
-  } catch (error) {
-    console.error('Error dalam handleGeneratePeriods:', error);
-    toast({
-      title: "Error",
-      description: "Terjadi kesalahan saat generate data penetapan",
-      variant: "destructive"
-    });
-  }
-};
+  };
 
   const handleDelete = async (rowData: PenetapanData) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data penetapan AK ini?')) return;
