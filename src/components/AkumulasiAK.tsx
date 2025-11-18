@@ -1562,7 +1562,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
               <TableHead className="w-20 text-center">Kebutuhan<br/>Pangkat</TableHead>
               <TableHead className="w-20 text-center">Kebutuhan<br/>Jabatan</TableHead>
               <TableHead className="w-20 text-center">Selisih</TableHead>
-              <TableHead className="w-32">Target<br/>Kenaikan</TableHead>
+              <TableHead className="w-40 text-center">Target Kenaikan</TableHead>
               <TableHead className="w-20 text-center">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -1575,31 +1575,31 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <TableCell className="py-2">
                   <div className="font-semibold text-sm">{data.Periode}</div>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className="text-sm">{data['AK Sebelumnya'].toFixed(3)}</span>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className="text-sm font-semibold text-blue-600">
                     {data['AK Periode Ini'].toFixed(3)}
                   </span>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className="text-sm font-semibold">
                     {data['Total Kumulatif'].toFixed(3)}
                   </span>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className="text-sm">{data['Kebutuhan Pangkat']}</span>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className="text-sm">{data['Kebutuhan Jabatan']}</span>
                 </TableCell>
-                <TableCell className="text-right py-2">
+                <TableCell className="text-center py-2">
                   <span className={`text-sm font-semibold ${getSelisihColor(data.Selisih)}`}>
                     {data.Selisih.toFixed(3)}
                   </span>
                 </TableCell>
-                <TableCell className="py-2">
+                <TableCell className="text-center py-2">
                   <Badge variant={getTargetKenaikanVariant(data['Target Kenaikan'] || 'Tidak')} className="text-xs">
                     {data['Target Kenaikan'] || 'Tidak'}
                   </Badge>
