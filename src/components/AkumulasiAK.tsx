@@ -35,7 +35,8 @@ interface AkumulasiData {
   'AK Sebelumnya': number;
   'AK Periode Ini': number;
   'Total Kumulatif': number;
-  Kebutuhan: number;
+  'Kebutuhan Pangkat': number;
+  'Kebutuhan Jabatan': number;
   Selisih: number;
   'Status Kenaikan': 'Tidak' | 'Ya' | 'Dipertimbangkan';
   Rekomendasi: string;
@@ -43,6 +44,7 @@ interface AkumulasiData {
   Last_Update: string;
   rowIndex?: number;
   'Jenis Kenaikan'?: 'Pangkat' | 'Jenjang' | 'Tidak';
+  'Target Kenaikan'?: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
 }
 
 interface AkumulasiAKProps {
@@ -94,12 +96,24 @@ class AkumulasiCalculator {
   }
 
   // Generate rekomendasi berdasarkan status
-  static generateRekomendasi(status: string, selisih: number, jenisKenaikan?: string): string {
+  static generateRekomendasi(
+    status: string, 
+    selisih: number, 
+    jenisKenaikan?: string,
+    targetKenaikan?: string
+  ): string {
     switch (status) {
       case 'Ya':
-        return jenisKenaikan === 'Jenjang' 
-          ? 'Siap untuk diajukan kenaikan jenjang - AK akan direset setelah kenaikan'
-          : 'Siap untuk diajukan kenaikan pangkat';
+        if (jenisKenaikan === 'Jenjang') {
+          return 'Siap untuk diajukan kenaikan jenjang - AK akan direset setelah kenaikan';
+        }
+        if (targetKenaikan === 'Keduanya') {
+          return 'Siap untuk diajukan kenaikan PANGKAT dan JABATAN';
+        }
+        if (targetKenaikan === 'Jabatan') {
+          return 'Siap untuk diajukan kenaikan JABATAN';
+        }
+        return 'Siap untuk diajukan kenaikan PANGKAT';
       case 'Dipertimbangkan':
         return `Perlu tambahan ${Math.abs(selisih).toFixed(3)} AK untuk memenuhi syarat`;
       case 'Tidak':
@@ -109,8 +123,8 @@ class AkumulasiCalculator {
     }
   }
 
-  // Get kebutuhan AK berdasarkan golongan - DIPERBAIKI: konsisten dengan skrip utama
-  static getKebutuhanAK(golongan: string, kategori: string): number {
+  // PERBAIKAN: Get kebutuhan AK PANGKAT berdasarkan golongan
+  static getKebutuhanPangkat(golongan: string, kategori: string): number {
     if (kategori === 'Reguler') return 0;
 
     const kebutuhanKeahlian: { [key: string]: number } = {
@@ -135,7 +149,137 @@ class AkumulasiCalculator {
     };
 
     const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-    return kebutuhan[golongan] || 100;
+    return kebutuhan[golongan] || 0;
+  }
+
+  // PERBAIKAN: Get kebutuhan AK JABATAN berdasarkan jabatan
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0;
+
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'Ahli Pertama': 100,
+      'Ahli Muda': 200,
+      'Ahli Madya': 450,
+      'Ahli Utama': 0
+    };
+
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'Terampil': 60,
+      'Mahir': 100,
+      'Penyelia': 0
+    };
+
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    }
+    return 0;
+  }
+
+  // PERBAIKAN: Tentukan target kenaikan berdasarkan kebutuhan terpenuhi
+  static tentukanTargetKenaikan(
+    totalKumulatif: number, 
+    kebutuhanPangkat: number, 
+    kebutuhanJabatan: number,
+    isKenaikanJenjang: boolean
+  ): 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak' {
+    const bisaPangkat = totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0;
+    const bisaJabatan = totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0;
+
+    if (isKenaikanJenjang && bisaJabatan) {
+      return 'Keduanya'; // Kenaikan jenjang = jabatan + pangkat
+    }
+    if (bisaPangkat && bisaJabatan) {
+      return 'Keduanya';
+    }
+    if (bisaPangkat) {
+      return 'Pangkat';
+    }
+    if (bisaJabatan) {
+      return 'Jabatan';
+    }
+    return 'Tidak';
+  }
+
+  // PERBAIKAN: Cek apakah ini kenaikan jenjang
+  static isKenaikanJenjang(
+    jabatanSekarang: string, 
+    jabatanBerikutnya: string, 
+    golonganSekarang: string, 
+    golonganBerikutnya: string
+  ): boolean {
+    const titikJenjang = [
+      { dari: 'Ahli Pertama', ke: 'Ahli Muda', golDari: 'III/b', golKe: 'III/c' },
+      { dari: 'Ahli Muda', ke: 'Ahli Madya', golDari: 'III/d', golKe: 'IV/a' },
+      { dari: 'Ahli Madya', ke: 'Ahli Utama', golDari: 'IV/c', golKe: 'IV/d' },
+      { dari: 'Terampil', ke: 'Mahir', golDari: 'II/d', golKe: 'III/a' },
+      { dari: 'Mahir', ke: 'Penyelia', golDari: 'III/b', golKe: 'III/c' }
+    ];
+
+    return titikJenjang.some(titik => 
+      jabatanSekarang.includes(titik.dari) && 
+      jabatanBerikutnya.includes(titik.ke) && 
+      golonganSekarang === titik.golDari && 
+      golonganBerikutnya === titik.golKe
+    );
+  }
+
+  // PERBAIKAN: Get jabatan berikutnya
+  static getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') return 'Tidak berlaku';
+    
+    const progressionKeahlian: { [key: string]: string } = {
+      'Ahli Pertama': 'Ahli Muda',
+      'Ahli Muda': 'Ahli Madya',
+      'Ahli Madya': 'Ahli Utama',
+      'Ahli Utama': 'Tidak Ada'
+    };
+
+    const progressionKeterampilan: { [key: string]: string } = {
+      'Terampil': 'Mahir',
+      'Mahir': 'Penyelia',
+      'Penyelia': 'Tidak Ada'
+    };
+
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(progressionKeahlian)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(progressionKeterampilan)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    }
+    return 'Tidak Diketahui';
+  }
+
+  // PERBAIKAN: Get golongan berikutnya
+  static getGolonganBerikutnya(golonganSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') {
+      const progressionReguler: { [key: string]: string } = {
+        'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+        'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+      };
+      return progressionReguler[golonganSekarang] || 'Tidak Ada';
+    }
+
+    const progressionKeahlian: { [key: string]: string } = {
+      'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+      'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+    };
+
+    const progressionKeterampilan: { [key: string]: string } = {
+      'II/a': 'II/b', 'II/b': 'II/c', 'II/c': 'II/d', 'II/d': 'III/a',
+      'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d'
+    };
+
+    const progression = kategori === 'Keahlian' ? progressionKeahlian : progressionKeterampilan;
+    return progression[golonganSekarang] || 'Tidak Ada';
   }
 
   // Validasi data akumulasi
@@ -144,16 +288,18 @@ class AkumulasiCalculator {
       isNaN(data['AK Sebelumnya']) ||
       isNaN(data['AK Periode Ini']) ||
       isNaN(data['Total Kumulatif']) ||
-      isNaN(data.Kebutuhan) ||
+      isNaN(data['Kebutuhan Pangkat']) ||
+      isNaN(data['Kebutuhan Jabatan']) ||
       isNaN(data.Selisih) ||
       data['AK Sebelumnya'] < 0 ||
       data['AK Periode Ini'] < 0 ||
       data['Total Kumulatif'] < 0 ||
-      data.Kebutuhan < 0
+      data['Kebutuhan Pangkat'] < 0 ||
+      data['Kebutuhan Jabatan'] < 0
     );
   }
 
-  // Generate periode akumulasi dari data konversi - DIPERBAIKI: gunakan initialAkKumulatif dengan benar
+  // PERBAIKAN: Generate periode akumulasi dengan kebutuhan yang benar
   static generatePeriodeFromKonversi(
     konversiData: any[], 
     karyawan: Karyawan,
@@ -163,11 +309,13 @@ class AkumulasiCalculator {
     akSebelumnya: number; 
     akPeriodeIni: number;
     totalKumulatif: number;
-    kebutuhan: number;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
     jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak';
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number } } = {};
     
@@ -185,11 +333,11 @@ class AkumulasiCalculator {
       periods[periodeKey].akPeriodeIni += akKonversi;
     });
 
-    const kebutuhan = this.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+    // PERBAIKAN: Gunakan kedua kebutuhan
+    const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     
-    // DIPERBAIKI: Gunakan initialAkKumulatif dari data master sebagai starting point
     let akumulasiSebelumnya = karyawan.akKumulatif || 0;
-
     const result = [];
 
     // Urutkan berdasarkan tahun
@@ -198,6 +346,8 @@ class AkumulasiCalculator {
 
     console.log('📈 Periods yang dihasilkan:', sortedPeriods);
     console.log('💰 AK Awal dari data master:', akumulasiSebelumnya);
+    console.log('🎯 Kebutuhan Pangkat:', kebutuhanPangkat);
+    console.log('🎯 Kebutuhan Jabatan:', kebutuhanJabatan);
 
     for (const [periode, data] of sortedPeriods) {
       // Skip periode yang sudah ada di data akumulasi
@@ -207,7 +357,6 @@ class AkumulasiCalculator {
       
       if (isPeriodExists) {
         console.log(`⏩ Skip periode ${periode} karena sudah ada`);
-        // TETAP update akumulasiSebelumnya meskipun periode di-skip
         const existingData = existingAkumulasiData.find(item => item.Periode === periode);
         if (existingData) {
           akumulasiSebelumnya = existingData['Total Kumulatif'];
@@ -216,36 +365,62 @@ class AkumulasiCalculator {
       }
 
       const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
-      const selisih = this.calculateSelisih(totalKumulatif, kebutuhan);
+      
+      // PERBAIKAN: Tentukan kebutuhan mana yang digunakan
+      const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
+      const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+      const isKenaikanJenjang = this.isKenaikanJenjang(
+        karyawan.jabatan, 
+        jabatanBerikutnya, 
+        karyawan.golongan, 
+        golonganBerikutnya
+      );
+
+      // Untuk kenaikan jenjang, gunakan kebutuhan jabatan
+      const kebutuhanRelevan = isKenaikanJenjang ? kebutuhanJabatan : kebutuhanPangkat;
+      const selisih = this.calculateSelisih(totalKumulatif, kebutuhanRelevan);
       const status = this.determineStatusKenaikan(selisih);
       
       // Tentukan jenis kenaikan berdasarkan status
       let jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak' = 'Tidak';
       if (status === 'Ya') {
-        jenisKenaikan = 'Pangkat';
+        jenisKenaikan = isKenaikanJenjang ? 'Jenjang' : 'Pangkat';
       }
 
-      const rekomendasi = this.generateRekomendasi(status, selisih, jenisKenaikan);
+      // PERBAIKAN: Tentukan target kenaikan
+      const targetKenaikan = this.tentukanTargetKenaikan(
+        totalKumulatif, 
+        kebutuhanPangkat, 
+        kebutuhanJabatan, 
+        isKenaikanJenjang
+      );
+
+      const rekomendasi = this.generateRekomendasi(status, selisih, jenisKenaikan, targetKenaikan);
 
       result.push({
         periode,
         akSebelumnya: akumulasiSebelumnya,
         akPeriodeIni: data.akPeriodeIni,
         totalKumulatif,
-        kebutuhan,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
         selisih,
         status,
         rekomendasi,
-        jenisKenaikan
+        jenisKenaikan,
+        targetKenaikan
       });
 
       console.log(`🎯 Period ${periode}:`, {
         sebelumnya: akumulasiSebelumnya,
         periodeIni: data.akPeriodeIni,
         total: totalKumulatif,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
         selisih,
         status,
-        jenisKenaikan
+        jenisKenaikan,
+        targetKenaikan
       });
 
       // Update akumulasi sebelumnya untuk periode berikutnya
@@ -255,7 +430,7 @@ class AkumulasiCalculator {
     return result;
   }
 
-  // Generate periode semester dari data konversi - DIPERBAIKI: gunakan initialAkKumulatif dengan benar
+  // PERBAIKAN: Generate periode semester dengan kebutuhan yang benar
   static generateSemesterFromKonversi(
     konversiData: any[], 
     karyawan: Karyawan,
@@ -265,11 +440,13 @@ class AkumulasiCalculator {
     akSebelumnya: number; 
     akPeriodeIni: number;
     totalKumulatif: number;
-    kebutuhan: number;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
     jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak';
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number; semester: number } } = {};
     
@@ -288,11 +465,11 @@ class AkumulasiCalculator {
       periods[periodeKey].akPeriodeIni += akKonversi;
     });
 
-    const kebutuhan = this.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+    // PERBAIKAN: Gunakan kedua kebutuhan
+    const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     
-    // DIPERBAIKI: Gunakan initialAkKumulatif dari data master sebagai starting point
     let akumulasiSebelumnya = karyawan.akKumulatif || 0;
-
     const result = [];
 
     // Urutkan berdasarkan tahun dan semester
@@ -304,6 +481,8 @@ class AkumulasiCalculator {
 
     console.log('📈 Periods semester yang dihasilkan:', sortedPeriods);
     console.log('💰 AK Awal dari data master:', akumulasiSebelumnya);
+    console.log('🎯 Kebutuhan Pangkat:', kebutuhanPangkat);
+    console.log('🎯 Kebutuhan Jabatan:', kebutuhanJabatan);
 
     for (const [periode, data] of sortedPeriods) {
       // Skip periode yang sudah ada di data akumulasi
@@ -313,7 +492,6 @@ class AkumulasiCalculator {
       
       if (isPeriodExists) {
         console.log(`⏩ Skip periode ${periode} karena sudah ada`);
-        // TETAP update akumulasiSebelumnya meskipun periode di-skip
         const existingData = existingAkumulasiData.find(item => item.Periode === periode);
         if (existingData) {
           akumulasiSebelumnya = existingData['Total Kumulatif'];
@@ -322,36 +500,62 @@ class AkumulasiCalculator {
       }
 
       const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
-      const selisih = this.calculateSelisih(totalKumulatif, kebutuhan);
+      
+      // PERBAIKAN: Tentukan kebutuhan mana yang digunakan
+      const golonganBerikutnya = this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
+      const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+      const isKenaikanJenjang = this.isKenaikanJenjang(
+        karyawan.jabatan, 
+        jabatanBerikutnya, 
+        karyawan.golongan, 
+        golonganBerikutnya
+      );
+
+      // Untuk kenaikan jenjang, gunakan kebutuhan jabatan
+      const kebutuhanRelevan = isKenaikanJenjang ? kebutuhanJabatan : kebutuhanPangkat;
+      const selisih = this.calculateSelisih(totalKumulatif, kebutuhanRelevan);
       const status = this.determineStatusKenaikan(selisih);
       
       // Tentukan jenis kenaikan berdasarkan status
       let jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak' = 'Tidak';
       if (status === 'Ya') {
-        jenisKenaikan = 'Pangkat';
+        jenisKenaikan = isKenaikanJenjang ? 'Jenjang' : 'Pangkat';
       }
 
-      const rekomendasi = this.generateRekomendasi(status, selisih, jenisKenaikan);
+      // PERBAIKAN: Tentukan target kenaikan
+      const targetKenaikan = this.tentukanTargetKenaikan(
+        totalKumulatif, 
+        kebutuhanPangkat, 
+        kebutuhanJabatan, 
+        isKenaikanJenjang
+      );
+
+      const rekomendasi = this.generateRekomendasi(status, selisih, jenisKenaikan, targetKenaikan);
 
       result.push({
         periode,
         akSebelumnya: akumulasiSebelumnya,
         akPeriodeIni: data.akPeriodeIni,
         totalKumulatif,
-        kebutuhan,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
         selisih,
         status,
         rekomendasi,
-        jenisKenaikan
+        jenisKenaikan,
+        targetKenaikan
       });
 
       console.log(`🎯 Period ${periode}:`, {
         sebelumnya: akumulasiSebelumnya,
         periodeIni: data.akPeriodeIni,
         total: totalKumulatif,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
         selisih,
         status,
-        jenisKenaikan
+        jenisKenaikan,
+        targetKenaikan
       });
 
       // Update akumulasi sebelumnya untuk periode berikutnya
@@ -416,11 +620,13 @@ const useSpreadsheetAPI = () => {
             'AK Sebelumnya': 0,
             'AK Periode Ini': 0,
             'Total Kumulatif': 0,
-            Kebutuhan: 0,
+            'Kebutuhan Pangkat': 0,
+            'Kebutuhan Jabatan': 0,
             Selisih: 0,
             'Status Kenaikan': 'Tidak',
             Rekomendasi: '',
-            'Jenis Kenaikan': 'Tidak'
+            'Jenis Kenaikan': 'Tidak',
+            'Target Kenaikan': 'Tidak'
           } as AkumulasiData;
 
           headers.forEach((header: string, colIndex: number) => {
@@ -430,10 +636,14 @@ const useSpreadsheetAPI = () => {
               value = Number(value) || 0;
             }
             else if (header === 'AK Sebelumnya' || header === 'AK Periode Ini' || 
-                     header === 'Total Kumulatif' || header === 'Kebutuhan' || header === 'Selisih') {
+                     header === 'Total Kumulatif' || header === 'Kebutuhan Pangkat' || 
+                     header === 'Kebutuhan Jabatan' || header === 'Selisih') {
               value = AkumulasiCalculator.parseNumberFromSheet(value);
             }
             else if (header === 'Jenis Kenaikan') {
+              value = value || 'Tidak';
+            }
+            else if (header === 'Target Kenaikan') {
               value = value || 'Tidak';
             }
             
@@ -526,19 +736,36 @@ const EditAkumulasiModal: React.FC<{
     if (data) {
       setFormData({ ...data });
     } else {
-      const kebutuhan = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+      // PERBAIKAN: Hitung kedua kebutuhan
+      const kebutuhanPangkat = AkumulasiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+      const kebutuhanJabatan = AkumulasiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
       const akSebelumnya = previousData ? previousData['Total Kumulatif'] : initialAkKumulatif;
+      
+      // PERBAIKAN: Tentukan kebutuhan yang relevan
+      const golonganBerikutnya = AkumulasiCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
+      const jabatanBerikutnya = AkumulasiCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+      const isKenaikanJenjang = AkumulasiCalculator.isKenaikanJenjang(
+        karyawan.jabatan, 
+        jabatanBerikutnya, 
+        karyawan.golongan, 
+        golonganBerikutnya
+      );
+      
+      const kebutuhanRelevan = isKenaikanJenjang ? kebutuhanJabatan : kebutuhanPangkat;
+      const selisih = akSebelumnya - kebutuhanRelevan;
       
       setFormData({
         Periode: `Semester ${new Date().getMonth() < 6 ? 1 : 2} ${new Date().getFullYear()}`,
         'AK Sebelumnya': akSebelumnya,
         'AK Periode Ini': 0,
         'Total Kumulatif': akSebelumnya,
-        Kebutuhan: kebutuhan,
-        Selisih: akSebelumnya - kebutuhan,
+        'Kebutuhan Pangkat': kebutuhanPangkat,
+        'Kebutuhan Jabatan': kebutuhanJabatan,
+        Selisih: selisih,
         'Status Kenaikan': 'Tidak',
         Rekomendasi: '',
-        'Jenis Kenaikan': 'Tidak'
+        'Jenis Kenaikan': 'Tidak',
+        'Target Kenaikan': 'Tidak'
       });
     }
   }, [data, karyawan, initialAkKumulatif, previousData]);
@@ -548,10 +775,12 @@ const EditAkumulasiModal: React.FC<{
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   } => {
     const akSebelumnya = formData['AK Sebelumnya'] || 0;
     const akPeriodeIni = formData['AK Periode Ini'] || 0;
-    const kebutuhan = formData.Kebutuhan || AkumulasiCalculator.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+    const kebutuhanPangkat = formData['Kebutuhan Pangkat'] || AkumulasiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJabatan = formData['Kebutuhan Jabatan'] || AkumulasiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     const jenisKenaikan = formData['Jenis Kenaikan'] || 'Tidak';
 
     let totalKumulatif = AkumulasiCalculator.calculateTotalKumulatif(akSebelumnya, akPeriodeIni);
@@ -561,17 +790,37 @@ const EditAkumulasiModal: React.FC<{
       totalKumulatif = 0;
     }
 
-    const selisih = AkumulasiCalculator.calculateSelisih(totalKumulatif, kebutuhan);
-    const status = AkumulasiCalculator.determineStatusKenaikan(selisih);
-    const rekomendasi = AkumulasiCalculator.generateRekomendasi(status, selisih, jenisKenaikan);
+    // PERBAIKAN: Tentukan kebutuhan yang relevan
+    const golonganBerikutnya = AkumulasiCalculator.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
+    const jabatanBerikutnya = AkumulasiCalculator.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+    const isKenaikanJenjang = AkumulasiCalculator.isKenaikanJenjang(
+      karyawan.jabatan, 
+      jabatanBerikutnya, 
+      karyawan.golongan, 
+      golonganBerikutnya
+    );
 
-    return { totalKumulatif, selisih, status, rekomendasi };
+    const kebutuhanRelevan = isKenaikanJenjang ? kebutuhanJabatan : kebutuhanPangkat;
+    const selisih = AkumulasiCalculator.calculateSelisih(totalKumulatif, kebutuhanRelevan);
+    const status = AkumulasiCalculator.determineStatusKenaikan(selisih);
+    
+    // PERBAIKAN: Tentukan target kenaikan
+    const targetKenaikan = AkumulasiCalculator.tentukanTargetKenaikan(
+      totalKumulatif, 
+      kebutuhanPangkat, 
+      kebutuhanJabatan, 
+      isKenaikanJenjang
+    );
+
+    const rekomendasi = AkumulasiCalculator.generateRekomendasi(status, selisih, jenisKenaikan, targetKenaikan);
+
+    return { totalKumulatif, selisih, status, rekomendasi, targetKenaikan };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.Periode) {
-      const { totalKumulatif, selisih, status, rekomendasi } = calculateValues();
+      const { totalKumulatif, selisih, status, rekomendasi, targetKenaikan } = calculateValues();
       
       const finalData: AkumulasiData = {
         ...data,
@@ -582,6 +831,7 @@ const EditAkumulasiModal: React.FC<{
         Selisih: selisih,
         'Status Kenaikan': status,
         Rekomendasi: rekomendasi,
+        'Target Kenaikan': targetKenaikan,
         Last_Update: AkumulasiCalculator.formatDate(new Date())
       } as AkumulasiData;
 
@@ -594,8 +844,9 @@ const EditAkumulasiModal: React.FC<{
     }
   };
 
-  const { totalKumulatif, selisih, status, rekomendasi } = calculateValues();
-  const kebutuhanDefault = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+  const { totalKumulatif, selisih, status, rekomendasi, targetKenaikan } = calculateValues();
+  const kebutuhanPangkatDefault = AkumulasiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+  const kebutuhanJabatanDefault = AkumulasiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
   const akSebelumnyaDefault = previousData ? previousData['Total Kumulatif'] : initialAkKumulatif;
 
   return (
@@ -622,17 +873,38 @@ const EditAkumulasiModal: React.FC<{
                 required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="kebutuhan">Kebutuhan AK</Label>
+              <Label htmlFor="kebutuhan-pangkat">Kebutuhan AK Pangkat</Label>
               <Input
-                id="kebutuhan"
+                id="kebutuhan-pangkat"
                 type="number"
                 step="0.001"
                 min="0"
-                value={formData.Kebutuhan || kebutuhanDefault}
-                onChange={(e) => setFormData({...formData, Kebutuhan: parseFloat(e.target.value)})}
+                value={formData['Kebutuhan Pangkat'] || kebutuhanPangkatDefault}
+                onChange={(e) => setFormData({...formData, 'Kebutuhan Pangkat': parseFloat(e.target.value)})}
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Golongan {karyawan.golongan}: {kebutuhanPangkatDefault} AK
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="kebutuhan-jabatan">Kebutuhan AK Jabatan</Label>
+              <Input
+                id="kebutuhan-jabatan"
+                type="number"
+                step="0.001"
+                min="0"
+                value={formData['Kebutuhan Jabatan'] || kebutuhanJabatanDefault}
+                onChange={(e) => setFormData({...formData, 'Kebutuhan Jabatan': parseFloat(e.target.value)})}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Jabatan {karyawan.jabatan}: {kebutuhanJabatanDefault} AK
+              </p>
             </div>
           </div>
 
@@ -705,11 +977,13 @@ const EditAkumulasiModal: React.FC<{
               • AK Periode Ini: {formData['AK Periode Ini'] || 0}<br />
               • Jenis Kenaikan: <strong>{formData['Jenis Kenaikan'] || 'Tidak'}</strong><br />
               • Total Kumulatif: <strong>{totalKumulatif}</strong><br />
-              • Kebutuhan: {formData.Kebutuhan || kebutuhanDefault}<br />
+              • Kebutuhan Pangkat: {formData['Kebutuhan Pangkat'] || kebutuhanPangkatDefault}<br />
+              • Kebutuhan Jabatan: {formData['Kebutuhan Jabatan'] || kebutuhanJabatanDefault}<br />
               • Selisih: <strong className={selisih >= 0 ? 'text-green-600' : 'text-red-600'}>
                 {selisih}
               </strong><br />
               • Status Kenaikan: <strong>{status}</strong><br />
+              • Target Kenaikan: <strong>{targetKenaikan}</strong><br />
               • Rekomendasi: {rekomendasi}<br />
               • NIP: {karyawan.nip}<br />
               • Nama: {karyawan.nama}
@@ -751,11 +1025,13 @@ const GenerateAkumulasiModal: React.FC<{
     akSebelumnya: number; 
     akPeriodeIni: number;
     totalKumulatif: number;
-    kebutuhan: number;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
     jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak';
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   }[]) => void;
   karyawan: Karyawan;
   initialAkKumulatif: number;
@@ -766,11 +1042,13 @@ const GenerateAkumulasiModal: React.FC<{
     akSebelumnya: number; 
     akPeriodeIni: number;
     totalKumulatif: number;
-    kebutuhan: number;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
     jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak';
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   }[]>([]);
   const [loading, setLoading] = useState(false);
   const [generateType, setGenerateType] = useState<'tahunan' | 'semester'>('tahunan');
@@ -812,7 +1090,6 @@ const GenerateAkumulasiModal: React.FC<{
     }
   };
 
-  // DIPERBAIKI: Fungsi membaca data konversi dengan logging yang lebih detail
   const readKonversiData = async (nip?: string) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -895,7 +1172,8 @@ const GenerateAkumulasiModal: React.FC<{
     onClose();
   };
 
-  const kebutuhan = AkumulasiCalculator.getKebutuhanAK(karyawan.golongan, karyawan.kategori);
+  const kebutuhanPangkat = AkumulasiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+  const kebutuhanJabatan = AkumulasiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -935,10 +1213,10 @@ const GenerateAkumulasiModal: React.FC<{
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm text-blue-700">
               <div>
-                <strong>Kebutuhan Golongan {karyawan.golongan}:</strong> {kebutuhan} AK
+                <strong>Kebutuhan Pangkat {karyawan.golongan}:</strong> {kebutuhanPangkat} AK
               </div>
               <div>
-                <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}
+                <strong>Kebutuhan Jabatan {karyawan.jabatan}:</strong> {kebutuhanJabatan} AK
               </div>
               <div>
                 <strong>AK Awal dari Data Master:</strong> {initialAkKumulatif.toFixed(3)}
@@ -958,7 +1236,7 @@ const GenerateAkumulasiModal: React.FC<{
                   ✅ Ditemukan {availablePeriods.length} periode baru dari data konversi
                 </p>
                 <p className="text-xs text-green-600 mt-1">
-                  AK Awal: {initialAkKumulatif.toFixed(3)} | Kebutuhan: {kebutuhan} AK
+                  AK Awal: {initialAkKumulatif.toFixed(3)} | Pangkat: {kebutuhanPangkat} AK | Jabatan: {kebutuhanJabatan} AK
                 </p>
               </div>
               <div className="border rounded-lg overflow-hidden">
@@ -973,10 +1251,12 @@ const GenerateAkumulasiModal: React.FC<{
                             <TableHead className="whitespace-nowrap">AK Sebelumnya</TableHead>
                             <TableHead className="whitespace-nowrap">AK Periode Ini</TableHead>
                             <TableHead className="whitespace-nowrap">Total Kumulatif</TableHead>
-                            <TableHead className="whitespace-nowrap">Kebutuhan</TableHead>
+                            <TableHead className="whitespace-nowrap">Kebutuhan Pangkat</TableHead>
+                            <TableHead className="whitespace-nowrap">Kebutuhan Jabatan</TableHead>
                             <TableHead className="whitespace-nowrap">Selisih</TableHead>
                             <TableHead className="whitespace-nowrap">Status</TableHead>
                             <TableHead className="whitespace-nowrap">Jenis Kenaikan</TableHead>
+                            <TableHead className="whitespace-nowrap">Target Kenaikan</TableHead>
                             <TableHead className="whitespace-nowrap">Rekomendasi</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -992,7 +1272,8 @@ const GenerateAkumulasiModal: React.FC<{
                               <TableCell className="whitespace-nowrap font-semibold">
                                 {period.totalKumulatif.toFixed(3)}
                               </TableCell>
-                              <TableCell className="whitespace-nowrap">{period.kebutuhan}</TableCell>
+                              <TableCell className="whitespace-nowrap">{period.kebutuhanPangkat}</TableCell>
+                              <TableCell className="whitespace-nowrap">{period.kebutuhanJabatan}</TableCell>
                               <TableCell className={`whitespace-nowrap font-semibold ${period.selisih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {period.selisih.toFixed(3)}
                               </TableCell>
@@ -1010,6 +1291,15 @@ const GenerateAkumulasiModal: React.FC<{
                                   period.jenisKenaikan === 'Jenjang' ? 'secondary' : 'outline'
                                 }>
                                   {period.jenisKenaikan}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                <Badge variant={
+                                  period.targetKenaikan === 'Keduanya' ? 'default' :
+                                  period.targetKenaikan === 'Pangkat' ? 'secondary' :
+                                  period.targetKenaikan === 'Jabatan' ? 'outline' : 'destructive'
+                                }>
+                                  {period.targetKenaikan}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm max-w-xs" title={period.rekomendasi}>
@@ -1067,7 +1357,7 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   const [akumulasiData, setAkumulasiData] = useState<AkumulasiData[]>([]);
   const [initialAkKumulatif, setInitialAkKumulatif] = useState<number>(karyawan.akKumulatif || 0);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ periode: 'all', status: 'all' });
+  const [filters, setFilters] = useState({ periode: 'all', status: 'all', target: 'all' });
   const [editModal, setEditModal] = useState<{
     isOpen: boolean;
     data: AkumulasiData | null;
@@ -1138,13 +1428,15 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
         AkumulasiCalculator.formatNumberForSheet(updatedData['AK Sebelumnya']),
         AkumulasiCalculator.formatNumberForSheet(updatedData['AK Periode Ini']),
         AkumulasiCalculator.formatNumberForSheet(updatedData['Total Kumulatif']),
-        AkumulasiCalculator.formatNumberForSheet(updatedData.Kebutuhan),
+        AkumulasiCalculator.formatNumberForSheet(updatedData['Kebutuhan Pangkat']),
+        AkumulasiCalculator.formatNumberForSheet(updatedData['Kebutuhan Jabatan']),
         AkumulasiCalculator.formatNumberForSheet(updatedData.Selisih),
         updatedData['Status Kenaikan'],
         updatedData.Rekomendasi,
         updatedData.Link_Dokumen || '',
         updatedData.Last_Update,
-        updatedData['Jenis Kenaikan'] || 'Tidak'
+        updatedData['Jenis Kenaikan'] || 'Tidak',
+        updatedData['Target Kenaikan'] || 'Tidak'
       ];
 
       if (updatedData.rowIndex) {
@@ -1184,11 +1476,13 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
     akSebelumnya: number; 
     akPeriodeIni: number;
     totalKumulatif: number;
-    kebutuhan: number;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
     selisih: number;
     status: 'Tidak' | 'Ya' | 'Dipertimbangkan';
     rekomendasi: string;
     jenisKenaikan: 'Pangkat' | 'Jenjang' | 'Tidak';
+    targetKenaikan: 'Pangkat' | 'Jabatan' | 'Keduanya' | 'Tidak';
   }[]) => {
     try {
       const now = AkumulasiCalculator.formatDate(new Date());
@@ -1203,13 +1497,15 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
           'AK Sebelumnya': period.akSebelumnya,
           'AK Periode Ini': period.akPeriodeIni,
           'Total Kumulatif': period.totalKumulatif,
-          Kebutuhan: period.kebutuhan,
+          'Kebutuhan Pangkat': period.kebutuhanPangkat,
+          'Kebutuhan Jabatan': period.kebutuhanJabatan,
           Selisih: period.selisih,
           'Status Kenaikan': period.status,
           Rekomendasi: period.rekomendasi,
           Link_Dokumen: '',
           Last_Update: now,
-          'Jenis Kenaikan': period.jenisKenaikan
+          'Jenis Kenaikan': period.jenisKenaikan,
+          'Target Kenaikan': period.targetKenaikan
         };
 
         if (!AkumulasiCalculator.validateAkumulasiData(newData as AkumulasiData)) {
@@ -1229,13 +1525,15 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
           AkumulasiCalculator.formatNumberForSheet(newData['AK Sebelumnya']),
           AkumulasiCalculator.formatNumberForSheet(newData['AK Periode Ini']),
           AkumulasiCalculator.formatNumberForSheet(newData['Total Kumulatif']),
-          AkumulasiCalculator.formatNumberForSheet(newData.Kebutuhan),
+          AkumulasiCalculator.formatNumberForSheet(newData['Kebutuhan Pangkat']),
+          AkumulasiCalculator.formatNumberForSheet(newData['Kebutuhan Jabatan']),
           AkumulasiCalculator.formatNumberForSheet(newData.Selisih),
           newData['Status Kenaikan'],
           newData.Rekomendasi,
           newData.Link_Dokumen,
           newData.Last_Update,
-          newData['Jenis Kenaikan']
+          newData['Jenis Kenaikan'],
+          newData['Target Kenaikan']
         ];
 
         await api.appendData(values);
@@ -1280,7 +1578,8 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
   const getFilteredData = () => {
     return akumulasiData.filter(item => 
       (filters.periode === 'all' || item.Periode?.toLowerCase().includes(filters.periode.toLowerCase())) &&
-      (filters.status === 'all' || item['Status Kenaikan'] === filters.status)
+      (filters.status === 'all' || item['Status Kenaikan'] === filters.status) &&
+      (filters.target === 'all' || item['Target Kenaikan'] === filters.target)
     );
   };
 
@@ -1302,6 +1601,16 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
     }
   };
 
+  const getTargetKenaikanVariant = (target: string) => {
+    switch (target) {
+      case 'Keduanya': return 'default';
+      case 'Pangkat': return 'secondary';
+      case 'Jabatan': return 'outline';
+      case 'Tidak': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
   const getSelisihColor = (selisih: number) => {
     return selisih >= 0 ? 'text-green-600' : 'text-red-600';
   };
@@ -1317,10 +1626,12 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
               <TableHead className="whitespace-nowrap">AK Sebelumnya</TableHead>
               <TableHead className="whitespace-nowrap">AK Periode Ini</TableHead>
               <TableHead className="whitespace-nowrap">Total Kumulatif</TableHead>
-              <TableHead className="whitespace-nowrap">Kebutuhan</TableHead>
+              <TableHead className="whitespace-nowrap">Kebutuhan Pangkat</TableHead>
+              <TableHead className="whitespace-nowrap">Kebutuhan Jabatan</TableHead>
               <TableHead className="whitespace-nowrap">Selisih</TableHead>
               <TableHead className="whitespace-nowrap">Status Kenaikan</TableHead>
               <TableHead className="whitespace-nowrap">Jenis Kenaikan</TableHead>
+              <TableHead className="whitespace-nowrap">Target Kenaikan</TableHead>
               <TableHead className="whitespace-nowrap">Rekomendasi</TableHead>
               <TableHead className="text-right whitespace-nowrap">Aksi</TableHead>
             </TableRow>
@@ -1333,7 +1644,8 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <TableCell className="whitespace-nowrap">{data['AK Sebelumnya']}</TableCell>
                 <TableCell className="text-primary font-semibold whitespace-nowrap">{data['AK Periode Ini']}</TableCell>
                 <TableCell className="font-semibold whitespace-nowrap">{data['Total Kumulatif']}</TableCell>
-                <TableCell className="whitespace-nowrap">{data.Kebutuhan}</TableCell>
+                <TableCell className="whitespace-nowrap">{data['Kebutuhan Pangkat']}</TableCell>
+                <TableCell className="whitespace-nowrap">{data['Kebutuhan Jabatan']}</TableCell>
                 <TableCell className={`font-semibold whitespace-nowrap ${getSelisihColor(data.Selisih)}`}>
                   {data.Selisih}
                 </TableCell>
@@ -1345,6 +1657,11 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <TableCell className="whitespace-nowrap">
                   <Badge variant={getJenisKenaikanVariant(data['Jenis Kenaikan'] || 'Tidak')}>
                     {data['Jenis Kenaikan'] || 'Tidak'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <Badge variant={getTargetKenaikanVariant(data['Target Kenaikan'] || 'Tidak')}>
+                    {data['Target Kenaikan'] || 'Tidak'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm max-w-xs" title={data.Rekomendasi}>
@@ -1378,6 +1695,8 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
 
   const latestData = getFilteredData().length > 0 ? getFilteredData()[getFilteredData().length - 1] : null;
   const totalKumulatif = latestData ? latestData['Total Kumulatif'] : initialAkKumulatif;
+  const kebutuhanPangkat = AkumulasiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+  const kebutuhanJabatan = AkumulasiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
 
   return (
     <div className="space-y-6 p-6">
@@ -1429,6 +1748,25 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex-1 w-full sm:w-auto">
+              <Label htmlFor="filter-target">Target Kenaikan</Label>
+              <Select 
+                value={filters.target} 
+                onValueChange={(value) => setFilters({...filters, target: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Semua Target" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Target</SelectItem>
+                  <SelectItem value="Keduanya">Keduanya</SelectItem>
+                  <SelectItem value="Pangkat">Pangkat</SelectItem>
+                  <SelectItem value="Jabatan">Jabatan</SelectItem>
+                  <SelectItem value="Tidak">Tidak</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             
             <Button onClick={loadData} variant="outline" className="w-full sm:w-auto">
               <Filter className="h-4 w-4 mr-2" />
@@ -1453,14 +1791,12 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <span className="font-semibold text-primary text-lg">{totalKumulatif.toFixed(3)}</span>
               </div>
               <div>
-                <strong>Kebutuhan Golongan {karyawan.golongan}:</strong><br />
-                <span className="font-semibold">{AkumulasiCalculator.getKebutuhanAK(karyawan.golongan, karyawan.kategori)}</span>
+                <strong>Kebutuhan Pangkat {karyawan.golongan}:</strong><br />
+                <span className="font-semibold">{kebutuhanPangkat}</span>
               </div>
               <div>
-                <strong>Status Terkini:</strong><br />
-                <Badge variant={latestData ? getStatusVariant(latestData['Status Kenaikan']) : 'outline'}>
-                  {latestData ? latestData['Status Kenaikan'] : 'Belum Ada Data'}
-                </Badge>
+                <strong>Kebutuhan Jabatan {karyawan.jabatan}:</strong><br />
+                <span className="font-semibold">{kebutuhanJabatan}</span>
               </div>
               <div>
                 <strong>Jumlah Data:</strong><br />
