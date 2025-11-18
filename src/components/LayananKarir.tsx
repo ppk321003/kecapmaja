@@ -167,24 +167,23 @@ class LayananKarirCalculator {
     return `${day}/${month}/${year}`;
   }
 
+  // Format angka untuk spreadsheet (menggunakan koma desimal)
+  static formatNumberForSheet(num: number): string {
+    return num.toString().replace('.', ',');
+  }
+
+  // Parse angka dari spreadsheet (mengembalikan number dengan titik desimal)
+  static parseNumberFromSheet(value: any): number {
+    if (typeof value === 'string') {
+      return parseFloat(value.replace(',', '.'));
+    }
+    return Number(value);
+  }
+
   static parseTMT(tmt: string): Date {
     console.log('🕐 Parsing TMT:', tmt);
     
-    // Priority 1: Format "9/10/2025" (DD/MM/YYYY)
-    const parts1 = tmt.split('/');
-    if (parts1.length === 3) {
-      const day = parseInt(parts1[0]);
-      const month = parseInt(parts1[1]);
-      const year = parseInt(parts1[2]);
-      
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        const date = new Date(year, month - 1, day);
-        console.log('✅ Parsed as DD/MM/YYYY:', date.toLocaleDateString('id-ID'));
-        return date;
-      }
-    }
-    
-    // Priority 2: Format "11 April 2023" (DD MMMM YYYY)
+    // Priority 1: Format "24 Mei 2023" (DD MMMM YYYY)
     const parts2 = tmt.split(' ');
     if (parts2.length === 3) {
       const day = parseInt(parts2[0]);
@@ -205,6 +204,20 @@ class LayananKarirCalculator {
         return date;
       }
     }
+
+    // Priority 2: Format "9/10/2025" (DD/MM/YYYY)
+    const parts1 = tmt.split('/');
+    if (parts1.length === 3) {
+      const day = parseInt(parts1[0]);
+      const month = parseInt(parts1[1]);
+      const year = parseInt(parts1[2]);
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        const date = new Date(year, month - 1, day);
+        console.log('✅ Parsed as DD/MM/YYYY:', date.toLocaleDateString('id-ID'));
+        return date;
+      }
+    }
     
     // Fallback
     const fallbackDate = new Date(tmt);
@@ -212,7 +225,7 @@ class LayananKarirCalculator {
     return fallbackDate;
   }
 
-  // Hitung masa kerja proporsional berdasarkan TMT dan periode semester
+  // Hitung masa kerja proporsional berdasarkan TMT dan periode semester - DIPERBAIKI
   static calculateMasaKerjaProporsional(
     tmtJabatan: string, 
     tahun: number, 
@@ -226,13 +239,10 @@ class LayananKarirCalculator {
     console.log('🔍 DETAILED CALCULATION:', {
       tmtJabatan,
       tmtDate: tmtDate.toLocaleDateString('id-ID'),
-      tmtTimestamp: tmtDate.getTime(),
       tahun,
       semester,
       periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
-      periodeMulaiTimestamp: periodeMulai.getTime(),
-      periodeSelesai: periodeSelesai.toLocaleDateString('id-ID'),
-      periodeSelesaiTimestamp: periodeSelesai.getTime()
+      periodeSelesai: periodeSelesai.toLocaleDateString('id-ID')
     });
 
     // Jika TMT setelah periode selesai, tidak ada penilaian
@@ -247,33 +257,27 @@ class LayananKarirCalculator {
       return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
     }
 
-    // TMT di tengah periode, hitung bulan proporsional
+    // TMT di tengah periode, hitung bulan proporsional yang benar
     console.log('📅 TMT in the middle of period, calculating proportional months...');
     
-    // Hitung selisih bulan dengan presisi
-    const startYear = tmtDate.getFullYear();
-    const startMonth = tmtDate.getMonth();
-    const endYear = periodeSelesai.getFullYear();
-    const endMonth = periodeSelesai.getMonth();
+    // Hitung bulan kerja yang tepat (inklusif)
+    let masaKerjaBulan = 0;
+    const current = new Date(tmtDate);
     
-    let masaKerjaBulan = (endYear - startYear) * 12 + (endMonth - startMonth);
-    
-    // Tambah 1 bulan karena kita hitung inklusif
-    masaKerjaBulan += 1;
-    
-    console.log('📊 Month calculation details:', {
-      start: `${startMonth + 1}/${startYear}`,
-      end: `${endMonth + 1}/${endYear}`,
+    while (current <= periodeSelesai) {
+      masaKerjaBulan++;
+      current.setMonth(current.getMonth() + 1);
+      
+      // Set tanggal ke 1 untuk perbandingan yang tepat
+      current.setDate(1);
+      if (current > periodeSelesai) break;
+    }
+
+    console.log('📊 Accurate month calculation:', {
+      startMonth: tmtDate.getMonth() + 1,
+      endMonth: periodeSelesai.getMonth() + 1,
       calculatedMonths: masaKerjaBulan
     });
-
-    // Untuk TMT 9/10/2025 dan periode sampai 31/12/2025:
-    // Oct(10), Nov(11), Dec(12) = 3 bulan
-    const expectedMonths = 3;
-    if (masaKerjaBulan !== expectedMonths) {
-      console.warn(`⚠️ Month calculation mismatch: expected ${expectedMonths}, got ${masaKerjaBulan}. Using expected value.`);
-      masaKerjaBulan = expectedMonths;
-    }
 
     // Pastikan masa kerja antara 1-6 bulan
     masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
@@ -289,6 +293,18 @@ class LayananKarirCalculator {
     return { masaKerjaBulan, jenisPenilaian };
   }
 
+  // Validasi data konversi
+  static validateKonversiData(data: KonversiData): boolean {
+    return !(
+      isNaN(data.Masa_Kerja_Bulan!) ||
+      data['AK Konversi'] < 0 ||
+      data.Masa_Kerja_Bulan! < 0 || 
+      data.Masa_Kerja_Bulan! > 6 ||
+      data['Nilai SKP'] < 0 ||
+      data['Nilai SKP'] > 100
+    );
+  }
+
   // Helper function untuk cek semester sedang berjalan
   static isSemesterInProgress(year: number, semester: 1 | 2, now: Date): boolean {
     const semesterStart = semester === 1 ? 
@@ -302,7 +318,7 @@ class LayananKarirCalculator {
     return semesterStart <= now && semesterEnd >= now;
   }
 
-  // Generate semester dari TMT Jabatan dengan sistem proporsional BKN
+  // Generate semester dari TMT Jabatan dengan sistem proporsional BKN - DIPERBAIKI
   static generateSemesterFromTMT(tmtJabatan: string): { 
     tahun: number; 
     semester: 1 | 2;
@@ -329,6 +345,7 @@ class LayananKarirCalculator {
     let currentSemester: 1 | 2 = startMonth <= 6 ? 1 : 2;
     let currentYear = startYear;
 
+    // Mulai dari semester TMT
     while (true) {
       const { masaKerjaBulan, jenisPenilaian } = this.calculateMasaKerjaProporsional(
         tmtJabatan,
@@ -361,17 +378,13 @@ class LayananKarirCalculator {
         currentYear++;
       }
       
-      // Stop jika kita sudah melewati semester saat ini + 1 semester ke depan
-      const nextSemesterEnd = currentSemester === 1 ? 
-        new Date(currentYear, 5, 30) : 
-        new Date(currentYear, 11, 31);
-      
-      if (nextSemesterEnd > now && !this.isSemesterInProgress(currentYear, currentSemester, now)) {
+      // Stop jika kita sudah melewati tahun saat ini + 1
+      if (currentYear > now.getFullYear() + 1) {
         break;
       }
       
       // Safety break
-      if (semesters.length > 10) break;
+      if (semesters.length > 20) break;
     }
 
     console.log('✅ FINAL GENERATED SEMESTERS:', semesters);
@@ -459,24 +472,19 @@ const useSpreadsheetAPI = () => {
           headers.forEach((header: string, colIndex: number) => {
             let value = row[colIndex];
             
-            // Handle number conversion with proper formatting
-            if (header === 'Tahun' || header === 'Semester' || header === 'No' || header === 'Banyak_Bulan') {
+            // Handle number conversion dengan format yang benar
+            if (header === 'Tahun' || header === 'Semester' || header === 'No') {
               value = Number(value) || 0;
             }
-            // Handle AK Konversi with comma decimal separator
+            // Handle AK Konversi dengan konversi format desimal
             else if (header === 'AK Konversi') {
-              if (typeof value === 'string') {
-                // Convert "12,5" to 12.5
-                value = parseFloat(value.replace(',', '.')) || 0;
-              } else {
-                value = Number(value) || 0;
-              }
+              value = LayananKarirCalculator.parseNumberFromSheet(value);
             }
             // Handle Nilai SKP
             else if (header === 'Nilai SKP') {
               value = Number(value) || 0;
             }
-            // Map Banyak_Bulan to Masa_Kerja_Bulan
+            // Map Banyak_Bulan to Masa_Kerja_Bulan dengan konversi yang benar
             else if (header === 'Banyak_Bulan') {
               obj.Masa_Kerja_Bulan = Number(value) || 6;
             }
@@ -591,6 +599,12 @@ const EditKonversiModal: React.FC<{
         Jenis_Penilaian: jenis as 'PENUH' | 'PROPORSIONAL',
         Last_Update: LayananKarirCalculator.formatDate(new Date())
       } as KonversiData;
+
+      // Validasi sebelum save
+      if (!LayananKarirCalculator.validateKonversiData(finalData)) {
+        alert('Data tidak valid! Silakan periksa input Anda.');
+        return;
+      }
 
       onSave(finalData);
     }
@@ -908,6 +922,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     try {
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
+      // Format values untuk spreadsheet dengan format desimal yang benar
       const values = [
         updatedData.No || nextNo,
         updatedData.NIP,
@@ -916,7 +931,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         updatedData.Semester,
         updatedData.Predikat,
         updatedData['Nilai SKP'],
-        updatedData['AK Konversi'],
+        LayananKarirCalculator.formatNumberForSheet(updatedData['AK Konversi']), // Format desimal untuk spreadsheet
         updatedData['TMT Mulai'],
         updatedData['TMT Selesai'],
         updatedData.Status,
@@ -988,6 +1003,16 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       Jenis_Penilaian: jenisPenilaian
     };
 
+    // Validasi sebelum save
+    if (!LayananKarirCalculator.validateKonversiData(newData as KonversiData)) {
+      toast({
+        title: "Error",
+        description: "Data tidak valid untuk disimpan",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const values = [
         newData.No,
@@ -997,7 +1022,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         newData.Semester,
         newData.Predikat,
         newData['Nilai SKP'],
-        newData['AK Konversi'],
+        LayananKarirCalculator.formatNumberForSheet(newData['AK Konversi']), // Format desimal untuk spreadsheet
         newData['TMT Mulai'],
         newData['TMT Selesai'],
         newData.Status,
@@ -1065,6 +1090,17 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         };
       });
 
+      // Validasi semua data sebelum save
+      const invalidData = newData.filter(data => !LayananKarirCalculator.validateKonversiData(data as KonversiData));
+      if (invalidData.length > 0) {
+        toast({
+          title: "Error",
+          description: `${invalidData.length} data tidak valid dan tidak disimpan`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       for (const data of newData) {
         const values = [
           data.No,
@@ -1074,7 +1110,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           data.Semester,
           data.Predikat,
           data['Nilai SKP'],
-          data['AK Konversi'],
+          LayananKarirCalculator.formatNumberForSheet(data['AK Konversi']), // Format desimal untuk spreadsheet
           data['TMT Mulai'],
           data['TMT Selesai'],
           data.Status,
