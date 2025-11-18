@@ -156,15 +156,19 @@ class AkumulasiCalculator {
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number } } = {};
     
+    console.log('🔍 Memproses data konversi untuk akumulasi tahunan:', konversiData);
+    
     // Group by tahun untuk akumulasi tahunan
     konversiData.forEach(item => {
       const tahun = item.Tahun;
       const periodeKey = `Tahun ${tahun}`;
+      const akKonversi = item['AK Konversi'] || 0;
       
       if (!periods[periodeKey]) {
         periods[periodeKey] = { akPeriodeIni: 0, tahun };
       }
-      periods[periodeKey].akPeriodeIni += item['AK Konversi'] || 0;
+      periods[periodeKey].akPeriodeIni += akKonversi;
+      console.log(`📊 Menambahkan AK ${akKonversi} ke ${periodeKey}`);
     });
 
     const kebutuhan = this.getKebutuhanAK(karyawan.golongan);
@@ -174,6 +178,8 @@ class AkumulasiCalculator {
     // Urutkan berdasarkan tahun
     const sortedPeriods = Object.entries(periods)
       .sort(([,a], [,b]) => a.tahun - b.tahun);
+
+    console.log('📈 Periods yang dihasilkan:', sortedPeriods);
 
     for (const [periode, data] of sortedPeriods) {
       const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
@@ -190,6 +196,14 @@ class AkumulasiCalculator {
         selisih,
         status,
         rekomendasi
+      });
+
+      console.log(`🎯 Period ${periode}:`, {
+        sebelumnya: akumulasiSebelumnya,
+        periodeIni: data.akPeriodeIni,
+        total: totalKumulatif,
+        selisih,
+        status
       });
 
       akumulasiSebelumnya = totalKumulatif;
@@ -214,16 +228,20 @@ class AkumulasiCalculator {
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number; semester: number } } = {};
     
+    console.log('🔍 Memproses data konversi untuk akumulasi semester:', konversiData);
+    
     // Group by tahun dan semester
     konversiData.forEach(item => {
       const tahun = item.Tahun;
       const semester = item.Semester;
       const periodeKey = `Semester ${semester} ${tahun}`;
+      const akKonversi = item['AK Konversi'] || 0;
       
       if (!periods[periodeKey]) {
         periods[periodeKey] = { akPeriodeIni: 0, tahun, semester };
       }
-      periods[periodeKey].akPeriodeIni += item['AK Konversi'] || 0;
+      periods[periodeKey].akPeriodeIni += akKonversi;
+      console.log(`📊 Menambahkan AK ${akKonversi} ke ${periodeKey}`);
     });
 
     const kebutuhan = this.getKebutuhanAK(karyawan.golongan);
@@ -236,6 +254,8 @@ class AkumulasiCalculator {
         if (a.tahun !== b.tahun) return a.tahun - b.tahun;
         return a.semester - b.semester;
       });
+
+    console.log('📈 Periods semester yang dihasilkan:', sortedPeriods);
 
     for (const [periode, data] of sortedPeriods) {
       const totalKumulatif = this.calculateTotalKumulatif(akumulasiSebelumnya, data.akPeriodeIni);
@@ -252,6 +272,14 @@ class AkumulasiCalculator {
         selisih,
         status,
         rekomendasi
+      });
+
+      console.log(`🎯 Period ${periode}:`, {
+        sebelumnya: akumulasiSebelumnya,
+        periodeIni: data.akPeriodeIni,
+        total: totalKumulatif,
+        selisih,
+        status
       });
 
       akumulasiSebelumnya = totalKumulatif;
@@ -594,7 +622,29 @@ const GenerateAkumulasiModal: React.FC<{
   const loadKonversiData = async () => {
     setLoading(true);
     try {
-      // Membaca data dari sheet konversi_predikat
+      const konversiData = await readKonversiData(karyawan.nip);
+      console.log('📊 Data konversi yang diload:', konversiData);
+
+      let generatedPeriods;
+      if (generateType === 'tahunan') {
+        generatedPeriods = AkumulasiCalculator.generatePeriodeFromKonversi(konversiData, karyawan);
+      } else {
+        generatedPeriods = AkumulasiCalculator.generateSemesterFromKonversi(konversiData, karyawan);
+      }
+
+      console.log('🎯 Periods yang digenerate:', generatedPeriods);
+      setAvailablePeriods(generatedPeriods);
+    } catch (error) {
+      console.error('Error loading konversi data:', error);
+      setAvailablePeriods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fungsi khusus untuk membaca data konversi
+  const readKonversiData = async (nip?: string) => {
+    try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -606,48 +656,67 @@ const GenerateAkumulasiModal: React.FC<{
       if (error) throw error;
 
       const rows = result.values || [];
+      console.log('📋 Raw data dari spreadsheet konversi_predikat:', rows);
+      
       if (rows.length <= 1) {
-        setAvailablePeriods([]);
-        return;
+        console.log('❌ Tidak ada data konversi');
+        return [];
       }
-
+      
       const headers = rows[0];
-      const konversiData = rows.slice(1)
+      console.log('📝 Headers konversi_predikat:', headers);
+      
+      const data = rows.slice(1)
         .filter((row: any[]) => {
+          if (!nip) return true;
           const nipIndex = headers.indexOf('NIP');
-          return nipIndex >= 0 && row[nipIndex] === karyawan.nip;
+          const rowNIP = nipIndex >= 0 ? row[nipIndex] : null;
+          console.log('🔍 Filtering NIP:', { mencari: nip, ditemukan: rowNIP, match: rowNIP === nip });
+          return rowNIP === nip;
         })
         .map((row: any[], index: number) => {
-          const obj: any = {};
+          const obj: any = {
+            id: `konversi_${index + 2}`,
+            rowIndex: index + 2
+          };
+
           headers.forEach((header: string, colIndex: number) => {
             let value = row[colIndex];
             
-            if (header === 'Tahun' || header === 'Semester') {
+            // Handle number conversion dengan format yang benar
+            if (header === 'Tahun' || header === 'Semester' || header === 'No') {
               value = Number(value) || 0;
-            } else if (header === 'AK Konversi') {
+            }
+            // Handle AK Konversi dengan konversi format desimal
+            else if (header === 'AK Konversi') {
               value = AkumulasiCalculator.parseNumberFromSheet(value);
+              console.log(`💰 AK Konversi: ${row[colIndex]} -> ${value}`);
+            }
+            // Handle Nilai SKP
+            else if (header === 'Nilai SKP') {
+              value = Number(value) || 0;
+            }
+            // Handle Masa Kerja Bulan
+            else if (header === 'Banyak_Bulan') {
+              value = Number(value) || 6;
+            }
+            // Handle Jenis Penilaian
+            else if (header === 'Keterangan') {
+              value = value || 'PENUH';
             }
             
             obj[header] = value;
           });
+          
+          console.log(`📄 Row ${index + 2}:`, obj);
           return obj;
         });
-
-      console.log('Loaded konversi data:', konversiData);
-
-      let generatedPeriods;
-      if (generateType === 'tahunan') {
-        generatedPeriods = AkumulasiCalculator.generatePeriodeFromKonversi(konversiData, karyawan);
-      } else {
-        generatedPeriods = AkumulasiCalculator.generateSemesterFromKonversi(konversiData, karyawan);
-      }
-
-      setAvailablePeriods(generatedPeriods);
+      
+      console.log(`✅ Loaded ${data.length} records from konversi_predikat for NIP ${nip}`);
+      return data;
     } catch (error) {
-      console.error('Error loading konversi data:', error);
-      setAvailablePeriods([]);
-    } finally {
-      setLoading(false);
+      console.error('Error reading konversi data:', error);
+      return [];
     }
   };
 
@@ -664,7 +733,7 @@ const GenerateAkumulasiModal: React.FC<{
         <DialogHeader>
           <DialogTitle>Generate Data Akumulasi dari Konversi Predikat</DialogTitle>
           <DialogDescription>
-            Membuat data akumulasi angka kredit dari data konversi predikat yang sudah ada
+            Membuat data akumulasi angka kredit dari data konversi predikat yang sudah ada untuk {karyawan.nama}
           </DialogDescription>
         </DialogHeader>
 
@@ -675,7 +744,9 @@ const GenerateAkumulasiModal: React.FC<{
                 <Label htmlFor="generate-type">Jenis Akumulasi</Label>
                 <Select 
                   value={generateType} 
-                  onValueChange={(value: 'tahunan' | 'semester') => setGenerateType(value)}
+                  onValueChange={(value: 'tahunan' | 'semester') => {
+                    setGenerateType(value);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -694,7 +765,8 @@ const GenerateAkumulasiModal: React.FC<{
             </div>
             <p className="text-sm text-blue-700 mt-2">
               <strong>Kebutuhan Golongan {karyawan.golongan}:</strong> {kebutuhan} AK<br />
-              <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}
+              <strong>Jenis:</strong> {generateType === 'tahunan' ? 'Akumulasi Tahunan' : 'Akumulasi per Semester'}<br />
+              <strong>NIP:</strong> {karyawan.nip}
             </p>
           </div>
 
@@ -705,6 +777,11 @@ const GenerateAkumulasiModal: React.FC<{
             </div>
           ) : availablePeriods.length > 0 ? (
             <div className="max-h-96 overflow-y-auto">
+              <div className="mb-4 p-2 bg-green-50 rounded">
+                <p className="text-sm text-green-700">
+                  ✅ Ditemukan {availablePeriods.length} periode dari data konversi
+                </p>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -752,8 +829,13 @@ const GenerateAkumulasiModal: React.FC<{
               </Table>
             </div>
           ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              <p>Tidak ada data konversi predikat yang dapat digenerate menjadi akumulasi.</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Tidak ada data konversi predikat yang ditemukan untuk NIP {karyawan.nip}</p>
+              <p className="text-sm mt-2">Pastikan data konversi predikat sudah diisi terlebih dahulu</p>
+              <Button onClick={loadKonversiData} variant="outline" className="mt-2">
+                Coba Muat Ulang Data
+              </Button>
             </div>
           )}
 
