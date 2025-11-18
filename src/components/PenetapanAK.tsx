@@ -1034,22 +1034,31 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     });
   };
 
-  const handleGeneratePeriods = async (periods: { 
-    tahun: number;
-    akSemester1: number; 
-    akSemester2: number; 
-    akTahunan: number;
-    jabatan: string;
-    golongan: string;
-    tanggalPenetapan: string;
-    penetap: string;
-    status: 'Draft' | 'Disetujui' | 'Ditolak';
-  }[]) => {
-    try {
-      const now = PenetapanCalculator.formatDate(new Date());
-      const nextNo = penetapanData.length > 0 ? Math.max(...penetapanData.map(d => d.No || 0)) + 1 : 1;
-      
-      for (const [index, period] of periods.entries()) {
+const handleGeneratePeriods = async (periods: { 
+  tahun: number;
+  akSemester1: number; 
+  akSemester2: number; 
+  akTahunan: number;
+  jabatan: string;
+  golongan: string;
+  tanggalPenetapan: string;
+  penetap: string;
+  status: 'Draft' | 'Disetujui' | 'Ditolak';
+}[]) => {
+  try {
+    const now = PenetapanCalculator.formatDate(new Date());
+    
+    // Cari nomor terakhir yang ada
+    const existingNos = penetapanData.map(d => d.No || 0);
+    const nextNo = existingNos.length > 0 ? Math.max(...existingNos) + 1 : 1;
+    
+    console.log('🚀 Memulai proses generate data penetapan:', periods.length, 'tahun');
+    
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const [index, period] of periods.entries()) {
+      try {
         const newData = {
           No: nextNo + index,
           NIP: karyawan.nip,
@@ -1060,23 +1069,23 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
           'AK Tahunan': period.akTahunan,
           Jabatan: period.jabatan,
           Golongan: period.golongan,
-          'Tanggal Penetapan': period.tanggalPenetapan, // Format: "18 November 2025"
+          'Tanggal Penetapan': period.tanggalPenetapan,
           Penetap: period.penetap,
           Status: period.status,
           Link_Dokumen: '',
           Last_Update: now
         };
 
+        console.log(`📝 Menyimpan data tahun ${period.tahun}:`, newData);
+
         // Validasi sebelum save
         if (!PenetapanCalculator.validatePenetapanData(newData as PenetapanData)) {
-          toast({
-            title: "Error",
-            description: `Data tahun ${period.tahun} tidak valid dan tidak disimpan`,
-            variant: "destructive"
-          });
+          console.error(`❌ Data tahun ${period.tahun} tidak valid`);
+          errorCount++;
           continue;
         }
 
+        // Format values untuk spreadsheet
         const values = [
           newData.No,
           newData.NIP,
@@ -1094,22 +1103,52 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
           newData.Last_Update
         ];
 
-        await api.appendData(values);
-      }
+        console.log(`💾 Menyimpan ke spreadsheet:`, values);
 
+        // Simpan ke spreadsheet
+        await api.appendData(values);
+        successCount++;
+        
+        console.log(`✅ Berhasil menyimpan data tahun ${period.tahun}`);
+
+        // Tambahkan delay kecil antara setiap penyimpanan untuk menghindari rate limit
+        if (index < periods.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+      } catch (error) {
+        console.error(`❌ Gagal menyimpan data tahun ${period.tahun}:`, error);
+        errorCount++;
+      }
+    }
+
+    console.log(`📊 Hasil generate: ${successCount} berhasil, ${errorCount} gagal`);
+
+    if (successCount > 0) {
       toast({
         title: "Sukses",
-        description: `Berhasil generate ${periods.length} tahun penetapan dari data konversi`
+        description: `Berhasil generate ${successCount} tahun penetapan dari data konversi`
       });
-      loadData();
-    } catch (error) {
+      
+      // Reload data setelah semua berhasil disimpan
+      await loadData();
+    } else {
       toast({
         title: "Error",
-        description: "Gagal generate data penetapan",
+        description: "Gagal generate data penetapan. Tidak ada data yang berhasil disimpan.",
         variant: "destructive"
       });
     }
-  };
+
+  } catch (error) {
+    console.error('Error dalam handleGeneratePeriods:', error);
+    toast({
+      title: "Error",
+      description: "Terjadi kesalahan saat generate data penetapan",
+      variant: "destructive"
+    });
+  }
+};
 
   const handleDelete = async (rowData: PenetapanData) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data penetapan AK ini?')) return;
