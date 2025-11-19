@@ -19,11 +19,15 @@ interface Karyawan {
   golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
+  tglPenghitunganAkTerakhir: string;
+  akKumulatif: number;
+  status: 'Aktif' | 'Pensiun' | 'Mutasi';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
-  akKumulatif: number;
+  linkSkJabatan?: string;
+  linkSkPangkat?: string;
 }
 
 interface KonversiData {
@@ -225,21 +229,21 @@ class KonversiCalculator {
     return fallbackDate;
   }
 
-  // Hitung masa kerja proporsional berdasarkan TMT dan periode semester - DIPERBAIKI
+  // Hitung masa kerja proporsional berdasarkan Tanggal Penghitungan AK Terakhir dan periode semester - DIPERBAIKI
   static calculateMasaKerjaProporsional(
-    tmtJabatan: string, 
+    tglPenghitunganAkTerakhir: string, 
     tahun: number, 
     semester: 1 | 2
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tmtDate = this.parseTMT(tmtJabatan);
+    const tglPenghitunganDate = this.parseTMT(tglPenghitunganAkTerakhir);
     const periode = this.calculatePeriodeSemester(tahun, semester);
     const periodeMulai = this.parseTMT(periode.mulai);
     const periodeSelesai = this.parseTMT(periode.selesai);
     const sekarang = new Date();
 
     console.log('🔍 DETAILED CALCULATION:', {
-      tmtJabatan,
-      tmtDate: tmtDate.toLocaleDateString('id-ID'),
+      tglPenghitunganAkTerakhir,
+      tglPenghitunganDate: tglPenghitunganDate.toLocaleDateString('id-ID'),
       tahun,
       semester,
       periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
@@ -247,23 +251,23 @@ class KonversiCalculator {
       sekarang: sekarang.toLocaleDateString('id-ID')
     });
 
-    // Jika TMT setelah periode selesai, tidak ada penilaian
-    if (tmtDate > periodeSelesai) {
-      console.log('❌ TMT after period end, no assessment');
+    // Jika Tanggal Penghitungan AK Terakhir setelah periode selesai, tidak ada penilaian
+    if (tglPenghitunganDate > periodeSelesai) {
+      console.log('❌ Tanggal Penghitungan AK Terakhir after period end, no assessment');
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
-    // Jika TMT sebelum atau sama dengan periode mulai, penilaian penuh
-    if (tmtDate <= periodeMulai) {
-      console.log('✅ TMT before/same as period start, FULL assessment (6 bulan)');
+    // Jika Tanggal Penghitungan AK Terakhir sebelum atau sama dengan periode mulai, penilaian penuh
+    if (tglPenghitunganDate <= periodeMulai) {
+      console.log('✅ Tanggal Penghitungan AK Terakhir before/same as period start, FULL assessment (6 bulan)');
       return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
     }
 
-    // TMT di tengah periode, hitung bulan proporsional
-    console.log('📅 TMT in the middle of period, calculating proportional months...');
+    // Tanggal Penghitungan AK Terakhir di tengah periode, hitung bulan proporsional
+    console.log('📅 Tanggal Penghitungan AK Terakhir in the middle of period, calculating proportional months...');
     
-    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah TMT (bulan TMT tidak dihitung)
-    const startFromNextMonth = new Date(tmtDate);
+    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah Tanggal Penghitungan AK Terakhir (bulan Tanggal Penghitungan AK Terakhir tidak dihitung)
+    const startFromNextMonth = new Date(tglPenghitunganDate);
     startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
     startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
     
@@ -279,8 +283,8 @@ class KonversiCalculator {
       current.setMonth(current.getMonth() + 1);
     }
 
-    console.log('📊 Accurate month calculation (EXCLUDING TMT month):', {
-      tmtMonth: tmtDate.getMonth() + 1,
+    console.log('📊 Accurate month calculation (EXCLUDING Tanggal Penghitungan AK Terakhir month):', {
+      tglPenghitunganMonth: tglPenghitunganDate.getMonth() + 1,
       startFromMonth: startFromNextMonth.getMonth() + 1,
       endMonth: endDate.getMonth() + 1,
       calculatedMonths: masaKerjaBulan
@@ -326,31 +330,31 @@ class KonversiCalculator {
   }
 
   static calculateMasaKerjaHinggaSekarang(
-    tmtJabatan: string, 
+    tglPenghitunganAkTerakhir: string, 
     tahun: number, 
     semester: 1 | 2
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tmtDate = this.parseTMT(tmtJabatan);
+    const tglPenghitunganDate = this.parseTMT(tglPenghitunganAkTerakhir);
     const periode = this.calculatePeriodeSemester(tahun, semester);
     const periodeMulai = this.parseTMT(periode.mulai);
     const periodeSelesai = this.parseTMT(periode.selesai);
     const sekarang = new Date();
 
     console.log('📅 CALCULATE UNTIL NOW:', {
-      tmtJabatan: tmtDate.toLocaleDateString('id-ID'),
+      tglPenghitunganAkTerakhir: tglPenghitunganDate.toLocaleDateString('id-ID'),
       periode: `${periode.mulai} - ${periode.selesai}`,
       sekarang: sekarang.toLocaleDateString('id-ID')
     });
 
-    // Jika TMT setelah periode selesai, tidak ada penilaian
-    if (tmtDate > periodeSelesai) {
+    // Jika Tanggal Penghitungan AK Terakhir setelah periode selesai, tidak ada penilaian
+    if (tglPenghitunganDate > periodeSelesai) {
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
-    // Jika TMT sebelum periode mulai, hitung dari mulai periode sampai sekarang
-    const startDate = tmtDate <= periodeMulai ? periodeMulai : tmtDate;
+    // Jika Tanggal Penghitungan AK Terakhir sebelum periode mulai, hitung dari mulai periode sampai sekarang
+    const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
     
-    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah TMT (bulan TMT tidak dihitung)
+    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah Tanggal Penghitungan AK Terakhir (bulan Tanggal Penghitungan AK Terakhir tidak dihitung)
     const startFromNextMonth = new Date(startDate);
     startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
     startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
@@ -372,7 +376,7 @@ class KonversiCalculator {
       current.setMonth(current.getMonth() + 1);
     }
 
-    console.log('📊 Current semester calculation (EXCLUDING TMT month):', {
+    console.log('📊 Current semester calculation (EXCLUDING Tanggal Penghitungan AK Terakhir month):', {
       startFromMonth: startFromNextMonth.getMonth() + 1,
       endMonth: endDate.getMonth() + 1,
       calculatedMonths: masaKerjaBulan
@@ -386,13 +390,13 @@ class KonversiCalculator {
     return { masaKerjaBulan, jenisPenilaian };
   }
 
-  static generateSemesterFromTMT(tmtJabatan: string): { 
+  static generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir: string): { 
     tahun: number; 
     semester: 1 | 2;
     masaKerjaBulan: number;
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[] {
-    const startDate = this.parseTMT(tmtJabatan);
+    const startDate = this.parseTMT(tglPenghitunganAkTerakhir);
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -402,7 +406,7 @@ class KonversiCalculator {
       sekarang: now.toLocaleDateString('id-ID'),
       tahunSekarang: currentYear,
       semesterSekarang: currentSemester,
-      tmtJabatan: startDate.toLocaleDateString('id-ID')
+      tglPenghitunganAkTerakhir: startDate.toLocaleDateString('id-ID')
     });
 
     const semesters: { 
@@ -427,7 +431,7 @@ class KonversiCalculator {
       if (isCurrentSemester) {
         // Semester berjalan - hitung sampai bulan sekarang
         const { masaKerjaBulan: masaKerja, jenisPenilaian: jenis } = this.calculateMasaKerjaHinggaSekarang(
-          tmtJabatan,
+          tglPenghitunganAkTerakhir,
           semesterYear,
           semester
         );
@@ -436,7 +440,7 @@ class KonversiCalculator {
       } else {
         // Semester sudah lewat - gunakan perhitungan normal
         const { masaKerjaBulan: masaKerja, jenisPenilaian: jenis } = this.calculateMasaKerjaProporsional(
-          tmtJabatan,
+          tglPenghitunganAkTerakhir,
           semesterYear,
           semester
         );
@@ -642,7 +646,7 @@ const EditKonversiModal: React.FC<{
     }
 
     const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
-      karyawan.tmtJabatan,
+      karyawan.tglPenghitunganAkTerakhir,
       formData.Tahun,
       formData.Semester
     );
@@ -845,9 +849,9 @@ const GenerateSemesterModal: React.FC<{
     masaKerjaBulan: number;
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[]) => void;
-  tmtJabatan: string;
+  tglPenghitunganAkTerakhir: string;
   karyawan: Karyawan;
-}> = ({ isOpen, onClose, onGenerate, tmtJabatan, karyawan }) => {
+}> = ({ isOpen, onClose, onGenerate, tglPenghitunganAkTerakhir, karyawan }) => {
   const [availableSemesters, setAvailableSemesters] = useState<{ 
     tahun: number; 
     semester: 1 | 2;
@@ -856,11 +860,11 @@ const GenerateSemesterModal: React.FC<{
   }[]>([]);
 
   useEffect(() => {
-    if (isOpen && tmtJabatan) {
-      const semesters = KonversiCalculator.generateSemesterFromTMT(tmtJabatan);
+    if (isOpen && tglPenghitunganAkTerakhir) {
+      const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
       setAvailableSemesters(semesters);
     }
-  }, [isOpen, tmtJabatan]);
+  }, [isOpen, tglPenghitunganAkTerakhir]);
 
   const handleGenerate = () => {
     onGenerate(availableSemesters);
@@ -873,16 +877,16 @@ const GenerateSemesterModal: React.FC<{
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Generate Data Semester dari TMT Jabatan</DialogTitle>
+          <DialogTitle>Generate Data Semester dari Tanggal Penghitungan AK Terakhir</DialogTitle>
           <DialogDescription>
-            Membuat data konversi untuk semua semester sejak TMT Jabatan: {tmtJabatan} sesuai Peraturan BKN 2023
+            Membuat data konversi untuk semua semester sejak Tanggal Penghitungan AK Terakhir: {tglPenghitunganAkTerakhir} sesuai Peraturan BKN 2023
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
-              <strong>TMT Jabatan:</strong> {tmtJabatan}<br />
+              <strong>Tanggal Penghitungan AK Terakhir:</strong> {tglPenghitunganAkTerakhir}<br />
               <strong>Jumlah Semester:</strong> {availableSemesters.length}<br />
               <strong>Kategori:</strong> {karyawan.kategori}<br />
               <strong>Golongan:</strong> {karyawan.golongan}<br />
@@ -944,7 +948,7 @@ const GenerateSemesterModal: React.FC<{
             </div>
           ) : (
             <div className="text-center py-4 text-muted-foreground">
-              <p>Tidak ada semester yang dapat digenerate dari TMT Jabatan ini.</p>
+              <p>Tidak ada semester yang dapat digenerate dari Tanggal Penghitungan AK Terakhir ini.</p>
             </div>
           )}
 
@@ -1051,7 +1055,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     const semester = new Date().getMonth() < 6 ? 1 : 2;
     
     const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
-      karyawan.tmtJabatan,
+      karyawan.tglPenghitunganAkTerakhir,
       tahun,
       semester
     );
@@ -1167,7 +1171,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           'TMT Mulai': periode.mulai,
           'TMT Selesai': periode.selesai,
           Status: 'Draft' as const,
-          Catatan: `Auto-generated from TMT Jabatan ${karyawan.tmtJabatan} (${semester.jenisPenilaian})`,
+          Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${semester.jenisPenilaian})`,
           Last_Update: now,
           Masa_Kerja_Bulan: semester.masaKerjaBulan,
           Jenis_Penilaian: semester.jenisPenilaian
@@ -1209,7 +1213,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
       toast({
         title: "Sukses",
-        description: `Berhasil generate ${semesters.length} semester dari TMT Jabatan dengan sistem proporsional BKN`
+        description: `Berhasil generate ${semesters.length} semester dari Tanggal Penghitungan AK Terakhir dengan sistem proporsional BKN`
       });
       loadData();
     } catch (error) {
@@ -1390,13 +1394,13 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
             <Button onClick={() => setGenerateModal(true)} variant="secondary">
               <Save className="h-4 w-4 mr-2" />
-              Generate dari TMT
+              Generate dari Tanggal Penghitungan AK
             </Button>
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
-              <strong>Informasi Karyawan:</strong> {karyawan.kategori} - {karyawan.jabatan} - Golongan: {karyawan.golongan} - Koefisien: {koefisien} - TMT Jabatan: {karyawan.tmtJabatan}
+              <strong>Informasi Karyawan:</strong> {karyawan.kategori} - {karyawan.jabatan} - Golongan: {karyawan.golongan} - Koefisien: {koefisien} - Tanggal Penghitungan AK Terakhir: {karyawan.tglPenghitunganAkTerakhir}
             </p>
           </div>
 
@@ -1418,7 +1422,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                     </Button>
                     <Button onClick={() => setGenerateModal(true)} variant="outline">
                       <Save className="h-4 w-4 mr-2" />
-                      Generate dari TMT Jabatan
+                      Generate dari Tanggal Penghitungan AK Terakhir
                     </Button>
                   </div>
                 </div>
@@ -1442,7 +1446,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         isOpen={generateModal}
         onClose={() => setGenerateModal(false)}
         onGenerate={handleGenerateSemesters}
-        tmtJabatan={karyawan.tmtJabatan}
+        tglPenghitunganAkTerakhir={karyawan.tglPenghitunganAkTerakhir}
         karyawan={karyawan}
       />
     </div>
