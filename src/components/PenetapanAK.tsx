@@ -19,11 +19,13 @@ interface Karyawan {
   golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
+  tglPenghitunganAkTerakhir: string;
+  akKumulatif: number;
+  status: 'Aktif' | 'Pensiun' | 'Mutasi';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
-  akKumulatif: number;
 }
 
 interface PenetapanData {
@@ -260,7 +262,18 @@ class PenetapanCalculator {
         if (akKumulatifIndex >= 0) break;
       }
       
-      console.log('🔍 Index kolom:', { nipIndex, akKumulatifIndex });
+      // Cari kolom Tanggal Penghitungan AK Terakhir
+      let tglPenghitunganIndex = -1;
+      const possibleTglNames = ['tglpenghitunganakterakhir', 'tanggal penghitungan ak terakhir', 'tgl_penghitungan_ak_terakhir'];
+      
+      for (const possibleName of possibleTglNames) {
+        tglPenghitunganIndex = headers.findIndex((header: string) => 
+          header.toLowerCase().includes(possibleName)
+        );
+        if (tglPenghitunganIndex >= 0) break;
+      }
+      
+      console.log('🔍 Index kolom:', { nipIndex, akKumulatifIndex, tglPenghitunganIndex });
 
       if (nipIndex === -1) {
         console.log('❌ Kolom NIP tidak ditemukan');
@@ -744,7 +757,8 @@ const EditPenetapanModal: React.FC<{
               • AK Tahunan: <strong>{akTahunan}</strong><br />
               • Format Tanggal: 18 November 2025<br />
               • NIP: {karyawan.nip}<br />
-              • Nama: {karyawan.nama}
+              • Nama: {karyawan.nama}<br />
+              • Tanggal Penghitungan AK Terakhir: {karyawan.tglPenghitunganAkTerakhir || 'Tidak tersedia'}
             </p>
           </div>
 
@@ -927,7 +941,8 @@ const GeneratePenetapanModal: React.FC<{
                   <strong>NIP:</strong> {karyawan.nip}<br />
                   <strong>Jabatan:</strong> {karyawan.jabatan}<br />
                   <strong>Golongan:</strong> {karyawan.golongan}<br />
-                  <strong>AK Kumulatif Awal:</strong> {akKumulatifAwal.toFixed(3)}
+                  <strong>AK Kumulatif Awal:</strong> {akKumulatifAwal.toFixed(3)}<br />
+                  <strong>Tanggal Penghitungan AK Terakhir:</strong> {karyawan.tglPenghitunganAkTerakhir || 'Tidak tersedia'}
                 </p>
               </div>
               <Button onClick={loadAkKumulatifAwal} variant="outline" disabled={loading}>
@@ -1389,7 +1404,10 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <strong>Informasi Karyawan:</strong><br />
-                {karyawan.jabatan} - {karyawan.golongan}
+                {karyawan.jabatan} - {karyawan.golongan}<br />
+                <span className="text-xs text-blue-600">
+                  Tanggal Penghitungan AK Terakhir: {karyawan.tglPenghitunganAkTerakhir || 'Tidak tersedia'}
+                </span>
               </div>
               <div>
                 <strong>Total AK Tahunan:</strong><br />
