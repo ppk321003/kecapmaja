@@ -1366,7 +1366,7 @@ const EmployeeTable: React.FC<{
                 {sortedKaryawan.map(karyawan => <TableRow key={karyawan.nip} className={selectedNip === karyawan.nip ? 'bg-accent' : ''}>
                     <TableCell className="font-medium py-2">{karyawan.nama}</TableCell>
                     <TableCell className="py-2">
-                      <code className="relative rounded bg-muted px-2 py-1 font-mono text-sm whitespace-nowrap">
+                      <code className="font-mono text-sm">
                         {karyawan.nip}
                       </code>
                     </TableCell>
@@ -1996,7 +1996,7 @@ const KarierKu: React.FC = () => {
               <DokumenSKCard karyawan={selectedKaryawan} />
             </TabsContent>
             <TabsContent value="layanan" className="space-y-6">
-              <LayananKarir karyawan={selectedKaryawan} className="mx-0 my-0" />
+              <LayananKarir karyawan={selectedKaryawan} />
             </TabsContent>
           </Tabs>
         </>}
