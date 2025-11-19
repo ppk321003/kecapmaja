@@ -100,75 +100,86 @@ class PenetapanCalculator {
     );
   }
 
-  // Generate data penetapan dari data konversi
-  static generateFromKonversi(
-    konversiData: any[], 
-    karyawan: Karyawan,
-    akKumulatifAwal: number
-  ): { 
-    tahun: number;
-    akSemester1: number; 
-    akSemester2: number; 
-    akTahunan: number;
-    jabatan: string;
-    golongan: string;
-    tanggalPenetapan: string;
-    penetap: string;
-    status: 'Draft' | 'Disetujui' | 'Ditolak';
-  }[] {
-    const years: { [key: number]: { semester1: number; semester2: number } } = {};
+// ALTERNATIF: AK Semester 1 selalu = AK Kumulatif Awal
+static generateFromKonversi(
+  konversiData: any[], 
+  karyawan: Karyawan,
+  akKumulatifAwal: number
+): { 
+  tahun: number;
+  akSemester1: number; 
+  akSemester2: number; 
+  akTahunan: number;
+  jabatan: string;
+  golongan: string;
+  tanggalPenetapan: string;
+  penetap: string;
+  status: 'Draft' | 'Disetujui' | 'Ditolak';
+}[] {
+  const years: { [key: number]: { semester1: number; semester2: number } } = {};
+  
+  console.log('🔍 Memproses data konversi untuk penetapan:', konversiData);
+  console.log('💰 AK Kumulatif Awal:', akKumulatifAwal);
+  
+  // Group by tahun dan semester
+  konversiData.forEach(item => {
+    const tahun = item.Tahun;
+    const semester = item.Semester;
+    const akKonversi = item['AK Konversi'] || 0;
     
-    console.log('🔍 Memproses data konversi untuk penetapan:', konversiData);
-    console.log('💰 AK Kumulatif Awal:', akKumulatifAwal);
+    if (!years[tahun]) {
+      years[tahun] = { semester1: 0, semester2: 0 };
+    }
     
-    // Group by tahun dan semester
-    konversiData.forEach(item => {
-      const tahun = item.Tahun;
-      const semester = item.Semester;
-      const akKonversi = item['AK Konversi'] || 0;
-      
-      if (!years[tahun]) {
-        years[tahun] = { semester1: 0, semester2: 0 };
-      }
-      
-      if (semester === 1) {
-        years[tahun].semester1 += akKonversi;
-        console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 1 ${tahun}`);
-      } else if (semester === 2) {
-        years[tahun].semester2 += akKonversi;
-        console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 2 ${tahun}`);
-      }
+    if (semester === 1) {
+      years[tahun].semester1 += akKonversi;
+      console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 1 ${tahun}`);
+    } else if (semester === 2) {
+      years[tahun].semester2 += akKonversi;
+      console.log(`📊 Menambahkan AK ${akKonversi} ke Semester 2 ${tahun}`);
+    }
+  });
+
+  const result = [];
+  const now = new Date();
+
+  // Urutkan tahun dari yang terkecil
+  const sortedYears = Object.keys(years).map(Number).sort((a, b) => a - b);
+  
+  console.log('📅 Tahun yang diproses (terurut):', sortedYears);
+
+  // ALTERNATIF: AK Semester 1 selalu menggunakan AK Kumulatif Awal
+  for (const tahun of sortedYears) {
+    const data = years[tahun];
+    
+    // AK Semester 1 = AK Kumulatif Awal
+    const akSemester1 = akKumulatifAwal;
+    const akSemester2 = data.semester2; // Hanya menggunakan konversi semester 2
+    const akTahunan = this.calculateAKTahunan(akSemester1, akSemester2);
+    
+    console.log(`🎯 Tahun ${tahun}:`, {
+      akKumulatifAwal,
+      konversiSem2: data.semester2,
+      akSemester1,
+      akSemester2,
+      akTahunan
     });
 
-    const result = [];
-    const now = new Date();
-
-    for (const [tahunStr, data] of Object.entries(years)) {
-      const tahun = parseInt(tahunStr);
-      const akTahunan = this.calculateAKTahunan(data.semester1, data.semester2);
-      
-      result.push({
-        tahun,
-        akSemester1: data.semester1,
-        akSemester2: data.semester2,
-        akTahunan,
-        jabatan: karyawan.jabatan,
-        golongan: karyawan.golongan,
-        tanggalPenetapan: this.formatDate(now),
-        penetap: 'Pejabat Penetap',
-        status: 'Draft' as const
-      });
-
-      console.log(`🎯 Tahun ${tahun}:`, {
-        semester1: data.semester1,
-        semester2: data.semester2,
-        tahunan: akTahunan
-      });
-    }
-
-    // Urutkan berdasarkan tahun
-    return result.sort((a, b) => a.tahun - b.tahun);
+    result.push({
+      tahun,
+      akSemester1,
+      akSemester2,
+      akTahunan,
+      jabatan: karyawan.jabatan,
+      golongan: karyawan.golongan,
+      tanggalPenetapan: this.formatDate(now),
+      penetap: 'Pejabat Penetap',
+      status: 'Draft' as const
+    });
   }
+
+  return result;
+}
 
   // PERBAIKAN: Ambil data karyawan dari sheet "data" dengan pendekatan yang lebih robust
   static async getKaryawanDataFromSheet(nip: string): Promise<{ akKumulatif: number; dataLengkap: any }> {
