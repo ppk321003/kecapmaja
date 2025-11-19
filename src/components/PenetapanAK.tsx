@@ -1392,8 +1392,8 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
                 {karyawan.jabatan} - {karyawan.golongan}
               </div>
               <div>
-                <strong>Total AK Tahunan:</strong><br />
-                <span className="font-semibold text-primary">{totalAKTahunan.toFixed(3)}</span>
+                <strong>Kategori:</strong><br />
+                <span className="font-semibold">{karyawan.kategori}</span>
               </div>
               <div>
                 <strong>Jumlah Data:</strong><br />
