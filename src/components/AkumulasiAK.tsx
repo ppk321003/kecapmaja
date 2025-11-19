@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Filter, TrendingUp, Calculator, Target, Save, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, Plus, Filter, TrendingUp, Calculator, Target, Save, AlertCircle, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,11 +19,14 @@ interface Karyawan {
   golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
-  unitKerja: string;
+  tglPenghitunganAkTerakhir: string;
+  akKumulatif: number;
+  status: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
-  akKumulatif: number;
+  linkSKJabatan: string;
+  linkSKPangkat: string;
 }
 
 interface AkumulasiData {
@@ -63,6 +66,11 @@ class AkumulasiCalculator {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  }
+
+  static parseDate(dateString: string): Date {
+    const [day, month, year] = dateString.split('/').map(Number);
+    return new Date(year, month - 1, day);
   }
 
   static formatNumberForSheet(num: number): string {
@@ -365,16 +373,22 @@ class AkumulasiCalculator {
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number } } = {};
     
+    // Filter data konversi yang setelah tanggal penghitungan AK terakhir
+    const tglPenghitunganTerakhir = this.parseDate(karyawan.tglPenghitunganAkTerakhir);
+    
     // Group by tahun untuk akumulasi tahunan
     konversiData.forEach(item => {
       const tahun = item.Tahun;
-      const periodeKey = `Tahun ${tahun}`;
-      const akKonversi = this.parseNumberFromSheet(item['AK Konversi']);
-      
-      if (!periods[periodeKey]) {
-        periods[periodeKey] = { akPeriodeIni: 0, tahun };
+      // Hanya proses data yang tahunnya >= tahun dari tanggal penghitungan terakhir
+      if (tahun >= tglPenghitunganTerakhir.getFullYear()) {
+        const periodeKey = `Tahun ${tahun}`;
+        const akKonversi = this.parseNumberFromSheet(item['AK Konversi']);
+        
+        if (!periods[periodeKey]) {
+          periods[periodeKey] = { akPeriodeIni: 0, tahun };
+        }
+        periods[periodeKey].akPeriodeIni += akKonversi;
       }
-      periods[periodeKey].akPeriodeIni += akKonversi;
     });
 
     const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
@@ -478,17 +492,27 @@ class AkumulasiCalculator {
   }[] {
     const periods: { [key: string]: { akPeriodeIni: number; tahun: number; semester: number } } = {};
     
+    // Filter data konversi yang setelah tanggal penghitungan AK terakhir
+    const tglPenghitunganTerakhir = this.parseDate(karyawan.tglPenghitunganAkTerakhir);
+    
     // Group by tahun dan semester
     konversiData.forEach(item => {
       const tahun = item.Tahun;
       const semester = item.Semester;
-      const periodeKey = `Semester ${semester} ${tahun}`;
-      const akKonversi = this.parseNumberFromSheet(item['AK Konversi']);
       
-      if (!periods[periodeKey]) {
-        periods[periodeKey] = { akPeriodeIni: 0, tahun, semester };
+      // Buat tanggal referensi untuk semester (anggap semester 1: Jan-Jun, semester 2: Jul-Des)
+      const semesterDate = new Date(tahun, semester === 1 ? 0 : 6, 1);
+      
+      // Hanya proses data yang tanggal semesternya >= tanggal penghitungan terakhir
+      if (semesterDate >= tglPenghitunganTerakhir) {
+        const periodeKey = `Semester ${semester} ${tahun}`;
+        const akKonversi = this.parseNumberFromSheet(item['AK Konversi']);
+        
+        if (!periods[periodeKey]) {
+          periods[periodeKey] = { akPeriodeIni: 0, tahun, semester };
+        }
+        periods[periodeKey].akPeriodeIni += akKonversi;
       }
-      periods[periodeKey].akPeriodeIni += akKonversi;
     });
 
     const kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
@@ -705,6 +729,9 @@ const useSpreadsheetAPI = () => {
             
             if (header === 'akKumulatif') {
               value = AkumulasiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'TglPenghitunganAkTerakhir') {
+              value = value || AkumulasiCalculator.formatDate(new Date());
             }
             
             obj[header] = value;
@@ -1211,6 +1238,16 @@ const GenerateAkumulasiModal: React.FC<{
                 <strong>AK Awal dari Data Master:</strong> {initialAkKumulatif.toFixed(3)}
               </div>
             </div>
+            <div className="mt-2 p-2 bg-white rounded border">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-blue-600" />
+                <span className="font-semibold">Tanggal Penghitungan AK Terakhir:</span>
+                <span>{karyawan.tglPenghitunganAkTerakhir}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Penghitungan AK dimulai dari tanggal ini, bukan dari TMT Jabatan
+              </p>
+            </div>
           </div>
 
           {loading ? (
@@ -1704,6 +1741,16 @@ const AkumulasiAK: React.FC<AkumulasiAKProps> = ({ karyawan }) => {
                 <div className="text-xs text-muted-foreground">Jumlah Data</div>
                 <div className="font-semibold">{getFilteredData().length}</div>
               </div>
+            </div>
+            <div className="mt-3 p-2 bg-white rounded border">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-blue-600" />
+                <span className="font-semibold">Tanggal Penghitungan AK Terakhir:</span>
+                <span>{karyawan.tglPenghitunganAkTerakhir}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Penghitungan AK dimulai dari tanggal ini, bukan dari TMT Jabatan
+              </p>
             </div>
           </div>
 
