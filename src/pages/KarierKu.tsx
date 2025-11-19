@@ -23,12 +23,15 @@ interface Karyawan {
   golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
+  tglPenghitunganAkTerakhir: string;
+  akKumulatif: number;
+  status: 'Aktif' | 'Pensiun' | 'Mutasi';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
-  akKumulatif: number;
-  status: 'Aktif' | 'Pensiun' | 'Mutasi';
+  linkSkJabatan?: string;
+  linkSkPangkat?: string;
   tempatLahir: string;
   tanggalLahir: string;
   jenisKelamin: 'L' | 'P';
@@ -36,8 +39,6 @@ interface Karyawan {
   email: string;
   telepon: string;
   alamat: string;
-  linkSkJabatan?: string;
-  linkSkPangkat?: string;
 }
 interface EstimasiKenaikan {
   kebutuhanAKPangkat: number;
@@ -146,6 +147,21 @@ class DateParser {
     console.warn(`Tidak bisa parsing tanggal: ${tanggal}, menggunakan tanggal default`);
     return new Date();
   }
+
+  static formatTanggalIndonesia(tanggal: string): string {
+    if (!tanggal || tanggal.trim() === '') return '-';
+    
+    const date = this.parseTanggalIndonesia(tanggal);
+    if (isNaN(date.getTime())) return tanggal;
+    
+    const options: Intl.DateTimeFormatOptions = {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    };
+    
+    return date.toLocaleDateString('id-ID', options);
+  }
 }
 
 // ==================== UTILITIES - SESUAI PERATURAN BKN ====================
@@ -185,14 +201,19 @@ class AngkaKreditCalculator {
   static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     // Untuk kategori Reguler, tidak ada AK tambahan untuk jabatan
     if (karyawan.kategori === 'Reguler') return 0;
-    const tmtJabatan = DateParser.parseTanggalIndonesia(karyawan.tmtJabatan);
+    
+    const tglPenghitunganTerakhir = DateParser.parseTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir);
     const hariIni = new Date();
-    if (tmtJabatan > hariIni) return 0;
-    const selisihBulan = this.hitungSelisihBulan(tmtJabatan, hariIni);
+    
+    if (tglPenghitunganTerakhir > hariIni) return 0;
+    
+    const selisihBulan = this.hitungSelisihBulan(tglPenghitunganTerakhir, hariIni);
     if (selisihBulan <= 0) return 0;
+    
     const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = predikatAsumsi * koefisien / 12;
     const akTambahan = selisihBulan * akPerBulan;
+    
     return Number(akTambahan.toFixed(2));
   }
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
@@ -474,7 +495,7 @@ class AngkaKreditCalculator {
   }
   static getPenjelasanKebutuhan(jabatanSekarang: string, kategori: string, isKenaikanJenjang: boolean, golonganSekarang: string, golonganBerikutnya: string): string {
     if (kategori === 'Reguler') {
-      return "Jabatan struktural - kenaikan berdasarkan masa kerja 4 tahun";
+      return "Jabatan struktural - kenaikan berdasarkan masa kerja 4 tahun dari TMT Pangkat";
     }
     if (isKenaikanJenjang) {
       if (kategori === 'Keahlian') {
@@ -1043,15 +1064,6 @@ const BiodataCard: React.FC<{
   akRealSaatIni,
   akTambahan
 }) => {
-  const formatTanggal = (tanggal: string) => {
-    if (!tanggal) return '-';
-    try {
-      const date = DateParser.parseTanggalIndonesia(tanggal);
-      return isNaN(date.getTime()) ? tanggal : date.toLocaleDateString('id-ID');
-    } catch {
-      return tanggal;
-    }
-  };
   const parseNIP = (nip: string) => {
     if (!nip || nip.length < 15) return {
       tanggalLahir: '',
@@ -1138,11 +1150,11 @@ const BiodataCard: React.FC<{
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">TMT Pangkat</Label>
-              <p className="font-medium text-sm">{formatTanggal(karyawan.tmtPangkat)}</p>
+              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tmtPangkat)}</p>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">TMT PNS</Label>
-              <p className="font-medium text-sm">{formatTanggal(nipData.tahunMasuk)}</p>
+              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(nipData.tahunMasuk)}</p>
             </div>
           </div>
           
@@ -1153,11 +1165,11 @@ const BiodataCard: React.FC<{
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">TMT Jabatan</Label>
-              <p className="font-medium text-sm">{formatTanggal(karyawan.tmtJabatan)}</p>
+              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Unit Kerja</Label>
-              <p className="font-medium text-sm">{karyawan.unitKerja}</p>
+              <Label className="text-xs text-muted-foreground">Tanggal Penghitungan AK Terakhir</Label>
+              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir)}</p>
             </div>
           </div>
           
@@ -1265,7 +1277,7 @@ const EmployeeTable: React.FC<{
   };
   const karyawanWithAKReal = karyawanList.map(getKaryawanWithAKReal);
   const filteredKaryawan = karyawanWithAKReal.filter(karyawan => {
-    const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm) || karyawan.unitKerja.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) || karyawan.nip.includes(searchTerm);
     const matchesKategori = filterKategori === 'Semua' || karyawan.kategori === filterKategori;
     return matchesSearch && matchesKategori;
   });
@@ -1314,7 +1326,7 @@ const EmployeeTable: React.FC<{
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari nama, NIP, atau unit kerja..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+            <Input placeholder="Cari nama atau NIP..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
           <Select value={filterKategori} onValueChange={(value: any) => setFilterKategori(value)}>
             <SelectTrigger className="w-full md:w-[200px]">
@@ -1408,7 +1420,7 @@ const EmployeeTable: React.FC<{
             <div>
               <h4 className="font-semibold text-blue-800">Informasi Angka Kredit Akhir</h4>
               <p className="text-blue-700 text-sm">
-                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak TMT Jabatan sampai hari ini dengan asumsi predikat kinerja "Baik". 
+                <strong>AK Akhir = AK Awal + AK Tambahan</strong>. Angka Kredit Tambahan dihitung otomatis sejak Tanggal Penghitungan AK Terakhir sampai hari ini dengan asumsi predikat kinerja "Baik". 
                 <strong> Untuk kategori Reguler, perhitungan AK tidak berlaku.</strong>
               </p>
             </div>
@@ -1591,7 +1603,7 @@ const EstimasiKenaikanCard: React.FC<{
 
         <div className="p-4 bg-blue-50 rounded-lg border">
           <p className="text-blue-800 text-sm">
-            <strong>Informasi:</strong> {isReguler ? "Estimasi untuk kategori Reguler berdasarkan masa kerja 4 tahun dari TMT Pangkat. Kenaikan pangkat memerlukan syarat pendidikan sesuai golongan." : `Estimasi berdasarkan predikat kinerja ${predikatAsumsi * 100}% dengan perolehan ${estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk akumulasi sejak TMT Jabatan.`}
+            <strong>Informasi:</strong> {isReguler ? "Estimasi untuk kategori Reguler berdasarkan masa kerja 4 tahun dari TMT Pangkat. Kenaikan pangkat memerlukan syarat pendidikan sesuai golongan." : `Estimasi berdasarkan predikat kinerja ${predikatAsumsi * 100}% dengan perolehan ${estimasi.akPerBulan} AK/bulan. Perhitungan sesuai Peraturan BKN No. 3 Tahun 2023. AK Akhir saat ini sudah termasuk akumulasi sejak Tanggal Penghitungan AK Terakhir.`}
           </p>
         </div>
       </CardContent>
@@ -1840,15 +1852,15 @@ const KarierKu: React.FC = () => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:N`
+          range: `${SHEET_NAME}!A:O`
         }
       });
       if (error) throw error;
       const rows = data.values || [];
       const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
         let akKumulatifValue = 0;
-        if (row[6]) {
-          const akValue = row[6].toString().replace(',', '.');
+        if (row[7]) {
+          const akValue = row[7].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
         const jabatan = row[4]?.toString() || '';
@@ -1896,21 +1908,22 @@ const KarierKu: React.FC = () => {
           golongan: row[3]?.toString() || '',
           jabatan: jabatan,
           kategori: kategori,
+          tglPenghitunganAkTerakhir: row[6]?.toString() || '',
           akKumulatif: akKumulatifValue,
-          status: row[7]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
-          unitKerja: row[8]?.toString() || '',
-          tmtJabatan: row[9]?.toString() || '',
-          tmtPangkat: row[10]?.toString() || '',
-          pendidikan: row[11]?.toString() || '',
+          status: row[8]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
+          unitKerja: row[9]?.toString() || '',
+          tmtJabatan: row[10]?.toString() || '',
+          tmtPangkat: row[11]?.toString() || '',
+          pendidikan: row[12]?.toString() || '',
+          linkSkJabatan: row[13]?.toString() || '',
+          linkSkPangkat: row[14]?.toString() || '',
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
           tempatLahir: '',
           agama: '',
           email: '',
           telepon: '',
-          alamat: '',
-          linkSkJabatan: row[12]?.toString() || '',
-          linkSkPangkat: row[13]?.toString() || ''
+          alamat: ''
         };
       });
       setKaryawanList(karyawanData);
