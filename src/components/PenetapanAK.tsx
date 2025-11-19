@@ -74,10 +74,13 @@ class PenetapanCalculator {
 
   // Parse angka dari spreadsheet (mengembalikan number dengan titik desimal)
   static parseNumberFromSheet(value: any): number {
+    if (value === null || value === undefined || value === '') return 0;
+    
     if (typeof value === 'string') {
-      return parseFloat(value.replace(',', '.'));
+      const cleanedValue = value.replace(',', '.');
+      return parseFloat(cleanedValue) || 0;
     }
-    return Number(value);
+    return Number(value) || 0;
   }
 
   // Hitung AK Tahunan dari AK Semester 1 dan 2
@@ -167,7 +170,7 @@ class PenetapanCalculator {
     return result.sort((a, b) => a.tahun - b.tahun);
   }
 
-  // Ambil data karyawan dari sheet "data"
+  // PERBAIKAN: Ambil data karyawan dari sheet "data" dengan pendekatan yang lebih robust
   static async getKaryawanDataFromSheet(nip: string): Promise<{ akKumulatif: number; dataLengkap: any }> {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -191,12 +194,32 @@ class PenetapanCalculator {
       const headers = rows[0];
       console.log('📝 Headers sheet "data":', headers);
       
+      // Cari index kolom NIP dan AK Kumulatif
+      const nipIndex = headers.findIndex((header: string) => 
+        header.toLowerCase().includes('nip')
+      );
+      
+      // PERBAIKAN: Cari kolom AK Kumulatif dengan berbagai kemungkinan nama
+      let akKumulatifIndex = -1;
+      const possibleAkNames = ['ak kumulatif', 'akkumulatif', 'ak_kumulatif', 'angka kredit kumulatif'];
+      
+      for (const possibleName of possibleAkNames) {
+        akKumulatifIndex = headers.findIndex((header: string) => 
+          header.toLowerCase().includes(possibleName)
+        );
+        if (akKumulatifIndex >= 0) break;
+      }
+      
+      console.log('🔍 Index kolom:', { nipIndex, akKumulatifIndex });
+
+      if (nipIndex === -1) {
+        console.log('❌ Kolom NIP tidak ditemukan');
+        return { akKumulatif: 0, dataLengkap: null };
+      }
+
       // Cari data karyawan berdasarkan NIP
       const karyawanRow = rows.slice(1).find((row: any[]) => {
-        const nipIndex = headers.findIndex((header: string) => 
-          header.toLowerCase().includes('nip')
-        );
-        return nipIndex >= 0 && row[nipIndex] === nip;
+        return row[nipIndex] === nip;
       });
 
       if (!karyawanRow) {
@@ -209,10 +232,10 @@ class PenetapanCalculator {
       headers.forEach((header: string, colIndex: number) => {
         let value = karyawanRow[colIndex];
         
-        // Handle akKumulatif dengan format desimal
-        if (header.toLowerCase().includes('ak') && header.toLowerCase().includes('kumulatif')) {
+        // Handle number conversion untuk kolom numerik
+        if (colIndex === akKumulatifIndex) {
           value = this.parseNumberFromSheet(value);
-          console.log(`💰 akKumulatif dari sheet: ${karyawanRow[colIndex]} -> ${value}`);
+          console.log(`💰 AK Kumulatif dari sheet: ${karyawanRow[colIndex]} -> ${value}`);
         }
         
         karyawanData[header] = value;
@@ -220,12 +243,17 @@ class PenetapanCalculator {
 
       console.log('✅ Data karyawan ditemukan:', karyawanData);
       
-      // Cari nilai akKumulatif dari berbagai kemungkinan nama kolom
+      // Ambil nilai akKumulatif
       let akKumulatif = 0;
-      for (const [key, value] of Object.entries(karyawanData)) {
-        if (key.toLowerCase().includes('ak') && key.toLowerCase().includes('kumulatif')) {
-          akKumulatif = Number(value) || 0;
-          break;
+      if (akKumulatifIndex >= 0 && akKumulatifIndex < karyawanRow.length) {
+        akKumulatif = this.parseNumberFromSheet(karyawanRow[akKumulatifIndex]);
+      } else {
+        // Fallback: cari dari object karyawanData
+        for (const [key, value] of Object.entries(karyawanData)) {
+          if (key.toLowerCase().includes('ak') && key.toLowerCase().includes('kumulatif')) {
+            akKumulatif = this.parseNumberFromSheet(value);
+            break;
+          }
         }
       }
 
@@ -344,7 +372,7 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  // Fungsi untuk membaca data dari sheet "data"
+  // PERBAIKAN: Fungsi untuk membaca data dari sheet "data" dengan pendekatan yang lebih baik
   const readDataSheet = async (nip?: string) => {
     try {
       const result = await callAPI('read', { range: DATA_SHEET_NAME });
@@ -355,12 +383,14 @@ const useSpreadsheetAPI = () => {
       const headers = rows[0];
       console.log('Data sheet headers:', headers);
       
+      // Cari index kolom yang diperlukan
+      const nipIndex = headers.findIndex((header: string) => 
+        header.toLowerCase().includes('nip')
+      );
+      
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
-          const nipIndex = headers.findIndex((header: string) => 
-            header.toLowerCase().includes('nip')
-          );
           return nipIndex >= 0 && row[nipIndex] === nip;
         })
         .map((row: any[], index: number) => {
@@ -372,8 +402,10 @@ const useSpreadsheetAPI = () => {
           headers.forEach((header: string, colIndex: number) => {
             let value = row[colIndex];
             
+            // Handle AK Kumulatif dengan konversi format desimal
             if (header.toLowerCase().includes('ak') && header.toLowerCase().includes('kumulatif')) {
               value = PenetapanCalculator.parseNumberFromSheet(value);
+              console.log(`💰 AK Kumulatif dari data sheet: ${row[colIndex]} -> ${value}`);
             }
             
             obj[header] = value;
@@ -434,6 +466,7 @@ const EditPenetapanModal: React.FC<{
 }> = ({ data, isOpen, onClose, onSave, karyawan, initialAkKumulatif }) => {
   const [formData, setFormData] = useState<Partial<PenetapanData>>({});
   const [loadingAkAwal, setLoadingAkAwal] = useState(false);
+  const [currentAkKumulatif, setCurrentAkKumulatif] = useState<number>(initialAkKumulatif);
 
   useEffect(() => {
     if (data) {
@@ -451,18 +484,25 @@ const EditPenetapanModal: React.FC<{
         Status: 'Draft'
       });
     }
+    setCurrentAkKumulatif(initialAkKumulatif);
   }, [data, karyawan, initialAkKumulatif]);
 
+  // PERBAIKAN: Fungsi yang lebih robust untuk load AK Kumulatif
   const loadAkKumulatifAwal = async () => {
     setLoadingAkAwal(true);
     try {
-      const { akKumulatif } = await PenetapanCalculator.getKaryawanDataFromSheet(karyawan.nip);
+      const { akKumulatif, dataLengkap } = await PenetapanCalculator.getKaryawanDataFromSheet(karyawan.nip);
       console.log('💰 AK Kumulatif Awal yang diload:', akKumulatif);
       
+      setCurrentAkKumulatif(akKumulatif);
       setFormData(prev => ({
         ...prev,
         'AK Semester 1': akKumulatif
       }));
+      
+      if (dataLengkap) {
+        console.log('📋 Data lengkap karyawan:', dataLengkap);
+      }
       
     } catch (error) {
       console.error('Gagal memuat AK Kumulatif awal:', error);
@@ -568,7 +608,8 @@ const EditPenetapanModal: React.FC<{
                 required
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Nilai awal dari data master: {initialAkKumulatif.toFixed(3)}
+                Nilai awal dari data master: {currentAkKumulatif.toFixed(3)}
+                {loadingAkAwal && ' (Memuat...)'}
               </p>
             </div>
             <div>
@@ -709,6 +750,7 @@ const GeneratePenetapanModal: React.FC<{
     }
   }, [isOpen]);
 
+  // PERBAIKAN: Fungsi yang sama seperti di modal edit untuk konsistensi
   const loadAkKumulatifAwal = async () => {
     setLoading(true);
     try {
@@ -950,21 +992,12 @@ const PenetapanAK: React.FC<PenetapanAKProps> = ({ karyawan }) => {
     }
   };
 
-  // FUNGSI BARU: Load initial AK Kumulatif dari sheet "data"
+  // PERBAIKAN: Load initial AK Kumulatif dari sheet "data" dengan pendekatan yang lebih baik
   const loadInitialAkKumulatif = async () => {
     try {
-      const dataSheet = await api.readDataSheet(karyawan.nip);
-      if (dataSheet.length > 0) {
-        const latestData = dataSheet[0];
-        // Cari nilai akKumulatif dari berbagai kemungkinan nama kolom
-        for (const [key, value] of Object.entries(latestData)) {
-          if (key.toLowerCase().includes('ak') && key.toLowerCase().includes('kumulatif')) {
-            setInitialAkKumulatif(Number(value) || 0);
-            console.log('✅ Loaded initial AK Kumulatif from data sheet:', value);
-            break;
-          }
-        }
-      }
+      const { akKumulatif } = await PenetapanCalculator.getKaryawanDataFromSheet(karyawan.nip);
+      console.log('✅ Loaded initial AK Kumulatif from data sheet:', akKumulatif);
+      setInitialAkKumulatif(akKumulatif);
     } catch (error) {
       console.error('Error loading initial AK kumulatif:', error);
       // Fallback to karyawan.akKumulatif if data sheet reading fails
