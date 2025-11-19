@@ -376,6 +376,9 @@ class AkumulasiCalculator {
     // Filter data konversi yang setelah tanggal penghitungan AK terakhir
     const tglPenghitunganTerakhir = this.parseDate(karyawan.tglPenghitunganAkTerakhir);
     
+    console.log('Tanggal penghitungan terakhir:', karyawan.tglPenghitunganAkTerakhir);
+    console.log('Data konversi yang diproses:', konversiData);
+
     // Group by tahun untuk akumulasi tahunan
     konversiData.forEach(item => {
       const tahun = item.Tahun;
@@ -469,6 +472,7 @@ class AkumulasiCalculator {
       }
     }
 
+    console.log('Hasil generate periode:', result);
     return result;
   }
 
@@ -495,6 +499,9 @@ class AkumulasiCalculator {
     // Filter data konversi yang setelah tanggal penghitungan AK terakhir
     const tglPenghitunganTerakhir = this.parseDate(karyawan.tglPenghitunganAkTerakhir);
     
+    console.log('Tanggal penghitungan terakhir:', karyawan.tglPenghitunganAkTerakhir);
+    console.log('Data konversi yang diproses:', konversiData);
+
     // Group by tahun dan semester
     konversiData.forEach(item => {
       const tahun = item.Tahun;
@@ -596,6 +603,7 @@ class AkumulasiCalculator {
       }
     }
 
+    console.log('Hasil generate semester:', result);
     return result;
   }
 }
@@ -1092,7 +1100,9 @@ const GenerateAkumulasiModal: React.FC<{
   const loadKonversiData = async () => {
     setLoading(true);
     try {
+      console.log('Memulai load data konversi untuk NIP:', karyawan.nip);
       const konversiData = await readKonversiData(karyawan.nip);
+      console.log('Data konversi yang ditemukan:', konversiData);
       
       let generatedPeriods;
       if (generateType === 'tahunan') {
@@ -1109,6 +1119,7 @@ const GenerateAkumulasiModal: React.FC<{
         );
       }
 
+      console.log('Periode yang dihasilkan:', generatedPeriods);
       setAvailablePeriods(generatedPeriods);
     } catch (error) {
       console.error('Error loading konversi data:', error);
@@ -1133,17 +1144,33 @@ const GenerateAkumulasiModal: React.FC<{
       const rows = result.values || [];
       
       if (rows.length <= 1) {
+        console.log('Tidak ada data konversi atau hanya header saja');
         return [];
       }
       
       const headers = rows[0];
+      console.log('Headers konversi:', headers);
       
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
-          const nipIndex = headers.indexOf('NIP');
-          const rowNIP = nipIndex >= 0 ? row[nipIndex] : null;
-          return rowNIP === nip;
+          
+          // Cari kolom NIP - perhatikan spasi dan format
+          const nipIndex = headers.findIndex((header: string) => 
+            header?.toString().trim().toLowerCase() === 'nip'
+          );
+          
+          console.log('NIP Index:', nipIndex, 'Headers:', headers);
+          
+          if (nipIndex >= 0 && nipIndex < row.length) {
+            const rowNIP = row[nipIndex] ? row[nipIndex].toString().trim() : '';
+            const searchNIP = nip.toString().trim();
+            console.log('Mencocokkan NIP:', { rowNIP, searchNIP, match: rowNIP === searchNIP });
+            return rowNIP === searchNIP;
+          }
+          
+          console.log('NIP tidak ditemukan di row:', row);
+          return false;
         })
         .map((row: any[], index: number) => {
           const obj: any = {
@@ -1152,9 +1179,18 @@ const GenerateAkumulasiModal: React.FC<{
           };
 
           headers.forEach((header: string, colIndex: number) => {
+            if (colIndex >= row.length) return;
+            
             let value = row[colIndex];
             
-            if (header === 'Tahun' || header === 'Semester' || header === 'No') {
+            // Handle berbagai kemungkinan nama kolom berdasarkan header aktual
+            if (header === 'Tahun') {
+              value = Number(value) || new Date().getFullYear();
+            }
+            else if (header === 'Semester') {
+              value = Number(value) || 1;
+            }
+            else if (header === 'No') {
               value = Number(value) || 0;
             }
             else if (header === 'AK Konversi') {
@@ -1169,13 +1205,32 @@ const GenerateAkumulasiModal: React.FC<{
             else if (header === 'Keterangan') {
               value = value || 'PENUH';
             }
+            else if (header === 'NIP') {
+              value = value || '';
+            }
+            else if (header === 'Nama') {
+              value = value || '';
+            }
             
             obj[header] = value;
+          });
+
+          // Pastikan properti yang diperlukan ada
+          if (obj['Tahun'] === undefined) obj['Tahun'] = new Date().getFullYear();
+          if (obj['Semester'] === undefined) obj['Semester'] = 1;
+          if (obj['AK Konversi'] === undefined) obj['AK Konversi'] = 0;
+          
+          console.log(`Data konversi ${index + 1}:`, {
+            tahun: obj['Tahun'],
+            semester: obj['Semester'],
+            akKonversi: obj['AK Konversi'],
+            nip: obj['NIP']
           });
           
           return obj;
         });
       
+      console.log(`Total data konversi ditemukan untuk NIP ${nip}:`, data.length);
       return data;
     } catch (error) {
       console.error('Error reading konversi data:', error);
@@ -1325,6 +1380,14 @@ const GenerateAkumulasiModal: React.FC<{
                   : 'Pastikan data konversi predikat sudah diisi terlebih dahulu'
                 }
               </p>
+              <div className="mt-4 p-3 bg-amber-50 rounded border text-left">
+                <p className="text-sm font-semibold text-amber-800">Debug Info:</p>
+                <p className="text-xs text-amber-700">
+                  • Pastikan NIP di sheet konversi_predikat sama persis dengan NIP karyawan<br/>
+                  • Format NIP harus: "19781017 199803 1 002"<br/>
+                  • Cek console browser untuk informasi debugging lebih detail
+                </p>
+              </div>
             </div>
           )}
 
