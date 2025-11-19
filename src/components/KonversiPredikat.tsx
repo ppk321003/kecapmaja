@@ -1358,7 +1358,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[2020,2021,2022,2023, 2024, 2025, 2026].map(year => (
+                  {[2020,2021,2022,2023, 2024, 2025, 2026,2027,2028,2029,2030].map(year => (
                     <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
                   ))}
                 </SelectContent>
