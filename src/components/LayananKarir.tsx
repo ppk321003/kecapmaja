@@ -1,28 +1,34 @@
+// Di file LayananKarir.tsx
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, CalendarDays } from 'lucide-react';
-import KonversiPredikat from '@/components/KonversiPredikat';
-import PenetapanAK from '@/components/PenetapanAK';
-import AkumulasiAK from '@/components/AkumulasiAK';
 
+// Interface yang sama dengan komponen utama
 interface Karyawan {
   nip: string;
   nama: string;
   pangkat: string;
-  golAkhir: string;
+  golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
   tglPenghitunganAkTerakhir: string;
   akKumulatif: number;
-  status: string;
+  status: 'Aktif' | 'Pensiun' | 'Mutasi';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
-  linkSKJabatan: string;
-  linkSKPangkat: string;
+  linkSkJabatan?: string;
+  linkSkPangkat?: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  jenisKelamin: 'L' | 'P';
+  agama: string;
+  email: string;
+  telepon: string;
+  alamat: string;
 }
 
 interface LayananKarirProps {
@@ -44,18 +50,23 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       case 'aktif': return 'bg-green-100 text-green-800 border-green-200';
       case 'non-aktif': return 'bg-red-100 text-red-800 border-red-200';
       case 'pensiun': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'mutasi': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return '-';
+    }
   };
 
   return (
@@ -101,7 +112,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <Award className="h-4 w-4 text-green-600" />
             <div>
               <p className="text-xs text-gray-600">Pangkat/Golongan</p>
-              <p className="font-semibold">{karyawan.pangkat} - {karyawan.golAkhir}</p>
+              <p className="font-semibold">{karyawan.pangkat} - {karyawan.golongan}</p>
               <p className="text-xs text-gray-500">TMT: {formatDate(karyawan.tmtPangkat)}</p>
             </div>
           </div>
@@ -144,9 +155,9 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
         {/* SK Links */}
         <div className="flex gap-4 mt-3 text-xs">
-          {karyawan.linkSKJabatan && (
+          {karyawan.linkSkJabatan && (
             <a 
-              href={karyawan.linkSKJabatan} 
+              href={karyawan.linkSkJabatan} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
@@ -155,9 +166,9 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               SK Jabatan
             </a>
           )}
-          {karyawan.linkSKPangkat && (
+          {karyawan.linkSkPangkat && (
             <a 
-              href={karyawan.linkSKPangkat} 
+              href={karyawan.linkSkPangkat} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-green-600 hover:text-green-800 hover:underline"
@@ -170,6 +181,68 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       </CardContent>
     </Card>
   );
+};
+
+// Fallback components untuk tab content
+const KonversiPredikatFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Konversi Predikat</CardTitle>
+        <CardDescription>Fitur konversi predikat kinerja</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Komponen Konversi Predikat untuk: {karyawan.nama}</p>
+        <p>AK Kumulatif: {karyawan.akKumulatif}</p>
+        <p>Penghitungan Terakhir: {formatDate(karyawan.tglPenghitunganAkTerakhir)}</p>
+      </CardContent>
+    </Card>
+  );
+};
+
+const PenetapanAKFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Penetapan AK</CardTitle>
+        <CardDescription>Fitur penetapan angka kredit</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Komponen Penetapan AK untuk: {karyawan.nama}</p>
+        <p>Jabatan: {karyawan.jabatan}</p>
+      </CardContent>
+    </Card>
+  );
+};
+
+const AkumulasiAKFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Akumulasi AK</CardTitle>
+        <CardDescription>Fitur akumulasi angka kredit</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Komponen Akumulasi AK untuk: {karyawan.nama}</p>
+        <p>Pangkat: {karyawan.pangkat} - {karyawan.golongan}</p>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Helper function untuk format tanggal
+const formatDate = (dateString: string) => {
+  if (!dateString) return '-';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return '-';
+  }
 };
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
@@ -231,15 +304,15 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
 
         <TabsContent value="konversi" className="space-y-3">
-          <KonversiPredikat karyawan={karyawan} />
+          <KonversiPredikatFallback karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="penetapan" className="space-y-3">
-          <PenetapanAK karyawan={karyawan} />
+          <PenetapanAKFallback karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="akumulasi" className="space-y-3">
-          <AkumulasiAK karyawan={karyawan} />
+          <AkumulasiAKFallback karyawan={karyawan} />
         </TabsContent>
       </Tabs>
     </div>
