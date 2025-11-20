@@ -707,7 +707,7 @@ const useSpreadsheetAPI = () => {
       const result = await callAPI('read');
       const rows = result.values || [];
       
-      console.log('📊 Raw data from sheet:', rows);
+      console.log('📊 Raw data from sheet - rows count:', rows.length);
       
       if (rows.length <= 1) return [];
       
@@ -716,6 +716,7 @@ const useSpreadsheetAPI = () => {
       
       const data = rows.slice(1)
         .filter((row: any[]) => {
+          if (!row || row.length === 0) return false;
           if (!nip) return true;
           const nipIndex = headers.indexOf('NIP');
           return nipIndex >= 0 && row[nipIndex] === nip;
@@ -731,26 +732,127 @@ const useSpreadsheetAPI = () => {
               value = '';
             }
             
-            if (header === 'Tahun' || header === 'Semester' || header === 'No' || 
-                header === 'Nilai_SKP' || header === 'Estimasi_Bulan') {
-              value = Number(value) || 0;
+            // Map headers to match our interface
+            if (header === 'No') {
+              obj.No = Number(value) || 0;
             }
-            else if (header === 'AK_Konversi' || header === 'Kebutuhan_Pangkat_AK' || 
-                     header === 'Kebutuhan_Jabatan_AK' || header === 'AK_Sebelumnya' ||
-                     header === 'AK_Periode_Ini' || header === 'Total_Kumulatif' ||
-                     header === 'Selisih_Pangkat' || header === 'Selisih_Jabatan' ||
-                     header === 'Kurleb_Pangkat' || header === 'Kurleb_Jabatan') {
-              value = KonversiCalculator.parseNumberFromSheet(value);
+            else if (header === 'Tahun') {
+              obj.Tahun = Number(value) || 0;
             }
-            else if (header === 'Masa_Kerja_Bulan') {
+            else if (header === 'Semester') {
+              obj.Semester = (Number(value) === 2 ? 2 : 1) as 1 | 2;
+            }
+            else if (header === 'Periode') {
+              obj.Periode = String(value);
+            }
+            else if (header === 'Jenis Periode') {
+              obj.Jenis_Periode = (value === 'Tahunan' ? 'Tahunan' : 'Semester') as 'Semester' | 'Tahunan';
+            }
+            else if (header === 'Nama') {
+              obj.Nama = String(value);
+            }
+            else if (header === 'NIP') {
+              obj.NIP = String(value);
+            }
+            else if (header === 'Nomor Karpeg') {
+              obj.Nomor_Karpeg = String(value);
+            }
+            else if (header === 'Tempat Lahir') {
+              obj.Tempat_Lahir = String(value);
+            }
+            else if (header === 'Tanggal Lahir') {
+              obj.Tanggal_Lahir = String(value);
+            }
+            else if (header === 'Jenis Kelamin') {
+              obj.Jenis_Kelamin = (value === 'P' ? 'P' : 'L') as 'L' | 'P';
+            }
+            else if (header === 'Pangkat') {
+              obj.Pangkat = String(value);
+            }
+            else if (header === 'Golongan') {
+              obj.Golongan = String(value);
+            }
+            else if (header === 'TMT Pangkat') {
+              obj.TMT_Pangkat = String(value);
+            }
+            else if (header === 'Jabatan') {
+              obj.Jabatan = String(value);
+            }
+            else if (header === 'TMT Jabatan') {
+              obj.TMT_Jabatan = String(value);
+            }
+            else if (header === 'Predikat Kinerja') {
+              obj.Predikat_Kinerja = value as 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
+            }
+            else if (header === 'Nilai SKP') {
+              obj.Nilai_SKP = Number(value) || 0;
+            }
+            else if (header === 'AK Konversi') {
+              obj.AK_Konversi = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Tanggal Penetapan') {
+              obj.Tanggal_Penetapan = String(value);
+            }
+            else if (header === 'Kebutuhan Pangkat (AK)') {
+              obj.Kebutuhan_Pangkat_AK = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Kebutuhan Jabatan (AK)') {
+              obj.Kebutuhan_Jabatan_AK = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'AK Sebelumnya') {
+              obj.AK_Sebelumnya = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'AK Periode Ini') {
+              obj.AK_Periode_Ini = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Total Kumulatif') {
+              obj.Total_Kumulatif = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Selisih Pangkat') {
+              obj.Selisih_Pangkat = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Selisih Jabatan') {
+              obj.Selisih_Jabatan = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Kurleb Pangkat') {
+              obj.Kurleb_Pangkat = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Kurleb Jabatan') {
+              obj.Kurleb_Jabatan = KonversiCalculator.parseNumberFromSheet(value);
+            }
+            else if (header === 'Status Kenaikan') {
+              obj.Status_Kenaikan = String(value);
+            }
+            else if (header === 'Jenis Kenaikan') {
+              obj.Jenis_Kenaikan = String(value);
+            }
+            else if (header === 'Estimasi Bulan') {
+              obj.Estimasi_Bulan = Number(value) || 0;
+            }
+            else if (header === 'Rekomendasi') {
+              obj.Rekomendasi = String(value);
+            }
+            else if (header === 'Pertimbangan Khusus') {
+              obj.Pertimbangan_Khusus = String(value);
+            }
+            else if (header === 'Status') {
+              obj.Status = (value === 'Generated' ? 'Generated' : 'Draft') as 'Draft' | 'Generated';
+            }
+            else if (header === 'Catatan') {
+              obj.Catatan = String(value);
+            }
+            else if (header === 'Link Dokumen') {
+              obj.Link_Dokumen = String(value);
+            }
+            else if (header === 'Last Update') {
+              obj.Last_Update = String(value);
+            }
+            // Handle additional fields that might not be in headers
+            else if (header === 'Masa Kerja Bulan') {
               obj.Masa_Kerja_Bulan = Number(value) || 6;
             }
-            else if (header === 'Jenis_Penilaian') {
+            else if (header === 'Jenis Penilaian') {
               obj.Jenis_Penilaian = (value === 'PROPORSIONAL' ? 'PROPORSIONAL' : 'PENUH');
-            }
-            
-            if (header !== 'Masa_Kerja_Bulan' && header !== 'Jenis_Penilaian') {
-              (obj as any)[header] = value;
             }
           });
           
@@ -760,6 +862,12 @@ const useSpreadsheetAPI = () => {
           if (!obj.No || obj.No === 0) {
             obj.No = index + 1;
           }
+          
+          // Set default values for missing fields
+          if (!obj.Nilai_SKP) obj.Nilai_SKP = 95;
+          if (!obj.Status) obj.Status = 'Draft';
+          if (!obj.Masa_Kerja_Bulan) obj.Masa_Kerja_Bulan = 6;
+          if (!obj.Jenis_Penilaian) obj.Jenis_Penilaian = 'PENUH';
           
           return obj;
         });
@@ -1435,11 +1543,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const handleSave = async (updatedData: KonversiData) => {
     try {
       console.log('💾 START handleSave');
-      console.log('Updated data:', updatedData);
       
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      // Pastikan semua values ada dan dalam format yang benar
+      // SESUAIKAN DENGAN 33 KOLOM YANG ADA DI SPREADSHEET
       const values = [
         updatedData.No || nextNo,
         updatedData.Tahun || 2024,
@@ -1458,8 +1565,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Jabatan || karyawan.jabatan,
         updatedData.TMT_Jabatan || karyawan.tmtJabatan,
         updatedData.Predikat_Kinerja || 'Baik',
-        updatedData.Nilai_SKP || 95,
-        KonversiCalculator.formatNumberForSheet(updatedData.AK_Konversi || 0),
+        // 'Nilai SKP' - skip karena kolom tidak ada
+        // 'AK Konversi' - skip karena kolom tidak ada  
         updatedData.Tanggal_Penetapan || KonversiCalculator.formatDate(new Date()),
         KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Pangkat_AK || 0),
         KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK || 0),
@@ -1475,15 +1582,16 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Estimasi_Bulan || 0,
         updatedData.Rekomendasi || 'Pertahankan kinerja saat ini',
         updatedData.Pertimbangan_Khusus || '',
-        updatedData.Status || 'Draft',
-        updatedData.Catatan || '',
-        updatedData.Link_Dokumen || '',
-        updatedData.Last_Update || KonversiCalculator.formatDate(new Date()),
-        updatedData.Masa_Kerja_Bulan || 6,
-        updatedData.Jenis_Penilaian || 'PENUH'
+        // 'Status' - skip karena kolom tidak ada
+        // 'Catatan' - skip karena kolom tidak ada
+        // 'Link Dokumen' - skip karena kolom tidak ada
+        updatedData.Last_Update || KonversiCalculator.formatDate(new Date())
+        // 'Masa Kerja Bulan' - skip karena kolom tidak ada
+        // 'Jenis Penilaian' - skip karena kolom tidak ada
       ];
 
-      console.log('📋 Values to save:', values);
+      console.log('📋 Values to save (33 columns):', values);
+      console.log('🔢 Number of columns:', values.length);
 
       if (updatedData.rowIndex && updatedData.rowIndex > 1) {
         console.log('✏️ Updating existing row:', updatedData.rowIndex);
@@ -1496,13 +1604,13 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         console.log('➕ Appending new row');
         await api.appendData(values);
         toast({
-          title: "Sukses",
+          title: "Sukses", 
           description: "Data baru berhasil ditambahkan ke Google Sheets"
         });
       }
 
       setEditModal({ isOpen: false, data: null });
-      await loadData(); // Tunggu load data selesai
+      await loadData();
       console.log('✅ END handleSave - Success');
     } catch (error) {
       console.error('❌ Error saving data:', error);
@@ -1517,7 +1625,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const handleAddNew = async () => {
     try {
       console.log('🆕 START handleAddNew');
-      console.log('Adding new data for:', karyawan.nama);
       
       const now = KonversiCalculator.formatDate(new Date());
       const tahun = new Date().getFullYear();
@@ -1567,95 +1674,45 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      const newData: KonversiData = {
-        No: nextNo,
-        Tahun: tahun,
-        Semester: semester,
-        Periode: `${periode.mulai} - ${periode.selesai}`,
-        Jenis_Periode: 'Semester',
-        Nama: karyawan.nama,
-        NIP: karyawan.nip,
-        Nomor_Karpeg: karyawan.unitKerja,
-        Tempat_Lahir: karyawan.tempatLahir,
-        Tanggal_Lahir: karyawan.tanggalLahir,
-        Jenis_Kelamin: karyawan.jenisKelamin,
-        Pangkat: karyawan.pangkat,
-        Golongan: karyawan.golongan,
-        TMT_Pangkat: karyawan.tmtPangkat,
-        Jabatan: karyawan.jabatan,
-        TMT_Jabatan: karyawan.tmtJabatan,
-        Predikat_Kinerja: 'Baik',
-        Nilai_SKP: 95,
-        AK_Konversi: akKonversi,
-        Tanggal_Penetapan: now,
-        Kebutuhan_Pangkat_AK: kebutuhanPangkat,
-        Kebutuhan_Jabatan_AK: kebutuhanJabatan,
-        AK_Sebelumnya: karyawan.akKumulatif,
-        AK_Periode_Ini: akKonversi,
-        Total_Kumulatif: totalKumulatif,
-        Selisih_Pangkat: selisihPangkat,
-        Selisih_Jabatan: selisihJabatan,
-        Kurleb_Pangkat: kurlebPangkat,
-        Kurleb_Jabatan: kurlebJabatan,
-        Status_Kenaikan: analisis.statusKenaikan,
-        Jenis_Kenaikan: analisis.jenisKenaikan,
-        Estimasi_Bulan: estimasiBulan,
-        Rekomendasi: analisis.rekomendasi,
-        Pertimbangan_Khusus: analisis.pertimbanganKhusus,
-        Status: 'Draft',
-        Catatan: '',
-        Link_Dokumen: '',
-        Last_Update: now,
-        Masa_Kerja_Bulan: masaKerjaBulan,
-        Jenis_Penilaian: jenisPenilaian
-      };
-
-      console.log('📄 New data to append:', newData);
-
+      // Hanya gunakan 33 kolom yang sesuai dengan spreadsheet
       const values = [
-        newData.No,
-        newData.Tahun,
-        newData.Semester,
-        newData.Periode,
-        newData.Jenis_Periode,
-        newData.Nama,
-        newData.NIP,
-        newData.Nomor_Karpeg,
-        newData.Tempat_Lahir,
-        newData.Tanggal_Lahir,
-        newData.Jenis_Kelamin,
-        newData.Pangkat,
-        newData.Golongan,
-        newData.TMT_Pangkat,
-        newData.Jabatan,
-        newData.TMT_Jabatan,
-        newData.Predikat_Kinerja,
-        newData.Nilai_SKP,
-        KonversiCalculator.formatNumberForSheet(newData.AK_Konversi),
-        newData.Tanggal_Penetapan,
-        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Pangkat_AK),
-        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Jabatan_AK),
-        KonversiCalculator.formatNumberForSheet(newData.AK_Sebelumnya),
-        KonversiCalculator.formatNumberForSheet(newData.AK_Periode_Ini),
-        KonversiCalculator.formatNumberForSheet(newData.Total_Kumulatif),
-        KonversiCalculator.formatNumberForSheet(newData.Selisih_Pangkat),
-        KonversiCalculator.formatNumberForSheet(newData.Selisih_Jabatan),
-        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Pangkat),
-        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Jabatan),
-        newData.Status_Kenaikan,
-        newData.Jenis_Kenaikan,
-        newData.Estimasi_Bulan,
-        newData.Rekomendasi,
-        newData.Pertimbangan_Khusus,
-        newData.Status,
-        newData.Catatan,
-        newData.Link_Dokumen,
-        newData.Last_Update,
-        newData.Masa_Kerja_Bulan,
-        newData.Jenis_Penilaian
+        nextNo,
+        tahun,
+        semester,
+        `${periode.mulai} - ${periode.selesai}`,
+        'Semester',
+        karyawan.nama,
+        karyawan.nip,
+        karyawan.unitKerja,
+        karyawan.tempatLahir,
+        karyawan.tanggalLahir,
+        karyawan.jenisKelamin,
+        karyawan.pangkat,
+        karyawan.golongan,
+        karyawan.tmtPangkat,
+        karyawan.jabatan,
+        karyawan.tmtJabatan,
+        'Baik',
+        now,
+        KonversiCalculator.formatNumberForSheet(kebutuhanPangkat),
+        KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
+        KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(akKonversi),
+        KonversiCalculator.formatNumberForSheet(totalKumulatif),
+        KonversiCalculator.formatNumberForSheet(selisihPangkat),
+        KonversiCalculator.formatNumberForSheet(selisihJabatan),
+        KonversiCalculator.formatNumberForSheet(kurlebPangkat),
+        KonversiCalculator.formatNumberForSheet(kurlebJabatan),
+        analisis.statusKenaikan,
+        analisis.jenisKenaikan,
+        estimasiBulan,
+        analisis.rekomendasi,
+        analisis.pertimbanganKhusus,
+        now
       ];
 
-      console.log('📋 Values to append:', values);
+      console.log('📋 Values to append (33 columns):', values);
+      console.log('🔢 Number of columns:', values.length);
 
       await api.appendData(values);
       toast({
@@ -1663,7 +1720,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         description: "Data baru berhasil ditambahkan ke Google Sheets"
       });
       
-      await loadData(); // Tunggu load data selesai
+      await loadData();
       console.log('✅ END handleAddNew - Success');
     } catch (error) {
       console.error('❌ Error adding new data:', error);
@@ -1686,151 +1743,100 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const now = KonversiCalculator.formatDate(new Date());
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      const newData = semesters.map((item, index) => {
-        let periode;
-        if (mode === 'tahunan') {
-          periode = {
-            mulai: `01/01/${item.tahun}`,
-            selesai: `31/12/${item.tahun}`
-          };
-        } else {
-          periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
-        }
-
-        const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-          'Baik', 
-          95,
-          karyawan.jabatan,
-          karyawan.kategori,
-          karyawan.golongan,
-          item.masaKerjaBulan,
-          item.jenisPenilaian,
-          mode
-        );
-
-        const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-        const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-        const totalKumulatif = karyawan.akKumulatif + akKonversi;
-        const selisihPangkat = kebutuhanPangkat - totalKumulatif;
-        const selisihJabatan = kebutuhanJabatan - totalKumulatif;
-        const kurlebPangkat = Math.max(0, selisihPangkat);
-        const kurlebJabatan = Math.max(0, selisihJabatan);
-        const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
-        const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(kurlebPangkat, 'Baik', koefisien);
-
-        const analisis = KonversiCalculator.generateAnalisis(
-          karyawan,
-          'Baik',
-          akKonversi,
-          totalKumulatif,
-          kebutuhanPangkat,
-          kebutuhanJabatan,
-          estimasiBulan
-        );
-
-        return {
-          No: nextNo + index,
-          Tahun: item.tahun,
-          Semester: mode === 'tahunan' ? 1 : item.semester,
-          Periode: `${periode.mulai} - ${periode.selesai}`,
-          Jenis_Periode: mode === 'tahunan' ? 'Tahunan' : 'Semester',
-          Nama: karyawan.nama,
-          NIP: karyawan.nip,
-          Nomor_Karpeg: karyawan.unitKerja,
-          Tempat_Lahir: karyawan.tempatLahir,
-          Tanggal_Lahir: karyawan.tanggalLahir,
-          Jenis_Kelamin: karyawan.jenisKelamin,
-          Pangkat: karyawan.pangkat,
-          Golongan: karyawan.golongan,
-          TMT_Pangkat: karyawan.tmtPangkat,
-          Jabatan: karyawan.jabatan,
-          TMT_Jabatan: karyawan.tmtJabatan,
-          Predikat_Kinerja: 'Baik' as const,
-          Nilai_SKP: 95,
-          AK_Konversi: akKonversi,
-          Tanggal_Penetapan: now,
-          Kebutuhan_Pangkat_AK: kebutuhanPangkat,
-          Kebutuhan_Jabatan_AK: kebutuhanJabatan,
-          AK_Sebelumnya: karyawan.akKumulatif,
-          AK_Periode_Ini: akKonversi,
-          Total_Kumulatif: totalKumulatif,
-          Selisih_Pangkat: selisihPangkat,
-          Selisih_Jabatan: selisihJabatan,
-          Kurleb_Pangkat: kurlebPangkat,
-          Kurleb_Jabatan: kurlebJabatan,
-          Status_Kenaikan: analisis.statusKenaikan,
-          Jenis_Kenaikan: analisis.jenisKenaikan,
-          Estimasi_Bulan: estimasiBulan,
-          Rekomendasi: analisis.rekomendasi,
-          Pertimbangan_Khusus: analisis.pertimbanganKhusus,
-          Status: 'Generated' as const,
-          Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
-          Link_Dokumen: '',
-          Last_Update: now,
-          Masa_Kerja_Bulan: item.masaKerjaBulan,
-          Jenis_Penilaian: item.jenisPenilaian
-        };
-      });
-
       let successCount = 0;
       let errorCount = 0;
 
-      for (const [index, data] of newData.entries()) {
+      for (const [index, item] of semesters.entries()) {
         try {
+          let periode;
+          if (mode === 'tahunan') {
+            periode = {
+              mulai: `01/01/${item.tahun}`,
+              selesai: `31/12/${item.tahun}`
+            };
+          } else {
+            periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
+          }
+
+          const akKonversi = KonversiCalculator.calculateAKFromPredikat(
+            'Baik', 
+            95,
+            karyawan.jabatan,
+            karyawan.kategori,
+            karyawan.golongan,
+            item.masaKerjaBulan,
+            item.jenisPenilaian,
+            mode
+          );
+
+          const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+          const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+          const totalKumulatif = karyawan.akKumulatif + akKonversi;
+          const selisihPangkat = kebutuhanPangkat - totalKumulatif;
+          const selisihJabatan = kebutuhanJabatan - totalKumulatif;
+          const kurlebPangkat = Math.max(0, selisihPangkat);
+          const kurlebJabatan = Math.max(0, selisihJabatan);
+          const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
+          const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(kurlebPangkat, 'Baik', koefisien);
+
+          const analisis = KonversiCalculator.generateAnalisis(
+            karyawan,
+            'Baik',
+            akKonversi,
+            totalKumulatif,
+            kebutuhanPangkat,
+            kebutuhanJabatan,
+            estimasiBulan
+          );
+
+          // Gunakan 33 kolom sesuai spreadsheet
           const values = [
-            data.No,
-            data.Tahun,
-            data.Semester,
-            data.Periode,
-            data.Jenis_Periode,
-            data.Nama,
-            data.NIP,
-            data.Nomor_Karpeg,
-            data.Tempat_Lahir,
-            data.Tanggal_Lahir,
-            data.Jenis_Kelamin,
-            data.Pangkat,
-            data.Golongan,
-            data.TMT_Pangkat,
-            data.Jabatan,
-            data.TMT_Jabatan,
-            data.Predikat_Kinerja,
-            data.Nilai_SKP,
-            KonversiCalculator.formatNumberForSheet(data.AK_Konversi),
-            data.Tanggal_Penetapan,
-            KonversiCalculator.formatNumberForSheet(data.Kebutuhan_Pangkat_AK),
-            KonversiCalculator.formatNumberForSheet(data.Kebutuhan_Jabatan_AK),
-            KonversiCalculator.formatNumberForSheet(data.AK_Sebelumnya),
-            KonversiCalculator.formatNumberForSheet(data.AK_Periode_Ini),
-            KonversiCalculator.formatNumberForSheet(data.Total_Kumulatif),
-            KonversiCalculator.formatNumberForSheet(data.Selisih_Pangkat),
-            KonversiCalculator.formatNumberForSheet(data.Selisih_Jabatan),
-            KonversiCalculator.formatNumberForSheet(data.Kurleb_Pangkat),
-            KonversiCalculator.formatNumberForSheet(data.Kurleb_Jabatan),
-            data.Status_Kenaikan,
-            data.Jenis_Kenaikan,
-            data.Estimasi_Bulan,
-            data.Rekomendasi,
-            data.Pertimbangan_Khusus,
-            data.Status,
-            data.Catatan,
-            data.Link_Dokumen,
-            data.Last_Update,
-            data.Masa_Kerja_Bulan,
-            data.Jenis_Penilaian
+            nextNo + index,
+            item.tahun,
+            mode === 'tahunan' ? 1 : item.semester,
+            `${periode.mulai} - ${periode.selesai}`,
+            mode === 'tahunan' ? 'Tahunan' : 'Semester',
+            karyawan.nama,
+            karyawan.nip,
+            karyawan.unitKerja,
+            karyawan.tempatLahir,
+            karyawan.tanggalLahir,
+            karyawan.jenisKelamin,
+            karyawan.pangkat,
+            karyawan.golongan,
+            karyawan.tmtPangkat,
+            karyawan.jabatan,
+            karyawan.tmtJabatan,
+            'Baik',
+            now,
+            KonversiCalculator.formatNumberForSheet(kebutuhanPangkat),
+            KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
+            KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
+            KonversiCalculator.formatNumberForSheet(akKonversi),
+            KonversiCalculator.formatNumberForSheet(totalKumulatif),
+            KonversiCalculator.formatNumberForSheet(selisihPangkat),
+            KonversiCalculator.formatNumberForSheet(selisihJabatan),
+            KonversiCalculator.formatNumberForSheet(kurlebPangkat),
+            KonversiCalculator.formatNumberForSheet(kurlebJabatan),
+            analisis.statusKenaikan,
+            analisis.jenisKenaikan,
+            estimasiBulan,
+            analisis.rekomendasi,
+            `Auto-generated (${item.jenisPenilaian} - ${mode})`,
+            now
           ];
 
           await api.appendData(values);
           successCount++;
           
           // Delay untuk menghindari rate limiting
-          if (index < newData.length - 1) {
+          if (index < semesters.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
 
         } catch (error) {
           errorCount++;
-          console.error(`❌ Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}:`, error);
+          console.error(`❌ Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${item.tahun}:`, error);
         }
       }
 
