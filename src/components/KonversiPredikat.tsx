@@ -102,55 +102,120 @@ const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "konversi_predikat";
 
 // ==================== UTILITY FUNCTIONS ====================
-class KonversiCalculator {
-  // Tentukan koefisien berdasarkan jabatan, kategori, dan golongan
-  static getKoefisien(jabatan: string, kategori: string, golongan: string): number {
-    const jabatanLower = jabatan.toLowerCase();
-    const golonganLower = golongan.toLowerCase();
-    
-    if (kategori === 'Reguler') return 0;
+class DateParser {
+  static parseTanggalIndonesia(tanggal: string): Date {
+    if (!tanggal || tanggal.trim() === '') return new Date();
 
-    if (kategori === 'Keahlian') {
-      if (jabatanLower.includes('ahli utama') || golonganLower.includes('iv/c') || golonganLower.includes('iv/d')) {
-        return 50.0;
-      }
-      if (jabatanLower.includes('ahli madya') || golonganLower.includes('iv/a') || golonganLower.includes('iv/b')) {
-        return 37.5;
-      }
-      if (jabatanLower.includes('ahli muda') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
-        return 25.0;
-      }
-      if (jabatanLower.includes('ahli pertama') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
-        return 12.5;
-      }
-      
-      if (golonganLower.includes('iv/')) return 37.5;
-      if (golonganLower.includes('iii/')) return 12.5;
-      
-      return 12.5;
+    // Coba parsing format ISO terlebih dahulu
+    if (tanggal.includes('-')) {
+      const date = new Date(tanggal);
+      if (!isNaN(date.getTime())) return date;
     }
-    
-    if (kategori === 'Keterampilan') {
-      if (jabatanLower.includes('penyelia') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
-        return 25.0;
+
+    // Mapping nama bulan Indonesia ke angka
+    const bulanMap: {[key: string]: number} = {
+      'januari': 0, 'februari': 1, 'maret': 2, 'april': 3,
+      'mei': 4, 'juni': 5, 'juli': 6, 'agustus': 7,
+      'september': 8, 'oktober': 9, 'november': 10, 'desember': 11,
+      'january': 0, 'february': 1, 'march': 2, 'may': 4,
+      'june': 5, 'july': 6, 'august': 7, 'october': 9, 'december': 11
+    };
+
+    const cleanedDate = tanggal.toLowerCase().trim();
+
+    // Format: "11 April 2023"
+    const parts = cleanedDate.split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0]);
+      const month = bulanMap[parts[1]];
+      const year = parseInt(parts[2]);
+      if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+        return new Date(year, month, day);
       }
-      if (jabatanLower.includes('mahir') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
-        return 12.5;
-      }
-      if (jabatanLower.includes('terampil') || golonganLower.includes('ii/')) {
-        return 5.0;
-      }
-      
-      if (golonganLower.includes('iii/')) return 12.5;
-      if (golonganLower.includes('ii/')) return 5.0;
-      
-      return 5.0;
     }
-    
-    return 0;
+
+    // Format: "11/04/2023" atau "11-04-2023"
+    const separator = cleanedDate.includes('/') ? '/' : '-';
+    const dateParts = cleanedDate.split(separator);
+    if (dateParts.length === 3) {
+      let day, month, year;
+      if (dateParts[0].length === 4) {
+        // Format: "2023/04/11"
+        year = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        day = parseInt(dateParts[2]);
+      } else {
+        // Format: "11/04/2023"
+        day = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        year = parseInt(dateParts[2]);
+      }
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+
+    // Fallback: coba parsing dengan Date constructor
+    const fallbackDate = new Date(tanggal);
+    if (!isNaN(fallbackDate.getTime())) {
+      return fallbackDate;
+    }
+
+    // Jika semua gagal, return tanggal default
+    console.warn(`Tidak bisa parsing tanggal: ${tanggal}, menggunakan tanggal default`);
+    return new Date();
   }
 
-  // Hitung kebutuhan AK untuk pangkat dan jabatan
+  static hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
+    const tahunAwal = tanggalAwal.getFullYear();
+    const bulanAwal = tanggalAwal.getMonth();
+    const tahunAkhir = tanggalAkhir.getFullYear();
+    const bulanAkhir = tanggalAkhir.getMonth();
+    return (tahunAkhir - tahunAwal) * 12 + (bulanAkhir - bulanAwal);
+  }
+}
+
+class KonversiCalculator {
+  // Tentukan koefisien berdasarkan jabatan, kategori, dan golongan - DIPERBAIKI
+  static getKoefisien(jabatan: string, kategori: string, golongan: string): number {
+    // Untuk kategori Reguler, tidak ada perhitungan AK
+    if (kategori === 'Reguler') return 0;
+
+    const jabatanLower = jabatan.toLowerCase();
+    
+    // LOGIKA YANG SAMA DENGAN SCRIPT 2
+    const koefisienMap: { [key: string]: number } = {
+      'ahli pertama': 12.5,
+      'ahli muda': 25.0,
+      'ahli madya': 37.5,
+      'ahli utama': 50.0,
+      'terampil': 5.0,
+      'mahir': 12.5,
+      'penyelia': 25.0,
+      'fungsional umum': 5.0
+    };
+
+    for (const [key, value] of Object.entries(koefisienMap)) {
+      if (jabatanLower.includes(key)) return value;
+    }
+
+    // Fallback berdasarkan kategori dan golongan
+    const golonganLower = golongan.toLowerCase();
+    if (kategori === 'Keahlian') {
+      if (golonganLower.includes('iv/c') || golonganLower.includes('iv/d')) return 50.0;
+      if (golonganLower.includes('iv/a') || golonganLower.includes('iv/b')) return 37.5;
+      if (golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) return 25.0;
+      if (golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) return 12.5;
+    } else if (kategori === 'Keterampilan') {
+      if (golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) return 25.0;
+      if (golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) return 12.5;
+      if (golonganLower.includes('ii/')) return 5.0;
+    }
+    
+    return 12.5; // Default
+  }
+
+  // Hitung kebutuhan AK untuk pangkat dan jabatan - DIPERBAIKI
   static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
     if (kategori === 'Reguler') return 0;
 
@@ -191,12 +256,15 @@ class KonversiCalculator {
     return 0;
   }
 
-  // Hitung AK dengan sistem proporsional sesuai BKN 2023
+  // Hitung AK dengan sistem proporsional sesuai BKN 2023 - DIPERBAIKI
   static calculateAKProporsional(
     predikat: string, 
     koefisienJabatan: number, 
     masaKerjaBulan: number
   ): number {
+    // Untuk kategori Reguler, tidak ada perhitungan AK
+    if (koefisienJabatan === 0) return 0;
+
     const koefisienPredikat = {
       'Sangat Baik': 1.50,
       'Baik': 1.00,
@@ -204,12 +272,15 @@ class KonversiCalculator {
       'Kurang': 0.50
     }[predikat] || 1.00;
 
+    // FORMULA YANG SAMA DENGAN SCRIPT 2
     const akProporsional = (koefisienPredikat * koefisienJabatan * masaKerjaBulan) / 12;
     return Number(akProporsional.toFixed(3));
   }
 
-  // Hitung AK penuh (6 bulan)
+  // Hitung AK penuh (6 bulan) - DIPERBAIKI
   static calculateAKPenuh(predikat: string, koefisienJabatan: number): number {
+    if (koefisienJabatan === 0) return 0;
+
     const koefisienPredikat = {
       'Sangat Baik': 1.50,
       'Baik': 1.00,
@@ -221,8 +292,10 @@ class KonversiCalculator {
     return Number(akPenuh.toFixed(3));
   }
 
-  // Hitung AK penuh tahunan (12 bulan)
+  // Hitung AK penuh tahunan (12 bulan) - DIPERBAIKI
   static calculateAKPenuhTahunan(predikat: string, koefisienJabatan: number): number {
+    if (koefisienJabatan === 0) return 0;
+
     const koefisienPredikat = {
       'Sangat Baik': 1.50,
       'Baik': 1.00,
@@ -234,7 +307,7 @@ class KonversiCalculator {
     return Number(akPenuh.toFixed(3));
   }
 
-  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
+  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja - DIPERBAIKI
   static calculateAKFromPredikat(
     predikat: string, 
     nilaiSKP: number, 
@@ -271,85 +344,16 @@ class KonversiCalculator {
     return Number(akKonversi.toFixed(3));
   }
 
-  static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
-    if (semester === 1) {
-      return {
-        mulai: `01/01/${tahun}`,
-        selesai: `30/06/${tahun}`
-      };
-    } else {
-      return {
-        mulai: `01/07/${tahun}`,
-        selesai: `31/12/${tahun}`
-      };
-    }
-  }
-
-  static formatDate(date: Date): string {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
-
-  // Format angka untuk spreadsheet
-  static formatNumberForSheet(num: number): string {
-    return num.toString().replace('.', ',');
-  }
-
-  // Parse angka dari spreadsheet
-  static parseNumberFromSheet(value: any): number {
-    if (typeof value === 'string') {
-      return parseFloat(value.replace(',', '.'));
-    }
-    return Number(value);
-  }
-
-  static parseTMT(tmt: string): Date {
-    const parts2 = tmt.split(' ');
-    if (parts2.length === 3) {
-      const day = parseInt(parts2[0]);
-      const monthStr = parts2[1].toLowerCase();
-      const year = parseInt(parts2[2]);
-      
-      const monthMap: {[key: string]: number} = {
-        'januari': 0, 'februari': 1, 'maret': 2, 'april': 3,
-        'mei': 4, 'juni': 5, 'juli': 6, 'agustus': 7,
-        'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
-      };
-      
-      const month = monthMap[monthStr];
-      
-      if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-
-    const parts1 = tmt.split('/');
-    if (parts1.length === 3) {
-      const day = parseInt(parts1[0]);
-      const month = parseInt(parts1[1]);
-      const year = parseInt(parts1[2]);
-      
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month - 1, day);
-      }
-    }
-    
-    const fallbackDate = new Date(tmt);
-    return fallbackDate;
-  }
-
-  // Hitung masa kerja proporsional
+  // Hitung masa kerja proporsional - DIPERBAIKI
   static calculateMasaKerjaProporsional(
     tglPenghitunganAkTerakhir: string, 
     tahun: number, 
     semester: 1 | 2
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tglPenghitunganDate = this.parseTMT(tglPenghitunganAkTerakhir);
+    const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
     const periode = this.calculatePeriodeSemester(tahun, semester);
-    const periodeMulai = this.parseTMT(periode.mulai);
-    const periodeSelesai = this.parseTMT(periode.selesai);
+    const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
+    const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
     const sekarang = new Date();
 
     if (tglPenghitunganDate > periodeSelesai) {
@@ -381,7 +385,178 @@ class KonversiCalculator {
     return { masaKerjaBulan, jenisPenilaian };
   }
 
-  // Helper function untuk cek semester sedang berjalan
+  // Hitung estimasi bulan berdasarkan predikat - DIPERBAIKI
+  static calculateEstimasiBulan(
+    kekuranganAK: number,
+    predikat: string,
+    koefisienJabatan: number
+  ): number {
+    if (kekuranganAK <= 0) return 0;
+    if (koefisienJabatan === 0) return 0;
+    
+    const koefisienPredikat = {
+      'Sangat Baik': 1.50,
+      'Baik': 1.00,
+      'Cukup': 0.75,
+      'Kurang': 0.50
+    }[predikat] || 1.00;
+
+    const akPerBulan = (koefisienPredikat * koefisienJabatan) / 12;
+    return akPerBulan > 0 ? Math.ceil(kekuranganAK / akPerBulan) : 0;
+  }
+
+  // Generate analisis dan rekomendasi - DIPERBAIKI
+  static generateAnalisis(
+    karyawan: Karyawan,
+    predikat: string,
+    akPeriodeIni: number,
+    totalKumulatif: number,
+    kebutuhanPangkat: number,
+    kebutuhanJabatan: number,
+    estimasiBulan: number
+  ): {
+    statusKenaikan: string;
+    jenisKenaikan: string;
+    rekomendasi: string;
+    pertimbanganKhusus: string;
+  } {
+    // Untuk kategori Reguler, logika khusus
+    if (karyawan.kategori === 'Reguler') {
+      const progressPangkat = this.hitungProgressPangkatReguler(karyawan.tmtPangkat);
+      const bisaUsulPangkat = this.bisaNaikPangkatReguler(karyawan.golongan, karyawan.pendidikan, progressPangkat.bulan);
+      
+      return {
+        statusKenaikan: bisaUsulPangkat ? 'Bisa Usul' : 'Butuh Waktu',
+        jenisKenaikan: 'Reguler',
+        rekomendasi: bisaUsulPangkat ? 'Segera usulkan kenaikan pangkat' : 'Tunggu masa kerja 4 tahun',
+        pertimbanganKhusus: 'Kategori Reguler - kenaikan berdasarkan masa kerja 4 tahun'
+      };
+    }
+
+    // Logika untuk Keahlian dan Keterampilan
+    const bisaUsulPangkat = totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0;
+    const bisaUsulJabatan = totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0;
+
+    let statusKenaikan = 'Butuh Waktu Lama';
+    if (bisaUsulPangkat || bisaUsulJabatan) {
+      statusKenaikan = 'Bisa Usul';
+    } else if (estimasiBulan <= 6) {
+      statusKenaikan = 'Estimasi 6 Bulan';
+    } else if (estimasiBulan <= 12) {
+      statusKenaikan = 'Estimasi 1 Tahun';
+    }
+
+    let jenisKenaikan = 'Reguler';
+    const isKenaikanJenjang = this.isKenaikanJenjang(
+      karyawan.jabatan, 
+      this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori),
+      karyawan.golongan,
+      this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori)
+    );
+    
+    if (isKenaikanJenjang) {
+      jenisKenaikan = 'Jenjang';
+    }
+
+    let rekomendasi = 'Pertahankan kinerja saat ini';
+    if (bisaUsulPangkat && bisaUsulJabatan) {
+      rekomendasi = 'Segera usulkan kenaikan pangkat dan jabatan';
+    } else if (bisaUsulPangkat) {
+      rekomendasi = 'Segera usulkan kenaikan pangkat';
+    } else if (bisaUsulJabatan) {
+      rekomendasi = 'Segera usulkan kenaikan jabatan';
+    } else if (estimasiBulan <= 6) {
+      rekomendasi = 'Tingkatkan kinerja untuk mempercepat kenaikan';
+    }
+
+    let pertimbanganKhusus = '';
+    if (predikat === 'Sangat Baik') {
+      pertimbanganKhusus = 'Predikat sangat baik - berpeluang mendapatkan penilaian istimewa';
+    } else if (predikat === 'Kurang') {
+      pertimbanganKhusus = 'Perlu peningkatan kinerja signifikan';
+    } else {
+      pertimbanganKhusus = `AK diperoleh periode ini: ${akPeriodeIni}, Total kumulatif: ${totalKumulatif}`;
+    }
+
+    return {
+      statusKenaikan,
+      jenisKenaikan,
+      rekomendasi,
+      pertimbanganKhusus
+    };
+  }
+
+  // ==================== FUNGSI BARU UNTUK REGULER ====================
+  static hitungProgressPangkatReguler(tmtPangkat: string): {
+    bulan: number;
+    persentase: number;
+  } {
+    const tmt = DateParser.parseTanggalIndonesia(tmtPangkat);
+    const sekarang = new Date();
+    const selisihBulan = DateParser.hitungSelisihBulan(tmt, sekarang);
+    const persentase = Math.min(selisihBulan / 48 * 100, 100);
+    return {
+      bulan: selisihBulan,
+      persentase
+    };
+  }
+
+  static cekSyaratPendidikan(golonganSekarang: string, pendidikan: string): boolean {
+    const pendidikanLower = pendidikan.toLowerCase();
+    const punyaS2 = pendidikanLower.includes('s-2') || pendidikanLower.includes('s2') || pendidikanLower.includes('magister');
+    const punyaS3 = pendidikanLower.includes('s-3') || pendidikanLower.includes('s3') || pendidikanLower.includes('doktor');
+
+    // Untuk golongan di bawah III/D, tidak ada requirement pendidikan khusus
+    if (!golonganSekarang.startsWith('IV/') && golonganSekarang !== 'III/d') {
+      return true;
+    }
+    if (golonganSekarang === 'IV/d') {
+      return punyaS3; // IV/D → IV/E wajib S3
+    }
+
+    // III/D dan IV/A-IV/C wajib S2
+    return punyaS2;
+  }
+
+  static bisaNaikPangkatReguler(golonganSekarang: string, pendidikan: string, progressBulan: number): boolean {
+    const masaKerjaCukup = progressBulan >= 48;
+    const pendidikanCukup = this.cekSyaratPendidikan(golonganSekarang, pendidikan);
+    return masaKerjaCukup && pendidikanCukup;
+  }
+
+  // ==================== FUNGSI BANTU LAINNYA ====================
+  static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
+    if (semester === 1) {
+      return {
+        mulai: `01/01/${tahun}`,
+        selesai: `30/06/${tahun}`
+      };
+    } else {
+      return {
+        mulai: `01/07/${tahun}`,
+        selesai: `31/12/${tahun}`
+      };
+    }
+  }
+
+  static formatDate(date: Date): string {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  static formatNumberForSheet(num: number): string {
+    return num.toString().replace('.', ',');
+  }
+
+  static parseNumberFromSheet(value: any): number {
+    if (typeof value === 'string') {
+      return parseFloat(value.replace(',', '.'));
+    }
+    return Number(value);
+  }
+
   static isSemesterInProgress(year: number, semester: 1 | 2, now: Date): boolean {
     const semesterStart = semester === 1 ? 
       new Date(year, 0, 1) : new Date(year, 6, 1);
@@ -397,10 +572,10 @@ class KonversiCalculator {
     tahun: number, 
     semester: 1 | 2
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tglPenghitunganDate = this.parseTMT(tglPenghitunganAkTerakhir);
+    const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
     const periode = this.calculatePeriodeSemester(tahun, semester);
-    const periodeMulai = this.parseTMT(periode.mulai);
-    const periodeSelesai = this.parseTMT(periode.selesai);
+    const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
+    const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
     const sekarang = new Date();
 
     if (tglPenghitunganDate > periodeSelesai) {
@@ -439,7 +614,7 @@ class KonversiCalculator {
     masaKerjaBulan: number;
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[] {
-    const startDate = this.parseTMT(tglPenghitunganAkTerakhir);
+    const startDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -505,75 +680,6 @@ class KonversiCalculator {
     }
 
     return semesters;
-  }
-
-  // Generate analisis dan rekomendasi
-  static generateAnalisis(
-    karyawan: Karyawan,
-    predikat: string,
-    akPeriodeIni: number,
-    totalKumulatif: number,
-    kebutuhanPangkat: number,
-    kebutuhanJabatan: number,
-    estimasiBulan: number
-  ): {
-    statusKenaikan: string;
-    jenisKenaikan: string;
-    rekomendasi: string;
-    pertimbanganKhusus: string;
-  } {
-    const bisaUsulPangkat = totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0;
-    const bisaUsulJabatan = totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0;
-
-    let statusKenaikan = 'Butuh Waktu Lama';
-    if (bisaUsulPangkat || bisaUsulJabatan) {
-      statusKenaikan = 'Bisa Usul';
-    } else if (estimasiBulan <= 6) {
-      statusKenaikan = 'Estimasi 6 Bulan';
-    } else if (estimasiBulan <= 12) {
-      statusKenaikan = 'Estimasi 1 Tahun';
-    }
-
-    let jenisKenaikan = 'Reguler';
-    const isKenaikanJenjang = this.isKenaikanJenjang(
-      karyawan.jabatan, 
-      this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori),
-      karyawan.golongan,
-      this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori)
-    );
-    
-    if (isKenaikanJenjang) {
-      jenisKenaikan = 'Jenjang';
-    }
-
-    let rekomendasi = 'Pertahankan kinerja saat ini';
-    if (bisaUsulPangkat && bisaUsulJabatan) {
-      rekomendasi = 'Segera usulkan kenaikan pangkat dan jabatan';
-    } else if (bisaUsulPangkat) {
-      rekomendasi = 'Segera usulkan kenaikan pangkat';
-    } else if (bisaUsulJabatan) {
-      rekomendasi = 'Segera usulkan kenaikan jabatan';
-    } else if (estimasiBulan <= 6) {
-      rekomendasi = 'Tingkatkan kinerja untuk mempercepat kenaikan';
-    }
-
-    let pertimbanganKhusus = '';
-    if (karyawan.kategori === 'Reguler') {
-      pertimbanganKhusus = 'Kategori Reguler - kenaikan berdasarkan masa kerja';
-    } else if (predikat === 'Sangat Baik') {
-      pertimbanganKhusus = 'Predikat sangat baik - berpeluang mendapatkan penilaian istimewa';
-    } else if (predikat === 'Kurang') {
-      pertimbanganKhusus = 'Perlu peningkatan kinerja signifikan';
-    } else {
-      pertimbanganKhusus = `AK diperoleh periode ini: ${akPeriodeIni}, Total kumulatif: ${totalKumulatif}`;
-    }
-
-    return {
-      statusKenaikan,
-      jenisKenaikan,
-      rekomendasi,
-      pertimbanganKhusus
-    };
   }
 
   // Helper methods untuk kenaikan jenjang
@@ -644,25 +750,6 @@ class KonversiCalculator {
       }
     }
     return 'Tidak Diketahui';
-  }
-
-  // Hitung estimasi bulan berdasarkan predikat
-  static calculateEstimasiBulan(
-    kekuranganAK: number,
-    predikat: string,
-    koefisienJabatan: number
-  ): number {
-    if (kekuranganAK <= 0) return 0;
-    
-    const koefisienPredikat = {
-      'Sangat Baik': 1.50,
-      'Baik': 1.00,
-      'Cukup': 0.75,
-      'Kurang': 0.50
-    }[predikat] || 1.00;
-
-    const akPerBulan = (koefisienPredikat * koefisienJabatan) / 12;
-    return akPerBulan > 0 ? Math.ceil(kekuranganAK / akPerBulan) : 0;
   }
 }
 
@@ -1772,8 +1859,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
           const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
           const totalKumulatif = karyawan.akKumulatif + akKonversi;
-          const selisihPangkat =  totalKumulatif -kebutuhanPangkat;
-          const selisihJabatan =  totalKumulatif - kebutuhanJabatan;
+          const selisihPangkat = kebutuhanPangkat - totalKumulatif;
+          const selisihJabatan = kebutuhanJabatan - totalKumulatif;
           const kurlebPangkat = Math.max(0, selisihPangkat);
           const kurlebJabatan = Math.max(0, selisihJabatan);
           const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
