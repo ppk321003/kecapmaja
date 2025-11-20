@@ -860,10 +860,15 @@ const GenerateSemesterModal: React.FC<{
   }[]>([]);
   const [generateMode, setGenerateMode] = useState<'semesteran' | 'tahunan'>('semesteran');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [allAvailableYears, setAllAvailableYears] = useState<number[]>([]);
 
   useEffect(() => {
     if (isOpen && tglPenghitunganAkTerakhir) {
       const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
+      
+      // Extract semua tahun yang tersedia dari semester yang digenerate
+      const availableYears = [...new Set(semesters.map(semester => semester.tahun))].sort((a, b) => a - b);
+      setAllAvailableYears(availableYears);
       
       // Filter berdasarkan mode dan tahun yang dipilih
       let filteredSemesters = semesters;
@@ -876,15 +881,19 @@ const GenerateSemesterModal: React.FC<{
     }
   }, [isOpen, tglPenghitunganAkTerakhir, generateMode, selectedYear]);
 
+  // Update selectedYear ketika allAvailableYears berubah
+  useEffect(() => {
+    if (allAvailableYears.length > 0 && !allAvailableYears.includes(selectedYear)) {
+      setSelectedYear(allAvailableYears[0]);
+    }
+  }, [allAvailableYears, selectedYear]);
+
   const handleGenerate = () => {
     onGenerate(availableSemesters);
     onClose();
   };
 
   const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
-
-  // Generate pilihan tahun dari 2020 hingga 2030
-  const yearOptions = Array.from({ length: 11 }, (_, i) => 2020 + i);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -937,7 +946,7 @@ const GenerateSemesterModal: React.FC<{
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {yearOptions.map(year => (
+                    {allAvailableYears.map(year => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
                       </SelectItem>
