@@ -1,4 +1,3 @@
-// Di file LayananKarir.tsx
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +34,95 @@ interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
+// Helper function untuk format tanggal
+const formatDate = (dateString: string) => {
+  if (!dateString || dateString.trim() === '') return '-';
+  
+  try {
+    // Coba parsing berbagai format tanggal
+    let date: Date;
+    
+    // Format ISO (2023-04-11)
+    if (dateString.includes('-')) {
+      date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
+    }
+    
+    // Format Indonesia (11 April 2023)
+    const bulanMap: { [key: string]: number } = {
+      'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+      'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+    };
+    
+    const parts = dateString.toLowerCase().split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0]);
+      const month = bulanMap[parts[1]];
+      const year = parseInt(parts[2]);
+      if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+        date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+        }
+      }
+    }
+    
+    // Format dengan slash atau dash (11/04/2023 atau 11-04-2023)
+    const separator = dateString.includes('/') ? '/' : '-';
+    const dateParts = dateString.split(separator);
+    if (dateParts.length === 3) {
+      let day, month, year;
+      
+      if (dateParts[0].length === 4) {
+        // Format: 2023/04/11
+        year = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        day = parseInt(dateParts[2]);
+      } else {
+        // Format: 11/04/2023
+        day = parseInt(dateParts[0]);
+        month = parseInt(dateParts[1]) - 1;
+        year = parseInt(dateParts[2]);
+      }
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+        }
+      }
+    }
+    
+    // Fallback: coba parsing langsung
+    date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+    
+    return '-';
+  } catch {
+    return '-';
+  }
+};
+
 const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   const getKategoriColor = (kategori: string) => {
     switch (kategori) {
@@ -52,20 +140,6 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       case 'pensiun': return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'mutasi': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return '-';
     }
   };
 
@@ -98,7 +172,8 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Grid dengan 3 kolom - menghilangkan Unit Kerja */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <User className="h-4 w-4 text-blue-600" />
             <div>
@@ -118,14 +193,6 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
           
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
-            <Building className="h-4 w-4 text-purple-600" />
-            <div>
-              <p className="text-xs text-gray-600">Unit Kerja</p>
-              <p className="font-semibold">{karyawan.unitKerja}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <GraduationCap className="h-4 w-4 text-orange-600" />
             <div>
               <p className="text-xs text-gray-600">Pendidikan</p>
@@ -134,7 +201,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
         </div>
 
-        {/* Additional Information Row */}
+        {/* Additional Information Row - sekarang 2 kolom penuh */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <CalendarDays className="h-4 w-4 text-red-600" />
@@ -228,21 +295,6 @@ const AkumulasiAKFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => 
       </CardContent>
     </Card>
   );
-};
-
-// Helper function untuk format tanggal
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  } catch {
-    return '-';
-  }
 };
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
