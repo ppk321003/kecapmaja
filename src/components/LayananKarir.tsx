@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, CalendarDays } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, CalendarDays, Download, Upload, Calculator, BarChart3, Target } from 'lucide-react';
 
 // Interface yang sama dengan komponen utama
 interface Karyawan {
@@ -39,7 +45,6 @@ const formatDate = (dateString: string) => {
   if (!dateString || dateString.trim() === '') return '-';
   
   try {
-    // Coba parsing berbagai format tanggal
     let date: Date;
     
     // Format ISO (2023-04-11)
@@ -121,6 +126,350 @@ const formatDate = (dateString: string) => {
   } catch {
     return '-';
   }
+};
+
+// ==================== KOMPONEN KONVERSI PREDIKAT ====================
+const KonversiPredikat: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  const [nilaiKinerja, setNilaiKinerja] = useState('');
+  const [predikatHasil, setPredikatHasil] = useState('');
+
+  const konversiPredikat = (nilai: number) => {
+    if (nilai >= 90) return { predikat: 'Sangat Baik', nilai: 1.50, warna: 'text-green-600' };
+    if (nilai >= 80) return { predikat: 'Baik', nilai: 1.00, warna: 'text-blue-600' };
+    if (nilai >= 70) return { predikat: 'Cukup', nilai: 0.75, warna: 'text-yellow-600' };
+    return { predikat: 'Kurang', nilai: 0.50, warna: 'text-red-600' };
+  };
+
+  const handleKonversi = () => {
+    const nilai = parseFloat(nilaiKinerja);
+    if (!isNaN(nilai) && nilai >= 0 && nilai <= 100) {
+      const hasil = konversiPredikat(nilai);
+      setPredikatHasil(`${hasil.predikat} (${hasil.nilai})`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Konversi Nilai Kinerja ke Predikat
+          </CardTitle>
+          <CardDescription>
+            Konversi nilai kinerja 0-100 menjadi predikat dan angka kredit sesuai Peraturan BKN
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nilai-kinerja">Nilai Kinerja (0-100)</Label>
+              <Input
+                id="nilai-kinerja"
+                type="number"
+                min="0"
+                max="100"
+                value={nilaiKinerja}
+                onChange={(e) => setNilaiKinerja(e.target.value)}
+                placeholder="Masukkan nilai kinerja"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Hasil Konversi</Label>
+              <div className="p-3 border rounded-lg bg-muted/50">
+                {predikatHasil ? (
+                  <div className="text-center">
+                    <p className="text-lg font-semibold">{predikatHasil}</p>
+                    <p className="text-sm text-muted-foreground">Predikat dan Angka Kredit</p>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">Hasil akan muncul di sini</p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <Button onClick={handleKonversi} className="w-full">
+            <Calculator className="h-4 w-4 mr-2" />
+            Konversi Nilai
+          </Button>
+
+          {/* Tabel Referensi */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Tabel Referensi Konversi</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rentang Nilai</TableHead>
+                  <TableHead>Predikat</TableHead>
+                  <TableHead>Angka Kredit</TableHead>
+                  <TableHead>Keterangan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell>90 - 100</TableCell>
+                  <TableCell className="font-semibold text-green-600">Sangat Baik</TableCell>
+                  <TableCell className="font-bold">1.50</TableCell>
+                  <TableCell>Performa luar biasa</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>80 - 89</TableCell>
+                  <TableCell className="font-semibold text-blue-600">Baik</TableCell>
+                  <TableCell className="font-bold">1.00</TableCell>
+                  <TableCell>Performa baik sesuai target</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>70 - 79</TableCell>
+                  <TableCell className="font-semibold text-yellow-600">Cukup</TableCell>
+                  <TableCell className="font-bold">0.75</TableCell>
+                  <TableCell>Perlu peningkatan</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>0 - 69</TableCell>
+                  <TableCell className="font-semibold text-red-600">Kurang</TableCell>
+                  <TableCell className="font-bold">0.50</TableCell>
+                  <TableCell>Perlu perbaikan serius</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ==================== KOMPONEN PENETAPAN AK ====================
+const PenetapanAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  const [jenisKegiatan, setJenisKegiatan] = useState('');
+  const [volume, setVolume] = useState('');
+  const [angkaKredit, setAngkaKredit] = useState('');
+
+  const kegiatanList = [
+    { nama: 'Penyusunan Laporan Statistik', ak: 0.25 },
+    { nama: 'Analisis Data Statistik', ak: 0.50 },
+    { nama: 'Publikasi Hasil Penelitian', ak: 1.00 },
+    { nama: 'Bimbingan Teknis', ak: 0.75 },
+    { nama: 'Pengembangan Sistem', ak: 1.25 },
+  ];
+
+  const hitungAK = () => {
+    const selectedKegiatan = kegiatanList.find(k => k.nama === jenisKegiatan);
+    if (selectedKegiatan && volume) {
+      const vol = parseFloat(volume);
+      const totalAK = selectedKegiatan.ak * vol;
+      setAngkaKredit(totalAK.toFixed(2));
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Penetapan Angka Kredit
+          </CardTitle>
+          <CardDescription>
+            Hitung dan tetapkan angka kredit untuk kegiatan yang dilakukan
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="jenis-kegiatan">Jenis Kegiatan</Label>
+              <Select value={jenisKegiatan} onValueChange={setJenisKegiatan}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih jenis kegiatan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {kegiatanList.map((kegiatan, index) => (
+                    <SelectItem key={index} value={kegiatan.nama}>
+                      {kegiatan.nama} ({kegiatan.ak} AK)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="volume">Volume</Label>
+              <Input
+                id="volume"
+                type="number"
+                value={volume}
+                onChange={(e) => setVolume(e.target.value)}
+                placeholder="Jumlah volume"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Angka Kredit yang Diperoleh</Label>
+            <div className="p-4 border rounded-lg bg-green-50">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">{angkaKredit || '0.00'}</p>
+                <p className="text-sm text-green-700">Total Angka Kredit</p>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={hitungAK} className="w-full">
+            <Calculator className="h-4 w-4 mr-2" />
+            Hitung Angka Kredit
+          </Button>
+
+          {/* Daftar Kegiatan */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Daftar Kegiatan dan AK</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>No</TableHead>
+                  <TableHead>Jenis Kegiatan</TableHead>
+                  <TableHead>Angka Kredit</TableHead>
+                  <TableHead>Satuan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {kegiatanList.map((kegiatan, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell className="font-medium">{kegiatan.nama}</TableCell>
+                    <TableCell className="font-bold text-blue-600">{kegiatan.ak}</TableCell>
+                    <TableCell>Per kegiatan</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ==================== KOMPONEN AKUMULASI AK ====================
+const AkumulasiAK: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
+  const [periodeAwal, setPeriodeAwal] = useState('');
+  const [periodeAkhir, setPeriodeAkhir] = useState('');
+  const [totalAkumulasi, setTotalAkumulasi] = useState(0);
+
+  const dataAK = [
+    { bulan: 'Januari 2024', ak: 12.5 },
+    { bulan: 'Februari 2024', ak: 11.8 },
+    { bulan: 'Maret 2024', ak: 13.2 },
+    { bulan: 'April 2024', ak: 12.0 },
+    { bulan: 'Mei 2024', ak: 14.5 },
+  ];
+
+  const hitungAkumulasi = () => {
+    // Simulasi perhitungan akumulasi
+    const total = dataAK.reduce((sum, item) => sum + item.ak, 0);
+    setTotalAkumulasi(total);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Akumulasi Angka Kredit
+          </CardTitle>
+          <CardDescription>
+            Monitor dan hitung akumulasi angka kredit dalam periode tertentu
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="periode-awal">Periode Awal</Label>
+              <Input
+                id="periode-awal"
+                type="month"
+                value={periodeAwal}
+                onChange={(e) => setPeriodeAwal(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="periode-akhir">Periode Akhir</Label>
+              <Input
+                id="periode-akhir"
+                type="month"
+                value={periodeAkhir}
+                onChange={(e) => setPeriodeAkhir(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Total Akumulasi</Label>
+              <div className="p-3 border rounded-lg bg-blue-50">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-blue-600">{totalAkumulasi.toFixed(2)}</p>
+                  <p className="text-sm text-blue-700">Angka Kredit</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={hitungAkumulasi} className="w-full">
+            <Calculator className="h-4 w-4 mr-2" />
+            Hitung Akumulasi
+          </Button>
+
+          {/* Grafik Progress */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Progress Bulanan</h3>
+            <div className="space-y-3">
+              {dataAK.map((item, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>{item.bulan}</span>
+                    <span className="font-semibold">{item.ak} AK</span>
+                  </div>
+                  <Progress value={(item.ak / 15) * 100} className="h-2" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Ringkasan */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Ringkasan Akumulasi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-green-600">{karyawan.akKumulatif}</p>
+                  <p className="text-sm text-muted-foreground">AK Awal</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{totalAkumulasi.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">AK Tambahan</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {(karyawan.akKumulatif + totalAkumulasi).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total AK</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {Math.max(0, 100 - (karyawan.akKumulatif + totalAkumulasi)).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Kekurangan</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
@@ -250,72 +599,25 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Fallback components untuk tab content
-const KonversiPredikatFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Konversi Predikat</CardTitle>
-        <CardDescription>Fitur konversi predikat kinerja</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Komponen Konversi Predikat untuk: {karyawan.nama}</p>
-        <p>AK Kumulatif: {karyawan.akKumulatif}</p>
-        <p>Penghitungan Terakhir: {formatDate(karyawan.tglPenghitunganAkTerakhir)}</p>
-      </CardContent>
-    </Card>
-  );
-};
-
-const PenetapanAKFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Penetapan AK</CardTitle>
-        <CardDescription>Fitur penetapan angka kredit</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Komponen Penetapan AK untuk: {karyawan.nama}</p>
-        <p>Jabatan: {karyawan.jabatan}</p>
-      </CardContent>
-    </Card>
-  );
-};
-
-const AkumulasiAKFallback: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Akumulasi AK</CardTitle>
-        <CardDescription>Fitur akumulasi angka kredit</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Komponen Akumulasi AK untuk: {karyawan.nama}</p>
-        <p>Pangkat: {karyawan.pangkat} - {karyawan.golongan}</p>
-      </CardContent>
-    </Card>
-  );
-};
-
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('konversi');
   
   const tabConfig = {
     konversi: { 
       title: "KONVERSI PREDIKAT", 
-      icon: Calendar, 
+      icon: Calculator, 
       activeClass: "bg-blue-500 text-white border-blue-600 shadow-md",
       inactiveClass: "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
     },
     penetapan: { 
       title: "PENETAPAN AK", 
-      icon: FileText, 
+      icon: Target, 
       activeClass: "bg-green-500 text-white border-green-600 shadow-md",
       inactiveClass: "bg-white text-green-600 border-green-200 hover:bg-green-50"
     },
     akumulasi: { 
       title: "AKUMULASI AK", 
-      icon: Award, 
+      icon: BarChart3, 
       activeClass: "bg-purple-500 text-white border-purple-600 shadow-md",
       inactiveClass: "bg-white text-purple-600 border-purple-200 hover:bg-purple-50"
     }
@@ -356,15 +658,15 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
 
         <TabsContent value="konversi" className="space-y-3">
-          <KonversiPredikatFallback karyawan={karyawan} />
+          <KonversiPredikat karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="penetapan" className="space-y-3">
-          <PenetapanAKFallback karyawan={karyawan} />
+          <PenetapanAK karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="akumulasi" className="space-y-3">
-          <AkumulasiAKFallback karyawan={karyawan} />
+          <AkumulasiAK karyawan={karyawan} />
         </TabsContent>
       </Tabs>
     </div>
