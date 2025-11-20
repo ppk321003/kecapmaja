@@ -858,35 +858,13 @@ const GenerateSemesterModal: React.FC<{
     masaKerjaBulan: number;
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[]>([]);
-  const [generateMode, setGenerateMode] = useState<'semesteran' | 'tahunan'>('semesteran');
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [allAvailableYears, setAllAvailableYears] = useState<number[]>([]);
 
   useEffect(() => {
     if (isOpen && tglPenghitunganAkTerakhir) {
       const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
-      
-      // Extract semua tahun yang tersedia dari semester yang digenerate
-      const availableYears = [...new Set(semesters.map(semester => semester.tahun))].sort((a, b) => a - b);
-      setAllAvailableYears(availableYears);
-      
-      // Filter berdasarkan mode dan tahun yang dipilih
-      let filteredSemesters = semesters;
-      
-      if (generateMode === 'tahunan') {
-        filteredSemesters = semesters.filter(semester => semester.tahun === selectedYear);
-      }
-      
-      setAvailableSemesters(filteredSemesters);
+      setAvailableSemesters(semesters);
     }
-  }, [isOpen, tglPenghitunganAkTerakhir, generateMode, selectedYear]);
-
-  // Update selectedYear ketika allAvailableYears berubah
-  useEffect(() => {
-    if (allAvailableYears.length > 0 && !allAvailableYears.includes(selectedYear)) {
-      setSelectedYear(allAvailableYears[0]);
-    }
-  }, [allAvailableYears, selectedYear]);
+  }, [isOpen, tglPenghitunganAkTerakhir]);
 
   const handleGenerate = () => {
     onGenerate(availableSemesters);
@@ -915,46 +893,6 @@ const GenerateSemesterModal: React.FC<{
               <strong>Koefisien:</strong> {koefisien}<br />
               <strong>Sistem:</strong> Penilaian Proporsional sesuai Peraturan BKN Nomor 3 Tahun 2023
             </p>
-          </div>
-
-          {/* Pilihan Mode Generate */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="generate-mode">Mode Generate</Label>
-              <Select 
-                value={generateMode} 
-                onValueChange={(value: 'semesteran' | 'tahunan') => setGenerateMode(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semesteran">Semua Semester (Semesteran)</SelectItem>
-                  <SelectItem value="tahunan">Per Tahun (Tahunan)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {generateMode === 'tahunan' && (
-              <div>
-                <Label htmlFor="selected-year">Pilih Tahun</Label>
-                <Select 
-                  value={selectedYear.toString()} 
-                  onValueChange={(value) => setSelectedYear(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allAvailableYears.map(year => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
           {availableSemesters.length > 0 ? (
@@ -1011,11 +949,6 @@ const GenerateSemesterModal: React.FC<{
           ) : (
             <div className="text-center py-4 text-muted-foreground">
               <p>Tidak ada semester yang dapat digenerate dari Tanggal Penghitungan AK Terakhir ini.</p>
-              {generateMode === 'tahunan' && (
-                <p className="text-sm mt-2">
-                  Tidak ada data untuk tahun {selectedYear} dari Tanggal Penghitungan AK Terakhir {tglPenghitunganAkTerakhir}
-                </p>
-              )}
             </div>
           )}
 
