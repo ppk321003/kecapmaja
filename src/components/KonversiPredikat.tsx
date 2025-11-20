@@ -21,11 +21,13 @@ interface Karyawan {
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
   tglPenghitunganAkTerakhir: string;
   akKumulatif: number;
-  status: 'Aktif' | 'Pensiun' | 'Mutasi';
+  tempatLahir: string;  // Di-repurpose dari status
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
+  tanggalLahir: string;
+  jenisKelamin: 'L' | 'P';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
 }
@@ -33,19 +35,59 @@ interface Karyawan {
 interface KonversiData {
   id?: string;
   No?: number;
-  NIP: string;
-  Nama: string;
+  
+  // Data periode
   Tahun: number;
   Semester: 1 | 2;
-  Predikat: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
-  'Nilai SKP': number;
-  'AK Konversi': number;
-  'TMT Mulai': string;
-  'TMT Selesai': string;
+  Periode: string;
+  Jenis_Periode: 'Semester' | 'Tahunan';
+  
+  // Data pribadi
+  Nama: string;
+  NIP: string;
+  Nomor_Karpeg: string;
+  Tempat_Lahir: string;
+  Tanggal_Lahir: string;
+  Jenis_Kelamin: 'L' | 'P';
+  
+  // Data pangkat & jabatan
+  Pangkat: string;
+  Golongan: string;
+  TMT_Pangkat: string;
+  Jabatan: string;
+  TMT_Jabatan: string;
+  
+  // Data kinerja
+  Predikat_Kinerja: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
+  Nilai_SKP: number;
+  AK_Konversi: number;
+  Tanggal_Penetapan: string;
+  
+  // Analisis AK
+  Kebutuhan_Pangkat_AK: number;
+  Kebutuhan_Jabatan_AK: number;
+  AK_Sebelumnya: number;
+  AK_Periode_Ini: number;
+  Total_Kumulatif: number;
+  Selisih_Pangkat: number;
+  Selisih_Jabatan: number;
+  Kurleb_Pangkat: number;
+  Kurleb_Jabatan: number;
+  
+  // Status & rekomendasi
+  Status_Kenaikan: string;
+  Jenis_Kenaikan: string;
+  Estimasi_Bulan: number;
+  Rekomendasi: string;
+  Pertimbangan_Khusus: string;
+  
+  // Metadata
   Status: 'Draft' | 'Generated';
   Catatan?: string;
   Link_Dokumen?: string;
   Last_Update: string;
+  
+  // Internal
   rowIndex?: number;
   Masa_Kerja_Bulan?: number;
   Jenis_Penilaian?: 'PENUH' | 'PROPORSIONAL';
@@ -66,57 +108,86 @@ class KonversiCalculator {
     const jabatanLower = jabatan.toLowerCase();
     const golonganLower = golongan.toLowerCase();
     
-    // Untuk kategori Reguler, koefisien 0 karena tidak menggunakan AK
     if (kategori === 'Reguler') return 0;
 
-    // Koefisien untuk kategori Keahlian (Fungsional)
     if (kategori === 'Keahlian') {
-      // Ahli Utama (IV/c - IV/d)
       if (jabatanLower.includes('ahli utama') || golonganLower.includes('iv/c') || golonganLower.includes('iv/d')) {
         return 50.0;
       }
-      // Ahli Madya (IV/a - IV/b)
       if (jabatanLower.includes('ahli madya') || golonganLower.includes('iv/a') || golonganLower.includes('iv/b')) {
         return 37.5;
       }
-      // Ahli Muda (III/c - III/d)
       if (jabatanLower.includes('ahli muda') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
         return 25.0;
       }
-      // Ahli Pertama (III/a - III/b)
       if (jabatanLower.includes('ahli pertama') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
         return 12.5;
       }
       
-      // Default untuk jabatan keahlian lainnya berdasarkan golongan
       if (golonganLower.includes('iv/')) return 37.5;
       if (golonganLower.includes('iii/')) return 12.5;
       
       return 12.5;
     }
     
-    // Koefisien untuk kategori Keterampilan (Pelaksana)
     if (kategori === 'Keterampilan') {
-      // Penyelia (III/c - III/d)
       if (jabatanLower.includes('penyelia') || golonganLower.includes('iii/c') || golonganLower.includes('iii/d')) {
         return 25.0;
       }
-      // Mahir (III/a - III/b)
       if (jabatanLower.includes('mahir') || golonganLower.includes('iii/a') || golonganLower.includes('iii/b')) {
         return 12.5;
       }
-      // Terampil (II/a - II/d)
       if (jabatanLower.includes('terampil') || golonganLower.includes('ii/')) {
         return 5.0;
       }
       
-      // Default untuk jabatan keterampilan lainnya berdasarkan golongan
       if (golonganLower.includes('iii/')) return 12.5;
       if (golonganLower.includes('ii/')) return 5.0;
       
       return 5.0;
     }
     
+    return 0;
+  }
+
+  // Hitung kebutuhan AK untuk pangkat dan jabatan
+  static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0;
+
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100,
+      'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
+    };
+    
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
+      'III/a': 50, 'III/b': 50, 'III/c': 100
+    };
+    
+    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
+    return kebutuhan[golonganSekarang] || 0;
+  }
+
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0;
+
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'Ahli Pertama': 100, 'Ahli Muda': 200, 'Ahli Madya': 450, 'Ahli Utama': 0
+    };
+    
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'Terampil': 60, 'Mahir': 100, 'Penyelia': 0
+    };
+    
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    }
     return 0;
   }
 
@@ -163,6 +234,43 @@ class KonversiCalculator {
     return Number(akPenuh.toFixed(3));
   }
 
+  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
+  static calculateAKFromPredikat(
+    predikat: string, 
+    nilaiSKP: number, 
+    jabatan: string, 
+    kategori: string,
+    golongan: string,
+    masaKerjaBulan: number,
+    jenisPenilaian: 'PENUH' | 'PROPORSIONAL',
+    mode: 'semesteran' | 'tahunan' = 'semesteran'
+  ): number {
+    // Untuk kategori Reguler, tidak ada perhitungan AK
+    if (kategori === 'Reguler') return 0;
+
+    const koefisien = this.getKoefisien(jabatan, kategori, golongan);
+    
+    let akKonversi = 0;
+    
+    if (mode === 'tahunan') {
+      // Untuk mode tahunan, gunakan perhitungan khusus
+      if (jenisPenilaian === 'PENUH') {
+        akKonversi = this.calculateAKPenuhTahunan(predikat, koefisien);
+      } else {
+        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
+      }
+    } else {
+      // Untuk mode semesteran, gunakan perhitungan normal
+      if (jenisPenilaian === 'PENUH') {
+        akKonversi = this.calculateAKPenuh(predikat, koefisien);
+      } else {
+        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
+      }
+    }
+    
+    return Number(akKonversi.toFixed(3));
+  }
+
   static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
     if (semester === 1) {
       return {
@@ -184,12 +292,12 @@ class KonversiCalculator {
     return `${day}/${month}/${year}`;
   }
 
-  // Format angka untuk spreadsheet (menggunakan koma desimal)
+  // Format angka untuk spreadsheet
   static formatNumberForSheet(num: number): string {
     return num.toString().replace('.', ',');
   }
 
-  // Parse angka dari spreadsheet (mengembalikan number dengan titik desimal)
+  // Parse angka dari spreadsheet
   static parseNumberFromSheet(value: any): number {
     if (typeof value === 'string') {
       return parseFloat(value.replace(',', '.'));
@@ -198,9 +306,6 @@ class KonversiCalculator {
   }
 
   static parseTMT(tmt: string): Date {
-    console.log('🕐 Parsing TMT:', tmt);
-    
-    // Priority 1: Format "24 Mei 2023" (DD MMMM YYYY)
     const parts2 = tmt.split(' ');
     if (parts2.length === 3) {
       const day = parseInt(parts2[0]);
@@ -216,13 +321,10 @@ class KonversiCalculator {
       const month = monthMap[monthStr];
       
       if (!isNaN(day) && month !== undefined && !isNaN(year)) {
-        const date = new Date(year, month, day);
-        console.log('✅ Parsed as DD MMMM YYYY:', date.toLocaleDateString('id-ID'));
-        return date;
+        return new Date(year, month, day);
       }
     }
 
-    // Priority 2: Format "9/10/2025" (DD/MM/YYYY)
     const parts1 = tmt.split('/');
     if (parts1.length === 3) {
       const day = parseInt(parts1[0]);
@@ -230,19 +332,15 @@ class KonversiCalculator {
       const year = parseInt(parts1[2]);
       
       if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        const date = new Date(year, month - 1, day);
-        console.log('✅ Parsed as DD/MM/YYYY:', date.toLocaleDateString('id-ID'));
-        return date;
+        return new Date(year, month - 1, day);
       }
     }
     
-    // Fallback
     const fallbackDate = new Date(tmt);
-    console.log('⚠️ Fallback parsing:', fallbackDate.toLocaleDateString('id-ID'));
     return fallbackDate;
   }
 
-  // Hitung masa kerja proporsional berdasarkan Tanggal Penghitungan AK Terakhir dan periode semester - DIPERBAIKI
+  // Hitung masa kerja proporsional
   static calculateMasaKerjaProporsional(
     tglPenghitunganAkTerakhir: string, 
     tahun: number, 
@@ -254,37 +352,18 @@ class KonversiCalculator {
     const periodeSelesai = this.parseTMT(periode.selesai);
     const sekarang = new Date();
 
-    console.log('🔍 DETAILED CALCULATION:', {
-      tglPenghitunganAkTerakhir,
-      tglPenghitunganDate: tglPenghitunganDate.toLocaleDateString('id-ID'),
-      tahun,
-      semester,
-      periodeMulai: periodeMulai.toLocaleDateString('id-ID'),
-      periodeSelesai: periodeSelesai.toLocaleDateString('id-ID'),
-      sekarang: sekarang.toLocaleDateString('id-ID')
-    });
-
-    // Jika Tanggal Penghitungan AK Terakhir setelah periode selesai, tidak ada penilaian
     if (tglPenghitunganDate > periodeSelesai) {
-      console.log('❌ Tanggal Penghitungan AK Terakhir after period end, no assessment');
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
-    // Jika Tanggal Penghitungan AK Terakhir sebelum atau sama dengan periode mulai, penilaian penuh
     if (tglPenghitunganDate <= periodeMulai) {
-      console.log('✅ Tanggal Penghitungan AK Terakhir before/same as period start, FULL assessment (6 bulan)');
       return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
     }
 
-    // Tanggal Penghitungan AK Terakhir di tengah periode, hitung bulan proporsional
-    console.log('📅 Tanggal Penghitungan AK Terakhir in the middle of period, calculating proportional months...');
-    
-    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah Tanggal Penghitungan AK Terakhir (bulan Tanggal Penghitungan AK Terakhir tidak dihitung)
     const startFromNextMonth = new Date(tglPenghitunganDate);
-    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
-    startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
+    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
+    startFromNextMonth.setDate(1);
     
-    // PERBAIKAN: Untuk semester berjalan, hitung hanya sampai bulan sekarang
     const endDate = this.isSemesterInProgress(tahun, semester, sekarang) ? 
       sekarang : periodeSelesai;
     
@@ -296,69 +375,19 @@ class KonversiCalculator {
       current.setMonth(current.getMonth() + 1);
     }
 
-    console.log('📊 Accurate month calculation (EXCLUDING Tanggal Penghitungan AK Terakhir month):', {
-      tglPenghitunganMonth: tglPenghitunganDate.getMonth() + 1,
-      startFromMonth: startFromNextMonth.getMonth() + 1,
-      endMonth: endDate.getMonth() + 1,
-      calculatedMonths: masaKerjaBulan
-    });
-
-    // Pastikan masa kerja antara 1-6 bulan
     masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
-
     const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
     
-    console.log('🎯 FINAL RESULT:', {
-      masaKerjaBulan,
-      jenisPenilaian,
-      status: masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL'
-    });
-    
     return { masaKerjaBulan, jenisPenilaian };
-  }
-
-  // Validasi data konversi - DIPERBAIKI untuk mode tahunan
-  static validateKonversiData(data: KonversiData, mode: 'semesteran' | 'tahunan' = 'semesteran'): boolean {
-    // Untuk mode tahunan, masa kerja bisa lebih dari 6 bulan (maksimal 12 bulan)
-    const maxMasaKerja = mode === 'tahunan' ? 12 : 6;
-    const minMasaKerja = 1;
-
-    // Debug validation
-    const validationChecks = {
-      masaKerjaNaN: isNaN(data.Masa_Kerja_Bulan!),
-      masaKerjaTooSmall: data.Masa_Kerja_Bulan! < minMasaKerja,
-      masaKerjaTooLarge: data.Masa_Kerja_Bulan! > maxMasaKerja,
-      akNegative: data['AK Konversi'] < 0,
-      nilaiSKPNegative: data['Nilai SKP'] < 0,
-      nilaiSKPTooHigh: data['Nilai SKP'] > 100,
-      tahunMissing: !data.Tahun,
-      semesterMissing: !data.Semester,
-      predikatMissing: !data.Predikat
-    };
-
-    const isValid = !Object.values(validationChecks).some(check => check);
-
-    if (!isValid) {
-      console.error('❌ Data tidak valid:', {
-        data,
-        validationChecks,
-        mode,
-        maxMasaKerja
-      });
-    }
-
-    return isValid;
   }
 
   // Helper function untuk cek semester sedang berjalan
   static isSemesterInProgress(year: number, semester: 1 | 2, now: Date): boolean {
     const semesterStart = semester === 1 ? 
-      new Date(year, 0, 1) : // 1 Januari
-      new Date(year, 6, 1);  // 1 Juli
+      new Date(year, 0, 1) : new Date(year, 6, 1);
     
     const semesterEnd = semester === 1 ? 
-      new Date(year, 5, 30) : // 30 Juni
-      new Date(year, 11, 31); // 31 Desember
+      new Date(year, 5, 30) : new Date(year, 11, 31);
     
     return semesterStart <= now && semesterEnd >= now;
   }
@@ -374,12 +403,6 @@ class KonversiCalculator {
     const periodeSelesai = this.parseTMT(periode.selesai);
     const sekarang = new Date();
 
-    console.log('📅 CALCULATE UNTIL NOW:', {
-      tglPenghitunganAkTerakhir: tglPenghitunganDate.toLocaleDateString('id-ID'),
-      periode: `${periode.mulai} - ${periode.selesai}`,
-      sekarang: sekarang.toLocaleDateString('id-ID')
-    });
-
     // Jika Tanggal Penghitungan AK Terakhir setelah periode selesai, tidak ada penilaian
     if (tglPenghitunganDate > periodeSelesai) {
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
@@ -388,10 +411,10 @@ class KonversiCalculator {
     // Jika Tanggal Penghitungan AK Terakhir sebelum periode mulai, hitung dari mulai periode sampai sekarang
     const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
     
-    // PERBAIKAN: Mulai dari bulan BERIKUTNYA setelah Tanggal Penghitungan AK Terakhir (bulan Tanggal Penghitungan AK Terakhir tidak dihitung)
+    // Mulai dari bulan BERIKUTNYA setelah Tanggal Penghitungan AK Terakhir (bulan Tanggal Penghitungan AK Terakhir tidak dihitung)
     const startFromNextMonth = new Date(startDate);
-    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1); // Bulan berikutnya
-    startFromNextMonth.setDate(1); // Set ke tanggal 1 bulan berikutnya
+    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
+    startFromNextMonth.setDate(1);
     
     // End date adalah yang lebih kecil antara periode selesai dan sekarang
     const endDate = sekarang < periodeSelesai ? sekarang : periodeSelesai;
@@ -409,12 +432,6 @@ class KonversiCalculator {
       masaKerjaBulan++;
       current.setMonth(current.getMonth() + 1);
     }
-
-    console.log('📊 Current semester calculation (EXCLUDING Tanggal Penghitungan AK Terakhir month):', {
-      startFromMonth: startFromNextMonth.getMonth() + 1,
-      endMonth: endDate.getMonth() + 1,
-      calculatedMonths: masaKerjaBulan
-    });
 
     // Pastikan masa kerja antara 1-6 bulan
     masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
@@ -436,13 +453,6 @@ class KonversiCalculator {
     const currentMonth = now.getMonth() + 1;
     const currentSemester: 1 | 2 = currentMonth <= 6 ? 1 : 2;
     
-    console.log('🕐 TIMELINE CHECK:', {
-      sekarang: now.toLocaleDateString('id-ID'),
-      tahunSekarang: currentYear,
-      semesterSekarang: currentSemester,
-      tglPenghitunganAkTerakhir: startDate.toLocaleDateString('id-ID')
-    });
-
     const semesters: { 
       tahun: number; 
       semester: 1 | 2;
@@ -509,45 +519,169 @@ class KonversiCalculator {
       if (semesters.length > 20) break;
     }
 
-    console.log('✅ FINAL GENERATED SEMESTERS:', semesters);
     return semesters;
   }
 
-  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
-  static calculateAKFromPredikat(
-    predikat: string, 
-    nilaiSKP: number, 
-    jabatan: string, 
-    kategori: string,
-    golongan: string,
-    masaKerjaBulan: number,
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL',
-    mode: 'semesteran' | 'tahunan' = 'semesteran'
-  ): number {
-    // Untuk kategori Reguler, tidak ada perhitungan AK
-    if (kategori === 'Reguler') return 0;
+  // Generate analisis dan rekomendasi
+  static generateAnalisis(
+    karyawan: Karyawan,
+    predikat: string,
+    akPeriodeIni: number,
+    totalKumulatif: number,
+    kebutuhanPangkat: number,
+    kebutuhanJabatan: number,
+    estimasiBulan: number
+  ): {
+    statusKenaikan: string;
+    jenisKenaikan: string;
+    rekomendasi: string;
+    pertimbanganKhusus: string;
+  } {
+    const bisaUsulPangkat = totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0;
+    const bisaUsulJabatan = totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0;
 
-    const koefisien = this.getKoefisien(jabatan, kategori, golongan);
+    // Status Kenaikan
+    let statusKenaikan = 'Butuh Waktu Lama';
+    if (bisaUsulPangkat || bisaUsulJabatan) {
+      statusKenaikan = 'Bisa Usul';
+    } else if (estimasiBulan <= 6) {
+      statusKenaikan = 'Estimasi 6 Bulan';
+    } else if (estimasiBulan <= 12) {
+      statusKenaikan = 'Estimasi 1 Tahun';
+    }
+
+    // Jenis Kenaikan
+    let jenisKenaikan = 'Reguler';
+    const isKenaikanJenjang = this.isKenaikanJenjang(
+      karyawan.jabatan, 
+      this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori),
+      karyawan.golongan,
+      this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori)
+    );
     
-    let akKonversi = 0;
-    
-    if (mode === 'tahunan') {
-      // Untuk mode tahunan, gunakan perhitungan khusus
-      if (jenisPenilaian === 'PENUH') {
-        akKonversi = this.calculateAKPenuhTahunan(predikat, koefisien);
-      } else {
-        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
-      }
+    if (isKenaikanJenjang) {
+      jenisKenaikan = 'Jenjang';
+    }
+
+    // Rekomendasi
+    let rekomendasi = 'Pertahankan kinerja saat ini';
+    if (bisaUsulPangkat && bisaUsulJabatan) {
+      rekomendasi = 'Segera usulkan kenaikan pangkat dan jabatan';
+    } else if (bisaUsulPangkat) {
+      rekomendasi = 'Segera usulkan kenaikan pangkat';
+    } else if (bisaUsulJabatan) {
+      rekomendasi = 'Segera usulkan kenaikan jabatan';
+    } else if (estimasiBulan <= 6) {
+      rekomendasi = 'Tingkatkan kinerja untuk mempercepat kenaikan';
+    }
+
+    // Pertimbangan Khusus
+    let pertimbanganKhusus = '';
+    if (karyawan.kategori === 'Reguler') {
+      pertimbanganKhusus = 'Kategori Reguler - kenaikan berdasarkan masa kerja';
+    } else if (predikat === 'Sangat Baik') {
+      pertimbanganKhusus = 'Predikat sangat baik - berpeluang mendapatkan penilaian istimewa';
+    } else if (predikat === 'Kurang') {
+      pertimbanganKhusus = 'Perlu peningkatan kinerja signifikan';
     } else {
-      // Untuk mode semesteran, gunakan perhitungan normal
-      if (jenisPenilaian === 'PENUH') {
-        akKonversi = this.calculateAKPenuh(predikat, koefisien);
-      } else {
-        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
-      }
+      pertimbanganKhusus = `AK diperoleh periode ini: ${akPeriodeIni}, Total kumulatif: ${totalKumulatif}`;
+    }
+
+    return {
+      statusKenaikan,
+      jenisKenaikan,
+      rekomendasi,
+      pertimbanganKhusus
+    };
+  }
+
+  // Helper methods untuk kenaikan jenjang
+  static isKenaikanJenjang(
+    jabatanSekarang: string, 
+    jabatanBerikutnya: string, 
+    golonganSekarang: string, 
+    golonganBerikutnya: string
+  ): boolean {
+    const titikJenjang = [
+      { dari: 'Ahli Pertama', ke: 'Ahli Muda', golDari: 'III/b', golKe: 'III/c' },
+      { dari: 'Ahli Muda', ke: 'Ahli Madya', golDari: 'III/d', golKe: 'IV/a' },
+      { dari: 'Ahli Madya', ke: 'Ahli Utama', golDari: 'IV/c', golKe: 'IV/d' },
+      { dari: 'Terampil', ke: 'Mahir', golDari: 'II/d', golKe: 'III/a' },
+      { dari: 'Mahir', ke: 'Penyelia', golDari: 'III/b', golKe: 'III/c' }
+    ];
+    
+    return titikJenjang.some(titik => 
+      jabatanSekarang.includes(titik.dari) && 
+      jabatanBerikutnya.includes(titik.ke) && 
+      golonganSekarang === titik.golDari && 
+      golonganBerikutnya === titik.golKe
+    );
+  }
+
+  static getGolonganBerikutnya(golonganSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') {
+      const progressionReguler: { [key: string]: string } = {
+        'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+        'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+      };
+      return progressionReguler[golonganSekarang] || 'Tidak Ada';
     }
     
-    return Number(akKonversi.toFixed(3));
+    const progressionKeahlian: { [key: string]: string } = {
+      'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+      'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+    };
+    
+    const progressionKeterampilan: { [key: string]: string } = {
+      'II/a': 'II/b', 'II/b': 'II/c', 'II/c': 'II/d', 'II/d': 'III/a',
+      'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d'
+    };
+    
+    const progression = kategori === 'Keahlian' ? progressionKeahlian : progressionKeterampilan;
+    return progression[golonganSekarang] || 'Tidak Ada';
+  }
+
+  static getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
+    if (kategori === 'Reguler') return 'Tidak berlaku';
+    
+    const progressionKeahlian: { [key: string]: string } = {
+      'Ahli Pertama': 'Ahli Muda', 'Ahli Muda': 'Ahli Madya', 
+      'Ahli Madya': 'Ahli Utama', 'Ahli Utama': 'Tidak Ada'
+    };
+    
+    const progressionKeterampilan: { [key: string]: string } = {
+      'Terampil': 'Mahir', 'Mahir': 'Penyelia', 'Penyelia': 'Tidak Ada'
+    };
+    
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(progressionKeahlian)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(progressionKeterampilan)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    }
+    return 'Tidak Diketahui';
+  }
+
+  // Hitung estimasi bulan berdasarkan predikat
+  static calculateEstimasiBulan(
+    kekuranganAK: number,
+    predikat: string,
+    koefisienJabatan: number
+  ): number {
+    if (kekuranganAK <= 0) return 0;
+    
+    const koefisienPredikat = {
+      'Sangat Baik': 1.50,
+      'Baik': 1.00,
+      'Cukup': 0.75,
+      'Kurang': 0.50
+    }[predikat] || 1.00;
+
+    const akPerBulan = (koefisienPredikat * koefisienJabatan) / 12;
+    return akPerBulan > 0 ? Math.ceil(kekuranganAK / akPerBulan) : 0;
   }
 }
 
@@ -557,8 +691,6 @@ const useSpreadsheetAPI = () => {
 
   const callAPI = async (operation: string, data?: any) => {
     try {
-      console.log(`🔗 Memanggil API ${operation} dengan data:`, data);
-      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -568,15 +700,10 @@ const useSpreadsheetAPI = () => {
         }
       });
 
-      if (error) {
-        console.error(`❌ API Error untuk ${operation}:`, error);
-        throw error;
-      }
-
-      console.log(`✅ API ${operation} berhasil:`, result);
+      if (error) throw error;
       return result;
     } catch (error) {
-      console.error(`❌ API ${operation} gagal:`, error);
+      console.error(`API ${operation} gagal:`, error);
       toast({
         title: "Error",
         description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -594,8 +721,6 @@ const useSpreadsheetAPI = () => {
       if (rows.length <= 1) return [];
       
       const headers = rows[0];
-      console.log('Spreadsheet headers:', headers);
-      
       const data = rows.slice(1)
         .filter((row: any[]) => {
           if (!nip) return true;
@@ -603,54 +728,44 @@ const useSpreadsheetAPI = () => {
           return nipIndex >= 0 && row[nipIndex] === nip;
         })
         .map((row: any[], index: number) => {
-          const obj: KonversiData = { 
-            id: `${SHEET_NAME}_${index + 2}`,
-            rowIndex: index + 2,
-            Last_Update: '',
-            Masa_Kerja_Bulan: 6,
-            Jenis_Penilaian: 'PENUH'
-          } as KonversiData;
+          const obj: KonversiData = {} as KonversiData;
 
           headers.forEach((header: string, colIndex: number) => {
             let value = row[colIndex];
             
-            // Handle number conversion dengan format yang benar
-            if (header === 'Tahun' || header === 'Semester' || header === 'No') {
+            if (header === 'Tahun' || header === 'Semester' || header === 'No' || 
+                header === 'Nilai_SKP' || header === 'Estimasi_Bulan') {
               value = Number(value) || 0;
             }
-            // Handle AK Konversi dengan konversi format desimal
-            else if (header === 'AK Konversi') {
+            else if (header === 'AK_Konversi' || header === 'Kebutuhan_Pangkat_AK' || 
+                     header === 'Kebutuhan_Jabatan_AK' || header === 'AK_Sebelumnya' ||
+                     header === 'AK_Periode_Ini' || header === 'Total_Kumulatif' ||
+                     header === 'Selisih_Pangkat' || header === 'Selisih_Jabatan' ||
+                     header === 'Kurleb_Pangkat' || header === 'Kurleb_Jabatan') {
               value = KonversiCalculator.parseNumberFromSheet(value);
             }
-            // Handle Nilai SKP
-            else if (header === 'Nilai SKP') {
-              value = Number(value) || 0;
-            }
-            // Map Banyak_Bulan to Masa_Kerja_Bulan dengan konversi yang benar
-            else if (header === 'Banyak_Bulan') {
+            else if (header === 'Masa_Kerja_Bulan') {
               obj.Masa_Kerja_Bulan = Number(value) || 6;
             }
-            // Map Keterangan to Jenis_Penilaian
-            else if (header === 'Keterangan') {
+            else if (header === 'Jenis_Penilaian') {
               obj.Jenis_Penilaian = (value === 'PROPORSIONAL' ? 'PROPORSIONAL' : 'PENUH');
             }
             
-            // Assign value to object
-            if (header !== 'Banyak_Bulan' && header !== 'Keterangan') {
+            if (header !== 'Masa_Kerja_Bulan' && header !== 'Jenis_Penilaian') {
               (obj as any)[header] = value;
             }
           });
           
-          // Ensure No is set
+          obj.id = `${SHEET_NAME}_${index + 2}`;
+          obj.rowIndex = index + 2;
+          
           if (!obj.No || obj.No === 0) {
             obj.No = index + 1;
           }
           
-          console.log('Parsed row data:', obj);
           return obj;
         });
       
-      console.log(`Loaded ${data.length} records from ${SHEET_NAME}`);
       return data;
     } catch (error) {
       console.error('Error reading data:', error);
@@ -659,40 +774,24 @@ const useSpreadsheetAPI = () => {
   };
 
   const appendData = async (values: any[]) => {
-    console.log(`📤 Appending to ${SHEET_NAME}:`, values);
-    
-    // PERBAIKAN: Validasi data sebelum dikirim
-    if (!values || values.length === 0) {
-      throw new Error('Data tidak boleh kosong');
-    }
-
-    // PERBAIKAN: Pastikan semua nilai ada dan tidak undefined
     const cleanedValues = values.map(value => {
-      if (value === undefined || value === null) {
-        return '';
-      }
+      if (value === undefined || value === null) return '';
       return value;
     });
 
-    console.log(`🧹 Cleaned values untuk append:`, cleanedValues);
-    
     try {
       const result = await callAPI('append', { values: [cleanedValues] });
-      console.log(`✅ Append berhasil:`, result);
       return result;
     } catch (error) {
-      console.error(`❌ Append gagal:`, error);
       throw error;
     }
   };
 
   const updateData = async (rowIndex: number, values: any[]) => {
-    console.log(`Updating ${SHEET_NAME} row ${rowIndex}:`, values);
     return await callAPI('update', { rowIndex, values: [values] });
   };
 
   const deleteData = async (rowIndex: number) => {
-    console.log(`Deleting ${SHEET_NAME} row ${rowIndex}`);
     return await callAPI('delete', { rowIndex });
   };
 
@@ -717,9 +816,28 @@ const EditKonversiModal: React.FC<{
     }
   }, [data]);
 
-  const calculateAK = (): { akKonversi: number; masaKerja: number; jenis: string } => {
-    if (!formData.Tahun || !formData.Semester || !formData.Predikat) {
-      return { akKonversi: 0, masaKerja: 0, jenis: '' };
+  const calculateAllData = (): {
+    akKonversi: number;
+    masaKerja: number;
+    jenis: string;
+    kebutuhanPangkat: number;
+    kebutuhanJabatan: number;
+    totalKumulatif: number;
+    selisihPangkat: number;
+    selisihJabatan: number;
+    kurlebPangkat: number;
+    kurlebJabatan: number;
+    estimasiBulan: number;
+    analisis: any;
+  } => {
+    if (!formData.Tahun || !formData.Semester || !formData.Predikat_Kinerja) {
+      return {
+        akKonversi: 0, masaKerja: 0, jenis: '',
+        kebutuhanPangkat: 0, kebutuhanJabatan: 0,
+        totalKumulatif: 0, selisihPangkat: 0, selisihJabatan: 0,
+        kurlebPangkat: 0, kurlebJabatan: 0, estimasiBulan: 0,
+        analisis: {}
+      };
     }
 
     const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
@@ -728,9 +846,15 @@ const EditKonversiModal: React.FC<{
       formData.Semester
     );
 
+    const koefisien = KonversiCalculator.getKoefisien(
+      karyawan.jabatan,
+      karyawan.kategori,
+      karyawan.golongan
+    );
+
     const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-      formData.Predikat,
-      formData['Nilai SKP'] || 95,
+      formData.Predikat_Kinerja!,
+      formData.Nilai_SKP || 95,
       karyawan.jabatan,
       karyawan.kategori,
       karyawan.golongan,
@@ -738,17 +862,64 @@ const EditKonversiModal: React.FC<{
       jenisPenilaian
     );
 
-    return { 
-      akKonversi, 
-      masaKerja: masaKerjaBulan, 
-      jenis: jenisPenilaian 
+    const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+    const totalKumulatif = karyawan.akKumulatif + akKonversi;
+    const selisihPangkat = kebutuhanPangkat - totalKumulatif;
+    const selisihJabatan = kebutuhanJabatan - totalKumulatif;
+    const kurlebPangkat = Math.max(0, selisihPangkat);
+    const kurlebJabatan = Math.max(0, selisihJabatan);
+
+    const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(
+      kurlebPangkat,
+      formData.Predikat_Kinerja!,
+      koefisien
+    );
+
+    const analisis = KonversiCalculator.generateAnalisis(
+      karyawan,
+      formData.Predikat_Kinerja!,
+      akKonversi,
+      totalKumulatif,
+      kebutuhanPangkat,
+      kebutuhanJabatan,
+      estimasiBulan
+    );
+
+    return {
+      akKonversi,
+      masaKerja: masaKerjaBulan,
+      jenis: jenisPenilaian,
+      kebutuhanPangkat,
+      kebutuhanJabatan,
+      totalKumulatif,
+      selisihPangkat,
+      selisihJabatan,
+      kurlebPangkat,
+      kurlebJabatan,
+      estimasiBulan,
+      analisis
     };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.Tahun && formData.Semester && formData.Predikat) {
-      const { akKonversi, masaKerja, jenis } = calculateAK();
+    if (formData.Tahun && formData.Semester && formData.Predikat_Kinerja) {
+      const {
+        akKonversi,
+        masaKerja,
+        jenis,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
+        totalKumulatif,
+        selisihPangkat,
+        selisihJabatan,
+        kurlebPangkat,
+        kurlebJabatan,
+        estimasiBulan,
+        analisis
+      } = calculateAllData();
+
       const periode = KonversiCalculator.calculatePeriodeSemester(
         formData.Tahun, 
         formData.Semester
@@ -757,30 +928,77 @@ const EditKonversiModal: React.FC<{
       const finalData: KonversiData = {
         ...data,
         ...formData,
-        'AK Konversi': akKonversi,
-        'TMT Mulai': periode.mulai,
-        'TMT Selesai': periode.selesai,
+        // Data periode
+        Periode: `${periode.mulai} - ${periode.selesai}`,
+        Jenis_Periode: 'Semester',
+        
+        // Data pribadi
+        Nomor_Karpeg: karyawan.unitKerja,
+        Tempat_Lahir: karyawan.tempatLahir,
+        Tanggal_Lahir: karyawan.tanggalLahir,
+        Jenis_Kelamin: karyawan.jenisKelamin,
+        
+        // Data pangkat & jabatan
+        Pangkat: karyawan.pangkat,
+        Golongan: karyawan.golongan,
+        TMT_Pangkat: karyawan.tmtPangkat,
+        Jabatan: karyawan.jabatan,
+        TMT_Jabatan: karyawan.tmtJabatan,
+        
+        // Data kinerja
+        AK_Konversi: akKonversi,
+        Tanggal_Penetapan: KonversiCalculator.formatDate(new Date()),
+        
+        // Analisis AK
+        Kebutuhan_Pangkat_AK: kebutuhanPangkat,
+        Kebutuhan_Jabatan_AK: kebutuhanJabatan,
+        AK_Sebelumnya: karyawan.akKumulatif,
+        AK_Periode_Ini: akKonversi,
+        Total_Kumulatif: totalKumulatif,
+        Selisih_Pangkat: selisihPangkat,
+        Selisih_Jabatan: selisihJabatan,
+        Kurleb_Pangkat: kurlebPangkat,
+        Kurleb_Jabatan: kurlebJabatan,
+        
+        // Status & rekomendasi
+        Status_Kenaikan: analisis.statusKenaikan,
+        Jenis_Kenaikan: analisis.jenisKenaikan,
+        Estimasi_Bulan: estimasiBulan,
+        Rekomendasi: analisis.rekomendasi,
+        Pertimbangan_Khusus: analisis.pertimbanganKhusus,
+        
+        // Metadata
+        Last_Update: KonversiCalculator.formatDate(new Date()),
+        
+        // Internal
         Masa_Kerja_Bulan: masaKerja,
-        Jenis_Penilaian: jenis as 'PENUH' | 'PROPORSIONAL',
-        Last_Update: KonversiCalculator.formatDate(new Date())
+        Jenis_Penilaian: jenis as 'PENUH' | 'PROPORSIONAL'
       } as KonversiData;
-
-      // Validasi sebelum save
-      if (!KonversiCalculator.validateKonversiData(finalData)) {
-        alert('Data tidak valid! Silakan periksa input Anda.');
-        return;
-      }
 
       onSave(finalData);
     }
   };
 
-  const { akKonversi, masaKerja, jenis } = calculateAK();
+  const {
+    akKonversi,
+    masaKerja,
+    jenis,
+    kebutuhanPangkat,
+    kebutuhanJabatan,
+    totalKumulatif,
+    selisihPangkat,
+    selisihJabatan,
+    kurlebPangkat,
+    kurlebJabatan,
+    estimasiBulan,
+    analisis
+  } = calculateAllData();
+
   const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {data ? 'Edit Data Konversi' : 'Tambah Data Konversi'}
@@ -823,8 +1041,8 @@ const EditKonversiModal: React.FC<{
             <div>
               <Label htmlFor="predikat">Predikat Kinerja</Label>
               <Select 
-                value={formData.Predikat || "Baik"} 
-                onValueChange={(value) => setFormData({...formData, Predikat: value as any})}
+                value={formData.Predikat_Kinerja || "Baik"} 
+                onValueChange={(value) => setFormData({...formData, Predikat_Kinerja: value as any})}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -845,8 +1063,8 @@ const EditKonversiModal: React.FC<{
                 step="0.1"
                 min="0"
                 max="100"
-                value={formData['Nilai SKP'] || 95}
-                onChange={(e) => setFormData({...formData, 'Nilai SKP': parseFloat(e.target.value)})}
+                value={formData.Nilai_SKP || 95}
+                onChange={(e) => setFormData({...formData, Nilai_SKP: parseFloat(e.target.value)})}
                 required
               />
             </div>
@@ -878,22 +1096,52 @@ const EditKonversiModal: React.FC<{
             />
           </div>
 
-          {formData.Tahun && formData.Semester && formData.Predikat && (
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>Perhitungan Otomatis (BKN 2023):</strong><br />
-                • Jenis Penilaian: {jenis}<br />
-                • Masa Kerja: {masaKerja} bulan<br />
-                • Koefisien: {koefisien}<br />
-                • Predikat: {formData.Predikat} ({{
-                  'Sangat Baik': '1.50',
-                  'Baik': '1.00', 
-                  'Cukup': '0.75',
-                  'Kurang': '0.50'
-                }[formData.Predikat]})<br />
-                • AK Konversi: {akKonversi}<br />
-                • Periode: {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}
-              </p>
+          {formData.Tahun && formData.Semester && formData.Predikat_Kinerja && (
+            <div className="p-4 bg-blue-50 rounded-lg space-y-3">
+              <h4 className="font-semibold text-blue-800">Perhitungan Otomatis (BKN 2023):</h4>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><strong>Informasi Periode:</strong></p>
+                  <p>• Jenis Penilaian: {jenis}</p>
+                  <p>• Masa Kerja: {masaKerja} bulan</p>
+                  <p>• Periode: {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}</p>
+                </div>
+                
+                <div>
+                  <p><strong>Perhitungan AK:</strong></p>
+                  <p>• Koefisien: {koefisien}</p>
+                  <p>• Predikat: {formData.Predikat_Kinerja} ({
+                    {'Sangat Baik': '1.50', 'Baik': '1.00', 'Cukup': '0.75', 'Kurang': '0.50'}[formData.Predikat_Kinerja]
+                  })</p>
+                  <p>• AK Konversi: {akKonversi}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><strong>Analisis Pangkat:</strong></p>
+                  <p>• Kebutuhan: {kebutuhanPangkat}</p>
+                  <p>• Total Kumulatif: {totalKumulatif.toFixed(3)}</p>
+                  <p>• Selisih: {selisihPangkat.toFixed(3)}</p>
+                  <p>• Kurleb: {kurlebPangkat.toFixed(3)}</p>
+                </div>
+                
+                <div>
+                  <p><strong>Analisis Jabatan:</strong></p>
+                  <p>• Kebutuhan: {kebutuhanJabatan}</p>
+                  <p>• Total Kumulatif: {totalKumulatif.toFixed(3)}</p>
+                  <p>• Selisih: {selisihJabatan.toFixed(3)}</p>
+                  <p>• Kurleb: {kurlebJabatan.toFixed(3)}</p>
+                </div>
+              </div>
+
+              <div className="text-sm">
+                <p><strong>Rekomendasi:</strong> {analisis.rekomendasi}</p>
+                <p><strong>Status:</strong> {analisis.statusKenaikan} | <strong>Jenis:</strong> {analisis.jenisKenaikan}</p>
+                <p><strong>Estimasi:</strong> {estimasiBulan} bulan</p>
+              </div>
+
               {karyawan.kategori === 'Reguler' && (
                 <p className="text-sm text-orange-700 mt-2">
                   <strong>Catatan:</strong> Kategori Reguler tidak menggunakan perhitungan Angka Kredit
@@ -916,287 +1164,6 @@ const EditKonversiModal: React.FC<{
   );
 };
 
-// ==================== SEMESTERAN TABLE VIEW ====================
-const SemesteranTableView: React.FC<{
-  availableSemesters: any[];
-  karyawan: Karyawan;
-}> = ({ availableSemesters, karyawan }) => {
-  return (
-    <div className="max-h-96 overflow-y-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>No</TableHead>
-            <TableHead>Tahun</TableHead>
-            <TableHead>Semester</TableHead>
-            <TableHead>Periode</TableHead>
-            <TableHead>Jenis Penilaian</TableHead>
-            <TableHead>Masa Kerja</TableHead>
-            <TableHead>AK Estimasi (Baik)</TableHead>
-            <TableHead>Keterangan</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {availableSemesters.map((semester, index) => {
-            const periode = KonversiCalculator.calculatePeriodeSemester(semester.tahun, semester.semester);
-            const akEstimasi = KonversiCalculator.calculateAKFromPredikat(
-              'Baik', 
-              95,
-              karyawan.jabatan,
-              karyawan.kategori,
-              karyawan.golongan,
-              semester.masaKerjaBulan,
-              semester.jenisPenilaian
-            );
-            
-            return (
-              <TableRow key={`${semester.tahun}-${semester.semester}`}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{semester.tahun}</TableCell>
-                <TableCell>Semester {semester.semester}</TableCell>
-                <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
-                <TableCell>
-                  <Badge variant={semester.jenisPenilaian === 'PENUH' ? 'default' : 'secondary'}>
-                    {semester.jenisPenilaian}
-                  </Badge>
-                </TableCell>
-                <TableCell>{semester.masaKerjaBulan} bulan</TableCell>
-                <TableCell className="font-semibold">{akEstimasi}</TableCell>
-                <TableCell className="text-sm">
-                  {semester.jenisPenilaian === 'PROPORSIONAL' ? 
-                    'Penilaian proporsional' : 'Penilaian penuh 6 bulan'}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  );
-};
-
-// ==================== TAHUNAN TABLE VIEW ====================
-const TahunanTableView: React.FC<{
-  tahunanData: any[];
-  karyawan: Karyawan;
-}> = ({ tahunanData, karyawan }) => {
-  return (
-    <div className="max-h-96 overflow-y-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>No</TableHead>
-            <TableHead>Tahun</TableHead>
-            <TableHead>Semester Asli</TableHead>
-            <TableHead>Periode</TableHead>
-            <TableHead>Jenis Penilaian</TableHead>
-            <TableHead>Masa Kerja</TableHead>
-            <TableHead>AK Estimasi (Baik)</TableHead>
-            <TableHead>Keterangan</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tahunanData.map((tahun, index) => {
-            // Untuk tahunan, periode adalah seluruh tahun
-            const periodeMulai = `01/01/${tahun.tahun}`;
-            const periodeSelesai = `31/12/${tahun.tahun}`;
-            
-            const akEstimasi = KonversiCalculator.calculateAKFromPredikat(
-              'Baik', 
-              95,
-              karyawan.jabatan,
-              karyawan.kategori,
-              karyawan.golongan,
-              tahun.masaKerjaBulan,
-              tahun.jenisPenilaian,
-              'tahunan'
-            );
-            
-            return (
-              <TableRow key={`tahun-${tahun.tahun}`}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{tahun.tahun}</TableCell>
-                <TableCell className="text-sm">
-                  {tahun.semesters.includes(1) && tahun.semesters.includes(2) ? 'Sem 1 & 2' :
-                   tahun.semesters.includes(1) ? 'Semester 1' : 'Semester 2'}
-                </TableCell>
-                <TableCell className="text-sm">{periodeMulai} - {periodeSelesai}</TableCell>
-                <TableCell>
-                  <Badge variant={tahun.jenisPenilaian === 'PENUH' ? 'default' : 'secondary'}>
-                    {tahun.jenisPenilaian}
-                  </Badge>
-                </TableCell>
-                <TableCell>{tahun.masaKerjaBulan} bulan</TableCell>
-                <TableCell className="font-semibold">{akEstimasi}</TableCell>
-                <TableCell className="text-sm">
-                  {tahun.jenisPenilaian === 'PROPORSIONAL' ? 
-                    'Penilaian proporsional' : 'Penilaian penuh 12 bulan'}
-                  {tahun.masaKerjaBulan < 12 && ` (${tahun.masaKerjaBulan} bulan)`}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  );
-};
-
-// ==================== SEMESTER GENERATOR MODAL ====================
-const GenerateSemesterModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onGenerate: (semesters: { 
-    tahun: number; 
-    semester: 1 | 2;
-    masaKerjaBulan: number;
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-  }[], mode: 'semesteran' | 'tahunan') => void;
-  tglPenghitunganAkTerakhir: string;
-  karyawan: Karyawan;
-}> = ({ isOpen, onClose, onGenerate, tglPenghitunganAkTerakhir, karyawan }) => {
-  const [availableSemesters, setAvailableSemesters] = useState<{ 
-    tahun: number; 
-    semester: 1 | 2;
-    masaKerjaBulan: number;
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-  }[]>([]);
-  const [generateMode, setGenerateMode] = useState<'semesteran' | 'tahunan'>('semesteran');
-
-  useEffect(() => {
-    if (isOpen && tglPenghitunganAkTerakhir) {
-      const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
-      setAvailableSemesters(semesters);
-    }
-  }, [isOpen, tglPenghitunganAkTerakhir]);
-
-  // Fungsi untuk mengkonversi data semesteran ke tahunan
-  const convertToTahunan = (semesters: typeof availableSemesters) => {
-    const tahunanMap = new Map<number, {
-      tahun: number;
-      masaKerjaBulan: number;
-      jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-      semesters: (1 | 2)[];
-    }>();
-
-    semesters.forEach(semester => {
-      if (!tahunanMap.has(semester.tahun)) {
-        tahunanMap.set(semester.tahun, {
-          tahun: semester.tahun,
-          masaKerjaBulan: 0,
-          jenisPenilaian: 'PENUH',
-          semesters: []
-        });
-      }
-      
-      const tahunData = tahunanMap.get(semester.tahun)!;
-      tahunData.masaKerjaBulan += semester.masaKerjaBulan;
-      tahunData.semesters.push(semester.semester);
-      
-      // Jika ada semester yang proporsional, maka tahunan juga proporsional
-      if (semester.jenisPenilaian === 'PROPORSIONAL') {
-        tahunData.jenisPenilaian = 'PROPORSIONAL';
-      }
-    });
-
-    // Konversi kembali ke format yang kompatibel
-    return Array.from(tahunanMap.values()).map(tahunData => ({
-      tahun: tahunData.tahun,
-      semester: 1 as 1 | 2, // Default semester 1 untuk tahunan
-      masaKerjaBulan: Math.min(12, tahunData.masaKerjaBulan), // Maksimal 12 bulan
-      jenisPenilaian: tahunData.jenisPenilaian,
-      semesters: tahunData.semesters // Simpan info semester asli untuk display
-    }));
-  };
-
-  const handleGenerate = () => {
-    let dataToGenerate = availableSemesters;
-    
-    if (generateMode === 'tahunan') {
-      dataToGenerate = convertToTahunan(availableSemesters);
-    }
-    
-    onGenerate(dataToGenerate, generateMode);
-    onClose();
-  };
-
-  const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
-  
-  const tahunanData = convertToTahunan(availableSemesters);
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl">
-        <DialogHeader>
-          <DialogTitle>Generate Data dari Tanggal Penghitungan AK Terakhir</DialogTitle>
-          <DialogDescription>
-            Membuat data konversi dari Tanggal Penghitungan AK Terakhir: {tglPenghitunganAkTerakhir} sesuai Peraturan BKN 2023
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Mode Selection */}
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1">
-              <Label htmlFor="generate-mode">Mode Generate</Label>
-              <Select 
-                value={generateMode} 
-                onValueChange={(value: 'semesteran' | 'tahunan') => setGenerateMode(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semesteran">Semesteran (Data per Semester)</SelectItem>
-                  <SelectItem value="tahunan">Tahunan (Data Gabungan per Tahun)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700">
-              <strong>Tanggal Penghitungan AK Terakhir:</strong> {tglPenghitunganAkTerakhir}<br />
-              <strong>Mode:</strong> {generateMode === 'semesteran' ? 'Semesteran' : 'Tahunan'}<br />
-              <strong>Jumlah {generateMode === 'semesteran' ? 'Semester' : 'Tahun'}:</strong> {generateMode === 'semesteran' ? availableSemesters.length : tahunanData.length}<br />
-              <strong>Kategori:</strong> {karyawan.kategori}<br />
-              <strong>Golongan:</strong> {karyawan.golongan}<br />
-              <strong>Koefisien:</strong> {koefisien}<br />
-              <strong>Sistem:</strong> Penilaian Proporsional sesuai Peraturan BKN Nomor 3 Tahun 2023
-            </p>
-            {generateMode === 'tahunan' && (
-              <p className="text-sm text-green-700 mt-2">
-                <strong>Catatan Mode Tahunan:</strong> Data akan digabungkan per tahun dengan total masa kerja maksimal 12 bulan.
-              </p>
-            )}
-          </div>
-
-          {generateMode === 'semesteran' ? (
-            <SemesteranTableView 
-              availableSemesters={availableSemesters} 
-              karyawan={karyawan} 
-            />
-          ) : (
-            <TahunanTableView 
-              tahunanData={tahunanData} 
-              karyawan={karyawan} 
-            />
-          )}
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Batal
-            </Button>
-            <Button onClick={handleGenerate} disabled={availableSemesters.length === 0}>
-              Generate {generateMode === 'semesteran' ? availableSemesters.length : tahunanData.length} {generateMode === 'semesteran' ? 'Semester' : 'Tahun'}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 // ==================== MAIN COMPONENT ====================
 const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const { toast } = useToast();
@@ -1212,7 +1179,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     isOpen: false,
     data: null
   });
-  const [generateModal, setGenerateModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -1241,18 +1207,42 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     try {
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      // Format values untuk spreadsheet dengan format desimal yang benar
+      // Format values untuk spreadsheet dengan semua field baru
       const values = [
         updatedData.No || nextNo,
-        updatedData.NIP,
-        updatedData.Nama,
         updatedData.Tahun,
         updatedData.Semester,
-        updatedData.Predikat,
-        updatedData['Nilai SKP'],
-        KonversiCalculator.formatNumberForSheet(updatedData['AK Konversi']),
-        updatedData['TMT Mulai'],
-        updatedData['TMT Selesai'],
+        updatedData.Periode,
+        updatedData.Jenis_Periode,
+        updatedData.Nama,
+        updatedData.NIP,
+        updatedData.Nomor_Karpeg,
+        updatedData.Tempat_Lahir,
+        updatedData.Tanggal_Lahir,
+        updatedData.Jenis_Kelamin,
+        updatedData.Pangkat,
+        updatedData.Golongan,
+        updatedData.TMT_Pangkat,
+        updatedData.Jabatan,
+        updatedData.TMT_Jabatan,
+        updatedData.Predikat_Kinerja,
+        updatedData.Nilai_SKP,
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Konversi),
+        updatedData.Tanggal_Penetapan,
+        KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Pangkat_AK),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK),
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Sebelumnya),
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Periode_Ini),
+        KonversiCalculator.formatNumberForSheet(updatedData.Total_Kumulatif),
+        KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Pangkat),
+        KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Jabatan),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Pangkat),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Jabatan),
+        updatedData.Status_Kenaikan,
+        updatedData.Jenis_Kenaikan,
+        updatedData.Estimasi_Bulan,
+        updatedData.Rekomendasi,
+        updatedData.Pertimbangan_Khusus,
         updatedData.Status,
         updatedData.Catatan || '',
         updatedData.Link_Dokumen || '',
@@ -1291,6 +1281,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       semester
     );
 
+    const koefisien = KonversiCalculator.getKoefisien(
+      karyawan.jabatan,
+      karyawan.kategori,
+      karyawan.golongan
+    );
+
     const akKonversi = KonversiCalculator.calculateAKFromPredikat(
       'Baik', 
       95,
@@ -1301,52 +1297,126 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       jenisPenilaian
     );
 
+    const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+    const totalKumulatif = karyawan.akKumulatif + akKonversi;
+    const selisihPangkat = kebutuhanPangkat - totalKumulatif;
+    const selisihJabatan = kebutuhanJabatan - totalKumulatif;
+    const kurlebPangkat = Math.max(0, selisihPangkat);
+    const kurlebJabatan = Math.max(0, selisihJabatan);
+    const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(kurlebPangkat, 'Baik', koefisien);
+
+    const analisis = KonversiCalculator.generateAnalisis(
+      karyawan,
+      'Baik',
+      akKonversi,
+      totalKumulatif,
+      kebutuhanPangkat,
+      kebutuhanJabatan,
+      estimasiBulan
+    );
+
     const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
     const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
     
-    const newData = {
+    const newData: KonversiData = {
       No: nextNo,
-      NIP: karyawan.nip,
-      Nama: karyawan.nama,
+      
+      // Data periode
       Tahun: tahun,
       Semester: semester,
-      Predikat: 'Baik' as const,
-      'Nilai SKP': 95,
-      'AK Konversi': akKonversi,
-      'TMT Mulai': periode.mulai,
-      'TMT Selesai': periode.selesai,
-      Status: 'Draft' as const,
+      Periode: `${periode.mulai} - ${periode.selesai}`,
+      Jenis_Periode: 'Semester',
+      
+      // Data pribadi
+      Nama: karyawan.nama,
+      NIP: karyawan.nip,
+      Nomor_Karpeg: karyawan.unitKerja,
+      Tempat_Lahir: karyawan.tempatLahir,
+      Tanggal_Lahir: karyawan.tanggalLahir,
+      Jenis_Kelamin: karyawan.jenisKelamin,
+      
+      // Data pangkat & jabatan
+      Pangkat: karyawan.pangkat,
+      Golongan: karyawan.golongan,
+      TMT_Pangkat: karyawan.tmtPangkat,
+      Jabatan: karyawan.jabatan,
+      TMT_Jabatan: karyawan.tmtJabatan,
+      
+      // Data kinerja
+      Predikat_Kinerja: 'Baik',
+      Nilai_SKP: 95,
+      AK_Konversi: akKonversi,
+      Tanggal_Penetapan: now,
+      
+      // Analisis AK
+      Kebutuhan_Pangkat_AK: kebutuhanPangkat,
+      Kebutuhan_Jabatan_AK: kebutuhanJabatan,
+      AK_Sebelumnya: karyawan.akKumulatif,
+      AK_Periode_Ini: akKonversi,
+      Total_Kumulatif: totalKumulatif,
+      Selisih_Pangkat: selisihPangkat,
+      Selisih_Jabatan: selisihJabatan,
+      Kurleb_Pangkat: kurlebPangkat,
+      Kurleb_Jabatan: kurlebJabatan,
+      
+      // Status & rekomendasi
+      Status_Kenaikan: analisis.statusKenaikan,
+      Jenis_Kenaikan: analisis.jenisKenaikan,
+      Estimasi_Bulan: estimasiBulan,
+      Rekomendasi: analisis.rekomendasi,
+      Pertimbangan_Khusus: analisis.pertimbanganKhusus,
+      
+      // Metadata
+      Status: 'Draft',
       Catatan: '',
+      Link_Dokumen: '',
       Last_Update: now,
+      
+      // Internal
       Masa_Kerja_Bulan: masaKerjaBulan,
       Jenis_Penilaian: jenisPenilaian
     };
 
-    // Validasi sebelum save
-    if (!KonversiCalculator.validateKonversiData(newData as KonversiData)) {
-      toast({
-        title: "Error",
-        description: "Data tidak valid untuk disimpan",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       const values = [
         newData.No,
-        newData.NIP,
-        newData.Nama,
         newData.Tahun,
         newData.Semester,
-        newData.Predikat,
-        newData['Nilai SKP'],
-        KonversiCalculator.formatNumberForSheet(newData['AK Konversi']),
-        newData['TMT Mulai'],
-        newData['TMT Selesai'],
+        newData.Periode,
+        newData.Jenis_Periode,
+        newData.Nama,
+        newData.NIP,
+        newData.Nomor_Karpeg,
+        newData.Tempat_Lahir,
+        newData.Tanggal_Lahir,
+        newData.Jenis_Kelamin,
+        newData.Pangkat,
+        newData.Golongan,
+        newData.TMT_Pangkat,
+        newData.Jabatan,
+        newData.TMT_Jabatan,
+        newData.Predikat_Kinerja,
+        newData.Nilai_SKP,
+        KonversiCalculator.formatNumberForSheet(newData.AK_Konversi),
+        newData.Tanggal_Penetapan,
+        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Pangkat_AK),
+        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Jabatan_AK),
+        KonversiCalculator.formatNumberForSheet(newData.AK_Sebelumnya),
+        KonversiCalculator.formatNumberForSheet(newData.AK_Periode_Ini),
+        KonversiCalculator.formatNumberForSheet(newData.Total_Kumulatif),
+        KonversiCalculator.formatNumberForSheet(newData.Selisih_Pangkat),
+        KonversiCalculator.formatNumberForSheet(newData.Selisih_Jabatan),
+        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Pangkat),
+        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Jabatan),
+        newData.Status_Kenaikan,
+        newData.Jenis_Kenaikan,
+        newData.Estimasi_Bulan,
+        newData.Rekomendasi,
+        newData.Pertimbangan_Khusus,
         newData.Status,
         newData.Catatan,
-        '', // Link_Dokumen
+        newData.Link_Dokumen,
         newData.Last_Update,
         newData.Masa_Kerja_Bulan,
         newData.Jenis_Penilaian
@@ -1362,166 +1432,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       toast({
         title: "Error",
         description: "Gagal menambah data",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // PERBAIKAN: Fungsi handleGenerateSemesters yang sudah diperbaiki
-  const handleGenerateSemesters = async (semesters: { 
-    tahun: number; 
-    semester: 1 | 2;
-    masaKerjaBulan: number;
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-  }[], mode: 'semesteran' | 'tahunan') => {
-    try {
-      const now = KonversiCalculator.formatDate(new Date());
-      const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
-      
-      const newData = semesters.map((item, index) => {
-        // Untuk mode tahunan, gunakan periode tahun penuh
-        let periode;
-        if (mode === 'tahunan') {
-          periode = {
-            mulai: `01/01/${item.tahun}`,
-            selesai: `31/12/${item.tahun}`
-          };
-        } else {
-          periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
-        }
-
-        // PERBAIKAN: Untuk mode tahunan, hitung ulang AK dengan masa kerja yang benar
-        const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-          'Baik', 
-          95,
-          karyawan.jabatan,
-          karyawan.kategori,
-          karyawan.golongan,
-          item.masaKerjaBulan,
-          item.jenisPenilaian,
-          mode
-        );
-
-        // PERBAIKAN: Pastikan semua field required ada dengan nilai default
-        const dataItem = {
-          No: nextNo + index,
-          NIP: karyawan.nip,
-          Nama: karyawan.nama,
-          Tahun: item.tahun,
-          Semester: mode === 'tahunan' ? 1 : item.semester,
-          Predikat: 'Baik' as const,
-          'Nilai SKP': 95,
-          'AK Konversi': akKonversi,
-          'TMT Mulai': periode.mulai,
-          'TMT Selesai': periode.selesai,
-          Status: 'Draft' as const,
-          Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
-          Link_Dokumen: '',
-          Last_Update: now,
-          Masa_Kerja_Bulan: item.masaKerjaBulan,
-          Jenis_Penilaian: item.jenisPenilaian
-        };
-
-        console.log(`📊 Data item ${mode} ${index + 1}:`, dataItem);
-        return dataItem;
-      });
-
-      // PERBAIKAN: Debug detail untuk validasi
-      console.log('🔍 DETAIL VALIDASI DATA:');
-      newData.forEach((data, index) => {
-        const isValid = KonversiCalculator.validateKonversiData(data as KonversiData, mode);
-        console.log(`Data ${index + 1} (Tahun ${data.Tahun}):`, {
-          isValid,
-          Masa_Kerja_Bulan: data.Masa_Kerja_Bulan,
-          'AK Konversi': data['AK Konversi'],
-          'Nilai SKP': data['Nilai SKP'],
-          Tahun: data.Tahun,
-          Semester: data.Semester,
-          Predikat: data.Predikat,
-          Jenis_Penilaian: data.Jenis_Penilaian,
-          mode
-        });
-      });
-
-      // Validasi semua data sebelum save
-      const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData, mode));
-      
-      if (invalidData.length > 0) {
-        console.error('❌ Data tidak valid ditemukan:', invalidData);
-        toast({
-          title: "Error Validasi Data",
-          description: `${invalidData.length} data tidak valid. Periksa console untuk detail.`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log('📝 Semua data valid, menyimpan ke spreadsheet...');
-
-      // PERBAIKAN: Simpan data satu per satu dengan delay untuk menghindari rate limit
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const [index, data] of newData.entries()) {
-        try {
-          // PERBAIKAN: Pastikan urutan kolom sesuai dengan spreadsheet
-          const values = [
-            data.No,
-            data.NIP,
-            data.Nama,
-            data.Tahun,
-            data.Semester,
-            data.Predikat,
-            data['Nilai SKP'],
-            KonversiCalculator.formatNumberForSheet(data['AK Konversi']),
-            data['TMT Mulai'],
-            data['TMT Selesai'],
-            data.Status,
-            data.Catatan,
-            data.Link_Dokumen,
-            data.Last_Update,
-            data.Masa_Kerja_Bulan,
-            data.Jenis_Penilaian
-          ];
-
-          console.log(`💾 Menyimpan data ${index + 1}/${newData.length} untuk ${mode}:`, values);
-
-          await api.appendData(values);
-          successCount++;
-          console.log(`✅ Berhasil menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}`);
-
-          // PERBAIKAN: Tambahkan delay kecil antara setiap request untuk menghindari rate limit
-          if (index < newData.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-
-        } catch (error) {
-          errorCount++;
-          console.error(`❌ Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}:`, error);
-        }
-      }
-
-      if (errorCount > 0) {
-        toast({
-          title: "Peringatan",
-          description: `Berhasil menyimpan ${successCount} data, gagal menyimpan ${errorCount} data`,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Sukses",
-          description: `Berhasil generate ${successCount} ${mode === 'semesteran' ? 'semester' : 'tahun'} dari Tanggal Penghitungan AK Terakhir`
-        });
-      }
-
-      // Refresh data setelah semua operasi selesai
-      await loadData();
-
-    } catch (error) {
-      console.error('❌ Error dalam handleGenerateSemesters:', error);
-      toast({
-        title: "Error",
-        description: `Gagal generate data ${mode}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
@@ -1557,77 +1467,72 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   };
 
   const renderKonversiTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>No</TableHead>
-          <TableHead>Tahun</TableHead>
-          <TableHead>Semester</TableHead>
-          <TableHead>Predikat</TableHead>
-          <TableHead>Nilai SKP</TableHead>
-          <TableHead>AK Konversi</TableHead>
-          <TableHead>Periode</TableHead>
-          <TableHead>Jenis</TableHead>
-          <TableHead>Masa Kerja</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {getFilteredData().map((data: KonversiData) => (
-          <TableRow key={data.id}>
-            <TableCell className="font-medium">{data.No}</TableCell>
-            <TableCell>{data.Tahun}</TableCell>
-            <TableCell>{data.Semester}</TableCell>
-            <TableCell>
-              <Badge variant={
-                data.Predikat === 'Sangat Baik' ? 'default' :
-                data.Predikat === 'Baik' ? 'secondary' :
-                data.Predikat === 'Cukup' ? 'outline' : 'destructive'
-              }>
-                {data.Predikat}
-              </Badge>
-            </TableCell>
-            <TableCell>{data['Nilai SKP']}</TableCell>
-            <TableCell className="font-semibold">{data['AK Konversi']}</TableCell>
-            <TableCell className="text-sm">
-              {data['TMT Mulai']} - {data['TMT Selesai']}
-            </TableCell>
-            <TableCell>
-              <Badge variant={data.Jenis_Penilaian === 'PENUH' ? 'default' : 'secondary'}>
-                {data.Jenis_Penilaian || 'PENUH'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              {data.Masa_Kerja_Bulan || 6} bulan
-            </TableCell>
-            <TableCell>
-              <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>
-                {data.Status}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleEdit(data)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleDelete(data)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>No</TableHead>
+            <TableHead>Tahun</TableHead>
+            <TableHead>Semester</TableHead>
+            <TableHead>Predikat</TableHead>
+            <TableHead>AK Konversi</TableHead>
+            <TableHead>Total Kumulatif</TableHead>
+            <TableHead>Status Kenaikan</TableHead>
+            <TableHead>Estimasi</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {getFilteredData().map((data: KonversiData) => (
+            <TableRow key={data.id}>
+              <TableCell className="font-medium">{data.No}</TableCell>
+              <TableCell>{data.Tahun}</TableCell>
+              <TableCell>{data.Semester}</TableCell>
+              <TableCell>
+                <Badge variant={
+                  data.Predikat_Kinerja === 'Sangat Baik' ? 'default' :
+                  data.Predikat_Kinerja === 'Baik' ? 'secondary' :
+                  data.Predikat_Kinerja === 'Cukup' ? 'outline' : 'destructive'
+                }>
+                  {data.Predikat_Kinerja}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-semibold">{data.AK_Konversi}</TableCell>
+              <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
+              <TableCell>
+                <Badge variant={
+                  data.Status_Kenaikan === 'Bisa Usul' ? 'default' :
+                  data.Status_Kenaikan === 'Estimasi 6 Bulan' ? 'secondary' : 'outline'
+                }>
+                  {data.Status_Kenaikan}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {data.Estimasi_Bulan > 0 ? `${data.Estimasi_Bulan} bulan` : 'Siap'}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleEdit(data)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDelete(data)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 
   const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
@@ -1638,10 +1543,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Konversi Predikat Kinerja (BKN 2023)
+            Konversi Predikat Kinerja (BKN 2023) - Data Lengkap
           </CardTitle>
           <CardDescription>
-            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama} sesuai Peraturan BKN Nomor 3 Tahun 2023
+            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama} dengan analisis lengkap
             {karyawan.kategori === 'Reguler' && (
               <span className="text-orange-600 font-semibold"> (Kategori Reguler - Data untuk dokumentasi)</span>
             )}
@@ -1660,7 +1565,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[2020,2021,2022,2023, 2024, 2025, 2026,2027,2028,2029,2030].map(year => (
+                  {[2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030].map(year => (
                     <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1693,11 +1598,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               <Plus className="h-4 w-4 mr-2" />
               Tambah Baru
             </Button>
-
-            <Button onClick={() => setGenerateModal(true)} variant="secondary">
-              <Save className="h-4 w-4 mr-2" />
-              Generate dari Tanggal Penghitungan AK
-            </Button>
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
@@ -1717,16 +1617,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Tidak ada data ditemukan</p>
-                  <div className="flex gap-2 justify-center mt-2">
-                    <Button onClick={handleAddNew}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tambah Data Pertama
-                    </Button>
-                    <Button onClick={() => setGenerateModal(true)} variant="outline">
-                      <Save className="h-4 w-4 mr-2" />
-                      Generate dari Tanggal Penghitungan AK Terakhir
-                    </Button>
-                  </div>
+                  <Button onClick={handleAddNew} className="mt-2">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Data Pertama
+                  </Button>
                 </div>
               ) : (
                 renderKonversiTable()
@@ -1741,14 +1635,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         isOpen={editModal.isOpen}
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
-        karyawan={karyawan}
-      />
-
-      <GenerateSemesterModal
-        isOpen={generateModal}
-        onClose={() => setGenerateModal(false)}
-        onGenerate={handleGenerateSemesters}
-        tglPenghitunganAkTerakhir={karyawan.tglPenghitunganAkTerakhir}
         karyawan={karyawan}
       />
     </div>
