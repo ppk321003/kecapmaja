@@ -1289,103 +1289,119 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     }
   };
 
-  const handleGenerateSemesters = async (semesters: { 
-    tahun: number; 
-    semester: 1 | 2;
-    masaKerjaBulan: number;
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-  }[], mode: 'semesteran' | 'tahunan') => {
-    try {
-      const now = KonversiCalculator.formatDate(new Date());
-      const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
-      
-      const newData = semesters.map((item, index) => {
-        // Untuk mode tahunan, gunakan periode tahun penuh
-        let periode;
-        if (mode === 'tahunan') {
-          periode = {
-            mulai: `01/01/${item.tahun}`,
-            selesai: `31/12/${item.tahun}`
-          };
-        } else {
-          periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
-        }
-
-        const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-          'Baik', 
-          95,
-          karyawan.jabatan,
-          karyawan.kategori,
-          karyawan.golongan,
-          item.masaKerjaBulan,
-          item.jenisPenilaian
-        );
-
-        return {
-          No: nextNo + index,
-          NIP: karyawan.nip,
-          Nama: karyawan.nama,
-          Tahun: item.tahun,
-          Semester: mode === 'tahunan' ? 1 : item.semester, // Untuk tahunan, default semester 1
-          Predikat: 'Baik' as const,
-          'Nilai SKP': 95,
-          'AK Konversi': akKonversi,
-          'TMT Mulai': periode.mulai,
-          'TMT Selesai': periode.selesai,
-          Status: 'Draft' as const,
-          Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
-          Last_Update: now,
-          Masa_Kerja_Bulan: item.masaKerjaBulan,
-          Jenis_Penilaian: item.jenisPenilaian
+const handleGenerateSemesters = async (semesters: { 
+  tahun: number; 
+  semester: 1 | 2;
+  masaKerjaBulan: number;
+  jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
+}[], mode: 'semesteran' | 'tahunan') => {
+  try {
+    const now = KonversiCalculator.formatDate(new Date());
+    const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
+    
+    const newData = semesters.map((item, index) => {
+      // Untuk mode tahunan, gunakan periode tahun penuh
+      let periode;
+      if (mode === 'tahunan') {
+        periode = {
+          mulai: `01/01/${item.tahun}`,
+          selesai: `31/12/${item.tahun}`
         };
-      });
-
-      // Validasi semua data sebelum save
-      const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData));
-      if (invalidData.length > 0) {
-        toast({
-          title: "Error",
-          description: `${invalidData.length} data tidak valid dan tidak disimpan`,
-          variant: "destructive"
-        });
-        return;
+      } else {
+        periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
       }
 
-      for (const data of newData) {
-        const values = [
-          data.No,
-          data.NIP,
-          data.Nama,
-          data.Tahun,
-          data.Semester,
-          data.Predikat,
-          data['Nilai SKP'],
-          KonversiCalculator.formatNumberForSheet(data['AK Konversi']),
-          data['TMT Mulai'],
-          data['TMT Selesai'],
-          data.Status,
-          data.Catatan,
-          '', // Link_Dokumen
-          data.Last_Update,
-          data.Masa_Kerja_Bulan,
-          data.Jenis_Penilaian
-        ];
-        await api.appendData(values);
-      }
+      const akKonversi = KonversiCalculator.calculateAKFromPredikat(
+        'Baik', 
+        95,
+        karyawan.jabatan,
+        karyawan.kategori,
+        karyawan.golongan,
+        item.masaKerjaBulan,
+        item.jenisPenilaian
+      );
 
-      toast({
-        title: "Sukses",
-        description: `Berhasil generate ${semesters.length} ${mode === 'semesteran' ? 'semester' : 'tahun'} dari Tanggal Penghitungan AK Terakhir dengan sistem proporsional BKN`
-      });
-      loadData();
-    } catch (error) {
+      // PERBAIKAN: Pastikan semua field required ada
+      return {
+        No: nextNo + index,
+        NIP: karyawan.nip,
+        Nama: karyawan.nama,
+        Tahun: item.tahun,
+        Semester: mode === 'tahunan' ? 1 : item.semester, // Untuk tahunan, default semester 1
+        Predikat: 'Baik' as const,
+        'Nilai SKP': 95,
+        'AK Konversi': akKonversi,
+        'TMT Mulai': periode.mulai,
+        'TMT Selesai': periode.selesai,
+        Status: 'Draft' as const,
+        Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
+        Link_Dokumen: '', // Pastikan field ini ada
+        Last_Update: now,
+        Masa_Kerja_Bulan: item.masaKerjaBulan,
+        Jenis_Penilaian: item.jenisPenilaian
+      };
+    });
+
+    // Validasi semua data sebelum save
+    const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData));
+    if (invalidData.length > 0) {
       toast({
         title: "Error",
-        description: `Gagal generate data ${mode}`,
+        description: `${invalidData.length} data tidak valid dan tidak disimpan`,
         variant: "destructive"
       });
+      return;
     }
-  };
+
+    // PERBAIKAN: Debug log untuk melihat data yang akan disimpan
+    console.log('📝 Data yang akan disimpan ke spreadsheet:', newData);
+
+    for (const data of newData) {
+      // PERBAIKAN: Pastikan urutan kolom sesuai dengan spreadsheet
+      const values = [
+        data.No,
+        data.NIP,
+        data.Nama,
+        data.Tahun,
+        data.Semester,
+        data.Predikat,
+        data['Nilai SKP'],
+        KonversiCalculator.formatNumberForSheet(data['AK Konversi']),
+        data['TMT Mulai'],
+        data['TMT Selesai'],
+        data.Status,
+        data.Catatan || '', // Pastikan tidak undefined
+        data.Link_Dokumen || '', // Pastikan tidak undefined
+        data.Last_Update,
+        data.Masa_Kerja_Bulan || 6,
+        data.Jenis_Penilaian || 'PENUH'
+      ];
+
+      console.log(`💾 Menyimpan data ${mode} ke baris:`, values);
+
+      try {
+        await api.appendData(values);
+        console.log(`✅ Berhasil menyimpan data untuk tahun ${data.Tahun}`);
+      } catch (error) {
+        console.error(`❌ Gagal menyimpan data untuk tahun ${data.Tahun}:`, error);
+        throw error; // Re-throw untuk menangani di catch block luar
+      }
+    }
+
+    toast({
+      title: "Sukses",
+      description: `Berhasil generate ${semesters.length} ${mode === 'semesteran' ? 'semester' : 'tahun'} dari Tanggal Penghitungan AK Terakhir dengan sistem proporsional BKN`
+    });
+    loadData();
+  } catch (error) {
+    console.error('❌ Error dalam handleGenerateSemesters:', error);
+    toast({
+      title: "Error",
+      description: `Gagal generate data ${mode}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      variant: "destructive"
+    });
+  }
+};
 
   const handleDelete = async (rowData: KonversiData) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
