@@ -1772,8 +1772,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
           const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
           const totalKumulatif = karyawan.akKumulatif + akKonversi;
-          const selisihPangkat = kebutuhanPangkat - totalKumulatif;
-          const selisihJabatan = kebutuhanJabatan - totalKumulatif;
+          const selisihPangkat =  totalKumulatif -kebutuhanPangkat;
+          const selisihJabatan =  totalKumulatif - kebutuhanJabatan;
           const kurlebPangkat = Math.max(0, selisihPangkat);
           const kurlebJabatan = Math.max(0, selisihJabatan);
           const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
