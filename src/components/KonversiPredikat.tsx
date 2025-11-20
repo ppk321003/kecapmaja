@@ -1178,7 +1178,6 @@ const GenerateSemesterModal: React.FC<{
       tahun: number;
       masaKerjaBulan: number;
       jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-      semesters: (1 | 2)[];
     }>();
 
     semesters.forEach(semester => {
@@ -1186,14 +1185,12 @@ const GenerateSemesterModal: React.FC<{
         tahunanMap.set(semester.tahun, {
           tahun: semester.tahun,
           masaKerjaBulan: 0,
-          jenisPenilaian: 'PENUH',
-          semesters: []
+          jenisPenilaian: 'PENUH'
         });
       }
       
       const tahunData = tahunanMap.get(semester.tahun)!;
       tahunData.masaKerjaBulan += semester.masaKerjaBulan;
-      tahunData.semesters.push(semester.semester);
       
       if (semester.jenisPenilaian === 'PROPORSIONAL') {
         tahunData.jenisPenilaian = 'PROPORSIONAL';
@@ -1204,8 +1201,7 @@ const GenerateSemesterModal: React.FC<{
       tahun: tahunData.tahun,
       semester: 1 as 1 | 2,
       masaKerjaBulan: Math.min(12, tahunData.masaKerjaBulan),
-      jenisPenilaian: tahunData.jenisPenilaian,
-      semesters: tahunData.semesters
+      jenisPenilaian: tahunData.jenisPenilaian
     }));
   };
 
@@ -1304,10 +1300,7 @@ const GenerateSemesterModal: React.FC<{
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.tahun}</TableCell>
                       <TableCell>
-                        {generateMode === 'tahunan' ? 
-                          (item.semesters.includes(1) && item.semesters.includes(2) ? 'Sem 1 & 2' :
-                           item.semesters.includes(1) ? 'Semester 1' : 'Semester 2') : 
-                          `Semester ${item.semester}`}
+                        {generateMode === 'tahunan' ? 'Tahunan' : `Semester ${item.semester}`}
                       </TableCell>
                       <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
                       <TableCell>
