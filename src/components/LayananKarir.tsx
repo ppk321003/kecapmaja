@@ -25,11 +25,6 @@ interface Karyawan {
   linkSKPangkat: string;
 }
 
-// Interface untuk komponen yang membutuhkan properti lama (backward compatibility)
-interface KaryawanCompatible extends Karyawan {
-  golongan: string; // Alias untuk golAkhir
-}
-
 interface LayananKarirProps {
   karyawan: Karyawan;
 }
@@ -55,16 +50,12 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return '-';
-    }
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -181,14 +172,6 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   );
 };
 
-// Helper function untuk kompatibilitas dengan komponen yang membutuhkan properti lama
-const createCompatibleKaryawan = (karyawan: Karyawan): KaryawanCompatible => {
-  return {
-    ...karyawan,
-    golongan: karyawan.golAkhir // Map golAkhir ke golongan untuk kompatibilitas
-  };
-};
-
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('konversi');
   
@@ -212,9 +195,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       inactiveClass: "bg-white text-purple-600 border-purple-200 hover:bg-purple-50"
     }
   };
-
-  // Buat objek karyawan yang kompatibel untuk komponen turunan
-  const compatibleKaryawan = createCompatibleKaryawan(karyawan);
 
   return (
     <div className="space-y-4">
@@ -251,15 +231,15 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
 
         <TabsContent value="konversi" className="space-y-3">
-          <KonversiPredikat karyawan={compatibleKaryawan} />
+          <KonversiPredikat karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="penetapan" className="space-y-3">
-          <PenetapanAK karyawan={compatibleKaryawan} />
+          <PenetapanAK karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="akumulasi" className="space-y-3">
-          <AkumulasiAK karyawan={compatibleKaryawan} />
+          <AkumulasiAK karyawan={karyawan} />
         </TabsContent>
       </Tabs>
     </div>
