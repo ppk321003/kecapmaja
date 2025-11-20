@@ -1305,8 +1305,8 @@ const GenerateSemesterModal: React.FC<{
                       <TableCell>{item.tahun}</TableCell>
                       <TableCell>
                         {generateMode === 'tahunan' ? 
-                          (item.semester.includes(1) && item.semester.includes(2) ? 'Sem 1 & 2' :
-                           item.semester.includes(1) ? 'Semester 1' : 'Semester 2') : 
+                          (item.semesters.includes(1) && item.semesters.includes(2) ? 'Sem 1 & 2' :
+                           item.semesters.includes(1) ? 'Semester 1' : 'Semester 2') : 
                           `Semester ${item.semester}`}
                       </TableCell>
                       <TableCell className="text-sm">{periode.mulai} - {periode.selesai}</TableCell>
