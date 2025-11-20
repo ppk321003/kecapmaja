@@ -13,3 +13,42 @@ export interface TandaTerimaData {
   mitraStatistik: string[];
   daftarItem: TandaTerimaItem[];
 }
+// src/types/index.ts
+export interface Karyawan {
+  nip: string;
+  nama: string;
+  pangkat: string;
+  golongan: string;
+  jabatan: string;
+  kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
+  tglPenghitunganAkTerakhir: string; // Pastikan ini ada
+  akKumulatif: number;
+  status: 'Aktif' | 'Pensiun' | 'Mutasi'; // Pastikan ini ada
+  unitKerja: string;
+  tmtJabatan: string;
+  tmtPangkat: string;
+  pendidikan: string;
+  linkSkJabatan?: string;
+  linkSkPangkat?: string;
+}
+
+export interface KonversiData {
+  id?: string;
+  No?: number;
+  NIP: string;
+  Nama: string;
+  Tahun: number;
+  Semester: 1 | 2;
+  Predikat: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
+  'Nilai SKP': number;
+  'AK Konversi': number;
+  'TMT Mulai': string;
+  'TMT Selesai': string;
+  Status: 'Draft' | 'Generated';
+  Catatan?: string;
+  Link_Dokumen?: string;
+  Last_Update: string;
+  rowIndex?: number;
+  Masa_Kerja_Bulan?: number;
+  Jenis_Penilaian?: 'PENUFH' | 'PROPORSIONAL';
+}

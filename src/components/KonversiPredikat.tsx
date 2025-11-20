@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Edit, Trash2, Plus, Calendar, Filter, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Karyawan, KonversiData } from '@/types';
 
 // ==================== TYPES & INTERFACES ====================
 interface Karyawan {

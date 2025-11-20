@@ -6,20 +6,7 @@ import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap } 
 import KonversiPredikat from '@/components/KonversiPredikat';
 import PenetapanAK from '@/components/PenetapanAK';
 import AkumulasiAK from '@/components/AkumulasiAK';
-
-interface Karyawan {
-  nip: string;
-  nama: string;
-  pangkat: string;
-  golongan: string;
-  jabatan: string;
-  kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
-  unitKerja: string;
-  tmtJabatan: string;
-  tmtPangkat: string;
-  pendidikan: string;
-  akKumulatif: number;
-}
+import { Karyawan } from '@/types'; // Import dari types
 
 interface LayananKarirProps {
   karyawan: Karyawan;
@@ -31,6 +18,15 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
       case 'Keahlian': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'Keterampilan': return 'bg-green-100 text-green-800 border-green-200';
       case 'Reguler': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Aktif': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Pensiun': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'Mutasi': return 'bg-blue-100 text-blue-800 border-blue-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -51,9 +47,14 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               {karyawan.nama}
             </CardDescription>
           </div>
-          <Badge className={`${getKategoriColor(karyawan.kategori)} border text-xs`}>
-            {karyawan.kategori}
-          </Badge>
+          <div className="flex gap-2">
+            <Badge className={`${getKategoriColor(karyawan.kategori)} border text-xs`}>
+              {karyawan.kategori}
+            </Badge>
+            <Badge className={`${getStatusColor(karyawan.status)} border text-xs`}>
+              {karyawan.status}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
@@ -90,6 +91,14 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             </div>
           </div>
         </div>
+        
+        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-yellow-600" />
+            <span className="font-medium text-yellow-800">Tanggal Penghitungan AK Terakhir:</span>
+            <span className="text-yellow-700">{karyawan.tglPenghitunganAkTerakhir}</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -123,7 +132,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
     <div className="space-y-4">
       <ProfileHeader karyawan={karyawan} />
 
-      {/* Enhanced Tabs dengan visual yang lebih menonjol */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="bg-white rounded-lg border shadow-sm p-1">
           <TabsList className="grid w-full grid-cols-3 bg-transparent p-0 gap-1">
@@ -143,7 +151,6 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </TabsList>
         </div>
 
-        {/* Active Tab Indicator */}
         <div className="flex items-center gap-2 text-sm text-gray-600 px-2">
           <div className={`w-2 h-2 rounded-full ${activeTab === 'konversi' ? 'bg-blue-500' : activeTab === 'penetapan' ? 'bg-green-500' : 'bg-purple-500'}`}></div>
           <span className="font-medium">
