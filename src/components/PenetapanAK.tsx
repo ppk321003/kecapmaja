@@ -107,7 +107,7 @@ class PenetapanCalculator {
       'Ahli Muda': 25.0,
       'Ahli Madya': 37.5,
       'Ahli Utama': 50.0,
-      'Terampil': 8.0,
+      'Terampil': 5.0,
       'Mahir': 12.5,
       'Penyelia': 25.0,
       'Fungsional Umum': 5.0
@@ -120,7 +120,7 @@ class PenetapanCalculator {
     if (jabatan.includes('Ahli')) return 12.5;
     if (jabatan.includes('Penyelia')) return 25.0;
     if (jabatan.includes('Mahir')) return 12.5;
-    if (jabatan.includes('Terampil')) return 8.0;
+    if (jabatan.includes('Terampil')) return 5.0;
     
     return 12.5;
   }

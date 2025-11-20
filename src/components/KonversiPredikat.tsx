@@ -107,14 +107,14 @@ class KonversiCalculator {
       }
       // Terampil (II/a - II/d)
       if (jabatanLower.includes('terampil') || golonganLower.includes('ii/')) {
-        return 8.0;
+        return 5.0;
       }
       
       // Default untuk jabatan keterampilan lainnya berdasarkan golongan
       if (golonganLower.includes('iii/')) return 12.5;
-      if (golonganLower.includes('ii/')) return 8.0;
+      if (golonganLower.includes('ii/')) return 5.0;
       
-      return 8.0;
+      return 5.0;
     }
     
     return 0;
