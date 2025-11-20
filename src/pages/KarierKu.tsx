@@ -214,12 +214,12 @@ class AngkaKreditCalculator {
     const akPerBulan = predikatAsumsi * koefisien / 12;
     const akTambahan = selisihBulan * akPerBulan;
     
-    return Number(akTambahan.toFixed(2));
+    return Number(akTambahan.toFixed(3));
   }
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     const akTambahan = this.hitungAKTambahan(karyawan, predikatAsumsi);
     const akReal = karyawan.akKumulatif + akTambahan;
-    return Number(akReal.toFixed(2));
+    return Number(akReal.toFixed(3));
   }
   static hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
     const tahunAwal = tanggalAwal.getFullYear();
@@ -415,7 +415,7 @@ class AngkaKreditCalculator {
       bisaUsulJabatan,
       golonganBerikutnya,
       jabatanBerikutnya,
-      akPerBulan: Number(akPerBulan.toFixed(2)),
+      akPerBulan: Number(akPerBulan.toFixed(3)),
       akRealSaatIni,
       akTambahan,
       isKenaikanJenjang,
@@ -678,7 +678,7 @@ const DashboardKarierKu: React.FC<{
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
                     <TableCell><Badge variant="outline">{k.golongan}</Badge></TableCell>
                     <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
-                    <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
                     <TableCell className="text-center">
                       <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
@@ -722,7 +722,7 @@ const DashboardKarierKu: React.FC<{
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
                     <TableCell className="text-sm">{k.jabatan}</TableCell>
                     <TableCell className="text-sm font-semibold">{k.estimasi.jabatanBerikutnya}</TableCell>
-                    <TableCell className="text-right font-semibold text-blue-600">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-semibold text-blue-600">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKJabatan}</TableCell>
                     <TableCell className="text-center">
                       <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
@@ -766,9 +766,9 @@ const DashboardKarierKu: React.FC<{
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
                     <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
-                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
-                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKPangkat.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKPangkat.toFixed(3)}</TableCell>
                     <TableCell>
                       {Math.floor(k.estimasi.bulanDibutuhkanPangkat)} bulan
                     </TableCell>
@@ -814,9 +814,9 @@ const DashboardKarierKu: React.FC<{
                     <TableCell className="font-medium">{k.nama}</TableCell>
                     <TableCell><code className="text-xs">{k.nip}</code></TableCell>
                     <TableCell className="text-sm">{k.estimasi.jabatanBerikutnya}</TableCell>
-                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
                     <TableCell className="text-right">{k.estimasi.kebutuhanAKJabatan}</TableCell>
-                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKJabatan.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-red-600">{k.estimasi.kekuranganAKJabatan.toFixed(3)}</TableCell>
                     <TableCell>
                       {Math.floor(k.estimasi.bulanDibutuhkanJabatan)} bulan
                     </TableCell>
@@ -1016,15 +1016,15 @@ const ProgressCard: React.FC<{
           {!isReguler && <>
               <div className="text-center">
                 <div className="font-semibold text-xs text-muted-foreground">AK Awal</div>
-                <div className="text-lg font-bold">{akSaatIni.toFixed(2)}</div>
+                <div className="text-lg font-bold">{akSaatIni.toFixed(3)}</div>
               </div>
               <div className="text-center">
                 <div className="font-semibold text-xs text-muted-foreground">AK Tambahan</div>
-                <div className="text-lg font-bold text-green-600">+{akTambahan.toFixed(2)}</div>
+                <div className="text-lg font-bold text-green-600">+{akTambahan.toFixed(3)}</div>
               </div>
               <div className="text-center">
                 <div className="font-semibold text-xs text-muted-foreground">AK Akhir</div>
-                <div className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</div>
+                <div className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(3)}</div>
               </div>
             </>}
           {!isTidakAda && !isReguler && <div className="text-center">
@@ -1036,7 +1036,7 @@ const ProgressCard: React.FC<{
               {isTidakAda ? 'Status' : isReguler ? 'Masa Kerja' : 'Kekurangan'}
             </div>
             <div className={`text-lg font-bold ${isTidakAda ? 'text-gray-600' : isReguler ? 'text-blue-600' : kekuranganAK > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {isTidakAda ? 'Maksimal' : isReguler ? `${progressPangkatBulan} bln` : kekuranganAK.toFixed(2)}
+              {isTidakAda ? 'Maksimal' : isReguler ? `${progressPangkatBulan} bln` : kekuranganAK.toFixed(3)}
             </div>
           </div>
         </div>
@@ -1187,9 +1187,9 @@ const BiodataCard: React.FC<{
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
-              <p className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(2)}</p>
+              <p className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(3)}</p>
               {karyawan.kategori !== 'Reguler' && <p className="text-xs text-muted-foreground">
-                  AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {akTambahan.toFixed(2)}
+                  AK Awal: {karyawan.akKumulatif.toFixed(3)} + AK Tambahan: {akTambahan.toFixed(3)}
                 </p>}
             </div>
           </div>
@@ -1391,11 +1391,11 @@ const EmployeeTable: React.FC<{
                       <Badge variant="outline">{karyawan.golongan}</Badge>
                     </TableCell>
                     <TableCell className="text-sm py-2">{karyawan.jabatan}</TableCell>
-                    <TableCell className="text-right py-2">{karyawan.akKumulatif.toFixed(2)}</TableCell>
-                    <TableCell className="text-right text-green-600 py-2">+{karyawan.akTambahan.toFixed(2)}</TableCell>
+                    <TableCell className="text-right py-2">{karyawan.akKumulatif.toFixed(3)}</TableCell>
+                    <TableCell className="text-right text-green-600 py-2">+{karyawan.akTambahan.toFixed(3)}</TableCell>
                     <TableCell className="text-right py-2">
                       <Badge variant="default" className="font-bold">
-                        {karyawan.akRealSaatIni.toFixed(2)}
+                        {karyawan.akRealSaatIni.toFixed(3)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right py-2">
@@ -1466,15 +1466,15 @@ const EstimasiKenaikanCard: React.FC<{
         {!isReguler && <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg">
             <div className="text-center">
               <div className="text-sm text-blue-700 font-medium">Angka Kredit Awal</div>
-              <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-blue-800">{karyawan.akKumulatif.toFixed(3)}</div>
             </div>
             <div className="text-center">
               <div className="text-sm text-green-700 font-medium">Angka Kredit Tambahan</div>
-              <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-800">+{estimasi.akTambahan.toFixed(3)}</div>
             </div>
             <div className="text-center">
               <div className="text-sm text-red-700 font-medium">Angka Kredit Akhir Saat Ini</div>
-              <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-red-800">{estimasi.akRealSaatIni.toFixed(3)}</div>
             </div>
           </div>}
 
@@ -1527,7 +1527,7 @@ const EstimasiKenaikanCard: React.FC<{
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
                     <span className={`font-semibold ${estimasi.kekuranganAKPangkat > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {estimasi.kekuranganAKPangkat.toFixed(2)}
+                      {estimasi.kekuranganAKPangkat.toFixed(3)}
                     </span>
                   </div>
                 </>}
@@ -1580,7 +1580,7 @@ const EstimasiKenaikanCard: React.FC<{
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Kekurangan Angka Kredit</span>
                     <span className={`font-semibold ${estimasi.kekuranganAKJabatan > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {estimasi.kekuranganAKJabatan.toFixed(2)}
+                      {estimasi.kekuranganAKJabatan.toFixed(3)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1817,8 +1817,8 @@ const EmployeeDashboard: React.FC<{
           </CardTitle>
           <CardDescription>
             {karyawan.kategori === 'Reguler' ? <>Progress kenaikan pangkat berdasarkan masa kerja 4 tahun dari TMT Pangkat</> : <>
-                AK Akhir Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(2)}</strong>{' '}
-                (AK Awal: {karyawan.akKumulatif.toFixed(2)} + AK Tambahan: {estimasi.akTambahan.toFixed(2)})
+                AK Akhir Saat Ini: <strong>{estimasi.akRealSaatIni.toFixed(3)}</strong>{' '}
+                (AK Awal: {karyawan.akKumulatif.toFixed(3)} + AK Tambahan: {estimasi.akTambahan.toFixed(3)})
               </>}
           </CardDescription>
         </CardHeader>
