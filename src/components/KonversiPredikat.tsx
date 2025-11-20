@@ -150,6 +150,19 @@ class KonversiCalculator {
     return Number(akPenuh.toFixed(3));
   }
 
+  // Hitung AK penuh tahunan (12 bulan)
+  static calculateAKPenuhTahunan(predikat: string, koefisienJabatan: number): number {
+    const koefisienPredikat = {
+      'Sangat Baik': 1.50,
+      'Baik': 1.00,
+      'Cukup': 0.75,
+      'Kurang': 0.50
+    }[predikat] || 1.00;
+
+    const akPenuh = (koefisienPredikat * koefisienJabatan * 12) / 12;
+    return Number(akPenuh.toFixed(3));
+  }
+
   static calculatePeriodeSemester(tahun: number, semester: 1 | 2): { mulai: string; selesai: string } {
     if (semester === 1) {
       return {
@@ -304,16 +317,37 @@ class KonversiCalculator {
     return { masaKerjaBulan, jenisPenilaian };
   }
 
-  // Validasi data konversi
-  static validateKonversiData(data: KonversiData): boolean {
-    return !(
-      isNaN(data.Masa_Kerja_Bulan!) ||
-      data['AK Konversi'] < 0 ||
-      data.Masa_Kerja_Bulan! < 0 || 
-      data.Masa_Kerja_Bulan! > 6 ||
-      data['Nilai SKP'] < 0 ||
-      data['Nilai SKP'] > 100
-    );
+  // Validasi data konversi - DIPERBAIKI untuk mode tahunan
+  static validateKonversiData(data: KonversiData, mode: 'semesteran' | 'tahunan' = 'semesteran'): boolean {
+    // Untuk mode tahunan, masa kerja bisa lebih dari 6 bulan (maksimal 12 bulan)
+    const maxMasaKerja = mode === 'tahunan' ? 12 : 6;
+    const minMasaKerja = 1;
+
+    // Debug validation
+    const validationChecks = {
+      masaKerjaNaN: isNaN(data.Masa_Kerja_Bulan!),
+      masaKerjaTooSmall: data.Masa_Kerja_Bulan! < minMasaKerja,
+      masaKerjaTooLarge: data.Masa_Kerja_Bulan! > maxMasaKerja,
+      akNegative: data['AK Konversi'] < 0,
+      nilaiSKPNegative: data['Nilai SKP'] < 0,
+      nilaiSKPTooHigh: data['Nilai SKP'] > 100,
+      tahunMissing: !data.Tahun,
+      semesterMissing: !data.Semester,
+      predikatMissing: !data.Predikat
+    };
+
+    const isValid = !Object.values(validationChecks).some(check => check);
+
+    if (!isValid) {
+      console.error('❌ Data tidak valid:', {
+        data,
+        validationChecks,
+        mode,
+        maxMasaKerja
+      });
+    }
+
+    return isValid;
   }
 
   // Helper function untuk cek semester sedang berjalan
@@ -487,7 +521,8 @@ class KonversiCalculator {
     kategori: string,
     golongan: string,
     masaKerjaBulan: number,
-    jenisPenilaian: 'PENUH' | 'PROPORSIONAL'
+    jenisPenilaian: 'PENUH' | 'PROPORSIONAL',
+    mode: 'semesteran' | 'tahunan' = 'semesteran'
   ): number {
     // Untuk kategori Reguler, tidak ada perhitungan AK
     if (kategori === 'Reguler') return 0;
@@ -495,11 +530,23 @@ class KonversiCalculator {
     const koefisien = this.getKoefisien(jabatan, kategori, golongan);
     
     let akKonversi = 0;
-    if (jenisPenilaian === 'PENUH') {
-      akKonversi = this.calculateAKPenuh(predikat, koefisien);
+    
+    if (mode === 'tahunan') {
+      // Untuk mode tahunan, gunakan perhitungan khusus
+      if (jenisPenilaian === 'PENUH') {
+        akKonversi = this.calculateAKPenuhTahunan(predikat, koefisien);
+      } else {
+        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
+      }
     } else {
-      akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
-    }      
+      // Untuk mode semesteran, gunakan perhitungan normal
+      if (jenisPenilaian === 'PENUH') {
+        akKonversi = this.calculateAKPenuh(predikat, koefisien);
+      } else {
+        akKonversi = this.calculateAKProporsional(predikat, koefisien, masaKerjaBulan);
+      }
+    }
+    
     return Number(akKonversi.toFixed(3));
   }
 }
@@ -961,7 +1008,8 @@ const TahunanTableView: React.FC<{
               karyawan.kategori,
               karyawan.golongan,
               tahun.masaKerjaBulan,
-              tahun.jenisPenilaian
+              tahun.jenisPenilaian,
+              'tahunan'
             );
             
             return (
@@ -1342,6 +1390,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
         }
 
+        // PERBAIKAN: Untuk mode tahunan, hitung ulang AK dengan masa kerja yang benar
         const akKonversi = KonversiCalculator.calculateAKFromPredikat(
           'Baik', 
           95,
@@ -1349,11 +1398,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           karyawan.kategori,
           karyawan.golongan,
           item.masaKerjaBulan,
-          item.jenisPenilaian
+          item.jenisPenilaian,
+          mode
         );
 
         // PERBAIKAN: Pastikan semua field required ada dengan nilai default
-        return {
+        const dataItem = {
           No: nextNo + index,
           NIP: karyawan.nip,
           Nama: karyawan.nama,
@@ -1371,21 +1421,42 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           Masa_Kerja_Bulan: item.masaKerjaBulan,
           Jenis_Penilaian: item.jenisPenilaian
         };
+
+        console.log(`📊 Data item ${mode} ${index + 1}:`, dataItem);
+        return dataItem;
+      });
+
+      // PERBAIKAN: Debug detail untuk validasi
+      console.log('🔍 DETAIL VALIDASI DATA:');
+      newData.forEach((data, index) => {
+        const isValid = KonversiCalculator.validateKonversiData(data as KonversiData, mode);
+        console.log(`Data ${index + 1} (Tahun ${data.Tahun}):`, {
+          isValid,
+          Masa_Kerja_Bulan: data.Masa_Kerja_Bulan,
+          'AK Konversi': data['AK Konversi'],
+          'Nilai SKP': data['Nilai SKP'],
+          Tahun: data.Tahun,
+          Semester: data.Semester,
+          Predikat: data.Predikat,
+          Jenis_Penilaian: data.Jenis_Penilaian,
+          mode
+        });
       });
 
       // Validasi semua data sebelum save
-      const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData));
+      const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData, mode));
+      
       if (invalidData.length > 0) {
+        console.error('❌ Data tidak valid ditemukan:', invalidData);
         toast({
-          title: "Error",
-          description: `${invalidData.length} data tidak valid dan tidak disimpan`,
+          title: "Error Validasi Data",
+          description: `${invalidData.length} data tidak valid. Periksa console untuk detail.`,
           variant: "destructive"
         });
         return;
       }
 
-      console.log('📝 Data yang akan disimpan ke spreadsheet:', newData);
-      console.log(`🎯 Mode: ${mode}, Jumlah data: ${newData.length}`);
+      console.log('📝 Semua data valid, menyimpan ke spreadsheet...');
 
       // PERBAIKAN: Simpan data satu per satu dengan delay untuk menghindari rate limit
       let successCount = 0;
@@ -1395,22 +1466,22 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         try {
           // PERBAIKAN: Pastikan urutan kolom sesuai dengan spreadsheet
           const values = [
-            data.No || (nextNo + index),
-            data.NIP || karyawan.nip,
-            data.Nama || karyawan.nama,
-            data.Tahun || new Date().getFullYear(),
-            data.Semester || 1,
-            data.Predikat || 'Baik',
-            data['Nilai SKP'] || 95,
-            KonversiCalculator.formatNumberForSheet(data['AK Konversi'] || 0),
-            data['TMT Mulai'] || '01/01/2024',
-            data['TMT Selesai'] || '31/12/2024',
-            data.Status || 'Draft',
-            data.Catatan || '',
-            data.Link_Dokumen || '',
-            data.Last_Update || now,
-            data.Masa_Kerja_Bulan || 6,
-            data.Jenis_Penilaian || 'PENUH'
+            data.No,
+            data.NIP,
+            data.Nama,
+            data.Tahun,
+            data.Semester,
+            data.Predikat,
+            data['Nilai SKP'],
+            KonversiCalculator.formatNumberForSheet(data['AK Konversi']),
+            data['TMT Mulai'],
+            data['TMT Selesai'],
+            data.Status,
+            data.Catatan,
+            data.Link_Dokumen,
+            data.Last_Update,
+            data.Masa_Kerja_Bulan,
+            data.Jenis_Penilaian
           ];
 
           console.log(`💾 Menyimpan data ${index + 1}/${newData.length} untuk ${mode}:`, values);
@@ -1421,7 +1492,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
           // PERBAIKAN: Tambahkan delay kecil antara setiap request untuk menghindari rate limit
           if (index < newData.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
 
         } catch (error) {
