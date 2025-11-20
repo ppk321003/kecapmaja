@@ -510,6 +510,8 @@ const useSpreadsheetAPI = () => {
 
   const callAPI = async (operation: string, data?: any) => {
     try {
+      console.log(`🔗 Memanggil API ${operation} dengan data:`, data);
+      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -519,10 +521,15 @@ const useSpreadsheetAPI = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`❌ API Error untuk ${operation}:`, error);
+        throw error;
+      }
+
+      console.log(`✅ API ${operation} berhasil:`, result);
       return result;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error(`❌ API ${operation} gagal:`, error);
       toast({
         title: "Error",
         description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -605,8 +612,31 @@ const useSpreadsheetAPI = () => {
   };
 
   const appendData = async (values: any[]) => {
-    console.log(`Appending to ${SHEET_NAME}:`, values);
-    return await callAPI('append', { values: [values] });
+    console.log(`📤 Appending to ${SHEET_NAME}:`, values);
+    
+    // PERBAIKAN: Validasi data sebelum dikirim
+    if (!values || values.length === 0) {
+      throw new Error('Data tidak boleh kosong');
+    }
+
+    // PERBAIKAN: Pastikan semua nilai ada dan tidak undefined
+    const cleanedValues = values.map(value => {
+      if (value === undefined || value === null) {
+        return '';
+      }
+      return value;
+    });
+
+    console.log(`🧹 Cleaned values untuk append:`, cleanedValues);
+    
+    try {
+      const result = await callAPI('append', { values: [cleanedValues] });
+      console.log(`✅ Append berhasil:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Append gagal:`, error);
+      throw error;
+    }
   };
 
   const updateData = async (rowIndex: number, values: any[]) => {
@@ -1172,7 +1202,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Semester,
         updatedData.Predikat,
         updatedData['Nilai SKP'],
-        KonversiCalculator.formatNumberForSheet(updatedData['AK Konversi']), // Format desimal untuk spreadsheet
+        KonversiCalculator.formatNumberForSheet(updatedData['AK Konversi']),
         updatedData['TMT Mulai'],
         updatedData['TMT Selesai'],
         updatedData.Status,
@@ -1263,7 +1293,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         newData.Semester,
         newData.Predikat,
         newData['Nilai SKP'],
-        KonversiCalculator.formatNumberForSheet(newData['AK Konversi']), // Format desimal untuk spreadsheet
+        KonversiCalculator.formatNumberForSheet(newData['AK Konversi']),
         newData['TMT Mulai'],
         newData['TMT Selesai'],
         newData.Status,
@@ -1289,119 +1319,142 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     }
   };
 
-const handleGenerateSemesters = async (semesters: { 
-  tahun: number; 
-  semester: 1 | 2;
-  masaKerjaBulan: number;
-  jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
-}[], mode: 'semesteran' | 'tahunan') => {
-  try {
-    const now = KonversiCalculator.formatDate(new Date());
-    const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
-    
-    const newData = semesters.map((item, index) => {
-      // Untuk mode tahunan, gunakan periode tahun penuh
-      let periode;
-      if (mode === 'tahunan') {
-        periode = {
-          mulai: `01/01/${item.tahun}`,
-          selesai: `31/12/${item.tahun}`
+  // PERBAIKAN: Fungsi handleGenerateSemesters yang sudah diperbaiki
+  const handleGenerateSemesters = async (semesters: { 
+    tahun: number; 
+    semester: 1 | 2;
+    masaKerjaBulan: number;
+    jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
+  }[], mode: 'semesteran' | 'tahunan') => {
+    try {
+      const now = KonversiCalculator.formatDate(new Date());
+      const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
+      
+      const newData = semesters.map((item, index) => {
+        // Untuk mode tahunan, gunakan periode tahun penuh
+        let periode;
+        if (mode === 'tahunan') {
+          periode = {
+            mulai: `01/01/${item.tahun}`,
+            selesai: `31/12/${item.tahun}`
+          };
+        } else {
+          periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
+        }
+
+        const akKonversi = KonversiCalculator.calculateAKFromPredikat(
+          'Baik', 
+          95,
+          karyawan.jabatan,
+          karyawan.kategori,
+          karyawan.golongan,
+          item.masaKerjaBulan,
+          item.jenisPenilaian
+        );
+
+        // PERBAIKAN: Pastikan semua field required ada dengan nilai default
+        return {
+          No: nextNo + index,
+          NIP: karyawan.nip,
+          Nama: karyawan.nama,
+          Tahun: item.tahun,
+          Semester: mode === 'tahunan' ? 1 : item.semester,
+          Predikat: 'Baik' as const,
+          'Nilai SKP': 95,
+          'AK Konversi': akKonversi,
+          'TMT Mulai': periode.mulai,
+          'TMT Selesai': periode.selesai,
+          Status: 'Draft' as const,
+          Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
+          Link_Dokumen: '',
+          Last_Update: now,
+          Masa_Kerja_Bulan: item.masaKerjaBulan,
+          Jenis_Penilaian: item.jenisPenilaian
         };
-      } else {
-        periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
+      });
+
+      // Validasi semua data sebelum save
+      const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData));
+      if (invalidData.length > 0) {
+        toast({
+          title: "Error",
+          description: `${invalidData.length} data tidak valid dan tidak disimpan`,
+          variant: "destructive"
+        });
+        return;
       }
 
-      const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-        'Baik', 
-        95,
-        karyawan.jabatan,
-        karyawan.kategori,
-        karyawan.golongan,
-        item.masaKerjaBulan,
-        item.jenisPenilaian
-      );
+      console.log('📝 Data yang akan disimpan ke spreadsheet:', newData);
+      console.log(`🎯 Mode: ${mode}, Jumlah data: ${newData.length}`);
 
-      // PERBAIKAN: Pastikan semua field required ada
-      return {
-        No: nextNo + index,
-        NIP: karyawan.nip,
-        Nama: karyawan.nama,
-        Tahun: item.tahun,
-        Semester: mode === 'tahunan' ? 1 : item.semester, // Untuk tahunan, default semester 1
-        Predikat: 'Baik' as const,
-        'Nilai SKP': 95,
-        'AK Konversi': akKonversi,
-        'TMT Mulai': periode.mulai,
-        'TMT Selesai': periode.selesai,
-        Status: 'Draft' as const,
-        Catatan: `Auto-generated from Tanggal Penghitungan AK Terakhir ${karyawan.tglPenghitunganAkTerakhir} (${item.jenisPenilaian} - ${mode})`,
-        Link_Dokumen: '', // Pastikan field ini ada
-        Last_Update: now,
-        Masa_Kerja_Bulan: item.masaKerjaBulan,
-        Jenis_Penilaian: item.jenisPenilaian
-      };
-    });
+      // PERBAIKAN: Simpan data satu per satu dengan delay untuk menghindari rate limit
+      let successCount = 0;
+      let errorCount = 0;
 
-    // Validasi semua data sebelum save
-    const invalidData = newData.filter(data => !KonversiCalculator.validateKonversiData(data as KonversiData));
-    if (invalidData.length > 0) {
+      for (const [index, data] of newData.entries()) {
+        try {
+          // PERBAIKAN: Pastikan urutan kolom sesuai dengan spreadsheet
+          const values = [
+            data.No || (nextNo + index),
+            data.NIP || karyawan.nip,
+            data.Nama || karyawan.nama,
+            data.Tahun || new Date().getFullYear(),
+            data.Semester || 1,
+            data.Predikat || 'Baik',
+            data['Nilai SKP'] || 95,
+            KonversiCalculator.formatNumberForSheet(data['AK Konversi'] || 0),
+            data['TMT Mulai'] || '01/01/2024',
+            data['TMT Selesai'] || '31/12/2024',
+            data.Status || 'Draft',
+            data.Catatan || '',
+            data.Link_Dokumen || '',
+            data.Last_Update || now,
+            data.Masa_Kerja_Bulan || 6,
+            data.Jenis_Penilaian || 'PENUH'
+          ];
+
+          console.log(`💾 Menyimpan data ${index + 1}/${newData.length} untuk ${mode}:`, values);
+
+          await api.appendData(values);
+          successCount++;
+          console.log(`✅ Berhasil menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}`);
+
+          // PERBAIKAN: Tambahkan delay kecil antara setiap request untuk menghindari rate limit
+          if (index < newData.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+
+        } catch (error) {
+          errorCount++;
+          console.error(`❌ Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}:`, error);
+        }
+      }
+
+      if (errorCount > 0) {
+        toast({
+          title: "Peringatan",
+          description: `Berhasil menyimpan ${successCount} data, gagal menyimpan ${errorCount} data`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Sukses",
+          description: `Berhasil generate ${successCount} ${mode === 'semesteran' ? 'semester' : 'tahun'} dari Tanggal Penghitungan AK Terakhir`
+        });
+      }
+
+      // Refresh data setelah semua operasi selesai
+      await loadData();
+
+    } catch (error) {
+      console.error('❌ Error dalam handleGenerateSemesters:', error);
       toast({
         title: "Error",
-        description: `${invalidData.length} data tidak valid dan tidak disimpan`,
+        description: `Gagal generate data ${mode}: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
-      return;
     }
-
-    // PERBAIKAN: Debug log untuk melihat data yang akan disimpan
-    console.log('📝 Data yang akan disimpan ke spreadsheet:', newData);
-
-    for (const data of newData) {
-      // PERBAIKAN: Pastikan urutan kolom sesuai dengan spreadsheet
-      const values = [
-        data.No,
-        data.NIP,
-        data.Nama,
-        data.Tahun,
-        data.Semester,
-        data.Predikat,
-        data['Nilai SKP'],
-        KonversiCalculator.formatNumberForSheet(data['AK Konversi']),
-        data['TMT Mulai'],
-        data['TMT Selesai'],
-        data.Status,
-        data.Catatan || '', // Pastikan tidak undefined
-        data.Link_Dokumen || '', // Pastikan tidak undefined
-        data.Last_Update,
-        data.Masa_Kerja_Bulan || 6,
-        data.Jenis_Penilaian || 'PENUH'
-      ];
-
-      console.log(`💾 Menyimpan data ${mode} ke baris:`, values);
-
-      try {
-        await api.appendData(values);
-        console.log(`✅ Berhasil menyimpan data untuk tahun ${data.Tahun}`);
-      } catch (error) {
-        console.error(`❌ Gagal menyimpan data untuk tahun ${data.Tahun}:`, error);
-        throw error; // Re-throw untuk menangani di catch block luar
-      }
-    }
-
-    toast({
-      title: "Sukses",
-      description: `Berhasil generate ${semesters.length} ${mode === 'semesteran' ? 'semester' : 'tahun'} dari Tanggal Penghitungan AK Terakhir dengan sistem proporsional BKN`
-    });
-    loadData();
-  } catch (error) {
-    console.error('❌ Error dalam handleGenerateSemesters:', error);
-    toast({
-      title: "Error",
-      description: `Gagal generate data ${mode}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      variant: "destructive"
-    });
-  }
-};
+  };
 
   const handleDelete = async (rowData: KonversiData) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
