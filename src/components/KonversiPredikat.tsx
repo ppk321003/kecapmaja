@@ -667,13 +667,12 @@ class KonversiCalculator {
 }
 
 // ==================== API FUNCTIONS ====================
-const // ==================== API FUNCTIONS ====================
 const useSpreadsheetAPI = () => {
   const { toast } = useToast();
 
   const callAPI = async (operation: string, data?: any) => {
     try {
-      console.log(`Calling API: ${operation}`, data);
+      console.log(`🔄 Calling API: ${operation}`, data);
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -685,14 +684,14 @@ const useSpreadsheetAPI = () => {
       });
 
       if (error) {
-        console.error('API Error:', error);
+        console.error('❌ API Error:', error);
         throw error;
       }
       
-      console.log(`API ${operation} success:`, result);
+      console.log(`✅ API ${operation} success:`, result);
       return result;
     } catch (error) {
-      console.error(`API ${operation} gagal:`, error);
+      console.error(`❌ API ${operation} failed:`, error);
       toast({
         title: "Error",
         description: `Gagal mengakses spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -704,16 +703,16 @@ const useSpreadsheetAPI = () => {
 
   const readData = async (nip?: string) => {
     try {
-      console.log('Reading data from sheet:', SHEET_NAME);
+      console.log('📖 Reading data from sheet:', SHEET_NAME);
       const result = await callAPI('read');
       const rows = result.values || [];
       
-      console.log('Raw data from sheet:', rows);
+      console.log('📊 Raw data from sheet:', rows);
       
       if (rows.length <= 1) return [];
       
       const headers = rows[0];
-      console.log('Headers:', headers);
+      console.log('📋 Headers:', headers);
       
       const data = rows.slice(1)
         .filter((row: any[]) => {
@@ -765,17 +764,17 @@ const useSpreadsheetAPI = () => {
           return obj;
         });
       
-      console.log('Processed data:', data);
+      console.log('✅ Processed data:', data);
       return data;
     } catch (error) {
-      console.error('Error reading data:', error);
+      console.error('❌ Error reading data:', error);
       return [];
     }
   };
 
   const appendData = async (values: any[]) => {
     try {
-      console.log('Appending data to sheet:', values);
+      console.log('➕ Appending data to sheet:', values);
       
       // Ensure all values are strings and handle undefined/null
       const cleanedValues = values.map(value => {
@@ -784,23 +783,23 @@ const useSpreadsheetAPI = () => {
         return String(value);
       });
 
-      console.log('Cleaned values for append:', cleanedValues);
+      console.log('🧹 Cleaned values for append:', cleanedValues);
       
       const result = await callAPI('append', { 
         values: [cleanedValues] 
       });
       
-      console.log('Append result:', result);
+      console.log('✅ Append result:', result);
       return result;
     } catch (error) {
-      console.error('Error in appendData:', error);
+      console.error('❌ Error in appendData:', error);
       throw error;
     }
   };
 
   const updateData = async (rowIndex: number, values: any[]) => {
     try {
-      console.log(`Updating row ${rowIndex} with values:`, values);
+      console.log(`✏️ Updating row ${rowIndex} with values:`, values);
       
       // Ensure all values are strings and handle undefined/null
       const cleanedValues = values.map(value => {
@@ -809,29 +808,29 @@ const useSpreadsheetAPI = () => {
         return String(value);
       });
 
-      console.log('Cleaned values for update:', cleanedValues);
+      console.log('🧹 Cleaned values for update:', cleanedValues);
       
       const result = await callAPI('update', { 
         rowIndex, 
         values: [cleanedValues] 
       });
       
-      console.log('Update result:', result);
+      console.log('✅ Update result:', result);
       return result;
     } catch (error) {
-      console.error('Error in updateData:', error);
+      console.error('❌ Error in updateData:', error);
       throw error;
     }
   };
 
   const deleteData = async (rowIndex: number) => {
     try {
-      console.log(`Deleting row ${rowIndex}`);
+      console.log(`🗑️ Deleting row ${rowIndex}`);
       const result = await callAPI('delete', { rowIndex });
-      console.log('Delete result:', result);
+      console.log('✅ Delete result:', result);
       return result;
     } catch (error) {
-      console.error('Error in deleteData:', error);
+      console.error('❌ Error in deleteData:', error);
       throw error;
     }
   };
@@ -1415,10 +1414,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Loading data...');
       const data = await api.readData(karyawan.nip);
       setKonversiData(data);
+      console.log('✅ Data loaded successfully:', data.length, 'records');
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -1432,243 +1433,247 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   };
 
   const handleSave = async (updatedData: KonversiData) => {
-  try {
-    console.log('Saving data:', updatedData);
-    
-    const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
-    
-    // Pastikan urutan kolom sesuai dengan spreadsheet
-    const values = [
-      updatedData.No || nextNo,
-      updatedData.Tahun,
-      updatedData.Semester,
-      updatedData.Periode,
-      updatedData.Jenis_Periode,
-      updatedData.Nama,
-      updatedData.NIP,
-      updatedData.Nomor_Karpeg,
-      updatedData.Tempat_Lahir,
-      updatedData.Tanggal_Lahir,
-      updatedData.Jenis_Kelamin,
-      updatedData.Pangkat,
-      updatedData.Golongan,
-      updatedData.TMT_Pangkat,
-      updatedData.Jabatan,
-      updatedData.TMT_Jabatan,
-      updatedData.Predikat_Kinerja,
-      updatedData.Nilai_SKP,
-      KonversiCalculator.formatNumberForSheet(updatedData.AK_Konversi),
-      updatedData.Tanggal_Penetapan,
-      KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Pangkat_AK),
-      KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK),
-      KonversiCalculator.formatNumberForSheet(updatedData.AK_Sebelumnya),
-      KonversiCalculator.formatNumberForSheet(updatedData.AK_Periode_Ini),
-      KonversiCalculator.formatNumberForSheet(updatedData.Total_Kumulatif),
-      KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Pangkat),
-      KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Jabatan),
-      KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Pangkat),
-      KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Jabatan),
-      updatedData.Status_Kenaikan,
-      updatedData.Jenis_Kenaikan,
-      updatedData.Estimasi_Bulan,
-      updatedData.Rekomendasi,
-      updatedData.Pertimbangan_Khusus,
-      updatedData.Status,
-      updatedData.Catatan || '',
-      updatedData.Link_Dokumen || '',
-      updatedData.Last_Update,
-      updatedData.Masa_Kerja_Bulan || 6,
-      updatedData.Jenis_Penilaian || 'PENUH'
-    ];
+    try {
+      console.log('💾 START handleSave');
+      console.log('Updated data:', updatedData);
+      
+      const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
+      
+      // Pastikan semua values ada dan dalam format yang benar
+      const values = [
+        updatedData.No || nextNo,
+        updatedData.Tahun || 2024,
+        updatedData.Semester || 1,
+        updatedData.Periode || '',
+        updatedData.Jenis_Periode || 'Semester',
+        updatedData.Nama || karyawan.nama,
+        updatedData.NIP || karyawan.nip,
+        updatedData.Nomor_Karpeg || karyawan.unitKerja,
+        updatedData.Tempat_Lahir || karyawan.tempatLahir,
+        updatedData.Tanggal_Lahir || karyawan.tanggalLahir,
+        updatedData.Jenis_Kelamin || karyawan.jenisKelamin,
+        updatedData.Pangkat || karyawan.pangkat,
+        updatedData.Golongan || karyawan.golongan,
+        updatedData.TMT_Pangkat || karyawan.tmtPangkat,
+        updatedData.Jabatan || karyawan.jabatan,
+        updatedData.TMT_Jabatan || karyawan.tmtJabatan,
+        updatedData.Predikat_Kinerja || 'Baik',
+        updatedData.Nilai_SKP || 95,
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Konversi || 0),
+        updatedData.Tanggal_Penetapan || KonversiCalculator.formatDate(new Date()),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Pangkat_AK || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Sebelumnya || karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(updatedData.AK_Periode_Ini || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.Total_Kumulatif || karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Pangkat || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Jabatan || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Pangkat || 0),
+        KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Jabatan || 0),
+        updatedData.Status_Kenaikan || 'Butuh Waktu Lama',
+        updatedData.Jenis_Kenaikan || 'Reguler',
+        updatedData.Estimasi_Bulan || 0,
+        updatedData.Rekomendasi || 'Pertahankan kinerja saat ini',
+        updatedData.Pertimbangan_Khusus || '',
+        updatedData.Status || 'Draft',
+        updatedData.Catatan || '',
+        updatedData.Link_Dokumen || '',
+        updatedData.Last_Update || KonversiCalculator.formatDate(new Date()),
+        updatedData.Masa_Kerja_Bulan || 6,
+        updatedData.Jenis_Penilaian || 'PENUH'
+      ];
 
-    console.log('Values to save:', values);
+      console.log('📋 Values to save:', values);
 
-    if (updatedData.rowIndex && updatedData.rowIndex > 1) {
-      console.log('Updating existing row:', updatedData.rowIndex);
-      await api.updateData(updatedData.rowIndex, values);
+      if (updatedData.rowIndex && updatedData.rowIndex > 1) {
+        console.log('✏️ Updating existing row:', updatedData.rowIndex);
+        await api.updateData(updatedData.rowIndex, values);
+        toast({
+          title: "Sukses",
+          description: "Data berhasil diupdate di Google Sheets"
+        });
+      } else {
+        console.log('➕ Appending new row');
+        await api.appendData(values);
+        toast({
+          title: "Sukses",
+          description: "Data baru berhasil ditambahkan ke Google Sheets"
+        });
+      }
+
+      setEditModal({ isOpen: false, data: null });
+      await loadData(); // Tunggu load data selesai
+      console.log('✅ END handleSave - Success');
+    } catch (error) {
+      console.error('❌ Error saving data:', error);
       toast({
-        title: "Sukses",
-        description: "Data berhasil diupdate di Google Sheets"
+        title: "Error",
+        description: `Gagal menyimpan data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
       });
-    } else {
-      console.log('Appending new row');
+    }
+  };
+
+  const handleAddNew = async () => {
+    try {
+      console.log('🆕 START handleAddNew');
+      console.log('Adding new data for:', karyawan.nama);
+      
+      const now = KonversiCalculator.formatDate(new Date());
+      const tahun = new Date().getFullYear();
+      const semester = new Date().getMonth() < 6 ? 1 : 2;
+      
+      const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
+        karyawan.tglPenghitunganAkTerakhir,
+        tahun,
+        semester
+      );
+
+      const koefisien = KonversiCalculator.getKoefisien(
+        karyawan.jabatan,
+        karyawan.kategori,
+        karyawan.golongan
+      );
+
+      const akKonversi = KonversiCalculator.calculateAKFromPredikat(
+        'Baik', 
+        95,
+        karyawan.jabatan,
+        karyawan.kategori,
+        karyawan.golongan,
+        masaKerjaBulan,
+        jenisPenilaian
+      );
+
+      const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+      const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+      const totalKumulatif = karyawan.akKumulatif + akKonversi;
+      const selisihPangkat = kebutuhanPangkat - totalKumulatif;
+      const selisihJabatan = kebutuhanJabatan - totalKumulatif;
+      const kurlebPangkat = Math.max(0, selisihPangkat);
+      const kurlebJabatan = Math.max(0, selisihJabatan);
+      const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(kurlebPangkat, 'Baik', koefisien);
+
+      const analisis = KonversiCalculator.generateAnalisis(
+        karyawan,
+        'Baik',
+        akKonversi,
+        totalKumulatif,
+        kebutuhanPangkat,
+        kebutuhanJabatan,
+        estimasiBulan
+      );
+
+      const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
+      const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
+      
+      const newData: KonversiData = {
+        No: nextNo,
+        Tahun: tahun,
+        Semester: semester,
+        Periode: `${periode.mulai} - ${periode.selesai}`,
+        Jenis_Periode: 'Semester',
+        Nama: karyawan.nama,
+        NIP: karyawan.nip,
+        Nomor_Karpeg: karyawan.unitKerja,
+        Tempat_Lahir: karyawan.tempatLahir,
+        Tanggal_Lahir: karyawan.tanggalLahir,
+        Jenis_Kelamin: karyawan.jenisKelamin,
+        Pangkat: karyawan.pangkat,
+        Golongan: karyawan.golongan,
+        TMT_Pangkat: karyawan.tmtPangkat,
+        Jabatan: karyawan.jabatan,
+        TMT_Jabatan: karyawan.tmtJabatan,
+        Predikat_Kinerja: 'Baik',
+        Nilai_SKP: 95,
+        AK_Konversi: akKonversi,
+        Tanggal_Penetapan: now,
+        Kebutuhan_Pangkat_AK: kebutuhanPangkat,
+        Kebutuhan_Jabatan_AK: kebutuhanJabatan,
+        AK_Sebelumnya: karyawan.akKumulatif,
+        AK_Periode_Ini: akKonversi,
+        Total_Kumulatif: totalKumulatif,
+        Selisih_Pangkat: selisihPangkat,
+        Selisih_Jabatan: selisihJabatan,
+        Kurleb_Pangkat: kurlebPangkat,
+        Kurleb_Jabatan: kurlebJabatan,
+        Status_Kenaikan: analisis.statusKenaikan,
+        Jenis_Kenaikan: analisis.jenisKenaikan,
+        Estimasi_Bulan: estimasiBulan,
+        Rekomendasi: analisis.rekomendasi,
+        Pertimbangan_Khusus: analisis.pertimbanganKhusus,
+        Status: 'Draft',
+        Catatan: '',
+        Link_Dokumen: '',
+        Last_Update: now,
+        Masa_Kerja_Bulan: masaKerjaBulan,
+        Jenis_Penilaian: jenisPenilaian
+      };
+
+      console.log('📄 New data to append:', newData);
+
+      const values = [
+        newData.No,
+        newData.Tahun,
+        newData.Semester,
+        newData.Periode,
+        newData.Jenis_Periode,
+        newData.Nama,
+        newData.NIP,
+        newData.Nomor_Karpeg,
+        newData.Tempat_Lahir,
+        newData.Tanggal_Lahir,
+        newData.Jenis_Kelamin,
+        newData.Pangkat,
+        newData.Golongan,
+        newData.TMT_Pangkat,
+        newData.Jabatan,
+        newData.TMT_Jabatan,
+        newData.Predikat_Kinerja,
+        newData.Nilai_SKP,
+        KonversiCalculator.formatNumberForSheet(newData.AK_Konversi),
+        newData.Tanggal_Penetapan,
+        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Pangkat_AK),
+        KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Jabatan_AK),
+        KonversiCalculator.formatNumberForSheet(newData.AK_Sebelumnya),
+        KonversiCalculator.formatNumberForSheet(newData.AK_Periode_Ini),
+        KonversiCalculator.formatNumberForSheet(newData.Total_Kumulatif),
+        KonversiCalculator.formatNumberForSheet(newData.Selisih_Pangkat),
+        KonversiCalculator.formatNumberForSheet(newData.Selisih_Jabatan),
+        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Pangkat),
+        KonversiCalculator.formatNumberForSheet(newData.Kurleb_Jabatan),
+        newData.Status_Kenaikan,
+        newData.Jenis_Kenaikan,
+        newData.Estimasi_Bulan,
+        newData.Rekomendasi,
+        newData.Pertimbangan_Khusus,
+        newData.Status,
+        newData.Catatan,
+        newData.Link_Dokumen,
+        newData.Last_Update,
+        newData.Masa_Kerja_Bulan,
+        newData.Jenis_Penilaian
+      ];
+
+      console.log('📋 Values to append:', values);
+
       await api.appendData(values);
       toast({
         title: "Sukses",
         description: "Data baru berhasil ditambahkan ke Google Sheets"
       });
+      
+      await loadData(); // Tunggu load data selesai
+      console.log('✅ END handleAddNew - Success');
+    } catch (error) {
+      console.error('❌ Error adding new data:', error);
+      toast({
+        title: "Error",
+        description: `Gagal menambah data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
     }
-
-    setEditModal({ isOpen: false, data: null });
-    await loadData(); // Tunggu load data selesai
-  } catch (error) {
-    console.error('Error saving data:', error);
-    toast({
-      title: "Error",
-      description: `Gagal menyimpan data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      variant: "destructive"
-    });
-  }
-};
-
-const handleAddNew = async () => {
-  try {
-    console.log('Adding new data for:', karyawan.nama);
-    
-    const now = KonversiCalculator.formatDate(new Date());
-    const tahun = new Date().getFullYear();
-    const semester = new Date().getMonth() < 6 ? 1 : 2;
-    
-    const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
-      karyawan.tglPenghitunganAkTerakhir,
-      tahun,
-      semester
-    );
-
-    const koefisien = KonversiCalculator.getKoefisien(
-      karyawan.jabatan,
-      karyawan.kategori,
-      karyawan.golongan
-    );
-
-    const akKonversi = KonversiCalculator.calculateAKFromPredikat(
-      'Baik', 
-      95,
-      karyawan.jabatan,
-      karyawan.kategori,
-      karyawan.golongan,
-      masaKerjaBulan,
-      jenisPenilaian
-    );
-
-    const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-    const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-    const totalKumulatif = karyawan.akKumulatif + akKonversi;
-    const selisihPangkat = kebutuhanPangkat - totalKumulatif;
-    const selisihJabatan = kebutuhanJabatan - totalKumulatif;
-    const kurlebPangkat = Math.max(0, selisihPangkat);
-    const kurlebJabatan = Math.max(0, selisihJabatan);
-    const estimasiBulan = KonversiCalculator.calculateEstimasiBulan(kurlebPangkat, 'Baik', koefisien);
-
-    const analisis = KonversiCalculator.generateAnalisis(
-      karyawan,
-      'Baik',
-      akKonversi,
-      totalKumulatif,
-      kebutuhanPangkat,
-      kebutuhanJabatan,
-      estimasiBulan
-    );
-
-    const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
-    const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
-    
-    const newData: KonversiData = {
-      No: nextNo,
-      Tahun: tahun,
-      Semester: semester,
-      Periode: `${periode.mulai} - ${periode.selesai}`,
-      Jenis_Periode: 'Semester',
-      Nama: karyawan.nama,
-      NIP: karyawan.nip,
-      Nomor_Karpeg: karyawan.unitKerja,
-      Tempat_Lahir: karyawan.tempatLahir,
-      Tanggal_Lahir: karyawan.tanggalLahir,
-      Jenis_Kelamin: karyawan.jenisKelamin,
-      Pangkat: karyawan.pangkat,
-      Golongan: karyawan.golongan,
-      TMT_Pangkat: karyawan.tmtPangkat,
-      Jabatan: karyawan.jabatan,
-      TMT_Jabatan: karyawan.tmtJabatan,
-      Predikat_Kinerja: 'Baik',
-      Nilai_SKP: 95,
-      AK_Konversi: akKonversi,
-      Tanggal_Penetapan: now,
-      Kebutuhan_Pangkat_AK: kebutuhanPangkat,
-      Kebutuhan_Jabatan_AK: kebutuhanJabatan,
-      AK_Sebelumnya: karyawan.akKumulatif,
-      AK_Periode_Ini: akKonversi,
-      Total_Kumulatif: totalKumulatif,
-      Selisih_Pangkat: selisihPangkat,
-      Selisih_Jabatan: selisihJabatan,
-      Kurleb_Pangkat: kurlebPangkat,
-      Kurleb_Jabatan: kurlebJabatan,
-      Status_Kenaikan: analisis.statusKenaikan,
-      Jenis_Kenaikan: analisis.jenisKenaikan,
-      Estimasi_Bulan: estimasiBulan,
-      Rekomendasi: analisis.rekomendasi,
-      Pertimbangan_Khusus: analisis.pertimbanganKhusus,
-      Status: 'Draft',
-      Catatan: '',
-      Link_Dokumen: '',
-      Last_Update: now,
-      Masa_Kerja_Bulan: masaKerjaBulan,
-      Jenis_Penilaian: jenisPenilaian
-    };
-
-    console.log('New data to append:', newData);
-
-    const values = [
-      newData.No,
-      newData.Tahun,
-      newData.Semester,
-      newData.Periode,
-      newData.Jenis_Periode,
-      newData.Nama,
-      newData.NIP,
-      newData.Nomor_Karpeg,
-      newData.Tempat_Lahir,
-      newData.Tanggal_Lahir,
-      newData.Jenis_Kelamin,
-      newData.Pangkat,
-      newData.Golongan,
-      newData.TMT_Pangkat,
-      newData.Jabatan,
-      newData.TMT_Jabatan,
-      newData.Predikat_Kinerja,
-      newData.Nilai_SKP,
-      KonversiCalculator.formatNumberForSheet(newData.AK_Konversi),
-      newData.Tanggal_Penetapan,
-      KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Pangkat_AK),
-      KonversiCalculator.formatNumberForSheet(newData.Kebutuhan_Jabatan_AK),
-      KonversiCalculator.formatNumberForSheet(newData.AK_Sebelumnya),
-      KonversiCalculator.formatNumberForSheet(newData.AK_Periode_Ini),
-      KonversiCalculator.formatNumberForSheet(newData.Total_Kumulatif),
-      KonversiCalculator.formatNumberForSheet(newData.Selisih_Pangkat),
-      KonversiCalculator.formatNumberForSheet(newData.Selisih_Jabatan),
-      KonversiCalculator.formatNumberForSheet(newData.Kurleb_Pangkat),
-      KonversiCalculator.formatNumberForSheet(newData.Kurleb_Jabatan),
-      newData.Status_Kenaikan,
-      newData.Jenis_Kenaikan,
-      newData.Estimasi_Bulan,
-      newData.Rekomendasi,
-      newData.Pertimbangan_Khusus,
-      newData.Status,
-      newData.Catatan,
-      newData.Link_Dokumen,
-      newData.Last_Update,
-      newData.Masa_Kerja_Bulan,
-      newData.Jenis_Penilaian
-    ];
-
-    console.log('Values to append:', values);
-
-    await api.appendData(values);
-    toast({
-      title: "Sukses",
-      description: "Data baru berhasil ditambahkan ke Google Sheets"
-    });
-    
-    await loadData(); // Tunggu load data selesai
-  } catch (error) {
-    console.error('Error adding new data:', error);
-    toast({
-      title: "Error",
-      description: `Gagal menambah data: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      variant: "destructive"
-    });
-  }
-};
+  };
 
   const handleGenerateSemesters = async (semesters: { 
     tahun: number; 
@@ -1677,6 +1682,7 @@ const handleAddNew = async () => {
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[], mode: 'semesteran' | 'tahunan') => {
     try {
+      console.log('🚀 START handleGenerateSemesters');
       const now = KonversiCalculator.formatDate(new Date());
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
@@ -1817,13 +1823,14 @@ const handleAddNew = async () => {
           await api.appendData(values);
           successCount++;
           
+          // Delay untuk menghindari rate limiting
           if (index < newData.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
 
         } catch (error) {
           errorCount++;
-          console.error(`Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}:`, error);
+          console.error(`❌ Gagal menyimpan data untuk ${mode === 'tahunan' ? 'tahun' : 'semester'} ${data.Tahun}:`, error);
         }
       }
 
@@ -1841,9 +1848,10 @@ const handleAddNew = async () => {
       }
 
       await loadData();
+      console.log('✅ END handleGenerateSemesters - Success');
 
     } catch (error) {
-      console.error('Error dalam handleGenerateSemesters:', error);
+      console.error('❌ Error dalam handleGenerateSemesters:', error);
       toast({
         title: "Error",
         description: `Gagal generate data ${mode}: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -1865,7 +1873,7 @@ const handleAddNew = async () => {
         loadData();
       }
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error('❌ Delete error:', error);
       toast({
         title: "Error",
         description: "Gagal menghapus data",
