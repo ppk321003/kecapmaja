@@ -2,54 +2,14 @@ import { ExternalLink, Archive, Database, FileText, Link2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const linksData = [
-  {
-    title: "Bahan Revisi 3210",
-    url: "https://bahanrevisi-3210.vercel.app/",
-    description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210",
-    icon: Archive,
-  },
-  {
-    title: "Kecap Maja (OLD)",
-    url: "https://kecapmaja-old.vercel.app/",
-    description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis",
-    icon: Database,
-  },
-  {
-    title: "Kertas Kerja (Excel)",
-    url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1",
-    description: "Riwayat Kertas Kerja dalam bentuk Excel",
-    icon: FileText,
-  },
-  {
-    title: "Kertas Kerja (PDF)",
-    url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P",
-    description: "Riwayat Kertas Kerja dalam bentuk PDF",
-    icon: FileText,
-  },
-  {
-    title: "Perka BPS",
-    url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view",
-    description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan",
-    icon: FileText,
-  },
-  {
-    title: "Perka PAK Sensus Survei",
-    url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view",
-    description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei",
-    icon: FileText,
-  },
-  {
-    title: "SBM 2025",
-    url: "https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view",
-    description: "Standar Biaya Masukan (SBM) tahun anggaran 2025",
-    icon: FileText,
-  },
-  {
-    title: "SK Transport Lokal",
-    url: "https://drive.google.com/file/d/1LCuubDY1R0gSDLoW9ihu3GN93hwuW-Sq/view",
-    description: "Surat Keputusan tentang transportasi lokal BPS Kabupaten Majalengka",
-    icon: FileText,
-  },
+  { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },
+  { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
+  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/driveamplifiers/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
+  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
+  { title: "Perka BPS", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan", icon: FileText },
+  { title: "Perka PAK Sensus Survei", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei", icon: FileText },
+  { title: "SBM 2025", url: "https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view", description: "Standar Biaya Masukan (SBM) tahun anggaran 2025", icon: FileText },
+  { title: "SK Transport Lokal", url: "https://drive.google.com/file/d/1LCuubDY1R0gSDLoW9ihu3GN93hwuW-Sq/view", description: "Surat Keputusan tentang transportasi lokal BPS Kabupaten Majalengka", icon: FileText },
 ];
 
 export default function Linkers() {
@@ -59,14 +19,15 @@ export default function Linkers() {
 
   return (
     <div className="min-h-screen bg-background py-12 px-6">
-      {/* Header */}
+      {/* Header — Judul tetap merah & ukuran lebih pas */}
       <div className="max-w-7xl mx-auto mb-12">
         <div className="flex items-center gap-5">
           <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5">
             <Link2 className="h-9 w-9 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent">
+            {/* Tetap merah, tidak ikut tema */}
+            <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
               Linkers
             </h1>
             <p className="mt-2 text-lg text-muted-foreground">
@@ -76,7 +37,7 @@ export default function Linkers() {
         </div>
       </div>
 
-      {/* Grid Cards */}
+      {/* Grid Cards — Tetap modern & mengikuti tema aktif */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {linksData.map((link) => {
           const Icon = link.icon;
@@ -90,7 +51,6 @@ export default function Linkers() {
                          flex flex-col h-full"
               onClick={() => handleOpenLink(link.url)}
             >
-              {/* Gradient Top Accent */}
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary to-primary/70 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
               <CardHeader className="pb-4">
@@ -115,7 +75,6 @@ export default function Linkers() {
                   {link.description}
                 </CardDescription>
 
-                {/* Open Button with Shine Effect */}
                 <div className="mt-6">
                   <button
                     onClick={(e) => {
@@ -131,7 +90,6 @@ export default function Linkers() {
                   >
                     <span className="relative z-10">Buka Tautan</span>
                     <ExternalLink className="h-4 w-4 relative z-10" />
-                    {/* Shine Effect */}
                     <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
                                      bg-white/20 transition-transform duration-700 skew-x-12" />
                   </button>
