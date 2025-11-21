@@ -314,26 +314,22 @@ class KonversiCalculator {
     const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
     const sekarang = new Date();
 
-    // PERBAIKAN: Untuk periode berjalan (current period), selalu hitung proporsional
     const isCurrentPeriod = this.isSemesterInProgress(tahun, semester, sekarang);
     
     if (tglPenghitunganDate > periodeSelesai) {
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
-    // PERBAIKAN: Jika periode sudah lewat dan tanggal penghitungan <= periode mulai, maka PENUH
     if (!isCurrentPeriod && tglPenghitunganDate <= periodeMulai) {
       return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
     }
 
-    // PERBAIKAN: Untuk periode berjalan, selalu hitung proporsional berdasarkan bulan berjalan
     const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
     
     const startFromNextMonth = new Date(startDate);
     startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
     startFromNextMonth.setDate(1);
     
-    // PERBAIKAN: Untuk periode berjalan, gunakan tanggal sekarang sebagai end date
     const endDate = isCurrentPeriod ? sekarang : periodeSelesai;
 
     if (startFromNextMonth > endDate) {
@@ -348,7 +344,6 @@ class KonversiCalculator {
       current.setMonth(current.getMonth() + 1);
     }
 
-    // PERBAIKAN: Untuk periode berjalan, batasi maksimal 6 bulan
     const maxBulan = isCurrentPeriod ? Math.min(6, this.getBulanHinggaSekarang(tahun, semester)) : 6;
     masaKerjaBulan = Math.max(1, Math.min(maxBulan, masaKerjaBulan));
     
@@ -362,19 +357,15 @@ class KonversiCalculator {
     const currentYear = sekarang.getFullYear();
     const currentMonth = sekarang.getMonth() + 1;
     
-    // Jika bukan tahun yang sama, return 6 (full)
     if (tahun !== currentYear) return 6;
     
     if (semester === 1) {
-      // Semester 1: Jan-Jun, hitung bulan dari Januari sampai bulan sekarang
       return Math.min(currentMonth, 6);
     } else {
-      // Semester 2: Jul-Des, hitung bulan dari Juli sampai bulan sekarang
       return Math.max(0, Math.min(currentMonth - 6, 6));
     }
   }
 
-  // HANYA SATU FUNGSI isSemesterInProgress - menghapus duplikasi
   static isSemesterInProgress(year: number, semester: 1 | 2, now: Date): boolean {
     const semesterStart = semester === 1 ? 
       new Date(year, 0, 1) : new Date(year, 6, 1);
@@ -382,7 +373,6 @@ class KonversiCalculator {
     const semesterEnd = semester === 1 ? 
       new Date(year, 5, 30) : new Date(year, 11, 31);
     
-    // PERBAIKAN: Periode dianggap "in progress" jika sekarang masih dalam rentang periode
     return semesterStart <= now && semesterEnd >= now;
   }
 
@@ -481,18 +471,15 @@ class KonversiCalculator {
     semester: 1 | 2,
     mode: 'semesteran' | 'tahunan' = 'semesteran'
   ): number {
-    // Jika tidak ada data existing, gunakan AK kumulatif dari karyawan
     if (existingData.length === 0) {
       return karyawan.akKumulatif;
     }
 
-    // Urutkan data secara kronologis
     const sortedData = [...existingData].sort((a, b) => {
       if (a.Tahun !== b.Tahun) return a.Tahun - b.Tahun;
       return a.Semester - b.Semester;
     });
 
-    // Cari data periode sebelumnya
     let tahunCari = tahun;
     let semesterCari: 1 | 2 = semester === 1 ? 2 : 1;
     
@@ -500,7 +487,6 @@ class KonversiCalculator {
       tahunCari = tahun - 1;
     }
 
-    // Cari data semester sebelumnya
     const dataSebelumnya = sortedData
       .filter(data => data.Tahun === tahunCari && data.Semester === semesterCari)
       .pop();
@@ -509,7 +495,6 @@ class KonversiCalculator {
       return dataSebelumnya.Total_Kumulatif;
     }
 
-    // Jika tidak ada data semester sebelumnya, cari data terakhir sebelum periode ini
     const dataTerakhirSebelum = sortedData
       .filter(data => {
         if (data.Tahun < tahun) return true;
@@ -525,7 +510,6 @@ class KonversiCalculator {
       return dataTerakhirSebelum.Total_Kumulatif;
     }
 
-    // Jika tidak ditemukan, gunakan AK kumulatif karyawan
     return karyawan.akKumulatif;
   }
 
@@ -714,13 +698,13 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  // Fungsi baru untuk membaca data tempat lahir dari sheet "data"
-  const getTempatLahirFromDataSheet = async (nip: string): Promise<string> => {
+  // Fungsi untuk membaca data tempat lahir dan jenis kelamin dari sheet "data"
+  const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; jenisKelamin: string}> => {
     try {
       const result = await callAPI('read', { range: DATA_SHEET_NAME });
       const rows = result.values || [];
       
-      if (rows.length <= 1) return '';
+      if (rows.length <= 1) return { tempatLahir: '', jenisKelamin: '' };
       
       const headers = rows[0];
       const nipIndex = headers.findIndex((header: string) => 
@@ -729,10 +713,12 @@ const useSpreadsheetAPI = () => {
       
       // Kolom tempat lahir adalah kolom ke-9 (index 8)
       const tempatLahirIndex = 8;
+      // Kolom jenis kelamin adalah kolom ke-10 (index 9)
+      const jenisKelaminIndex = 9;
       
-      if (nipIndex === -1 || tempatLahirIndex >= headers.length) {
+      if (nipIndex === -1 || tempatLahirIndex >= headers.length || jenisKelaminIndex >= headers.length) {
         console.warn('Struktur sheet data tidak sesuai');
-        return '';
+        return { tempatLahir: '', jenisKelamin: '' };
       }
       
       // Cari baris dengan NIP yang sesuai
@@ -740,14 +726,24 @@ const useSpreadsheetAPI = () => {
         row[nipIndex]?.toString() === nip
       );
       
-      if (dataRow && dataRow[tempatLahirIndex]) {
-        return dataRow[tempatLahirIndex].toString();
+      if (dataRow) {
+        const tempatLahir = dataRow[tempatLahirIndex]?.toString() || '';
+        let jenisKelamin = dataRow[jenisKelaminIndex]?.toString() || '';
+        
+        // Konversi L/P ke Laki-laki/Perempuan
+        if (jenisKelamin === 'L' || jenisKelamin === 'Laki-laki') {
+          jenisKelamin = 'Laki-laki';
+        } else if (jenisKelamin === 'P' || jenisKelamin === 'Perempuan') {
+          jenisKelamin = 'Perempuan';
+        }
+        
+        return { tempatLahir, jenisKelamin };
       }
       
-      return '';
+      return { tempatLahir: '', jenisKelamin: '' };
     } catch (error) {
-      console.error('Error reading tempat lahir from data sheet:', error);
-      return '';
+      console.error('Error reading data from data sheet:', error);
+      return { tempatLahir: '', jenisKelamin: '' };
     }
   };
 
@@ -783,9 +779,10 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Tempat Lahir' || header === 'tempatLahir') obj.Tempat_Lahir = String(value);
             else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
             else if (header === 'Jenis Kelamin') {
-              if (value === 'Laki-laki' || value === 'Laki-laki') {
+              // Konversi L/P ke format yang benar
+              if (value === 'L' || value === 'Laki-laki' || value === 'Laki-laki') {
                 obj.Jenis_Kelamin = 'Laki-laki';
-              } else if (value === 'Perempuan' || value === 'Perempuan') {
+              } else if (value === 'P' || value === 'Perempuan' || value === 'Perempuan') {
                 obj.Jenis_Kelamin = 'Perempuan';
               } else {
                 obj.Jenis_Kelamin = 'Laki-laki'; // default
@@ -884,7 +881,7 @@ const useSpreadsheetAPI = () => {
     appendData, 
     updateData, 
     deleteData, 
-    getTempatLahirFromDataSheet 
+    getDataFromDataSheet 
   };
 };
 
@@ -1462,11 +1459,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleSave = async (updatedData: KonversiData) => {
     try {
-      // Ambil data tempat lahir dari sheet "data" jika belum ada
-      let tempatLahir = updatedData.Tempat_Lahir || karyawan.tempatLahir;
-      if (!tempatLahir) {
-        tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
-      }
+      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
+      const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
@@ -1528,9 +1522,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Nama || karyawan.nama,
         updatedData.NIP || karyawan.nip,
         updatedData.Nomor_Karpeg || karyawan.unitKerja,
-        tempatLahir, // Gunakan tempat lahir yang sudah diambil
+        tempatLahir || karyawan.tempatLahir,
         updatedData.Tanggal_Lahir || karyawan.tanggalLahir,
-        updatedData.Jenis_Kelamin || karyawan.jenisKelamin,
+        jenisKelamin || karyawan.jenisKelamin,
         updatedData.Pangkat || karyawan.pangkat,
         updatedData.Golongan || karyawan.golongan,
         updatedData.TMT_Pangkat || karyawan.tmtPangkat,
@@ -1584,8 +1578,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleAddNew = async () => {
     try {
-      // Ambil data tempat lahir dari sheet "data"
-      const tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
+      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
+      const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const now = KonversiCalculator.formatDate(new Date());
       const tahun = new Date().getFullYear();
@@ -1648,9 +1642,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         karyawan.nama,
         karyawan.nip,
         karyawan.unitKerja,
-        tempatLahir, // Gunakan tempat lahir yang sudah diambil
+        tempatLahir || karyawan.tempatLahir,
         karyawan.tanggalLahir,
-        karyawan.jenisKelamin,
+        jenisKelamin || karyawan.jenisKelamin,
         karyawan.pangkat,
         karyawan.golongan,
         karyawan.tmtPangkat,
@@ -1700,8 +1694,8 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[], mode: 'semesteran' | 'tahunan') => {
     try {
-      // Ambil data tempat lahir dari sheet "data"
-      const tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
+      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
+      const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const now = KonversiCalculator.formatDate(new Date());
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
@@ -1769,9 +1763,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             karyawan.nama,
             karyawan.nip,
             karyawan.unitKerja,
-            tempatLahir, // Gunakan tempat lahir yang sudah diambil
+            tempatLahir || karyawan.tempatLahir,
             karyawan.tanggalLahir,
-            karyawan.jenisKelamin,
+            jenisKelamin || karyawan.jenisKelamin,
             karyawan.pangkat,
             karyawan.golongan,
             karyawan.tmtPangkat,
