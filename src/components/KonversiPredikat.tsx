@@ -1825,63 +1825,50 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   };
 
   const renderKonversiTable = () => (
-    <div className="w-full overflow-x-auto">
-      <Table className="w-full">
+    <div className="overflow-x-auto">
+      <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12 text-center">No</TableHead>
-            <TableHead className="w-20 text-center">Tahun</TableHead>
-            <TableHead className="w-24 text-center">Semester</TableHead>
-            <TableHead className="w-28 text-center">Jenis Periode</TableHead>
-            <TableHead className="w-32 text-center">Predikat</TableHead>
-            <TableHead className="w-32 text-center">AK Sebelumnya</TableHead>
-            <TableHead className="w-32 text-center">AK Periode Ini</TableHead>
-            <TableHead className="w-32 text-center">Total Kumulatif</TableHead>
-            <TableHead className="w-24 text-center">Aksi</TableHead>
+            <TableHead>No</TableHead>
+            <TableHead>Tahun</TableHead>
+            <TableHead>Semester</TableHead>
+            <TableHead>Jenis Periode</TableHead>
+            <TableHead>Predikat</TableHead>
+            <TableHead>AK Sebelumnya</TableHead>
+            <TableHead>AK Periode Ini</TableHead>
+            <TableHead>Total Kumulatif</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {getFilteredData().map((data: KonversiData) => (
-            <TableRow key={data.id} className="hover:bg-gray-50">
-              <TableCell className="text-center font-medium py-3">{data.No}</TableCell>
-              <TableCell className="text-center py-3">{data.Tahun}</TableCell>
-              <TableCell className="text-center py-3">Semester {data.Semester}</TableCell>
-              <TableCell className="text-center py-3">
-                <Badge 
-                  variant={data.Jenis_Periode === 'Tahunan' ? 'default' : 'secondary'}
-                  className="text-xs"
-                >
+            <TableRow key={data.id}>
+              <TableCell className="font-medium">{data.No}</TableCell>
+              <TableCell>{data.Tahun}</TableCell>
+              <TableCell>{data.Semester}</TableCell>
+              <TableCell>
+                <Badge variant={data.Jenis_Periode === 'Tahunan' ? 'default' : 'secondary'}>
                   {data.Jenis_Periode}
                 </Badge>
               </TableCell>
-              <TableCell className="text-center py-3">
-                <Badge 
-                  variant={
-                    data.Predikat_Kinerja === 'Sangat Baik' ? 'default' :
-                    data.Predikat_Kinerja === 'Baik' ? 'secondary' :
-                    data.Predikat_Kinerja === 'Cukup' ? 'outline' : 'destructive'
-                  }
-                  className="text-xs whitespace-nowrap"
-                >
+              <TableCell>
+                <Badge variant={
+                  data.Predikat_Kinerja === 'Sangat Baik' ? 'default' :
+                  data.Predikat_Kinerja === 'Baik' ? 'secondary' :
+                  data.Predikat_Kinerja === 'Cukup' ? 'outline' : 'destructive'
+                }>
                   {data.Predikat_Kinerja}
                 </Badge>
               </TableCell>
-              <TableCell className="text-center font-medium py-3">
-                {data.AK_Sebelumnya.toFixed(3)}
-              </TableCell>
-              <TableCell className="text-center font-semibold text-blue-600 py-3">
-                {data.AK_Periode_Ini.toFixed(3)}
-              </TableCell>
-              <TableCell className="text-center font-bold text-green-600 py-3">
-                {data.Total_Kumulatif.toFixed(3)}
-              </TableCell>
-              <TableCell className="text-center py-3">
-                <div className="flex justify-center gap-1">
+              <TableCell className="font-medium">{data.AK_Sebelumnya}</TableCell>
+              <TableCell className="font-semibold">{data.AK_Periode_Ini}</TableCell>
+              <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => handleEdit(data)}
-                    className="h-8 w-8 p-0 hover:bg-blue-50"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -1889,7 +1876,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => handleDelete(data)}
-                    className="h-8 w-8 p-0 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -1906,28 +1892,28 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   return (
     <div className="space-y-6 p-6">
-      <Card className="w-full">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Konversi Predikat Kinerja - {karyawan.nama}
+            Konversi Predikat Kinerja (BKN 2023) - Data Lengkap
           </CardTitle>
           <CardDescription>
-            Kelola data konversi predikat menjadi angka kredit sesuai Peraturan BKN 2023
+            Kelola data konversi predikat menjadi angka kredit untuk {karyawan.nama} dengan analisis lengkap
             {karyawan.kategori === 'Reguler' && (
               <span className="text-orange-600 font-semibold"> (Kategori Reguler - Data untuk dokumentasi)</span>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="flex-1 min-w-[150px]">
-              <Label htmlFor="filter-tahun" className="text-sm">Tahun</Label>
+          <div className="flex gap-4 mb-4 items-end">
+            <div className="flex-1">
+              <Label htmlFor="filter-tahun">Tahun</Label>
               <Select 
                 value={filters.tahun} 
                 onValueChange={(value) => setFilters({...filters, tahun: value})}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger>
                   <SelectValue placeholder="Semua Tahun" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1939,13 +1925,13 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               </Select>
             </div>
             
-            <div className="flex-1 min-w-[150px]">
-              <Label htmlFor="filter-semester" className="text-sm">Semester</Label>
+            <div className="flex-1">
+              <Label htmlFor="filter-semester">Semester</Label>
               <Select 
                 value={filters.semester} 
                 onValueChange={(value) => setFilters({...filters, semester: value})}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger>
                   <SelectValue placeholder="Semua Semester" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1956,72 +1942,52 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               </Select>
             </div>
             
-            <div className="flex gap-2 sm:mt-6">
-              <Button onClick={loadData} variant="outline" size="sm" className="h-9">
-                <Filter className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              
-              <Button onClick={handleAddNew} size="sm" className="h-9">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah
-              </Button>
+            <Button onClick={loadData} variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
+            
+            <Button onClick={handleAddNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Baru
+            </Button>
 
-              <Button onClick={() => setGenerateModal(true)} variant="secondary" size="sm" className="h-9">
-                <Save className="h-4 w-4 mr-2" />
-                Generate
-              </Button>
-            </div>
+            <Button onClick={() => setGenerateModal(true)} variant="secondary">
+              <Save className="h-4 w-4 mr-2" />
+              Generate dari Tanggal Penghitungan AK
+            </Button>
           </div>
 
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="font-semibold text-blue-800">Kategori:</span>
-                <span className="ml-2">{karyawan.kategori}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Jabatan:</span>
-                <span className="ml-2">{karyawan.jabatan}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Golongan:</span>
-                <span className="ml-2">{karyawan.golongan}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Koefisien:</span>
-                <span className="ml-2">{koefisien}</span>
-              </div>
-            </div>
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>Informasi Karyawan:</strong> {karyawan.kategori} - {karyawan.jabatan} - Golongan: {karyawan.golongan} - Koefisien: {koefisien} - Tanggal Penghitungan AK Terakhir: {karyawan.tglPenghitunganAkTerakhir}
+            </p>
           </div>
 
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="pt-6">
               {loading ? (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground mt-3">Memuat data dari Google Sheets...</p>
+                  <p className="text-muted-foreground mt-2">Memuat data dari Google Sheets...</p>
                 </div>
               ) : getFilteredData().length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Tidak ada data ditemukan</p>
-                  <p className="text-sm mb-6">Mulai dengan menambahkan data konversi predikat kinerja</p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button onClick={handleAddNew} className="sm:w-auto">
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Tidak ada data ditemukan</p>
+                  <div className="flex gap-2 justify-center mt-2">
+                    <Button onClick={handleAddNew}>
                       <Plus className="h-4 w-4 mr-2" />
                       Tambah Data Pertama
                     </Button>
-                    <Button onClick={() => setGenerateModal(true)} variant="outline" className="sm:w-auto">
+                    <Button onClick={() => setGenerateModal(true)} variant="outline">
                       <Save className="h-4 w-4 mr-2" />
-                      Generate dari Tanggal Penghitungan AK
+                      Generate dari Tanggal Penghitungan AK Terakhir
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="border rounded-lg">
-                  {renderKonversiTable()}
-                </div>
+                renderKonversiTable()
               )}
             </CardContent>
           </Card>
