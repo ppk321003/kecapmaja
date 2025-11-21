@@ -752,7 +752,7 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Nomor Karpeg') obj.Nomor_Karpeg = String(value);
             else if (header === 'Tempat Lahir') obj.Tempat_Lahir = String(value);
             else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
-            else if (header === 'Jenis Kelamin') obj.Jenis_Kelamin = (value === 'P' ? 'Perempuan' : 'L') as 'Laki-laki' | 'P';
+            else if (header === 'Jenis Kelamin') obj.Jenis_Kelamin = (value === 'P' ? 'P' : 'L') as 'L' | 'P';
             else if (header === 'Pangkat') obj.Pangkat = String(value);
             else if (header === 'Golongan') obj.Golongan = String(value);
             else if (header === 'TMT Pangkat') obj.TMT_Pangkat = String(value);
