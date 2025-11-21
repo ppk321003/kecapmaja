@@ -640,7 +640,7 @@ static calculateAKSebelumnya(
     // Jika tidak ditemukan data sebelumnya, cari data terakhir secara umum
     const dataTerakhir = sortedData.pop();
     return dataTerakhir ? dataTerakhir.Total_Kumulatif : karyawan.akKumulatif;
-
+  }
 
   // ==================== FUNGSI BARU UNTUK REGULER ====================
   static hitungProgressPangkatReguler(tmtPangkat: string): {
