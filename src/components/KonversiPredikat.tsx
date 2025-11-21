@@ -545,52 +545,97 @@ class KonversiCalculator {
     };
   }
 
-  // ==================== FUNGSI BARU: AK SEBELUMNYA BERSINAMBUNGAN ====================
-  static calculateAKSebelumnya(
-    karyawan: Karyawan,
-    konversiData: KonversiData[],
-    tahun: number,
-    semester: 1 | 2,
-    mode: 'semesteran' | 'tahunan' = 'semesteran'
-  ): number {
-    // Jika tidak ada data sebelumnya, gunakan AK kumulatif dari karyawan
-    if (konversiData.length === 0) {
-      return karyawan.akKumulatif;
+// ==================== FUNGSI BARU: AK SEBELUMNYA BERSINAMBUNGAN ====================
+static calculateAKSebelumnya(
+  karyawan: Karyawan,
+  konversiData: KonversiData[],
+  tahun: number,
+  semester: 1 | 2,
+  mode: 'semesteran' | 'tahunan' = 'semesteran'
+): number {
+  // Jika tidak ada data sebelumnya, gunakan AK kumulatif dari karyawan
+  if (konversiData.length === 0) {
+    return karyawan.akKumulatif;
+  }
+
+  // Urutkan data secara kronologis (terlama ke terbaru)
+  const sortedData = [...konversiData].sort((a, b) => {
+    if (a.Tahun !== b.Tahun) return a.Tahun - b.Tahun;
+    return a.Semester - b.Semester;
+  });
+
+  console.log('📊 Data tersedia untuk perhitungan AK Sebelumnya:', sortedData.length);
+
+  if (mode === 'tahunan') {
+    // Untuk mode tahunan, cari data tahun sebelumnya
+    const tahunSebelumnya = tahun - 1;
+    console.log(`🔍 Mencari data tahunan untuk tahun ${tahunSebelumnya}`);
+    
+    const dataTahunSebelumnya = sortedData
+      .filter(data => data.Tahun === tahunSebelumnya && data.Jenis_Periode === 'Tahunan')
+      .pop();
+    
+    if (dataTahunSebelumnya) {
+      console.log(`✅ Ditemukan data tahunan sebelumnya: ${dataTahunSebelumnya.Total_Kumulatif}`);
+      return dataTahunSebelumnya.Total_Kumulatif;
+    }
+    
+    // Jika tidak ada data tahunan, cari data semesteran untuk tahun sebelumnya
+    console.log(`🔍 Mencari data semesteran untuk tahun ${tahunSebelumnya}`);
+    const dataSemesterTahunSebelumnya = sortedData
+      .filter(data => data.Tahun === tahunSebelumnya)
+      .sort((a, b) => b.Semester - a.Semester) // Ambil semester terakhir
+      .pop();
+    
+    if (dataSemesterTahunSebelumnya) {
+      console.log(`✅ Ditemukan data semesteran tahun sebelumnya: ${dataSemesterTahunSebelumnya.Total_Kumulatif}`);
+      return dataSemesterTahunSebelumnya.Total_Kumulatif;
+    }
+  } else {
+    // Untuk mode semesteran, cari data semester sebelumnya
+    let tahunSebelum = tahun;
+    let semesterSebelum: 1 | 2 = semester === 1 ? 2 : 1;
+    
+    if (semester === 1) {
+      tahunSebelum = tahun - 1;
     }
 
-    // Urutkan data secara kronologis
-    const sortedData = [...konversiData].sort((a, b) => {
-      if (a.Tahun !== b.Tahun) return a.Tahun - b.Tahun;
-      return a.Semester - b.Semester;
-    });
+    console.log(`🔍 Mencari data semester ${semesterSebelum} tahun ${tahunSebelum}`);
 
-    if (mode === 'tahunan') {
-      // Untuk mode tahunan, cari data tahun sebelumnya
-      const tahunSebelumnya = tahun - 1;
-      const dataTahunSebelumnya = sortedData
-        .filter(data => data.Tahun === tahunSebelumnya && data.Jenis_Periode === 'Tahunan')
-        .pop();
-      
-      if (dataTahunSebelumnya) {
-        return dataTahunSebelumnya.Total_Kumulatif;
-      }
-    } else {
-      // Untuk mode semesteran, cari data semester sebelumnya
-      let tahunSebelum = tahun;
-      let semesterSebelum: 1 | 2 = semester === 1 ? 2 : 1;
-      
-      if (semester === 1) {
-        tahunSebelum = tahun - 1;
-      }
-
-      const dataSemesterSebelumnya = sortedData
-        .filter(data => data.Tahun === tahunSebelum && data.Semester === semesterSebelum)
-        .pop();
-      
-      if (dataSemesterSebelumnya) {
-        return dataSemesterSebelumnya.Total_Kumulatif;
-      }
+    const dataSemesterSebelumnya = sortedData
+      .filter(data => data.Tahun === tahunSebelum && data.Semester === semesterSebelum)
+      .pop();
+    
+    if (dataSemesterSebelumnya) {
+      console.log(`✅ Ditemukan data semester sebelumnya: ${dataSemesterSebelumnya.Total_Kumulatif}`);
+      return dataSemesterSebelumnya.Total_Kumulatif;
     }
+    
+    // Jika tidak ada data semester sebelumnya, cari data terakhir sebelum periode ini
+    console.log(`🔍 Mencari data terakhir sebelum ${tahun}-${semester}`);
+    const dataSebelumPeriodeIni = sortedData
+      .filter(data => {
+        if (data.Tahun < tahun) return true;
+        if (data.Tahun === tahun && data.Semester < semester) return true;
+        return false;
+      })
+      .sort((a, b) => {
+        if (a.Tahun !== b.Tahun) return b.Tahun - a.Tahun;
+        return b.Semester - a.Semester;
+      })[0]; // Ambil yang terbaru
+    
+    if (dataSebelumPeriodeIni) {
+      console.log(`✅ Ditemukan data terakhir sebelum periode ini: ${dataSebelumPeriodeIni.Total_Kumulatif}`);
+      return dataSebelumPeriodeIni.Total_Kumulatif;
+    }
+  }
+
+  // Jika tidak ditemukan data sebelumnya, cari data terakhir secara umum
+  const dataTerakhir = sortedData[sortedData.length - 1];
+  console.log(`⚠️ Menggunakan data terakhir: ${dataTerakhir?.Total_Kumulatif || karyawan.akKumulatif}`);
+  
+  return dataTerakhir ? dataTerakhir.Total_Kumulatif : karyawan.akKumulatif;
+}
 
     // Jika tidak ditemukan data sebelumnya, cari data terakhir secara umum
     const dataTerakhir = sortedData.pop();
@@ -1932,6 +1977,23 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         kebutuhanJabatan,
         estimasiBulan
       );
+          // ✅ PERBAIKAN: Update data dengan nilai yang sudah dihitung ulang
+    const finalUpdatedData = {
+      ...updatedData,
+      AK_Sebelumnya: akSebelumnya,
+      AK_Periode_Ini: akKonversi,
+      Total_Kumulatif: totalKumulatif,
+      Selisih_Pangkat: selisihPangkat,
+      Selisih_Jabatan: selisihJabatan,
+      Kurleb_Pangkat: kurlebPangkat,
+      Kurleb_Jabatan: kurlebJabatan,
+      Status_Kenaikan: analisis.statusKenaikan,
+      Jenis_Kenaikan: analisis.jenisKenaikan,
+      Estimasi_Bulan: estimasiBulan,
+      Rekomendasi: analisis.rekomendasi,
+      Pertimbangan_Khusus: analisis.pertimbanganKhusus,
+      Last_Update: KonversiCalculator.formatDate(new Date())
+    };
 
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
