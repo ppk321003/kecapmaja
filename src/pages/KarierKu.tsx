@@ -601,7 +601,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-800">Memenuhi Syarat Pangkat</p>
-                    <p className="text-3xl font-bold text-green-900">{sudahMemenuhiPangkat.length} Pegawai</p>
+                    <p className="text-3xl font-bold text-green-900">{sudahMemenuhiPangkat.length} <span className="text-sm font-medium text-green-800 ml-1">Pegawai</span></p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
@@ -613,7 +613,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-800">Memenuhi Syarat Jabatan</p>
-                    <p className="text-3xl font-bold text-blue-900">{sudahMemenuhiJabatan.length} Pegawai</p>
+                    <p className="text-3xl font-bold text-blue-900">{sudahMemenuhiJabatan.length} <span className="text-sm font-medium text-blue-800 ml-1">Pegawai</span></p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-blue-600" />
                 </div>
@@ -625,7 +625,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-yellow-800">Estimasi ≤ 6 Bulan (Pangkat)</p>
-                    <p className="text-3xl font-bold text-yellow-900">{akan6BulanPangkat.length} Pegawai</p>
+                    <p className="text-3xl font-bold text-yellow-900">{akan6BulanPangkat.length} <span className="text-sm font-medium text-yellow-800 ml-1">Pegawai</span></p>
                   </div>
                   <Clock className="h-8 w-8 text-yellow-600" />
                 </div>
@@ -637,7 +637,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-orange-800">Estimasi ≤ 6 Bulan (Jabatan)</p>
-                    <p className="text-3xl font-bold text-orange-900">{akan6BulanJabatan.length} Pegawai</p>
+                    <p className="text-3xl font-bold text-orange-900">{akan6BulanJabatan.length} <span className="text-sm font-medium text-orange-800 ml-1">Pegawai</span></p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-600" />
                 </div>
