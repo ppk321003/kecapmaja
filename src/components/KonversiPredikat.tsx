@@ -303,44 +303,88 @@ class KonversiCalculator {
   }
 
   static calculateMasaKerjaProporsional(
-    tglPenghitunganAkTerakhir: string, 
-    tahun: number, 
-    semester: 1 | 2
-  ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
-    const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
-    const periode = this.calculatePeriodeSemester(tahun, semester);
-    const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
-    const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
-    const sekarang = new Date();
+  tglPenghitunganAkTerakhir: string, 
+  tahun: number, 
+  semester: 1 | 2
+): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
+  const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
+  const periode = this.calculatePeriodeSemester(tahun, semester);
+  const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
+  const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
+  const sekarang = new Date();
 
-    if (tglPenghitunganDate > periodeSelesai) {
-      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
-    }
-
-    if (tglPenghitunganDate <= periodeMulai) {
-      return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
-    }
-
-    const startFromNextMonth = new Date(tglPenghitunganDate);
-    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
-    startFromNextMonth.setDate(1);
-    
-    const endDate = this.isSemesterInProgress(tahun, semester, sekarang) ? 
-      sekarang : periodeSelesai;
-    
-    let masaKerjaBulan = 0;
-    const current = new Date(startFromNextMonth);
-    
-    while (current <= endDate) {
-      masaKerjaBulan++;
-      current.setMonth(current.getMonth() + 1);
-    }
-
-    masaKerjaBulan = Math.max(1, Math.min(6, masaKerjaBulan));
-    const jenisPenilaian = masaKerjaBulan === 6 ? 'PENUH' : 'PROPORSIONAL';
-    
-    return { masaKerjaBulan, jenisPenilaian };
+  // PERBAIKAN: Untuk periode berjalan (current period), selalu hitung proporsional
+  const isCurrentPeriod = this.isSemesterInProgress(tahun, semester, sekarang);
+  
+  if (tglPenghitunganDate > periodeSelesai) {
+    return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
   }
+
+  // PERBAIKAN: Jika periode sudah lewat dan tanggal penghitungan <= periode mulai, maka PENUH
+  if (!isCurrentPeriod && tglPenghitunganDate <= periodeMulai) {
+    return { masaKerjaBulan: 6, jenisPenilaian: 'PENUH' };
+  }
+
+  // PERBAIKAN: Untuk periode berjalan, selalu hitung proporsional berdasarkan bulan berjalan
+  const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
+  
+  const startFromNextMonth = new Date(startDate);
+  startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
+  startFromNextMonth.setDate(1);
+  
+  // PERBAIKAN: Untuk periode berjalan, gunakan tanggal sekarang sebagai end date
+  const endDate = isCurrentPeriod ? sekarang : periodeSelesai;
+
+  if (startFromNextMonth > endDate) {
+    return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
+  }
+
+  let masaKerjaBulan = 0;
+  const current = new Date(startFromNextMonth);
+  
+  while (current <= endDate) {
+    masaKerjaBulan++;
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  // PERBAIKAN: Untuk periode berjalan, batasi maksimal 6 bulan
+  const maxBulan = isCurrentPeriod ? Math.min(6, this.getBulanHinggaSekarang(tahun, semester)) : 6;
+  masaKerjaBulan = Math.max(1, Math.min(maxBulan, masaKerjaBulan));
+  
+  const jenisPenilaian = (isCurrentPeriod || masaKerjaBulan < 6) ? 'PROPORSIONAL' : 'PENUH';
+  
+  return { masaKerjaBulan, jenisPenilaian };
+}
+
+// TAMBAHKAN FUNGSI BARU INI:
+static getBulanHinggaSekarang(tahun: number, semester: 1 | 2): number {
+  const sekarang = new Date();
+  const currentYear = sekarang.getFullYear();
+  const currentMonth = sekarang.getMonth() + 1;
+  
+  // Jika bukan tahun yang sama, return 6 (full)
+  if (tahun !== currentYear) return 6;
+  
+  if (semester === 1) {
+    // Semester 1: Jan-Jun, hitung bulan dari Januari sampai bulan sekarang
+    return Math.min(currentMonth, 6);
+  } else {
+    // Semester 2: Jul-Des, hitung bulan dari Juli sampai bulan sekarang
+    return Math.max(0, Math.min(currentMonth - 6, 6));
+  }
+}
+
+// PERBAIKI FUNGSI isSemesterInProgress:
+static isSemesterInProgress(year: number, semester: 1 | 2, now: Date): boolean {
+  const semesterStart = semester === 1 ? 
+    new Date(year, 0, 1) : new Date(year, 6, 1);
+  
+  const semesterEnd = semester === 1 ? 
+    new Date(year, 5, 30) : new Date(year, 11, 31);
+  
+  // PERBAIKAN: Periode dianggap "in progress" jika sekarang masih dalam rentang periode
+  return semesterStart <= now && semesterEnd >= now;
+}
 
   static calculateEstimasiBulan(kekuranganAK: number, predikat: string, koefisienJabatan: number): number {
     if (kekuranganAK <= 0) return 0;
@@ -1119,12 +1163,29 @@ const GenerateSemesterModal: React.FC<{
   }[]>([]);
   const [generateMode, setGenerateMode] = useState<'semesteran' | 'tahunan'>('semesteran');
 
-  useEffect(() => {
-    if (isOpen && tglPenghitunganAkTerakhir) {
-      const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
-      setAvailableSemesters(semesters);
-    }
-  }, [isOpen, tglPenghitunganAkTerakhir]);
+// Dalam GenerateSemesterModal, perbaiki bagian calculateMasaKerjaProporsional
+useEffect(() => {
+  if (isOpen && tglPenghitunganAkTerakhir) {
+    const semesters = KonversiCalculator.generateSemesterFromTglPenghitungan(tglPenghitunganAkTerakhir);
+    
+    // PERBAIKAN: Update perhitungan untuk semester berjalan
+    const updatedSemesters = semesters.map(semester => {
+      const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
+        tglPenghitunganAkTerakhir,
+        semester.tahun,
+        semester.semester
+      );
+      
+      return {
+        ...semester,
+        masaKerjaBulan,
+        jenisPenilaian
+      };
+    });
+    
+    setAvailableSemesters(updatedSemesters);
+  }
+}, [isOpen, tglPenghitunganAkTerakhir]);
 
   const convertToTahunan = (semesters: typeof availableSemesters) => {
     const tahunanMap = new Map<number, {
@@ -1731,7 +1792,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             <TableHead>Jenis Periode</TableHead>
             <TableHead>Predikat</TableHead>
             <TableHead>AK Sebelumnya</TableHead>
-            <TableHead>AK Konversi</TableHead>
+            <TableHead>AK Periode Ini</TableHead>
             <TableHead>Total Kumulatif</TableHead>
             <TableHead>Status Kenaikan</TableHead>
             <TableHead>Estimasi</TableHead>
@@ -1760,7 +1821,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                 </Badge>
               </TableCell>
               <TableCell className="font-medium">{data.AK_Sebelumnya}</TableCell>
-              <TableCell className="font-semibold">{data.AK_Konversi}</TableCell>
+              <TableCell className="font-semibold">{data.AK_Periode_Ini}</TableCell>
               <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
               <TableCell>
                 <Badge variant={
