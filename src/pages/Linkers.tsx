@@ -18,7 +18,7 @@ export default function Linkers() {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-8 pb-16 px-6"> {/* Kurangi padding atas */}
+    <div className="min-h-screen bg-background pt-4 pb-16 px-6"> {/* Kurangi padding atas */}
       
       {/* Header — lebih rapat ke atas */}
       <div className="max-w-7xl mx-auto mb-8"> {/* mb-12 → mb-8 */}
