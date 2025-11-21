@@ -732,7 +732,7 @@ const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; 
         const digitKe15 = nipFromData.charAt(14); // index 14 untuk digit ke-15
         if (digitKe15 === '1') {
           jenisKelamin = 'Laki-laki';
-        } else if (digitKe15 === '02') {
+        } else if (digitKe15 === '2') {
           jenisKelamin = 'Perempuan';
         }
       }
