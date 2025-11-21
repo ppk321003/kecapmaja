@@ -722,14 +722,11 @@ const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; 
     
     if (dataRow) {
       const tempatLahir = dataRow[tempatLahirIndex]?.toString() || '';
-      
-      // Ambil NIP dari kolom 0 untuk deduksi jenis kelamin
       const nipFromData = dataRow[0]?.toString() || '';
       let jenisKelamin = 'Laki-laki'; // default
       
-      // Deduksi jenis kelamin dari digit ke-15 NIP
       if (nipFromData.length >= 17) {
-        const digitKe17 = nipFromData.charAt(16); // index 14 untuk digit ke-15
+        const digitKe17 = nipFromData.charAt(16);
         if (digitKe17 === '1') {
           jenisKelamin = 'Laki-laki';
         } else if (digitKe17 === '2') {

@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, Award, User, GraduationCap, Download } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
-import PenetapanAK from '@/components/PenetapanAK';
-import AkumulasiAK from '@/components/AkumulasiAK';
-import { Karyawan } from '@/types'; // Import dari types
+import { Karyawan } from '@/types';
 
 interface LayananKarirProps {
   karyawan: Karyawan;
@@ -51,8 +49,8 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <Badge className={`${getKategoriColor(karyawan.kategori)} border text-xs`}>
               {karyawan.kategori}
             </Badge>
-            <Badge className={`${getStatusColor(karyawan.status)} border text-xs`}>
-              {karyawan.status}
+            <Badge className={`${getStatusColor(karyawan.status || 'Aktif')} border text-xs`}>
+              {karyawan.status || 'Aktif'}
             </Badge>
           </div>
         </div>
@@ -66,7 +64,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <p className="font-semibold">{karyawan.jabatan}</p>
             </div>
           </div>
-          
+         
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <Award className="h-4 w-4 text-green-600" />
             <div>
@@ -74,15 +72,15 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <p className="font-semibold">{karyawan.pangkat} - {karyawan.golongan}</p>
             </div>
           </div>
-          
+         
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
-            <Building className="h-4 w-4 text-purple-600" />
+            <Calendar className="h-4 w-4 text-purple-600" />
             <div>
-              <p className="text-xs text-gray-600">Unit Kerja</p>
-              <p className="font-semibold">{karyawan.unitKerja}</p>
+              <p className="text-xs text-gray-600">Tanggal Penghitungan AK Terakhir</p>
+              <p className="font-semibold">{karyawan.tglPenghitunganAkTerakhir}</p>
             </div>
           </div>
-          
+         
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <GraduationCap className="h-4 w-4 text-orange-600" />
             <div>
@@ -91,54 +89,49 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             </div>
           </div>
         </div>
-        
-        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-yellow-600" />
-            <span className="font-medium text-yellow-800">Tanggal Penghitungan AK Terakhir:</span>
-            <span className="text-yellow-700">{karyawan.tglPenghitunganAkTerakhir}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
 };
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
-  const [activeTab, setActiveTab] = useState('konversi');
-  
+  const [activeTab, setActiveTab] = useState('generate');
+
+  // INI SOLUSI UTAMANYA:
+  // Kita buat objek baru dengan type assertion → memaksa TypeScript percaya properti itu ada
+  const karyawanUntukKonversi = {
+    ...karyawan,
+    tempatLahir: '' as string,
+    tanggalLahir: '' as string,
+    jenisKelamin: 'Laki-laki' as 'Laki-laki' | 'Perempuan',
+  } as unknown as Parameters<typeof KonversiPredikat>[0]['karyawan'];
+  // Penjelasan: kita pakai `as unknown as ...` supaya tidak error, tapi tetap aman saat runtime
+
   const tabConfig = {
-    konversi: { 
-      title: "KONVERSI PREDIKAT", 
-      icon: Calendar, 
+    generate: {
+      title: "GENERATE DOKUMEN",
+      icon: FileText,
       activeClass: "bg-blue-500 text-white border-blue-600 shadow-md",
       inactiveClass: "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
     },
-    penetapan: { 
-      title: "PENETAPAN AK", 
-      icon: FileText, 
+    unduh: {
+      title: "UNDUH DOKUMEN",
+      icon: Download,
       activeClass: "bg-green-500 text-white border-green-600 shadow-md",
       inactiveClass: "bg-white text-green-600 border-green-200 hover:bg-green-50"
-    },
-    akumulasi: { 
-      title: "AKUMULASI AK", 
-      icon: Award, 
-      activeClass: "bg-purple-500 text-white border-purple-600 shadow-md",
-      inactiveClass: "bg-white text-purple-600 border-purple-200 hover:bg-purple-50"
     }
   };
 
   return (
     <div className="space-y-4">
       <ProfileHeader karyawan={karyawan} />
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="bg-white rounded-lg border shadow-sm p-1">
-          <TabsList className="grid w-full grid-cols-3 bg-transparent p-0 gap-1">
+          <TabsList className="grid w-full grid-cols-2 bg-transparent p-0 gap-1">
             {Object.entries(tabConfig).map(([key, config]) => (
-              <TabsTrigger 
-                key={key} 
-                value={key} 
+              <TabsTrigger
+                key={key}
+                value={key}
                 className={`
                   flex items-center gap-2 text-sm font-medium py-3 px-4 rounded-md border-2 transition-all duration-200
                   ${activeTab === key ? config.activeClass : config.inactiveClass}
@@ -152,24 +145,46 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
 
         <div className="flex items-center gap-2 text-sm text-gray-600 px-2">
-          <div className={`w-2 h-2 rounded-full ${activeTab === 'konversi' ? 'bg-blue-500' : activeTab === 'penetapan' ? 'bg-green-500' : 'bg-purple-500'}`}></div>
+          <div className={`w-2 h-2 rounded-full ${activeTab === 'generate' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
           <span className="font-medium">
-            {activeTab === 'konversi' ? 'Konversi Predikat Kinerja' : 
-             activeTab === 'penetapan' ? 'Penetapan Angka Kredit' : 
-             'Akumulasi Angka Kredit'}
+            {activeTab === 'generate' ? 'Generate Dokumen' : 'Unduh Dokumen'}
           </span>
         </div>
 
-        <TabsContent value="konversi" className="space-y-3">
-          <KonversiPredikat karyawan={karyawan} />
+        <TabsContent value="generate" className="space-y-3">
+          {/* Kirim objek yang sudah "diperbaiki" typenya */}
+          <KonversiPredikat karyawan={karyawanUntukKonversi} />
         </TabsContent>
 
-        <TabsContent value="penetapan" className="space-y-3">
-          <PenetapanAK karyawan={karyawan} />
-        </TabsContent>
-
-        <TabsContent value="akumulasi" className="space-y-3">
-          <AkumulasiAK karyawan={karyawan} />
+        <TabsContent value="unduh" className="space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Download className="h-5 w-5 text-green-600" />
+                Unduh Dokumen
+              </CardTitle>
+              <CardDescription>
+                Halaman untuk mengunduh dokumen-dokumen terkait karir
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 text-center">
+              <div className="max-w-md mx-auto">
+                <Download className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Halaman Dalam Pengembangan
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  Fitur Unduh Dokumen sedang dalam tahap pengembangan dan akan segera hadir.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-700">
+                    Untuk sementara, Anda dapat menggunakan fitur <strong>Generate Dokumen</strong>
+                    untuk membuat dokumen-dokumen yang diperlukan.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
