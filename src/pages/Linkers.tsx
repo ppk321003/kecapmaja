@@ -1,8 +1,7 @@
 import { ExternalLink, Archive, Database, FileText, Link2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Daftar warna Tailwind yang cantik & profesional (bisa ditambah/dikurangi sesuka hati)
-const colorVariants = [
+const accentColors = [
   "from-blue-500 to-blue-600",
   "from-emerald-500 to-emerald-600",
   "from-violet-500 to-violet-600",
@@ -56,33 +55,28 @@ export default function Linkers() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {linksData.map((link, index) => {
           const Icon = link.icon;
-
-          // Ambil warna berdasarkan index (loop kalau datanya lebih banyak)
-          const gradient = colorVariants[index % colorVariants.length];
-          const lighterBg = gradient.replace("500", "100").replace("600", "200");
-          const iconColor = gradient.split(" ")[0].replace("from-", "text-").replace("-500", "-600");
+          const accent = accentColors[index % accentColors.length];
+          const lighterBg = accent.replace("500", "100").replace("600", "200");
 
           return (
             <Card
               key={link.title}
               className="group relative overflow-hidden bg-card/90 backdrop-blur-sm border border-border/50 
-                         hover:border-transparent hover:shadow-2xl hover:shadow-primary/20
+                         hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10
                          transition-all duration-500 hover:-translate-y-3 rounded-2xl cursor-pointer
                          flex flex-col h-full"
               onClick={() => handleOpenLink(link.url)}
             >
-              {/* Gradient Top Bar berwarna berbeda */}
-              <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              {/* Gradient Top Bar — warna-warni */}
+              <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between mb-4">
-                  {/* Icon dengan background berwarna */}
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${lighterBg} border border-${gradient.split(" ")[0].replace("from-", "")}/30 group-hover:scale-110 transition-all duration-300`}>
-                    <Icon className={`h-7 w-7 ${iconColor}`} />
+                  {/* Icon background warna-warni */}
+                  <div className={`p-3 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110`}>
+                    <Icon className={`h-7 w-7 ${accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600")}`} />
                   </div>
-
-                  <ExternalLink className={`h-5 w-5 text-muted-foreground group-hover:${iconColor.replace("text-", "")} 
-                                           group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300`} />
+                  <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-all duration-300" />
                 </div>
 
                 <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2">
@@ -95,21 +89,23 @@ export default function Linkers() {
                   {link.description}
                 </CardDescription>
 
-                {/* Tombol dengan warna yang sama */}
+                {/* Tombol: tetap primary (merah), tapi dengan gradasi cantik & efek hidup */}
                 <div className="mt-6">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenLink(link.url);
                     }}
-                    className={`w-full h-11 px-4 rounded-xl bg-gradient-to-r ${gradient} 
-                               hover:brightness-110 text-white font-medium text-sm
-                               shadow-lg hover:shadow-xl relative overflow-hidden 
-                               transition-all duration-300 flex items-center justify-center gap-2`}
+                    className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/80 
+                               hover:from-primary hover:to-primary/70 hover:brightness-110
+                               text-primary-foreground font-medium text-sm shadow-lg hover:shadow-xl
+                               relative overflow-hidden transition-all duration-300
+                               flex items-center justify-center gap-2 group/btn"
                   >
                     <span className="relative z-10">Buka Tautan</span>
                     <ExternalLink className="h-4 w-4 relative z-10" />
-                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-white/20 transition-transform duration-700" />
+                    <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
+                                     bg-white/20 transition-transform duration-700" />
                   </button>
                 </div>
               </CardContent>
