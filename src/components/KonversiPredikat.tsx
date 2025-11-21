@@ -27,7 +27,7 @@ interface Karyawan {
   tmtPangkat: string;
   pendidikan: string;
   tanggalLahir: string;
-  jenisKelamin: 'L' | 'P';
+  jenisKelamin: 'Laki-laki' | 'Perempuan';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
 }
@@ -44,7 +44,7 @@ interface KonversiData {
   Nomor_Karpeg: string;
   Tempat_Lahir: string;
   Tanggal_Lahir: string;
-  Jenis_Kelamin: 'L' | 'P';
+  Jenis_Kelamin: 'Laki-laki' | 'Perempuan';
   Pangkat: string;
   Golongan: string;
   TMT_Pangkat: string;
@@ -741,12 +741,24 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Jenis Periode') obj.Jenis_Periode = (value === 'Tahunan' ? 'Tahunan' : 'Semester') as 'Semester' | 'Tahunan';
             else if (header === 'Nama') obj.Nama = String(value);
             else if (header === 'NIP') obj.NIP = String(value);
-            else if (header === 'Nomor Karpeg') obj.Nomor_Karpeg = String(value);
+            // PERBAIKAN: Gunakan header 'Karpeg' untuk Nomor_Karpeg
+            else if (header === 'Nomor Karpeg' || header === 'Karpeg') obj.Nomor_Karpeg = String(value);
+            // PERBAIKAN: Gunakan header 'tempatLahir' untuk Tempat_Lahir
             else if (header === 'Tempat Lahir' || header === 'tempatLahir') obj.Tempat_Lahir = String(value);
             else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
-            else if (header === 'Jenis Kelamin') obj.Jenis_Kelamin = (value === 'P' ? 'Perempuan' : 'Laki-laki') as 'L' | 'P';
+            // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
+            else if (header === 'Jenis Kelamin') {
+              if (value === 'L' || value === 'Laki-laki') {
+                obj.Jenis_Kelamin = 'Laki-laki';
+              } else if (value === 'P' || value === 'Perempuan') {
+                obj.Jenis_Kelamin = 'Perempuan';
+              } else {
+                obj.Jenis_Kelamin = 'Laki-laki'; // default
+              }
+            }
             else if (header === 'Pangkat') obj.Pangkat = String(value);
-            else if (header === 'Golongan') obj.Golongan = String(value);
+            // PERBAIKAN: Gunakan header 'Gol.Akhir' untuk Golongan
+            else if (header === 'Golongan' || header === 'Gol.Akhir') obj.Golongan = String(value);
             else if (header === 'TMT Pangkat') obj.TMT_Pangkat = String(value);
             else if (header === 'Jabatan') obj.Jabatan = String(value);
             else if (header === 'TMT Jabatan') obj.TMT_Jabatan = String(value);
@@ -1461,6 +1473,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
       const periode = KonversiCalculator.calculatePeriodeSemester(updatedData.Tahun, updatedData.Semester);
 
+      // PERBAIKAN: Gunakan data yang benar dari karyawan
       const values = [
         updatedData.No || nextNo,
         updatedData.Tahun,
@@ -1469,9 +1482,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Jenis_Periode || 'Semester',
         updatedData.Nama || karyawan.nama,
         updatedData.NIP || karyawan.nip,
+        // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         updatedData.Nomor_Karpeg || karyawan.unitKerja,
+        // PERBAIKAN: Gunakan tempatLahir dari karyawan
         updatedData.Tempat_Lahir || karyawan.tempatLahir,
         updatedData.Tanggal_Lahir || karyawan.tanggalLahir,
+        // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
         updatedData.Jenis_Kelamin || karyawan.jenisKelamin,
         updatedData.Pangkat || karyawan.pangkat,
         updatedData.Golongan || karyawan.golongan,
@@ -1578,6 +1594,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
+      // PERBAIKAN: Gunakan data yang benar dari karyawan
       const values = [
         nextNo,
         tahun,
@@ -1586,9 +1603,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         'Semester',
         karyawan.nama,
         karyawan.nip,
+        // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         karyawan.unitKerja,
+        // PERBAIKAN: Gunakan tempatLahir dari karyawan
         karyawan.tempatLahir,
         karyawan.tanggalLahir,
+        // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
         karyawan.jenisKelamin,
         karyawan.pangkat,
         karyawan.golongan,
@@ -1704,9 +1724,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             mode === 'tahunan' ? 'Tahunan' : 'Semester',
             karyawan.nama,
             karyawan.nip,
+            // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
             karyawan.unitKerja,
+            // PERBAIKAN: Gunakan tempatLahir dari karyawan
             karyawan.tempatLahir,
             karyawan.tanggalLahir,
+            // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
             karyawan.jenisKelamin,
             karyawan.pangkat,
             karyawan.golongan,
