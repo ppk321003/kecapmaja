@@ -22,13 +22,14 @@ export default function BuatEDokumen() {
   ];
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
-      {/* Header */}
-      <div className="text-center mb-14">
-        <h1 className="text-5xl font-extrabold bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background pt-4 pb-16 px-6"> {/* Rapat ke atas */}
+
+      {/* Header — Judul tetap merah, ukuran lebih pas */}
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
           Buat e-Dokumen
         </h1>
-        <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+        <p className="mt-3 text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           Pilih jenis dokumen yang ingin Anda buat. Semua template telah disesuaikan dengan standar formal pemerintahan.
         </p>
       </div>
@@ -63,7 +64,7 @@ export default function BuatEDokumen() {
                 </CardDescription>
               </CardHeader>
 
-              {/* Button selalu di posisi bawah sama */}
+              {/* Button tetap di bawah sama */}
               <CardContent className="mt-auto pt-6 pb-1">
                 <Button
                   onClick={() => navigate(item.url)}
@@ -78,7 +79,6 @@ export default function BuatEDokumen() {
                   size="lg"
                 >
                   <span className="relative z-10">Buat Dokumen</span>
-                  {/* Shine effect */}
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full 
                                    bg-white/20 transition-transform duration-700" />
                 </Button>
