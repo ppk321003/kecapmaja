@@ -1479,7 +1479,7 @@ const EstimasiKenaikanCard: React.FC<{
                 <h4 className="font-semibold mb-1 text-yellow-900">Kenaikan Jenjang</h4>
                 <p className="text-sm text-yellow-800">
                   Anda akan mendapatkan peluang untuk kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
-                  <strong>Jabatan dan Pangkat</strong> setelah dinyatakan lulus Uji Kompetensi..
+                  <strong>Jabatan dan Pangkat</strong> setelah dinyatakan lulus Uji Kompetensi.
                 </p>
               </div>
             </div>
