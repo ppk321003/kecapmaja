@@ -2,10 +2,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Briefcase, Car, Clock, FileSpreadsheet, FileCheck, FileSignature, Receipt, Banknote, Bike } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils"; // kalau pakai shadcn/ui biasanya sudah ada
+import { cn } from "@/lib/utils";
 
-// Daftar warna yang akan diputar otomatis + warna spesifik per item
-const colors = [
+// Daftar warna aksen (hanya untuk top bar + icon background)
+const accentColors = [
   "from-blue-500 to-blue-600",
   "from-emerald-500 to-emerald-600",
   "from-violet-500 to-violet-600",
@@ -40,6 +40,7 @@ export default function BuatEDokumen() {
 
   return (
     <div className="min-h-screen bg-background pt-4 pb-16 px-6">
+      {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
           Buat e-Dokumen
@@ -49,12 +50,13 @@ export default function BuatEDokumen() {
         </p>
       </div>
 
+      {/* Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7 max-w-7xl mx-auto">
         {eDokumenMenuItems.map((item, index) => {
           const Icon = item.icon;
-          // Rotasi warna berdasarkan index
-          const gradient = colors[index % colors.length];
-          const lighter = gradient.replace("500", "100").replace("600", "200");
+          const accent = accentColors[index % accentColors.length];
+          const lighterBg = accent.replace("500", "100").replace("600", "200");
+          const iconColorClass = accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600");
 
           return (
             <Card
@@ -63,14 +65,14 @@ export default function BuatEDokumen() {
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 
                          transition-all duration-500 hover:-translate-y-3 rounded-2xl h-full flex flex-col"
             >
-              {/* Gradient Top Bar berwarna berbeda */}
-              <div className={cn("absolute top-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500", gradient)} />
+              {/* Gradient Top Bar — warna-warni */}
+              <div className={cn("absolute top-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500", accent)} />
 
               <CardHeader className="pb-4">
                 <div className="flex items-start gap-4">
-                  {/* Icon background ikut warna item */}
-                  <div className={cn("p-3.5 rounded-xl border transition-all duration-300", lighter, "group-hover:scale-110")}>
-                    <Icon className={cn("h-8 w-8", gradient.replace("from-", "text-").split(" ")[0].replace("-500", "-600"))} />
+                  {/* Background icon ikut warna aksen */}
+                  <div className={cn("p-3.5 rounded-xl border transition-all duration-300 group-hover:scale-110", lighterBg)}>
+                    <Icon className={cn("h-8 w-8", iconColorClass)} />
                   </div>
                   <CardTitle className="text-lg font-semibold text-foreground leading-tight pt-1">
                     {item.title}
@@ -81,18 +83,22 @@ export default function BuatEDokumen() {
                 </CardDescription>
               </CardHeader>
 
+              {/* Tombol: tetap primary (merah) + gradasi halus */}
               <CardContent className="mt-auto pt-6 pb-1">
                 <Button
                   onClick={() => navigate(item.url)}
-                  className={cn(
-                    "w-full h-12 text-base font-semibold text-white shadow-lg hover:shadow-xl relative overflow-hidden transition-all duration-300 group-hover:scale-105",
-                    gradient,
-                    "hover:brightness-110"
-                  )}
+                  className="w-full h-12 text-base font-semibold
+                             bg-gradient-to-r from-primary to-primary/80
+                             hover:from-primary hover:to-primary/70 hover:brightness-110
+                             text-primary-foreground
+                             shadow-lg hover:shadow-xl hover:shadow-primary/25
+                             relative overflow-hidden
+                             transition-all duration-300 group-hover:scale-105"
                   size="lg"
                 >
                   <span className="relative z-10">Buat Dokumen</span>
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-white/20 transition-transform duration-700" />
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full 
+                                   bg-white/20 transition-transform duration-700" />
                 </Button>
               </CardContent>
             </Card>
