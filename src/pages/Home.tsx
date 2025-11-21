@@ -7,6 +7,9 @@ import { Cake, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import heroBanner from "@/assets/hero-banner.jpg";
+import { motion, AnimatePresence } from "framer-motion";
+import Confetti from "react-confetti";
+import { useWindowSize } from "react-use";
 
 interface Pegawai {
   nip: string;
@@ -21,14 +24,13 @@ export default function Home() {
   const [ultahPegawai, setUltahPegawai] = useState<Pegawai[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
+  const { width, height } = useWindowSize();
 
-  // Fungsi untuk extract tanggal lahir dari NIP
+  // Fungsi extract tanggal lahir dari NIP
   const extractTanggalLahirFromNIP = (nip: string): string | null => {
     try {
-      // Format NIP: 19781017 199803 1 002
-      // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
       const nipParts = nip.toString().split(' ');
       if (nipParts.length >= 1) {
         const tanggalLahirStr = nipParts[0];
@@ -72,7 +74,6 @@ export default function Home() {
   // Fetch data pegawai dari Google Sheets
   const fetchPegawaiBerulangTahun = async () => {
     try {
-      setLoading(true);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
@@ -129,8 +130,6 @@ export default function Home() {
         variant: "destructive"
       });
       return [];
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -141,6 +140,7 @@ export default function Home() {
       if (pegawaiUltah.length > 0) {
         setUltahPegawai(pegawaiUltah);
         setShowDialog(true);
+        setShowConfetti(true);
         
         if (pegawaiUltah.length === 1) {
           toast({
@@ -206,111 +206,133 @@ export default function Home() {
   const currentPegawai = ultahPegawai[currentIndex];
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/50">
+      {/* Confetti */}
+      {showConfetti && (
+        <Confetti
+          width={width}
+          height={height}
+          recycle={false}
+          numberOfPieces={200}
+          onConfettiComplete={() => setShowConfetti(false)}
+        />
+      )}
+
       {/* Dialog Ulang Tahun */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md bg-gradient-to-br from-pink-50 to-red-50 border-pink-200">
-          <DialogHeader>
-            <div className="flex justify-between items-center mb-4">
-              {ultahPegawai.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={prevPegawai}
-                  className="h-8 w-8"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
-              
-              <div className="relative">
-                <Cake className="h-16 w-16 text-pink-500" />
-                <Heart className="h-6 w-6 text-red-500 absolute -top-1 -right-1 animate-pulse" />
-              </div>
+        <AnimatePresence>
+          {showDialog && (
+            <DialogContent forceMount={true} className="max-w-md bg-white/95 backdrop-blur-md border-pink-200 rounded-2xl shadow-2xl overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+              >
+                <DialogHeader>
+                  <div className="flex justify-between items-center mb-4">
+                    {ultahPegawai.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={prevPegawai}
+                        className="h-8 w-8"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    )}
+                    
+                    <div className="relative">
+                      <Cake className="h-16 w-16 text-pink-500" />
+                      <Heart className="h-6 w-6 text-red-500 absolute -top-1 -right-1 animate-pulse" />
+                    </div>
 
-              {ultahPegawai.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={nextPegawai}
-                  className="h-8 w-8"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            <DialogTitle className="text-center text-2xl text-pink-700">
-              🎉 Selamat Ulang Tahun! 🎉
-            </DialogTitle>
-            
-            {ultahPegawai.length > 1 && (
-              <div className="text-center text-sm text-pink-600">
-                {currentIndex + 1} dari {ultahPegawai.length} pegawai
-              </div>
-            )}
-          </DialogHeader>
-          
-          <DialogDescription className="text-center space-y-4">
-            {currentPegawai && (
-              <>
-                <div className="bg-white rounded-lg p-4 shadow-sm border">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                    {currentPegawai.nama}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-1">
-                    NIP: {formatNIP(currentPegawai.nip)}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-1">
-                    Jabatan: {currentPegawai.jabatan}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-1">
-                    Pangkat: {currentPegawai.pangkat}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Umur: <span className="font-semibold text-pink-600">{currentPegawai.umur} tahun</span>
-                  </p>
-                </div>
-                
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-gray-700 text-justify leading-relaxed italic">
-                    "{getRandomUcapan(currentPegawai.umur, currentPegawai.nama, currentPegawai.jabatan)}"
-                  </p>
-                </div>
-
-                <div className="flex flex-col space-y-2 text-xs text-gray-500">
-                  <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
-                  <p>🌟 Terus berkarya untuk BPS Majalengka</p>
-                  <p>🎂 Panjang umur dan sehat selalu</p>
-                </div>
-
-                {/* Indicator dots untuk multiple pegawai */}
-                {ultahPegawai.length > 1 && (
-                  <div className="flex justify-center space-x-2 mt-4">
-                    {ultahPegawai.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentIndex(index)}
-                        className={`h-2 w-2 rounded-full transition-colors ${
-                          index === currentIndex ? 'bg-pink-500' : 'bg-pink-300'
-                        }`}
-                      />
-                    ))}
+                    {ultahPegawai.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={nextPegawai}
+                        className="h-8 w-8"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                )}
-              </>
-            )}
-          </DialogDescription>
-          
-          <div className="flex justify-center mt-4">
-            <Button 
-              onClick={() => setShowDialog(false)}
-              className="bg-pink-500 hover:bg-pink-600 text-white"
-            >
-              Tutup & Lanjutkan
-            </Button>
-          </div>
-        </DialogContent>
+
+                  <DialogTitle className="text-center text-2xl text-pink-700">
+                    🎉 Selamat Ulang Tahun! 🎉
+                  </DialogTitle>
+                  
+                  {ultahPegawai.length > 1 && (
+                    <div className="text-center text-sm text-pink-600">
+                      {currentIndex + 1} dari {ultahPegawai.length} pegawai
+                    </div>
+                  )}
+                </DialogHeader>
+                
+                <DialogDescription className="text-center space-y-4">
+                  {currentPegawai && (
+                    <>
+                      <div className="bg-white rounded-lg p-4 shadow-sm border">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                          {currentPegawai.nama}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-1">
+                          NIP: {formatNIP(currentPegawai.nip)}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Jabatan: {currentPegawai.jabatan}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Pangkat: {currentPegawai.pangkat}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Umur: <span className="font-semibold text-pink-600">{currentPegawai.umur} tahun</span>
+                        </p>
+                      </div>
+                      
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-gray-700 text-justify leading-relaxed italic">
+                          "{getRandomUcapan(currentPegawai.umur, currentPegawai.nama, currentPegawai.jabatan)}"
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col space-y-2 text-xs text-gray-500">
+                        <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
+                        <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                        <p>🎂 Panjang umur dan sehat selalu</p>
+                      </div>
+
+                      {/* Indicator dots untuk multiple pegawai */}
+                      {ultahPegawai.length > 1 && (
+                        <div className="flex justify-center space-x-2 mt-4">
+                          {ultahPegawai.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentIndex(index)}
+                              className={`h-2 w-2 rounded-full transition-colors ${
+                                index === currentIndex ? 'bg-pink-500' : 'bg-pink-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </DialogDescription>
+                
+                <div className="flex justify-center mt-4">
+                  <Button 
+                    onClick={() => setShowDialog(false)}
+                    className="bg-pink-500 hover:bg-pink-600 text-white"
+                  >
+                    Tutup & Lanjutkan
+                  </Button>
+                </div>
+              </motion.div>
+            </DialogContent>
+          )}
+        </AnimatePresence>
       </Dialog>
 
       {/* Hero Section */}
