@@ -216,46 +216,89 @@ class KonversiCalculator {
   }
 
   // Hitung kebutuhan AK untuk pangkat dan jabatan - DIPERBAIKI
-  static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
-    if (kategori === 'Reguler') return 0;
+static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
+  if (kategori === 'Reguler') return 0;
 
-    const kebutuhanKeahlian: { [key: string]: number } = {
-      'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100,
-      'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
-    };
-    
-    const kebutuhanKeterampilan: { [key: string]: number } = {
-      'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
-      'III/a': 50, 'III/b': 50, 'III/c': 100
-    };
-    
-    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-    return kebutuhan[golonganSekarang] || 0;
-  }
+  // ✅ SESUAI BKN 2023 Pasal 21 ayat 3
+  const kebutuhanKeahlian: { [key: string]: number } = {
+    'III/a': 50,    // III/a → III/b
+    'III/b': 50,    // III/b → III/c  
+    'III/c': 100,   // III/c → III/d
+    'III/d': 100,   // III/d → IV/a
+    'IV/a': 150,    // IV/a → IV/b
+    'IV/b': 150,    // IV/b → IV/c
+    'IV/c': 150,    // IV/c → IV/d
+    'IV/d': 200     // IV/d → IV/e
+  };
+  
+  const kebutuhanKeterampilan: { [key: string]: number } = {
+    'II/a': 15,     // II/a → II/b
+    'II/b': 20,     // II/b → II/c
+    'II/c': 20,     // II/c → II/d
+    'II/d': 20,     // II/d → III/a
+    'III/a': 50,    // III/a → III/b
+    'III/b': 50,    // III/b → III/c
+    'III/c': 100    // III/c → III/d
+  };
+  
+  const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
+  return kebutuhan[golonganSekarang] || 0;
+}
 
-  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
-    if (kategori === 'Reguler') return 0;
+static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+  if (kategori === 'Reguler') return 0;
 
-    const kebutuhanKeahlian: { [key: string]: number } = {
-      'Ahli Pertama': 100, 'Ahli Muda': 200, 'Ahli Madya': 450, 'Ahli Utama': 0
-    };
-    
-    const kebutuhanKeterampilan: { [key: string]: number } = {
-      'Terampil': 60, 'Mahir': 100, 'Penyelia': 0
-    };
-    
-    if (kategori === 'Keahlian') {
-      for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
-        if (jabatanSekarang.includes(key)) return value;
-      }
-    } else {
-      for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
-        if (jabatanSekarang.includes(key)) return value;
-      }
+  // ✅ SESUAI BKN 2023 Pasal 21 ayat 4
+  const kebutuhanKeahlian: { [key: string]: number } = {
+    'Ahli Pertama': 100,   // Ahli Pertama → Ahli Muda
+    'Ahli Muda': 200,      // Ahli Muda → Ahli Madya  
+    'Ahli Madya': 450,     // Ahli Madya → Ahli Utama
+    'Ahli Utama': 0        // Puncak
+  };
+  
+  const kebutuhanKeterampilan: { [key: string]: number } = {
+    'Terampil': 60,        // Terampil → Mahir
+    'Mahir': 100,          // Mahir → Penyelia
+    'Penyelia': 0          // Puncak
+  };
+  
+  if (kategori === 'Keahlian') {
+    for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+      if (jabatanSekarang.includes(key)) return value;
     }
-    return 0;
+  } else {
+    for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+      if (jabatanSekarang.includes(key)) return value;
+    }
   }
-
+  return 0;
+}
+// Fungsi baru untuk menangani kenaikan jenjang + pangkat
+static shouldPromoteJenjangAndPangkat(
+  jabatanSekarang: string,
+  golonganSekarang: string,
+  totalAK: number
+): { promoteJenjang: boolean; promotePangkat: boolean } {
+  const result = { promoteJenjang: false, promotePangkat: false };
+  
+  // ✅ Kasus khusus: Ahli Muda (III/d) → Ahli Madya (IV/a)
+  if (jabatanSekarang.includes('Ahli Muda') && golonganSekarang === 'III/d') {
+    if (totalAK >= 200) { // 200 AK untuk naik jenjang + pangkat
+      result.promoteJenjang = true;
+      result.promotePangkat = true;
+    }
+  }
+  
+  // ✅ Kasus khusus: Mahir (III/b) → Penyelia (III/c)  
+  else if (jabatanSekarang.includes('Mahir') && golonganSekarang === 'III/b') {
+    if (totalAK >= 100) { // 100 AK untuk naik jenjang + pangkat
+      result.promoteJenjang = true;
+      result.promotePangkat = true;
+    }
+  }
+  
+  return result;
+}
   // Hitung AK dengan sistem proporsional sesuai BKN 2023 - DIPERBAIKI
   static calculateAKProporsional(
     predikat: string, 
