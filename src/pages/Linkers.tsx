@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 const linksData = [
   { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },
   { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
-  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/driveamplifiers/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
+  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
   { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
   { title: "Perka BPS", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan", icon: FileText },
   { title: "Perka PAK Sensus Survei", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei", icon: FileText },
@@ -18,26 +18,26 @@ export default function Linkers() {
   };
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
-      {/* Header — Judul tetap merah & ukuran lebih pas */}
-      <div className="max-w-7xl mx-auto mb-12">
+    <div className="min-h-screen bg-background pt-8 pb-16 px-6"> {/* Kurangi padding atas */}
+      
+      {/* Header — lebih rapat ke atas */}
+      <div className="max-w-7xl mx-auto mb-8"> {/* mb-12 → mb-8 */}
         <div className="flex items-center gap-5">
           <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5">
             <Link2 className="h-9 w-9 text-primary" />
           </div>
           <div>
-            {/* Tetap merah, tidak ikut tema */}
             <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
               Linkers
             </h1>
-            <p className="mt-2 text-lg text-muted-foreground">
+            <p className="mt-1.5 text-lg text-muted-foreground"> {/* mt-2 → mt-1.5 */}
               Kumpulan tautan penting dokumen dan aplikasi BPS Kabupaten Majalengka
             </p>
           </div>
         </div>
       </div>
 
-      {/* Grid Cards — Tetap modern & mengikuti tema aktif */}
+      {/* Grid Cards — mulai lebih cepat */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {linksData.map((link) => {
           const Icon = link.icon;
