@@ -84,6 +84,7 @@ interface KonversiPredikatProps {
 // ==================== SPREADSHEET CONFIG ====================
 const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "konversi_predikat";
+const DATA_SHEET_NAME = "data";
 
 // ==================== UTILITY FUNCTIONS ====================
 class DateParser {
@@ -146,25 +147,6 @@ class DateParser {
     const tahunAkhir = tanggalAkhir.getFullYear();
     const bulanAkhir = tanggalAkhir.getMonth();
     return (tahunAkhir - tahunAwal) * 12 + (bulanAkhir - bulanAwal);
-  }
-}
-
-class DataNormalizer {
-  static normalizeJenisKelamin(value: string): 'Laki-laki' | 'Perempuan' {
-    const normalized = String(value).trim().toLowerCase();
-    
-    if (normalized === 'laki-laki' || normalized === 'l' || normalized === 'laki' || normalized === 'lakilaki' || normalized === 'laki-laki') {
-      return 'Laki-laki';
-    } else if (normalized === 'perempuan' || normalized === 'p' || normalized === 'per' || normalized === 'perempuan') {
-      return 'Perempuan';
-    }
-    
-    // Default fallback
-    return 'Laki-laki';
-  }
-  
-  static ensureTempatLahir(value: string, fallback: string): string {
-    return value && value.trim() !== '' ? value : fallback;
   }
 }
 
@@ -716,7 +698,7 @@ const useSpreadsheetAPI = () => {
   const callAPI = async (operation: string, data?: any) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: { spreadsheetId: SPREADSHEET_ID, operation, range: SHEET_NAME, ...data }
+        body: { spreadsheetId: SPREADSHEET_ID, operation, ...data }
       });
 
       if (error) throw error;
@@ -732,9 +714,46 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  const readData = async (karyawan: Karyawan, nip?: string) => {
+  // Fungsi baru untuk membaca data tempat lahir dari sheet "data"
+  const getTempatLahirFromDataSheet = async (nip: string): Promise<string> => {
     try {
-      const result = await callAPI('read');
+      const result = await callAPI('read', { range: DATA_SHEET_NAME });
+      const rows = result.values || [];
+      
+      if (rows.length <= 1) return '';
+      
+      const headers = rows[0];
+      const nipIndex = headers.findIndex((header: string) => 
+        header.toLowerCase().includes('nip')
+      );
+      
+      // Kolom tempat lahir adalah kolom ke-9 (index 8)
+      const tempatLahirIndex = 8;
+      
+      if (nipIndex === -1 || tempatLahirIndex >= headers.length) {
+        console.warn('Struktur sheet data tidak sesuai');
+        return '';
+      }
+      
+      // Cari baris dengan NIP yang sesuai
+      const dataRow = rows.find((row: any[]) => 
+        row[nipIndex]?.toString() === nip
+      );
+      
+      if (dataRow && dataRow[tempatLahirIndex]) {
+        return dataRow[tempatLahirIndex].toString();
+      }
+      
+      return '';
+    } catch (error) {
+      console.error('Error reading tempat lahir from data sheet:', error);
+      return '';
+    }
+  };
+
+  const readData = async (nip?: string) => {
+    try {
+      const result = await callAPI('read', { range: SHEET_NAME });
       const rows = result.values || [];
       
       if (rows.length <= 1) return [];
@@ -760,13 +779,18 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Jenis Periode') obj.Jenis_Periode = (value === 'Tahunan' ? 'Tahunan' : 'Semester') as 'Semester' | 'Tahunan';
             else if (header === 'Nama') obj.Nama = String(value);
             else if (header === 'NIP') obj.NIP = String(value);
-            else if (header === 'Nomor Karpeg' || header === 'Karpeg') obj.Nomor_Karpeg = String(value);        
-            else if (header === 'Tempat Lahir' || header === 'tempatLahir') obj.Tempat_Lahir =String(value);            
+            else if (header === 'Nomor Karpeg' || header === 'Karpeg') obj.Nomor_Karpeg = String(value);
+            else if (header === 'Tempat Lahir' || header === 'tempatLahir') obj.Tempat_Lahir = String(value);
             else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
             else if (header === 'Jenis Kelamin') {
-              obj.Jenis_Kelamin = DataNormalizer.normalizeJenisKelamin(value);
+              if (value === 'Laki-laki' || value === 'Laki-laki') {
+                obj.Jenis_Kelamin = 'Laki-laki';
+              } else if (value === 'Perempuan' || value === 'Perempuan') {
+                obj.Jenis_Kelamin = 'Perempuan';
+              } else {
+                obj.Jenis_Kelamin = 'Laki-laki'; // default
+              }
             }
-            
             else if (header === 'Pangkat') obj.Pangkat = String(value);
             else if (header === 'Golongan' || header === 'Gol.Akhir') obj.Golongan = String(value);
             else if (header === 'TMT Pangkat') obj.TMT_Pangkat = String(value);
@@ -798,15 +822,6 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Jenis Penilaian') obj.Jenis_Penilaian = (value === 'PROPORSIONAL' ? 'PROPORSIONAL' : 'PENUH');
           });
           
-          // PERBAIKAN: Pastikan Tempat Lahir dan Jenis Kelamin selalu terisi
-          if (!obj.Tempat_Lahir || obj.Tempat_Lahir.trim() === '') {
-            obj.Tempat_Lahir = karyawan.tempatLahir || '';
-          }
-          
-          if (!obj.Jenis_Kelamin) {
-            obj.Jenis_Kelamin = karyawan.jenisKelamin;
-          }
-          
           obj.id = `${SHEET_NAME}_${index + 2}`;
           obj.rowIndex = index + 2;
           if (!obj.No) obj.No = index + 1;
@@ -833,7 +848,7 @@ const useSpreadsheetAPI = () => {
         return String(value);
       });
 
-      return await callAPI('append', { values: [cleanedValues] });
+      return await callAPI('append', { range: SHEET_NAME, values: [cleanedValues] });
     } catch (error) {
       console.error('Error in appendData:', error);
       throw error;
@@ -848,7 +863,7 @@ const useSpreadsheetAPI = () => {
         return String(value);
       });
 
-      return await callAPI('update', { rowIndex, values: [cleanedValues] });
+      return await callAPI('update', { range: SHEET_NAME, rowIndex, values: [cleanedValues] });
     } catch (error) {
       console.error('Error in updateData:', error);
       throw error;
@@ -857,14 +872,20 @@ const useSpreadsheetAPI = () => {
 
   const deleteData = async (rowIndex: number) => {
     try {
-      return await callAPI('delete', { rowIndex });
+      return await callAPI('delete', { range: SHEET_NAME, rowIndex });
     } catch (error) {
       console.error('Error in deleteData:', error);
       throw error;
     }
   };
 
-  return { readData, appendData, updateData, deleteData };
+  return { 
+    readData, 
+    appendData, 
+    updateData, 
+    deleteData, 
+    getTempatLahirFromDataSheet 
+  };
 };
 
 // ==================== EDIT FORM MODAL ====================
@@ -1007,9 +1028,9 @@ const EditKonversiModal: React.FC<{
         Periode: `${periode.mulai} - ${periode.selesai}`,
         Jenis_Periode: formData.Jenis_Periode || 'Semester',
         Nomor_Karpeg: karyawan.unitKerja,
-        Tempat_Lahir: DataNormalizer.ensureTempatLahir(formData.Tempat_Lahir || '', karyawan.tempatLahir),
+        Tempat_Lahir: karyawan.tempatLahir,
         Tanggal_Lahir: karyawan.tanggalLahir,
-        Jenis_Kelamin: DataNormalizer.normalizeJenisKelamin(formData.Jenis_Kelamin || karyawan.jenisKelamin),
+        Jenis_Kelamin: karyawan.jenisKelamin,
         Pangkat: karyawan.pangkat,
         Golongan: karyawan.golongan,
         TMT_Pangkat: karyawan.tmtPangkat,
@@ -1423,7 +1444,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.readData(karyawan, karyawan.nip);
+      const data = await api.readData(karyawan.nip);
       setKonversiData(data);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -1441,6 +1462,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleSave = async (updatedData: KonversiData) => {
     try {
+      // Ambil data tempat lahir dari sheet "data" jika belum ada
+      let tempatLahir = updatedData.Tempat_Lahir || karyawan.tempatLahir;
+      if (!tempatLahir) {
+        tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
+      }
+
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
       const { masaKerjaBulan, jenisPenilaian } = KonversiCalculator.calculateMasaKerjaProporsional(
@@ -1492,7 +1519,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
       const periode = KonversiCalculator.calculatePeriodeSemester(updatedData.Tahun, updatedData.Semester);
 
-      // PERBAIKAN: Gunakan data yang benar dari karyawan dengan normalisasi
       const values = [
         updatedData.No || nextNo,
         updatedData.Tahun,
@@ -1501,13 +1527,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Jenis_Periode || 'Semester',
         updatedData.Nama || karyawan.nama,
         updatedData.NIP || karyawan.nip,
-        // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         updatedData.Nomor_Karpeg || karyawan.unitKerja,
-        // PERBAIKAN: Gunakan tempatLahir dari karyawan dengan fallback
-        DataNormalizer.ensureTempatLahir(updatedData.Tempat_Lahir || '', karyawan.tempatLahir),
+        tempatLahir, // Gunakan tempat lahir yang sudah diambil
         updatedData.Tanggal_Lahir || karyawan.tanggalLahir,
-        // PERBAIKAN: Jenis Kelamin menggunakan format lengkap yang sudah dinormalisasi
-        DataNormalizer.normalizeJenisKelamin(updatedData.Jenis_Kelamin || karyawan.jenisKelamin),
+        updatedData.Jenis_Kelamin || karyawan.jenisKelamin,
         updatedData.Pangkat || karyawan.pangkat,
         updatedData.Golongan || karyawan.golongan,
         updatedData.TMT_Pangkat || karyawan.tmtPangkat,
@@ -1561,6 +1584,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleAddNew = async () => {
     try {
+      // Ambil data tempat lahir dari sheet "data"
+      const tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
+
       const now = KonversiCalculator.formatDate(new Date());
       const tahun = new Date().getFullYear();
       const semester = new Date().getMonth() < 6 ? 1 : 2;
@@ -1613,7 +1639,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      // PERBAIKAN: Gunakan data yang benar dari karyawan dengan normalisasi
       const values = [
         nextNo,
         tahun,
@@ -1622,13 +1647,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         'Semester',
         karyawan.nama,
         karyawan.nip,
-        // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         karyawan.unitKerja,
-        // PERBAIKAN: Gunakan tempatLahir dari karyawan
-        DataNormalizer.ensureTempatLahir('', karyawan.tempatLahir),
+        tempatLahir, // Gunakan tempat lahir yang sudah diambil
         karyawan.tanggalLahir,
-        // PERBAIKAN: Jenis Kelamin menggunakan format lengkap
-        DataNormalizer.normalizeJenisKelamin(karyawan.jenisKelamin),
+        karyawan.jenisKelamin,
         karyawan.pangkat,
         karyawan.golongan,
         karyawan.tmtPangkat,
@@ -1678,6 +1700,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[], mode: 'semesteran' | 'tahunan') => {
     try {
+      // Ambil data tempat lahir dari sheet "data"
+      const tempatLahir = await api.getTempatLahirFromDataSheet(karyawan.nip);
+
       const now = KonversiCalculator.formatDate(new Date());
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
@@ -1743,13 +1768,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             mode === 'tahunan' ? 'Tahunan' : 'Semester',
             karyawan.nama,
             karyawan.nip,
-            // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
             karyawan.unitKerja,
-            // PERBAIKAN: Gunakan tempatLahir dari karyawan
-            DataNormalizer.ensureTempatLahir('', karyawan.tempatLahir),
+            tempatLahir, // Gunakan tempat lahir yang sudah diambil
             karyawan.tanggalLahir,
-            // PERBAIKAN: Jenis Kelamin menggunakan format lengkap
-            DataNormalizer.normalizeJenisKelamin(karyawan.jenisKelamin),
+            karyawan.jenisKelamin,
             karyawan.pangkat,
             karyawan.golongan,
             karyawan.tmtPangkat,
