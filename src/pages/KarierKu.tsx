@@ -601,7 +601,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-800">Memenuhi Syarat Pangkat</p>
-                    <p className="text-3xl font-bold text-green-900">{sudahMemenuhiPangkat.length} <span className="text-sm font-medium text-green-800 ml-1">Pegawai</span></p>
+                    <p className="text-3xl font-bold text-green-900">{sudahMemenuhiPangkat.length}</p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
@@ -613,7 +613,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-800">Memenuhi Syarat Jabatan</p>
-                    <p className="text-3xl font-bold text-blue-900">{sudahMemenuhiJabatan.length} <span className="text-sm font-medium text-blue-800 ml-1">Pegawai</span></p>
+                    <p className="text-3xl font-bold text-blue-900">{sudahMemenuhiJabatan.length}</p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-blue-600" />
                 </div>
@@ -625,7 +625,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-yellow-800">Estimasi ≤ 6 Bulan (Pangkat)</p>
-                    <p className="text-3xl font-bold text-yellow-900">{akan6BulanPangkat.length} <span className="text-sm font-medium text-yellow-800 ml-1">Pegawai</span></p>
+                    <p className="text-3xl font-bold text-yellow-900">{akan6BulanPangkat.length}</p>
                   </div>
                   <Clock className="h-8 w-8 text-yellow-600" />
                 </div>
@@ -637,7 +637,7 @@ const DashboardKarierKu: React.FC<{
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-orange-800">Estimasi ≤ 6 Bulan (Jabatan)</p>
-                    <p className="text-3xl font-bold text-orange-900">{akan6BulanJabatan.length} <span className="text-sm font-medium text-orange-800 ml-1">Pegawai</span></p>
+                    <p className="text-3xl font-bold text-orange-900">{akan6BulanJabatan.length}</p>
                   </div>
                   <Clock className="h-8 w-8 text-orange-600" />
                 </div>
@@ -1479,7 +1479,7 @@ const EstimasiKenaikanCard: React.FC<{
                 <h4 className="font-semibold mb-1 text-yellow-900">Kenaikan Jenjang</h4>
                 <p className="text-sm text-yellow-800">
                   Anda akan mendapatkan peluang untuk kenaikan jenjang. Ketika syarat terpenuhi, Anda dapat mengusulkan kenaikan{' '}
-                  <strong>Jabatan dan Pangkat</strong> setelah dinyatakan lulus Uji Kompetensi.
+                  <strong>Jabatan dan Pangkat</strong> setelah dinyatakan lulus Uji Kompetensi..
                 </p>
               </div>
             </div>
