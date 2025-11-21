@@ -7,9 +7,6 @@ import { Cake, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import heroBanner from "@/assets/hero-banner.jpg";
-import { motion, AnimatePresence } from "framer-motion";
-import Confetti from "react-confetti";
-import { useWindowSize } from "react-use";
 
 interface Pegawai {
   nip: string;
@@ -24,360 +21,415 @@ export default function Home() {
   const [ultahPegawai, setUltahPegawai] = useState<Pegawai[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { width, height } = useWindowSize();
 
-  // === Fungsi utilitas (tetap sama) ===
+  // Fungsi untuk extract tanggal lahir dari NIP
   const extractTanggalLahirFromNIP = (nip: string): string | null => {
     try {
-      const nipParts = nip.toString().split(" ");
-      if (nipParts.length >= 1 && nipParts[0].length === 8) {
-        const y = nipParts[0].substring(0, 4);
-        const m = nipParts[0].substring(4, 6);
-        const d = nipParts[0].substring(6, 8);
-        return `${y}-${m}-${d}`;
+      // Format NIP: 19781017 199803 1 002
+      // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
+      const nipParts = nip.toString().split(' ');
+      if (nipParts.length >= 1) {
+        const tanggalLahirStr = nipParts[0];
+        if (tanggalLahirStr.length === 8) {
+          const tahun = tanggalLahirStr.substring(0, 4);
+          const bulan = tanggalLahirStr.substring(4, 6);
+          const tanggal = tanggalLahirStr.substring(6, 8);
+          return `${tahun}-${bulan}-${tanggal}`;
+        }
       }
       return null;
-    } catch {
+    } catch (error) {
+      console.error('Error extract tanggal lahir dari NIP:', error);
       return null;
     }
   };
 
-  const hitungUmur = (tgl: string): number => {
+  // Fungsi untuk menghitung umur
+  const hitungUmur = (tanggalLahir: string): number => {
     const today = new Date();
-    const birth = new Date(tgl);
-    let age = today.getFullYear() - birth.getFullYear();
-    if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) {
+    const birthDate = new Date(tanggalLahir);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
+    
     return age;
   };
 
-  const isHariIniUlangTahun = (tgl: string): boolean => {
+  // Fungsi untuk cek apakah hari ini ulang tahun
+  const isHariIniUlangTahun = (tanggalLahir: string): boolean => {
     const today = new Date();
-    const birth = new Date(tgl);
-    return today.getMonth() === birth.getMonth() && today.getDate() === birth.getDate();
+    const birthDate = new Date(tanggalLahir);
+    
+    return today.getMonth() === birthDate.getMonth() && 
+           today.getDate() === birthDate.getDate();
   };
 
-  const formatNIP = (nip: string) =>
-    nip.toString().replace(/(\d{8})(\d{6})(\d)(\d{3})/, "$1 $2 $3 $4");
-
-  // === Fetch data ===
+  // Fetch data pegawai dari Google Sheets
   const fetchPegawaiBerulangTahun = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
           operation: "read",
-          range: "MASTER.ORGANIK",
-        },
+          range: "MASTER.ORGANIK"
+        }
       });
 
       if (error) throw error;
-      if (!data?.values || data.values.length <= 1) return [];
 
-      const rows = data.values.slice(1);
-      const hasil: Pegawai[] = [];
+      const rows = data.values || [];
+      if (rows.length <= 1) {
+        console.log('Tidak ada data pegawai');
+        return [];
+      }
 
-      for (const row of rows) {
-        const nip = row[2] ?? row[1] ?? "";
-        const nama = row[3] ?? "";
-        const jabatan = row[4] ?? "";
-        const pangkat = row[7] ?? "";
+      // Skip header row
+      const pegawaiData = rows.slice(1);
+      const pegawaiUltah: Pegawai[] = [];
+      
+      // Cari semua pegawai yang berulang tahun hari ini
+      for (const row of pegawaiData) {
+        const nip = row[2] || row[1]; // Kolom NIP (index 2) atau NIP BPS (index 1)
+        const nama = row[3] || "";
+        const jabatan = row[4] || "";
+        const pangkat = row[7] || "";
 
-        if (!nip || !nama) continue;
-
-        const tglLahir = extractTanggalLahirFromNIP(nip);
-        if (tglLahir && isHariIniUlangTahun(tglLahir)) {
-          hasil.push({
-            nip,
-            nama,
-            tanggal_lahir: tglLahir,
-            umur: hitungUmur(tglLahir),
-            jabatan,
-            pangkat,
-          });
+        if (nip && nama) {
+          const tanggalLahir = extractTanggalLahirFromNIP(nip.toString());
+          
+          if (tanggalLahir && isHariIniUlangTahun(tanggalLahir)) {
+            const umur = hitungUmur(tanggalLahir);
+            
+            const pegawai: Pegawai = {
+              nip: nip.toString(),
+              nama: nama.toString(),
+              tanggal_lahir: tanggalLahir,
+              umur: umur,
+              jabatan: jabatan.toString(),
+              pangkat: pangkat.toString()
+            };
+            
+            pegawaiUltah.push(pegawai);
+          }
         }
       }
-      return hasil;
-    } catch (err) {
+      
+      return pegawaiUltah;
+    } catch (error: any) {
+      console.error('Error fetch data pegawai:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data ulang tahun",
-        variant: "destructive",
+        description: "Gagal memuat data ulang tahun pegawai",
+        variant: "destructive"
       });
       return [];
+    } finally {
+      setLoading(false);
     }
   };
 
-  // === Load data saat mount ===
+  // Cek ulang tahun saat component mount
   useEffect(() => {
-    fetchPegawaiBerulangTahun().then((data) => {
-      if (data.length > 0) {
-        setUltahPegawai(data);
+    const checkUltahPegawai = async () => {
+      const pegawaiUltah = await fetchPegawaiBerulangTahun();
+      if (pegawaiUltah.length > 0) {
+        setUltahPegawai(pegawaiUltah);
         setShowDialog(true);
-        setShowConfetti(true);
-
-        toast({
-          title: "Selamat Ulang Tahun!",
-          description:
-            data.length === 1
-              ? `Hari ini ${data[0].nama} berulang tahun!`
-              : `Ada ${data.length} pegawai yang berulang tahun hari ini`,
-        });
+        
+        if (pegawaiUltah.length === 1) {
+          toast({
+            title: "Selamat Ulang Tahun! 🎉",
+            description: `Semoga ${pegawaiUltah[0].nama} senantiasa diberikan kesehatan dan kebahagiaan`,
+          });
+        } else {
+          toast({
+            title: "Selamat Ulang Tahun! 🎉",
+            description: `Ada ${pegawaiUltah.length} pegawai yang berulang tahun hari ini`,
+          });
+        }
       }
-    });
+    };
+
+    checkUltahPegawai();
   }, []);
 
-  // === Navigasi dialog ===
-  const nextPegawai = () => setCurrentIndex((i) => (i + 1) % ultahPegawai.length);
-  const prevPegawai = () => setCurrentIndex((i) => (i - 1 + ultahPegawai.length) % ultahPegawai.length);
+  // Fungsi untuk navigasi
+  const nextPegawai = () => {
+    setCurrentIndex((prev) => (prev + 1) % ultahPegawai.length);
+  };
 
-  // === Ucapan random ===
+  const prevPegawai = () => {
+    setCurrentIndex((prev) => (prev - 1 + ultahPegawai.length) % ultahPegawai.length);
+  };
+
+  // Fungsi untuk mendapatkan ucapan berdasarkan umur
+  const getUcapanUltah = (umur: number, nama: string, jabatan: string) => {
+    const ucapanUmum = [
+      `Selamat ulang tahun yang ke-${umur} tahun, ${nama}! Semoga senantiasa diberikan kesehatan, kebahagiaan, dan kesuksesan dalam menjalankan tugas sebagai ${jabatan}.`,
+      `Di usia yang ke-${umur} tahun ini, semoga ${nama} semakin bijaksana dan inspiratif bagi rekan-rekan di BPS Majalengka.`,
+      `Semoga di usia ${umur} tahun ini, ${nama} menjadi pribadi yang lebih baik dan profesional dalam mengabdi untuk negara.`
+    ];
+
+    if (umur >= 50) {
+      return [
+        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki ${nama} semakin membawa manfaat bagi BPS Majalengka.`,
+        `Di usia emas ${umur} tahun, semoga ${nama} senantiasa diberikan kesehatan dan semangat dalam mengabdi untuk statistik Indonesia.`,
+        `Terima kasih atas dedikasi dan pengabdian selama ini. Selamat merayakan ${umur} tahun kehidupan yang penuh makna, ${nama}.`
+      ];
+    } else if (umur >= 40) {
+      return [
+        `Selamat ulang tahun ke-${umur} tahun! Semoga di usia yang penuh kematangan ini, ${nama} semakin banyak kontribusi berharga untuk BPS.`,
+        `Di usia ${umur} tahun, semoga ${nama} semakin produktif dan inspiratif dalam memajukan statistik di Kabupaten Majalengka.`,
+        `Semoga di usia yang semakin dewasa ini, ${nama} senantiasa diberikan kemudahan dalam setiap tugas dan tanggung jawab.`
+      ];
+    } else {
+      return ucapanUmum;
+    }
+  };
+
   const getRandomUcapan = (umur: number, nama: string, jabatan: string) => {
-    const list =
-      umur >= 50
-        ? [
-            `Selamat ulang tahun ke-${umur}, ${nama}! Pengalaman dan kebijaksanaan Bapak/Ibu sangat berarti bagi kami semua.`,
-            `Di usia emas ini, semoga ${nama} selalu sehat dan terus menginspirasi BPS Majalengka.`,
-            `Terima kasih atas segala dedikasi. Selamat merayakan ${umur} tahun yang penuh makna!`,
-          ]
-        : umur >= 40
-        ? [
-            `Selamat ulang tahun ke-${umur}, ${nama}! Semoga semakin sukses dan produktif dalam mengabdi.`,
-            `Di usia matang ini, semoga ${nama} terus menjadi teladan bagi kami semua.`,
-            `Semoga tahun ini penuh berkah dan pencapaian baru bagi ${nama}.`,
-          ]
-        : [
-            `Selamat ulang tahun yang ke-${umur}, ${nama}! Semoga selalu sehat, bahagia, dan sukses sebagai ${jabatan}.`,
-            `Semoga di usia ini ${nama} semakin bijaksana dan terus berkarya untuk BPS Majalengka.`,
-            `Panjang umur, sehat selalu, dan terus menginspirasi ya, ${nama}!`,
-          ];
+    const ucapanList = getUcapanUltah(umur, nama, jabatan);
+    return ucapanList[Math.floor(Math.random() * ucapanList.length)];
+  };
 
-    return list[Math.floor(Math.random() * list.length)];
+  // Format NIP untuk display
+  const formatNIP = (nip: string) => {
+    return nip.toString().replace(/(\d{8}) (\d{6}) (\d) (\d{3})/, '$1 $2 $3 $4');
   };
 
   const currentPegawai = ultahPegawai[currentIndex];
 
   return (
-    <>
-      {/* Confetti */}
-      {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={300}
-          gravity={0.15}
-          onConfettiComplete={() => setShowConfetti(false)}
-        />
-      )}
-
-      {/* Dialog Ulang Tahun – SEKARANG BENAR & AMAN */}
+    <div className="space-y-8">
+      {/* Dialog Ulang Tahun */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 p-6">
-            <DialogHeader className="text-center">
-              <div className="flex justify-between mb-4">
-                {ultahPegawai.length > 1 && (
-                  <Button variant="ghost" size="icon" onClick={prevPegawai} className="rounded-full">
-                    <ChevronLeft className="h-5 w-5 text-pink-600" />
-                  </Button>
-                )}
-                <motion.div animate={{ rotate: [0, 15, -10, 0] }} transition={{ duration: 0.6 }}>
-                  <Cake className="h-20 w-20 text-pink-500 mx-auto" />
-                  <Heart className="h-9 w-9 text-red-500 absolute -top-2 -right-2 animate-pulse" />
-                </motion.div>
-                {ultahPegawai.length > 1 && (
-                  <Button variant="ghost" size="icon" onClick={nextPegawai} className="rounded-full">
-                    <ChevronRight className="h-5 w-5 text-pink-600" />
-                  </Button>
-                )}
+        <DialogContent className="max-w-md bg-gradient-to-br from-pink-50 to-red-50 border-pink-200">
+          <DialogHeader>
+            <div className="flex justify-between items-center mb-4">
+              {ultahPegawai.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={prevPegawai}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              
+              <div className="relative">
+                <Cake className="h-16 w-16 text-pink-500" />
+                <Heart className="h-6 w-6 text-red-500 absolute -top-1 -right-1 animate-pulse" />
               </div>
 
-              <DialogTitle className="text-3xl font-bold text-pink-700">
-                Selamat Ulang Tahun!
-              </DialogTitle>
               {ultahPegawai.length > 1 && (
-                <p className="text-pink-600 mt-2">
-                  {currentIndex + 1} dari {ultahPegawai.length}
-                </p>
-              )}
-            </DialogHeader>
-
-            <AnimatePresence mode="wait">
-              {currentPegawai && (
-                <motion.div
-                  key={currentIndex}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mt-6 space-y-6"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={nextPegawai}
+                  className="h-8 w-8"
                 >
-                  <div className="bg-white rounded-xl p-6 shadow-md">
-                    <h3 className="text-xl font-bold text-center mb-4">{currentPegawai.nama}</h3>
-                    <div className="space-y-2 text-sm text-gray-700">
-                      <p><span className="font-medium">NIP:</span> {formatNIP(currentPegawai.nip)}</p>
-                      <p><span className="font-medium">Jabatan:</span> {currentPegawai.jabatan}</p>
-                      <p><span className="font-medium">Pangkat:</span> {currentPegawai.pangkat}</p>
-                      <p><span className="font-medium">Umur:</span> <span className="text-pink-600 font-bold">{currentPegawai.umur} tahun</span></p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 italic text-gray-700 text-center">
-                    "{getRandomUcapan(currentPegawai.umur, currentPegawai.nama, currentPegawai.jabatan)}"
-                  </div>
-
-                  <div className="text-center space-y-1 text-sm text-gray-600">
-                    <p>Semoga hari ini penuh kebahagiaan</p>
-                    <p>Terus berkarya untuk BPS Majalengka</p>
-                    <p>Panjang umur & sehat selalu</p>
-                  </div>
-
-                  {ultahPegawai.length > 1 && (
-                    <div className="flex justify-center gap-2">
-                      {ultahPegawai.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentIndex(i)}
-                          className={`h-2 w-2 rounded-full transition-all ${
-                            i === currentIndex ? "bg-pink-500 w-8" : "bg-pink-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               )}
-            </AnimatePresence>
-
-            <div className="mt-8 text-center">
-              <Button
-                onClick={() => setShowDialog(false)}
-                className="bg-pink-500 hover:bg-pink-600 text-white px-8 py-6 rounded-full text-lg font-medium shadow-lg"
-              >
-                Tutup & Lanjutkan
-              </Button>
             </div>
+
+            <DialogTitle className="text-center text-2xl text-pink-700">
+              🎉 Selamat Ulang Tahun! 🎉
+            </DialogTitle>
+            
+            {ultahPegawai.length > 1 && (
+              <div className="text-center text-sm text-pink-600">
+                {currentIndex + 1} dari {ultahPegawai.length} pegawai
+              </div>
+            )}
+          </DialogHeader>
+          
+          <DialogDescription className="text-center space-y-4">
+            {currentPegawai && (
+              <>
+                <div className="bg-white rounded-lg p-4 shadow-sm border">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                    {currentPegawai.nama}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-1">
+                    NIP: {formatNIP(currentPegawai.nip)}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Jabatan: {currentPegawai.jabatan}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Pangkat: {currentPegawai.pangkat}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Umur: <span className="font-semibold text-pink-600">{currentPegawai.umur} tahun</span>
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-gray-700 text-justify leading-relaxed italic">
+                    "{getRandomUcapan(currentPegawai.umur, currentPegawai.nama, currentPegawai.jabatan)}"
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-2 text-xs text-gray-500">
+                  <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
+                  <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                  <p>🎂 Panjang umur dan sehat selalu</p>
+                </div>
+
+                {/* Indicator dots untuk multiple pegawai */}
+                {ultahPegawai.length > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    {ultahPegawai.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentIndex(index)}
+                        className={`h-2 w-2 rounded-full transition-colors ${
+                          index === currentIndex ? 'bg-pink-500' : 'bg-pink-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </DialogDescription>
+          
+          <div className="flex justify-center mt-4">
+            <Button 
+              onClick={() => setShowDialog(false)}
+              className="bg-pink-500 hover:bg-pink-600 text-white"
+            >
+              Tutup & Lanjutkan
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* === KONTEN UTAMA (Hero + Tentang + Fitur + Manfaat) === */}
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-12">
-        {/* Hero */}
-        <section className="relative rounded-3xl overflow-hidden shadow-2xl mb-12">
-          <motion.img
-            src={heroBanner}
-            alt="KECAP MAJA"
-            className="w-full h-96 object-cover"
-            initial={{ scale: 1.15 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 12, ease: "easeOut" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-primary/70 to-transparent flex items-end">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1 }}
-              className="text-white p-10 pb-16"
-            >
-              <h1 className="text-6xl font-extrabold tracking-tight">KECAP MAJA</h1>
-              <p className="text-2xl mt-3 font-medium">
-                Kerja Efisien, Cepat, Akurat, Profesional — Maju Aman Jeung Amanah
-              </p>
-            </motion.div>
+      {/* Hero Section */}
+      <section className="relative rounded-lg overflow-hidden">
+        <img 
+          src={heroBanner} 
+          alt="SIMAJA Hero Banner" 
+          className="w-full h-64 object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-accent/80 flex items-center">
+          <div className="px-8 text-primary-foreground">
+            <h1 className="text-4xl font-bold mb-2">KECAP MAJA</h1>
+            <p className="text-xl">Kerja Efisien, Cepat, Akurat, Profesional - Maju Aman Jeung Amanah</p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Tentang */}
-        <section className="max-w-5xl mx-auto px-6 mb-16">
-          <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 p-10">
-                <CardTitle className="text-4xl font-bold">Tentang KECAP MAJA</CardTitle>
-              </CardHeader>
-              <CardContent className="p-10 text-lg leading-relaxed space-y-6">
-                <p>
-                  KECAP MAJA adalah sistem administrasi digital terpadu yang dirancang khusus untuk BPS Kabupaten Majalengka guna mentransformasi pengelolaan kegiatan menjadi lebih efisien, transparan, dan andal.
-                </p>
-                <p>
-                  Dengan semangat <strong>Maju Aman Jeung Amanah</strong>, KECAP MAJA menjadi katalisator budaya kerja unggul melalui otomatisasi dokumen, monitoring real-time, dan tata kelola yang akuntabel.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </section>
+      {/* Introduction */}
+      <section className="prose max-w-none">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Tentang KECAP MAJA</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-foreground">
+            <p className="text-justify leading-relaxed">
+              💡 KECAP MAJA adalah sistem administrasi digital terpadu yang dirancang untuk mentransformasi pengelolaan kegiatan menjadi lebih efisien, transparan, dan andal. Sistem ini menghadirkan beragam fitur canggih, seperti pembuatan dokumen otomatis, entri data mitra statistik, rekap honorarium yang terintegrasi, serta pemantauan batas SBML secara real-time. Dengan dukungan teknologi ini, proses administrasi tidak hanya menjadi lebih cepat dan terukur, tetapi juga meminimalisir kesalahan, sehingga menciptakan standar kerja yang lebih profesional.
+            </p>
+            <p className="text-justify leading-relaxed">
+              Berdiri di atas semangat Maju Aman jeung Amanah, KECAP MAJA tidak sekadar menjadi alat bantu, melainkan juga pendorong terwujudnya budaya kerja yang unggul di lingkungan BPS Kabupaten Majalengka. Setiap aktivitas administrasi kini dapat dijalankan dengan prinsip efisiensi, ketepatan, kecepatan, dan profesionalisme, mendukung terciptanya tata kelola yang akuntabel dan berorientasi pada kualitas.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
 
-        {/* Fitur Utama */}
-        <section className="max-w-7xl mx-auto px-6 mb-16">
-          <motion.h2
-            className="text-4xl font-bold text-center mb-12"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-          >
-            Fitur Utama
-          </motion.h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { icon: FileText, title: "SPK & BAST Digital", desc: "Pembuatan kontrak dan serah terima secara otomatis" },
-              { icon: BarChart3, title: "Dashboard Real-time", desc: "Monitoring target vs realisasi kegiatan" },
-              { icon: Users, title: "Block Tanggal", desc: "Penguncian jadwal perjalanan dinas" },
-              { icon: Download, title: "e-Dokumen", desc: "Template dokumen resmi siap pakai" },
-            ].map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.15 }}
-              >
-                <Card className="h-full text-center p-8 hover:shadow-2xl transition-shadow rounded-3xl border-none">
-                  <f.icon className="h-14 w-14 text-primary mx-auto mb-4" />
-                  <CardTitle className="text-xl mb-3">{f.title}</CardTitle>
-                  <CardDescription>{f.desc}</CardDescription>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+      {/* Features Grid */}
+      <section>
+        <h2 className="text-2xl font-bold mb-6 text-foreground">Fitur Utama</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <FileText className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Administrasi SPK & BAST</CardTitle>
+              <CardDescription>
+                Pembuatan dan pengelolaan Surat Perjanjian Kerja serta Berita Acara Serah Terima secara digital
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-        {/* Manfaat */}
-        <section className="max-w-5xl mx-auto px-6">
-          <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}>
-            <Card className="border-none shadow-xl rounded-3xl">
-              <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 p-10">
-                <CardTitle className="text-4xl font-bold">Manfaat KECAP MAJA</CardTitle>
-              </CardHeader>
-              <CardContent className="p-10">
-                <ul className="space-y-6 text-lg">
-                  {["Efisiensi Administrasi", "Transparansi Data", "Tata Kelola Terstruktur", "Monitoring Mudah", "Otomasi Pelaporan"].map(
-                    (item, i) => (
-                      <motion.li
-                        key={i}
-                        className="flex items-start gap-4"
-                        initial={{ opacity: 0, x: -30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                      >
-                        <span className="text-primary text-3xl">•</span>
-                        <span>
-                          <strong>{item}:</strong> Proses lebih cepat, akurat, dan terdokumentasi dengan baik.
-                        </span>
-                      </motion.li>
-                    )
-                  )}
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </section>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <BarChart3 className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Dashboard Monitoring</CardTitle>
+              <CardDescription>
+                Visualisasi data target dan realisasi kegiatan mitra statistik secara real-time
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-        {/* Footer */}
-        <footer className="text-center py-12 mt-20 text-muted-foreground">
-          <p>© 2025 Badan Pusat Statistik Kabupaten Majalengka. All rights reserved.</p>
-        </footer>
-      </div>
-    </>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <Users className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Block Tanggal</CardTitle>
+              <CardDescription>
+                Fitur tagging yang digunakan untuk mencatat, mengunci, dan memvalidasi tanggal perjalanan dinas bagi pegawai organik maupun mitra statistik
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <Download className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>e-Dokumen</CardTitle>
+              <CardDescription>
+                Pengelolaan dan penyusunan dokumen administrasi secara otomatis dan terintegrasi
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </section>
+
+      {/* Benefits Section */}
+      <section>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Manfaat KECAP MAJA</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3 text-foreground">
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span><strong>Efisiensi Administrasi:</strong> Mengurangi pekerjaan manual melalui otomatisasi dalam pembuatan dan pengelolaan dokumen</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span><strong>Transparansi Data:</strong> Menyajikan informasi target dan realisasi kegiatan secara terbuka dan mudah diakses</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span><strong>Tata Kelola Terstruktur:</strong> Setiap proses administrasi tercatat rapi dengan alur kerja yang jelas dan terdokumentasi</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span><strong>Kemudahan Monitoring:</strong> Menyediakan dashboard interaktif untuk memantau perkembangan kegiatan secara real-time</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-primary mr-2">•</span>
+                <span><strong>Otomasi Pelaporan:</strong> Menghasilkan laporan dan dokumen administrasi secara otomatis, cepat, dan akurat</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Footer Info */}
+      <section className="text-center py-6">
+        <p className="text-sm text-muted-foreground">
+          © 2025 Badan Pusat Statistik Kabupaten Majalengka. All rights reserved.
+        </p>
+      </section>
+    </div>
   );
 }
