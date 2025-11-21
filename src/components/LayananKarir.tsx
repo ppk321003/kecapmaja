@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  User, Award, MapPin, Calendar, Sparkles,
-  FileText, Download, GraduationCap, ScrollText
-} from 'lucide-react';
+import { User, Award, MapPin, Calendar, Sparkles, FileText, Download, GraduationCap, ScrollText } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
 import { Karyawan } from '@/types';
 
@@ -12,9 +9,8 @@ interface LayananKarirProps {
   karyawan: Karyawan;
 }
 
-// Header Profil - Full width, elegant
 const ProfileHeader = ({ karyawan }: { karyawan: Karyawan }) => (
-  <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl">
+  <div className="gradient-header text-white shadow-xl">
     <div className="max-w-7xl mx-auto px-6 py-8">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-start gap-5">
@@ -70,18 +66,18 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState<'generate' | 'download'>('generate');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <ProfileHeader karyawan={karyawan} />
 
-      {/* Full Width Tabs - Hanya 2 */}
+      {/* Tabs — Otomatis pakai warna tema aktif */}
       <div className="max-w-7xl mx-auto px-6 mt-10">
-        <div className="flex bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+        <div className="flex bg-card rounded-2xl shadow-lg overflow-hidden border">
           <button
             onClick={() => setActiveTab('generate')}
             className={`flex-1 flex items-center justify-center gap-3 py-6 text-lg font-semibold transition-all ${
               activeTab === 'generate'
-                ? 'bg-blue-600 text-white shadow-inner'
-                : 'text-gray-600 hover:bg-gray-50'
+                ? 'bg-primary text-primary-foreground shadow-inner'
+                : 'text-foreground/70 hover:bg-muted'
             }`}
           >
             <FileText className="w-6 h-6" />
@@ -91,8 +87,8 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             onClick={() => setActiveTab('download')}
             className={`flex-1 flex items-center justify-center gap-3 py-6 text-lg font-semibold transition-all ${
               activeTab === 'download'
-                ? 'bg-green-600 text-white shadow-inner'
-                : 'text-gray-600 hover:bg-gray-50'
+                ? 'bg-primary text-primary-foreground shadow-inner'
+                : 'text-foreground/70 hover:bg-muted'
             }`}
           >
             <Download className="w-6 h-6" />
@@ -101,20 +97,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
       </div>
 
-      {/* Content Area - Full Width */}
+      {/* Content */}
       <div className="max-w-7xl mx-auto px-6 mt-10 pb-20">
         {activeTab === 'generate' && (
           <div className="grid lg:grid-cols-2 gap-8">
-            {/* Konversi Predikat */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200">
+            {/* Konversi Predikat — AKTIF */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-primary/20">
               <CardContent className="p-8">
                 <div className="flex items-start gap-5">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                     <GraduationCap className="w-9 h-9 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900">Konversi Predikat & Penilaian</h3>
-                    <p className="text-gray-600 mt-2">Generate dokumen konversi nilai predikat secara otomatis</p>
+                    <h3 className="text-2xl font-bold text-foreground">Konversi Predikat & Penilaian</h3>
+                    <p className="text-muted-foreground mt-2">Generate dokumen konversi nilai predikat secara otomatis</p>
                   </div>
                 </div>
                 <div className="mt-8">
@@ -123,17 +119,17 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
               </CardContent>
             </Card>
 
-            {/* PAK & DUPAK */}
-            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-amber-200 opacity-70">
+            {/* PAK & DUPAK — Coming Soon */}
+            <Card className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-primary/10 opacity-75">
               <CardContent className="p-8">
                 <div className="flex items-start gap-5">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/60 to-primary/40 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                     <ScrollText className="w-9 h-9 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900">PAK & DUPAK</h3>
-                    <p className="text-gray-600 mt-2">Dokumen Penilaian Angka Kredit dan DUPAK</p>
-                    <span className="inline-block mt-4 px-4 py-2 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                    <h3 className="text-2xl font-bold text-foreground">PAK & DUPAK</h3>
+                    <p className="text-muted-foreground mt-2">Dokumen Penilaian Angka Kredit dan DUPAK</p>
+                    <span className="inline-block mt-4 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium">
                       Segera Hadir
                     </span>
                   </div>
@@ -144,22 +140,22 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         )}
 
         {activeTab === 'download' && (
-          <Card className="border-2 border-dashed border-green-300 bg-green-50/50">
+          <Card className="border-2 border-dashed border-primary/30 bg-card/50">
             <CardContent className="py-24 text-center">
               <div className="max-w-2xl mx-auto">
-                <div className="w-28 h-28 bg-gradient-to-br from-green-100 to-emerald-200 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                  <Download className="w-14 h-14 text-green-600" />
+                <div className="w-28 h-28 bg-gradient-to-br from-primary/10 to-primary/5 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                  <Download className="w-14 h-14 text-primary" />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Download Dokumen Karir</h2>
-                <p className="text-xl text-gray-700 leading-relaxed">
+                <h2 className="text-3xl font-bold text-foreground mb-4">Download Dokumen Karir</h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
                   Semua dokumen yang telah Anda generate akan tersedia di sini untuk diunduh kapan saja.
                 </p>
                 <div className="mt-10">
-                  <div className="bg-green-100 border-2 border-dashed border-green-300 rounded-2xl p-8 max-w-md mx-auto">
-                    <p className="text-green-800 font-medium text-lg">
+                  <div className="bg-primary/5 border-2 border-dashed border-primary/20 rounded-2xl p-8 max-w-md mx-auto">
+                    <p className="text-primary font-medium text-lg">
                       Belum ada dokumen tersedia
                     </p>
-                    <p className="text-green-600 mt-2">
+                    <p className="text-muted-foreground mt-2">
                       Mulai generate dokumen di tab sebelah
                     </p>
                   </div>

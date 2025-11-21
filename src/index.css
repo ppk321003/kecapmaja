@@ -1,7 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+/* Pastikan variabel CSS bisa dibaca di Tailwind */
+@layer utilities {
+  .gradient-header {
+    background: var(--gradient-header);
+  }
+  .gradient-sidebar {
+    background: var(--sidebar-background);
+  }
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .bg-primary\/90 {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+  .ring-primary {
+    --tw-ring-color: hsl(var(--primary));
+  }
+  .shadow-primary {
+    box-shadow: 0 10px 30px -5px hsl(var(--primary) / 0.3);
+  }
+}
 /* =====================================================
    DESIGN SYSTEM - THEME VARIABLES (HSL based)
    ===================================================== */
