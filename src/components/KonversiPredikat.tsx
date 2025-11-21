@@ -215,35 +215,39 @@ class KonversiCalculator {
   }
 
   // Hitung kebutuhan AK untuk pangkat - SESUAI BKN 2023 Pasal 21 ayat 3
-static getKebutuhanPangkat(golonganSekarang: string, kategori: string, jabatanSekarang?: string, jabatanBerikutnya?: string): number {
+static getKebutuhanPangkat(
+  golonganSekarang: string, 
+  kategori: string, 
+  jabatanSekarang?: string
+): number {
   if (kategori === 'Reguler') return 0;
 
   const kebutuhanKeahlian: { [key: string]: number } = {
-    'III/a': 50,    // III/a → III/b
-    'III/b': 50,    // III/b → III/c  
-    'III/c': 100,   // III/c → III/d
-    'III/d': 100,   // III/d → IV/a (BASE, tapi bisa jadi 200 jika kenaikan jenjang)
-    'IV/a': 150,    // IV/a → IV/b
-    'IV/b': 150,    // IV/b → IV/c
-    'IV/c': 150,    // IV/c → IV/d
-    'IV/d': 200     // IV/d → IV/e
+    'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100, // Base value
+    'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
   };
   
   const kebutuhanKeterampilan: { [key: string]: number } = {
-    'II/a': 15,     // II/a → II/b
-    'II/b': 20,     // II/b → II/c
-    'II/c': 20,     // II/c → II/d
-    'II/d': 20,     // II/d → III/a (BASE, tapi bisa jadi 60 jika kenaikan jenjang)
-    'III/a': 50,    // III/a → III/b
-    'III/b': 50,    // III/b → III/c (BASE, tapi bisa jadi 100 jika kenaikan jenjang)
-    'III/c': 100    // III/c → III/d
+    'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
+    'III/a': 50, 'III/b': 50, 'III/c': 100
   };
   
-  let kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian[golonganSekarang] || 0 : kebutuhanKeterampilan[golonganSekarang] || 0;
-  
+  let kebutuhan = kategori === 'Keahlian' ? 
+    kebutuhanKeahlian[golonganSekarang] || 0 : 
+    kebutuhanKeterampilan[golonganSekarang] || 0;
+
   // ✅ PERBAIKAN: Untuk kenaikan jenjang, kebutuhan pangkat = kebutuhan jabatan
-  if (jabatanSekarang && jabatanBerikutnya) {
-    const isKenaikanJenjang = this.isKenaikanJenjang(jabatanSekarang, jabatanBerikutnya, golonganSekarang, this.getGolonganBerikutnya(golonganSekarang, kategori));
+  if (jabatanSekarang) {
+    const jabatanBerikutnya = this.getJabatanBerikutnya(jabatanSekarang, kategori);
+    const golonganBerikutnya = this.getGolonganBerikutnya(golonganSekarang, kategori);
+    
+    const isKenaikanJenjang = this.isKenaikanJenjang(
+      jabatanSekarang, 
+      jabatanBerikutnya, 
+      golonganSekarang, 
+      golonganBerikutnya
+    );
+    
     if (isKenaikanJenjang) {
       kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori);
     }
@@ -1152,7 +1156,11 @@ const EditKonversiModal: React.FC<{
       jenisPenilaian
     );
 
-    const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+    const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
+      karyawan.golongan, 
+      karyawan.kategori,
+      karyawan.jabatan  // Tambahkan parameter jabatan
+    );
     const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     const totalKumulatif = karyawan.akKumulatif + akKonversi;
     const selisihPangkat = kebutuhanPangkat - totalKumulatif;
