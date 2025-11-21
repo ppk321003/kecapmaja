@@ -2,9 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Briefcase, Car, Clock, FileSpreadsheet, FileCheck, FileSignature, Receipt, Banknote, Bike } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
-// Daftar warna aksen (hanya untuk top bar + icon background)
+// Warna aksen — hanya untuk top bar + background icon
 const accentColors = [
   "from-blue-500 to-blue-600",
   "from-emerald-500 to-emerald-600",
@@ -40,7 +39,6 @@ export default function BuatEDokumen() {
 
   return (
     <div className="min-h-screen bg-background pt-4 pb-16 px-6">
-      {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
           Buat e-Dokumen
@@ -50,13 +48,12 @@ export default function BuatEDokumen() {
         </p>
       </div>
 
-      {/* Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7 max-w-7xl mx-auto">
         {eDokumenMenuItems.map((item, index) => {
           const Icon = item.icon;
           const accent = accentColors[index % accentColors.length];
           const lighterBg = accent.replace("500", "100").replace("600", "200");
-          const iconColorClass = accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600");
+          const iconColor = accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600");
 
           return (
             <Card
@@ -65,14 +62,14 @@ export default function BuatEDokumen() {
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 
                          transition-all duration-500 hover:-translate-y-3 rounded-2xl h-full flex flex-col"
             >
-              {/* Gradient Top Bar — warna-warni */}
-              <div className={cn("absolute top-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500", accent)} />
+              {/* Top bar warna-warni */}
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
               <CardHeader className="pb-4">
                 <div className="flex items-start gap-4">
-                  {/* Background icon ikut warna aksen */}
-                  <div className={cn("p-3.5 rounded-xl border transition-all duration-300 group-hover:scale-110", lighterBg)}>
-                    <Icon className={cn("h-8 w-8", iconColorClass)} />
+                  {/* Icon background warna-warni */}
+                  <div className={`p-3.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110`}>
+                    <Icon className={`h-8 w-8 ${iconColor}`} />
                   </div>
                   <CardTitle className="text-lg font-semibold text-foreground leading-tight pt-1">
                     {item.title}
@@ -83,7 +80,7 @@ export default function BuatEDokumen() {
                 </CardDescription>
               </CardHeader>
 
-              {/* Tombol: tetap primary (merah) + gradasi halus */}
+              {/* Tombol: SELALU primary (merah) + gradasi halus — SAMA PERSIS seperti di Linkers */}
               <CardContent className="mt-auto pt-6 pb-1">
                 <Button
                   onClick={() => navigate(item.url)}
@@ -97,8 +94,7 @@ export default function BuatEDokumen() {
                   size="lg"
                 >
                   <span className="relative z-10">Buat Dokumen</span>
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full 
-                                   bg-white/20 transition-transform duration-700" />
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-white/20 transition-transform duration-700" />
                 </Button>
               </CardContent>
             </Card>
