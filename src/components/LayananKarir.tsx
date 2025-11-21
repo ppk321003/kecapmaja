@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, Download } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, Download } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
-import { Karyawan } from '@/types'; // Import Karyawan dari types
+import { Karyawan } from '@/types';
 
 interface LayananKarirProps {
   karyawan: Karyawan;
@@ -32,18 +32,20 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
           <div className="flex-1">
-            <CardTitle className="flex items-center gap-2 text-xl text-gray-800">
+            <CardTitle className="flex items-center gap-2 text-xl text-gray-800 mb-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
               Layanan Karir
-              <Badge variant="secondary" className="ml-2 bg-white text-blue-600 border-blue-300 text-xs">
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <CardDescription className="text-base font-semibold text-gray-700">
+                {karyawan.nama}
+              </CardDescription>
+              <Badge variant="secondary" className="w-fit bg-white text-blue-600 border-blue-300 text-xs">
                 {karyawan.nip}
               </Badge>
-            </CardTitle>
-            <CardDescription className="text-base font-semibold text-gray-700 mt-1">
-              {karyawan.nama}
-            </CardDescription>
+            </div>
           </div>
           <div className="flex gap-2">
             <Badge className={`${getKategoriColor(karyawan.kategori)} border text-xs`}>
@@ -56,24 +58,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
-            <User className="h-4 w-4 text-blue-600" />
-            <div>
-              <p className="text-xs text-gray-600">Jabatan</p>
-              <p className="font-semibold">{karyawan.jabatan}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
-            <Award className="h-4 w-4 text-green-600" />
-            <div>
-              <p className="text-xs text-gray-600">Pangkat/Golongan</p>
-              <p className="font-semibold">{karyawan.pangkat} - {karyawan.golongan}</p>
-            </div>
-          </div>
-          
-          {/* Box Unit Kerja diganti dengan Tanggal Penghitungan AK Terakhir */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <Calendar className="h-4 w-4 text-purple-600" />
             <div>
@@ -83,15 +68,19 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
           </div>
           
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
-            <GraduationCap className="h-4 w-4 text-orange-600" />
             <div>
-              <p className="text-xs text-gray-600">Pendidikan</p>
-              <p className="font-semibold">{karyawan.pendidikan}</p>
+              <p className="text-xs text-gray-600">Jabatan</p>
+              <p className="font-semibold">{karyawan.jabatan}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
+            <div>
+              <p className="text-xs text-gray-600">Pangkat/Golongan</p>
+              <p className="font-semibold">{karyawan.pangkat} - {karyawan.golongan}</p>
             </div>
           </div>
         </div>
-        
-        {/* Section Tanggal Penghitungan AK Terakhir yang lama dihilangkan */}
       </CardContent>
     </Card>
   );
@@ -116,7 +105,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <ProfileHeader karyawan={karyawan} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -138,18 +127,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </TabsList>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600 px-2">
-          <div className={`w-2 h-2 rounded-full ${activeTab === 'generate' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-          <span className="font-medium">
-            {activeTab === 'generate' ? 'Generate Dokumen' : 'Unduh Dokumen'}
-          </span>
+        <div className="px-2">
+          <h2 className="text-lg font-semibold text-gray-800">
+            {activeTab === 'generate' 
+              ? `Generate Dokumen - ${karyawan.nama}`
+              : 'Unduh Dokumen'
+            }
+          </h2>
         </div>
 
-        <TabsContent value="generate" className="space-y-3">
+        <TabsContent value="generate" className="space-y-4">
           <KonversiPredikat karyawan={karyawan} />
         </TabsContent>
 
-        <TabsContent value="unduh" className="space-y-3">
+        <TabsContent value="unduh" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
