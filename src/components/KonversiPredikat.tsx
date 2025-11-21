@@ -214,47 +214,47 @@ class KonversiCalculator {
     return 12.5; // Default
   }
 
-  // Hitung kebutuhan AK untuk pangkat - SESUAI BKN 2023 Pasal 21 ayat 3
-static getKebutuhanPangkat(
-  golonganSekarang: string, 
-  kategori: string, 
-  jabatanSekarang?: string
-): number {
-  if (kategori === 'Reguler') return 0;
+  // Hitung kebutuhan AK untuk pangkat - SESUAI BKN 2023 Pasal 21 ayat 3 - DIPERBAIKI
+  static getKebutuhanPangkat(
+    golonganSekarang: string, 
+    kategori: string, 
+    jabatanSekarang?: string
+  ): number {
+    if (kategori === 'Reguler') return 0;
 
-  const kebutuhanKeahlian: { [key: string]: number } = {
-    'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100, // Base value
-    'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
-  };
-  
-  const kebutuhanKeterampilan: { [key: string]: number } = {
-    'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
-    'III/a': 50, 'III/b': 50, 'III/c': 100
-  };
-  
-  let kebutuhan = kategori === 'Keahlian' ? 
-    kebutuhanKeahlian[golonganSekarang] || 0 : 
-    kebutuhanKeterampilan[golonganSekarang] || 0;
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100, // Base value
+      'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
+    };
+    
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
+      'III/a': 50, 'III/b': 50, 'III/c': 100
+    };
+    
+    let kebutuhan = kategori === 'Keahlian' ? 
+      kebutuhanKeahlian[golonganSekarang] || 0 : 
+      kebutuhanKeterampilan[golonganSekarang] || 0;
 
-  // ✅ PERBAIKAN: Untuk kenaikan jenjang, kebutuhan pangkat = kebutuhan jabatan
-  if (jabatanSekarang) {
-    const jabatanBerikutnya = this.getJabatanBerikutnya(jabatanSekarang, kategori);
-    const golonganBerikutnya = this.getGolonganBerikutnya(golonganSekarang, kategori);
-    
-    const isKenaikanJenjang = this.isKenaikanJenjang(
-      jabatanSekarang, 
-      jabatanBerikutnya, 
-      golonganSekarang, 
-      golonganBerikutnya
-    );
-    
-    if (isKenaikanJenjang) {
-      kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori);
+    // ✅ PERBAIKAN: Untuk kenaikan jenjang, kebutuhan pangkat = kebutuhan jabatan
+    if (jabatanSekarang) {
+      const jabatanBerikutnya = this.getJabatanBerikutnya(jabatanSekarang, kategori);
+      const golonganBerikutnya = this.getGolonganBerikutnya(golonganSekarang, kategori);
+      
+      const isKenaikanJenjang = this.isKenaikanJenjang(
+        jabatanSekarang, 
+        jabatanBerikutnya, 
+        golonganSekarang, 
+        golonganBerikutnya
+      );
+      
+      if (isKenaikanJenjang) {
+        kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori);
+      }
     }
+    
+    return kebutuhan;
   }
-  
-  return kebutuhan;
-}
 
   // Hitung kebutuhan AK untuk jabatan - SESUAI BKN 2023 Pasal 21 ayat 4
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
@@ -1156,10 +1156,11 @@ const EditKonversiModal: React.FC<{
       jenisPenilaian
     );
 
+    // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
     const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
       karyawan.golongan, 
       karyawan.kategori,
-      karyawan.jabatan  // Tambahkan parameter jabatan
+      karyawan.jabatan
     );
     const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
     const totalKumulatif = karyawan.akKumulatif + akKonversi;
@@ -1696,6 +1697,13 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
+      // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
+      const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
+        karyawan.golongan, 
+        karyawan.kategori,
+        karyawan.jabatan
+      );
+      
       // SESUAIKAN DENGAN 33 KOLOM YANG ADA DI SPREADSHEET
       const values = [
         updatedData.No || nextNo,
@@ -1718,7 +1726,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         // 'Nilai SKP' - skip karena kolom tidak ada
         // 'AK Konversi' - skip karena kolom tidak ada  
         updatedData.Tanggal_Penetapan || KonversiCalculator.formatDate(new Date()),
-        KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Pangkat_AK || 0),
+        KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
         KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK || 0),
         KonversiCalculator.formatNumberForSheet(updatedData.AK_Sebelumnya || karyawan.akKumulatif),
         KonversiCalculator.formatNumberForSheet(updatedData.AK_Periode_Ini || 0),
@@ -1802,7 +1810,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         jenisPenilaian
       );
 
-      const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+      // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
+      const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
+        karyawan.golongan, 
+        karyawan.kategori,
+        karyawan.jabatan
+      );
       const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
       const totalKumulatif = karyawan.akKumulatif + akKonversi;
       const selisihPangkat = kebutuhanPangkat - totalKumulatif;
@@ -1844,7 +1857,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         karyawan.tmtJabatan,
         'Baik',
         now,
-        KonversiCalculator.formatNumberForSheet(kebutuhanPangkat),
+        KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
         KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
         KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
         KonversiCalculator.formatNumberForSheet(akKonversi),
@@ -1919,7 +1932,12 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             mode
           );
 
-          const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+          // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
+          const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
+            karyawan.golongan, 
+            karyawan.kategori,
+            karyawan.jabatan
+          );
           const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
           const totalKumulatif = karyawan.akKumulatif + akKonversi;
           const selisihPangkat = kebutuhanPangkat - totalKumulatif;
@@ -1959,7 +1977,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             karyawan.tmtJabatan,
             'Baik',
             now,
-            KonversiCalculator.formatNumberForSheet(kebutuhanPangkat),
+            KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
             KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
             KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
             KonversiCalculator.formatNumberForSheet(akKonversi),
