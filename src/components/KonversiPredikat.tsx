@@ -215,33 +215,42 @@ class KonversiCalculator {
   }
 
   // Hitung kebutuhan AK untuk pangkat - SESUAI BKN 2023 Pasal 21 ayat 3
-  static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
-    if (kategori === 'Reguler') return 0;
+static getKebutuhanPangkat(golonganSekarang: string, kategori: string, jabatanSekarang?: string, jabatanBerikutnya?: string): number {
+  if (kategori === 'Reguler') return 0;
 
-    const kebutuhanKeahlian: { [key: string]: number } = {
-      'III/a': 50,    // III/a → III/b
-      'III/b': 50,    // III/b → III/c  
-      'III/c': 100,   // III/c → III/d
-      'III/d': 100,   // III/d → IV/a
-      'IV/a': 150,    // IV/a → IV/b
-      'IV/b': 150,    // IV/b → IV/c
-      'IV/c': 150,    // IV/c → IV/d
-      'IV/d': 200     // IV/d → IV/e
-    };
-    
-    const kebutuhanKeterampilan: { [key: string]: number } = {
-      'II/a': 15,     // II/a → II/b
-      'II/b': 20,     // II/b → II/c
-      'II/c': 20,     // II/c → II/d
-      'II/d': 20,     // II/d → III/a
-      'III/a': 50,    // III/a → III/b
-      'III/b': 50,    // III/b → III/c
-      'III/c': 100    // III/c → III/d
-    };
-    
-    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-    return kebutuhan[golonganSekarang] || 0;
+  const kebutuhanKeahlian: { [key: string]: number } = {
+    'III/a': 50,    // III/a → III/b
+    'III/b': 50,    // III/b → III/c  
+    'III/c': 100,   // III/c → III/d
+    'III/d': 100,   // III/d → IV/a (BASE, tapi bisa jadi 200 jika kenaikan jenjang)
+    'IV/a': 150,    // IV/a → IV/b
+    'IV/b': 150,    // IV/b → IV/c
+    'IV/c': 150,    // IV/c → IV/d
+    'IV/d': 200     // IV/d → IV/e
+  };
+  
+  const kebutuhanKeterampilan: { [key: string]: number } = {
+    'II/a': 15,     // II/a → II/b
+    'II/b': 20,     // II/b → II/c
+    'II/c': 20,     // II/c → II/d
+    'II/d': 20,     // II/d → III/a (BASE, tapi bisa jadi 60 jika kenaikan jenjang)
+    'III/a': 50,    // III/a → III/b
+    'III/b': 50,    // III/b → III/c (BASE, tapi bisa jadi 100 jika kenaikan jenjang)
+    'III/c': 100    // III/c → III/d
+  };
+  
+  let kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian[golonganSekarang] || 0 : kebutuhanKeterampilan[golonganSekarang] || 0;
+  
+  // ✅ PERBAIKAN: Untuk kenaikan jenjang, kebutuhan pangkat = kebutuhan jabatan
+  if (jabatanSekarang && jabatanBerikutnya) {
+    const isKenaikanJenjang = this.isKenaikanJenjang(jabatanSekarang, jabatanBerikutnya, golonganSekarang, this.getGolonganBerikutnya(golonganSekarang, kategori));
+    if (isKenaikanJenjang) {
+      kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori);
+    }
   }
+  
+  return kebutuhan;
+}
 
   // Hitung kebutuhan AK untuk jabatan - SESUAI BKN 2023 Pasal 21 ayat 4
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
