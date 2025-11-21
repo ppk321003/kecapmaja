@@ -149,6 +149,25 @@ class DateParser {
   }
 }
 
+class DataNormalizer {
+  static normalizeJenisKelamin(value: string): 'Laki-laki' | 'Perempuan' {
+    const normalized = String(value).trim().toLowerCase();
+    
+    if (normalized === 'laki-laki' || normalized === 'l' || normalized === 'laki' || normalized === 'lakilaki' || normalized === 'laki-laki') {
+      return 'Laki-laki';
+    } else if (normalized === 'perempuan' || normalized === 'p' || normalized === 'per' || normalized === 'perempuan') {
+      return 'Perempuan';
+    }
+    
+    // Default fallback
+    return 'Laki-laki';
+  }
+  
+  static ensureTempatLahir(value: string, fallback: string): string {
+    return value && value.trim() !== '' ? value : fallback;
+  }
+}
+
 class KonversiCalculator {
   static getKoefisien(jabatan: string, kategori: string, golongan: string): number {
     if (kategori === 'Reguler') return 0;
@@ -713,7 +732,7 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  const readData = async (nip?: string) => {
+  const readData = async (karyawan: Karyawan, nip?: string) => {
     try {
       const result = await callAPI('read');
       const rows = result.values || [];
@@ -741,23 +760,21 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Jenis Periode') obj.Jenis_Periode = (value === 'Tahunan' ? 'Tahunan' : 'Semester') as 'Semester' | 'Tahunan';
             else if (header === 'Nama') obj.Nama = String(value);
             else if (header === 'NIP') obj.NIP = String(value);
-            // PERBAIKAN: Gunakan header 'Karpeg' untuk Nomor_Karpeg
             else if (header === 'Nomor Karpeg' || header === 'Karpeg') obj.Nomor_Karpeg = String(value);
-            // PERBAIKAN: Gunakan header 'tempatLahir' untuk Tempat_Lahir
-            else if (header === 'Tempat Lahir' || header === 'tempatLahir') obj.Tempat_Lahir = String(value);
-            else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
-            // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
-            else if (header === 'Jenis Kelamin') {
-              if (value === 'Laki-laki' || value === 'Laki-laki') {
-                obj.Jenis_Kelamin = 'Laki-laki';
-              } else if (value === 'Perempuan' || value === 'Perempuan') {
-                obj.Jenis_Kelamin = 'Perempuan';
-              } else {
-                obj.Jenis_Kelamin = 'Laki-laki'; // default
-              }
+            
+            // PERBAIKAN: Tempat Lahir - gunakan nilai dari database jika tersedia
+            else if (header === 'Tempat Lahir' || header === 'tempatLahir') {
+              obj.Tempat_Lahir = DataNormalizer.ensureTempatLahir(String(value), karyawan.tempatLahir);
             }
+            
+            else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
+            
+            // PERBAIKAN: Jenis Kelamin - normalisasi ke format lengkap
+            else if (header === 'Jenis Kelamin') {
+              obj.Jenis_Kelamin = DataNormalizer.normalizeJenisKelamin(value);
+            }
+            
             else if (header === 'Pangkat') obj.Pangkat = String(value);
-            // PERBAIKAN: Gunakan header 'Gol.Akhir' untuk Golongan
             else if (header === 'Golongan' || header === 'Gol.Akhir') obj.Golongan = String(value);
             else if (header === 'TMT Pangkat') obj.TMT_Pangkat = String(value);
             else if (header === 'Jabatan') obj.Jabatan = String(value);
@@ -787,6 +804,15 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Masa Kerja Bulan') obj.Masa_Kerja_Bulan = Number(value) || 6;
             else if (header === 'Jenis Penilaian') obj.Jenis_Penilaian = (value === 'PROPORSIONAL' ? 'PROPORSIONAL' : 'PENUH');
           });
+          
+          // PERBAIKAN: Pastikan Tempat Lahir dan Jenis Kelamin selalu terisi
+          if (!obj.Tempat_Lahir || obj.Tempat_Lahir.trim() === '') {
+            obj.Tempat_Lahir = karyawan.tempatLahir || '';
+          }
+          
+          if (!obj.Jenis_Kelamin) {
+            obj.Jenis_Kelamin = karyawan.jenisKelamin;
+          }
           
           obj.id = `${SHEET_NAME}_${index + 2}`;
           obj.rowIndex = index + 2;
@@ -988,9 +1014,9 @@ const EditKonversiModal: React.FC<{
         Periode: `${periode.mulai} - ${periode.selesai}`,
         Jenis_Periode: formData.Jenis_Periode || 'Semester',
         Nomor_Karpeg: karyawan.unitKerja,
-        Tempat_Lahir: karyawan.tempatLahir,
+        Tempat_Lahir: DataNormalizer.ensureTempatLahir(formData.Tempat_Lahir || '', karyawan.tempatLahir),
         Tanggal_Lahir: karyawan.tanggalLahir,
-        Jenis_Kelamin: karyawan.jenisKelamin,
+        Jenis_Kelamin: DataNormalizer.normalizeJenisKelamin(formData.Jenis_Kelamin || karyawan.jenisKelamin),
         Pangkat: karyawan.pangkat,
         Golongan: karyawan.golongan,
         TMT_Pangkat: karyawan.tmtPangkat,
@@ -1404,7 +1430,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.readData(karyawan.nip);
+      const data = await api.readData(karyawan, karyawan.nip);
       setKonversiData(data);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -1473,7 +1499,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
       const periode = KonversiCalculator.calculatePeriodeSemester(updatedData.Tahun, updatedData.Semester);
 
-      // PERBAIKAN: Gunakan data yang benar dari karyawan
+      // PERBAIKAN: Gunakan data yang benar dari karyawan dengan normalisasi
       const values = [
         updatedData.No || nextNo,
         updatedData.Tahun,
@@ -1484,11 +1510,11 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.NIP || karyawan.nip,
         // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         updatedData.Nomor_Karpeg || karyawan.unitKerja,
-        // PERBAIKAN: Gunakan tempatLahir dari karyawan
-        updatedData.Tempat_Lahir || karyawan.tempatLahir,
+        // PERBAIKAN: Gunakan tempatLahir dari karyawan dengan fallback
+        DataNormalizer.ensureTempatLahir(updatedData.Tempat_Lahir || '', karyawan.tempatLahir),
         updatedData.Tanggal_Lahir || karyawan.tanggalLahir,
-        // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
-        updatedData.Jenis_Kelamin || karyawan.jenisKelamin,
+        // PERBAIKAN: Jenis Kelamin menggunakan format lengkap yang sudah dinormalisasi
+        DataNormalizer.normalizeJenisKelamin(updatedData.Jenis_Kelamin || karyawan.jenisKelamin),
         updatedData.Pangkat || karyawan.pangkat,
         updatedData.Golongan || karyawan.golongan,
         updatedData.TMT_Pangkat || karyawan.tmtPangkat,
@@ -1594,7 +1620,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      // PERBAIKAN: Gunakan data yang benar dari karyawan
+      // PERBAIKAN: Gunakan data yang benar dari karyawan dengan normalisasi
       const values = [
         nextNo,
         tahun,
@@ -1606,10 +1632,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
         karyawan.unitKerja,
         // PERBAIKAN: Gunakan tempatLahir dari karyawan
-        karyawan.tempatLahir,
+        DataNormalizer.ensureTempatLahir('', karyawan.tempatLahir),
         karyawan.tanggalLahir,
-        // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
-        karyawan.jenisKelamin,
+        // PERBAIKAN: Jenis Kelamin menggunakan format lengkap
+        DataNormalizer.normalizeJenisKelamin(karyawan.jenisKelamin),
         karyawan.pangkat,
         karyawan.golongan,
         karyawan.tmtPangkat,
@@ -1727,10 +1753,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             // PERBAIKAN: Gunakan unitKerja sebagai Nomor Karpeg
             karyawan.unitKerja,
             // PERBAIKAN: Gunakan tempatLahir dari karyawan
-            karyawan.tempatLahir,
+            DataNormalizer.ensureTempatLahir('', karyawan.tempatLahir),
             karyawan.tanggalLahir,
-            // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
-            karyawan.jenisKelamin,
+            // PERBAIKAN: Jenis Kelamin menggunakan format lengkap
+            DataNormalizer.normalizeJenisKelamin(karyawan.jenisKelamin),
             karyawan.pangkat,
             karyawan.golongan,
             karyawan.tmtPangkat,
