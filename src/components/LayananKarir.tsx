@@ -145,6 +145,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </span>
         </div>
 
+        <TabsContent value="generate" className="space-y-3">
+          <KonversiPredikat karyawan={karyawan} />
+        </TabsContent>
+
         <TabsContent value="unduh" className="space-y-3">
           <Card>
             <CardHeader>
