@@ -748,9 +748,9 @@ const useSpreadsheetAPI = () => {
             else if (header === 'Tanggal Lahir') obj.Tanggal_Lahir = String(value);
             // PERBAIKAN: Jenis Kelamin menggunakan 'Laki-laki' dan 'Perempuan'
             else if (header === 'Jenis Kelamin') {
-              if (value === 'L' || value === 'Laki-laki') {
+              if (value === 'Laki-laki' || value === 'Laki-laki') {
                 obj.Jenis_Kelamin = 'Laki-laki';
-              } else if (value === 'P' || value === 'Perempuan') {
+              } else if (value === 'Perempuan' || value === 'Perempuan') {
                 obj.Jenis_Kelamin = 'Perempuan';
               } else {
                 obj.Jenis_Kelamin = 'Laki-laki'; // default
