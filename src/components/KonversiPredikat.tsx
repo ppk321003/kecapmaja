@@ -1426,7 +1426,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleSave = async (updatedData: KonversiData) => {
     try {
-      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
       const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
@@ -1545,7 +1544,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
 
   const handleAddNew = async () => {
     try {
-      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
       const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const now = KonversiCalculator.formatDate(new Date());
@@ -1661,7 +1659,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
     jenisPenilaian: 'PENUH' | 'PROPORSIONAL';
   }[], mode: 'semesteran' | 'tahunan') => {
     try {
-      // Ambil data tempat lahir dan jenis kelamin dari sheet "data"
       const { tempatLahir, jenisKelamin } = await api.getDataFromDataSheet(karyawan.nip);
 
       const now = KonversiCalculator.formatDate(new Date());
@@ -1670,7 +1667,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       let successCount = 0;
       let errorCount = 0;
 
-      const simulatedData: KonversiData[] = [...konversiData];
       let currentAK = karyawan.akKumulatif;
 
       for (const [index, item] of semesters.entries()) {
@@ -1906,129 +1902,133 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
   const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
-    <div className="space-y-6 p-6">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Calendar className="h-5 w-5" />
-            Konversi Predikat Kinerja - {karyawan.nama}
-          </CardTitle>
-          <CardDescription>
-            Kelola data konversi predikat menjadi angka kredit sesuai Peraturan BKN 2023
-            {karyawan.kategori === 'Reguler' && (
-              <span className="text-orange-600 font-semibold"> (Kategori Reguler - Data untuk dokumentasi)</span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="flex-1 min-w-[150px]">
-              <Label htmlFor="filter-tahun" className="text-sm">Tahun</Label>
-              <Select 
-                value={filters.tahun} 
-                onValueChange={(value) => setFilters({...filters, tahun: value})}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Semua Tahun" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030].map(year => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex-1 min-w-[150px]">
-              <Label htmlFor="filter-semester" className="text-sm">Semester</Label>
-              <Select 
-                value={filters.semester} 
-                onValueChange={(value) => setFilters({...filters, semester: value})}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Semua Semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Semester</SelectItem>
-                  <SelectItem value="1">Semester 1</SelectItem>
-                  <SelectItem value="2">Semester 2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex gap-2 sm:mt-6">
-              <Button onClick={loadData} variant="outline" size="sm" className="h-9">
-                <Filter className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              
-              <Button onClick={handleAddNew} size="sm" className="h-9">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah
-              </Button>
-
-              <Button onClick={() => setGenerateModal(true)} variant="secondary" size="sm" className="h-9">
-                <Save className="h-4 w-4 mr-2" />
-                Generate
-              </Button>
-            </div>
-          </div>
-
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="font-semibold text-blue-800">Kategori:</span>
-                <span className="ml-2">{karyawan.kategori}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Jabatan:</span>
-                <span className="ml-2">{karyawan.jabatan}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Golongan:</span>
-                <span className="ml-2">{karyawan.golongan}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-blue-800">Koefisien:</span>
-                <span className="ml-2">{koefisien}</span>
-              </div>
-            </div>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground mt-3">Memuat data dari Google Sheets...</p>
-                </div>
-              ) : getFilteredData().length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Tidak ada data ditemukan</p>
-                  <p className="text-sm mb-6">Mulai dengan menambahkan data konversi predikat kinerja</p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button onClick={handleAddNew} className="sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tambah Data Pertama
-                    </Button>
-                    <Button onClick={() => setGenerateModal(true)} variant="outline" className="sm:w-auto">
-                      <Save className="h-4 w-4 mr-2" />
-                      Generate dari Tanggal Penghitungan AK
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="border rounded-lg">
-                  {renderKonversiTable()}
-                </div>
+    <div className="w-full space-y-6">
+      {/* HEADER */}
+      <div className="w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Calendar className="h-6 w-6" />
+              Konversi Predikat Kinerja - {karyawan.nama}
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Kelola data konversi predikat menjadi angka kredit sesuai Peraturan BKN 2023
+              {karyawan.kategori === 'Reguler' && (
+                <span className="text-orange-600 font-semibold"> (Kategori Reguler - Data untuk dokumentasi)</span>
               )}
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
+            </p>
+          </div>
+        </div>
 
+        {/* FILTERS DAN TOMBOL */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-6 bg-muted/30 rounded-xl border">
+          <div className="flex-1 min-w-[150px]">
+            <label htmlFor="filter-tahun" className="text-sm font-medium mb-2 block">Tahun</label>
+            <Select 
+              value={filters.tahun} 
+              onValueChange={(value) => setFilters({...filters, tahun: value})}
+            >
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Semua Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tahun</SelectItem>
+                {[2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030].map(year => (
+                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex-1 min-w-[150px]">
+            <label htmlFor="filter-semester" className="text-sm font-medium mb-2 block">Semester</label>
+            <Select 
+              value={filters.semester} 
+              onValueChange={(value) => setFilters({...filters, semester: value})}
+            >
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Semua Semester" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Semester</SelectItem>
+                <SelectItem value="1">Semester 1</SelectItem>
+                <SelectItem value="2">Semester 2</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex gap-2 sm:items-end">
+            <Button onClick={loadData} variant="outline" size="sm" className="h-10">
+              <Filter className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            
+            <Button onClick={handleAddNew} size="sm" className="h-10">
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah
+            </Button>
+
+            <Button onClick={() => setGenerateModal(true)} variant="secondary" size="sm" className="h-10">
+              <Save className="h-4 w-4 mr-2" />
+              Generate
+            </Button>
+          </div>
+        </div>
+
+        {/* INFO KARYAWAN */}
+        <div className="mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-semibold text-primary">Kategori:</span>
+              <span className="ml-2">{karyawan.kategori}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-primary">Jabatan:</span>
+              <span className="ml-2">{karyawan.jabatan}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-primary">Golongan:</span>
+              <span className="ml-2">{karyawan.golongan}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-primary">Koefisien:</span>
+              <span className="ml-2">{koefisien}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TABEL */}
+      <div className="w-full">
+        {loading ? (
+          <div className="text-center py-12 bg-muted/30 rounded-xl border">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground mt-3">Memuat data dari Google Sheets...</p>
+          </div>
+        ) : getFilteredData().length === 0 ? (
+          <div className="text-center py-12 bg-muted/30 rounded-xl border">
+            <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium mb-2">Tidak ada data ditemukan</p>
+            <p className="text-muted-foreground mb-6">Mulai dengan menambahkan data konversi predikat kinerja</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={handleAddNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Data Pertama
+              </Button>
+              <Button onClick={() => setGenerateModal(true)} variant="outline">
+                <Save className="h-4 w-4 mr-2" />
+                Generate dari Tanggal Penghitungan AK
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="border rounded-xl overflow-hidden bg-background">
+            {renderKonversiTable()}
+          </div>
+        )}
+      </div>
+
+      {/* MODALS */}
       <EditKonversiModal
         data={editModal.data}
         isOpen={editModal.isOpen}
