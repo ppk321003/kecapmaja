@@ -176,14 +176,13 @@ class DateParser {
 }
 
 class KonversiCalculator {
-  // Tentukan koefisien berdasarkan jabatan, kategori, dan golongan - DIPERBAIKI
+  // Tentukan koefisien berdasarkan jabatan, kategori, dan golongan
   static getKoefisien(jabatan: string, kategori: string, golongan: string): number {
     // Untuk kategori Reguler, tidak ada perhitungan AK
     if (kategori === 'Reguler') return 0;
 
     const jabatanLower = jabatan.toLowerCase();
     
-    // LOGIKA YANG SAMA DENGAN SCRIPT 2
     const koefisienMap: { [key: string]: number } = {
       'ahli pertama': 12.5,
       'ahli muda': 25.0,
@@ -215,91 +214,92 @@ class KonversiCalculator {
     return 12.5; // Default
   }
 
-  // Hitung kebutuhan AK untuk pangkat dan jabatan - DIPERBAIKI
-static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
-  if (kategori === 'Reguler') return 0;
+  // Hitung kebutuhan AK untuk pangkat - SESUAI BKN 2023 Pasal 21 ayat 3
+  static getKebutuhanPangkat(golonganSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0;
 
-  // ✅ SESUAI BKN 2023 Pasal 21 ayat 3
-  const kebutuhanKeahlian: { [key: string]: number } = {
-    'III/a': 50,    // III/a → III/b
-    'III/b': 50,    // III/b → III/c  
-    'III/c': 100,   // III/c → III/d
-    'III/d': 100,   // III/d → IV/a
-    'IV/a': 150,    // IV/a → IV/b
-    'IV/b': 150,    // IV/b → IV/c
-    'IV/c': 150,    // IV/c → IV/d
-    'IV/d': 200     // IV/d → IV/e
-  };
-  
-  const kebutuhanKeterampilan: { [key: string]: number } = {
-    'II/a': 15,     // II/a → II/b
-    'II/b': 20,     // II/b → II/c
-    'II/c': 20,     // II/c → II/d
-    'II/d': 20,     // II/d → III/a
-    'III/a': 50,    // III/a → III/b
-    'III/b': 50,    // III/b → III/c
-    'III/c': 100    // III/c → III/d
-  };
-  
-  const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
-  return kebutuhan[golonganSekarang] || 0;
-}
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'III/a': 50,    // III/a → III/b
+      'III/b': 50,    // III/b → III/c  
+      'III/c': 100,   // III/c → III/d
+      'III/d': 100,   // III/d → IV/a
+      'IV/a': 150,    // IV/a → IV/b
+      'IV/b': 150,    // IV/b → IV/c
+      'IV/c': 150,    // IV/c → IV/d
+      'IV/d': 200     // IV/d → IV/e
+    };
+    
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'II/a': 15,     // II/a → II/b
+      'II/b': 20,     // II/b → II/c
+      'II/c': 20,     // II/c → II/d
+      'II/d': 20,     // II/d → III/a
+      'III/a': 50,    // III/a → III/b
+      'III/b': 50,    // III/b → III/c
+      'III/c': 100    // III/c → III/d
+    };
+    
+    const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
+    return kebutuhan[golonganSekarang] || 0;
+  }
 
-static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
-  if (kategori === 'Reguler') return 0;
+  // Hitung kebutuhan AK untuk jabatan - SESUAI BKN 2023 Pasal 21 ayat 4
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+    if (kategori === 'Reguler') return 0;
 
-  // ✅ SESUAI BKN 2023 Pasal 21 ayat 4
-  const kebutuhanKeahlian: { [key: string]: number } = {
-    'Ahli Pertama': 100,   // Ahli Pertama → Ahli Muda
-    'Ahli Muda': 200,      // Ahli Muda → Ahli Madya  
-    'Ahli Madya': 450,     // Ahli Madya → Ahli Utama
-    'Ahli Utama': 0        // Puncak
-  };
-  
-  const kebutuhanKeterampilan: { [key: string]: number } = {
-    'Terampil': 60,        // Terampil → Mahir
-    'Mahir': 100,          // Mahir → Penyelia
-    'Penyelia': 0          // Puncak
-  };
-  
-  if (kategori === 'Keahlian') {
-    for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
-      if (jabatanSekarang.includes(key)) return value;
+    const kebutuhanKeahlian: { [key: string]: number } = {
+      'Ahli Pertama': 100,   // Ahli Pertama → Ahli Muda
+      'Ahli Muda': 200,      // Ahli Muda → Ahli Madya  
+      'Ahli Madya': 450,     // Ahli Madya → Ahli Utama
+      'Ahli Utama': 0        // Puncak
+    };
+    
+    const kebutuhanKeterampilan: { [key: string]: number } = {
+      'Terampil': 60,        // Terampil → Mahir
+      'Mahir': 100,          // Mahir → Penyelia
+      'Penyelia': 0          // Puncak
+    };
+    
+    if (kategori === 'Keahlian') {
+      for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
+    } else {
+      for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+        if (jabatanSekarang.includes(key)) return value;
+      }
     }
-  } else {
-    for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
-      if (jabatanSekarang.includes(key)) return value;
-    }
+    return 0;
   }
-  return 0;
-}
-// Fungsi baru untuk menangani kenaikan jenjang + pangkat
-static shouldPromoteJenjangAndPangkat(
-  jabatanSekarang: string,
-  golonganSekarang: string,
-  totalAK: number
-): { promoteJenjang: boolean; promotePangkat: boolean } {
-  const result = { promoteJenjang: false, promotePangkat: false };
-  
-  // ✅ Kasus khusus: Ahli Muda (III/d) → Ahli Madya (IV/a)
-  if (jabatanSekarang.includes('Ahli Muda') && golonganSekarang === 'III/d') {
-    if (totalAK >= 200) { // 200 AK untuk naik jenjang + pangkat
-      result.promoteJenjang = true;
-      result.promotePangkat = true;
+
+  // Fungsi untuk menangani kenaikan jenjang + pangkat bersamaan
+  static shouldPromoteJenjangAndPangkat(
+    jabatanSekarang: string,
+    golonganSekarang: string,
+    totalAK: number
+  ): { promoteJenjang: boolean; promotePangkat: boolean } {
+    const result = { promoteJenjang: false, promotePangkat: false };
+    
+    // ✅ Kasus khusus: Ahli Muda (III/d) → Ahli Madya (IV/a)
+    if (jabatanSekarang.includes('Ahli Muda') && golonganSekarang === 'III/d') {
+      if (totalAK >= 200) { // 200 AK untuk naik jenjang + pangkat
+        result.promoteJenjang = true;
+        result.promotePangkat = true;
+      }
     }
-  }
-  
-  // ✅ Kasus khusus: Mahir (III/b) → Penyelia (III/c)  
-  else if (jabatanSekarang.includes('Mahir') && golonganSekarang === 'III/b') {
-    if (totalAK >= 100) { // 100 AK untuk naik jenjang + pangkat
-      result.promoteJenjang = true;
-      result.promotePangkat = true;
+    
+    // ✅ Kasus khusus: Mahir (III/b) → Penyelia (III/c)  
+    else if (jabatanSekarang.includes('Mahir') && golonganSekarang === 'III/b') {
+      if (totalAK >= 100) { // 100 AK untuk naik jenjang + pangkat
+        result.promoteJenjang = true;
+        result.promotePangkat = true;
+      }
     }
+    
+    return result;
   }
-  
-  return result;
-}
-  // Hitung AK dengan sistem proporsional sesuai BKN 2023 - DIPERBAIKI
+
+  // Hitung AK dengan sistem proporsional sesuai BKN 2023
   static calculateAKProporsional(
     predikat: string, 
     koefisienJabatan: number, 
@@ -315,12 +315,11 @@ static shouldPromoteJenjangAndPangkat(
       'Kurang': 0.50
     }[predikat] || 1.00;
 
-    // FORMULA YANG SAMA DENGAN SCRIPT 2
     const akProporsional = (koefisienPredikat * koefisienJabatan * masaKerjaBulan) / 12;
     return Number(akProporsional.toFixed(3));
   }
 
-  // Hitung AK penuh (6 bulan) - DIPERBAIKI
+  // Hitung AK penuh (6 bulan)
   static calculateAKPenuh(predikat: string, koefisienJabatan: number): number {
     if (koefisienJabatan === 0) return 0;
 
@@ -335,7 +334,7 @@ static shouldPromoteJenjangAndPangkat(
     return Number(akPenuh.toFixed(3));
   }
 
-  // Hitung AK penuh tahunan (12 bulan) - DIPERBAIKI
+  // Hitung AK penuh tahunan (12 bulan)
   static calculateAKPenuhTahunan(predikat: string, koefisienJabatan: number): number {
     if (koefisienJabatan === 0) return 0;
 
@@ -350,7 +349,7 @@ static shouldPromoteJenjangAndPangkat(
     return Number(akPenuh.toFixed(3));
   }
 
-  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja - DIPERBAIKI
+  // Hitung AK berdasarkan predikat, nilai SKP, dan masa kerja
   static calculateAKFromPredikat(
     predikat: string, 
     nilaiSKP: number, 
@@ -387,7 +386,7 @@ static shouldPromoteJenjangAndPangkat(
     return Number(akKonversi.toFixed(3));
   }
 
-  // Hitung masa kerja proporsional - DIPERBAIKI
+  // Hitung masa kerja proporsional
   static calculateMasaKerjaProporsional(
     tglPenghitunganAkTerakhir: string, 
     tahun: number, 
@@ -428,7 +427,7 @@ static shouldPromoteJenjangAndPangkat(
     return { masaKerjaBulan, jenisPenilaian };
   }
 
-  // Hitung estimasi bulan berdasarkan predikat - DIPERBAIKI
+  // Hitung estimasi bulan berdasarkan predikat
   static calculateEstimasiBulan(
     kekuranganAK: number,
     predikat: string,
@@ -448,7 +447,7 @@ static shouldPromoteJenjangAndPangkat(
     return akPerBulan > 0 ? Math.ceil(kekuranganAK / akPerBulan) : 0;
   }
 
-  // Generate analisis dan rekomendasi - DIPERBAIKI
+  // Generate analisis dan rekomendasi - VERSI DIPERBAIKI
   static generateAnalisis(
     karyawan: Karyawan,
     predikat: string,
@@ -476,44 +475,48 @@ static shouldPromoteJenjangAndPangkat(
       };
     }
 
-    // Logika untuk Keahlian dan Keterampilan
-    const bisaUsulPangkat = totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0;
-    const bisaUsulJabatan = totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0;
+    // ✅ GUNAKAN FUNGSI BARU untuk cek kenaikan jenjang + pangkat
+    const { promoteJenjang, promotePangkat } = this.shouldPromoteJenjangAndPangkat(
+      karyawan.jabatan,
+      karyawan.golongan,
+      totalKumulatif
+    );
 
     let statusKenaikan = 'Butuh Waktu Lama';
-    if (bisaUsulPangkat || bisaUsulJabatan) {
-      statusKenaikan = 'Bisa Usul';
-    } else if (estimasiBulan <= 6) {
+    let jenisKenaikan = 'Reguler';
+    let rekomendasi = 'Pertahankan kinerja saat ini';
+
+    // ✅ LOGIKA PRIORITAS: Kenaikan Jenjang & Pangkat bersamaan
+    if (promoteJenjang && promotePangkat) {
+      statusKenaikan = 'Bisa Usul Jenjang & Pangkat';
+      jenisKenaikan = 'Jenjang & Pangkat';
+      rekomendasi = 'Segera usulkan kenaikan jenjang jabatan dan pangkat bersamaan';
+    }
+    // Kenaikan pangkat saja
+    else if (totalKumulatif >= kebutuhanPangkat && kebutuhanPangkat > 0) {
+      statusKenaikan = 'Bisa Usul Pangkat';
+      jenisKenaikan = 'Pangkat';
+      rekomendasi = 'Segera usulkan kenaikan pangkat';
+    }
+    // Kenaikan jenjang saja
+    else if (totalKumulatif >= kebutuhanJabatan && kebutuhanJabatan > 0) {
+      statusKenaikan = 'Bisa Usul Jenjang';
+      jenisKenaikan = 'Jenjang';
+      rekomendasi = 'Segera usulkan kenaikan jenjang jabatan';
+    }
+    // Estimasi waktu
+    else if (estimasiBulan <= 6) {
       statusKenaikan = 'Estimasi 6 Bulan';
+      rekomendasi = 'Tingkatkan kinerja untuk mempercepat kenaikan';
     } else if (estimasiBulan <= 12) {
       statusKenaikan = 'Estimasi 1 Tahun';
-    }
-
-    let jenisKenaikan = 'Reguler';
-    const isKenaikanJenjang = this.isKenaikanJenjang(
-      karyawan.jabatan, 
-      this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori),
-      karyawan.golongan,
-      this.getGolonganBerikutnya(karyawan.golongan, karyawan.kategori)
-    );
-    
-    if (isKenaikanJenjang) {
-      jenisKenaikan = 'Jenjang';
-    }
-
-    let rekomendasi = 'Pertahankan kinerja saat ini';
-    if (bisaUsulPangkat && bisaUsulJabatan) {
-      rekomendasi = 'Segera usulkan kenaikan pangkat dan jabatan';
-    } else if (bisaUsulPangkat) {
-      rekomendasi = 'Segera usulkan kenaikan pangkat';
-    } else if (bisaUsulJabatan) {
-      rekomendasi = 'Segera usulkan kenaikan jabatan';
-    } else if (estimasiBulan <= 6) {
       rekomendasi = 'Tingkatkan kinerja untuk mempercepat kenaikan';
     }
 
     let pertimbanganKhusus = '';
-    if (predikat === 'Sangat Baik') {
+    if (promoteJenjang && promotePangkat) {
+      pertimbanganKhusus = `✅ Memenuhi syarat kenaikan jenjang dan pangkat bersamaan (${totalKumulatif} AK)`;
+    } else if (predikat === 'Sangat Baik') {
       pertimbanganKhusus = 'Predikat sangat baik - berpeluang mendapatkan penilaian istimewa';
     } else if (predikat === 'Kurang') {
       pertimbanganKhusus = 'Perlu peningkatan kinerja signifikan';
@@ -2060,8 +2063,10 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
               <TableCell>
                 <Badge variant={
-                  data.Status_Kenaikan === 'Bisa Usul' ? 'default' :
-                  data.Status_Kenaikan === 'Estimasi 6 Bulan' ? 'secondary' : 'outline'
+                  data.Status_Kenaikan === 'Bisa Usul Jenjang & Pangkat' ? 'default' :
+                  data.Status_Kenaikan === 'Bisa Usul Pangkat' ? 'secondary' :
+                  data.Status_Kenaikan === 'Bisa Usul Jenjang' ? 'outline' :
+                  data.Status_Kenaikan === 'Estimasi 6 Bulan' ? 'default' : 'outline'
                 }>
                   {data.Status_Kenaikan}
                 </Badge>
