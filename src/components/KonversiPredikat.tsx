@@ -1097,37 +1097,6 @@ const EditKonversiModal: React.FC<{
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="jenisPeriode">Jenis Periode</Label>
-              <Select 
-                value={formData.Jenis_Periode || "Semester"} 
-                onValueChange={(value) => setFormData({...formData, Jenis_Periode: value as 'Semester' | 'Tahunan'})}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Semester">Semester</SelectItem>
-                  <SelectItem value="Tahunan">Tahunan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="predikat">Predikat Kinerja</Label>
-              <Select 
-                value={formData.Predikat_Kinerja || "Baik"} 
-                onValueChange={(value) => setFormData({...formData, Predikat_Kinerja: value as any})}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sangat Baik">Sangat Baik</SelectItem>
-                  <SelectItem value="Baik">Baik</SelectItem>
-                  <SelectItem value="Cukup">Cukup</SelectItem>
-                  <SelectItem value="Kurang">Kurang</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <Label htmlFor="nilaiSKP">Nilai SKP</Label>
               <Input
                 id="nilaiSKP"
@@ -1868,9 +1837,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             <TableHead>AK Sebelumnya</TableHead>
             <TableHead>AK Periode Ini</TableHead>
             <TableHead>Total Kumulatif</TableHead>
-            <TableHead>Status Kenaikan</TableHead>
-            <TableHead>Estimasi</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
@@ -1897,22 +1863,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               <TableCell className="font-medium">{data.AK_Sebelumnya}</TableCell>
               <TableCell className="font-semibold">{data.AK_Periode_Ini}</TableCell>
               <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
-              <TableCell>
-                <Badge variant={
-                  data.Status_Kenaikan === 'Bisa Usul Jenjang & Pangkat' ? 'default' :
-                  data.Status_Kenaikan === 'Bisa Usul Pangkat' ? 'secondary' :
-                  data.Status_Kenaikan === 'Bisa Usul Jenjang' ? 'outline' :
-                  data.Status_Kenaikan === 'Estimasi 6 Bulan' ? 'default' : 'outline'
-                }>
-                  {data.Status_Kenaikan}
-                </Badge>
-              </TableCell>
-              <TableCell>{data.Estimasi_Bulan > 0 ? `${data.Estimasi_Bulan} bulan` : 'Siap'}</TableCell>
-              <TableCell>
-                <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>
-                  {data.Status}
-                </Badge>
-              </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
                   <Button 
