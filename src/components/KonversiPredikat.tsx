@@ -641,6 +641,7 @@ static calculateAKSebelumnya(
     const dataTerakhir = sortedData.pop();
     return dataTerakhir ? dataTerakhir.Total_Kumulatif : karyawan.akKumulatif;
 
+
   // ==================== FUNGSI BARU UNTUK REGULER ====================
   static hitungProgressPangkatReguler(tmtPangkat: string): {
     bulan: number;
