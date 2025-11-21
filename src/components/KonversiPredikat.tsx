@@ -545,6 +545,58 @@ class KonversiCalculator {
     };
   }
 
+  // ==================== FUNGSI BARU: AK SEBELUMNYA BERSINAMBUNGAN ====================
+  static calculateAKSebelumnya(
+    karyawan: Karyawan,
+    konversiData: KonversiData[],
+    tahun: number,
+    semester: 1 | 2,
+    mode: 'semesteran' | 'tahunan' = 'semesteran'
+  ): number {
+    // Jika tidak ada data sebelumnya, gunakan AK kumulatif dari karyawan
+    if (konversiData.length === 0) {
+      return karyawan.akKumulatif;
+    }
+
+    // Urutkan data secara kronologis
+    const sortedData = [...konversiData].sort((a, b) => {
+      if (a.Tahun !== b.Tahun) return a.Tahun - b.Tahun;
+      return a.Semester - b.Semester;
+    });
+
+    if (mode === 'tahunan') {
+      // Untuk mode tahunan, cari data tahun sebelumnya
+      const tahunSebelumnya = tahun - 1;
+      const dataTahunSebelumnya = sortedData
+        .filter(data => data.Tahun === tahunSebelumnya && data.Jenis_Periode === 'Tahunan')
+        .pop();
+      
+      if (dataTahunSebelumnya) {
+        return dataTahunSebelumnya.Total_Kumulatif;
+      }
+    } else {
+      // Untuk mode semesteran, cari data semester sebelumnya
+      let tahunSebelum = tahun;
+      let semesterSebelum: 1 | 2 = semester === 1 ? 2 : 1;
+      
+      if (semester === 1) {
+        tahunSebelum = tahun - 1;
+      }
+
+      const dataSemesterSebelumnya = sortedData
+        .filter(data => data.Tahun === tahunSebelum && data.Semester === semesterSebelum)
+        .pop();
+      
+      if (dataSemesterSebelumnya) {
+        return dataSemesterSebelumnya.Total_Kumulatif;
+      }
+    }
+
+    // Jika tidak ditemukan data sebelumnya, cari data terakhir secara umum
+    const dataTerakhir = sortedData.pop();
+    return dataTerakhir ? dataTerakhir.Total_Kumulatif : karyawan.akKumulatif;
+  }
+
   // ==================== FUNGSI BARU UNTUK REGULER ====================
   static hitungProgressPangkatReguler(tmtPangkat: string): {
     bulan: number;
@@ -1099,7 +1151,8 @@ const EditKonversiModal: React.FC<{
   onClose: () => void;
   onSave: (data: KonversiData) => void;
   karyawan: Karyawan;
-}> = ({ data, isOpen, onClose, onSave, karyawan }) => {
+  konversiData: KonversiData[];
+}> = ({ data, isOpen, onClose, onSave, karyawan, konversiData }) => {
   const [formData, setFormData] = useState<Partial<KonversiData>>({});
 
   useEffect(() => {
@@ -1111,6 +1164,7 @@ const EditKonversiModal: React.FC<{
   }, [data]);
 
   const calculateAllData = (): {
+    akSebelumnya: number;
     akKonversi: number;
     masaKerja: number;
     jenis: string;
@@ -1126,6 +1180,7 @@ const EditKonversiModal: React.FC<{
   } => {
     if (!formData.Tahun || !formData.Semester || !formData.Predikat_Kinerja) {
       return {
+        akSebelumnya: karyawan.akKumulatif,
         akKonversi: 0, masaKerja: 0, jenis: '',
         kebutuhanPangkat: 0, kebutuhanJabatan: 0,
         totalKumulatif: 0, selisihPangkat: 0, selisihJabatan: 0,
@@ -1138,6 +1193,15 @@ const EditKonversiModal: React.FC<{
       karyawan.tglPenghitunganAkTerakhir,
       formData.Tahun,
       formData.Semester
+    );
+
+    // ✅ PERBAIKAN: Hitung AK Sebelumnya yang bersinambungan
+    const akSebelumnya = KonversiCalculator.calculateAKSebelumnya(
+      karyawan,
+      konversiData,
+      formData.Tahun,
+      formData.Semester,
+      formData.Jenis_Periode === 'Tahunan' ? 'tahunan' : 'semesteran'
     );
 
     const koefisien = KonversiCalculator.getKoefisien(
@@ -1153,7 +1217,8 @@ const EditKonversiModal: React.FC<{
       karyawan.kategori,
       karyawan.golongan,
       masaKerjaBulan,
-      jenisPenilaian
+      jenisPenilaian,
+      formData.Jenis_Periode === 'Tahunan' ? 'tahunan' : 'semesteran'
     );
 
     // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
@@ -1163,7 +1228,7 @@ const EditKonversiModal: React.FC<{
       karyawan.jabatan
     );
     const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-    const totalKumulatif = karyawan.akKumulatif + akKonversi;
+    const totalKumulatif = akSebelumnya + akKonversi; // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
     const selisihPangkat = kebutuhanPangkat - totalKumulatif;
     const selisihJabatan = kebutuhanJabatan - totalKumulatif;
     const kurlebPangkat = Math.max(0, selisihPangkat);
@@ -1186,6 +1251,7 @@ const EditKonversiModal: React.FC<{
     );
 
     return {
+      akSebelumnya,
       akKonversi,
       masaKerja: masaKerjaBulan,
       jenis: jenisPenilaian,
@@ -1205,6 +1271,7 @@ const EditKonversiModal: React.FC<{
     e.preventDefault();
     if (formData.Tahun && formData.Semester && formData.Predikat_Kinerja) {
       const {
+        akSebelumnya,
         akKonversi,
         masaKerja,
         jenis,
@@ -1229,7 +1296,7 @@ const EditKonversiModal: React.FC<{
         ...formData,
         // Data periode
         Periode: `${periode.mulai} - ${periode.selesai}`,
-        Jenis_Periode: 'Semester',
+        Jenis_Periode: formData.Jenis_Periode || 'Semester',
         
         // Data pribadi
         Nomor_Karpeg: karyawan.unitKerja,
@@ -1251,7 +1318,7 @@ const EditKonversiModal: React.FC<{
         // Analisis AK
         Kebutuhan_Pangkat_AK: kebutuhanPangkat,
         Kebutuhan_Jabatan_AK: kebutuhanJabatan,
-        AK_Sebelumnya: karyawan.akKumulatif,
+        AK_Sebelumnya: akSebelumnya, // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
         AK_Periode_Ini: akKonversi,
         Total_Kumulatif: totalKumulatif,
         Selisih_Pangkat: selisihPangkat,
@@ -1279,6 +1346,7 @@ const EditKonversiModal: React.FC<{
   };
 
   const {
+    akSebelumnya,
     akKonversi,
     masaKerja,
     jenis,
@@ -1338,6 +1406,21 @@ const EditKonversiModal: React.FC<{
 
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="jenisPeriode">Jenis Periode</Label>
+              <Select 
+                value={formData.Jenis_Periode || "Semester"} 
+                onValueChange={(value) => setFormData({...formData, Jenis_Periode: value as 'Semester' | 'Tahunan'})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Semester">Semester</SelectItem>
+                  <SelectItem value="Tahunan">Tahunan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="predikat">Predikat Kinerja</Label>
               <Select 
                 value={formData.Predikat_Kinerja || "Baik"} 
@@ -1354,6 +1437,9 @@ const EditKonversiModal: React.FC<{
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="nilaiSKP">Nilai SKP</Label>
               <Input
@@ -1367,22 +1453,21 @@ const EditKonversiModal: React.FC<{
                 required
               />
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select 
-              value={formData.Status || "Draft"} 
-              onValueChange={(value) => setFormData({...formData, Status: value as any})}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Generated">Generated</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={formData.Status || "Draft"} 
+                onValueChange={(value) => setFormData({...formData, Status: value as any})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Generated">Generated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
@@ -1402,9 +1487,10 @@ const EditKonversiModal: React.FC<{
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p><strong>Informasi Periode:</strong></p>
+                  <p>• Jenis Periode: {formData.Jenis_Periode || 'Semester'}</p>
                   <p>• Jenis Penilaian: {jenis}</p>
                   <p>• Masa Kerja: {masaKerja} bulan</p>
-                  <p>• Periode: {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).mulai} - {KonversiCalculator.calculatePeriodeSemester(formData.Tahun, formData.Semester).selesai}</p>
+                  <p>• AK Sebelumnya: {akSebelumnya.toFixed(3)}</p>
                 </div>
                 
                 <div>
@@ -1414,6 +1500,7 @@ const EditKonversiModal: React.FC<{
                     {'Sangat Baik': '1.50', 'Baik': '1.00', 'Cukup': '0.75', 'Kurang': '0.50'}[formData.Predikat_Kinerja]
                   })</p>
                   <p>• AK Konversi: {akKonversi}</p>
+                  <p>• Total Kumulatif: {totalKumulatif.toFixed(3)}</p>
                 </div>
               </div>
 
@@ -1421,7 +1508,6 @@ const EditKonversiModal: React.FC<{
                 <div>
                   <p><strong>Analisis Pangkat:</strong></p>
                   <p>• Kebutuhan: {kebutuhanPangkat}</p>
-                  <p>• Total Kumulatif: {totalKumulatif.toFixed(3)}</p>
                   <p>• Selisih: {selisihPangkat.toFixed(3)}</p>
                   <p>• Kurleb: {kurlebPangkat.toFixed(3)}</p>
                 </div>
@@ -1429,7 +1515,6 @@ const EditKonversiModal: React.FC<{
                 <div>
                   <p><strong>Analisis Jabatan:</strong></p>
                   <p>• Kebutuhan: {kebutuhanJabatan}</p>
-                  <p>• Total Kumulatif: {totalKumulatif.toFixed(3)}</p>
                   <p>• Selisih: {selisihJabatan.toFixed(3)}</p>
                   <p>• Kurleb: {kurlebJabatan.toFixed(3)}</p>
                 </div>
@@ -1697,6 +1782,15 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
+      // ✅ PERBAIKAN: Hitung AK Sebelumnya yang bersinambungan
+      const akSebelumnya = KonversiCalculator.calculateAKSebelumnya(
+        karyawan,
+        konversiData,
+        updatedData.Tahun,
+        updatedData.Semester,
+        updatedData.Jenis_Periode === 'Tahunan' ? 'tahunan' : 'semesteran'
+      );
+      
       // ✅ PERBAIKAN: Gunakan parameter jabatan untuk perhitungan kebutuhan pangkat
       const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(
         karyawan.golongan, 
@@ -1704,7 +1798,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         karyawan.jabatan
       );
       
-      // SESUAIKAN DENGAN 33 KOLOM YANG ADA DI SPREADSHEET
+      // SESUAIKAN DENGAN 34 KOLOM YANG ADA DI SPREADSHEET (ditambah kolom Status)
       const values = [
         updatedData.No || nextNo,
         updatedData.Tahun || 2024,
@@ -1728,9 +1822,9 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Tanggal_Penetapan || KonversiCalculator.formatDate(new Date()),
         KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
         KonversiCalculator.formatNumberForSheet(updatedData.Kebutuhan_Jabatan_AK || 0),
-        KonversiCalculator.formatNumberForSheet(updatedData.AK_Sebelumnya || karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(akSebelumnya), // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
         KonversiCalculator.formatNumberForSheet(updatedData.AK_Periode_Ini || 0),
-        KonversiCalculator.formatNumberForSheet(updatedData.Total_Kumulatif || karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(updatedData.Total_Kumulatif || akSebelumnya),
         KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Pangkat || 0),
         KonversiCalculator.formatNumberForSheet(updatedData.Selisih_Jabatan || 0),
         KonversiCalculator.formatNumberForSheet(updatedData.Kurleb_Pangkat || 0),
@@ -1740,15 +1834,11 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         updatedData.Estimasi_Bulan || 0,
         updatedData.Rekomendasi || 'Pertahankan kinerja saat ini',
         updatedData.Pertimbangan_Khusus || '',
-        // 'Status' - skip karena kolom tidak ada
-        // 'Catatan' - skip karena kolom tidak ada
-        // 'Link Dokumen' - skip karena kolom tidak ada
+        updatedData.Status || 'Draft', // ✅ TAMBAHAN: Kolom Status di akhir
         updatedData.Last_Update || KonversiCalculator.formatDate(new Date())
-        // 'Masa Kerja Bulan' - skip karena kolom tidak ada
-        // 'Jenis Penilaian' - skip karena kolom tidak ada
       ];
 
-      console.log('📋 Values to save (33 columns):', values);
+      console.log('📋 Values to save (34 columns):', values);
       console.log('🔢 Number of columns:', values.length);
 
       if (updatedData.rowIndex && updatedData.rowIndex > 1) {
@@ -1794,6 +1884,15 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         semester
       );
 
+      // ✅ PERBAIKAN: Hitung AK Sebelumnya yang bersinambungan
+      const akSebelumnya = KonversiCalculator.calculateAKSebelumnya(
+        karyawan,
+        konversiData,
+        tahun,
+        semester,
+        'semesteran'
+      );
+
       const koefisien = KonversiCalculator.getKoefisien(
         karyawan.jabatan,
         karyawan.kategori,
@@ -1817,7 +1916,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         karyawan.jabatan
       );
       const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-      const totalKumulatif = karyawan.akKumulatif + akKonversi;
+      const totalKumulatif = akSebelumnya + akKonversi; // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
       const selisihPangkat = kebutuhanPangkat - totalKumulatif;
       const selisihJabatan = kebutuhanJabatan - totalKumulatif;
       const kurlebPangkat = Math.max(0, selisihPangkat);
@@ -1837,7 +1936,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       const periode = KonversiCalculator.calculatePeriodeSemester(tahun, semester);
       const nextNo = konversiData.length > 0 ? Math.max(...konversiData.map(d => d.No || 0)) + 1 : 1;
       
-      // Hanya gunakan 33 kolom yang sesuai dengan spreadsheet
+      // Gunakan 34 kolom sesuai spreadsheet (ditambah kolom Status)
       const values = [
         nextNo,
         tahun,
@@ -1859,7 +1958,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         now,
         KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
         KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
-        KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
+        KonversiCalculator.formatNumberForSheet(akSebelumnya), // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
         KonversiCalculator.formatNumberForSheet(akKonversi),
         KonversiCalculator.formatNumberForSheet(totalKumulatif),
         KonversiCalculator.formatNumberForSheet(selisihPangkat),
@@ -1871,10 +1970,11 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         estimasiBulan,
         analisis.rekomendasi,
         analisis.pertimbanganKhusus,
+        'Draft', // ✅ TAMBAHAN: Kolom Status di akhir
         now
       ];
 
-      console.log('📋 Values to append (33 columns):', values);
+      console.log('📋 Values to append (34 columns):', values);
       console.log('🔢 Number of columns:', values.length);
 
       await api.appendData(values);
@@ -1921,6 +2021,15 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             periode = KonversiCalculator.calculatePeriodeSemester(item.tahun, item.semester);
           }
 
+          // ✅ PERBAIKAN: Hitung AK Sebelumnya yang bersinambungan
+          const akSebelumnya = KonversiCalculator.calculateAKSebelumnya(
+            karyawan,
+            konversiData,
+            item.tahun,
+            item.semester,
+            mode
+          );
+
           const akKonversi = KonversiCalculator.calculateAKFromPredikat(
             'Baik', 
             95,
@@ -1939,7 +2048,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             karyawan.jabatan
           );
           const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
-          const totalKumulatif = karyawan.akKumulatif + akKonversi;
+          const totalKumulatif = akSebelumnya + akKonversi; // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
           const selisihPangkat = kebutuhanPangkat - totalKumulatif;
           const selisihJabatan = kebutuhanJabatan - totalKumulatif;
           const kurlebPangkat = Math.max(0, selisihPangkat);
@@ -1957,7 +2066,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             estimasiBulan
           );
 
-          // Gunakan 33 kolom sesuai spreadsheet
+          // Gunakan 34 kolom sesuai spreadsheet (ditambah kolom Status)
           const values = [
             nextNo + index,
             item.tahun,
@@ -1979,7 +2088,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             now,
             KonversiCalculator.formatNumberForSheet(kebutuhanPangkat), // ✅ Gunakan kebutuhanPangkat yang sudah diperbaiki
             KonversiCalculator.formatNumberForSheet(kebutuhanJabatan),
-            KonversiCalculator.formatNumberForSheet(karyawan.akKumulatif),
+            KonversiCalculator.formatNumberForSheet(akSebelumnya), // ✅ PERBAIKAN: Gunakan akSebelumnya yang sudah dihitung
             KonversiCalculator.formatNumberForSheet(akKonversi),
             KonversiCalculator.formatNumberForSheet(totalKumulatif),
             KonversiCalculator.formatNumberForSheet(selisihPangkat),
@@ -1991,6 +2100,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             estimasiBulan,
             analisis.rekomendasi,
             `Auto-generated (${item.jenisPenilaian} - ${mode})`,
+            'Generated', // ✅ TAMBAHAN: Kolom Status di akhir dengan nilai 'Generated'
             now
           ];
 
@@ -2071,11 +2181,14 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             <TableHead>No</TableHead>
             <TableHead>Tahun</TableHead>
             <TableHead>Semester</TableHead>
+            <TableHead>Jenis Periode</TableHead>
             <TableHead>Predikat</TableHead>
+            <TableHead>AK Sebelumnya</TableHead>
             <TableHead>AK Konversi</TableHead>
             <TableHead>Total Kumulatif</TableHead>
             <TableHead>Status Kenaikan</TableHead>
             <TableHead>Estimasi</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
@@ -2086,6 +2199,11 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               <TableCell>{data.Tahun}</TableCell>
               <TableCell>{data.Semester}</TableCell>
               <TableCell>
+                <Badge variant={data.Jenis_Periode === 'Tahunan' ? 'default' : 'secondary'}>
+                  {data.Jenis_Periode}
+                </Badge>
+              </TableCell>
+              <TableCell>
                 <Badge variant={
                   data.Predikat_Kinerja === 'Sangat Baik' ? 'default' :
                   data.Predikat_Kinerja === 'Baik' ? 'secondary' :
@@ -2094,6 +2212,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
                   {data.Predikat_Kinerja}
                 </Badge>
               </TableCell>
+              <TableCell className="font-medium">{data.AK_Sebelumnya}</TableCell>
               <TableCell className="font-semibold">{data.AK_Konversi}</TableCell>
               <TableCell className="font-bold text-blue-600">{data.Total_Kumulatif}</TableCell>
               <TableCell>
@@ -2108,6 +2227,11 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               </TableCell>
               <TableCell>
                 {data.Estimasi_Bulan > 0 ? `${data.Estimasi_Bulan} bulan` : 'Siap'}
+              </TableCell>
+              <TableCell>
+                <Badge variant={data.Status === 'Generated' ? 'default' : 'secondary'}>
+                  {data.Status}
+                </Badge>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
@@ -2246,6 +2370,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
         onClose={() => setEditModal({ isOpen: false, data: null })}
         onSave={handleSave}
         karyawan={karyawan}
+        konversiData={konversiData}
       />
 
       <GenerateSemesterModal
