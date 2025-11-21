@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { FileText, Users, Briefcase, Car, Clock, FileSpreadsheet, FileCheck, FileSignature, Receipt, Banknote, Bike } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Warna aksen — hanya untuk top bar + background icon
 const accentColors = [
   "from-blue-500 to-blue-600",
   "from-emerald-500 to-emerald-600",
@@ -39,6 +38,7 @@ export default function BuatEDokumen() {
 
   return (
     <div className="min-h-screen bg-background pt-4 pb-16 px-6">
+      {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
           Buat e-Dokumen
@@ -48,6 +48,7 @@ export default function BuatEDokumen() {
         </p>
       </div>
 
+      {/* Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7 max-w-7xl mx-auto">
         {eDokumenMenuItems.map((item, index) => {
           const Icon = item.icon;
@@ -60,10 +61,10 @@ export default function BuatEDokumen() {
               key={item.title}
               className="group relative overflow-hidden bg-card/95 backdrop-blur-sm border border-border/60 
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 
-                         transition-all duration-500 hover:-translate-y-3 rounded-2xl h-full flex flex-col"
+                         transition-all duration-500 hover:-translate-y-3 rounded-2xl h-full flex flex-col cursor-pointer"
             >
               {/* Top bar warna-warni */}
-              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
               <CardHeader className="pb-4">
                 <div className="flex items-start gap-4">
@@ -80,22 +81,24 @@ export default function BuatEDokumen() {
                 </CardDescription>
               </CardHeader>
 
-              {/* Tombol: SELALU primary (merah) + gradasi halus — SAMA PERSIS seperti di Linkers */}
-              <CardContent className="mt-auto pt-6 pb-1">
-                <Button
-                  onClick={() => navigate(item.url)}
-                  className="w-full h-12 text-base font-semibold
-                             bg-gradient-to-r from-primary to-primary/80
+              {/* Tombol: 100% SAMA PERSIS dengan di Linkers */}
+              <CardContent className="mt-auto pt-6 pb-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(item.url);
+                  }}
+                  className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/80 
                              hover:from-primary hover:to-primary/70 hover:brightness-110
-                             text-primary-foreground
-                             shadow-lg hover:shadow-xl hover:shadow-primary/25
-                             relative overflow-hidden
-                             transition-all duration-300 group-hover:scale-105"
-                  size="lg"
+                             text-primary-foreground font-medium text-sm shadow-lg hover:shadow-xl
+                             relative overflow-hidden transition-all duration-300
+                             flex items-center justify-center gap-2 group/btn"
                 >
                   <span className="relative z-10">Buat Dokumen</span>
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-white/20 transition-transform duration-700" />
-                </Button>
+                  <ExternalLink className="h-4 w-4 relative z-10" />
+                  <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
+                                   bg-white/20 transition-transform duration-700" />
+                </button>
               </CardContent>
             </Card>
           );
