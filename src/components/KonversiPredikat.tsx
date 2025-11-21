@@ -714,7 +714,7 @@ const useSpreadsheetAPI = () => {
       // Kolom tempat lahir adalah kolom ke-9 (index 8)
       const tempatLahirIndex = 8;
       // Kolom jenis kelamin adalah kolom ke-10 (index 9)
-      const jenisKelaminIndex = 9;
+      const jenisKelaminIndex = 0;
       
       if (nipIndex === -1 || tempatLahirIndex >= headers.length || jenisKelaminIndex >= headers.length) {
         console.warn('Struktur sheet data tidak sesuai');
