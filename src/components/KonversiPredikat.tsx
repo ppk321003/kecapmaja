@@ -1868,9 +1868,6 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
             <TableHead>AK Sebelumnya</TableHead>
             <TableHead>AK Periode Ini</TableHead>
             <TableHead>Total Kumulatif</TableHead>
-            <TableHead>Status Kenaikan</TableHead>
-            <TableHead>Estimasi</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
