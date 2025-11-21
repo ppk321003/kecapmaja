@@ -1328,17 +1328,6 @@ const EmployeeTable: React.FC<{
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Cari nama atau NIP..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
-          <Select value={filterKategori} onValueChange={(value: any) => setFilterKategori(value)}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Filter Kategori" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Semua">Semua Kategori</SelectItem>
-              <SelectItem value="Keahlian">Keahlian</SelectItem>
-              <SelectItem value="Keterampilan">Keterampilan</SelectItem>
-              <SelectItem value="Reguler">Reguler</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {sortedKaryawan.length === 0 ? <div className="text-center py-12">
@@ -1353,9 +1342,6 @@ const EmployeeTable: React.FC<{
                     Nama {getSortIcon('nama')}
                   </TableHead>
                   <TableHead className="w-[220px]">NIP</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort('kategori')}>
-                    Kategori {getSortIcon('kategori')}
-                  </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort('golongan')}>
                     Golongan {getSortIcon('golongan')}
                   </TableHead>
@@ -1381,11 +1367,6 @@ const EmployeeTable: React.FC<{
                       <code className="font-mono text-sm">
                         {karyawan.nip}
                       </code>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <Badge variant={karyawan.kategori === 'Keahlian' ? 'default' : karyawan.kategori === 'Keterampilan' ? 'secondary' : 'outline'}>
-                        {karyawan.kategori}
-                      </Badge>
                     </TableCell>
                     <TableCell className="py-2">
                       <Badge variant="outline">{karyawan.golongan}</Badge>
