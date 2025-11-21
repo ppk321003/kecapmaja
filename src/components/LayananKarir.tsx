@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, TrendingUp, Award, User, GraduationCap, Download } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, Award, User, Building, GraduationCap, Download } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
-import { Karyawan } from '@/types';
+import { Karyawan } from '@/types'; // Import Karyawan dari types
 
 interface LayananKarirProps {
   karyawan: Karyawan;
@@ -49,8 +49,8 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             <Badge className={`${getKategoriColor(karyawan.kategori)} border text-xs`}>
               {karyawan.kategori}
             </Badge>
-            <Badge className={`${getStatusColor(karyawan.status || 'Aktif')} border text-xs`}>
-              {karyawan.status || 'Aktif'}
+            <Badge className={`${getStatusColor(karyawan.status)} border text-xs`}>
+              {karyawan.status}
             </Badge>
           </div>
         </div>
@@ -64,7 +64,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <p className="font-semibold">{karyawan.jabatan}</p>
             </div>
           </div>
-         
+          
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <Award className="h-4 w-4 text-green-600" />
             <div>
@@ -72,7 +72,8 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <p className="font-semibold">{karyawan.pangkat} - {karyawan.golongan}</p>
             </div>
           </div>
-         
+          
+          {/* Box Unit Kerja diganti dengan Tanggal Penghitungan AK Terakhir */}
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <Calendar className="h-4 w-4 text-purple-600" />
             <div>
@@ -80,7 +81,7 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
               <p className="font-semibold">{karyawan.tglPenghitunganAkTerakhir}</p>
             </div>
           </div>
-         
+          
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
             <GraduationCap className="h-4 w-4 text-orange-600" />
             <div>
@@ -89,6 +90,8 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
             </div>
           </div>
         </div>
+        
+        {/* Section Tanggal Penghitungan AK Terakhir yang lama dihilangkan */}
       </CardContent>
     </Card>
   );
@@ -96,27 +99,17 @@ const ProfileHeader: React.FC<{ karyawan: Karyawan }> = ({ karyawan }) => {
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const [activeTab, setActiveTab] = useState('generate');
-
-  // INI SOLUSI UTAMANYA:
-  // Kita buat objek baru dengan type assertion → memaksa TypeScript percaya properti itu ada
-  const karyawanUntukKonversi = {
-    ...karyawan,
-    tempatLahir: '' as string,
-    tanggalLahir: '' as string,
-    jenisKelamin: 'Laki-laki' as 'Laki-laki' | 'Perempuan',
-  } as unknown as Parameters<typeof KonversiPredikat>[0]['karyawan'];
-  // Penjelasan: kita pakai `as unknown as ...` supaya tidak error, tapi tetap aman saat runtime
-
+  
   const tabConfig = {
-    generate: {
-      title: "GENERATE DOKUMEN",
-      icon: FileText,
+    generate: { 
+      title: "GENERATE DOKUMEN", 
+      icon: FileText, 
       activeClass: "bg-blue-500 text-white border-blue-600 shadow-md",
       inactiveClass: "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
     },
-    unduh: {
-      title: "UNDUH DOKUMEN",
-      icon: Download,
+    unduh: { 
+      title: "UNDUH DOKUMEN", 
+      icon: Download, 
       activeClass: "bg-green-500 text-white border-green-600 shadow-md",
       inactiveClass: "bg-white text-green-600 border-green-200 hover:bg-green-50"
     }
@@ -125,13 +118,14 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   return (
     <div className="space-y-4">
       <ProfileHeader karyawan={karyawan} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="bg-white rounded-lg border shadow-sm p-1">
           <TabsList className="grid w-full grid-cols-2 bg-transparent p-0 gap-1">
             {Object.entries(tabConfig).map(([key, config]) => (
-              <TabsTrigger
-                key={key}
-                value={key}
+              <TabsTrigger 
+                key={key} 
+                value={key} 
                 className={`
                   flex items-center gap-2 text-sm font-medium py-3 px-4 rounded-md border-2 transition-all duration-200
                   ${activeTab === key ? config.activeClass : config.inactiveClass}
@@ -152,8 +146,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
 
         <TabsContent value="generate" className="space-y-3">
-          {/* Kirim objek yang sudah "diperbaiki" typenya */}
-          <KonversiPredikat karyawan={karyawanUntukKonversi} />
+          <KonversiPredikat karyawan={karyawan} />
         </TabsContent>
 
         <TabsContent value="unduh" className="space-y-3">
@@ -178,7 +171,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 </p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-700">
-                    Untuk sementara, Anda dapat menggunakan fitur <strong>Generate Dokumen</strong>
+                    Untuk sementara, Anda dapat menggunakan fitur <strong>Generate Dokumen</strong> 
                     untuk membuat dokumen-dokumen yang diperlukan.
                   </p>
                 </div>
