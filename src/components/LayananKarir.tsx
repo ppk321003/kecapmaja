@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Download } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
+import DownloadPAK from '@/components/DownloadPAK'; // Import komponen DownloadPAK
 import { Karyawan } from '@/types';
 
 interface LayananKarirProps {
@@ -27,7 +28,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
               )}
               <FileText className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">Generate Dokumen</span>
+              <span className="relative z-10">Generate PAK</span>
             </button>
 
             <button
@@ -40,7 +41,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
               )}
               <Download className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">Download Dokumen</span>
+              <span className="relative z-10">Download PAK</span>
             </button>
           </div>
         </div>
@@ -56,24 +57,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           </div>
         )}
 
-        {/* TAB DOWNLOAD — Placeholder Kosong */}
+        {/* TAB DOWNLOAD — Komponen DownloadPAK */}
         {activeTab === 'download' && (
-          <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
-              <Download className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="text-xl font-medium text-foreground mb-2">
-              Download Dokumen Karir
-            </h3>
-            <p className="text-muted-foreground max-w-md">
-              Dokumen yang telah Anda generate akan tersedia di sini untuk diunduh.
-            </p>
-            <div className="mt-10 bg-primary/5 border-2 border-dashed border-primary/30 rounded-2xl p-12 max-w-md">
-              <p className="text-primary font-medium">Belum ada dokumen</p>
-              <p className="text-muted-foreground text-sm mt-2">
-                Generate dokumen terlebih dahulu
-              </p>
-            </div>
+          <div className="w-full">
+            <DownloadPAK karyawan={karyawan} />
           </div>
         )}
 
