@@ -47,7 +47,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
   const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
   const SHEET_NAME = "olah";
 
-  // FIX LINK 100% — SUPPORT Google Docs, Sheets, Drive PDF, open?id=, dll
+  // FIX LINK 100%
   const getViewableLink = (url: string): string => {
     if (!url || typeof url !== 'string') return '#';
 
@@ -130,8 +130,13 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
         return nipMatch || namaMatch;
       });
 
-      setPakData(filtered);
-      setFilteredData(filtered);
+      // AUTO SORT: Tahun terbaru dulu
+      const sorted = filtered.sort((a, b) => {
+        return parseInt(b.Tahun) - parseInt(a.Tahun);
+      });
+
+      setPakData(sorted);
+      setFilteredData(sorted);
     } catch (err: any) {
       toast({
         title: "Gagal memuat data",
@@ -147,6 +152,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
     fetchPAKData();
   }, [karyawan.nip, karyawan.nama]);
 
+  // Search tetap berjalan setelah sort
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredData(pakData);
@@ -262,7 +268,6 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
                                 href={viewLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2"
                               >
                                 <Eye className="h-4 w-4" />
                                 Lihat Dokumen
