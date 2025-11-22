@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Search, RefreshCw, Calendar, FileText, User } from 'lucide-react';
+import { Eye, Search, RefreshCw, FileText } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -10,6 +10,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,10 +34,7 @@ interface PAKData {
 }
 
 interface DownloadPAKProps {
-  karyawan: {
-    nip: string;
-    nama: string;
-  };
+  karyawan: { nip: string; nama: string };
 }
 
 const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
@@ -42,37 +47,26 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
   const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
   const SHEET_NAME = "olah";
 
-  // FUNGSI UTAMA: BISA BUKA SEMUA LINK GOOGLE (Docs, Sheets, Drive, dll)
-  const getGoogleViewLink = (url: string): string => {
+  // FIX LINK 100% — SUPPORT Google Docs, Sheets, Drive PDF, open?id=, dll
+  const getViewableLink = (url: string): string => {
     if (!url || typeof url !== 'string') return '#';
-    if (!url.includes('google.com') && !url.includes('docs.google.com') && !url.includes('drive.google.com')) {
-      return url;
-    }
 
     let fileId = '';
-    let docType = '';
+    let type = '';
 
-    // Google Docs / Sheets / Slides / Forms
     if (url.includes('/document/d/')) {
       fileId = url.split('/document/d/')[1]?.split('/')[0] || '';
-      docType = 'document';
+      type = 'document';
     } else if (url.includes('/spreadsheets/d/')) {
       fileId = url.split('/spreadsheets/d/')[1]?.split('/')[0] || '';
-      docType = 'spreadsheets';
+      type = 'spreadsheets';
     } else if (url.includes('/presentation/d/')) {
       fileId = url.split('/presentation/d/')[1]?.split('/')[0] || '';
-      docType = 'presentation';
-    } else if (url.includes('/forms/d/')) {
-      fileId = url.split('/forms/d/')[1]?.split('/')[0] || '';
-      docType = 'forms';
-    }
-    // Google Drive File
-    else if (url.includes('/file/d/')) {
+      type = 'presentation';
+    } else if (url.includes('/file/d/')) {
       fileId = url.split('/file/d/')[1]?.split('/')[0] || '';
-      docType = 'file';
-    }
-    // Format open?id= atau id=
-    else if (url.includes('open?id=')) {
+      type = 'file';
+    } else if (url.includes('open?id=')) {
       fileId = url.split('open?id=')[1]?.split('&')[0] || '';
     } else if (url.includes('id=')) {
       fileId = url.split('id=')[1]?.split('&')[0] || '';
@@ -80,14 +74,13 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
 
     if (!fileId) return url;
 
-    if (['document', 'spreadsheets', 'presentation', 'forms'].includes(docType)) {
-      return `https://docs.google.com/${docType}/d/${fileId}/edit`;
+    if (type === 'document' || type === 'spreadsheets' || type === 'presentation') {
+      return `https://docs.google.com/${type}/d/${fileId}/edit`;
     } else {
       return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
     }
   };
 
-  // FUNGSI FETCH DATA (INI YANG SEBELUMNYA HILANG!)
   const fetchPAKData = async () => {
     try {
       setLoading(true);
@@ -142,7 +135,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
     } catch (err: any) {
       toast({
         title: "Gagal memuat data",
-        description: err.message || "Terjadi kesalahan saat mengambil data",
+        description: err.message || "Terjadi kesalahan",
         variant: "destructive",
       });
     } finally {
@@ -150,12 +143,10 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
     }
   };
 
-  // Load data saat komponen mount / karyawan berubah
   useEffect(() => {
     fetchPAKData();
   }, [karyawan.nip, karyawan.nama]);
 
-  // Search filter
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredData(pakData);
@@ -175,10 +166,9 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
   const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
-  // Loading state
   if (loading) {
     return (
-      <Card className="border-0 shadow-xl">
+      <Card className="border-0 shadow-lg">
         <CardContent className="py-20 text-center">
           <div className="relative mx-auto w-16 h-16">
             <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
@@ -191,20 +181,16 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <Card className="border-0 shadow-2xl bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader>
+    <div className="space-y-6">
+      <Card className="border-0 shadow-xl">
+        <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="text-2xl flex items-center gap-3">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <FileText className="h-7 w-7 text-primary" />
-                </div>
+                <FileText className="h-7 w-7 text-primary" />
                 Dokumen PAK
               </CardTitle>
-              <CardDescription className="mt-2 flex items-center gap-2 text-base">
-                <User className="h-4 w-4" />
+              <CardDescription className="text-base">
                 {karyawan.nama} <span className="text-muted-foreground">(NIP: {karyawan.nip})</span>
               </CardDescription>
             </div>
@@ -219,105 +205,87 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
                   className="pl-10 w-full sm:w-80"
                 />
               </div>
-              <Button onClick={fetchPAKData} variant="outline" size="icon" title="Refresh">
+              <Button onClick={fetchPAKData} variant="outline" size="icon">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
+
+        <CardContent>
+          {filteredData.length === 0 ? (
+            <div className="text-center py-16">
+              <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+              <h3 className="text-xl font-semibold mb-2">
+                {searchTerm ? 'Tidak ditemukan' : 'Belum ada dokumen PAK'}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'Coba kata kunci lain' : `Belum ada data PAK untuk ${karyawan.nama}`}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-card/50 backdrop-blur-sm overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/70">
+                    <TableHead className="font-bold text-foreground">Tahun</TableHead>
+                    <TableHead className="font-bold text-foreground">Jenis Periode</TableHead>
+                    <TableHead className="font-bold text-foreground">Periode</TableHead>
+                    <TableHead className="font-bold text-foreground">Nomor PAK</TableHead>
+                    <TableHead className="font-bold text-foreground">Update Terakhir</TableHead>
+                    <TableHead className="text-center font-bold text-foreground">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map((item) => {
+                    const viewLink = getViewableLink(item.Link);
+
+                    return (
+                      <TableRow key={`${item.ID}-${item.Tahun}`} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-semibold text-lg">{item.Tahun}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{item.Jenis_Periode}</Badge>
+                        </TableCell>
+                        <TableCell>{item.Periode}</TableCell>
+                        <TableCell>
+                          <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                            {item.Nomor_PAK || '-'}
+                          </code>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(item.Last_Update)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {item.Link ? (
+                            <Button asChild size="sm" className="gap-2">
+                              <a
+                                href={viewLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2"
+                              >
+                                <Eye className="h-4 w-4" />
+                                Lihat Dokumen
+                              </a>
+                            </Button>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Tidak tersedia</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            Menampilkan <strong>{filteredData.length}</strong> dokumen PAK
+            {searchTerm && ` untuk pencarian "${searchTerm}"`}
+          </div>
+        </CardContent>
       </Card>
-
-      {/* Daftar Dokumen */}
-      {filteredData.length === 0 ? (
-        <Card className="border-dashed border-2">
-          <CardContent className="py-16 text-center">
-            <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold mb-2">
-              {searchTerm ? 'Tidak ditemukan' : 'Belum ada dokumen PAK'}
-            </h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              {searchTerm
-                ? 'Coba gunakan kata kunci lain atau refresh data.'
-                : `Saat ini belum ada dokumen PAK untuk ${karyawan.nama}.`}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredData.map((item) => {
-            const viewLink = getGoogleViewLink(item.Link);
-
-            return (
-              <Card
-                key={`${item.ID}-${item.Tahun}`}
-                className="group relative overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-0 bg-card/95 backdrop-blur-sm"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-3xl font-bold text-primary">{item.Tahun}</p>
-                      <Badge variant="secondary" className="mt-2 text-xs">
-                        {item.Jenis_Periode}
-                      </Badge>
-                    </div>
-                    <Calendar className="h-5 w-5 text-muted-foreground opacity-70" />
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Periode</p>
-                    <p className="font-medium">{item.Periode}</p>
-                  </div>
-
-                  {item.Nomor_PAK && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Nomor PAK</p>
-                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono block mt-1 break-all">
-                        {item.Nomor_PAK}
-                      </code>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                    <span className="text-xs text-muted-foreground">
-                      Update {formatDate(item.Last_Update)}
-                    </span>
-
-                    {item.Link ? (
-                      <Button asChild size="sm" className="gap-2 bg-primary hover:bg-primary/90">
-                        <a
-                          href={viewLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Lihat Dokumen
-                        </a>
-                      </Button>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
-                        Link tidak ada
-                      </Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Footer */}
-      {filteredData.length > 0 && (
-        <div className="text-center text-sm text-muted-foreground">
-          Menampilkan <strong>{filteredData.length}</strong> dokumen PAK
-          {searchTerm && ` untuk pencarian "${searchTerm}"`}
-        </div>
-      )}
     </div>
   );
 };
