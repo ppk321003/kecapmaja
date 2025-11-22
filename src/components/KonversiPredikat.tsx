@@ -698,40 +698,55 @@ const useSpreadsheetAPI = () => {
     }
   };
 
-  // Fungsi untuk membaca data tempat lahir dan jenis kelamin dari sheet "data"
-// Dalam fungsi getDataFromDataSheet() - DIPERBAIKI
 const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; jenisKelamin: string}> => {
   try {
     const result = await callAPI('read', { range: DATA_SHEET_NAME });
     const rows = result.values || [];
     
-    if (rows.length <= 1) return { tempatLahir: '', jenisKelamin: '' };
+    if (rows.length <= 1) return { tempatLahir: '', jenisKelamin: 'Laki-laki' };
     
     const headers = rows[0];
+    
+    // Cari index kolom dengan lebih fleksibel
     const nipIndex = headers.findIndex((header: string) => 
       header.toLowerCase().includes('nip')
     );
     
-    // Tempat lahir: kolom 8 (index 8)
-    const tempatLahirIndex = 8;
-    
-    // Cari baris dengan NIP yang sesuai
-    const dataRow = rows.find((row: any[]) => 
-      row[nipIndex]?.toString() === nip
+    const tempatLahirIndex = headers.findIndex((header: string) => 
+      header.toLowerCase().includes('tempat') || header.toLowerCase().includes('lahir')
     );
     
+    // Cari baris dengan NIP yang sesuai - dengan normalisasi
+    const normalizedNIP = nip.toString().trim();
+    const dataRow = rows.find((row: any[]) => {
+      if (!row[nipIndex]) return false;
+      const rowNIP = row[nipIndex].toString().trim();
+      return rowNIP === normalizedNIP;
+    });
+    
     if (dataRow) {
-      const tempatLahir = dataRow[tempatLahirIndex]?.toString() || '';
-      const nipFromData = dataRow[0]?.toString() || '';
+      // Ambil tempat lahir
+      const tempatLahir = tempatLahirIndex >= 0 ? 
+        (dataRow[tempatLahirIndex]?.toString() || '') : '';
+      
+      // Ambil jenis kelamin dari kolom jika ada, atau tentukan dari NIP
+      const jenisKelaminIndex = headers.findIndex((header: string) => 
+        header.toLowerCase().includes('jenis') || header.toLowerCase().includes('kelamin')
+      );
+      
       let jenisKelamin = 'Laki-laki'; // default
       
-      if (nipFromData.length >= 17) {
-        const digitKe17 = nipFromData.charAt(16);
-        if (digitKe17 === '1') {
-          jenisKelamin = 'Laki-laki';
-        } else if (digitKe17 === '2') {
+      // Prioritaskan dari kolom jenis kelamin jika ada
+      if (jenisKelaminIndex >= 0 && dataRow[jenisKelaminIndex]) {
+        const jkFromColumn = dataRow[jenisKelaminIndex].toString().toLowerCase();
+        if (jkFromColumn.includes('perempuan') || jkFromColumn === 'p') {
           jenisKelamin = 'Perempuan';
         }
+      } 
+      // Fallback: tentukan dari digit ke-17 NIP
+      else if (normalizedNIP.length >= 17) {
+        const digitKe17 = normalizedNIP.charAt(16);
+        jenisKelamin = digitKe17 === '2' ? 'Perempuan' : 'Laki-laki';
       }
       
       return { tempatLahir, jenisKelamin };
