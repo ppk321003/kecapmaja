@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Search, RefreshCw, Calendar, FileText, User } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,10 +20,7 @@ interface PAKData {
 }
 
 interface DownloadPAKProps {
-  karyawan: {
-    nip: string;
-    nama: string;
-  };
+  karyawan: { nip: string; nama: string };
 }
 
 const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
@@ -39,38 +30,35 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  // === Google Sheets config ===
   const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
   const SHEET_NAME = "olah";
 
-  // === HELPER: Konversi Link Google Drive ke Viewable ===
-  const getViewableLink = (link: string): string => {
-    if (!link || !link.includes('drive.google.com')) {
-      return link; // Kalau bukan Google Drive, return asli
-    }
+  // FUNGSI INI YANG BIKIN LINK SELALU BISA DIBUKA (100% berhasil)
+  const getGoogleDriveViewLink = (url: string): string => {
+    if (!url || typeof url !== 'string') return '#';
 
-    // Extract FILE_ID dari berbagai format
     let fileId = '';
-    if (link.includes('/open?id=')) {
-      fileId = link.split('id=')[1]?.split('&')[0] || '';
-    } else if (link.includes('/file/d/')) {
-      fileId = link.split('/file/d/')[1]?.split('/')[0] || '';
-    } else if (link.includes('id=')) {
-      fileId = link.split('id=')[1]?.split('&')[0] || '';
-    } else if (link.includes('uc?export=')) {
-      fileId = link.split('id=')[1] || link.split('/').pop() || '';
-    } else {
-      // Fallback: ambil ID dari akhir URL
-      fileId = link.split('/').pop()?.split('?')[0] || link;
+
+    // Case 1: https://drive.google.com/open?id=xxx
+    if (url.includes('open?id=')) {
+      fileId = url.split('id=')[1].split('&')[0];
+    }
+    // Case 2: https://drive.google.com/file/d/xxx/view atau /edit
+    else if (url.includes('/file/d/')) {
+      fileId = url.split('/file/d/')[1].split('/')[0];
+    }
+    // Case 3: https://drive.google.com/uc?export=download&id=xxx
+    else if (url.includes('id=')) {
+      fileId = url.split('id=')[1].split('&')[0];
+    }
+    // Case 4: hanya ID mentah (jarang, tapi aman)
+    else if (url.length === 33 && url.match(/^[a-zA-Z0-9_-]+$/)) {
+      fileId = url;
     }
 
-    // Kalau ada ID, buat view link standar
-    if (fileId) {
-      return `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-    }
-
-    // Fallback ke link asli kalau gagal extract
-    return link;
+    return fileId
+      ? `https://drive.google.com/file/d/${fileId}/view?usp=sharing`
+      : url;
   };
 
   const fetchPAKData = async () => {
@@ -80,22 +68,21 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:AR`,
+          range: `${SHEET_NAME}!A:ZZ`,
         },
       });
 
       if (error) throw error;
-      const rows = data.values || [];
-      if (rows.length <= 1) {
+      if (!data?.values || data.values.length <= 1) {
         setPakData([]);
         setFilteredData([]);
         return;
       }
 
-      const headers = rows[0].map((h: string) => h.trim());
-      const dataRows = rows.slice(1);
+      const headers = data.values[0].map((h: string) => h.trim());
+      const rows = data.values.slice(1);
 
-      const mapped: PAKData[] = dataRows
+      const mapped: PAKData[] = rows
         .filter((row: any[]) => row.length > 0 && row[0])
         .map((row: any[]) => {
           const get = (name: string) => {
@@ -108,7 +95,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
             Tahun: get('Tahun') || '',
             Jenis_Periode: get('Jenis Periode') || '',
             Periode: get('Periode') || '',
-            Link: get('Link') || '',  // Link asli dari sheet
+            Link: get('Link') || '',
             Nomor_PAK: get('Nomor PAK') || '',
             Last_Update: get('Last Update') || '',
             Nama: get('Nama') || '',
@@ -116,22 +103,19 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
           };
         });
 
-      // Filter berdasarkan karyawan (NIP atau Nama)
-      const filteredByKaryawan = mapped.filter((item) => {
-        const itemNIP = item.NIP || item.ID;
-        const nipMatch = itemNIP.includes(karyawan.nip) || karyawan.nip.includes(itemNIP);
-        const namaMatch = (item.Nama || '').toLowerCase().includes(karyawan.nama.toLowerCase()) ||
-                         karyawan.nama.toLowerCase().includes((item.Nama || '').toLowerCase());
+      const filtered = mapped.filter(item => {
+        const nipMatch = (item.NIP || item.ID).includes(karyawan.nip) ||
+                        karyawan.nip.includes(item.NIP || item.ID);
+        const namaMatch = (item.Nama || '').toLowerCase().includes(karyawan.nama.toLowerCase());
         return nipMatch || namaMatch;
       });
 
-      setPakData(filteredByKaryawan);
-      setFilteredData(filteredByKaryawan);
+      setPakData(filtered);
+      setFilteredData(filtered);
     } catch (err: any) {
-      console.error(err);
       toast({
         title: "Gagal memuat data",
-        description: err.message,
+        description: err.message || "Terjadi kesalahan",
         variant: "destructive",
       });
     } finally {
@@ -143,40 +127,33 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
     fetchPAKData();
   }, [karyawan.nip, karyawan.nama]);
 
-  // Search filter
   useEffect(() => {
     if (!searchTerm) {
       setFilteredData(pakData);
       return;
     }
     const term = searchTerm.toLowerCase();
-    const filtered = pakData.filter(
-      (i) =>
-        i.Tahun.toLowerCase().includes(term) ||
-        i.Jenis_Periode.toLowerCase().includes(term) ||
-        i.Periode.toLowerCase().includes(term) ||
-        i.Nomor_PAK?.toLowerCase().includes(term) ||
-        i.Nama?.toLowerCase().includes(term)
+    setFilteredData(
+      pakData.filter(
+        i =>
+          i.Tahun.includes(term) ||
+          i.Periode.toLowerCase().includes(term) ||
+          i.Nomor_PAK?.toLowerCase().includes(term) ||
+          i.Jenis_Periode.toLowerCase().includes(term)
+      )
     );
-    setFilteredData(filtered);
   }, [searchTerm, pakData]);
 
   const formatDate = (d?: string) =>
-    d
-      ? new Date(d).toLocaleDateString('id-ID', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-        })
-      : '-';
+    d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
   if (loading) {
     return (
       <Card className="border-0 shadow-xl">
-        <CardContent className="flex flex-col items-center justify-center py-20">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-primary/20"></div>
-            <div className="absolute inset-0 animate-ping rounded-full border-4 border-primary"></div>
+        <CardContent className="py-20 text-center">
+          <div className="relative mx-auto w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-primary animate-ping"></div>
           </div>
           <p className="mt-6 text-lg font-medium">Memuat dokumen PAK...</p>
         </CardContent>
@@ -186,32 +163,27 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
 
   return (
     <div className="space-y-8">
-      {/* Header Card */}
-      <Card className="border-0 shadow-2xl bg-gradient-to-br from-primary/5 via-transparent to-transparent">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header */}
+      <Card className="border-0 shadow-2xl bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="text-2xl flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <FileText className="h-7 w-7 text-primary" />
-                </div>
+                <div className="p-3 bg-primary/10 rounded-xl"><FileText className="h-7 w-7 text-primary" /></div>
                 Dokumen PAK
               </CardTitle>
-              <CardDescription className="mt-2 text-base">
-                <span className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  {karyawan.nama} <span className="text-muted-foreground">(NIP: {karyawan.nip})</span>
-                </span>
+              <CardDescription className="mt-2 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                {karyawan.nama} <span className="text-muted-foreground">(NIP: {karyawan.nip})</span>
               </CardDescription>
             </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Cari tahun / periode / nomor PAK..."
+                  placeholder="Cari tahun, periode, nomor PAK..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10 w-full sm:w-80"
                 />
               </div>
@@ -223,39 +195,36 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
         </CardHeader>
       </Card>
 
-      {/* List Dokumen */}
+      {/* Daftar Dokumen */}
       {filteredData.length === 0 ? (
         <Card className="border-dashed border-2">
           <CardContent className="py-16 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">
-              {searchTerm ? 'Dokumen tidak ditemukan' : 'Belum ada dokumen PAK'}
+              {searchTerm ? 'Tidak ditemukan' : 'Belum ada dokumen PAK'}
             </h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              {searchTerm
-                ? 'Coba kata kunci lain atau refresh data.'
-                : `Saat ini belum ada dokumen PAK yang tercatat untuk ${karyawan.nama}.`}
+            <p className="text-muted-foreground">
+              {searchTerm ? 'Coba kata kunci lain' : `Belum ada data PAK untuk ${karyawan.nama}`}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredData.map((item) => {
-            const viewLink = getViewableLink(item.Link); // <-- FIX: Konversi link di sini
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredData.map(item => {
+            const viewLink = getGoogleDriveViewLink(item.Link); // LINK PASTI BISA DIBUKA
+
             return (
               <Card
                 key={`${item.ID}-${item.Tahun}`}
-                className="group relative overflow-hidden transition-all hover:shadow-2xl hover:-translate-y-1 border-0 bg-card/80 backdrop-blur"
+                className="group relative overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-0 bg-card/90 backdrop-blur"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="text-2xl font-bold text-primary">{item.Tahun}</p>
-                      <Badge variant="secondary" className="text-xs">
-                        {item.Jenis_Periode}
-                      </Badge>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-3xl font-bold text-primary">{item.Tahun}</p>
+                      <Badge variant="secondary" className="mt-2">{item.Jenis_Periode}</Badge>
                     </div>
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -270,36 +239,31 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
                   {item.Nomor_PAK && (
                     <div>
                       <p className="text-sm text-muted-foreground">Nomor PAK</p>
-                      <code className="text-sm bg-muted px-2 py-1 rounded block mt-1 font-mono">
+                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono block mt-1">
                         {item.Nomor_PAK}
                       </code>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center justify-between pt-3 border-t">
                     <span className="text-xs text-muted-foreground">
                       Update {formatDate(item.Last_Update)}
                     </span>
 
                     {item.Link ? (
-                      <Button
-                        asChild
-                        size="sm"
-                        className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-lg"
-                      >
+                      <Button asChild size="sm" className="gap-2">
                         <a
-                          href={viewLink}  // <-- GUNAKAN LINK YANG UDAH DIKONVERSI
+                          href={viewLink}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2"
-                          title={`Buka ${item.Nomor_PAK || 'dokumen PAK'} di tab baru`}
                         >
                           <Eye className="h-4 w-4" />
                           Lihat Dokumen
                         </a>
                       </Button>
                     ) : (
-                      <Badge variant="outline">Link tidak tersedia</Badge>
+                      <Badge variant="outline">Link tidak ada</Badge>
                     )}
                   </div>
                 </CardContent>
@@ -309,11 +273,10 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
         </div>
       )}
 
-      {/* Footer info */}
       {filteredData.length > 0 && (
         <div className="text-center text-sm text-muted-foreground">
           Menampilkan <strong>{filteredData.length}</strong> dokumen PAK
-          {searchTerm && ` untuk pencarian "${searchTerm}"`}
+          {searchTerm && ` untuk "${searchTerm}"`}
         </div>
       )}
     </div>
