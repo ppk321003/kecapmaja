@@ -1,25 +1,32 @@
+import React, { useState } from 'react';
+import { FileText, Download } from 'lucide-react';
+import KonversiPredikat from '@/components/KonversiPredikat';
+import DownloadPAK from '@/components/DownloadPAK';
+import { Karyawan } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface LayananKarirProps {
+  karyawan: Karyawan;
+}
+
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
 
-  // Selalu mulai di tab download untuk non-PPK, tapi kedua tab tetap muncul
   const [activeTab, setActiveTab] = useState<'generate' | 'download'>(
     isPPK ? 'generate' : 'download'
   );
 
   return (
     <div className="min-h-screen bg-background">
-      {/* === TAB HEADER — KEDUA TAB SELALU MUNCUL === */}
+      {/* TAB HEADER — Kedua tab selalu muncul */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b">
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-4">
           <div className="inline-flex rounded-xl shadow-sm border overflow-hidden text-sm font-medium">
-            {/* Generate PAK – SELALU TAMPIL */}
             <button
               onClick={() => setActiveTab('generate')}
               className={`flex items-center gap-2.5 px-7 py-2.5 transition-all relative overflow-hidden ${
-                activeTab === 'generate'
-                  ? 'text-white'
-                  : 'text-foreground/70 hover:text-foreground'
+                activeTab === 'generate' ? 'text-white' : 'text-foreground/70 hover:text-foreground'
               }`}
             >
               {activeTab === 'generate' && (
@@ -29,13 +36,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
               <span className="relative z-10">Generate PAK</span>
             </button>
 
-            {/* Download PAK */}
             <button
               onClick={() => setActiveTab('download')}
               className={`flex items-center gap-2.5 px-7 py-2.5 transition-all relative overflow-hidden ${
-                activeTab === 'download'
-                  ? 'text-white'
-                  : 'text-foreground/70 hover:text-foreground'
+                activeTab === 'download' ? 'text-white' : 'text-foreground/70 hover:text-foreground'
               }`}
             >
               {activeTab === 'download' && (
@@ -48,33 +52,31 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         </div>
       </div>
 
-      {/* === KONTEN UTAMA === */}
-      <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-8">
-        {/* Tab Generate PAK */}
+      {/* KONTEN */}
+      <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-8 relative">
         {activeTab === 'generate' && (
-          <div className="w-full">
-            {/* Kalau bukan PPK, tetap render KonversiPredikat tapi kasih pesan read-only */}
+          <div className="relative">
+            {/* Banner read-only untuk non-PPK */}
             {!isPPK && (
               <div className="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
                 <p className="font-medium">Mode Hanya Lihat</p>
                 <p className="text-sm mt-1">
-                  Anda dapat melihat data konversi predikat. 
-                  Hanya Pejabat Pembuat Komitmen (PPK) yang dapat menambah data atau generate PAK.
+                  Anda dapat melihat data konversi predikat. Hanya Pejabat Pembuat Komitmen (PPK) yang
+                  dapat mengedit atau generate PAK.
                 </p>
               </div>
             )}
 
-            {/* Render komponen asli tanpa perubahan apapun */}
+            {/* Komponen asli tanpa perubahan */}
             <KonversiPredikat karyawan={karyawan} />
-            
-            {/* Overlay transparan + cursor not-allowed supaya tidak bisa klik tombol kalau bukan PPK */}
+
+            {/* Overlay blokir klik untuk non-PPK */}
             {!isPPK && (
               <div className="absolute inset-0 bg-transparent z-10 cursor-not-allowed" />
             )}
           </div>
         )}
 
-        {/* Tab Download PAK */}
         {activeTab === 'download' && (
           <div className="w-full">
             <DownloadPAK karyawan={karyawan} />
