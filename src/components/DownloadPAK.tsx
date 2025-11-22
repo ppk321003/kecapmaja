@@ -17,6 +17,8 @@ interface PAKData {
   Nomor_PAK?: string;
   Status_Dokumen?: string;
   Last_Update?: string;
+  Nama?: string;
+  NIP?: string;
 }
 
 interface DownloadPAKProps {
@@ -48,12 +50,11 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
     try {
       setLoading(true);
       
-      // Menggunakan Supabase function yang sama seperti di komponen utama
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:AR` // Range dari A sampai AR untuk mencakup semua kolom
+          range: `${SHEET_NAME}!A:AR`
         }
       });
 
@@ -68,39 +69,65 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
       }
 
       // Header mapping berdasarkan sheet "olah"
-      const headers = rows[0];
+      const headers = rows[0].map((header: string) => header.trim());
       const dataRows = rows.slice(1);
+
+      console.log('Headers:', headers); // Debug log
+      console.log('First few rows:', dataRows.slice(0, 3)); // Debug log
 
       const mappedData: PAKData[] = dataRows
         .filter((row: any[]) => row.length > 0 && row[0])
         .map((row: any[]) => {
-          // Mapping kolom berdasarkan header
+          // Helper function untuk mendapatkan nilai kolom berdasarkan nama header
           const getColumnValue = (headerName: string) => {
             const index = headers.indexOf(headerName);
-            return index >= 0 && row[index] ? row[index].toString() : '';
+            return index >= 0 && row[index] ? row[index].toString().trim() : '';
           };
 
           return {
-            ID: getColumnValue('ID'),
-            Tahun: getColumnValue('Tahun'),
-            Jenis_Periode: getColumnValue('Jenis Periode'),
-            Periode: getColumnValue('Periode'),
-            Link: getColumnValue('Link'),
-            Nomor_PAK: getColumnValue('Nomor PAK'),
-            Status_Dokumen: getColumnValue('Status Dokumen'),
-            Last_Update: getColumnValue('Last Update')
+            ID: getColumnValue('ID') || '',
+            Tahun: getColumnValue('Tahun') || '',
+            Jenis_Periode: getColumnValue('Jenis Periode') || '',
+            Periode: getColumnValue('Periode') || '',
+            Link: getColumnValue('Link') || '',
+            Nomor_PAK: getColumnValue('Nomor PAK') || '',
+            Status_Dokumen: getColumnValue('Status Dokumen') || '',
+            Last_Update: getColumnValue('Last Update') || '',
+            Nama: getColumnValue('Nama') || '',
+            NIP: getColumnValue('NIP') || ''
           };
         });
 
-      // Filter data berdasarkan NIP karyawan yang sedang login
-      const filteredByNIP = mappedData.filter(item => 
-        item.ID.includes(karyawan.nip) || 
-        karyawan.nama.toLowerCase().includes(item.ID.toLowerCase()) ||
-        item.ID.toLowerCase().includes(karyawan.nama.toLowerCase())
-      );
+      console.log('Mapped data sample:', mappedData.slice(0, 3)); // Debug log
 
-      setPakData(filteredByNIP);
-      setFilteredData(filteredByNIP);
+      // Filter data berdasarkan NIP atau Nama karyawan
+      const filteredByKaryawan = mappedData.filter(item => {
+        const itemNIP = item.NIP || item.ID; // Coba gunakan kolom NIP atau ID
+        const itemNama = item.Nama || '';
+        
+        // Cek apakah NIP cocok (partial match)
+        const nipMatch = itemNIP.includes(karyawan.nip) || 
+                        karyawan.nip.includes(itemNIP);
+        
+        // Cek apakah nama cocok (case insensitive partial match)
+        const namaMatch = itemNama.toLowerCase().includes(karyawan.nama.toLowerCase()) ||
+                         karyawan.nama.toLowerCase().includes(itemNama.toLowerCase());
+        
+        // Jika ada NIP yang cocok, prioritaskan NIP
+        if (nipMatch) return true;
+        
+        // Jika tidak ada NIP yang cocok, cek nama
+        if (namaMatch) return true;
+        
+        return false;
+      });
+
+      console.log('Filtered data for karyawan:', filteredByKaryawan); // Debug log
+      console.log('Karyawan NIP:', karyawan.nip); // Debug log
+      console.log('Karyawan Nama:', karyawan.nama); // Debug log
+
+      setPakData(filteredByKaryawan);
+      setFilteredData(filteredByKaryawan);
 
     } catch (error: any) {
       console.error('Error fetching PAK data:', error);
@@ -116,7 +143,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
 
   useEffect(() => {
     fetchPAKData();
-  }, [karyawan.nip]);
+  }, [karyawan.nip, karyawan.nama]);
 
   // Filter data berdasarkan search term
   useEffect(() => {
@@ -130,7 +157,8 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
       item.Jenis_Periode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.Periode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.Nomor_PAK?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.Status_Dokumen?.toLowerCase().includes(searchTerm.toLowerCase())
+      item.Status_Dokumen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.Nama?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     setFilteredData(filtered);
@@ -226,7 +254,7 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
             Download Dokumen PAK
           </CardTitle>
           <CardDescription>
-            Dokumen Penetapan Angka Kredit (PAK) yang tersedia untuk diunduh
+            Dokumen Penetapan Angka Kredit (PAK) untuk {karyawan.nama} (NIP: {karyawan.nip})
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -256,12 +284,17 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
               <h3 className="text-lg font-semibold mb-2">
                 {searchTerm ? 'Tidak ada dokumen PAK ditemukan' : 'Belum ada dokumen PAK'}
               </h3>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Coba ubah kata kunci pencarian' 
-                  : 'Dokumen PAK akan muncul di sini setelah diproses'
+                  : `Tidak ditemukan dokumen PAK untuk ${karyawan.nama} (${karyawan.nip})`
                 }
               </p>
+              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 max-w-md mx-auto">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Tips:</strong> Pastikan data Anda sudah tercatat di sheet "olah" dengan NIP atau nama yang sesuai.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="border rounded-lg">
@@ -357,21 +390,6 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
 
           <div className="mt-4 text-sm text-muted-foreground">
             Menampilkan {filteredData.length} dari {pakData.length} dokumen PAK
-          </div>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border">
-            <div className="flex items-start gap-3">
-              <div className="bg-blue-100 p-2 rounded-full">
-                <FileText className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-blue-800">Informasi Dokumen PAK</h4>
-                <p className="text-blue-700 text-sm">
-                  Dokumen PAK (Penetapan Angka Kredit) berisi penetapan resmi angka kredit yang telah diverifikasi. 
-                  Dokumen ini dapat digunakan untuk keperluan administrasi kenaikan pangkat dan jabatan.
-                </p>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
