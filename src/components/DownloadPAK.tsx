@@ -246,24 +246,35 @@ const DownloadPAK: React.FC<DownloadPAKProps> = ({ karyawan }) => {
                     Update {formatDate(item.Last_Update)}
                   </span>
 
-                  {item.Link ? (
-                    <Button
-                      asChild
-                      size="sm"
-                      className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-lg"
-                    >
-                      <a
-                        href={item.Link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Lihat Dokumen
-                      </a>
-                    </Button>
-                  ) : (
-                    <Badge variant="outline">Link tidak tersedia</Badge>
-                  )}
+{item.Link ? (
+  <Button
+    asChild
+    size="sm"
+    className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-lg"
+  >
+    <a
+      href={item.Link.startsWith('http') 
+        ? (item.Link.includes('/file/d/') 
+          ? item.Link.replace('/open?', '/file/d/').split('/').slice(0,6).join('/') + '/view'  // konversi otomatis
+          : item.Link.includes('id=') 
+            ? `https://drive.google.com/file/d/${item.Link.split('id=')[1].split('&')[0]}/view`
+            : item.Link.includes('uc?') 
+              ? item.Link 
+              : `https://drive.google.com/uc?export=view&id=${item.Link.split('/').pop()}`
+        )
+        : `https://drive.google.com/uc?export=view&id=${item.Link}`
+      }
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2"
+    >
+      <Eye className="h-4 w-4" />
+      Lihat Dokumen
+    </a>
+  </Button>
+) : (
+  <Badge variant="outline">Link tidak tersedia</Badge>
+)}
                 </div>
               </CardContent>
             </Card>
