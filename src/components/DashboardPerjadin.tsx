@@ -108,6 +108,7 @@ const SearchInput = ({
 };
 
 // PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih baik
+// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih baik
 const PerjadinTooltip = ({
   data,
   position
@@ -128,29 +129,36 @@ const PerjadinTooltip = ({
     }).format(amount);
   };
 
-  // PERBAIKAN: Hitung posisi tooltip agar tidak keluar dari viewport
+  // PERBAIKAN: Hitung posisi tooltip agar tidak keluar dari viewport dan lebih tinggi
   const calculatePosition = () => {
     const tooltipWidth = 320;
-    const tooltipHeight = 200;
+    const tooltipHeight = 220; // Sedikit lebih tinggi
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
+    // PERBAIKAN: Posisi tooltip lebih tinggi (di atas baris)
     let x = position.x + 10;
-    let y = position.y - 10;
+    let y = position.y - tooltipHeight - 20; // Naikkan tooltip lebih tinggi
+
+    // Jika tooltip akan keluar dari kiri viewport
+    if (x < 10) {
+      x = 10;
+    }
 
     // Jika tooltip akan keluar dari kanan viewport
     if (x + tooltipWidth > viewportWidth) {
-      x = position.x - tooltipWidth - 10;
+      x = viewportWidth - tooltipWidth - 10;
+    }
+
+    // Jika tooltip akan keluar dari atas viewport (karena kita naikkan)
+    if (y < 10) {
+      y = position.y + 30; // Jika tidak muat di atas, taruh di bawah
     }
 
     // Jika tooltip akan keluar dari bawah viewport
     if (y + tooltipHeight > viewportHeight) {
-      y = position.y - tooltipHeight - 10;
+      y = viewportHeight - tooltipHeight - 10;
     }
-
-    // Pastikan tidak keluar dari kiri atau atas viewport
-    x = Math.max(10, x);
-    y = Math.max(10, y);
 
     return { x, y };
   };
@@ -158,31 +166,31 @@ const PerjadinTooltip = ({
   const finalPosition = calculatePosition();
 
   return (
-    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200" 
+    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80 pointer-events-none transition-all duration-200" 
          style={{
            left: finalPosition.x,
            top: finalPosition.y
          }}>
-      <h4 className="font-semibold text-sm mb-2">{data.petugas}</h4>
+      <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
       <div className="space-y-2 text-xs">
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Jumlah Perjadin:</span>
-          <span className="font-medium">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
+          <span className="font-medium bg-blue-50 px-2 py-1 rounded">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Total Durasi:</span>
-          <span className="font-medium">{data.totalDurasi} hari</span>
+          <span className="font-medium bg-green-50 px-2 py-1 rounded">{data.totalDurasi} hari</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Total Biaya:</span>
-          <span className="font-medium">{formatRupiah(data.totalBiaya)}</span>
+          <span className="font-medium bg-orange-50 px-2 py-1 rounded">{formatRupiah(data.totalBiaya)}</span>
         </div>
-        <div className="mt-2">
-          <h5 className="font-semibold mb-1">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
-          <div className="max-h-32 overflow-y-auto border rounded p-2">
+        <div className="mt-3 pt-2 border-t">
+          <h5 className="font-semibold mb-1 text-blue-700">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
+          <div className="max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
             <ul className="space-y-1">
               {data.namaKegiatanList.map((kegiatan, idx) => (
-                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
+                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0 text-xs">
                   • {kegiatan}
                 </li>
               ))}
@@ -193,6 +201,30 @@ const PerjadinTooltip = ({
     </div>
   );
 };
+
+// PERBAIKAN: Fungsi untuk menampilkan tooltip dengan delay kecil untuk stabilitas
+const handleShowTooltip = (data: PerjadinTooltipData, position: { x: number; y: number }) => {
+  // PERBAIKAN: Tambahkan offset vertikal agar tooltip lebih tinggi
+  const adjustedPosition = {
+    x: position.x,
+    y: position.y - 10 // Naikkan sedikit dari posisi mouse
+  };
+  
+  setTooltipData(data);
+  setTooltipPosition(adjustedPosition);
+};
+
+// PERBAIKAN: Tambahkan efek untuk menutup tooltip saat scroll
+useEffect(() => {
+  const handleScroll = () => {
+    setTooltipData(null);
+  };
+
+  window.addEventListener('scroll', handleScroll);
+  return () => {
+    window.removeEventListener('scroll', handleScroll);
+  };
+}, []);
 
 const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   if (!data || data.length === 0) {
