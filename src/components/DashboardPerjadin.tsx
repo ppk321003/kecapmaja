@@ -165,7 +165,7 @@ const PerjadinTooltip = ({
       style={{
         left: finalPosition.x,
         top: finalPosition.y,
-        maxHeight: '280px',
+        maxHeight: 'min(400px, 80vh)',
       }}
     >
       <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
@@ -187,7 +187,8 @@ const PerjadinTooltip = ({
           <div 
             className="border rounded p-2 bg-gray-50 overflow-y-auto"
             style={{ 
-              maxHeight: '120px',
+              minHeight: '120px', // ✅ FIX: Gunakan minHeight bukan maxHeight
+              maxHeight: '200px', // ✅ FIX: Beri batas maksimal yang reasonable
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e0 #f7fafc'
             }}
