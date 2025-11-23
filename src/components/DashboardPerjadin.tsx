@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
@@ -52,7 +52,7 @@ interface PetugasData {
   namaKegiatanList: string[];
 }
 
-// PERBAIKAN: Interface untuk tooltip
+// Interface untuk tooltip - DIPERBAIKI dengan penanganan seperti script 2
 interface PerjadinTooltipData {
   petugas: string;
   jumlahPerjadin: number;
@@ -83,7 +83,7 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   return null;
 };
 
-// PERBAIKAN: Komponen Search untuk tabel
+// Komponen Search untuk tabel
 const SearchInput = ({
   value,
   onChange,
@@ -107,7 +107,7 @@ const SearchInput = ({
   );
 };
 
-// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih tinggi dan bisa di-scroll
+// PERBAIKAN UTAMA: Komponen Tooltip untuk tabel dengan penanganan seperti script 2
 const PerjadinTooltip = ({
   data,
   position
@@ -128,49 +128,44 @@ const PerjadinTooltip = ({
     }).format(amount);
   };
 
-  // PERBAIKAN: Hitung posisi tooltip agar lebih tinggi dan tidak keluar dari viewport
+  // PERBAIKAN: Hitung posisi tooltip seperti di script 2 - POSISI DI SEBELAH KANAN BARIS
   const calculatePosition = () => {
     const tooltipWidth = 350;
-    const tooltipHeight = 280; // PERBAIKAN: Lebih tinggi untuk menampung konten
+    const tooltipHeight = 280;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // PERBAIKAN: Tooltip muncul lebih tinggi di atas baris - naikkan lebih banyak
-    let x = position.x + 10;
-    let y = position.y - tooltipHeight - 50; // PERBAIKAN: Naikkan 50px lebih tinggi
+    // POSISI TOOLTIP DI SEBELAH KANAN BARIS DENGAN JARAK SEDIKIT
+    let leftPosition = position.x + 8; // 8px dari sebelah kanan baris
+    let topPosition = position.y - 10; // Sedikit di atas baris
 
-    // Jika tooltip akan keluar dari kiri viewport
-    if (x < 10) {
-      x = 10;
+    // Jika tooltip terlalu ke kanan, posisikan di kiri baris
+    if (leftPosition + tooltipWidth > viewportWidth - 20) {
+      leftPosition = position.x - tooltipWidth - 10;
     }
 
-    // Jika tooltip akan keluar dari kanan viewport
-    if (x + tooltipWidth > viewportWidth) {
-      x = viewportWidth - tooltipWidth - 10;
+    // Jika tooltip terlalu ke bawah, adjust posisi vertikal
+    if (topPosition < 20) {
+      topPosition = 20;
     }
 
-    // Jika tooltip akan keluar dari atas viewport (karena kita naikkan)
-    if (y < 10) {
-      y = position.y + 40; // Jika tidak muat di atas, taruh di bawah dengan margin
+    // Jika tooltip terlalu ke atas, adjust posisi vertikal
+    if (topPosition + tooltipHeight > viewportHeight - 20) {
+      topPosition = viewportHeight - tooltipHeight - 20;
     }
 
-    // Jika tooltip akan keluar dari bawah viewport
-    if (y + tooltipHeight > viewportHeight) {
-      y = viewportHeight - tooltipHeight - 10;
-    }
-
-    return { x, y };
+    return { x: leftPosition, y: topPosition };
   };
 
   const finalPosition = calculatePosition();
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80 pointer-events-auto transition-all duration-200" 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200" 
       style={{
         left: finalPosition.x,
         top: finalPosition.y,
-        maxHeight: '280px', // PERBAIKAN: Fixed height untuk konsistensi
+        maxHeight: '280px',
       }}
     >
       <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
@@ -189,7 +184,6 @@ const PerjadinTooltip = ({
         </div>
         <div className="mt-3 pt-2 border-t">
           <h5 className="font-semibold mb-1 text-blue-700">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
-          {/* PERBAIKAN: Container dengan scroll yang bekerja */}
           <div 
             className="border rounded p-2 bg-gray-50 overflow-y-auto"
             style={{ 
@@ -338,7 +332,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");
   const [filterJenisPegawai, setFilterJenisPegawai] = useState<string>("Semua");
   
-  // PERBAIKAN: State untuk search dan data lengkap
+  // State untuk search dan data lengkap
   const [organikSearchQuery, setOrganikSearchQuery] = useState("");
   const [mitraSearchQuery, setMitraSearchQuery] = useState("");
   const [allPetugasData, setAllPetugasData] = useState<{
@@ -349,9 +343,12 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     organik: []
   });
   
-  // PERBAIKAN: State untuk tooltip
+  // PERBAIKAN UTAMA: State untuk tooltip dengan penanganan seperti script 2
   const [tooltipData, setTooltipData] = useState<PerjadinTooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  // PERBAIKAN UTAMA: Ref untuk timeout seperti di script 2
+  const hideTooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const [stats, setStats] = useState<DashboardStats>({
     totalPerjadin: 0,
@@ -385,38 +382,28 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     }).format(amount);
   };
 
-  // PERBAIKAN: Fungsi untuk menampilkan tooltip dengan posisi lebih tinggi
+  // PERBAIKAN UTAMA: Fungsi untuk menampilkan tooltip dengan penanganan seperti script 2
   const handleShowTooltip = (data: PerjadinTooltipData, position: { x: number; y: number }) => {
+    if (hideTooltipTimeout.current) {
+      clearTimeout(hideTooltipTimeout.current);
+    }
     setTooltipData(data);
-    setTooltipPosition({
-      x: position.x,
-      y: position.y
-    });
+    setTooltipPosition(position);
   };
 
-  // PERBAIKAN: Fungsi untuk menyembunyikan tooltip
+  // PERBAIKAN UTAMA: Fungsi untuk menyembunyikan tooltip dengan delay seperti script 2
   const handleHideTooltip = () => {
-    setTooltipData(null);
+    hideTooltipTimeout.current = setTimeout(() => {
+      setTooltipData(null);
+    }, 200);
   };
 
-  // PERBAIKAN: Effect untuk menutup tooltip saat scroll - dengan delay kecil
+  // Cleanup timeout saat component unmount
   useEffect(() => {
-    let scrollTimer: NodeJS.Timeout;
-
-    const handleScroll = () => {
-      // Clear existing timer
-      clearTimeout(scrollTimer);
-      // Set new timer to hide tooltip after scroll ends
-      scrollTimer = setTimeout(() => {
-        setTooltipData(null);
-      }, 150);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      clearTimeout(scrollTimer);
+      if (hideTooltipTimeout.current) {
+        clearTimeout(hideTooltipTimeout.current);
+      }
     };
   }, []);
 
@@ -626,7 +613,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         .sort((a, b) => b.value - a.value)
         .slice(0, 8);
 
-      // PERBAIKAN: Simpan SEMUA data petugas untuk search (bukan hanya top 15)
+      // Simpan SEMUA data petugas untuk search (bukan hanya top 15)
       const allMitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           nama,
@@ -667,7 +654,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         distribusiSumber: distribusiSumberData
       });
 
-      // PERBAIKAN: Set semua data petugas untuk search
+      // Set semua data petugas untuk search
       setAllPetugasData({
         mitra: allMitraPetugasData,
         organik: allOrganikPetugasData
@@ -702,7 +689,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     );
   }
 
-  // PERBAIKAN: Filter data untuk search dari SEMUA data (bukan hanya top 15)
+  // Filter data untuk search dari SEMUA data (bukan hanya top 15)
   const filteredOrganikData = organikSearchQuery 
     ? allPetugasData.organik.filter(item => 
         item.nama.toLowerCase().includes(organikSearchQuery.toLowerCase()) ||
@@ -895,7 +882,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </Card>
       </div>
 
-      {/* Distribution Tables - PERBAIKAN: Search mencari dari semua database */}
+      {/* Distribution Tables - PERBAIKAN: Hilangkan kolom "Total Durasi" dan adopsi tooltip seperti script 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribusi Realisasi Perjadin - Organik */}
         <Card>
@@ -930,15 +917,15 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
                     <th className="text-left py-3 font-semibold">Nama</th>
-                    <th className="text-center py-3 font-semibold">Jumlah</th>
-                    <th className="text-center py-3 font-semibold">Total Durasi</th>
+                    <th className="text-center py-3 font-semibold">Jumlah Perjadin</th>
+                    {/* PERBAIKAN: Hilangkan kolom "Total Durasi" */}
                     <th className="text-right py-3 font-semibold">Total Biaya</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredOrganikData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <td colSpan={4} className="text-center py-8 text-muted-foreground">
                         {organikSearchQuery 
                           ? `Tidak ada data yang cocok dengan pencarian "${organikSearchQuery}"`
                           : 'Tidak ada data organik'
@@ -959,7 +946,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                             totalBiaya: item.totalBiaya,
                             namaKegiatanList: item.namaKegiatanList
                           }, {
-                            x: rect.left,
+                            x: rect.right,
                             y: rect.top
                           });
                         }}
@@ -968,7 +955,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.nama}</td>
                         <td className="text-center py-3">{item.jumlahPerjadin}</td>
-                        <td className="text-center py-3">{item.totalDurasi} hari</td>
+                        {/* PERBAIKAN: Hilangkan kolom "Total Durasi" */}
                         <td className="text-right py-3 font-medium">
                           {formatRupiah(item.totalBiaya)}
                         </td>
@@ -1014,15 +1001,15 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
                     <th className="text-left py-3 font-semibold">Nama</th>
-                    <th className="text-center py-3 font-semibold">Jumlah</th>
-                    <th className="text-center py-3 font-semibold">Total Durasi</th>
+                    <th className="text-center py-3 font-semibold">Jumlah Perjadin</th>
+                    {/* PERBAIKAN: Hilangkan kolom "Total Durasi" */}
                     <th className="text-right py-3 font-semibold">Total Biaya</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredMitraData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <td colSpan={4} className="text-center py-8 text-muted-foreground">
                         {mitraSearchQuery 
                           ? `Tidak ada data yang cocok dengan pencarian "${mitraSearchQuery}"`
                           : 'Tidak ada data mitra'
@@ -1043,7 +1030,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                             totalBiaya: item.totalBiaya,
                             namaKegiatanList: item.namaKegiatanList
                           }, {
-                            x: rect.left,
+                            x: rect.right,
                             y: rect.top
                           });
                         }}
@@ -1052,7 +1039,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.nama}</td>
                         <td className="text-center py-3">{item.jumlahPerjadin}</td>
-                        <td className="text-center py-3">{item.totalDurasi} hari</td>
+                        {/* PERBAIKAN: Hilangkan kolom "Total Durasi" */}
                         <td className="text-right py-3 font-medium">
                           {formatRupiah(item.totalBiaya)}
                         </td>
@@ -1068,7 +1055,17 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
 
       {/* Render Tooltip */}
       {tooltipData && (
-        <PerjadinTooltip data={tooltipData} position={tooltipPosition} />
+        <div 
+          className="perjadin-tooltip-container" 
+          onMouseEnter={() => {
+            if (hideTooltipTimeout.current) {
+              clearTimeout(hideTooltipTimeout.current);
+            }
+          }} 
+          onMouseLeave={handleHideTooltip}
+        >
+          <PerjadinTooltip data={tooltipData} position={tooltipPosition} />
+        </div>
       )}
     </div>
   );
