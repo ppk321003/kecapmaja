@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table, Filter, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import DashboardPerjadin from "@/components/DashboardPerjadin";
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_MITRA_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -638,6 +639,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
+  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const [stats, setStats] = useState<DashboardStats>({
@@ -1474,18 +1476,29 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          <Tabs value={viewMode} onValueChange={value => setViewMode(value as 'kegiatan' | 'anggaran')}>
+          {/* Tabs Utama */}
+          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin')}>
             <TabsList>
-              <TabsTrigger value="anggaran" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Berdasarkan Realisasi
-              </TabsTrigger>
-              <TabsTrigger value="kegiatan" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Berdasarkan Kegiatan
-              </TabsTrigger>
+              <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
+              <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {/* Subtab untuk kedua kategori - hanya tampil jika bukan loading */}
+          {!loading && (
+            <Tabs value={viewMode} onValueChange={value => setViewMode(value as 'kegiatan' | 'anggaran')}>
+              <TabsList>
+                <TabsTrigger value="anggaran" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Berdasarkan Realisasi
+                </TabsTrigger>
+                <TabsTrigger value="kegiatan" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Berdasarkan Kegiatan
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
           <Select value={filterTahun} onValueChange={setFilterTahun}>
             <SelectTrigger className="w-32">
@@ -1500,263 +1513,272 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800">
-              {viewMode === 'kegiatan' ? 'Total Kegiatan' : 'Total Realisasi'}
-            </CardTitle>
-            {viewMode === 'kegiatan' ? <Activity className="h-4 w-4 text-blue-600" /> : <DollarSign className="h-4 w-4 text-blue-600" />}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">
-              {viewMode === 'kegiatan' ? stats.totalKegiatan.toLocaleString('id-ID') : formatRupiah(stats.totalRealisasi)}
-            </div>
-            <p className="text-xs text-blue-700">
-              Tahun {filterTahun}
-            </p>
-          </CardContent>
-        </Card>
+      {mainTab === 'honorarium' ? (
+        <>
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-800">
+                  {viewMode === 'kegiatan' ? 'Total Kegiatan' : 'Total Realisasi'}
+                </CardTitle>
+                {viewMode === 'kegiatan' ? <Activity className="h-4 w-4 text-blue-600" /> : <DollarSign className="h-4 w-4 text-blue-600" />}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">
+                  {viewMode === 'kegiatan' ? stats.totalKegiatan.toLocaleString('id-ID') : formatRupiah(stats.totalRealisasi)}
+                </div>
+                <p className="text-xs text-blue-700">
+                  Tahun {filterTahun}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">
-              {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Realisasi per Bulan'}
-            </CardTitle>
-            {viewMode === 'kegiatan' ? <Calendar className="h-4 w-4 text-green-600" /> : <DollarSign className="h-4 w-4 text-green-600" />}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">
-              {viewMode === 'kegiatan' ? stats.rataRataKegiatanPerBulan.toLocaleString('id-ID') : formatRupiah(stats.rataRataAnggaranPerBulan)}
-            </div>
-            <p className="text-xs text-green-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Realisasi per bulan'}
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-green-800">
+                  {viewMode === 'kegiatan' ? 'Rata-rata Kegiatan per Bulan' : 'Rata-rata Realisasi per Bulan'}
+                </CardTitle>
+                {viewMode === 'kegiatan' ? <Calendar className="h-4 w-4 text-green-600" /> : <DollarSign className="h-4 w-4 text-green-600" />}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-900">
+                  {viewMode === 'kegiatan' ? stats.rataRataKegiatanPerBulan.toLocaleString('id-ID') : formatRupiah(stats.rataRataAnggaranPerBulan)}
+                </div>
+                <p className="text-xs text-green-700">
+                  {viewMode === 'kegiatan' ? 'Kegiatan per bulan' : 'Realisasi per bulan'}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">
-              {viewMode === 'kegiatan' ? 'Bulan Puncak Kegiatan' : 'Bulan Realisasi Tertinggi'}
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-900">
-              {viewMode === 'kegiatan' ? `${stats.bulanPeakKegiatan.name} ${stats.bulanPeakKegiatan.value}` : `${stats.bulanPeakAnggaran.name} ${formatRupiah(stats.bulanPeakAnggaran.value)}`}
-            </div>
-            <p className="text-xs text-purple-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Realisasi tertinggi'}
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-purple-800">
+                  {viewMode === 'kegiatan' ? 'Bulan Puncak Kegiatan' : 'Bulan Realisasi Tertinggi'}
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-900">
+                  {viewMode === 'kegiatan' ? `${stats.bulanPeakKegiatan.name} ${stats.bulanPeakKegiatan.value}` : `${stats.bulanPeakAnggaran.name} ${formatRupiah(stats.bulanPeakAnggaran.value)}`}
+                </div>
+                <p className="text-xs text-purple-700">
+                  {viewMode === 'kegiatan' ? 'Kegiatan tertinggi' : 'Realisasi tertinggi'}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">
-              {viewMode === 'kegiatan' ? 'Bulan Kegiatan Rendah' : 'Bulan Realisasi Terendah'}
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-900">
-              {viewMode === 'kegiatan' ? `${stats.bulanSlowKegiatan.name} ${stats.bulanSlowKegiatan.value}` : `${stats.bulanSlowAnggaran.name} ${formatRupiah(stats.bulanSlowAnggaran.value)}`}
-            </div>
-            <p className="text-xs text-orange-700">
-              {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Realisasi terendah'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Trend Line Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Realisasi'} per Bulan
-          </CardTitle>
-          <CardDescription>
-            Melihat pola musiman dan prediksi kebutuhan ke depan
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SafeLineChart data={currentData.bulan} title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Realisasi'} mode={viewMode} />
-        </CardContent>
-      </Card>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {viewMode === 'kegiatan' ? 'Top Mitra Statistik Berdasarkan Kegiatan' : 'Top Mitra Statistik Berdasarkan Realisasi'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SafeBarChart data={currentData.petugas} title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'} mode={viewMode} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {viewMode === 'kegiatan' ? 'Distribusi Kegiatan per Bulan' : 'Distribusi Realisasi per Bulan'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SafeBarChart data={currentData.bulan} title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'} mode={viewMode} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {viewMode === 'kegiatan' ? 'Kegiatan per Jenis Pekerjaan' : 'Realisasi per Jenis Pekerjaan'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SafePieChart data={currentData.jenisPekerjaan} title={viewMode === 'kegiatan' ? 'Jenis Pekerjaan' : 'Realisasi per Jenis'} mode={viewMode} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {viewMode === 'kegiatan' ? 'Distribusi per Penanggung Jawab Kegiatan' : 'Realisasi per Penanggung Jawab Kegiatan'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SafePieChart data={currentData.role} title={viewMode === 'kegiatan' ? 'Role' : 'Realisasi per Penanggung Jawab Kegiatan'} mode={viewMode} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filter Fungsi untuk Risk Assessment dan Workload Distribution */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Analisis Detail</h2>
-          <p className="text-muted-foreground mt-1">
-            Analisis mendalam berdasarkan fungsi dan beban tugas
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filter Fungsi:</span>
-            <Select value={filterFungsi} onValueChange={setFilterFungsi}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Pilih Fungsi" />
-              </SelectTrigger>
-              <SelectContent>
-                {fungsiList.map(fungsi => <SelectItem key={fungsi} value={fungsi}>
-                    {fungsi}
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-orange-800">
+                  {viewMode === 'kegiatan' ? 'Bulan Kegiatan Rendah' : 'Bulan Realisasi Terendah'}
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-900">
+                  {viewMode === 'kegiatan' ? `${stats.bulanSlowKegiatan.name} ${stats.bulanSlowKegiatan.value}` : `${stats.bulanSlowAnggaran.name} ${formatRupiah(stats.bulanSlowAnggaran.value)}`}
+                </div>
+                <p className="text-xs text-orange-700">
+                  {viewMode === 'kegiatan' ? 'Kegiatan terendah' : 'Realisasi terendah'}
+                </p>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      </div>
 
-      {/* Grid untuk Risk Assessment dan Workload Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Risk Assessment dengan Hover */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex justify-between items-center">
+          {/* Trend Line Chart */}
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Assesmen Beban Tugas
+                <TrendingUp className="h-5 w-5" />
+                Trend {viewMode === 'kegiatan' ? 'Kegiatan' : 'Realisasi'} per Bulan
               </CardTitle>
-              <SearchInput value={riskSearchQuery} onChange={setRiskSearchQuery} placeholder="Cari nama mitra..." />
-            </div>
-            <CardDescription>
-              {filterFungsi === "Semua Fungsi" ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail" : `Mitra Statistik dengan kegiatan di ${filterFungsi} - Hover untuk melihat detail`}
-              {riskSearchQuery && <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{riskSearchQuery}" - Menampilkan {searchedRiskData.length} hasil
-                </div>}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RiskMatrix data={searchedRiskData} mode={viewMode} filterFungsi={filterFungsi} searchQuery={riskSearchQuery} onShowRiskTooltip={handleShowRiskTooltip} onHideRiskTooltip={handleHideRiskTooltip} />
-          </CardContent>
-        </Card>
+              <CardDescription>
+                Melihat pola musiman dan prediksi kebutuhan ke depan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SafeLineChart data={currentData.bulan} title={viewMode === 'kegiatan' ? 'Trend Kegiatan' : 'Trend Realisasi'} mode={viewMode} />
+            </CardContent>
+          </Card>
 
-        {/* Workload Distribution Table - Top 15 Petugas dengan Hover Role */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <Table className="h-5 w-5" />
-                Distribusi Realisasi Honor - {filterFungsi === "Semua Fungsi" ? "Top 15 Mitra Statistik" : `Mitra Statistik di ${filterFungsi}`}
-              </CardTitle>
-              <SearchInput value={workloadSearchQuery} onChange={setWorkloadSearchQuery} placeholder="Cari nama mitra..." />
-            </div>
-            <CardDescription>
-              {filterFungsi === "Semua Fungsi" ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi" : `Tabel detail distribusi realisasi honor di ${filterFungsi} - Hover untuk melihat detail`}
-              {workloadSearchQuery && <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{workloadSearchQuery}" - Menampilkan {searchedWorkloadData.length} hasil
-                </div>}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto relative">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 font-semibold w-12">No</th>
-                    <th className="text-left py-3 font-semibold">Mitra Statistik</th>
-                    <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
-                    <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
-                    <th className="text-right py-3 font-semibold">Total Realisasi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {searchedWorkloadData.length === 0 ? <tr>
-                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                        {workloadSearchQuery ? `Tidak ada data yang cocok dengan pencarian "${workloadSearchQuery}"` : `Tidak ada data untuk ${filterFungsi}`}
-                      </td>
-                    </tr> : searchedWorkloadData.map((item, index) => <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
-                        {/* PERBAIKAN UTAMA: Tampilkan hanya nama tanpa NIK */}
-                        <td className="py-3 font-medium">{extractDisplayName(item.petugas)}</td>
-                        <td className="py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {/* PERBAIKAN UTAMA: Hanya tampilkan fungsi yang dipilih */}
-                            {item.roles.map((role, roleIndex) => {
-                        const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
-                        return <RoleBadge key={roleIndex} role={role} petugas={extractDisplayName(item.petugas)} // PERBAIKAN UTAMA: Tampilkan hanya nama
-                        roleData={roleData} onShowTooltip={handleShowTooltip} onHideTooltip={handleHideTooltip} />;
-                      })}
-                          </div>
-                        </td>
-                        <td className="text-center py-3 font-medium">
-                          {item.jumlahKegiatan.toLocaleString('id-ID')}
-                        </td>
-                        <td className="text-right py-3 font-medium">
-                          {formatRupiah(item.totalAnggaran)}
-                        </td>
-                      </tr>)}
-                </tbody>
-              </table>
-              
-              {/* Render Role Tooltip */}
-              {roleTooltipData && <RoleTooltip data={roleTooltipData} position={tooltipPosition} />}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {viewMode === 'kegiatan' ? 'Top Mitra Statistik Berdasarkan Kegiatan' : 'Top Mitra Statistik Berdasarkan Realisasi'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SafeBarChart data={currentData.petugas} title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'} mode={viewMode} />
+              </CardContent>
+            </Card>
 
-      {/* Render Risk Tooltip */}
-      {riskTooltipData && <div className="risk-tooltip-container" onMouseEnter={() => {
-      if (hideRiskTooltipTimeout.current) {
-        clearTimeout(hideRiskTooltipTimeout.current);
-      }
-    }} onMouseLeave={handleHideRiskTooltip}>
-          <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
-        </div>}
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {viewMode === 'kegiatan' ? 'Distribusi Kegiatan per Bulan' : 'Distribusi Realisasi per Bulan'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SafeBarChart data={currentData.bulan} title={viewMode === 'kegiatan' ? 'Jumlah Kegiatan' : 'Total Realisasi'} mode={viewMode} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {viewMode === 'kegiatan' ? 'Kegiatan per Jenis Pekerjaan' : 'Realisasi per Jenis Pekerjaan'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SafePieChart data={currentData.jenisPekerjaan} title={viewMode === 'kegiatan' ? 'Jenis Pekerjaan' : 'Realisasi per Jenis'} mode={viewMode} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {viewMode === 'kegiatan' ? 'Distribusi per Penanggung Jawab Kegiatan' : 'Realisasi per Penanggung Jawab Kegiatan'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SafePieChart data={currentData.role} title={viewMode === 'kegiatan' ? 'Role' : 'Realisasi per Penanggung Jawab Kegiatan'} mode={viewMode} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filter Fungsi untuk Risk Assessment dan Workload Distribution */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Analisis Detail</h2>
+              <p className="text-muted-foreground mt-1">
+                Analisis mendalam berdasarkan fungsi dan beban tugas
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filter Fungsi:</span>
+                <Select value={filterFungsi} onValueChange={setFilterFungsi}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Pilih Fungsi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fungsiList.map(fungsi => <SelectItem key={fungsi} value={fungsi}>
+                        {fungsi}
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid untuk Risk Assessment dan Workload Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Risk Assessment dengan Hover */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    Assesmen Beban Tugas
+                  </CardTitle>
+                  <SearchInput value={riskSearchQuery} onChange={setRiskSearchQuery} placeholder="Cari nama mitra..." />
+                </div>
+                <CardDescription>
+                  {filterFungsi === "Semua Fungsi" ? "Top 10 Mitra Statistik dengan jumlah jenis kegiatan terbanyak - Hover untuk melihat detail" : `Mitra Statistik dengan kegiatan di ${filterFungsi} - Hover untuk melihat detail`}
+                  {riskSearchQuery && <div className="mt-1 text-xs text-blue-600">
+                      Pencarian: "{riskSearchQuery}" - Menampilkan {searchedRiskData.length} hasil
+                    </div>}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RiskMatrix data={searchedRiskData} mode={viewMode} filterFungsi={filterFungsi} searchQuery={riskSearchQuery} onShowRiskTooltip={handleShowRiskTooltip} onHideRiskTooltip={handleHideRiskTooltip} />
+              </CardContent>
+            </Card>
+
+            {/* Workload Distribution Table - Top 15 Petugas dengan Hover Role */}
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <Table className="h-5 w-5" />
+                    Distribusi Realisasi Honor - {filterFungsi === "Semua Fungsi" ? "Top 15 Mitra Statistik" : `Mitra Statistik di ${filterFungsi}`}
+                  </CardTitle>
+                  <SearchInput value={workloadSearchQuery} onChange={setWorkloadSearchQuery} placeholder="Cari nama mitra..." />
+                </div>
+                <CardDescription>
+                  {filterFungsi === "Semua Fungsi" ? "Tabel detail distribusi realisasi honor per mitra statistik - Hover pada Penanggung Jawab Kegiatan untuk melihat detail per fungsi" : `Tabel detail distribusi realisasi honor di ${filterFungsi} - Hover untuk melihat detail`}
+                  {workloadSearchQuery && <div className="mt-1 text-xs text-blue-600">
+                      Pencarian: "{workloadSearchQuery}" - Menampilkan {searchedWorkloadData.length} hasil
+                    </div>}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto relative">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 font-semibold w-12">No</th>
+                        <th className="text-left py-3 font-semibold">Mitra Statistik</th>
+                        <th className="text-left py-3 font-semibold">Penanggung Jawab Kegiatan</th>
+                        <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
+                        <th className="text-right py-3 font-semibold">Total Realisasi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {searchedWorkloadData.length === 0 ? <tr>
+                          <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                            {workloadSearchQuery ? `Tidak ada data yang cocok dengan pencarian "${workloadSearchQuery}"` : `Tidak ada data untuk ${filterFungsi}`}
+                          </td>
+                        </tr> : searchedWorkloadData.map((item, index) => <tr key={index} className="border-b hover:bg-muted/50">
+                            <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
+                            {/* PERBAIKAN UTAMA: Tampilkan hanya nama tanpa NIK */}
+                            <td className="py-3 font-medium">{extractDisplayName(item.petugas)}</td>
+                            <td className="py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {/* PERBAIKAN UTAMA: Hanya tampilkan fungsi yang dipilih */}
+                                {item.roles.map((role, roleIndex) => {
+                          const roleData = petugasRoleData.current.get(item.petugas)?.get(role);
+                          return <RoleBadge key={roleIndex} role={role} petugas={extractDisplayName(item.petugas)} // PERBAIKAN UTAMA: Tampilkan hanya nama
+                          roleData={roleData} onShowTooltip={handleShowTooltip} onHideTooltip={handleHideTooltip} />;
+                        })}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 font-medium">
+                              {item.jumlahKegiatan.toLocaleString('id-ID')}
+                            </td>
+                            <td className="text-right py-3 font-medium">
+                              {formatRupiah(item.totalAnggaran)}
+                            </td>
+                          </tr>)}
+                    </tbody>
+                  </table>
+                  
+                  {/* Render Role Tooltip */}
+                  {roleTooltipData && <RoleTooltip data={roleTooltipData} position={tooltipPosition} />}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Render Risk Tooltip */}
+          {riskTooltipData && <div className="risk-tooltip-container" onMouseEnter={() => {
+          if (hideRiskTooltipTimeout.current) {
+            clearTimeout(hideRiskTooltipTimeout.current);
+          }
+        }} onMouseLeave={handleHideRiskTooltip}>
+                <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
+              </div>}
+        </>
+      ) : (
+        <DashboardPerjadin 
+          viewMode={viewMode}
+          filterTahun={filterTahun}
+        />
+      )}
     </div>;
 }
