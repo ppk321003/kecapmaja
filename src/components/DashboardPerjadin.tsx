@@ -107,7 +107,7 @@ const SearchInput = ({
   );
 };
 
-// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih tinggi
+// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih tinggi dan bisa di-scroll
 const PerjadinTooltip = ({
   data,
   position
@@ -130,14 +130,14 @@ const PerjadinTooltip = ({
 
   // PERBAIKAN: Hitung posisi tooltip agar lebih tinggi dan tidak keluar dari viewport
   const calculatePosition = () => {
-    const tooltipWidth = 320;
-    const tooltipHeight = 220;
+    const tooltipWidth = 350;
+    const tooltipHeight = 280; // PERBAIKAN: Lebih tinggi untuk menampung konten
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // PERBAIKAN: Tooltip muncul lebih tinggi di atas baris
+    // PERBAIKAN: Tooltip muncul lebih tinggi di atas baris - naikkan lebih banyak
     let x = position.x + 10;
-    let y = position.y - tooltipHeight - 20;
+    let y = position.y - tooltipHeight - 50; // PERBAIKAN: Naikkan 50px lebih tinggi
 
     // Jika tooltip akan keluar dari kiri viewport
     if (x < 10) {
@@ -151,7 +151,7 @@ const PerjadinTooltip = ({
 
     // Jika tooltip akan keluar dari atas viewport (karena kita naikkan)
     if (y < 10) {
-      y = position.y + 30; // Jika tidak muat di atas, taruh di bawah
+      y = position.y + 40; // Jika tidak muat di atas, taruh di bawah dengan margin
     }
 
     // Jika tooltip akan keluar dari bawah viewport
@@ -165,11 +165,14 @@ const PerjadinTooltip = ({
   const finalPosition = calculatePosition();
 
   return (
-    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80 pointer-events-none transition-all duration-200" 
-         style={{
-           left: finalPosition.x,
-           top: finalPosition.y
-         }}>
+    <div 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80 pointer-events-auto transition-all duration-200" 
+      style={{
+        left: finalPosition.x,
+        top: finalPosition.y,
+        maxHeight: '280px', // PERBAIKAN: Fixed height untuk konsistensi
+      }}
+    >
       <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
       <div className="space-y-2 text-xs">
         <div className="flex justify-between items-center">
@@ -186,7 +189,15 @@ const PerjadinTooltip = ({
         </div>
         <div className="mt-3 pt-2 border-t">
           <h5 className="font-semibold mb-1 text-blue-700">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
-          <div className="max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
+          {/* PERBAIKAN: Container dengan scroll yang bekerja */}
+          <div 
+            className="border rounded p-2 bg-gray-50 overflow-y-auto"
+            style={{ 
+              maxHeight: '120px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#cbd5e0 #f7fafc'
+            }}
+          >
             <ul className="space-y-1">
               {data.namaKegiatanList.map((kegiatan, idx) => (
                 <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0 text-xs">
@@ -377,7 +388,6 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   // PERBAIKAN: Fungsi untuk menampilkan tooltip dengan posisi lebih tinggi
   const handleShowTooltip = (data: PerjadinTooltipData, position: { x: number; y: number }) => {
     setTooltipData(data);
-    // PERBAIKAN: Naikkan posisi tooltip
     setTooltipPosition({
       x: position.x,
       y: position.y
@@ -389,15 +399,24 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     setTooltipData(null);
   };
 
-  // PERBAIKAN: Effect untuk menutup tooltip saat scroll
+  // PERBAIKAN: Effect untuk menutup tooltip saat scroll - dengan delay kecil
   useEffect(() => {
+    let scrollTimer: NodeJS.Timeout;
+
     const handleScroll = () => {
-      setTooltipData(null);
+      // Clear existing timer
+      clearTimeout(scrollTimer);
+      // Set new timer to hide tooltip after scroll ends
+      scrollTimer = setTimeout(() => {
+        setTooltipData(null);
+      }, 150);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimer);
     };
   }, []);
 
