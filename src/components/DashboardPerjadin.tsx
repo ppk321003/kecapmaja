@@ -5,13 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, Calendar, DollarSign, Activity, Users, MapPin } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PERJADIN_SPREADSHEET_ID = "1JNrpj2Ww42EU3FFBfoAmI6wuWl7l280m62iLXKHFpgQ";
 const SHEET_NAME = "MASTER_VIEW";
 
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-const tahunList = Array.from({ length: 9 }, (_, i) => (2024 + i).toString());
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -53,7 +51,6 @@ interface PetugasData {
   jenisPegawai: string;
 }
 
-// Custom Tooltip Components
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -67,7 +64,7 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
                   currency: 'IDR',
                   minimumFractionDigits: 0
                 }).format(entry.value)
-              : `${entry.value} hari`}
+              : `${entry.value.toLocaleString('id-ID')} hari`}
           </p>
         ))}
       </div>
@@ -76,7 +73,6 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   return null;
 };
 
-// Safe Chart Components
 const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   if (!data || data.length === 0) {
     return (
@@ -193,13 +189,15 @@ const SafePieChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   );
 };
 
-export default function DashboardPerjadin() {
+interface DashboardPerjadinProps {
+  viewMode: 'biaya' | 'durasi';
+  filterTahun: string;
+}
+
+export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPerjadinProps) {
   const [loading, setLoading] = useState(true);
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");
   const [filterJenisPegawai, setFilterJenisPegawai] = useState<string>("Semua");
-  const [filterSumberAnggaran, setFilterSumberAnggaran] = useState<string>("Semua");
-  const [viewMode, setViewMode] = useState<'biaya' | 'durasi'>('biaya');
   
   const [stats, setStats] = useState<DashboardStats>({
     totalPerjadin: 0,
@@ -215,13 +213,11 @@ export default function DashboardPerjadin() {
     topMitra: ChartItem[];
     topOrganik: ChartItem[];
     distribusiJenis: ChartItem[];
-    distribusiSumber: ChartItem[];
   }>({
     trendBulanan: [],
     topMitra: [],
     topOrganik: [],
-    distribusiJenis: [],
-    distribusiSumber: []
+    distribusiJenis: []
   });
 
   const [petugasData, setPetugasData] = useState<{
@@ -242,13 +238,36 @@ export default function DashboardPerjadin() {
     }).format(amount);
   };
 
+  // Fungsi untuk membersihkan dan mengkonversi nilai biaya
+  const parseBiaya = (biayaStr: string): number => {
+    if (!biayaStr) return 0;
+    
+    // Hapus karakter non-digit kecuali titik dan koma
+    const cleaned = biayaStr.toString().replace(/[^\d,.]/g, '');
+    
+    // Ganti koma dengan titik untuk parsing
+    const normalized = cleaned.replace(',', '.');
+    
+    const parsed = parseFloat(normalized);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Fungsi untuk membersihkan dan mengkonversi durasi
+  const parseDurasi = (durasiStr: string): number => {
+    if (!durasiStr) return 0;
+    const parsed = parseFloat(durasiStr.toString().replace(',', '.'));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   useEffect(() => {
     fetchPerjadinData();
-  }, [filterTahun, filterJenisPerjalanan, filterJenisPegawai, filterSumberAnggaran, viewMode]);
+  }, [filterTahun, filterJenisPerjalanan, filterJenisPegawai, viewMode]);
 
   const fetchPerjadinData = async () => {
     try {
       setLoading(true);
+      
+      console.log("🔄 Fetching perjadin data...");
       
       const { data: perjadinResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -258,106 +277,135 @@ export default function DashboardPerjadin() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error fetching data:", error);
+        throw error;
+      }
 
       const rows = perjadinResponse?.values || [];
-      console.log("Total rows from PERJADIN:", rows.length);
+      console.log("📊 Total rows from PERJADIN:", rows.length);
 
-      // Skip header row
-      const allData: PerjadinData[] = rows.slice(1).map((row: any[]) => ({
-        no: row[0]?.toString() || "",
-        jenis_perjalanan: row[1]?.toString() || "",
-        nama_pelaksana: row[2]?.toString() || "",
-        jenis_pegawai: row[3]?.toString() || "",
-        satuan_kerja: row[4]?.toString() || "",
-        nama_kegiatan: row[5]?.toString() || "",
-        bulan_pelaksanaan: row[6]?.toString() || "",
-        tahun_pelaksanaan: row[7]?.toString() || "",
-        durasi_hari: row[8]?.toString() || "0",
-        total_biaya: row[9]?.toString() || "0",
-        kota_tujuan: row[10]?.toString() || "",
-        kecamatan_tujuan: row[11]?.toString() || "",
-        sumber_anggaran: row[12]?.toString() || ""
-      }));
+      if (rows.length === 0) {
+        console.log("⚠️ No data found");
+        setLoading(false);
+        return;
+      }
+
+      // Debug: tampilkan struktur data
+      console.log("📋 Header row:", rows[0]);
+      if (rows.length > 1) {
+        console.log("📋 First data row:", rows[1]);
+      }
+
+      // Process data - skip header row
+      const allData: PerjadinData[] = [];
+      
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 13) continue;
+
+        const dataItem: PerjadinData = {
+          no: row[0]?.toString()?.trim() || "",
+          jenis_perjalanan: row[1]?.toString()?.trim() || "",
+          nama_pelaksana: row[2]?.toString()?.trim() || "",
+          jenis_pegawai: row[3]?.toString()?.trim() || "",
+          satuan_kerja: row[4]?.toString()?.trim() || "",
+          nama_kegiatan: row[5]?.toString()?.trim() || "",
+          bulan_pelaksanaan: row[6]?.toString()?.trim() || "",
+          tahun_pelaksanaan: row[7]?.toString()?.trim() || "",
+          durasi_hari: row[8]?.toString()?.trim() || "0",
+          total_biaya: row[9]?.toString()?.trim() || "0",
+          kota_tujuan: row[10]?.toString()?.trim() || "",
+          kecamatan_tujuan: row[11]?.toString()?.trim() || "",
+          sumber_anggaran: row[12]?.toString()?.trim() || ""
+        };
+
+        // Debug sample data
+        if (i === 1) {
+          console.log("🔍 Sample processed data:", dataItem);
+        }
+
+        allData.push(dataItem);
+      }
+
+      console.log("✅ Processed data count:", allData.length);
 
       // Filter data berdasarkan filter yang dipilih
       const filteredData = allData.filter((item) => {
         const tahunMatch = item.tahun_pelaksanaan === filterTahun;
         const jenisPerjalananMatch = filterJenisPerjalanan === "Semua" || item.jenis_perjalanan === filterJenisPerjalanan;
         const jenisPegawaiMatch = filterJenisPegawai === "Semua" || item.jenis_pegawai === filterJenisPegawai;
-        const sumberAnggaranMatch = filterSumberAnggaran === "Semua" || item.sumber_anggaran === filterSumberAnggaran;
         
-        return tahunMatch && jenisPerjalananMatch && jenisPegawaiMatch && sumberAnggaranMatch;
+        return tahunMatch && jenisPerjalananMatch && jenisPegawaiMatch;
       });
 
-      console.log(`Filtered data: ${filteredData.length} rows`);
+      console.log(`🔍 Filtered data: ${filteredData.length} rows for tahun ${filterTahun}`);
 
-      // Process data untuk stats
-      const totalPerjadin = filteredData.length;
-      const totalRealisasi = filteredData.reduce((sum, item) => {
-        const biaya = parseFloat(item.total_biaya.replace(/\./g, '')) || 0;
-        return sum + biaya;
-      }, 0);
-      const totalDurasi = filteredData.reduce((sum, item) => {
-        const durasi = parseFloat(item.durasi_hari) || 0;
-        return sum + durasi;
-      }, 0);
-
-      // Process data untuk charts
-      const trendBulananMap = new Map<string, { biaya: number; durasi: number }>();
+      // Process data untuk stats dan charts
+      const trendBulananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const mitraMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const organikMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const jenisPerjalananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
-      const sumberAnggaranMap = new Map<string, { biaya: number; durasi: number; count: number }>();
 
-      filteredData.forEach((item) => {
-        const biaya = parseFloat(item.total_biaya.replace(/\./g, '')) || 0;
-        const durasi = parseFloat(item.durasi_hari) || 0;
-        const bulan = item.bulan_pelaksanaan;
+      let totalRealisasi = 0;
+      let totalDurasi = 0;
 
-        // Trend Bulanan
-        if (bulan) {
-          const existing = trendBulananMap.get(bulan) || { biaya: 0, durasi: 0 };
-          trendBulananMap.set(bulan, {
-            biaya: existing.biaya + biaya,
-            durasi: existing.durasi + durasi
-          });
+      filteredData.forEach((item, index) => {
+        try {
+          const biaya = parseBiaya(item.total_biaya);
+          const durasi = parseDurasi(item.durasi_hari);
+          const bulan = item.bulan_pelaksanaan;
+
+          totalRealisasi += biaya;
+          totalDurasi += durasi;
+
+          // Trend Bulanan
+          if (bulan) {
+            const existing = trendBulananMap.get(bulan) || { biaya: 0, durasi: 0, count: 0 };
+            trendBulananMap.set(bulan, {
+              biaya: existing.biaya + biaya,
+              durasi: existing.durasi + durasi,
+              count: existing.count + 1
+            });
+          }
+
+          // Data per petugas
+          if (item.jenis_pegawai === "MITRA") {
+            const existing = mitraMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
+            mitraMap.set(item.nama_pelaksana, {
+              biaya: existing.biaya + biaya,
+              durasi: existing.durasi + durasi,
+              count: existing.count + 1
+            });
+          } else if (item.jenis_pegawai === "ORGANIK") {
+            const existing = organikMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
+            organikMap.set(item.nama_pelaksana, {
+              biaya: existing.biaya + biaya,
+              durasi: existing.durasi + durasi,
+              count: existing.count + 1
+            });
+          }
+
+          // Distribusi Jenis Perjalanan
+          if (item.jenis_perjalanan) {
+            const existing = jenisPerjalananMap.get(item.jenis_perjalanan) || { biaya: 0, durasi: 0, count: 0 };
+            jenisPerjalananMap.set(item.jenis_perjalanan, {
+              biaya: existing.biaya + biaya,
+              durasi: existing.durasi + durasi,
+              count: existing.count + 1
+            });
+          }
+
+        } catch (error) {
+          console.error(`Error processing row ${index}:`, error, item);
         }
+      });
 
-        // Top Mitra & Organik
-        if (item.jenis_pegawai === "MITRA") {
-          const existing = mitraMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
-          mitraMap.set(item.nama_pelaksana, {
-            biaya: existing.biaya + biaya,
-            durasi: existing.durasi + durasi,
-            count: existing.count + 1
-          });
-        } else if (item.jenis_pegawai === "ORGANIK") {
-          const existing = organikMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
-          organikMap.set(item.nama_pelaksana, {
-            biaya: existing.biaya + biaya,
-            durasi: existing.durasi + durasi,
-            count: existing.count + 1
-          });
-        }
-
-        // Distribusi Jenis Perjalanan
-        const jenisExisting = jenisPerjalananMap.get(item.jenis_perjalanan) || { biaya: 0, durasi: 0, count: 0 };
-        jenisPerjalananMap.set(item.jenis_perjalanan, {
-          biaya: jenisExisting.biaya + biaya,
-          durasi: jenisExisting.durasi + durasi,
-          count: jenisExisting.count + 1
-        });
-
-        // Distribusi Sumber Anggaran
-        if (item.sumber_anggaran) {
-          const sumberExisting = sumberAnggaranMap.get(item.sumber_anggaran) || { biaya: 0, durasi: 0, count: 0 };
-          sumberAnggaranMap.set(item.sumber_anggaran, {
-            biaya: sumberExisting.biaya + biaya,
-            durasi: sumberExisting.durasi + durasi,
-            count: sumberExisting.count + 1
-          });
-        }
+      console.log("📈 Processed maps:", {
+        trendBulanan: trendBulananMap.size,
+        mitra: mitraMap.size,
+        organik: organikMap.size,
+        jenisPerjalanan: jenisPerjalananMap.size
       });
 
       // Prepare chart data
@@ -390,14 +438,6 @@ export default function DashboardPerjadin() {
           value: viewMode === 'biaya' ? data.biaya : data.durasi
         }));
 
-      const distribusiSumberData: ChartItem[] = Array.from(sumberAnggaranMap.entries())
-        .map(([sumber, data]) => ({
-          name: sumber.length > 30 ? sumber.substring(0, 30) + '...' : sumber,
-          value: viewMode === 'biaya' ? data.biaya : data.durasi
-        }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 8);
-
       // Prepare petugas data untuk tables
       const mitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
@@ -429,30 +469,41 @@ export default function DashboardPerjadin() {
           ).nama 
         : "-";
 
+      // Set stats
       setStats({
-        totalPerjadin,
+        totalPerjadin: filteredData.length,
         totalRealisasi,
         totalDurasi,
-        rataRataBiayaPerjadin: totalPerjadin > 0 ? totalRealisasi / totalPerjadin : 0,
-        rataRataDurasiPerjadin: totalPerjadin > 0 ? totalDurasi / totalPerjadin : 0,
+        rataRataBiayaPerjadin: filteredData.length > 0 ? totalRealisasi / filteredData.length : 0,
+        rataRataDurasiPerjadin: filteredData.length > 0 ? totalDurasi / filteredData.length : 0,
         petugasTeraktif
       });
 
+      // Set chart data
       setChartData({
         trendBulanan: trendBulananData,
         topMitra: topMitraData,
         topOrganik: topOrganikData,
-        distribusiJenis: distribusiJenisData,
-        distribusiSumber: distribusiSumberData
+        distribusiJenis: distribusiJenisData
       });
 
+      // Set petugas data
       setPetugasData({
         mitra: mitraPetugasData,
         organik: organikPetugasData
       });
 
+      console.log("🎉 Dashboard data loaded successfully!");
+      console.log("📊 Final stats:", {
+        totalPerjadin: filteredData.length,
+        totalRealisasi,
+        totalDurasi,
+        mitraCount: mitraPetugasData.length,
+        organikCount: organikPetugasData.length
+      });
+
     } catch (error: any) {
-      console.error("Error fetching perjadin data:", error);
+      console.error("❌ Error fetching perjadin data:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data perjadin",
@@ -466,19 +517,13 @@ export default function DashboardPerjadin() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-red-500">Dashboard Perjadin</h1>
-          <p className="text-muted-foreground mt-2">
-            Monitoring dan analisis data perjalanan dinas
-          </p>
-        </div>
         <Card className="border-dashed">
           <CardHeader>
             <CardTitle>Memuat data perjadin...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-              <p className="text-muted-foreground">Sedang memuat data...</p>
+              <p className="text-muted-foreground">Sedang memuat data perjadin...</p>
             </div>
           </CardContent>
         </Card>
@@ -488,48 +533,16 @@ export default function DashboardPerjadin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-red-500">Dashboard Perjadin</h1>
-          <p className="text-muted-foreground mt-2">
-            Monitoring dan analisis data perjalanan dinas
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'biaya' | 'durasi')}>
-            <TabsList>
-              <TabsTrigger value="biaya" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Berdasarkan Realisasi
-              </TabsTrigger>
-              <TabsTrigger value="durasi" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Berdasarkan Kegiatan
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <Select value={filterTahun} onValueChange={setFilterTahun}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Pilih Tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {tahunList.map(tahun => (
-                <SelectItem key={tahun} value={tahun}>{tahun}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Filter Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter Data</CardTitle>
+          <CardTitle className="text-lg">Filter Data Perjadin</CardTitle>
+          <CardDescription>
+            Filter data perjalanan dinas berdasarkan kriteria tertentu
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Jenis Perjalanan</label>
               <Select value={filterJenisPerjalanan} onValueChange={setFilterJenisPerjalanan}>
@@ -555,19 +568,6 @@ export default function DashboardPerjadin() {
                   <SelectItem value="Semua">Semua Pegawai</SelectItem>
                   <SelectItem value="ORGANIK">Organik</SelectItem>
                   <SelectItem value="MITRA">Mitra</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Sumber Anggaran</label>
-              <Select value={filterSumberAnggaran} onValueChange={setFilterSumberAnggaran}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua Sumber" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Semua">Semua Sumber</SelectItem>
-                  {/* Sumber anggaran akan di-load dynamically */}
                 </SelectContent>
               </Select>
             </div>
@@ -710,26 +710,44 @@ export default function DashboardPerjadin() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Distribusi per Sumber Anggaran
+              Ringkasan Data
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <SafeBarChart data={chartData.distribusiSumber} mode={viewMode} />
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                <span className="font-medium">Total Perjadin:</span>
+                <span className="font-bold">{stats.totalPerjadin}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                <span className="font-medium">Total {viewMode === 'biaya' ? 'Biaya' : 'Durasi'}:</span>
+                <span className="font-bold">
+                  {viewMode === 'biaya' 
+                    ? formatRupiah(stats.totalRealisasi)
+                    : `${stats.totalDurasi} hari`
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                <span className="font-medium">Petugas Teraktif:</span>
+                <span className="font-bold text-sm">{stats.petugasTeraktif}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Distribution Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Distribusi Realisasi Honor - Top 15 Organik */}
+        {/* Distribusi Realisasi Perjadin - Top 15 Organik */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 15 Organik
+              Distribusi Realisasi Perjadin - Top 15 Organik
             </CardTitle>
             <CardDescription>
-              Detail realisasi honor per petugas organik
+              Detail realisasi perjadin per petugas organik
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -770,15 +788,15 @@ export default function DashboardPerjadin() {
           </CardContent>
         </Card>
 
-        {/* Distribusi Realisasi Honor - Top 15 Mitra Statistik */}
+        {/* Distribusi Realisasi Perjadin - Top 15 Mitra Statistik */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Distribusi Realisasi Honor - Top 15 Mitra Statistik
+              Distribusi Realisasi Perjadin - Top 15 Mitra Statistik
             </CardTitle>
             <CardDescription>
-              Detail realisasi honor per mitra statistik
+              Detail realisasi perjadin per mitra statistik
             </CardDescription>
           </CardHeader>
           <CardContent>
