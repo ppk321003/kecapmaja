@@ -615,16 +615,23 @@ class AngkaKreditCalculator {
     // Opsi 2: Alih jalur ke Keahlian
     const golonganNum = parseInt(karyawan.golongan.replace('III/', '')) || 0;
     let jenjangTarget = 'Ahli Pertama';
-    if (golonganNum >= 3) { // III/c atau lebih tinggi
-      jenjangTarget = 'Ahli Muda';
-    }
-
-    const opsiKeahlian = {
-      feasible: true, // Asumsi lowongan tersedia
-      jenjangTarget,
-      syaratPendidikan: true,
-      syaratPangkat: karyawan.golongan >= 'III/a'
-    };
+      
+      // LOGIKA BARU: Tentukan jenjang target berdasarkan pangkat
+      if (karyawan.golongan === 'III/d') {
+        jenjangTarget = 'Ahli Muda'; // III/d → Ahli Muda
+      } else if (karyawan.golongan === 'III/c') {
+        jenjangTarget = 'Ahli Muda'; // III/c → Ahli Muda  
+      } else if (karyawan.golongan === 'III/b') {
+        jenjangTarget = 'Ahli Pertama'; // III/b → Ahli Pertama
+      } else if (karyawan.golongan === 'III/a') {
+        jenjangTarget = 'Ahli Pertama'; // III/a → Ahli Pertama
+      }
+      const opsiKeahlian = {
+        feasible: true,
+        jenjangTarget,
+        syaratPendidikan: true,
+        syaratPangkat: karyawan.golongan >= 'III/a'
+      };
 
     // Generate rekomendasi
     let rekomendasi = '';
