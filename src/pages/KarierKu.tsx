@@ -534,19 +534,19 @@ class AngkaKreditCalculator {
     const tingkatPendidikan = this.getTingkatPendidikan(karyawan.pendidikan);
     if (karyawan.kategori === 'Reguler') {
       if (karyawan.golongan === 'III/d' && !this.cekSyaratPendidikan('III/d', karyawan.pendidikan)) {
-        return "Untuk kenaikan ke pangkat/golongan IV, Anda membutuhkan pendidikan lebih tinggi. Dengan pendidikan yang lebih tinggi, Anda juga dapat mempertimbangkan beralih ke jalur Fungsional Keahlian.";
+        return "Untuk kenaikan ke pangkat/golongan IV, Anda membutuhkan pendidikan lebih tinggi. Dengan pendidikan yang lebih tinggi, Anda juga dapat mempertimbangkan Perpindahan Jabatan Lain (PJL) ke jalur Fungsional Keahlian.";
       }
       if (karyawan.golongan.startsWith('IV/') && !this.cekSyaratPendidikan(karyawan.golongan, karyawan.pendidikan)) {
         return "Kenaikan pangkat/golongan Anda terhambat karena persyaratan pendidikan. Segera rencanakan studi S2/S3 untuk membuka peluang kenaikan ke pangkat/golongan berikutnya.";
       }
       if (tingkatPendidikan === 'SMA') {
-        return "Meningkatkan pendidikan ke D-IV/S-1 akan membuka ruang perkembangan karier yang lebih luas sekaligus memberikan kesempatan untuk mengajukan alih jalur ke Keahlian.";
+        return "Meningkatkan pendidikan ke D-IV/S-1 akan membuka ruang perkembangan karier yang lebih luas sekaligus memberikan kesempatan untuk mengajukan Perpindahan Jabatan Lain (PJL) ke Keahlian.";
       }
     }
     if (karyawan.kategori === 'Keterampilan') {
       if (karyawan.golongan === 'III/d') {
         if (this.cukupUntukAlihJalur(karyawan.pendidikan)) {
-          return "Dengan pendidikan D-IV/S1 yang Anda miliki, Anda telah memenuhi syarat untuk alih jalur ke Keahlian, yang dapat menjadi langkah strategis untuk mencapai jenjang karier yang lebih tinggi.";
+          return "Dengan pendidikan D-IV/S1 yang Anda miliki, Anda telah memenuhi syarat untuk Perpindahan Jabatan Lain ke Keahlian, yang dapat menjadi langkah strategis untuk mencapai jenjang karier yang lebih tinggi.";
         } else {
           return "Anda telah mencapai puncak karir jalur Keterampilan. Dengan melanjutkan pendidikan ke D-IV/S1, Anda dapat beralih ke jalur Keahlian untuk pengembangan karir yang lebih luas.";
         }
@@ -612,7 +612,7 @@ class AngkaKreditCalculator {
       kekuranganAK: estimasi.kekuranganAKJabatan
     };
 
-    // Opsi 2: Alih jalur ke Keahlian
+    // Opsi 2: Perpindahan Jabatan Lain (PJL) ke Keahlian
     const golonganNum = parseInt(karyawan.golongan.replace('III/', '')) || 0;
     let jenjangTarget = 'Ahli Pertama';
       
@@ -636,11 +636,11 @@ class AngkaKreditCalculator {
     // Generate rekomendasi
     let rekomendasi = '';
     if (opsiKeterampilan.feasible && karyawan.golongan === 'III/b') {
-      rekomendasi = 'REKOMENDASI: Naik ke Penyelia dulu (III/c), kemudian bisa alih jalur ke Ahli Muda untuk prospek lebih panjang';
+      rekomendasi = 'REKOMENDASI: Naik ke Penyelia dulu (III/c), kemudian bisa Perpindahan Jabatan Lain (PJL) ke Ahli Muda untuk prospek lebih panjang';
     } else if (opsiKeterampilan.feasible) {
       rekomendasi = 'REKOMENDASI: Anda bisa naik jabatan ke ' + opsiKeterampilan.jenjangBerikutnya;
     } else if (opsiKeahlian.feasible) {
-      rekomendasi = 'REKOMENDASI: Pertimbangkan alih jalur ke ' + jenjangTarget + ' untuk pengembangan karir lebih luas';
+      rekomendasi = 'REKOMENDASI: Pertimbangkan Perpindahan Jabatan Lain (PJL) ke ' + jenjangTarget + ' untuk pengembangan karir lebih luas';
     }
 
     return {
@@ -1854,7 +1854,7 @@ const OpsiKarirCard: React.FC<{
         {/* Opsi 1: Tetap di Keterampilan */}
         <div className="p-4 border rounded-lg bg-white">
           <div className="flex items-center gap-3 mb-2">
-            <Badge variant="outline" className="bg-blue-100">Opsi 1</Badge>
+            <Badge variant="outline" className="bg-blue-100">Peluang 1</Badge>
             <h4 className="font-semibold">Lanjut ke {opsiKarir.opsiKeterampilan.jenjangBerikutnya}</h4>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1883,8 +1883,8 @@ const OpsiKarirCard: React.FC<{
         {/* Opsi 2: Pindah ke Keahlian */}
         <div className="p-4 border rounded-lg bg-white">
           <div className="flex items-center gap-3 mb-2">
-            <Badge variant="outline" className="bg-green-100">Opsi 2</Badge>
-            <h4 className="font-semibold">Alih Jalur ke {opsiKarir.opsiKeahlian.jenjangTarget}</h4>
+            <Badge variant="outline" className="bg-green-100">Peluang 2</Badge>
+            <h4 className="font-semibold">Perpindahan Jabatan Lain (PJL) ke {opsiKarir.opsiKeahlian.jenjangTarget}</h4>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
