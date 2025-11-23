@@ -107,8 +107,7 @@ const SearchInput = ({
   );
 };
 
-// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih baik
-// PERBAIKAN: Komponen Tooltip untuk tabel dengan positioning yang lebih baik
+// PERBAIKAN: Komponen Tooltip untuk tabel
 const PerjadinTooltip = ({
   data,
   position
@@ -129,68 +128,32 @@ const PerjadinTooltip = ({
     }).format(amount);
   };
 
-  // PERBAIKAN: Hitung posisi tooltip agar tidak keluar dari viewport dan lebih tinggi
-  const calculatePosition = () => {
-    const tooltipWidth = 320;
-    const tooltipHeight = 220; // Sedikit lebih tinggi
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // PERBAIKAN: Posisi tooltip lebih tinggi (di atas baris)
-    let x = position.x + 10;
-    let y = position.y - tooltipHeight - 20; // Naikkan tooltip lebih tinggi
-
-    // Jika tooltip akan keluar dari kiri viewport
-    if (x < 10) {
-      x = 10;
-    }
-
-    // Jika tooltip akan keluar dari kanan viewport
-    if (x + tooltipWidth > viewportWidth) {
-      x = viewportWidth - tooltipWidth - 10;
-    }
-
-    // Jika tooltip akan keluar dari atas viewport (karena kita naikkan)
-    if (y < 10) {
-      y = position.y + 30; // Jika tidak muat di atas, taruh di bawah
-    }
-
-    // Jika tooltip akan keluar dari bawah viewport
-    if (y + tooltipHeight > viewportHeight) {
-      y = viewportHeight - tooltipHeight - 10;
-    }
-
-    return { x, y };
-  };
-
-  const finalPosition = calculatePosition();
-
   return (
-    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80 pointer-events-none transition-all duration-200" 
+    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200" 
          style={{
-           left: finalPosition.x,
-           top: finalPosition.y
+           left: Math.min(position.x + 10, window.innerWidth - 320),
+           top: position.y - 10
          }}>
-      <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
+      <h4 className="font-semibold text-sm mb-2">{data.petugas}</h4>
       <div className="space-y-2 text-xs">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between">
           <span className="text-muted-foreground">Jumlah Perjadin:</span>
-          <span className="font-medium bg-blue-50 px-2 py-1 rounded">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
+          <span className="font-medium">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between">
           <span className="text-muted-foreground">Total Durasi:</span>
-          <span className="font-medium bg-green-50 px-2 py-1 rounded">{data.totalDurasi} hari</span>
+          <span className="font-medium">{data.totalDurasi} hari</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between">
           <span className="text-muted-foreground">Total Biaya:</span>
-          <span className="font-medium bg-orange-50 px-2 py-1 rounded">{formatRupiah(data.totalBiaya)}</span>
+          <span className="font-medium">{formatRupiah(data.totalBiaya)}</span>
         </div>
-        <div className="mt-3 pt-2 border-t">
-          <h5 className="font-semibold mb-1 text-blue-700">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
-          <div className="max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
+        <div className="mt-2">
+          <h5 className="font-semibold mb-1">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
+          <div className="max-h-32 overflow-y-auto border rounded p-2">
             <ul className="space-y-1">
               {data.namaKegiatanList.map((kegiatan, idx) => (
-                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0 text-xs">
+                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
                   • {kegiatan}
                 </li>
               ))}
@@ -201,30 +164,6 @@ const PerjadinTooltip = ({
     </div>
   );
 };
-
-// PERBAIKAN: Fungsi untuk menampilkan tooltip dengan delay kecil untuk stabilitas
-const handleShowTooltip = (data: PerjadinTooltipData, position: { x: number; y: number }) => {
-  // PERBAIKAN: Tambahkan offset vertikal agar tooltip lebih tinggi
-  const adjustedPosition = {
-    x: position.x,
-    y: position.y - 10 // Naikkan sedikit dari posisi mouse
-  };
-  
-  setTooltipData(data);
-  setTooltipPosition(adjustedPosition);
-};
-
-// PERBAIKAN: Tambahkan efek untuk menutup tooltip saat scroll
-useEffect(() => {
-  const handleScroll = () => {
-    setTooltipData(null);
-  };
-
-  window.addEventListener('scroll', handleScroll);
-  return () => {
-    window.removeEventListener('scroll', handleScroll);
-  };
-}, []);
 
 const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   if (!data || data.length === 0) {
@@ -352,16 +291,9 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");
   const [filterJenisPegawai, setFilterJenisPegawai] = useState<string>("Semua");
   
-  // PERBAIKAN: State untuk search dan data lengkap
+  // PERBAIKAN: State untuk search
   const [organikSearchQuery, setOrganikSearchQuery] = useState("");
   const [mitraSearchQuery, setMitraSearchQuery] = useState("");
-  const [allPetugasData, setAllPetugasData] = useState<{
-    mitra: PetugasData[];
-    organik: PetugasData[];
-  }>({
-    mitra: [],
-    organik: []
-  });
   
   // PERBAIKAN: State untuk tooltip
   const [tooltipData, setTooltipData] = useState<PerjadinTooltipData | null>(null);
@@ -387,6 +319,14 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     topOrganik: [],
     distribusiJenis: [],
     distribusiSumber: []
+  });
+
+  const [petugasData, setPetugasData] = useState<{
+    mitra: PetugasData[];
+    organik: PetugasData[];
+  }>({
+    mitra: [],
+    organik: []
   });
 
   const { toast } = useToast();
@@ -578,7 +518,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         }
       });
 
-      // Prepare chart data
+      // Prepare chart data - PERBAIKAN: Menggunakan 'anggaran' dan 'kegiatan' seperti skrip utama
       const trendBulananData: ChartItem[] = bulanList.map(bulan => ({
         name: bulan,
         value: viewMode === 'anggaran' 
@@ -616,8 +556,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         .sort((a, b) => b.value - a.value)
         .slice(0, 8);
 
-      // PERBAIKAN: Simpan SEMUA data petugas untuk search (bukan hanya top 15)
-      const allMitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
+      // Prepare petugas data untuk tables dengan nama kegiatan
+      const mitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           nama,
           jumlahPerjadin: data.count,
@@ -626,9 +566,10 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           jenisPegawai: "MITRA",
           namaKegiatanList: data.namaKegiatanList
         }))
-        .sort((a, b) => b.totalBiaya - a.totalBiaya);
+        .sort((a, b) => b.totalBiaya - a.totalBiaya)
+        .slice(0, 15);
 
-      const allOrganikPetugasData: PetugasData[] = Array.from(organikMap.entries())
+      const organikPetugasData: PetugasData[] = Array.from(organikMap.entries())
         .map(([nama, data]) => ({
           nama,
           jumlahPerjadin: data.count,
@@ -637,7 +578,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           jenisPegawai: "ORGANIK",
           namaKegiatanList: data.namaKegiatanList
         }))
-        .sort((a, b) => b.totalBiaya - a.totalBiaya);
+        .sort((a, b) => b.totalBiaya - a.totalBiaya)
+        .slice(0, 15);
 
       // Set stats
       setStats({
@@ -657,10 +599,10 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         distribusiSumber: distribusiSumberData
       });
 
-      // PERBAIKAN: Set semua data petugas untuk search
-      setAllPetugasData({
-        mitra: allMitraPetugasData,
-        organik: allOrganikPetugasData
+      // Set petugas data
+      setPetugasData({
+        mitra: mitraPetugasData,
+        organik: organikPetugasData
       });
 
     } catch (error: any) {
@@ -692,24 +634,24 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     );
   }
 
-  // PERBAIKAN: Filter data untuk search dari SEMUA data (bukan hanya top 15)
+  // PERBAIKAN: Filter data untuk search
   const filteredOrganikData = organikSearchQuery 
-    ? allPetugasData.organik.filter(item => 
+    ? petugasData.organik.filter(item => 
         item.nama.toLowerCase().includes(organikSearchQuery.toLowerCase()) ||
         item.namaKegiatanList.some(kegiatan => 
           kegiatan.toLowerCase().includes(organikSearchQuery.toLowerCase())
         )
       )
-    : allPetugasData.organik.slice(0, 15); // Tampilkan top 15 jika tidak ada pencarian
+    : petugasData.organik;
 
   const filteredMitraData = mitraSearchQuery 
-    ? allPetugasData.mitra.filter(item => 
+    ? petugasData.mitra.filter(item => 
         item.nama.toLowerCase().includes(mitraSearchQuery.toLowerCase()) ||
         item.namaKegiatanList.some(kegiatan => 
           kegiatan.toLowerCase().includes(mitraSearchQuery.toLowerCase())
         )
       )
-    : allPetugasData.mitra.slice(0, 15); // Tampilkan top 15 jika tidak ada pencarian
+    : petugasData.mitra;
 
   return (
     <div className="space-y-6">
@@ -755,7 +697,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </CardContent>
       </Card>
 
-      {/* Key Metrics */}
+      {/* Key Metrics - PERBAIKAN: 3 box saja dan konsisten dengan skrip utama */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -819,7 +761,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </Card>
       </div>
 
-      {/* Trend Chart */}
+      {/* Trend Chart - PERBAIKAN: Konsisten dengan skrip utama */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -838,7 +780,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </CardContent>
       </Card>
 
-      {/* Charts Grid */}
+      {/* Charts Grid - PERBAIKAN: Konsisten dengan skrip utama */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -885,18 +827,15 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </Card>
       </div>
 
-      {/* Distribution Tables - PERBAIKAN: Search mencari dari semua database */}
+      {/* Distribution Tables - PERBAIKAN: Tambah search dan tooltip */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Distribusi Realisasi Perjadin - Organik */}
+        {/* Distribusi Realisasi Perjadin - Top 15 Organik */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Distribusi Realisasi Perjadin - Organik
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({organikSearchQuery ? `${filteredOrganikData.length} hasil` : 'Top 15'})
-                </span>
+                Distribusi Realisasi Perjadin - Top 15 Organik
               </CardTitle>
               <SearchInput 
                 value={organikSearchQuery} 
@@ -908,7 +847,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
               Detail realisasi perjadin per petugas organik
               {organikSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{organikSearchQuery}" - Menampilkan {filteredOrganikData.length} dari {allPetugasData.organik.length} total data
+                  Pencarian: "{organikSearchQuery}" - Menampilkan {filteredOrganikData.length} hasil
                 </div>
               )}
             </CardDescription>
@@ -971,16 +910,13 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardContent>
         </Card>
 
-        {/* Distribusi Realisasi Perjadin - Mitra Statistik */}
+        {/* Distribusi Realisasi Perjadin - Top 15 Mitra Statistik */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Distribusi Realisasi Perjadin - Mitra Statistik
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({mitraSearchQuery ? `${filteredMitraData.length} hasil` : 'Top 15'})
-                </span>
+                Distribusi Realisasi Perjadin - Top 15 Mitra Statistik
               </CardTitle>
               <SearchInput 
                 value={mitraSearchQuery} 
@@ -992,7 +928,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
               Detail realisasi perjadin per mitra statistik
               {mitraSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
-                  Pencarian: "{mitraSearchQuery}" - Menampilkan {filteredMitraData.length} dari {allPetugasData.mitra.length} total data
+                  Pencarian: "{mitraSearchQuery}" - Menampilkan {filteredMitraData.length} hasil
                 </div>
               )}
             </CardDescription>
