@@ -566,7 +566,84 @@ class AngkaKreditCalculator {
     }
     return "Terus tingkatkan kompetensi untuk menunjang perkembangan karier Anda secara optimal, sekaligus menjadi teladan bagi rekan kerja serta mampu berperan sebagai pembimbing atau mentor bagi yang lain.";
   }
-}
+  // ========== METHOD BARU - TAMBAHAN SAJA ==========
+
+/**
+ * Analisis opsi karir untuk kategori Keterampilan dengan pendidikan D-IV/S1+
+ */
+  static getOpsiKarirKeterampilan(karyawan: Karyawan): {
+    memenuhiSyarat: boolean;
+    opsiKeterampilan: {
+      feasible: boolean;
+      jenjangBerikutnya: string;
+      pangkatBerikutnya: string;
+      kebutuhanAK: number;
+      kekuranganAK: number;
+    };
+    opsiKeahlian: {
+      feasible: boolean;
+      jenjangTarget: string;
+      syaratPendidikan: boolean;
+      syaratPangkat: boolean;
+    };
+    rekomendasi: string;
+  } {
+    // Cek apakah memenuhi syarat dasar
+    const tingkatPendidikan = this.getTingkatPendidikan(karyawan.pendidikan);
+    const memenuhiSyaratDasar = karyawan.kategori === 'Keterampilan' && 
+                                ['D4', 'S1', 'S2', 'S3'].includes(tingkatPendidikan);
+
+    if (!memenuhiSyaratDasar) {
+      return {
+        memenuhiSyarat: false,
+        opsiKeterampilan: { feasible: false, jenjangBerikutnya: '', pangkatBerikutnya: '', kebutuhanAK: 0, kekuranganAK: 0 },
+        opsiKeahlian: { feasible: false, jenjangTarget: '', syaratPendidikan: false, syaratPangkat: false },
+        rekomendasi: ''
+      };
+    }
+
+    // Opsi 1: Lanjut di Keterampilan
+    const estimasi = this.hitungEstimasiKenaikan(karyawan);
+    const opsiKeterampilan = {
+      feasible: estimasi.bisaUsulJabatan,
+      jenjangBerikutnya: estimasi.jabatanBerikutnya,
+      pangkatBerikutnya: estimasi.golonganBerikutnya,
+      kebutuhanAK: estimasi.kebutuhanAKJabatan,
+      kekuranganAK: estimasi.kekuranganAKJabatan
+    };
+
+    // Opsi 2: Alih jalur ke Keahlian
+    const golonganNum = parseInt(karyawan.golongan.replace('III/', '')) || 0;
+    let jenjangTarget = 'Ahli Pertama';
+    if (golonganNum >= 3) { // III/c atau lebih tinggi
+      jenjangTarget = 'Ahli Muda';
+    }
+
+    const opsiKeahlian = {
+      feasible: true, // Asumsi lowongan tersedia
+      jenjangTarget,
+      syaratPendidikan: true,
+      syaratPangkat: karyawan.golongan >= 'III/a'
+    };
+
+    // Generate rekomendasi
+    let rekomendasi = '';
+    if (opsiKeterampilan.feasible && karyawan.golongan === 'III/b') {
+      rekomendasi = 'REKOMENDASI: Naik ke Penyelia dulu (III/c), kemudian bisa alih jalur ke Ahli Muda untuk prospek lebih panjang';
+    } else if (opsiKeterampilan.feasible) {
+      rekomendasi = 'REKOMENDASI: Anda bisa naik jabatan ke ' + opsiKeterampilan.jenjangBerikutnya;
+    } else if (opsiKeahlian.feasible) {
+      rekomendasi = 'REKOMENDASI: Pertimbangkan alih jalur ke ' + jenjangTarget + ' untuk pengembangan karir lebih luas';
+    }
+
+    return {
+      memenuhiSyarat: true,
+      opsiKeterampilan,
+      opsiKeahlian,
+      rekomendasi
+    };
+  }
+  }
 
 // ==================== DASHBOARD COMPONENT ====================
 const DashboardKarierKu: React.FC<{
@@ -1744,20 +1821,118 @@ const CompactPDFViewer: React.FC<{
       </div>
     </div>;
 };
+// ==================== KOMPONEN BARU - TAMBAHAN SAJA ====================
+const OpsiKarirCard: React.FC<{
+  karyawan: Karyawan;
+}> = ({ karyawan }) => {
+  const opsiKarir = AngkaKreditCalculator.getOpsiKarirKeterampilan(karyawan);
+  
+  // Hanya tampilkan jika memenuhi syarat
+  if (!opsiKarir.memenuhiSyarat) {
+    return null;
+  }
+
+  return (
+    <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-purple-800">
+          <TrendingUp className="h-5 w-5" />
+          Opsi Pengembangan Karir
+        </CardTitle>
+        <CardDescription>
+          Dengan pendidikan {karyawan.pendidikan}, Anda memiliki multiple career path
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Opsi 1: Tetap di Keterampilan */}
+        <div className="p-4 border rounded-lg bg-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Badge variant="outline" className="bg-blue-100">Opsi 1</Badge>
+            <h4 className="font-semibold">Lanjut ke {opsiKarir.opsiKeterampilan.jenjangBerikutnya}</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Kategori:</span>
+              <span className="font-medium ml-1">Keterampilan</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Pangkat:</span>
+              <span className="font-medium ml-1">{opsiKarir.opsiKeterampilan.pangkatBerikutnya}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Kebutuhan AK:</span>
+              <span className="font-medium ml-1">{opsiKarir.opsiKeterampilan.kebutuhanAK}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Status:</span>
+              <Badge variant={opsiKarir.opsiKeterampilan.feasible ? "default" : "secondary"} 
+                     className={opsiKarir.opsiKeterampilan.feasible ? "bg-green-600" : ""}>
+                {opsiKarir.opsiKeterampilan.feasible ? "Bisa diusulkan" : "Butuh AK"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Opsi 2: Pindah ke Keahlian */}
+        <div className="p-4 border rounded-lg bg-white">
+          <div className="flex items-center gap-3 mb-2">
+            <Badge variant="outline" className="bg-green-100">Opsi 2</Badge>
+            <h4 className="font-semibold">Alih Jalur ke {opsiKarir.opsiKeahlian.jenjangTarget}</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Kategori:</span>
+              <span className="font-medium ml-1">Keahlian</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Pangkat:</span>
+              <span className="font-medium ml-1">{karyawan.golongan}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Syarat:</span>
+              <span className="font-medium ml-1">Uji Kompetensi</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Status:</span>
+              <Badge variant={opsiKarir.opsiKeahlian.feasible ? "default" : "secondary"}
+                     className={opsiKarir.opsiKeahlian.feasible ? "bg-green-600" : ""}>
+                {opsiKarir.opsiKeahlian.feasible ? "Bisa diusulkan" : "Perlu verifikasi"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Rekomendasi */}
+        {opsiKarir.rekomendasi && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 text-sm font-medium">💡 {opsiKarir.rekomendasi}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// ==================== KOMPONEN EXISTING - TETAP SAMA ====================
 const EmployeeDashboard: React.FC<{
   karyawan: Karyawan;
-}> = ({
-  karyawan
-}) => {
+}> = ({ karyawan }) => {
   const estimasi = AngkaKreditCalculator.hitungEstimasiKenaikan(karyawan);
   const penjelasanKebutuhanPangkat = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const penjelasanKebutuhanJabatan = AngkaKreditCalculator.getPenjelasanKebutuhan(karyawan.jabatan, karyawan.kategori, estimasi.isKenaikanJenjang, karyawan.golongan, estimasi.golonganBerikutnya);
   const rekomendasiKarir = AngkaKreditCalculator.getRekomendasiKarir(karyawan);
-  return <div className="space-y-6">
+  
+  return (
+    <div className="space-y-6">
       <BiodataCard karyawan={karyawan} akRealSaatIni={estimasi.akRealSaatIni} akTambahan={estimasi.akTambahan} />
       
+      {/* === BARIS BARU YANG DITAMBAHKAN === */}
+      <OpsiKarirCard karyawan={karyawan} />
+      {/* =================================== */}
+      
       {/* PESAN SELAMAT - DITAMPILKAN SETELAH BOX INFORMASI KARYAWAN */}
-      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
+      {estimasi.isKenaikanJenjang && estimasi.bisaUsulJabatan && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg">
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-yellow-200">
@@ -1774,9 +1949,11 @@ const EmployeeDashboard: React.FC<{
               </p>
             </div>
           </CardContent>
-        </Card>}
+        </Card>
+      )}
       
-      {rekomendasiKarir && <Card className="bg-yellow-50 border-yellow-200">
+      {rekomendasiKarir && (
+        <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-amber-300">
@@ -1788,7 +1965,8 @@ const EmployeeDashboard: React.FC<{
               </div>
             </div>
           </CardContent>
-        </Card>}
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
@@ -1812,7 +1990,8 @@ const EmployeeDashboard: React.FC<{
       </Card>
 
       <EstimasiKenaikanCard karyawan={karyawan} />
-    </div>;
+    </div>
+  );
 };
 const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
