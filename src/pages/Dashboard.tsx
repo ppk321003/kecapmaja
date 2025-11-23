@@ -1490,11 +1490,11 @@ export default function Dashboard() {
               <TabsList>
                 <TabsTrigger value="anggaran" className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Berdasarkan Realisasi
+                  Realisasi
                 </TabsTrigger>
                 <TabsTrigger value="kegiatan" className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
-                  Berdasarkan Kegiatan
+                  Kegiatan
                 </TabsTrigger>
               </TabsList>
             </Tabs>
