@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Calendar, DollarSign, Activity, Users, MapPin } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Activity, Users, MapPin, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const PERJADIN_SPREADSHEET_ID = "1JNrpj2Ww42EU3FFBfoAmI6wuWl7l280m62iLXKHFpgQ";
 const SHEET_NAME = "MASTER_VIEW";
@@ -38,8 +39,8 @@ interface DashboardStats {
   totalPerjadin: number;
   totalRealisasi: number;
   totalDurasi: number;
-  rataRataBiayaPerjadin: number;
-  rataRataDurasiPerjadin: number;
+  rataRataKegiatanPerBulan: number;
+  rataRataAnggaranPerBulan: number;
 }
 
 interface PetugasData {
@@ -48,6 +49,16 @@ interface PetugasData {
   totalDurasi: number;
   totalBiaya: number;
   jenisPegawai: string;
+  namaKegiatanList: string[];
+}
+
+// PERBAIKAN: Interface untuk tooltip
+interface PerjadinTooltipData {
+  petugas: string;
+  jumlahPerjadin: number;
+  totalDurasi: number;
+  totalBiaya: number;
+  namaKegiatanList: string[];
 }
 
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
@@ -57,7 +68,7 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
         <p className="font-semibold">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} style={{ color: entry.color }}>
-            {entry.name}: {mode === 'biaya' 
+            {entry.name}: {mode === 'anggaran' 
               ? new Intl.NumberFormat('id-ID', {
                   style: 'currency',
                   currency: 'IDR',
@@ -72,6 +83,88 @@ const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
   return null;
 };
 
+// PERBAIKAN: Komponen Search untuk tabel
+const SearchInput = ({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) => {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input 
+        type="text" 
+        placeholder={placeholder} 
+        value={value} 
+        onChange={e => onChange(e.target.value)} 
+        className="pl-10 pr-4 py-2 w-full max-w-xs" 
+      />
+    </div>
+  );
+};
+
+// PERBAIKAN: Komponen Tooltip untuk tabel
+const PerjadinTooltip = ({
+  data,
+  position
+}: {
+  data: PerjadinTooltipData;
+  position: {
+    x: number;
+    y: number;
+  };
+}) => {
+  if (!data) return null;
+  
+  const formatRupiah = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  return (
+    <div className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-none transition-opacity duration-200" 
+         style={{
+           left: Math.min(position.x + 10, window.innerWidth - 320),
+           top: position.y - 10
+         }}>
+      <h4 className="font-semibold text-sm mb-2">{data.petugas}</h4>
+      <div className="space-y-2 text-xs">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Jumlah Perjadin:</span>
+          <span className="font-medium">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Durasi:</span>
+          <span className="font-medium">{data.totalDurasi} hari</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Biaya:</span>
+          <span className="font-medium">{formatRupiah(data.totalBiaya)}</span>
+        </div>
+        <div className="mt-2">
+          <h5 className="font-semibold mb-1">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
+          <div className="max-h-32 overflow-y-auto border rounded p-2">
+            <ul className="space-y-1">
+              {data.namaKegiatanList.map((kegiatan, idx) => (
+                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
+                  • {kegiatan}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   if (!data || data.length === 0) {
     return (
@@ -82,7 +175,7 @@ const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   }
 
   const formatYAxisTick = (value: number) => {
-    if (mode === 'biaya') {
+    if (mode === 'anggaran') {
       if (value >= 1000000) {
         return `Rp${(value / 1000000).toFixed(0)}Jt`;
       } else if (value >= 1000) {
@@ -103,8 +196,8 @@ const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
         <Legend />
         <Bar 
           dataKey="value" 
-          name={mode === 'biaya' ? 'Total Biaya' : 'Total Durasi'} 
-          fill={mode === 'biaya' ? '#00C49F' : '#0088FE'} 
+          name={mode === 'anggaran' ? 'Total Realisasi' : 'Total Durasi'} 
+          fill={mode === 'anggaran' ? '#00C49F' : '#0088FE'} 
           radius={[4, 4, 0, 0]} 
         />
       </BarChart>
@@ -122,7 +215,7 @@ const SafeLineChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   }
 
   const formatYAxisTick = (value: number) => {
-    if (mode === 'biaya') {
+    if (mode === 'anggaran') {
       if (value >= 1000000) {
         return `Rp${(value / 1000000).toFixed(0)}Jt`;
       } else if (value >= 1000) {
@@ -144,8 +237,8 @@ const SafeLineChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
         <Line 
           type="monotone" 
           dataKey="value" 
-          name={mode === 'biaya' ? 'Trend Biaya' : 'Trend Durasi'} 
-          stroke={mode === 'biaya' ? '#00C49F' : '#0088FE'} 
+          name={mode === 'anggaran' ? 'Trend Realisasi' : 'Trend Kegiatan'} 
+          stroke={mode === 'anggaran' ? '#00C49F' : '#0088FE'} 
           strokeWidth={3} 
           dot={{ r: 4 }} 
           activeDot={{ r: 6 }} 
@@ -189,7 +282,7 @@ const SafePieChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
 };
 
 interface DashboardPerjadinProps {
-  viewMode: 'biaya' | 'durasi';
+  viewMode: 'kegiatan' | 'anggaran';
   filterTahun: string;
 }
 
@@ -198,12 +291,20 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");
   const [filterJenisPegawai, setFilterJenisPegawai] = useState<string>("Semua");
   
+  // PERBAIKAN: State untuk search
+  const [organikSearchQuery, setOrganikSearchQuery] = useState("");
+  const [mitraSearchQuery, setMitraSearchQuery] = useState("");
+  
+  // PERBAIKAN: State untuk tooltip
+  const [tooltipData, setTooltipData] = useState<PerjadinTooltipData | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   const [stats, setStats] = useState<DashboardStats>({
     totalPerjadin: 0,
     totalRealisasi: 0,
     totalDurasi: 0,
-    rataRataBiayaPerjadin: 0,
-    rataRataDurasiPerjadin: 0,
+    rataRataKegiatanPerBulan: 0,
+    rataRataAnggaranPerBulan: 0,
   });
 
   const [chartData, setChartData] = useState<{
@@ -238,34 +339,33 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     }).format(amount);
   };
 
+  // PERBAIKAN: Fungsi untuk menampilkan tooltip
+  const handleShowTooltip = (data: PerjadinTooltipData, position: { x: number; y: number }) => {
+    setTooltipData(data);
+    setTooltipPosition(position);
+  };
+
+  // PERBAIKAN: Fungsi untuk menyembunyikan tooltip
+  const handleHideTooltip = () => {
+    setTooltipData(null);
+  };
+
   // Fungsi untuk membersihkan dan mengkonversi nilai biaya
   const parseBiaya = (biayaStr: string): number => {
     if (!biayaStr) return 0;
     
-    console.log("Original biaya string:", biayaStr);
-    
-    // Hapus karakter non-digit kecuali titik dan koma
     const cleaned = biayaStr.toString().replace(/[^\d,.]/g, '');
-    console.log("Cleaned biaya:", cleaned);
     
-    // Jika mengandung titik (untuk ribuan), hapus titik
     let normalized = cleaned;
     if (cleaned.includes('.') && cleaned.includes(',')) {
-      // Format: 140.000,00 -> hapus titik, ganti koma dengan titik
       normalized = cleaned.replace(/\./g, '').replace(',', '.');
     } else if (cleaned.includes('.')) {
-      // Format: 140.000 -> hapus titik
       normalized = cleaned.replace(/\./g, '');
     } else if (cleaned.includes(',')) {
-      // Format: 140000,00 -> ganti koma dengan titik
       normalized = cleaned.replace(',', '.');
     }
     
-    console.log("Normalized biaya:", normalized);
-    
     const parsed = parseFloat(normalized);
-    console.log("Parsed biaya:", parsed);
-    
     return isNaN(parsed) ? 0 : parsed;
   };
 
@@ -284,8 +384,6 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
     try {
       setLoading(true);
       
-      console.log("🔄 Fetching perjadin data...");
-      
       const { data: perjadinResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: PERJADIN_SPREADSHEET_ID,
@@ -294,16 +392,10 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         }
       });
 
-      if (error) {
-        console.error("❌ Error fetching data:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       const rows = perjadinResponse?.values || [];
-      console.log("📊 Total rows from PERJADIN:", rows.length);
-
       if (rows.length === 0) {
-        console.log("⚠️ No data found");
         setLoading(false);
         return;
       }
@@ -334,8 +426,6 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         allData.push(dataItem);
       }
 
-      console.log("✅ Processed data count:", allData.length);
-
       // Filter data berdasarkan filter yang dipilih
       const filteredData = allData.filter((item) => {
         const tahunMatch = item.tahun_pelaksanaan === filterTahun;
@@ -345,19 +435,17 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         return tahunMatch && jenisPerjalananMatch && jenisPegawaiMatch;
       });
 
-      console.log(`🔍 Filtered data: ${filteredData.length} rows for tahun ${filterTahun}`);
-
       // Process data untuk stats dan charts
       const trendBulananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
-      const mitraMap = new Map<string, { biaya: number; durasi: number; count: number }>();
-      const organikMap = new Map<string, { biaya: number; durasi: number; count: number }>();
+      const mitraMap = new Map<string, { biaya: number; durasi: number; count: number; namaKegiatanList: string[] }>();
+      const organikMap = new Map<string, { biaya: number; durasi: number; count: number; namaKegiatanList: string[] }>();
       const jenisPerjalananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const sumberAnggaranMap = new Map<string, { biaya: number; durasi: number; count: number }>();
 
       let totalRealisasi = 0;
       let totalDurasi = 0;
 
-      filteredData.forEach((item, index) => {
+      filteredData.forEach((item) => {
         try {
           const biaya = parseBiaya(item.total_biaya);
           const durasi = parseDurasi(item.durasi_hari);
@@ -376,20 +464,32 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             });
           }
 
-          // Data per petugas
+          // Data per petugas dengan nama kegiatan
           if (item.jenis_pegawai === "MITRA") {
-            const existing = mitraMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
+            const existing = mitraMap.get(item.nama_pelaksana) || { 
+              biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
+            };
+            if (!existing.namaKegiatanList.includes(item.nama_kegiatan)) {
+              existing.namaKegiatanList.push(item.nama_kegiatan);
+            }
             mitraMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
-              count: existing.count + 1
+              count: existing.count + 1,
+              namaKegiatanList: existing.namaKegiatanList
             });
           } else if (item.jenis_pegawai === "ORGANIK") {
-            const existing = organikMap.get(item.nama_pelaksana) || { biaya: 0, durasi: 0, count: 0 };
+            const existing = organikMap.get(item.nama_pelaksana) || { 
+              biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
+            };
+            if (!existing.namaKegiatanList.includes(item.nama_kegiatan)) {
+              existing.namaKegiatanList.push(item.nama_kegiatan);
+            }
             organikMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
-              count: existing.count + 1
+              count: existing.count + 1,
+              namaKegiatanList: existing.namaKegiatanList
             });
           }
 
@@ -414,14 +514,14 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           }
 
         } catch (error) {
-          console.error(`Error processing row ${index}:`, error, item);
+          console.error("Error processing data:", error, item);
         }
       });
 
-      // Prepare chart data
+      // Prepare chart data - PERBAIKAN: Menggunakan 'anggaran' dan 'kegiatan' seperti skrip utama
       const trendBulananData: ChartItem[] = bulanList.map(bulan => ({
         name: bulan,
-        value: viewMode === 'biaya' 
+        value: viewMode === 'anggaran' 
           ? (trendBulananMap.get(bulan)?.biaya || 0)
           : (trendBulananMap.get(bulan)?.durasi || 0)
       }));
@@ -429,7 +529,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       const topMitraData: ChartItem[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           name: nama.length > 20 ? nama.substring(0, 20) + '...' : nama,
-          value: viewMode === 'biaya' ? data.biaya : data.durasi
+          value: viewMode === 'anggaran' ? data.biaya : data.durasi
         }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 10);
@@ -437,7 +537,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       const topOrganikData: ChartItem[] = Array.from(organikMap.entries())
         .map(([nama, data]) => ({
           name: nama.length > 20 ? nama.substring(0, 20) + '...' : nama,
-          value: viewMode === 'biaya' ? data.biaya : data.durasi
+          value: viewMode === 'anggaran' ? data.biaya : data.durasi
         }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 10);
@@ -445,26 +545,26 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       const distribusiJenisData: ChartItem[] = Array.from(jenisPerjalananMap.entries())
         .map(([jenis, data]) => ({
           name: jenis,
-          value: viewMode === 'biaya' ? data.biaya : data.durasi
+          value: viewMode === 'anggaran' ? data.biaya : data.durasi
         }));
 
-      // Distribusi Sumber Anggaran
       const distribusiSumberData: ChartItem[] = Array.from(sumberAnggaranMap.entries())
         .map(([sumber, data]) => ({
           name: sumber.length > 30 ? sumber.substring(0, 30) + '...' : sumber,
-          value: viewMode === 'biaya' ? data.biaya : data.durasi
+          value: viewMode === 'anggaran' ? data.biaya : data.durasi
         }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 8);
 
-      // Prepare petugas data untuk tables
+      // Prepare petugas data untuk tables dengan nama kegiatan
       const mitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           nama,
           jumlahPerjadin: data.count,
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
-          jenisPegawai: "MITRA"
+          jenisPegawai: "MITRA",
+          namaKegiatanList: data.namaKegiatanList
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya)
         .slice(0, 15);
@@ -475,7 +575,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           jumlahPerjadin: data.count,
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
-          jenisPegawai: "ORGANIK"
+          jenisPegawai: "ORGANIK",
+          namaKegiatanList: data.namaKegiatanList
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya)
         .slice(0, 15);
@@ -485,8 +586,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         totalPerjadin: filteredData.length,
         totalRealisasi,
         totalDurasi,
-        rataRataBiayaPerjadin: filteredData.length > 0 ? totalRealisasi / filteredData.length : 0,
-        rataRataDurasiPerjadin: filteredData.length > 0 ? totalDurasi / filteredData.length : 0,
+        rataRataKegiatanPerBulan: filteredData.length > 0 ? totalDurasi / filteredData.length : 0,
+        rataRataAnggaranPerBulan: filteredData.length > 0 ? totalRealisasi / filteredData.length : 0,
       });
 
       // Set chart data
@@ -504,10 +605,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         organik: organikPetugasData
       });
 
-      console.log("🎉 Dashboard data loaded successfully!");
-
     } catch (error: any) {
-      console.error("❌ Error fetching perjadin data:", error);
+      console.error("Error fetching perjadin data:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data perjadin",
@@ -534,6 +633,25 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       </div>
     );
   }
+
+  // PERBAIKAN: Filter data untuk search
+  const filteredOrganikData = organikSearchQuery 
+    ? petugasData.organik.filter(item => 
+        item.nama.toLowerCase().includes(organikSearchQuery.toLowerCase()) ||
+        item.namaKegiatanList.some(kegiatan => 
+          kegiatan.toLowerCase().includes(organikSearchQuery.toLowerCase())
+        )
+      )
+    : petugasData.organik;
+
+  const filteredMitraData = mitraSearchQuery 
+    ? petugasData.mitra.filter(item => 
+        item.nama.toLowerCase().includes(mitraSearchQuery.toLowerCase()) ||
+        item.namaKegiatanList.some(kegiatan => 
+          kegiatan.toLowerCase().includes(mitraSearchQuery.toLowerCase())
+        )
+      )
+    : petugasData.mitra;
 
   return (
     <div className="space-y-6">
@@ -579,7 +697,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </CardContent>
       </Card>
 
-      {/* Key Metrics - PERBAIKAN: Hanya 3 box saja */}
+      {/* Key Metrics - PERBAIKAN: 3 box saja dan konsisten dengan skrip utama */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -601,9 +719,9 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-800">
-              {viewMode === 'biaya' ? 'Total Realisasi' : 'Total Durasi'}
+              {viewMode === 'anggaran' ? 'Total Realisasi' : 'Total Durasi'}
             </CardTitle>
-            {viewMode === 'biaya' ? (
+            {viewMode === 'anggaran' ? (
               <DollarSign className="h-4 w-4 text-green-600" />
             ) : (
               <Calendar className="h-4 w-4 text-green-600" />
@@ -611,13 +729,13 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-900">
-              {viewMode === 'biaya' 
+              {viewMode === 'anggaran' 
                 ? formatRupiah(stats.totalRealisasi)
                 : `${stats.totalDurasi.toLocaleString('id-ID')} hari`
               }
             </div>
             <p className="text-xs text-green-700">
-              {viewMode === 'biaya' ? 'Total biaya' : 'Total hari'}
+              {viewMode === 'anggaran' ? 'Total biaya' : 'Total hari'}
             </p>
           </CardContent>
         </Card>
@@ -631,27 +749,27 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-900">
-              {viewMode === 'biaya' 
-                ? formatRupiah(stats.rataRataBiayaPerjadin)
-                : `${stats.rataRataDurasiPerjadin.toFixed(1)} hari`
+              {viewMode === 'anggaran' 
+                ? formatRupiah(stats.rataRataAnggaranPerBulan)
+                : `${stats.rataRataKegiatanPerBulan.toFixed(1)} hari`
               }
             </div>
             <p className="text-xs text-purple-700">
-              {viewMode === 'biaya' ? 'Biaya rata-rata' : 'Durasi rata-rata'}
+              {viewMode === 'anggaran' ? 'Biaya rata-rata' : 'Durasi rata-rata'}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Trend Chart - PERBAIKAN: Judul sesuai view mode */}
+      {/* Trend Chart - PERBAIKAN: Konsisten dengan skrip utama */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            {viewMode === 'biaya' ? 'Trend Realisasi per Bulan' : 'Trend Kegiatan per Bulan'}
+            {viewMode === 'anggaran' ? 'Trend Realisasi per Bulan' : 'Trend Kegiatan per Bulan'}
           </CardTitle>
           <CardDescription>
-            {viewMode === 'biaya' 
+            {viewMode === 'anggaran' 
               ? `Perkembangan biaya perjadin selama tahun ${filterTahun}`
               : `Perkembangan durasi perjadin selama tahun ${filterTahun}`
             }
@@ -662,12 +780,12 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </CardContent>
       </Card>
 
-      {/* Charts Grid - PERBAIKAN: Judul semua chart sesuai view mode */}
+      {/* Charts Grid - PERBAIKAN: Konsisten dengan skrip utama */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>
-              {viewMode === 'biaya' ? 'Top Mitra Statistik Berdasarkan Realisasi' : 'Top Mitra Statistik Berdasarkan Kegiatan'}
+              {viewMode === 'anggaran' ? 'Top Mitra Statistik Berdasarkan Realisasi' : 'Top Mitra Statistik Berdasarkan Kegiatan'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -678,7 +796,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         <Card>
           <CardHeader>
             <CardTitle>
-              {viewMode === 'biaya' ? 'Top Organik Berdasarkan Realisasi' : 'Top Organik Berdasarkan Kegiatan'}
+              {viewMode === 'anggaran' ? 'Top Organik Berdasarkan Realisasi' : 'Top Organik Berdasarkan Kegiatan'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -700,7 +818,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         <Card>
           <CardHeader>
             <CardTitle>
-              {viewMode === 'biaya' ? 'Distribusi per Sumber Anggaran' : 'Distribusi per Sumber Kegiatan'}
+              {viewMode === 'anggaran' ? 'Distribusi per Sumber Anggaran' : 'Distribusi per Sumber Kegiatan'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -709,20 +827,33 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         </Card>
       </div>
 
-      {/* Distribution Tables */}
+      {/* Distribution Tables - PERBAIKAN: Tambah search dan tooltip */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribusi Realisasi Perjadin - Top 15 Organik */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Distribusi Realisasi Perjadin - Top 15 Organik
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Distribusi Realisasi Perjadin - Top 15 Organik
+              </CardTitle>
+              <SearchInput 
+                value={organikSearchQuery} 
+                onChange={setOrganikSearchQuery} 
+                placeholder="Cari nama atau kegiatan..." 
+              />
+            </div>
             <CardDescription>
               Detail realisasi perjadin per petugas organik
+              {organikSearchQuery && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Pencarian: "{organikSearchQuery}" - Menampilkan {filteredOrganikData.length} hasil
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -734,15 +865,35 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   </tr>
                 </thead>
                 <tbody>
-                  {petugasData.organik.length === 0 ? (
+                  {filteredOrganikData.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                        Tidak ada data organik
+                        {organikSearchQuery 
+                          ? `Tidak ada data yang cocok dengan pencarian "${organikSearchQuery}"`
+                          : 'Tidak ada data organik'
+                        }
                       </td>
                     </tr>
                   ) : (
-                    petugasData.organik.map((item, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
+                    filteredOrganikData.map((item, index) => (
+                      <tr 
+                        key={index} 
+                        className="border-b hover:bg-muted/50 cursor-help"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          handleShowTooltip({
+                            petugas: item.nama,
+                            jumlahPerjadin: item.jumlahPerjadin,
+                            totalDurasi: item.totalDurasi,
+                            totalBiaya: item.totalBiaya,
+                            namaKegiatanList: item.namaKegiatanList
+                          }, {
+                            x: rect.left,
+                            y: rect.top
+                          });
+                        }}
+                        onMouseLeave={handleHideTooltip}
+                      >
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.nama}</td>
                         <td className="text-center py-3">{item.jumlahPerjadin}</td>
@@ -759,18 +910,31 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardContent>
         </Card>
 
+        {/* Distribusi Realisasi Perjadin - Top 15 Mitra Statistik */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Distribusi Realisasi Perjadin - Top 15 Mitra Statistik
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Distribusi Realisasi Perjadin - Top 15 Mitra Statistik
+              </CardTitle>
+              <SearchInput 
+                value={mitraSearchQuery} 
+                onChange={setMitraSearchQuery} 
+                placeholder="Cari nama atau kegiatan..." 
+              />
+            </div>
             <CardDescription>
               Detail realisasi perjadin per mitra statistik
+              {mitraSearchQuery && (
+                <div className="mt-1 text-xs text-blue-600">
+                  Pencarian: "{mitraSearchQuery}" - Menampilkan {filteredMitraData.length} hasil
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -782,15 +946,35 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   </tr>
                 </thead>
                 <tbody>
-                  {petugasData.mitra.length === 0 ? (
+                  {filteredMitraData.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                        Tidak ada data mitra
+                        {mitraSearchQuery 
+                          ? `Tidak ada data yang cocok dengan pencarian "${mitraSearchQuery}"`
+                          : 'Tidak ada data mitra'
+                        }
                       </td>
                     </tr>
                   ) : (
-                    petugasData.mitra.map((item, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
+                    filteredMitraData.map((item, index) => (
+                      <tr 
+                        key={index} 
+                        className="border-b hover:bg-muted/50 cursor-help"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          handleShowTooltip({
+                            petugas: item.nama,
+                            jumlahPerjadin: item.jumlahPerjadin,
+                            totalDurasi: item.totalDurasi,
+                            totalBiaya: item.totalBiaya,
+                            namaKegiatanList: item.namaKegiatanList
+                          }, {
+                            x: rect.left,
+                            y: rect.top
+                          });
+                        }}
+                        onMouseLeave={handleHideTooltip}
+                      >
                         <td className="py-3 text-muted-foreground w-12">{index + 1}</td>
                         <td className="py-3 font-medium">{item.nama}</td>
                         <td className="text-center py-3">{item.jumlahPerjadin}</td>
@@ -807,6 +991,11 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardContent>
         </Card>
       </div>
+
+      {/* Render Tooltip */}
+      {tooltipData && (
+        <PerjadinTooltip data={tooltipData} position={tooltipPosition} />
+      )}
     </div>
   );
 }
