@@ -380,7 +380,7 @@ export default function LKKinerja() {
       {/* Dashboard Pegawai Terbaik */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Pegawai Terbaik Tahun 2025 */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-yellow-50 to-amber-100 border-amber-200 text-center">
+        <Card className="lg:col-span-2 bg-gradient-to-br from-yellow-50 to-amber-100 border-amber-200">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-amber-800">
               <Trophy className="h-6 w-6" />
@@ -410,8 +410,8 @@ export default function LKKinerja() {
         {/* Pegawai Terbaik Per Triwulan */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle className="text-center flex items-center gap-2">
-              <Medal className="h-5 w-5"  />
+            <CardTitle className="flex items-center gap-2">
+              <Medal className="h-5 w-5" />
               Pegawai Terbaik Per Triwulan
             </CardTitle>
           </CardHeader>
