@@ -9,28 +9,31 @@ import { DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
 const SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
+
 const sbmlSchema = z.object({
   tahunAnggaran: z.string().min(1, "Tahun anggaran harus diisi"),
   sbmlPendata: z.string().min(1, "SBML Pendata harus diisi"),
   sbmlPemeriksa: z.string().min(1, "SBML Pemeriksa harus diisi"),
   sbmlPengolah: z.string().min(1, "SBML Pengolah harus diisi")
 });
+
 type SBMLFormData = z.infer<typeof sbmlSchema>;
+
 interface SBML extends SBMLFormData {
   rowIndex: number;
 }
+
 export default function EntriSBML() {
   const [sbmlData, setSbmlData] = useState<SBML[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSBML, setEditingSBML] = useState<SBML | null>(null);
   const [userRole, setUserRole] = useState<string>("");
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
 
   // Get user role from localStorage
   useEffect(() => {
@@ -40,6 +43,7 @@ export default function EntriSBML() {
       setUserRole(user.role || "");
     }
   }, []);
+
   const form = useForm<SBMLFormData>({
     resolver: zodResolver(sbmlSchema),
     defaultValues: {
@@ -49,20 +53,21 @@ export default function EntriSBML() {
       sbmlPengolah: ""
     }
   });
-  const fetchSBML = async () => {
+
+  // Stabilkan fungsi fetchSBML dengan useCallback
+  const fetchSBML = useCallback(async () => {
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("google-sheets", {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
           range: "Sheet1"
         }
       });
+      
       if (error) throw error;
+      
       const rows = data.values || [];
       const sbmlList = rows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
@@ -71,8 +76,10 @@ export default function EntriSBML() {
         sbmlPemeriksa: row[3] || "",
         sbmlPengolah: row[4] || ""
       }));
+      
       setSbmlData(sbmlList);
     } catch (error: any) {
+      console.error("Error fetching SBML data:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -81,16 +88,18 @@ export default function EntriSBML() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  // useEffect dengan dependency yang stabil
   useEffect(() => {
     fetchSBML();
-  }, []);
+  }, [fetchSBML]);
+
   const onSubmit = async (values: SBMLFormData) => {
     try {
       const operation = editingSBML ? "update" : "append";
-      const {
-        error
-      } = await supabase.functions.invoke("google-sheets", {
+      
+      const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation,
@@ -101,16 +110,20 @@ export default function EntriSBML() {
           })
         }
       });
+
       if (error) throw error;
+
       toast({
         title: "Sukses",
         description: `Data SBML berhasil ${editingSBML ? "diperbarui" : "ditambahkan"}`
       });
+      
       setDialogOpen(false);
       form.reset();
       setEditingSBML(null);
-      fetchSBML();
+      fetchSBML(); // Refresh data setelah submit
     } catch (error: any) {
+      console.error("Error submitting SBML data:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -118,30 +131,35 @@ export default function EntriSBML() {
       });
     }
   };
+
   const handleEdit = (sbml: SBML) => {
     setEditingSBML(sbml);
     form.reset(sbml);
     setDialogOpen(true);
   };
+
   const handleDelete = async (sbml: SBML) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+    
     try {
-      const {
-        error
-      } = await supabase.functions.invoke("google-sheets", {
+      const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "delete",
           rowIndex: sbml.rowIndex
         }
       });
+
       if (error) throw error;
+
       toast({
         title: "Sukses",
         description: "Data SBML berhasil dihapus"
       });
-      fetchSBML();
+      
+      fetchSBML(); // Refresh data setelah delete
     } catch (error: any) {
+      console.error("Error deleting SBML data:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -149,7 +167,18 @@ export default function EntriSBML() {
       });
     }
   };
-  return <div className="space-y-6">
+
+  const formatCurrency = (value: string) => {
+    const numValue = parseInt(value) || 0;
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(numValue);
+  };
+
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-red-500">Entri SBML</h1>
@@ -157,13 +186,17 @@ export default function EntriSBML() {
             Entri Standar Biaya Masukan Lainnya untuk kegiatan
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={open => {
-        setDialogOpen(open);
-        if (!open) {
-          setEditingSBML(null);
-          form.reset();
-        }
-      }}>
+        
+        <Dialog 
+          open={dialogOpen} 
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingSBML(null);
+              form.reset();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button disabled={userRole !== "Pejabat Pembuat Komitmen"}>
               <Plus className="mr-2 h-4 w-4" />
@@ -176,42 +209,58 @@ export default function EntriSBML() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="tahunAnggaran" render={({
-                field
-              }) => <FormItem>
+                <FormField 
+                  control={form.control} 
+                  name="tahunAnggaran" 
+                  render={({ field }) => (
+                    <FormItem>
                       <FormLabel>Tahun Anggaran</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} placeholder="2024" />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>} />
-                <FormField control={form.control} name="sbmlPendata" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  control={form.control} 
+                  name="sbmlPendata" 
+                  render={({ field }) => (
+                    <FormItem>
                       <FormLabel>SBML Pendata (Rp)</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" />
+                        <Input {...field} type="number" placeholder="100000" />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>} />
-                <FormField control={form.control} name="sbmlPemeriksa" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  control={form.control} 
+                  name="sbmlPemeriksa" 
+                  render={({ field }) => (
+                    <FormItem>
                       <FormLabel>SBML Pemeriksa (Rp)</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" />
+                        <Input {...field} type="number" placeholder="150000" />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>} />
-                <FormField control={form.control} name="sbmlPengolah" render={({
-                field
-              }) => <FormItem>
+                    </FormItem>
+                  )} 
+                />
+                <FormField 
+                  control={form.control} 
+                  name="sbmlPengolah" 
+                  render={({ field }) => (
+                    <FormItem>
                       <FormLabel>SBML Pengolah (Rp)</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" />
+                        <Input {...field} type="number" placeholder="120000" />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>} />
+                    </FormItem>
+                  )} 
+                />
                 <Button type="submit" className="w-full">
                   {editingSBML ? "Update" : "Tambah"}
                 </Button>
@@ -229,36 +278,65 @@ export default function EntriSBML() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? <p className="text-center py-8 text-muted-foreground">Memuat data...</p> : <Table>
+          {loading ? (
+            <p className="text-center py-8 text-muted-foreground">Memuat data...</p>
+          ) : (
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
                   <TableHead>Tahun Anggaran</TableHead>
-                  <TableHead>SBML Pendata (Rp)</TableHead>
-                  <TableHead>SBML Pemeriksa (Rp)</TableHead>
-                  <TableHead>SBML Pengolah (Rp)</TableHead>
-                  {userRole === "Pejabat Pembuat Komitmen" && <TableHead className="text-right">Aksi</TableHead>}
+                  <TableHead>SBML Pendata</TableHead>
+                  <TableHead>SBML Pemeriksa</TableHead>
+                  <TableHead>SBML Pengolah</TableHead>
+                  {userRole === "Pejabat Pembuat Komitmen" && (
+                    <TableHead className="text-right">Aksi</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sbmlData.map((sbml, index) => <TableRow key={sbml.rowIndex}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{sbml.tahunAnggaran}</TableCell>
-                    <TableCell>Rp {parseInt(sbml.sbmlPendata).toLocaleString('id-ID')}</TableCell>
-                    <TableCell>Rp {parseInt(sbml.sbmlPemeriksa).toLocaleString('id-ID')}</TableCell>
-                    <TableCell>Rp {parseInt(sbml.sbmlPengolah).toLocaleString('id-ID')}</TableCell>
-                    {userRole === "Pejabat Pembuat Komitmen" && <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(sbml)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(sbml)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>}
-                  </TableRow>)}
+                {sbmlData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Tidak ada data SBML
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sbmlData.map((sbml, index) => (
+                    <TableRow key={sbml.rowIndex}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{sbml.tahunAnggaran}</TableCell>
+                      <TableCell>{formatCurrency(sbml.sbmlPendata)}</TableCell>
+                      <TableCell>{formatCurrency(sbml.sbmlPemeriksa)}</TableCell>
+                      <TableCell>{formatCurrency(sbml.sbmlPengolah)}</TableCell>
+                      {userRole === "Pejabat Pembuat Komitmen" && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleEdit(sbml)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDelete(sbml)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
-            </Table>}
+            </Table>
+          )}
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }
