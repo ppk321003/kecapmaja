@@ -102,63 +102,64 @@ export default function LKKinerja() {
         const headers = rows[0];
         console.log('📋 Headers:', headers);
         
-        const dataRows = rows.slice(1)
-          .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
-          .map((row: any[], index: number) => {
-            const parseNumber = (value: any): number | null => {
-              if (!value || value === '-' || value === '#N/A') return null;
-              const num = parseFloat(value);
-              return isNaN(num) ? null : num;
-            };
+      // Di dalam loadKinerjaData function, perbaiki bagian mapping:
+      const dataRows = rows.slice(1)
+        .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
+        .map((row: any[], index: number) => {
+          const parseNumber = (value: any): number | null => {
+            if (!value || value === '-' || value === '#N/A') return null;
+            const num = parseFloat(value);
+            return isNaN(num) ? null : num;
+          };
 
-            return {
-              no: parseInt(row[0]) || index + 1,
-              nama: row[1] || "",
-              // Triwulan 1: C-I (indeks 2-8)
-              triwulan1: {
-                kjkJam: parseNumber(row[2]),
-                nilaiKjk: parseNumber(row[3]),
-                ckp: parseNumber(row[4]),
-                nilaiCkp: parseNumber(row[5]),
-                prestasi: parseNumber(row[6]),
-                akhir: parseNumber(row[7]),
-                ranking: parseNumber(row[8])
-              },
-              // Triwulan 2: K-P (indeks 10-15) - skip kolom J (indeks 9)
-              triwulan2: {
-                kjkJam: parseNumber(row[10]),
-                nilaiKjk: parseNumber(row[11]),
-                ckp: parseNumber(row[12]),
-                nilaiCkp: parseNumber(row[13]),
-                prestasi: parseNumber(row[14]),
-                akhir: parseNumber(row[15]),
-                ranking: parseNumber(row[16])
-              },
-              // Triwulan 3: Q-W (indeks 16-22)
-              triwulan3: {
-                kjkJam: parseNumber(row[17]),
-                nilaiKjk: parseNumber(row[18]),
-                ckp: parseNumber(row[19]),
-                nilaiCkp: parseNumber(row[20]),
-                prestasi: parseNumber(row[21]),
-                akhir: parseNumber(row[22]),
-                ranking: parseNumber(row[23])
-              },
-              // Triwulan 4: X-AD (indeks 23-29)
-              triwulan4: {
-                kjkJam: parseNumber(row[24]),
-                nilaiKjk: parseNumber(row[25]),
-                ckp: parseNumber(row[26]),
-                nilaiCkp: parseNumber(row[27]),
-                prestasi: parseNumber(row[28]),
-                akhir: parseNumber(row[29]),
-                ranking: parseNumber(row[30])
-              },
-              // Nilai dan Ranking Akhir: AE-AF (indeks 30-31)
-              nilaiAkhir: parseNumber(row[31]),
-              rankingAkhir: parseNumber(row[32])
-            } as KinerjaData;
-          });
+          return {
+            no: parseInt(row[0]) || index + 1,
+            nama: row[1] || "",
+            // Triwulan 1: C-I (indeks 2-8)
+            triwulan1: {
+              kjkJam: parseNumber(row[2]),
+              nilaiKjk: parseNumber(row[3]),
+              ckp: parseNumber(row[4]),
+              nilaiCkp: parseNumber(row[5]),
+              prestasi: parseNumber(row[6]),
+              akhir: parseNumber(row[7]),
+              ranking: parseNumber(row[8])
+            },
+            // Triwulan 2: K-P (indeks 10-15) - skip kolom J (indeks 9)
+            triwulan2: {
+              kjkJam: parseNumber(row[10]),
+              nilaiKjk: parseNumber(row[11]),
+              ckp: parseNumber(row[12]),
+              nilaiCkp: parseNumber(row[13]),
+              prestasi: parseNumber(row[14]),
+              akhir: parseNumber(row[15]),
+              ranking: parseNumber(row[16])
+            },
+            // Triwulan 3: Q-W (indeks 17-23)
+            triwulan3: {
+              kjkJam: parseNumber(row[17]),
+              nilaiKjk: parseNumber(row[18]),
+              ckp: parseNumber(row[19]),
+              nilaiCkp: parseNumber(row[20]),
+              prestasi: parseNumber(row[21]),
+              akhir: parseNumber(row[22]),
+              ranking: parseNumber(row[23])
+            },
+            // Triwulan 4: X-AD (indeks 24-30)
+            triwulan4: {
+              kjkJam: parseNumber(row[24]),
+              nilaiKjk: parseNumber(row[25]),
+              ckp: parseNumber(row[26]),
+              nilaiCkp: parseNumber(row[27]),
+              prestasi: parseNumber(row[28]),
+              akhir: parseNumber(row[29]),
+              ranking: parseNumber(row[30])
+            },
+            // PERBAIKAN: Nilai dan Ranking Akhir - AE (31) dan AF (32)
+            nilaiAkhir: parseNumber(row[31]),  // Kolom AE
+            rankingAkhir: parseNumber(row[32]) // Kolom AF
+          } as KinerjaData;
+        });
         
         console.log('✅ Mapped data rows:', dataRows);
         setKinerjaData(dataRows);
