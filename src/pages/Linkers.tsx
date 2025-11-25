@@ -33,7 +33,7 @@ export default function Linkers() {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-16 px-6">
+    <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex items-center gap-5">
@@ -51,8 +51,8 @@ export default function Linkers() {
         </div>
       </div>
 
-      {/* Grid Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+      {/* Grid Cards - Optimized for wider screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {linksData.map((link, index) => {
           const Icon = link.icon;
           const accent = accentColors[index % accentColors.length];
@@ -63,51 +63,53 @@ export default function Linkers() {
               key={link.title}
               className="group relative overflow-hidden bg-card/90 backdrop-blur-sm border border-border/50 
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10
-                         transition-all duration-500 hover:-translate-y-3 rounded-2xl cursor-pointer
-                         flex flex-col h-full"
+                         transition-all duration-500 hover:-translate-y-2 rounded-2xl cursor-pointer
+                         flex flex-col h-full min-h-[220px]"
               onClick={() => handleOpenLink(link.url)}
             >
-              {/* Gradient Top Bar — warna-warni */}
+              {/* Gradient Top Bar */}
               <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  {/* Icon background warna-warni */}
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110`}>
-                    <Icon className={`h-7 w-7 ${accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600")}`} />
+              <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
+                <div className="space-y-3 flex-1 min-w-0">
+                  {/* Icon and Title Row */}
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110 flex-shrink-0`}>
+                      <Icon className={`h-6 w-6 ${accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600")}`} />
+                    </div>
+                    <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
+                      {link.title}
+                    </CardTitle>
                   </div>
-                  <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-all duration-300" />
+                  
+                  {/* Description */}
+                  <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                    {link.description}
+                  </CardDescription>
                 </div>
-
-                <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2">
-                  {link.title}
-                </CardTitle>
+                
+                {/* External Link Icon */}
+                <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-all duration-300 flex-shrink-0 mt-1" />
               </CardHeader>
 
-              <CardContent className="flex-1 flex flex-col justify-between">
-                <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                  {link.description}
-                </CardDescription>
-
-                {/* Tombol: tetap primary (merah), tapi dengan gradasi cantik & efek hidup */}
-                <div className="mt-6">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenLink(link.url);
-                    }}
-                    className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/80 
-                               hover:from-primary hover:to-primary/70 hover:brightness-110
-                               text-primary-foreground font-medium text-sm shadow-lg hover:shadow-xl
-                               relative overflow-hidden transition-all duration-300
-                               flex items-center justify-center gap-2 group/btn"
-                  >
-                    <span className="relative z-10">Buka Tautan</span>
-                    <ExternalLink className="h-4 w-4 relative z-10" />
-                    <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
-                                     bg-white/20 transition-transform duration-700" />
-                  </button>
-                </div>
+              <CardContent className="pt-0 mt-auto">
+                {/* Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenLink(link.url);
+                  }}
+                  className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/80 
+                             hover:from-primary hover:to-primary/70 hover:brightness-110
+                             text-primary-foreground font-medium text-sm shadow-lg hover:shadow-xl
+                             relative overflow-hidden transition-all duration-300
+                             flex items-center justify-center gap-2 group/btn"
+                >
+                  <span className="relative z-10">Buka Tautan</span>
+                  <ExternalLink className="h-4 w-4 relative z-10" />
+                  <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
+                                   bg-white/20 transition-transform duration-700" />
+                </button>
               </CardContent>
             </Card>
           );
