@@ -38,7 +38,7 @@ import DownloadSPKBAST from "./pages/spk-bast/DownloadSPKBAST";
 import DownloadRawData from "./pages/DownloadRawData";
 import Pedoman from "./pages/Pedoman";
 import KarierKu from "./pages/KarierKu";
-//import MitraKepka from "./pages/MitraKepka";
+import LKKinerja from "./pages/LK-Kinerja";
 import Linkers from "./pages/Linkers";
 import NotFound from "./pages/NotFound";
 
@@ -58,7 +58,8 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />
-            <Route path="/KarierKu" element={<ProtectedRoute><Layout><KarierKu /></Layout></ProtectedRoute>} />           
+            <Route path="/KarierKu" element={<ProtectedRoute><Layout><KarierKu /></Layout></ProtectedRoute>} />    
+            <Route path="/LKKinerja" element={<ProtectedRoute><Layout><LKKinerja /></Layout></ProtectedRoute>} />          
             <Route path="/Pengadaan" element={<ProtectedRoute><Layout><Pengadaan /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast" element={<ProtectedRoute><Layout><SPKBast /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/buat" element={<ProtectedRoute><Layout><BuatEDokumen /></Layout></ProtectedRoute>} />
