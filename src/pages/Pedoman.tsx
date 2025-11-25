@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Table as TableIcon, Filter, User, Search, X, Eye, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Award, BarChart3 } from "lucide-react";
+import { Table as TableIcon, Filter, User, Search, X, Eye, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Award, BarChart3, Crown, Star, Trophy, Medal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,7 +85,7 @@ export default function LKKinerja() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: `${SHEET_NAME}!A:AG`
+          range: `${SHEET_NAME}!A:AF`
         }
       });
 
@@ -102,83 +102,77 @@ export default function LKKinerja() {
         const headers = rows[0];
         console.log('📋 Headers:', headers);
         
-      // PERBAIKAN MAPPING YANG TEPAT BERDASARKAN STRUKTUR ANDA
-      const dataRows = rows.slice(1)
-        .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
-        .map((row: any[], index: number) => {
-          const parseNumber = (value: any): number | null => {
-            if (!value || value === '-' || value === '#N/A' || value === '') return null;
-            const num = parseFloat(value.toString().replace(',', '.'));
-            return isNaN(num) ? null : num;
-          };
+        const dataRows = rows.slice(1)
+          .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
+          .map((row: any[], index: number) => {
+            const parseNumber = (value: any): number | null => {
+              if (!value || value === '-' || value === '#N/A' || value === '') return null;
+              const num = parseFloat(value.toString().replace(',', '.'));
+              return isNaN(num) ? null : num;
+            };
 
-          console.log(`📝 Processing row ${index + 1}:`, row);
+            console.log(`📝 Processing row ${index + 1}:`, row);
 
-          const kinerjaItem = {
-            no: parseInt(row[0]) || index + 1,
-            nama: row[1] || "",
-            
-            // TRIWULAN 1: Kolom C-I (indeks 2-8)
-            triwulan1: {
-              kjkJam: parseNumber(row[2]),      // C: Kjk (jam) - 30%
-              nilaiKjk: parseNumber(row[3]),    // D: nilai - 30%
-              ckp: parseNumber(row[4]),         // E: CKP - 60%
-              nilaiCkp: parseNumber(row[5]),    // F: nilai - 10%
-              prestasi: parseNumber(row[6]),    // G: prestasi
-              akhir: parseNumber(row[7]),       // H: akhir (100%)
-              ranking: parseNumber(row[8])      // I: ranking
-            },
-            
-            // TRIWULAN 2: Kolom J-P (indeks 9-15)
-            triwulan2: {
-              kjkJam: parseNumber(row[9]),      // J: Kjk (jam) - 30%
-              nilaiKjk: parseNumber(row[10]),   // K: nilai - 30%
-              ckp: parseNumber(row[11]),        // L: CKP - 60%
-              nilaiCkp: parseNumber(row[12]),   // M: nilai - 10%
-              prestasi: parseNumber(row[13]),   // N: prestasi
-              akhir: parseNumber(row[14]),      // O: akhir (100%)
-              ranking: parseNumber(row[15])     // P: ranking
-            },
-            
-            // TRIWULAN 3: Kolom Q-W (indeks 16-22)
-            triwulan3: {
-              kjkJam: parseNumber(row[16]),     // Q: Kjk (jam) - 30%
-              nilaiKjk: parseNumber(row[17]),   // R: nilai - 30%
-              ckp: parseNumber(row[18]),        // S: CKP - 60%
-              nilaiCkp: parseNumber(row[19]),   // T: nilai - 10%
-              prestasi: parseNumber(row[20]),   // U: prestasi
-              akhir: parseNumber(row[21]),      // V: akhir (100%)
-              ranking: parseNumber(row[22])     // W: ranking
-            },
-            
-            // TRIWULAN 4: Kolom X-AD (indeks 23-29)
-            triwulan4: {
-              kjkJam: parseNumber(row[23]),     // X: Kjk (jam) - 30%
-              nilaiKjk: parseNumber(row[24]),   // Y: nilai - 30%
-              ckp: parseNumber(row[25]),        // Z: CKP - 60%
-              nilaiCkp: parseNumber(row[26]),   // AA: nilai - 10%
-              prestasi: parseNumber(row[27]),   // AB: prestasi
-              akhir: parseNumber(row[28]),      // AC: akhir (100%)
-              ranking: parseNumber(row[29])     // AD: ranking
-            },
-            
-            // NILAI DAN RANKING TAHUNAN: Kolom AE-AF (indeks 30-31)
-            nilaiAkhir: parseNumber(row[30]),   // AE: NILAI 2025
-            rankingAkhir: parseNumber(row[31])  // AF: RANKING 2025
-          } as KinerjaData;
+            const kinerjaItem = {
+              no: parseInt(row[0]) || index + 1,
+              nama: row[1] || "",
+              
+              // TRIWULAN 1: Kolom C-I (indeks 2-8)
+              triwulan1: {
+                kjkJam: parseNumber(row[2]),      // C: Kjk (jam) - 30%
+                nilaiKjk: parseNumber(row[3]),    // D: nilai - 30%
+                ckp: parseNumber(row[4]),         // E: CKP - 60%
+                nilaiCkp: parseNumber(row[5]),    // F: nilai - 10%
+                prestasi: parseNumber(row[6]),    // G: prestasi
+                akhir: parseNumber(row[7]),       // H: akhir (100%)
+                ranking: parseNumber(row[8])      // I: ranking
+              },
+              
+              // TRIWULAN 2: Kolom J-P (indeks 9-15)
+              triwulan2: {
+                kjkJam: parseNumber(row[9]),      // J: Kjk (jam) - 30%
+                nilaiKjk: parseNumber(row[10]),   // K: nilai - 30%
+                ckp: parseNumber(row[11]),        // L: CKP - 60%
+                nilaiCkp: parseNumber(row[12]),   // M: nilai - 10%
+                prestasi: parseNumber(row[13]),   // N: prestasi
+                akhir: parseNumber(row[14]),      // O: akhir (100%)
+                ranking: parseNumber(row[15])     // P: ranking
+              },
+              
+              // TRIWULAN 3: Kolom Q-W (indeks 16-22)
+              triwulan3: {
+                kjkJam: parseNumber(row[16]),     // Q: Kjk (jam) - 30%
+                nilaiKjk: parseNumber(row[17]),   // R: nilai - 30%
+                ckp: parseNumber(row[18]),        // S: CKP - 60%
+                nilaiCkp: parseNumber(row[19]),   // T: nilai - 10%
+                prestasi: parseNumber(row[20]),   // U: prestasi
+                akhir: parseNumber(row[21]),      // V: akhir (100%)
+                ranking: parseNumber(row[22])     // W: ranking
+              },
+              
+              // TRIWULAN 4: Kolom X-AD (indeks 23-29)
+              triwulan4: {
+                kjkJam: parseNumber(row[23]),     // X: Kjk (jam) - 30%
+                nilaiKjk: parseNumber(row[24]),   // Y: nilai - 30%
+                ckp: parseNumber(row[25]),        // Z: CKP - 60%
+                nilaiCkp: parseNumber(row[26]),   // AA: nilai - 10%
+                prestasi: parseNumber(row[27]),   // AB: prestasi
+                akhir: parseNumber(row[28]),      // AC: akhir (100%)
+                ranking: parseNumber(row[29])     // AD: ranking
+              },
+              
+              // NILAI DAN RANKING TAHUNAN: Kolom AE-AF (indeks 30-31)
+              nilaiAkhir: parseNumber(row[30]),   // AE: NILAI 2025
+              rankingAkhir: parseNumber(row[31])  // AF: RANKING 2025
+            } as KinerjaData;
 
-          console.log(`✅ Processed data for ${kinerjaItem.nama}:`, kinerjaItem);
-          return kinerjaItem;
-        });
+            console.log(`✅ Processed data for ${kinerjaItem.nama}:`, kinerjaItem);
+            return kinerjaItem;
+          });
         
         console.log('✅ Final mapped data rows:', dataRows);
         setKinerjaData(dataRows);
         setFilteredData(dataRows);
-
-        // Log sample data untuk debugging
-        if (dataRows.length > 0) {
-          console.log('🐛 Sample data for debugging:', dataRows[0]);
-        }
       } else {
         console.log('ℹ️ No data found in spreadsheet');
         setKinerjaData([]);
@@ -200,11 +194,65 @@ export default function LKKinerja() {
     loadKinerjaData();
   }, []);
 
+  // Fungsi untuk mendapatkan pegawai terbaik per triwulan
+  const getPegawaiTerbaikPerTriwulan = () => {
+    const terbaikTriwulan1 = [...kinerjaData]
+      .filter(item => item.triwulan1.ranking === 1)
+      .map(item => ({
+        nama: item.nama,
+        nilai: item.triwulan1.akhir,
+        triwulan: 1
+      }));
+
+    const terbaikTriwulan2 = [...kinerjaData]
+      .filter(item => item.triwulan2.ranking === 1)
+      .map(item => ({
+        nama: item.nama,
+        nilai: item.triwulan2.akhir,
+        triwulan: 2
+      }));
+
+    const terbaikTriwulan3 = [...kinerjaData]
+      .filter(item => item.triwulan3.ranking === 1)
+      .map(item => ({
+        nama: item.nama,
+        nilai: item.triwulan3.akhir,
+        triwulan: 3
+      }));
+
+    const terbaikTriwulan4 = [...kinerjaData]
+      .filter(item => item.triwulan4.ranking === 1)
+      .map(item => ({
+        nama: item.nama,
+        nilai: item.triwulan4.akhir,
+        triwulan: 4
+      }));
+
+    return {
+      triwulan1: terbaikTriwulan1[0] || null,
+      triwulan2: terbaikTriwulan2[0] || null,
+      triwulan3: terbaikTriwulan3[0] || null,
+      triwulan4: terbaikTriwulan4[0] || null
+    };
+  };
+
+  // Fungsi untuk mendapatkan pegawai terbaik tahun 2025
+  const getPegawaiTerbaikTahun = () => {
+    return [...kinerjaData]
+      .filter(item => item.rankingAkhir === 1)
+      .map(item => ({
+        nama: item.nama,
+        nilai: item.nilaiAkhir
+      }))[0] || null;
+  };
+
+  const pegawaiTerbaik = getPegawaiTerbaikPerTriwulan();
+  const pegawaiTerbaikTahun = getPegawaiTerbaikTahun();
+
   // Apply filters and sorting
   useEffect(() => {
     let result = [...kinerjaData];
 
-    // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       result = result.filter(item => 
@@ -212,7 +260,6 @@ export default function LKKinerja() {
       );
     }
 
-    // Apply category filter
     if (filter === 'top10') {
       result = result.filter(item => item.rankingAkhir && item.rankingAkhir <= 10);
     } else if (filter === 'active') {
@@ -224,7 +271,6 @@ export default function LKKinerja() {
       );
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       let aValue: any = a;
       let bValue: any = b;
@@ -298,9 +344,18 @@ export default function LKKinerja() {
     return "text-orange-600";
   };
 
-  // Fungsi untuk mengecek apakah data triwulan memiliki nilai
   const hasTriwulanData = (triwulan: any): boolean => {
     return triwulan.nilaiKjk !== null || triwulan.ckp !== null || triwulan.akhir !== null;
+  };
+
+  const getTriwulanColor = (triwulan: number) => {
+    const colors = {
+      1: "from-green-500 to-green-600",
+      2: "from-blue-500 to-blue-600", 
+      3: "from-orange-500 to-orange-600",
+      4: "from-purple-500 to-purple-600"
+    };
+    return colors[triwulan as keyof typeof colors] || "from-gray-500 to-gray-600";
   };
 
   return (
@@ -320,6 +375,70 @@ export default function LKKinerja() {
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
+      </div>
+
+      {/* Dashboard Pegawai Terbaik */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Pegawai Terbaik Tahun 2025 */}
+        <Card className="lg:col-span-2 bg-gradient-to-br from-yellow-50 to-amber-100 border-amber-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-amber-800">
+              <Trophy className="h-6 w-6" />
+              Pegawai Terbaik 2025
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pegawaiTerbaikTahun ? (
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Crown className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-amber-900">{pegawaiTerbaikTahun.nama}</h3>
+                <p className="text-amber-700 font-semibold">
+                  Nilai: {formatNumber(pegawaiTerbaikTahun.nilai)}
+                </p>
+                <Badge className="mt-2 bg-amber-500 text-white">Ranking #1</Badge>
+              </div>
+            ) : (
+              <div className="text-center text-amber-700 py-4">
+                <p>Data belum tersedia</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pegawai Terbaik Per Triwulan */}
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Medal className="h-5 w-5" />
+              Pegawai Terbaik Per Triwulan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((triwulan) => {
+                const pegawai = pegawaiTerbaik[`triwulan${triwulan}` as keyof typeof pegawaiTerbaik];
+                return (
+                  <div key={triwulan} className={`bg-gradient-to-br ${getTriwulanColor(triwulan)} rounded-lg p-4 text-white text-center`}>
+                    <div className="flex flex-col items-center">
+                      <Star className="h-6 w-6 mb-2" />
+                      <h3 className="font-bold text-sm">Triwulan {triwulan}</h3>
+                      {pegawai ? (
+                        <>
+                          <p className="text-xs font-semibold mt-1 truncate w-full">{pegawai.nama}</p>
+                          <p className="text-xs opacity-90">{formatNumber(pegawai.nilai)}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs opacity-90 mt-1">-</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filter Section */}
@@ -416,6 +535,18 @@ export default function LKKinerja() {
                     <TableHead className="font-semibold text-foreground cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('nama')}>
                       Nama Karyawan
                     </TableHead>
+                    <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan1.akhir')}>
+                      TW 1
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan2.akhir')}>
+                      TW 2
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan3.akhir')}>
+                      TW 3
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan4.akhir')}>
+                      TW 4
+                    </TableHead>
                     <TableHead className="font-semibold text-foreground text-right cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('nilaiAkhir')}>
                       Nilai 2025
                     </TableHead>
@@ -432,6 +563,35 @@ export default function LKKinerja() {
                     <TableRow key={item.no} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium text-center">{item.no}</TableCell>
                       <TableCell className="font-medium">{item.nama}</TableCell>
+                      
+                      {/* Nilai Triwulan 1 */}
+                      <TableCell className="text-center">
+                        <span className={`text-sm font-medium ${getNilaiColor(item.triwulan1.akhir)}`}>
+                          {formatNumber(item.triwulan1.akhir)}
+                        </span>
+                      </TableCell>
+                      
+                      {/* Nilai Triwulan 2 */}
+                      <TableCell className="text-center">
+                        <span className={`text-sm font-medium ${getNilaiColor(item.triwulan2.akhir)}`}>
+                          {formatNumber(item.triwulan2.akhir)}
+                        </span>
+                      </TableCell>
+                      
+                      {/* Nilai Triwulan 3 */}
+                      <TableCell className="text-center">
+                        <span className={`text-sm font-medium ${getNilaiColor(item.triwulan3.akhir)}`}>
+                          {formatNumber(item.triwulan3.akhir)}
+                        </span>
+                      </TableCell>
+                      
+                      {/* Nilai Triwulan 4 */}
+                      <TableCell className="text-center">
+                        <span className={`text-sm font-medium ${getNilaiColor(item.triwulan4.akhir)}`}>
+                          {formatNumber(item.triwulan4.akhir)}
+                        </span>
+                      </TableCell>
+                      
                       <TableCell className={`text-right font-semibold ${getNilaiColor(item.nilaiAkhir)}`}>
                         {formatNumber(item.nilaiAkhir)}
                       </TableCell>
@@ -501,7 +661,7 @@ export default function LKKinerja() {
         </CardContent>
       </Card>
 
-      {/* Detail Modal */}
+      {/* Detail Modal - Tetap sama seperti sebelumnya */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
@@ -540,7 +700,7 @@ export default function LKKinerja() {
                 </div>
               </div>
 
-              {/* Triwulan Sections */}
+              {/* Triwulan Sections - Tetap sama seperti sebelumnya */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Triwulan 1 */}
                 <Card>
