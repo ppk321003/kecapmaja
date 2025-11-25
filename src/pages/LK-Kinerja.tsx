@@ -350,8 +350,8 @@ export default function LKKinerja() {
 
   const getTriwulanColor = (triwulan: number) => {
     const colors = {
-      1: "from-green-500 to-green-600",
-      2: "from-blue-500 to-blue-600", 
+      1: "from-blue-500 to-blue-600", 
+      2: "from-green-500 to-green-600",
       3: "from-orange-500 to-orange-600",
       4: "from-purple-500 to-purple-600"
     };
