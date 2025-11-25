@@ -35,7 +35,7 @@ export default function Linkers() {
   return (
     <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
+      <div className="max-w-[2400px] mx-auto mb-8">
         <div className="flex items-center gap-5">
           <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5">
             <Link2 className="h-9 w-9 text-primary" />
@@ -51,8 +51,8 @@ export default function Linkers() {
         </div>
       </div>
 
-      {/* Grid Cards - Optimized for wider screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+      {/* Grid Cards - Optimized for ultra-wide screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 gap-6 max-w-[2400px] mx-auto">
         {linksData.map((link, index) => {
           const Icon = link.icon;
           const accent = accentColors[index % accentColors.length];
@@ -64,49 +64,49 @@ export default function Linkers() {
               className="group relative overflow-hidden bg-card/90 backdrop-blur-sm border border-border/50 
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10
                          transition-all duration-500 hover:-translate-y-2 rounded-2xl cursor-pointer
-                         flex flex-col h-full min-h-[220px]"
+                         flex flex-col h-full min-h-[180px]"
               onClick={() => handleOpenLink(link.url)}
             >
               {/* Gradient Top Bar */}
               <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-              <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
-                <div className="space-y-3 flex-1 min-w-0">
+              <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0 flex-1">
+                <div className="space-y-2 flex-1 min-w-0">
                   {/* Icon and Title Row */}
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110 flex-shrink-0`}>
-                      <Icon className={`h-6 w-6 ${accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600")}`} />
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110 flex-shrink-0 mt-0.5`}>
+                      <Icon className={`h-5 w-5 ${accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600")}`} />
                     </div>
-                    <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2 flex-1 min-w-0">
-                      {link.title}
-                    </CardTitle>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2">
+                        {link.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mt-1.5">
+                        {link.description}
+                      </CardDescription>
+                    </div>
                   </div>
-                  
-                  {/* Description */}
-                  <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                    {link.description}
-                  </CardDescription>
                 </div>
                 
                 {/* External Link Icon */}
-                <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-all duration-300 flex-shrink-0 mt-1" />
+                <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-all duration-300 flex-shrink-0 mt-1" />
               </CardHeader>
 
-              <CardContent className="pt-0 mt-auto">
+              <CardContent className="pt-0 pb-3">
                 {/* Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleOpenLink(link.url);
                   }}
-                  className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-primary/80 
+                  className="w-full h-10 rounded-lg bg-gradient-to-r from-primary to-primary/80 
                              hover:from-primary hover:to-primary/70 hover:brightness-110
                              text-primary-foreground font-medium text-sm shadow-lg hover:shadow-xl
                              relative overflow-hidden transition-all duration-300
                              flex items-center justify-center gap-2 group/btn"
                 >
                   <span className="relative z-10">Buka Tautan</span>
-                  <ExternalLink className="h-4 w-4 relative z-10" />
+                  <ExternalLink className="h-3 w-3 relative z-10" />
                   <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full 
                                    bg-white/20 transition-transform duration-700" />
                 </button>
