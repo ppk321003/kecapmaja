@@ -100,8 +100,9 @@ export default function LKKinerja() {
         const headers = rows[0];
         console.log('📋 Headers:', headers);
         
-        const dataRows = rows.slice(1)
-          .filter((row: any[]) => row && row.length > 1 && row[1] && row[1].trim() !== "") // Filter hanya yang ada nama di kolom B
+        // Skip baris pertama (kepala kantor) dan hanya ambil data yang memiliki nama di kolom B
+        const dataRows = rows.slice(2) // Skip header dan baris pertama (kepala kantor)
+          .filter((row: any[]) => row && row.length > 1 && row[1] && row[1].trim() !== "")
           .map((row: any[], index: number) => {
             const parseNumber = (value: any): number | null => {
               if (!value || value === '-' || value === '#N/A' || value === '') return null;
@@ -192,34 +193,36 @@ export default function LKKinerja() {
     loadKinerjaData();
   }, []);
 
-  // Fungsi untuk mendapatkan pegawai terbaik per triwulan
+  // Fungsi untuk mendapatkan pegawai terbaik per triwulan (tidak termasuk kepala kantor)
   const getPegawaiTerbaikPerTriwulan = () => {
-    const terbaikTriwulan1 = [...kinerjaData]
-      .filter(item => item.triwulan1.ranking === 1 && item.triwulan1.akhir !== 30) // Exclude nilai 30
+    const dataKaryawan = kinerjaData; // Sudah tidak termasuk kepala kantor
+
+    const terbaikTriwulan1 = [...dataKaryawan]
+      .filter(item => item.triwulan1.ranking === 1 && item.triwulan1.akhir !== 30)
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan1.akhir,
         triwulan: 1
       }));
 
-    const terbaikTriwulan2 = [...kinerjaData]
-      .filter(item => item.triwulan2.ranking === 1 && item.triwulan2.akhir !== 30) // Exclude nilai 30
+    const terbaikTriwulan2 = [...dataKaryawan]
+      .filter(item => item.triwulan2.ranking === 1 && item.triwulan2.akhir !== 30)
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan2.akhir,
         triwulan: 2
       }));
 
-    const terbaikTriwulan3 = [...kinerjaData]
-      .filter(item => item.triwulan3.ranking === 1 && item.triwulan3.akhir !== 30) // Exclude nilai 30
+    const terbaikTriwulan3 = [...dataKaryawan]
+      .filter(item => item.triwulan3.ranking === 1 && item.triwulan3.akhir !== 30)
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan3.akhir,
         triwulan: 3
       }));
 
-    const terbaikTriwulan4 = [...kinerjaData]
-      .filter(item => item.triwulan4.ranking === 1 && item.triwulan4.akhir !== 30) // Exclude nilai 30
+    const terbaikTriwulan4 = [...dataKaryawan]
+      .filter(item => item.triwulan4.ranking === 1 && item.triwulan4.akhir !== 30)
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan4.akhir,
@@ -234,10 +237,10 @@ export default function LKKinerja() {
     };
   };
 
-  // Fungsi untuk mendapatkan pegawai terbaik tahun 2025
+  // Fungsi untuk mendapatkan pegawai terbaik tahun 2025 (tidak termasuk kepala kantor)
   const getPegawaiTerbaikTahun = () => {
     return [...kinerjaData]
-      .filter(item => item.rankingAkhir === 1 && item.nilaiAkhir !== 30) // Exclude nilai 30
+      .filter(item => item.rankingAkhir === 1 && item.nilaiAkhir !== 30)
       .map(item => ({
         nama: item.nama,
         nilai: item.nilaiAkhir
@@ -311,7 +314,6 @@ export default function LKKinerja() {
 
   const formatNumber = (value: number | null): string => {
     if (value === null) return '-';
-    // Jika nilai = 30, tampilkan sebagai "-" (belum diinput)
     if (value === 30) return '-';
     return value % 1 === 0 ? value.toString() : value.toFixed(2);
   };
@@ -517,32 +519,28 @@ export default function LKKinerja() {
                   {currentItems.map((item, index) => (
                     <TableRow key={item.no} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium text-center">
-                        {indexOfFirstItem + index + 1} {/* Nomor urut berdasarkan pagination */}
+                        {indexOfFirstItem + index + 1}
                       </TableCell>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       
-                      {/* Nilai Triwulan 1 */}
                       <TableCell className="text-center">
                         <span className={`text-sm font-medium ${getNilaiColor(item.triwulan1.akhir)}`}>
                           {formatNumber(item.triwulan1.akhir)}
                         </span>
                       </TableCell>
                       
-                      {/* Nilai Triwulan 2 */}
                       <TableCell className="text-center">
                         <span className={`text-sm font-medium ${getNilaiColor(item.triwulan2.akhir)}`}>
                           {formatNumber(item.triwulan2.akhir)}
                         </span>
                       </TableCell>
                       
-                      {/* Nilai Triwulan 3 */}
                       <TableCell className="text-center">
                         <span className={`text-sm font-medium ${getNilaiColor(item.triwulan3.akhir)}`}>
                           {formatNumber(item.triwulan3.akhir)}
                         </span>
                       </TableCell>
                       
-                      {/* Nilai Triwulan 4 */}
                       <TableCell className="text-center">
                         <span className={`text-sm font-medium ${getNilaiColor(item.triwulan4.akhir)}`}>
                           {formatNumber(item.triwulan4.akhir)}
@@ -618,7 +616,7 @@ export default function LKKinerja() {
         </CardContent>
       </Card>
 
-      {/* Detail Modal - Tetap sama seperti sebelumnya */}
+      {/* Detail Modal */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-t-lg p-6 -m-6 mb-6">
