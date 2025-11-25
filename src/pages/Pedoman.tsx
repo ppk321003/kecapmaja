@@ -4,11 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Table as TableIcon, Filter, User, Search, X, Eye, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Award, BarChart3, Crown, Star, Trophy, Medal } from "lucide-react";
+import { Table as TableIcon, User, Search, Eye, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Award, BarChart3, Crown, Star, Trophy, Medal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,7 +68,6 @@ export default function LKKinerja() {
     key: 'rankingAkhir',
     direction: 'asc'
   });
-  const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(15);
@@ -103,7 +101,7 @@ export default function LKKinerja() {
         console.log('📋 Headers:', headers);
         
         const dataRows = rows.slice(1)
-          .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
+          .filter((row: any[]) => row && row.length > 1 && row[1] && row[1].trim() !== "") // Filter hanya yang ada nama di kolom B
           .map((row: any[], index: number) => {
             const parseNumber = (value: any): number | null => {
               if (!value || value === '-' || value === '#N/A' || value === '') return null;
@@ -114,7 +112,7 @@ export default function LKKinerja() {
             console.log(`📝 Processing row ${index + 1}:`, row);
 
             const kinerjaItem = {
-              no: parseInt(row[0]) || index + 1,
+              no: index + 1, // Nomor urut berdasarkan index, bukan dari spreadsheet
               nama: row[1] || "",
               
               // TRIWULAN 1: Kolom C-I (indeks 2-8)
@@ -197,7 +195,7 @@ export default function LKKinerja() {
   // Fungsi untuk mendapatkan pegawai terbaik per triwulan
   const getPegawaiTerbaikPerTriwulan = () => {
     const terbaikTriwulan1 = [...kinerjaData]
-      .filter(item => item.triwulan1.ranking === 1)
+      .filter(item => item.triwulan1.ranking === 1 && item.triwulan1.akhir !== 30) // Exclude nilai 30
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan1.akhir,
@@ -205,7 +203,7 @@ export default function LKKinerja() {
       }));
 
     const terbaikTriwulan2 = [...kinerjaData]
-      .filter(item => item.triwulan2.ranking === 1)
+      .filter(item => item.triwulan2.ranking === 1 && item.triwulan2.akhir !== 30) // Exclude nilai 30
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan2.akhir,
@@ -213,7 +211,7 @@ export default function LKKinerja() {
       }));
 
     const terbaikTriwulan3 = [...kinerjaData]
-      .filter(item => item.triwulan3.ranking === 1)
+      .filter(item => item.triwulan3.ranking === 1 && item.triwulan3.akhir !== 30) // Exclude nilai 30
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan3.akhir,
@@ -221,7 +219,7 @@ export default function LKKinerja() {
       }));
 
     const terbaikTriwulan4 = [...kinerjaData]
-      .filter(item => item.triwulan4.ranking === 1)
+      .filter(item => item.triwulan4.ranking === 1 && item.triwulan4.akhir !== 30) // Exclude nilai 30
       .map(item => ({
         nama: item.nama,
         nilai: item.triwulan4.akhir,
@@ -239,7 +237,7 @@ export default function LKKinerja() {
   // Fungsi untuk mendapatkan pegawai terbaik tahun 2025
   const getPegawaiTerbaikTahun = () => {
     return [...kinerjaData]
-      .filter(item => item.rankingAkhir === 1)
+      .filter(item => item.rankingAkhir === 1 && item.nilaiAkhir !== 30) // Exclude nilai 30
       .map(item => ({
         nama: item.nama,
         nilai: item.nilaiAkhir
@@ -249,7 +247,7 @@ export default function LKKinerja() {
   const pegawaiTerbaik = getPegawaiTerbaikPerTriwulan();
   const pegawaiTerbaikTahun = getPegawaiTerbaikTahun();
 
-  // Apply filters and sorting
+  // Apply search filter
   useEffect(() => {
     let result = [...kinerjaData];
 
@@ -260,17 +258,7 @@ export default function LKKinerja() {
       );
     }
 
-    if (filter === 'top10') {
-      result = result.filter(item => item.rankingAkhir && item.rankingAkhir <= 10);
-    } else if (filter === 'active') {
-      result = result.filter(item => 
-        item.triwulan1.akhir !== null || 
-        item.triwulan2.akhir !== null || 
-        item.triwulan3.akhir !== null || 
-        item.triwulan4.akhir !== null
-      );
-    }
-
+    // Apply sorting
     result.sort((a, b) => {
       let aValue: any = a;
       let bValue: any = b;
@@ -295,17 +283,13 @@ export default function LKKinerja() {
 
     setFilteredData(result);
     setCurrentPage(1);
-  }, [kinerjaData, sortConfig, filter, searchTerm]);
+  }, [kinerjaData, sortConfig, searchTerm]);
 
   const handleSort = (key: string) => {
     setSortConfig({
       key,
       direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc'
     });
-  };
-
-  const handleFilter = (type: string) => {
-    setFilter(type);
   };
 
   const viewData = (data: KinerjaData) => {
@@ -327,6 +311,8 @@ export default function LKKinerja() {
 
   const formatNumber = (value: number | null): string => {
     if (value === null) return '-';
+    // Jika nilai = 30, tampilkan sebagai "-" (belum diinput)
+    if (value === 30) return '-';
     return value % 1 === 0 ? value.toString() : value.toFixed(2);
   };
 
@@ -338,14 +324,16 @@ export default function LKKinerja() {
   };
 
   const getNilaiColor = (nilai: number | null) => {
-    if (nilai === null) return "text-gray-500";
+    if (nilai === null || nilai === 30) return "text-gray-500";
     if (nilai >= 85) return "text-green-600 font-semibold";
     if (nilai >= 70) return "text-blue-600";
     return "text-orange-600";
   };
 
   const hasTriwulanData = (triwulan: any): boolean => {
-    return triwulan.nilaiKjk !== null || triwulan.ckp !== null || triwulan.akhir !== null;
+    return triwulan.nilaiKjk !== null && triwulan.nilaiKjk !== 30 || 
+           triwulan.ckp !== null && triwulan.ckp !== 30 || 
+           triwulan.akhir !== null && triwulan.akhir !== 30;
   };
 
   const getTriwulanColor = (triwulan: number) => {
@@ -441,32 +429,17 @@ export default function LKKinerja() {
         </Card>
       </div>
 
-      {/* Filter Section */}
+      {/* Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filter Data
+            <Search className="h-5 w-5" />
+            Cari Karyawan
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Kategori</Label>
-              <Select value={filter} onValueChange={handleFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua Data" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Data</SelectItem>
-                  <SelectItem value="top10">Top 10 Ranking</SelectItem>
-                  <SelectItem value="active">Triwulan Aktif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2 md:col-span-2">
-              <Label>Cari Karyawan</Label>
+          <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+            <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input 
@@ -478,28 +451,10 @@ export default function LKKinerja() {
               </div>
             </div>
             
-            <div className="space-y-2 flex items-end">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="w-4 h-4" />
-                <span>Total: {filteredData.length} karyawan</span>
-              </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="w-4 h-4" />
+              <span>Total: {filteredData.length} karyawan</span>
             </div>
-          </div>
-
-          <div className="flex justify-end mt-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setFilter('all');
-                setSearchTerm("");
-                setCurrentPage(1);
-              }}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reset Filter
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -559,9 +514,11 @@ export default function LKKinerja() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentItems.map((item) => (
+                  {currentItems.map((item, index) => (
                     <TableRow key={item.no} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium text-center">{item.no}</TableCell>
+                      <TableCell className="font-medium text-center">
+                        {indexOfFirstItem + index + 1} {/* Nomor urut berdasarkan pagination */}
+                      </TableCell>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       
                       {/* Nilai Triwulan 1 */}
@@ -596,7 +553,7 @@ export default function LKKinerja() {
                         {formatNumber(item.nilaiAkhir)}
                       </TableCell>
                       <TableCell className="text-center">
-                        {item.rankingAkhir ? (
+                        {item.rankingAkhir && item.nilaiAkhir !== 30 ? (
                           <Badge variant="outline" className={`${getRankingColor(item.rankingAkhir)} border text-xs px-2 py-1`}>
                             #{item.rankingAkhir}
                           </Badge>
@@ -695,232 +652,83 @@ export default function LKKinerja() {
                 <div className="text-center">
                   <div className="text-sm text-blue-600 font-semibold">Ranking 2025</div>
                   <div className="text-xl font-bold text-blue-800">
-                    {selectedKaryawan.rankingAkhir ? `#${selectedKaryawan.rankingAkhir}` : '-'}
+                    {selectedKaryawan.rankingAkhir && selectedKaryawan.nilaiAkhir !== 30 ? `#${selectedKaryawan.rankingAkhir}` : '-'}
                   </div>
                 </div>
               </div>
 
-              {/* Triwulan Sections - Tetap sama seperti sebelumnya */}
+              {/* Triwulan Sections */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Triwulan 1 */}
-                <Card>
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
-                    <CardTitle className="text-green-800 flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Triwulan 1
-                      {!hasTriwulanData(selectedKaryawan.triwulan1) && (
-                        <Badge variant="outline" className="ml-2 bg-gray-100 text-gray-600">
-                          Data Kosong
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Kjk (Jam):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan1.kjkJam)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (30%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan1.nilaiKjk)}`}>
-                          {formatNumber(selectedKaryawan.triwulan1.nilaiKjk)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">CKP (60%):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan1.ckp)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (10%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan1.nilaiCkp)}`}>
-                          {formatNumber(selectedKaryawan.triwulan1.nilaiCkp)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Prestasi:</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan1.prestasi)}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-bold">Akhir (100%):</span>
-                        <span className={`text-sm font-bold ${getNilaiColor(selectedKaryawan.triwulan1.akhir)}`}>
-                          {formatNumber(selectedKaryawan.triwulan1.akhir)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Ranking:</span>
-                        <Badge variant="outline" className={getRankingColor(selectedKaryawan.triwulan1.ranking)}>
-                          {selectedKaryawan.triwulan1.ranking ? `#${selectedKaryawan.triwulan1.ranking}` : '-'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Triwulan 2 */}
-                <Card>
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b">
-                    <CardTitle className="text-blue-800 flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Triwulan 2
-                      {!hasTriwulanData(selectedKaryawan.triwulan2) && (
-                        <Badge variant="outline" className="ml-2 bg-gray-100 text-gray-600">
-                          Data Kosong
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Kjk (Jam):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan2.kjkJam)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (30%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan2.nilaiKjk)}`}>
-                          {formatNumber(selectedKaryawan.triwulan2.nilaiKjk)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">CKP (60%):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan2.ckp)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (10%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan2.nilaiCkp)}`}>
-                          {formatNumber(selectedKaryawan.triwulan2.nilaiCkp)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Prestasi:</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan2.prestasi)}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-bold">Akhir (100%):</span>
-                        <span className={`text-sm font-bold ${getNilaiColor(selectedKaryawan.triwulan2.akhir)}`}>
-                          {formatNumber(selectedKaryawan.triwulan2.akhir)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Ranking:</span>
-                        <Badge variant="outline" className={getRankingColor(selectedKaryawan.triwulan2.ranking)}>
-                          {selectedKaryawan.triwulan2.ranking ? `#${selectedKaryawan.triwulan2.ranking}` : '-'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Triwulan 3 */}
-                <Card>
-                  <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100 border-b">
-                    <CardTitle className="text-orange-800 flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Triwulan 3
-                      {!hasTriwulanData(selectedKaryawan.triwulan3) && (
-                        <Badge variant="outline" className="ml-2 bg-gray-100 text-gray-600">
-                          Data Kosong
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Kjk (Jam):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan3.kjkJam)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (30%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan3.nilaiKjk)}`}>
-                          {formatNumber(selectedKaryawan.triwulan3.nilaiKjk)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">CKP (60%):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan3.ckp)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (10%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan3.nilaiCkp)}`}>
-                          {formatNumber(selectedKaryawan.triwulan3.nilaiCkp)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Prestasi:</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan3.prestasi)}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-bold">Akhir (100%):</span>
-                        <span className={`text-sm font-bold ${getNilaiColor(selectedKaryawan.triwulan3.akhir)}`}>
-                          {formatNumber(selectedKaryawan.triwulan3.akhir)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Ranking:</span>
-                        <Badge variant="outline" className={getRankingColor(selectedKaryawan.triwulan3.ranking)}>
-                          {selectedKaryawan.triwulan3.ranking ? `#${selectedKaryawan.triwulan3.ranking}` : '-'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Triwulan 4 */}
-                <Card>
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b">
-                    <CardTitle className="text-purple-800 flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Triwulan 4
-                      {!hasTriwulanData(selectedKaryawan.triwulan4) && (
-                        <Badge variant="outline" className="ml-2 bg-gray-100 text-gray-600">
-                          Data Kosong
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Kjk (Jam):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan4.kjkJam)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (30%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan4.nilaiKjk)}`}>
-                          {formatNumber(selectedKaryawan.triwulan4.nilaiKjk)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">CKP (60%):</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan4.ckp)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Nilai (10%):</span>
-                        <span className={`text-sm font-semibold ${getNilaiColor(selectedKaryawan.triwulan4.nilaiCkp)}`}>
-                          {formatNumber(selectedKaryawan.triwulan4.nilaiCkp)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Prestasi:</span>
-                        <span className="text-sm font-semibold">{formatNumber(selectedKaryawan.triwulan4.prestasi)}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-bold">Akhir (100%):</span>
-                        <span className={`text-sm font-bold ${getNilaiColor(selectedKaryawan.triwulan4.akhir)}`}>
-                          {formatNumber(selectedKaryawan.triwulan4.akhir)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Ranking:</span>
-                        <Badge variant="outline" className={getRankingColor(selectedKaryawan.triwulan4.ranking)}>
-                          {selectedKaryawan.triwulan4.ranking ? `#${selectedKaryawan.triwulan4.ranking}` : '-'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                {[1, 2, 3, 4].map((triwulan) => {
+                  const data = selectedKaryawan[`triwulan${triwulan}` as keyof KinerjaData] as any;
+                  const hasData = hasTriwulanData(data);
+                  
+                  return (
+                    <Card key={triwulan}>
+                      <CardHeader className={`bg-gradient-to-r ${
+                        triwulan === 1 ? 'from-green-50 to-green-100' :
+                        triwulan === 2 ? 'from-blue-50 to-blue-100' :
+                        triwulan === 3 ? 'from-orange-50 to-orange-100' :
+                        'from-purple-50 to-purple-100'
+                      } border-b`}>
+                        <CardTitle className={`flex items-center gap-2 ${
+                          triwulan === 1 ? 'text-green-800' :
+                          triwulan === 2 ? 'text-blue-800' :
+                          triwulan === 3 ? 'text-orange-800' :
+                          'text-purple-800'
+                        }`}>
+                          <Award className="h-5 w-5" />
+                          Triwulan {triwulan}
+                          {!hasData && (
+                            <Badge variant="outline" className="ml-2 bg-gray-100 text-gray-600">
+                              Belum Diinput
+                            </Badge>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-4">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Kjk (Jam):</span>
+                            <span className="text-sm font-semibold">{formatNumber(data.kjkJam)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Nilai (30%):</span>
+                            <span className={`text-sm font-semibold ${getNilaiColor(data.nilaiKjk)}`}>
+                              {formatNumber(data.nilaiKjk)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">CKP (60%):</span>
+                            <span className="text-sm font-semibold">{formatNumber(data.ckp)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Nilai (10%):</span>
+                            <span className={`text-sm font-semibold ${getNilaiColor(data.nilaiCkp)}`}>
+                              {formatNumber(data.nilaiCkp)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Prestasi:</span>
+                            <span className="text-sm font-semibold">{formatNumber(data.prestasi)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t pt-2">
+                            <span className="text-sm font-bold">Akhir (100%):</span>
+                            <span className={`text-sm font-bold ${getNilaiColor(data.akhir)}`}>
+                              {formatNumber(data.akhir)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Ranking:</span>
+                            <Badge variant="outline" className={getRankingColor(data.ranking)}>
+                              {data.ranking && data.akhir !== 30 ? `#${data.ranking}` : '-'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
