@@ -38,8 +38,9 @@ export default function BuatEDokumen() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-16 px-6">
-      <div className="text-center mb-10">
+    <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
+      {/* Header */}
+      <div className="text-center mb-10 max-w-[2400px] mx-auto">
         <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
           Buat e-Dokumen
         </h1>
@@ -48,7 +49,8 @@ export default function BuatEDokumen() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7 max-w-7xl mx-auto">
+      {/* Grid Cards - Optimized for wide screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6 max-w-[2400px] mx-auto">
         {eDokumenMenuItems.map((item, index) => {
           const Icon = item.icon;
           const accent = accentColors[index % accentColors.length];
@@ -60,41 +62,46 @@ export default function BuatEDokumen() {
               key={item.title}
               className="group relative overflow-hidden bg-card/95 backdrop-blur-sm border border-border/60 
                          hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 
-                         transition-all duration-500 hover:-translate-y-3 rounded-2xl h-full flex flex-col"
+                         transition-all duration-500 hover:-translate-y-2 rounded-2xl h-full flex flex-col min-h-[220px]"
             >
               {/* Top bar warna-warni */}
               <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-              <CardHeader className="pb-4">
-                <div className="flex items-start gap-4">
-                  {/* Icon background warna-warni */}
-                  <div className={`p-3.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110`}>
-                    <Icon className={`h-8 w-8 ${iconColor}`} />
+              <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0 flex-1">
+                <div className="space-y-3 flex-1 min-w-0">
+                  {/* Icon and Title Row */}
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110 flex-shrink-0 mt-0.5`}>
+                      <Icon className={`h-6 w-6 ${iconColor}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2">
+                        {item.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mt-2">
+                        {item.description}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <CardTitle className="text-lg font-semibold text-foreground leading-tight pt-1">
-                    {item.title}
-                  </CardTitle>
                 </div>
-                <CardDescription className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                  {item.description}
-                </CardDescription>
               </CardHeader>
 
-              {/* Tombol: SELALU primary (merah) + gradasi halus — SAMA PERSIS seperti di Linkers */}
-              <CardContent className="mt-auto pt-6 pb-1">
+              {/* Tombol: SELALU primary (merah) + gradasi halus */}
+              <CardContent className="pt-0 pb-4">
                 <Button
                   onClick={() => navigate(item.url)}
-                  className="w-full h-12 text-base font-semibold
+                  className="w-full h-11 text-sm font-semibold
                              bg-gradient-to-r from-primary to-primary/80
                              hover:from-primary hover:to-primary/70 hover:brightness-110
                              text-primary-foreground
                              shadow-lg hover:shadow-xl hover:shadow-primary/25
                              relative overflow-hidden
-                             transition-all duration-300 group-hover:scale-105"
+                             transition-all duration-300 group-hover:scale-105
+                             flex items-center justify-center gap-2 group/btn"
                   size="lg"
                 >
                   <span className="relative z-10">Buat Dokumen</span>
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-white/20 transition-transform duration-700" />
+                  <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full bg-white/20 transition-transform duration-700" />
                 </Button>
               </CardContent>
             </Card>
