@@ -102,74 +102,74 @@ export default function LKKinerja() {
         const headers = rows[0];
         console.log('📋 Headers:', headers);
         
-        const dataRows = rows.slice(1)
-          .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
-          .map((row: any[], index: number) => {
-            const parseNumber = (value: any): number | null => {
-              if (!value || value === '-' || value === '#N/A' || value === '') return null;
-              const num = parseFloat(value.toString().replace(',', '.'));
-              return isNaN(num) ? null : num;
-            };
+      // PERBAIKAN MAPPING YANG TEPAT BERDASARKAN STRUKTUR ANDA
+      const dataRows = rows.slice(1)
+        .filter((row: any[]) => row && row.length > 0 && row[0] !== "" && !isNaN(parseInt(row[0])))
+        .map((row: any[], index: number) => {
+          const parseNumber = (value: any): number | null => {
+            if (!value || value === '-' || value === '#N/A' || value === '') return null;
+            const num = parseFloat(value.toString().replace(',', '.'));
+            return isNaN(num) ? null : num;
+          };
 
-            console.log(`📝 Processing row ${index + 1}:`, row);
+          console.log(`📝 Processing row ${index + 1}:`, row);
 
-            // PERBAIKAN MAPPING KOLOM YANG TEPAT
-            const kinerjaItem = {
-              no: parseInt(row[0]) || index + 1,
-              nama: row[1] || "",
-              
-              // TRIWULAN 1: Kolom C-I (indeks 2-8)
-              triwulan1: {
-                kjkJam: parseNumber(row[2]),      // C: Kjk (jam)
-                nilaiKjk: parseNumber(row[3]),    // D: nilai (30%)
-                ckp: parseNumber(row[4]),         // E: CKP (60%)
-                nilaiCkp: parseNumber(row[5]),    // F: nilai (10%)
-                prestasi: parseNumber(row[6]),    // G: prestasi
-                akhir: parseNumber(row[7]),       // H: akhir (100%)
-                ranking: parseNumber(row[8])      // I: ranking
-              },
-              
-              // TRIWULAN 2: Kolom K-Q (indeks 10-16) - skip J (9)
-              triwulan2: {
-                kjkJam: parseNumber(row[10]),     // K: Kjk (jam)
-                nilaiKjk: parseNumber(row[11]),   // L: nilai (30%)
-                ckp: parseNumber(row[12]),        // M: CKP (60%)
-                nilaiCkp: parseNumber(row[13]),   // N: nilai (10%)
-                prestasi: parseNumber(row[14]),   // O: prestasi
-                akhir: parseNumber(row[15]),      // P: akhir (100%)
-                ranking: parseNumber(row[16])     // Q: ranking
-              },
-              
-              // TRIWULAN 3: Kolom R-X (indeks 17-23)
-              triwulan3: {
-                kjkJam: parseNumber(row[17]),     // R: Kjk (jam)
-                nilaiKjk: parseNumber(row[18]),   // S: nilai (30%)
-                ckp: parseNumber(row[19]),        // T: CKP (60%)
-                nilaiCkp: parseNumber(row[20]),   // U: nilai (10%)
-                prestasi: parseNumber(row[21]),   // V: prestasi
-                akhir: parseNumber(row[22]),      // W: akhir (100%)
-                ranking: parseNumber(row[23])     // X: ranking
-              },
-              
-              // TRIWULAN 4: Kolom Y-AE (indeks 24-30)
-              triwulan4: {
-                kjkJam: parseNumber(row[24]),     // Y: Kjk (jam)
-                nilaiKjk: parseNumber(row[25]),   // Z: nilai (30%)
-                ckp: parseNumber(row[26]),        // AA: CKP (60%)
-                nilaiCkp: parseNumber(row[27]),   // AB: nilai (10%)
-                prestasi: parseNumber(row[28]),   // AC: prestasi
-                akhir: parseNumber(row[29]),      // AD: akhir (100%)
-                ranking: parseNumber(row[30])     // AE: ranking
-              },
-              
-              // NILAI DAN RANKING TAHUNAN: Kolom AF-AG (indeks 31-32)
-              nilaiAkhir: parseNumber(row[31]),   // AF: NILAI 2025
-              rankingAkhir: parseNumber(row[32])  // AG: RANKING 2025
-            } as KinerjaData;
+          const kinerjaItem = {
+            no: parseInt(row[0]) || index + 1,
+            nama: row[1] || "",
+            
+            // TRIWULAN 1: Kolom C-I (indeks 2-8)
+            triwulan1: {
+              kjkJam: parseNumber(row[2]),      // C: Kjk (jam) - 30%
+              nilaiKjk: parseNumber(row[3]),    // D: nilai - 30%
+              ckp: parseNumber(row[4]),         // E: CKP - 60%
+              nilaiCkp: parseNumber(row[5]),    // F: nilai - 10%
+              prestasi: parseNumber(row[6]),    // G: prestasi
+              akhir: parseNumber(row[7]),       // H: akhir (100%)
+              ranking: parseNumber(row[8])      // I: ranking
+            },
+            
+            // TRIWULAN 2: Kolom J-P (indeks 9-15)
+            triwulan2: {
+              kjkJam: parseNumber(row[9]),      // J: Kjk (jam) - 30%
+              nilaiKjk: parseNumber(row[10]),   // K: nilai - 30%
+              ckp: parseNumber(row[11]),        // L: CKP - 60%
+              nilaiCkp: parseNumber(row[12]),   // M: nilai - 10%
+              prestasi: parseNumber(row[13]),   // N: prestasi
+              akhir: parseNumber(row[14]),      // O: akhir (100%)
+              ranking: parseNumber(row[15])     // P: ranking
+            },
+            
+            // TRIWULAN 3: Kolom Q-W (indeks 16-22)
+            triwulan3: {
+              kjkJam: parseNumber(row[16]),     // Q: Kjk (jam) - 30%
+              nilaiKjk: parseNumber(row[17]),   // R: nilai - 30%
+              ckp: parseNumber(row[18]),        // S: CKP - 60%
+              nilaiCkp: parseNumber(row[19]),   // T: nilai - 10%
+              prestasi: parseNumber(row[20]),   // U: prestasi
+              akhir: parseNumber(row[21]),      // V: akhir (100%)
+              ranking: parseNumber(row[22])     // W: ranking
+            },
+            
+            // TRIWULAN 4: Kolom X-AD (indeks 23-29)
+            triwulan4: {
+              kjkJam: parseNumber(row[23]),     // X: Kjk (jam) - 30%
+              nilaiKjk: parseNumber(row[24]),   // Y: nilai - 30%
+              ckp: parseNumber(row[25]),        // Z: CKP - 60%
+              nilaiCkp: parseNumber(row[26]),   // AA: nilai - 10%
+              prestasi: parseNumber(row[27]),   // AB: prestasi
+              akhir: parseNumber(row[28]),      // AC: akhir (100%)
+              ranking: parseNumber(row[29])     // AD: ranking
+            },
+            
+            // NILAI DAN RANKING TAHUNAN: Kolom AE-AF (indeks 30-31)
+            nilaiAkhir: parseNumber(row[30]),   // AE: NILAI 2025
+            rankingAkhir: parseNumber(row[31])  // AF: RANKING 2025
+          } as KinerjaData;
 
-            console.log(`✅ Processed data for ${kinerjaItem.nama}:`, kinerjaItem);
-            return kinerjaItem;
-          });
+          console.log(`✅ Processed data for ${kinerjaItem.nama}:`, kinerjaItem);
+          return kinerjaItem;
+        });
         
         console.log('✅ Final mapped data rows:', dataRows);
         setKinerjaData(dataRows);
