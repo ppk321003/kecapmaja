@@ -410,8 +410,8 @@ export default function LKKinerja() {
         {/* Pegawai Terbaik Per Triwulan */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Medal className="h-5 w-5" />
+            <CardTitle className="text-center flex items-center gap-2">
+              <Medal className="h-5 w-5"  />
               Pegawai Terbaik Per Triwulan
             </CardTitle>
           </CardHeader>
