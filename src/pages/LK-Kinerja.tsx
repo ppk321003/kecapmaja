@@ -503,16 +503,16 @@ export default function LKKinerja() {
                       Nama Karyawan
                     </TableHead>
                     <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan1.akhir')}>
-                      TW 1
+                      Triwulan 1
                     </TableHead>
                     <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan2.akhir')}>
-                      TW 2
+                      Triwulan 2
                     </TableHead>
                     <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan3.akhir')}>
-                      TW 3
+                      Triwulan 3
                     </TableHead>
                     <TableHead className="font-semibold text-foreground text-center cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('triwulan4.akhir')}>
-                      TW 4
+                      Triwulan 4
                     </TableHead>
                     <TableHead className="font-semibold text-foreground text-right cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => handleSort('nilaiAkhir')}>
                       Nilai 2025
