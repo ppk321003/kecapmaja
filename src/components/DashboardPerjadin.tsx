@@ -517,26 +517,19 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             });
           }
 
-          // Dalam fetchPerjadinData, GANTI bagian ini:
           if (item.jenis_pegawai === "MITRA") {
             const existing = mitraMap.get(item.nama_pelaksana) || { 
-              biaya: 0, durasi: 0, count: 0, kegiatanDetails: [] 
+              biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
             };
-            
-            // ✅ SIMPAN DATA AKTUAL, bukan hanya nama
-            existing.kegiatanDetails.push({
-              nama: item.nama_kegiatan,
-              durasi: parseDurasi(item.durasi_hari), // Durasi aktual dari database
-              biaya: parseBiaya(item.total_biaya)    // Biaya aktual dari database
-            });
-            
+            if (!existing.namaKegiatanList.includes(item.nama_kegiatan)) {
+              existing.namaKegiatanList.push(item.nama_kegiatan);
+            }
             mitraMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
               count: existing.count + 1,
-              kegiatanDetails: existing.kegiatanDetails
+              namaKegiatanList: existing.namaKegiatanList
             });
-          }
           } else if (item.jenis_pegawai === "ORGANIK") {
             const existing = organikMap.get(item.nama_pelaksana) || { 
               biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
