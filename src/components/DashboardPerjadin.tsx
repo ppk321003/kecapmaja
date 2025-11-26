@@ -43,7 +43,6 @@ interface DashboardStats {
   rataRataAnggaranPerBulan: number;
 }
 
-// MENJADI:
 interface KegiatanDetail {
   nama: string;
   durasi: number;
@@ -56,7 +55,7 @@ interface PetugasData {
   totalDurasi: number;
   totalBiaya: number;
   jenisPegawai: string;
-  kegiatanDetails: KegiatanDetail[]; // ✅ Simpan detail lengkap
+  kegiatanDetails: KegiatanDetail[];
 }
 
 interface PerjadinTooltipData {
@@ -64,7 +63,7 @@ interface PerjadinTooltipData {
   jumlahPerjadin: number;
   totalDurasi: number;
   totalBiaya: number;
-  namaKegiatanList: string[];
+  kegiatanDetails: KegiatanDetail[];
 }
 
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
@@ -132,13 +131,9 @@ const PerjadinTooltip = ({
     }).format(amount);
   };
 
-  // Hitung rata-rata durasi dan biaya per kegiatan
-  const durasiPerKegiatan = data.totalDurasi / data.jumlahPerjadin;
-  const biayaPerKegiatan = data.totalBiaya / data.jumlahPerjadin;
-
   const calculatePosition = () => {
-    const tooltipWidth = 350;
-    const tooltipHeight = 350; // Dinaikkan dari 280px menjadi 350px
+    const tooltipWidth = 380;
+    const tooltipHeight = 400;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
@@ -164,11 +159,11 @@ const PerjadinTooltip = ({
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80 pointer-events-auto transition-opacity duration-200" 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96 pointer-events-auto transition-opacity duration-200" 
       style={{
         left: finalPosition.x,
         top: finalPosition.y,
-        maxHeight: 'min(450px, 80vh)', // Dinaikkan untuk menyesuaikan tinggi tooltip
+        maxHeight: 'min(500px, 80vh)',
       }}
     >
       <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
@@ -186,23 +181,23 @@ const PerjadinTooltip = ({
           <span className="font-medium bg-orange-50 px-2 py-1 rounded">{formatRupiah(data.totalBiaya)}</span>
         </div>
         <div className="mt-3 pt-2 border-t">
-          <h5 className="font-semibold mb-1 text-blue-700">Jenis Perjadin ({data.jumlahPerjadin}):</h5>
+          <h5 className="font-semibold mb-1 text-blue-700">Detail Perjadin ({data.jumlahPerjadin}):</h5>
           <div 
             className="border rounded p-2 bg-gray-50 overflow-y-auto"
             style={{ 
-              minHeight: '140px', // Dinaikkan dari 120px
-              maxHeight: '220px', // Dinaikkan dari 200px
+              minHeight: '160px',
+              maxHeight: '280px',
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e0 #f7fafc'
             }}
           >
-            <ul className="space-y-2">
-              {data.namaKegiatanList.map((kegiatan, idx) => (
-                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0 text-xs">
-                  <div className="font-medium mb-1">{kegiatan}</div>
-                  <div className="flex justify-between items-center text-green-600 bg-green-50 px-2 py-1 rounded">
-                    <span>{durasiPerKegiatan.toFixed(1)} Hari</span>
-                    <span>= {formatRupiah(biayaPerKegiatan)}</span>
+            <ul className="space-y-3">
+              {data.kegiatanDetails.map((kegiatan, idx) => (
+                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
+                  <div className="font-medium mb-1 text-xs">{kegiatan.nama}</div>
+                  <div className="flex justify-between items-center text-green-600 bg-green-50 px-2 py-1 rounded text-xs">
+                    <span>{kegiatan.durasi} Hari</span>
+                    <span>= {formatRupiah(kegiatan.biaya)}</span>
                   </div>
                 </li>
               ))}
@@ -491,8 +486,18 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       });
 
       const trendBulananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
-      const mitraMap = new Map<string, { biaya: number; durasi: number; count: number; namaKegiatanList: string[] }>();
-      const organikMap = new Map<string, { biaya: number; durasi: number; count: number; namaKegiatanList: string[] }>();
+      const mitraMap = new Map<string, { 
+        biaya: number; 
+        durasi: number; 
+        count: number; 
+        kegiatanDetails: KegiatanDetail[] 
+      }>();
+      const organikMap = new Map<string, { 
+        biaya: number; 
+        durasi: number; 
+        count: number; 
+        kegiatanDetails: KegiatanDetail[] 
+      }>();
       const jenisPerjalananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const sumberAnggaranMap = new Map<string, { biaya: number; durasi: number; count: number }>();
 
@@ -517,31 +522,44 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             });
           }
 
+          // Simpan data aktual setiap kegiatan untuk MITRA
           if (item.jenis_pegawai === "MITRA") {
             const existing = mitraMap.get(item.nama_pelaksana) || { 
-              biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
+              biaya: 0, durasi: 0, count: 0, kegiatanDetails: [] 
             };
-            if (!existing.namaKegiatanList.includes(item.nama_kegiatan)) {
-              existing.namaKegiatanList.push(item.nama_kegiatan);
-            }
+            
+            // Tambahkan detail kegiatan dengan data aktual dari database
+            existing.kegiatanDetails.push({
+              nama: item.nama_kegiatan,
+              durasi: durasi, // Durasi aktual dari database
+              biaya: biaya    // Biaya aktual dari database
+            });
+            
             mitraMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
               count: existing.count + 1,
-              namaKegiatanList: existing.namaKegiatanList
+              kegiatanDetails: existing.kegiatanDetails
             });
-          } else if (item.jenis_pegawai === "ORGANIK") {
+          } 
+          // Simpan data aktual setiap kegiatan untuk ORGANIK
+          else if (item.jenis_pegawai === "ORGANIK") {
             const existing = organikMap.get(item.nama_pelaksana) || { 
-              biaya: 0, durasi: 0, count: 0, namaKegiatanList: [] 
+              biaya: 0, durasi: 0, count: 0, kegiatanDetails: [] 
             };
-            if (!existing.namaKegiatanList.includes(item.nama_kegiatan)) {
-              existing.namaKegiatanList.push(item.nama_kegiatan);
-            }
+            
+            // Tambahkan detail kegiatan dengan data aktual dari database
+            existing.kegiatanDetails.push({
+              nama: item.nama_kegiatan,
+              durasi: durasi, // Durasi aktual dari database
+              biaya: biaya    // Biaya aktual dari database
+            });
+            
             organikMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
               count: existing.count + 1,
-              namaKegiatanList: existing.namaKegiatanList
+              kegiatanDetails: existing.kegiatanDetails
             });
           }
 
@@ -605,6 +623,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         .sort((a, b) => b.value - a.value)
         .slice(0, 8);
 
+      // Simpan semua data petugas dengan detail kegiatan aktual
       const allMitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           nama,
@@ -612,7 +631,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "MITRA",
-          namaKegiatanList: data.namaKegiatanList
+          kegiatanDetails: data.kegiatanDetails
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
@@ -623,7 +642,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "ORGANIK",
-          namaKegiatanList: data.namaKegiatanList
+          kegiatanDetails: data.kegiatanDetails
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
@@ -680,8 +699,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   const filteredOrganikData = organikSearchQuery 
     ? allPetugasData.organik.filter(item => 
         item.nama.toLowerCase().includes(organikSearchQuery.toLowerCase()) ||
-        item.namaKegiatanList.some(kegiatan => 
-          kegiatan.toLowerCase().includes(organikSearchQuery.toLowerCase())
+        item.kegiatanDetails.some(kegiatan => 
+          kegiatan.nama.toLowerCase().includes(organikSearchQuery.toLowerCase())
         )
       )
     : allPetugasData.organik.slice(0, 15);
@@ -689,8 +708,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
   const filteredMitraData = mitraSearchQuery 
     ? allPetugasData.mitra.filter(item => 
         item.nama.toLowerCase().includes(mitraSearchQuery.toLowerCase()) ||
-        item.namaKegiatanList.some(kegiatan => 
-          kegiatan.toLowerCase().includes(mitraSearchQuery.toLowerCase())
+        item.kegiatanDetails.some(kegiatan => 
+          kegiatan.nama.toLowerCase().includes(mitraSearchQuery.toLowerCase())
         )
       )
     : allPetugasData.mitra.slice(0, 15);
@@ -930,7 +949,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                             jumlahPerjadin: item.jumlahPerjadin,
                             totalDurasi: item.totalDurasi,
                             totalBiaya: item.totalBiaya,
-                            namaKegiatanList: item.namaKegiatanList
+                            kegiatanDetails: item.kegiatanDetails
                           }, {
                             x: rect.right,
                             y: rect.top
@@ -1012,7 +1031,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                             jumlahPerjadin: item.jumlahPerjadin,
                             totalDurasi: item.totalDurasi,
                             totalBiaya: item.totalBiaya,
-                            namaKegiatanList: item.namaKegiatanList
+                            kegiatanDetails: item.kegiatanDetails
                           }, {
                             x: rect.right,
                             y: rect.top
