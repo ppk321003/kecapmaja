@@ -142,7 +142,7 @@ const PerjadinTooltip = ({
   };
 
   const calculatePosition = () => {
-    const tooltipWidth = 380;
+    const tooltipWidth = 400;
     const tooltipHeight = 320;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -180,21 +180,36 @@ const PerjadinTooltip = ({
       <div className="space-y-1 text-xs">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Transport Lokal:</span>
-          <span className="font-medium text-blue-700">
-            {data.summary.transportLokal.count} ({data.summary.transportLokal.durasi} hari)
-          </span>
+          <div className="text-right">
+            <div className="font-medium text-blue-700">
+              {formatRupiah(data.summary.transportLokal.biaya)}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              ({data.summary.transportLokal.durasi} hari)
+            </div>
+          </div>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Dalam Kota:</span>
-          <span className="font-medium text-green-700">
-            {data.summary.dalamKota.count} ({data.summary.dalamKota.durasi} hari)
-          </span>
+          <div className="text-right">
+            <div className="font-medium text-green-700">
+              {formatRupiah(data.summary.dalamKota.biaya)}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              ({data.summary.dalamKota.durasi} hari)
+            </div>
+          </div>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Luar Kota:</span>
-          <span className="font-medium text-purple-700">
-            {data.summary.luarKota.count} ({data.summary.luarKota.durasi} hari)
-          </span>
+          <div className="text-right">
+            <div className="font-medium text-purple-700">
+              {formatRupiah(data.summary.luarKota.biaya)}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              ({data.summary.luarKota.durasi} hari)
+            </div>
+          </div>
         </div>
         <div className="flex justify-between items-center pt-1 border-t">
           <span className="text-muted-foreground font-medium">Total Biaya:</span>
