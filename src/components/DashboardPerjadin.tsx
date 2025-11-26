@@ -43,13 +43,20 @@ interface DashboardStats {
   rataRataAnggaranPerBulan: number;
 }
 
+// MENJADI:
+interface KegiatanDetail {
+  nama: string;
+  durasi: number;
+  biaya: number;
+}
+
 interface PetugasData {
   nama: string;
   jumlahPerjadin: number;
   totalDurasi: number;
   totalBiaya: number;
   jenisPegawai: string;
-  namaKegiatanList: string[];
+  kegiatanDetails: KegiatanDetail[]; // ✅ Simpan detail lengkap
 }
 
 interface PerjadinTooltipData {
