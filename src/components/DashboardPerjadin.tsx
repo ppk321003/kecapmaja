@@ -180,36 +180,21 @@ const PerjadinTooltip = ({
       <div className="space-y-1 text-xs">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Transport Lokal:</span>
-          <div className="text-right">
-            <div className="font-medium text-blue-700">
-              {formatRupiah(data.summary.transportLokal.biaya)}
-            </div>
-            <div className="text-muted-foreground text-xs">
-              ({data.summary.transportLokal.durasi} hari)
-            </div>
-          </div>
+          <span className="font-medium text-blue-700">
+            {formatRupiah(data.summary.transportLokal.biaya)} <span className="text-muted-foreground font-normal">({data.summary.transportLokal.durasi} hari)</span>
+          </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Dalam Kota:</span>
-          <div className="text-right">
-            <div className="font-medium text-green-700">
-              {formatRupiah(data.summary.dalamKota.biaya)}
-            </div>
-            <div className="text-muted-foreground text-xs">
-              ({data.summary.dalamKota.durasi} hari)
-            </div>
-          </div>
+          <span className="font-medium text-green-700">
+            {formatRupiah(data.summary.dalamKota.biaya)} <span className="text-muted-foreground font-normal">({data.summary.dalamKota.durasi} hari)</span>
+          </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground">Luar Kota:</span>
-          <div className="text-right">
-            <div className="font-medium text-purple-700">
-              {formatRupiah(data.summary.luarKota.biaya)}
-            </div>
-            <div className="text-muted-foreground text-xs">
-              ({data.summary.luarKota.durasi} hari)
-            </div>
-          </div>
+          <span className="font-medium text-purple-700">
+            {formatRupiah(data.summary.luarKota.biaya)} <span className="text-muted-foreground font-normal">({data.summary.luarKota.durasi} hari)</span>
+          </span>
         </div>
         <div className="flex justify-between items-center pt-1 border-t">
           <span className="text-muted-foreground font-medium">Total Biaya:</span>
