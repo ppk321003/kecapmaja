@@ -47,6 +47,7 @@ interface KegiatanDetail {
   nama: string;
   durasi: number;
   biaya: number;
+  jenis_perjalanan: string;
 }
 
 interface PetugasData {
@@ -56,14 +57,23 @@ interface PetugasData {
   totalBiaya: number;
   jenisPegawai: string;
   kegiatanDetails: KegiatanDetail[];
+  summary: {
+    transportLokal: { count: number; durasi: number; biaya: number };
+    dalamKota: { count: number; durasi: number; biaya: number };
+    luarKota: { count: number; durasi: number; biaya: number };
+  };
 }
 
 interface PerjadinTooltipData {
   petugas: string;
   jumlahPerjadin: number;
-  totalDurasi: number;
   totalBiaya: number;
   kegiatanDetails: KegiatanDetail[];
+  summary: {
+    transportLokal: { count: number; durasi: number; biaya: number };
+    dalamKota: { count: number; durasi: number; biaya: number };
+    luarKota: { count: number; durasi: number; biaya: number };
+  };
 }
 
 const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
@@ -133,7 +143,7 @@ const PerjadinTooltip = ({
 
   const calculatePosition = () => {
     const tooltipWidth = 380;
-    const tooltipHeight = 400;
+    const tooltipHeight = 320;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
@@ -159,43 +169,55 @@ const PerjadinTooltip = ({
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96 pointer-events-auto transition-opacity duration-200" 
+      className="fixed z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-96 pointer-events-auto transition-opacity duration-200" 
       style={{
         left: finalPosition.x,
         top: finalPosition.y,
-        maxHeight: 'min(500px, 80vh)',
+        maxHeight: 'min(400px, 80vh)',
       }}
     >
       <h4 className="font-semibold text-sm mb-2 text-blue-800 border-b pb-1">{data.petugas}</h4>
-      <div className="space-y-2 text-xs">
+      <div className="space-y-1 text-xs">
         <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">Jumlah Perjadin:</span>
-          <span className="font-medium bg-blue-50 px-2 py-1 rounded">{data.jumlahPerjadin.toLocaleString('id-ID')}</span>
+          <span className="text-muted-foreground">Transport Lokal:</span>
+          <span className="font-medium text-blue-700">
+            {data.summary.transportLokal.count} ({data.summary.transportLokal.durasi} hari)
+          </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">Total Durasi:</span>
-          <span className="font-medium bg-green-50 px-2 py-1 rounded">{data.totalDurasi} hari</span>
+          <span className="text-muted-foreground">Dalam Kota:</span>
+          <span className="font-medium text-green-700">
+            {data.summary.dalamKota.count} ({data.summary.dalamKota.durasi} hari)
+          </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">Total Biaya:</span>
-          <span className="font-medium bg-orange-50 px-2 py-1 rounded">{formatRupiah(data.totalBiaya)}</span>
+          <span className="text-muted-foreground">Luar Kota:</span>
+          <span className="font-medium text-purple-700">
+            {data.summary.luarKota.count} ({data.summary.luarKota.durasi} hari)
+          </span>
         </div>
-        <div className="mt-3 pt-2 border-t">
-          <h5 className="font-semibold mb-1 text-blue-700">Detail Perjadin ({data.jumlahPerjadin}):</h5>
+        <div className="flex justify-between items-center pt-1 border-t">
+          <span className="text-muted-foreground font-medium">Total Biaya:</span>
+          <span className="font-bold text-orange-700">
+            {formatRupiah(data.totalBiaya)}
+          </span>
+        </div>
+        <div className="mt-2 pt-2 border-t">
+          <h5 className="font-semibold mb-1 text-blue-700">Detail Kegiatan ({data.jumlahPerjadin}):</h5>
           <div 
             className="border rounded p-2 bg-gray-50 overflow-y-auto"
             style={{ 
-              minHeight: '160px',
-              maxHeight: '280px',
+              minHeight: '120px',
+              maxHeight: '200px',
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e0 #f7fafc'
             }}
           >
-            <ul className="space-y-3">
+            <ul className="space-y-1">
               {data.kegiatanDetails.map((kegiatan, idx) => (
-                <li key={idx} className="text-gray-700 py-1 border-b last:border-b-0">
-                  <div className="font-medium mb-1 text-xs">{kegiatan.nama}</div>
-                  <div className="flex justify-between items-center text-green-600 bg-green-50 px-2 py-1 rounded text-xs">
+                <li key={idx} className="text-gray-700 py-0.5 border-b last:border-b-0">
+                  <div className="font-medium mb-0.5 text-xs leading-tight">{kegiatan.nama}</div>
+                  <div className="flex justify-between items-center text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
                     <span>{kegiatan.durasi} Hari</span>
                     <span>= {formatRupiah(kegiatan.biaya)}</span>
                   </div>
@@ -490,13 +512,23 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         biaya: number; 
         durasi: number; 
         count: number; 
-        kegiatanDetails: KegiatanDetail[] 
+        kegiatanDetails: KegiatanDetail[];
+        summary: {
+          transportLokal: { count: number; durasi: number; biaya: number };
+          dalamKota: { count: number; durasi: number; biaya: number };
+          luarKota: { count: number; durasi: number; biaya: number };
+        };
       }>();
       const organikMap = new Map<string, { 
         biaya: number; 
         durasi: number; 
         count: number; 
-        kegiatanDetails: KegiatanDetail[] 
+        kegiatanDetails: KegiatanDetail[];
+        summary: {
+          transportLokal: { count: number; durasi: number; biaya: number };
+          dalamKota: { count: number; durasi: number; biaya: number };
+          luarKota: { count: number; durasi: number; biaya: number };
+        };
       }>();
       const jenisPerjalananMap = new Map<string, { biaya: number; durasi: number; count: number }>();
       const sumberAnggaranMap = new Map<string, { biaya: number; durasi: number; count: number }>();
@@ -522,44 +554,82 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             });
           }
 
+          // Helper function untuk mengkategorikan jenis perjalanan
+          const getJenisKategori = (jenis: string) => {
+            if (jenis.includes('Transport Lokal')) return 'transportLokal';
+            if (jenis.includes('Dalam Kota')) return 'dalamKota';
+            if (jenis.includes('Luar Kota')) return 'luarKota';
+            return 'transportLokal'; // default
+          };
+
           // Simpan data aktual setiap kegiatan untuk MITRA
           if (item.jenis_pegawai === "MITRA") {
             const existing = mitraMap.get(item.nama_pelaksana) || { 
-              biaya: 0, durasi: 0, count: 0, kegiatanDetails: [] 
+              biaya: 0, 
+              durasi: 0, 
+              count: 0, 
+              kegiatanDetails: [],
+              summary: {
+                transportLokal: { count: 0, durasi: 0, biaya: 0 },
+                dalamKota: { count: 0, durasi: 0, biaya: 0 },
+                luarKota: { count: 0, durasi: 0, biaya: 0 }
+              }
             };
+            
+            const kategori = getJenisKategori(item.jenis_perjalanan);
+            existing.summary[kategori].count += 1;
+            existing.summary[kategori].durasi += durasi;
+            existing.summary[kategori].biaya += biaya;
             
             // Tambahkan detail kegiatan dengan data aktual dari database
             existing.kegiatanDetails.push({
               nama: item.nama_kegiatan,
-              durasi: durasi, // Durasi aktual dari database
-              biaya: biaya    // Biaya aktual dari database
+              durasi: durasi,
+              biaya: biaya,
+              jenis_perjalanan: item.jenis_perjalanan
             });
             
             mitraMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
               count: existing.count + 1,
-              kegiatanDetails: existing.kegiatanDetails
+              kegiatanDetails: existing.kegiatanDetails,
+              summary: existing.summary
             });
           } 
           // Simpan data aktual setiap kegiatan untuk ORGANIK
           else if (item.jenis_pegawai === "ORGANIK") {
             const existing = organikMap.get(item.nama_pelaksana) || { 
-              biaya: 0, durasi: 0, count: 0, kegiatanDetails: [] 
+              biaya: 0, 
+              durasi: 0, 
+              count: 0, 
+              kegiatanDetails: [],
+              summary: {
+                transportLokal: { count: 0, durasi: 0, biaya: 0 },
+                dalamKota: { count: 0, durasi: 0, biaya: 0 },
+                luarKota: { count: 0, durasi: 0, biaya: 0 }
+              }
             };
+            
+            const kategori = getJenisKategori(item.jenis_perjalanan);
+            existing.summary[kategori].count += 1;
+            existing.summary[kategori].durasi += durasi;
+            existing.summary[kategori].biaya += biaya;
             
             // Tambahkan detail kegiatan dengan data aktual dari database
             existing.kegiatanDetails.push({
               nama: item.nama_kegiatan,
-              durasi: durasi, // Durasi aktual dari database
-              biaya: biaya    // Biaya aktual dari database
+              durasi: durasi,
+              biaya: biaya,
+              jenis_perjalanan: item.jenis_perjalanan
             });
             
             organikMap.set(item.nama_pelaksana, {
               biaya: existing.biaya + biaya,
               durasi: existing.durasi + durasi,
               count: existing.count + 1,
-              kegiatanDetails: existing.kegiatanDetails
+              kegiatanDetails: existing.kegiatanDetails,
+              summary: existing.summary
             });
           }
 
@@ -631,7 +701,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "MITRA",
-          kegiatanDetails: data.kegiatanDetails
+          kegiatanDetails: data.kegiatanDetails,
+          summary: data.summary
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
@@ -642,7 +713,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "ORGANIK",
-          kegiatanDetails: data.kegiatanDetails
+          kegiatanDetails: data.kegiatanDetails,
+          summary: data.summary
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
@@ -947,9 +1019,9 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                           handleShowTooltip({
                             petugas: item.nama,
                             jumlahPerjadin: item.jumlahPerjadin,
-                            totalDurasi: item.totalDurasi,
                             totalBiaya: item.totalBiaya,
-                            kegiatanDetails: item.kegiatanDetails
+                            kegiatanDetails: item.kegiatanDetails,
+                            summary: item.summary
                           }, {
                             x: rect.right,
                             y: rect.top
@@ -1029,9 +1101,9 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                           handleShowTooltip({
                             petugas: item.nama,
                             jumlahPerjadin: item.jumlahPerjadin,
-                            totalDurasi: item.totalDurasi,
                             totalBiaya: item.totalBiaya,
-                            kegiatanDetails: item.kegiatanDetails
+                            kegiatanDetails: item.kegiatanDetails,
+                            summary: item.summary
                           }, {
                             x: rect.right,
                             y: rect.top
