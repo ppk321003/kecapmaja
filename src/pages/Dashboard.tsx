@@ -1478,7 +1478,7 @@ export default function Dashboard() {
         
         <div className="flex items-center gap-4">
           {/* Tabs Utama */}
-          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin')}>
+          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja')}>
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjalanan Dinas</TabsTrigger>
