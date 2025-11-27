@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { TooltipProps } from 'recharts';
 import { TrendingUp, Calendar, DollarSign, Activity, Users, MapPin, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -76,7 +77,15 @@ interface PerjadinTooltipData {
   };
 }
 
-const CurrencyTooltip = ({ active, payload, label, mode }: any) => {
+// Fix: Proper interface for CurrencyTooltip with type casting
+interface CurrencyTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  mode?: 'anggaran' | 'kegiatan';
+}
+
+const CurrencyTooltip = ({ active, payload, label, mode }: CurrencyTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-3 border border-gray-300 rounded shadow-sm">
@@ -231,7 +240,16 @@ const PerjadinTooltip = ({
   );
 };
 
-const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
+// Fix: Add proper interface for chart props
+interface ChartProps {
+  data: ChartItem[];
+  mode: string;
+}
+
+// Fix: Create a typed tooltip component with proper casting
+const TypedCurrencyTooltip = (props: any) => <CurrencyTooltip {...props} />;
+
+const SafeBarChart = ({ data, mode }: ChartProps) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -258,7 +276,7 @@ const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={<CurrencyTooltip mode={mode} />} />
+        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
         <Legend />
         <Bar 
           dataKey="value" 
@@ -271,7 +289,7 @@ const SafeBarChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   );
 };
 
-const SafeLineChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
+const SafeLineChart = ({ data, mode }: ChartProps) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -298,7 +316,7 @@ const SafeLineChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={<CurrencyTooltip mode={mode} />} />
+        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
         <Legend />
         <Line 
           type="monotone" 
@@ -314,7 +332,7 @@ const SafeLineChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
   );
 };
 
-const SafePieChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
+const SafePieChart = ({ data, mode }: ChartProps) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -340,7 +358,7 @@ const SafePieChart = ({ data, mode }: { data: ChartItem[]; mode: string }) => {
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip content={<CurrencyTooltip mode={mode} />} />
+        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>
