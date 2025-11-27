@@ -1486,20 +1486,30 @@ export default function Dashboard() {
             </TabsList>
           </Tabs>
 
-          {/* Subtab untuk kedua kategori - hanya tampil jika bukan loading */}
+          {/* Toggle Switch untuk View Mode - hanya tampil jika bukan loading */}
           {!loading && (
-            <Tabs value={viewMode} onValueChange={value => setViewMode(value as 'kegiatan' | 'anggaran')}>
-              <TabsList>
-                <TabsTrigger value="anggaran" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Realisasi
-                </TabsTrigger>
-                <TabsTrigger value="kegiatan" className="flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  Kegiatan
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('anggaran')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'anggaran' 
+                    ? 'bg-white shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                💰
+              </button>
+              <button
+                onClick={() => setViewMode('kegiatan')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'kegiatan' 
+                    ? 'bg-white shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                📊
+              </button>
+            </div>
           )}
 
           <Select value={filterTahun} onValueChange={setFilterTahun}>
