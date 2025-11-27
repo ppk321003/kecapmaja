@@ -42,7 +42,6 @@ const mainMenuItems = [
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
-  { title: "LK Kinerja", url: "/LKKinerja", icon: Users },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
   { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
