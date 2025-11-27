@@ -8,6 +8,7 @@ import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, T
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import DashboardPerjadin from "@/components/DashboardPerjadin";
+import LKKinerja from "@/components/LK-Kinerja";
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_MITRA_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -639,7 +640,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin'>('honorarium');
+  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const [stats, setStats] = useState<DashboardStats>({
@@ -1481,6 +1482,7 @@ export default function Dashboard() {
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjalanan Dinas</TabsTrigger>
+              <TabsTrigger value="kinerja">Kinerja</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -1774,11 +1776,16 @@ export default function Dashboard() {
                 <RiskTooltip data={riskTooltipData} position={riskTooltipPosition} />
               </div>}
         </>
-      ) : (
-        <DashboardPerjadin 
-          viewMode={viewMode}
-          filterTahun={filterTahun}
-        />
-      )}
+        ) : mainTab === 'perjadin' ? (
+          <DashboardPerjadin 
+            viewMode={viewMode}
+            filterTahun={filterTahun}
+          />
+        ) : (
+          <LKKinerja 
+            viewMode={viewMode}
+            filterTahun={filterTahun}
+          />
+        )}
     </div>;
 }
