@@ -225,76 +225,70 @@ export default function RekapSPKBAST() {
   }, []);
 
   const syncToWaSpkSheet = useCallback(async (dataToSync: RekapSPKRow[]) => {
-    if (!isPPK) return;
+  if (!isPPK) return;
 
-    try {
-      console.log("🔄 Starting sync to WA-SPK sheet...");
-      console.log("📊 Data to sync count:", dataToSync.length);
-      
-      const currentPeriode = `${filterBulan} ${filterTahun}`;
-      
-      // Siapkan header
-      const headerRow = [
-        "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
-        "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
+  try {
+    console.log("🔄 Starting sync to WA-SPK sheet...");
+    
+    const currentPeriode = `${filterBulan} ${filterTahun}`;
+    
+    // Siapkan data
+    const headerRow = [
+      "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
+      "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
+    ];
+
+    const dataRows = dataToSync.map((row, index) => {
+      const sbmlStatus = row.isExceeded ? "Melebihi" : "OK";
+      return [
+        (index + 1).toString(),
+        currentPeriode,
+        row.namaMitra,
+        row.nik,
+        row.kecamatan || "-",
+        formatRupiah(row.pendataan),
+        formatRupiah(row.pemeriksaan),
+        formatRupiah(row.pengolahan),
+        formatRupiah(row.jumlah),
+        sbmlStatus,
+        row.statusTTD,
+        row.statusNotif,
+        ""
       ];
+    });
 
-      // Siapkan data rows
-      const dataRows = dataToSync.map((row, index) => {
-        const sbmlStatus = row.isExceeded ? "Melebihi" : "OK";
-        return [
-          (index + 1).toString(), // No
-          currentPeriode, // Periode SPK
-          row.namaMitra, // Nama
-          row.nik, // NIK
-          row.kecamatan || "-", // Kecamatan
-          formatRupiah(row.pendataan), // Pendataan
-          formatRupiah(row.pemeriksaan), // Pemeriksaan
-          formatRupiah(row.pengolahan), // Pengolahan
-          formatRupiah(row.jumlah), // Jumlah
-          sbmlStatus, // SBML
-          row.statusTTD, // Status TTD
-          row.statusNotif, // Status Notif
-          "" // Keterangan (kosong)
-        ];
-      });
+    const allRows = [headerRow, ...dataRows];
 
-      const allRows = [headerRow, ...dataRows];
-      
-      console.log("📋 Prepared data for sync:", {
-        totalRows: allRows.length,
-        header: headerRow,
-        firstDataRow: dataRows[0]
-      });
-
-      // Coba clear existing data dulu dengan mengosongkan range yang cukup besar
-      try {
-        await callEdgeFunction("update", {
-          spreadsheetId: WA_SPK_SPREADSHEET_ID,
-          range: "WA-SPK!A1:Z1000",
-          values: [[""]]
-        });
-        console.log("✅ Cleared existing data");
-      } catch (clearError) {
-        console.log("ℹ️ Could not clear data, continuing...");
-      }
-
-      // Update dengan data baru
-      console.log("🔄 Writing new data to WA-SPK sheet...");
-      const result = await callEdgeFunction("update", {
+    // APPROACH 1: Clear existing data dengan mengupdate range kosong
+    try {
+      console.log("🧹 Clearing existing data...");
+      await callEdgeFunction("update", {
         spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1",
-        values: allRows
+        range: "WA-SPK!A1:Z1000", // Range yang cukup besar
+        values: [[""]], // Data kosong
+        rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex untuk update operation
       });
-
-      console.log("✅ Sync completed successfully:", result);
-      return true;
-      
-    } catch (error: any) {
-      console.error("❌ Error syncing to WA-SPK sheet:", error);
-      throw new Error(`Gagal sync ke WA-SPK: ${error.message}`);
+    } catch (clearError) {
+      console.log("ℹ️ Clear not necessary or failed, continuing...");
     }
-  }, [isPPK, callEdgeFunction, filterBulan, filterTahun, formatRupiah]);
+
+    // APPROACH 2: Update dengan data baru mulai dari row 1
+    console.log("📝 Writing new data...");
+    const result = await callEdgeFunction("update", {
+      spreadsheetId: WA_SPK_SPREADSHEET_ID,
+      range: "WA-SPK!A1",
+      values: allRows,
+      rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex
+    });
+
+    console.log("✅ Sync completed successfully:", result);
+    return true;
+    
+  } catch (error: any) {
+    console.error("❌ Error syncing to WA-SPK sheet:", error);
+    throw new Error(`Gagal sync ke WA-SPK: ${error.message}`);
+  }
+}, [isPPK, callEdgeFunction, filterBulan, filterTahun, formatRupiah]);
 
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, satuan: string, statusTTD: string, statusNotif: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string, periode: string, role: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
