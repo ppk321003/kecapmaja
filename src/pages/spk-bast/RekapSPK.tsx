@@ -359,7 +359,7 @@ export default function RekapSPKBAST() {
       let matchCount = 0;
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 24) continue;
+        if (!row || row.length < 15) continue;
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";
@@ -501,109 +501,130 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-  const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
-    if (!isPPK) return;
-    
-    try {
-      const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
-      if (!item) {
-        throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
-      }
+const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
+  if (!isPPK) return;
+  
+  try {
+    const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
+    if (!item) {
+      throw new Error(`Tidak ditemukan data untuk ${namaMitra} (${nik})`);
+    }
 
-      console.log("🔄 UPDATE REQUEST DETAILS:");
-      console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
-      console.log("   New status:", newStatus);
+    console.log("🔄 UPDATE REQUEST DETAILS:");
+    console.log("   Selected:", item.namaMitra, "NIK:", item.nik);
+    console.log("   New status:", newStatus);
 
-      if (!item.allMappings || item.allMappings.length === 0) {
-        throw new Error("Tidak ditemukan mapping ke spreadsheet");
-      }
+    if (!item.allMappings || item.allMappings.length === 0) {
+      throw new Error("Tidak ditemukan mapping ke spreadsheet");
+    }
 
-      const currentPeriode = `${filterBulan} ${filterTahun}`;
-      const relevantMappings = item.allMappings.filter(mapping => {
-        const mappingPeriode = cleanPeriode(mapping.periode);
-        const currentPeriodeClean = cleanPeriode(currentPeriode);
-        return mappingPeriode === currentPeriodeClean;
-      });
+    const currentPeriode = `${filterBulan} ${filterTahun}`;
+    const relevantMappings = item.allMappings.filter(mapping => {
+      const mappingPeriode = cleanPeriode(mapping.periode);
+      const currentPeriodeClean = cleanPeriode(currentPeriode);
+      return mappingPeriode === currentPeriodeClean;
+    });
 
-      if (relevantMappings.length === 0) {
-        console.warn("⚠️ No mappings found for current period, using all mappings");
-        relevantMappings.push(...item.allMappings);
-      }
+    if (relevantMappings.length === 0) {
+      console.warn("⚠️ No mappings found for current period, using all mappings");
+      relevantMappings.push(...item.allMappings);
+    }
 
-      console.log("   Relevant mappings:", relevantMappings);
+    console.log("   Relevant mappings:", relevantMappings);
 
-      // Update local state terlebih dahulu untuk UX yang lebih baik
-      setData(prev => prev.map(row => 
-        row.namaMitra === namaMitra && row.nik === nik 
-          ? {...row, statusTTD: newStatus}
-          : row
-      ));
+    // Update local state terlebih dahulu untuk UX yang lebih baik
+    setData(prev => prev.map(row => 
+      row.namaMitra === namaMitra && row.nik === nik 
+        ? {...row, statusTTD: newStatus}
+        : row
+    ));
 
-      let successCount = 0;
-      for (const mapping of relevantMappings) {
-        try {
-          // Baca data row yang akan diupdate
-          const readResult = await callEdgeFunction("read", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
-            range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
-          });
-          const currentRow = readResult?.values?.[0] || [];
-          console.log("📊 Current row data:", currentRow);
+    let successCount = 0;
+    for (const mapping of relevantMappings) {
+      try {
+        // Baca data row yang akan diupdate
+        const readResult = await callEdgeFunction("read", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+        });
+        const currentRow = readResult?.values?.[0] || [];
+        console.log("📊 Current row data:", currentRow);
 
-          // Update hanya kolom status TTD (kolom X, index 23)
-          const updatedRow = [...currentRow];
+        // Update hanya kolom status TTD (kolom X, index 23)
+        const updatedRow = [...currentRow];
 
-          // Handle multiple petugas (dipisah oleh |)
+        // PERBAIKAN: Handle multiple petugas untuk kolom TTD (kolom 23, index 23) - SAMA SEPERTI NOTIF
+        if (updatedRow[23] !== undefined) {
           if (updatedRow[23] && updatedRow[23].includes('|')) {
             const statusParts = updatedRow[23].split('|').map(s => s.trim());
             if (mapping.petugasIndex < statusParts.length) {
               statusParts[mapping.petugasIndex] = newStatus;
               updatedRow[23] = statusParts.join(' | ');
             } else {
-              updatedRow[23] = newStatus;
+              // Jika index melebihi jumlah existing, tambahkan di akhir
+              statusParts.push(newStatus);
+              updatedRow[23] = statusParts.join(' | ');
             }
           } else {
-            // Single petugas
-            updatedRow[23] = newStatus;
+            // Single petugas atau belum ada data
+            if (mapping.petugasIndex === 0) {
+              updatedRow[23] = newStatus;
+            } else {
+              // Untuk multiple petugas, buat array dengan default "Belum ditandatangani" untuk index sebelumnya
+              const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
+              statusParts[mapping.petugasIndex] = newStatus;
+              updatedRow[23] = statusParts.join(' | ');
+            }
           }
-          console.log("🆕 Updated row data:", updatedRow);
-
-          // Update row menggunakan operasi 'update'
-          await callEdgeFunction("update", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
-            rowIndex: mapping.rowIndex + 1,
-            values: [updatedRow]
-          });
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Failed to update mapping ${mapping.rowIndex}:`, error);
+        } else {
+          // Jika kolom 23 belum ada sama sekali
+          if (mapping.petugasIndex === 0) {
+            updatedRow[23] = newStatus;
+          } else {
+            const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
+            statusParts[mapping.petugasIndex] = newStatus;
+            updatedRow[23] = statusParts.join(' | ');
+          }
         }
-      }
 
-      if (successCount > 0) {
-        toast({
-          title: "Berhasil",
-          description: `Status ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
+        console.log("🆕 Updated TTD row data:", updatedRow);
+
+        // Update row menggunakan operasi 'update'
+        await callEdgeFunction("update", {
+          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          rowIndex: mapping.rowIndex + 1,
+          values: [updatedRow]
         });
-
-        // Refresh data untuk memastikan konsistensi
-        setTimeout(() => {
-          fetchData();
-        }, 1000);
-      } else {
-        throw new Error("Gagal mengupdate semua data");
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Failed to update TTD mapping ${mapping.rowIndex}:`, error);
       }
-    } catch (error: any) {
-      console.error("❌ Error updating status:", error);
-      // Refresh data untuk rollback
-      fetchData();
-      toast({
-        title: "Error",
-        description: "Gagal mengubah status: " + error.message,
-        variant: "destructive"
-      });
     }
-  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+
+    if (successCount > 0) {
+      toast({
+        title: "Berhasil",
+        description: `Status TTD ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
+      });
+
+      // Refresh data untuk memastikan konsistensi
+      setTimeout(() => {
+        fetchData();
+      }, 1000);
+    } else {
+      throw new Error("Gagal mengupdate semua data TTD");
+    }
+  } catch (error: any) {
+    console.error("❌ Error updating TTD status:", error);
+    // Refresh data untuk rollback
+    fetchData();
+    toast({
+      title: "Error",
+      description: "Gagal mengubah status TTD: " + error.message,
+      variant: "destructive"
+    });
+  }
+}, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleNotifChange = useCallback(async (namaMitra: string, nik: string, newStatus: string) => {
     if (!isPPK) return;
