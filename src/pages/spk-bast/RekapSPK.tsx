@@ -359,7 +359,7 @@ export default function RekapSPKBAST() {
       let matchCount = 0;
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 22) continue;
+        if (!row || row.length < 24) continue;
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";
