@@ -232,7 +232,7 @@ export default function RekapSPKBAST() {
     
     const currentPeriode = `${filterBulan} ${filterTahun}`;
     
-    // Siapkan data
+    // Siapkan data baru
     const headerRow = [
       "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
       "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
@@ -259,24 +259,51 @@ export default function RekapSPKBAST() {
 
     const allRows = [headerRow, ...dataRows];
 
-    // Step 1: Clear sheet dengan delete operation (jika ada)
-    try {
-      console.log("🧹 Clearing sheet...");
-      // Delete semua rows kecuali header jika perlu
-      // Untuk sekarang skip dulu, kita append saja
-    } catch (clearError) {
-      console.log("ℹ️ Clear not necessary or failed, continuing...");
-    }
-
-    // Step 2: Append data baru
-    console.log("📝 Appending new data...");
-    const result = await callEdgeFunction("append", {
+    // **STRATEGI BARU: Baca seluruh data dulu, lalu replace yang sesuai periode**
+    console.log("📊 Reading existing WA-SPK data...");
+    const existingData = await callEdgeFunction("read", {
       spreadsheetId: WA_SPK_SPREADSHEET_ID,
-      range: "WA-SPK!A1",
-      values: allRows
+      range: "WA-SPK!A:Z"
     });
 
-    console.log("✅ Sync completed successfully:", result);
+    const existingRows = existingData?.values || [];
+    console.log("📋 Existing rows count:", existingRows.length);
+
+    if (existingRows.length === 0) {
+      // Jika sheet kosong, tulis data baru
+      console.log("📝 Sheet kosong, writing new data...");
+      await callEdgeFunction("update", {
+        spreadsheetId: WA_SPK_SPREADSHEET_ID,
+        range: "WA-SPK!A1",
+        values: allRows
+      });
+    } else {
+      // Cari dan replace data dengan periode yang sama
+      const filteredRows = existingRows.filter(row => {
+        const rowPeriode = row[1]?.toString() || ""; // Kolom B adalah Periode SPK
+        return rowPeriode !== currentPeriode;
+      });
+
+      // Hapus semua data yang ada
+      console.log("🧹 Clearing existing data...");
+      await callEdgeFunction("update", {
+        spreadsheetId: WA_SPK_SPREADSHEET_ID,
+        range: "WA-SPK!A:Z",
+        values: []
+      });
+
+      // Gabungkan data lama (kecuali periode yang sama) dengan data baru
+      const finalRows = [...filteredRows.slice(0, 1), ...allRows.slice(1), ...filteredRows.slice(1)];
+      
+      console.log("📝 Writing updated data...");
+      await callEdgeFunction("update", {
+        spreadsheetId: WA_SPK_SPREADSHEET_ID,
+        range: "WA-SPK!A1",
+        values: finalRows
+      });
+    }
+
+    console.log("✅ Sync completed successfully");
     return true;
     
   } catch (error: any) {
