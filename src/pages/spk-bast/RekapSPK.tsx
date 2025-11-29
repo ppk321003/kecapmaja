@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download, AlertTriangle } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -359,7 +359,7 @@ export default function RekapSPKBAST() {
       let matchCount = 0;
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
-        if (!row || row.length < 24) continue;
+        if (!row || row.length < 25) continue;
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";
@@ -569,12 +569,11 @@ export default function RekapSPKBAST() {
           console.log("🆕 Updated row data:", updatedRow);
 
           // Update row menggunakan operasi 'update'
-          const updateResult = await callEdgeFunction("update", {
+          await callEdgeFunction("update", {
             spreadsheetId: TUGAS_SPREADSHEET_ID,
             rowIndex: mapping.rowIndex + 1,
             values: [updatedRow]
           });
-          console.log("✅ Update result for mapping:", mapping, updateResult);
           successCount++;
         } catch (error) {
           console.error(`❌ Failed to update mapping ${mapping.rowIndex}:`, error);
@@ -652,18 +651,26 @@ export default function RekapSPKBAST() {
           const currentRow = readResult?.values?.[0] || [];
           const updatedRow = [...currentRow];
 
-          // Update kolom notifikasi (kolom 24, index 23)
-          if (updatedRow[23] && updatedRow[23].includes('|')) {
-            const notifParts = updatedRow[23].split('|').map(s => s.trim());
-            if (mapping.petugasIndex < notifParts.length) {
-              notifParts[mapping.petugasIndex] = newStatus;
-              updatedRow[23] = notifParts.join(' | ');
+          // PERBAIKAN: Update kolom notifikasi (kolom 24, index 24)
+          // Karena array dimulai dari 0, kolom 24 adalah index 24
+          if (updatedRow[24] !== undefined) {
+            if (updatedRow[24] && updatedRow[24].includes('|')) {
+              const notifParts = updatedRow[24].split('|').map(s => s.trim());
+              if (mapping.petugasIndex < notifParts.length) {
+                notifParts[mapping.petugasIndex] = newStatus;
+                updatedRow[24] = notifParts.join(' | ');
+              } else {
+                updatedRow[24] = newStatus;
+              }
             } else {
-              updatedRow[23] = newStatus;
+              updatedRow[24] = newStatus;
             }
           } else {
-            updatedRow[23] = newStatus;
+            // Jika kolom 24 belum ada, tambahkan
+            updatedRow[24] = newStatus;
           }
+
+          console.log("🆕 Updated notif row data:", updatedRow);
 
           // Update row di spreadsheet
           await callEdgeFunction("update", {
@@ -683,6 +690,11 @@ export default function RekapSPKBAST() {
           title: "Berhasil",
           description: `Status notifikasi ${item.namaMitra} diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif"`
         });
+
+        // Refresh data untuk memastikan konsistensi
+        setTimeout(() => {
+          fetchData();
+        }, 1000);
       } else {
         throw new Error("Gagal mengupdate semua data notifikasi");
       }
@@ -745,71 +757,6 @@ export default function RekapSPKBAST() {
       no: index + 1
     }));
   }, [data, sortField, sortDirection, statusFilter, searchQuery]);
-
-  const handleExportExcel = useCallback(async () => {
-    if (!isPPK) {
-      toast({
-        title: "Akses Ditolak",
-        description: "Hanya PPK yang dapat mengekspor data",
-        variant: "destructive"
-      });
-      return;
-    }
-    try {
-      const exportData = filteredAndSortedData.map(row => ({
-        'No': row.no,
-        'Nama Mitra Statistik': row.namaMitra,
-        'Kecamatan': row.kecamatan,
-        'Pendataan': formatRupiah(row.pendataan),
-        'Pemeriksaan': formatRupiah(row.pemeriksaan),
-        'Pengolahan': formatRupiah(row.pengolahan),
-        'Jumlah': formatRupiah(row.jumlah),
-        'Status': row.statusTTD,
-        'Notif Mitra': row.statusNotif === 'sudah' ? 'Sudah kirim notif' : 'Belum kirim notif',
-        'Peringatan SBML': row.isExceeded ? 'YA' : 'TIDAK'
-      }));
-
-      const csvContent = [
-        ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status', 'Notif Mitra', 'Peringatan SBML'],
-        ...exportData.map(row => [
-          row.No, 
-          row['Nama Mitra Statistik'], 
-          row.Kecamatan, 
-          row.Pendataan, 
-          row.Pemeriksaan, 
-          row.Pengolahan, 
-          row.Jumlah, 
-          row.Status, 
-          row['Notif Mitra'],
-          row['Peringatan SBML']
-        ])
-      ].map(row => row.join(',')).join('\n');
-
-      const blob = new Blob([csvContent], {
-        type: 'text/csv;charset=utf-8;'
-      });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Rekap_SPK_BAST_${filterBulan}_${filterTahun}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Berhasil",
-        description: "Data berhasil diekspor"
-      });
-    } catch (error: any) {
-      console.error("Error exporting data:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengekspor data: " + error.message,
-        variant: "destructive"
-      });
-    }
-  }, [filteredAndSortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
 
   useEffect(() => {
     if (filterTahun) {
@@ -916,12 +863,6 @@ export default function RekapSPKBAST() {
               <Search className="h-4 w-4" />
               Filter Data
             </div>
-            {isPPK && (
-              <Button onClick={handleExportExcel} size="sm" className="h-8 gap-2">
-                <Download className="h-4 w-4" />
-                Ekspor Excel
-              </Button>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
