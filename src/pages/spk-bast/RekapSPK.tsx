@@ -259,34 +259,81 @@ export default function RekapSPKBAST() {
 
     const allRows = [headerRow, ...dataRows];
 
-    // APPROACH 1: Clear existing data dengan mengupdate range kosong
+    // APPROACH: Gunakan append dengan clear terlebih dahulu untuk range yang lebih kecil
+    console.log("📝 Writing data to WA-SPK...");
+    
+    // Coba clear hanya range A1:M100 (lebih aman dari A1:Z1000)
     try {
-      console.log("🧹 Clearing existing data...");
+      console.log("🧹 Clearing range A1:M100...");
       await callEdgeFunction("update", {
         spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1:Z1000", // Range yang cukup besar
+        range: "WA-SPK!A1:M100",
         values: [[""]], // Data kosong
-        rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex untuk update operation
+        rowIndex: 1
       });
     } catch (clearError) {
-      console.log("ℹ️ Clear not necessary or failed, continuing...");
+      console.log("ℹ️ Clear operation may have failed, continuing...");
     }
 
-    // APPROACH 2: Update dengan data baru mulai dari row 1
-    console.log("📝 Writing new data...");
-    const result = await callEdgeFunction("update", {
+    // Tulis data baru mulai dari A1
+    console.log("✍️ Writing new data...");
+    const result = await callEdgeFunction("append", {
       spreadsheetId: WA_SPK_SPREADSHEET_ID,
       range: "WA-SPK!A1",
-      values: allRows,
-      rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex
+      values: allRows
     });
 
-    console.log("✅ Sync completed successfully:", result);
+    console.log("✅ Sync completed successfully");
     return true;
     
   } catch (error: any) {
     console.error("❌ Error syncing to WA-SPK sheet:", error);
-    throw new Error(`Gagal sync ke WA-SPK: ${error.message}`);
+    
+    // Coba pendekatan alternatif jika masih error
+    try {
+      console.log("🔄 Trying alternative approach...");
+      
+      const currentPeriode = `${filterBulan} ${filterTahun}`;
+      const headerRow = [
+        "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
+        "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
+      ];
+
+      const dataRows = dataToSync.map((row, index) => {
+        const sbmlStatus = row.isExceeded ? "Melebihi" : "OK";
+        return [
+          (index + 1).toString(),
+          currentPeriode,
+          row.namaMitra,
+          row.nik,
+          row.kecamatan || "-",
+          formatRupiah(row.pendataan),
+          formatRupiah(row.pemeriksaan),
+          formatRupiah(row.pengolahan),
+          formatRupiah(row.jumlah),
+          sbmlStatus,
+          row.statusTTD,
+          row.statusNotif,
+          ""
+        ];
+      });
+
+      const allRows = [headerRow, ...dataRows];
+
+      // Gunakan append saja tanpa clear
+      const result = await callEdgeFunction("append", {
+        spreadsheetId: WA_SPK_SPREADSHEET_ID,
+        range: "WA-SPK!A:Z",
+        values: allRows
+      });
+
+      console.log("✅ Alternative sync completed");
+      return true;
+      
+    } catch (fallbackError) {
+      console.error("❌ Fallback approach also failed:", fallbackError);
+      throw new Error(`Gagal sync ke WA-SPK: ${fallbackError.message}`);
+    }
   }
 }, [isPPK, callEdgeFunction, filterBulan, filterTahun, formatRupiah]);
 
