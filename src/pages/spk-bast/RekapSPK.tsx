@@ -652,17 +652,17 @@ export default function RekapSPKBAST() {
           const currentRow = readResult?.values?.[0] || [];
           const updatedRow = [...currentRow];
 
-          // Update kolom notifikasi (kolom 24, index 23)
-          if (updatedRow[23] && updatedRow[23].includes('|')) {
-            const notifParts = updatedRow[23].split('|').map(s => s.trim());
+          // Update kolom notifikasi (kolom 24, index 24)
+          if (updatedRow[24] && updatedRow[24].includes('|')) {
+            const notifParts = updatedRow[24].split('|').map(s => s.trim());
             if (mapping.petugasIndex < notifParts.length) {
               notifParts[mapping.petugasIndex] = newStatus;
-              updatedRow[23] = notifParts.join(' | ');
+              updatedRow[24] = notifParts.join(' | ');
             } else {
-              updatedRow[23] = newStatus;
+              updatedRow[24] = newStatus;
             }
           } else {
-            updatedRow[23] = newStatus;
+            updatedRow[24] = newStatus;
           }
 
           // Update row di spreadsheet
