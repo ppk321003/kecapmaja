@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Search, XCircle, ArrowUpDown, Download, AlertTriangle, Bell, BellOff } from "lucide-react";
+import { CheckCircle, Search, XCircle, ArrowUpDown, AlertTriangle, Bell, BellOff } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -224,6 +224,78 @@ export default function RekapSPKBAST() {
     }
   }, []);
 
+  const syncToWaSpkSheet = useCallback(async (dataToSync: RekapSPKRow[]) => {
+    if (!isPPK) return;
+
+    try {
+      console.log("🔄 Starting sync to WA-SPK sheet...");
+      console.log("📊 Data to sync count:", dataToSync.length);
+      
+      const currentPeriode = `${filterBulan} ${filterTahun}`;
+      
+      // Siapkan header
+      const headerRow = [
+        "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
+        "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
+      ];
+
+      // Siapkan data rows
+      const dataRows = dataToSync.map((row, index) => {
+        const sbmlStatus = row.isExceeded ? "Melebihi" : "OK";
+        return [
+          (index + 1).toString(), // No
+          currentPeriode, // Periode SPK
+          row.namaMitra, // Nama
+          row.nik, // NIK
+          row.kecamatan || "-", // Kecamatan
+          formatRupiah(row.pendataan), // Pendataan
+          formatRupiah(row.pemeriksaan), // Pemeriksaan
+          formatRupiah(row.pengolahan), // Pengolahan
+          formatRupiah(row.jumlah), // Jumlah
+          sbmlStatus, // SBML
+          row.statusTTD, // Status TTD
+          row.statusNotif, // Status Notif
+          "" // Keterangan (kosong)
+        ];
+      });
+
+      const allRows = [headerRow, ...dataRows];
+      
+      console.log("📋 Prepared data for sync:", {
+        totalRows: allRows.length,
+        header: headerRow,
+        firstDataRow: dataRows[0]
+      });
+
+      // Coba clear existing data dulu dengan mengosongkan range yang cukup besar
+      try {
+        await callEdgeFunction("update", {
+          spreadsheetId: WA_SPK_SPREADSHEET_ID,
+          range: "WA-SPK!A1:Z1000",
+          values: [[""]]
+        });
+        console.log("✅ Cleared existing data");
+      } catch (clearError) {
+        console.log("ℹ️ Could not clear data, continuing...");
+      }
+
+      // Update dengan data baru
+      console.log("🔄 Writing new data to WA-SPK sheet...");
+      const result = await callEdgeFunction("update", {
+        spreadsheetId: WA_SPK_SPREADSHEET_ID,
+        range: "WA-SPK!A1",
+        values: allRows
+      });
+
+      console.log("✅ Sync completed successfully:", result);
+      return true;
+      
+    } catch (error: any) {
+      console.error("❌ Error syncing to WA-SPK sheet:", error);
+      throw new Error(`Gagal sync ke WA-SPK: ${error.message}`);
+    }
+  }, [isPPK, callEdgeFunction, filterBulan, filterTahun, formatRupiah]);
+
   const processPetugasData = useCallback((namaPetugas: string, nikPetugas: string, hargaSatuan: string, realisasi: string, satuan: string, statusTTD: string, statusNotif: string, masterMap: Map<string, MasterPetugas>, rowIndex: number, namaKegiatan: string, periode: string, role: string) => {
     const namaList = namaPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
     const nikList = nikPetugas.split(' | ').map((n: string) => n.trim()).filter(n => n);
@@ -302,62 +374,6 @@ export default function RekapSPKBAST() {
     }
     return result;
   }, [calculateHonor, formatRupiah, parseHonor]);
-
-  const syncToWaSpkSheet = useCallback(async (dataToSync: RekapSPKRow[]) => {
-    if (!isPPK) return;
-
-    try {
-      console.log("🔄 Syncing data to WA-SPK sheet...");
-      
-      // Baca data existing dari WA-SPK sheet
-      const existingData = await callEdgeFunction("read", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A:M"
-      });
-
-      const existingRows = existingData?.values || [];
-      const headerRow = existingRows.length > 0 ? existingRows[0] : [
-        "No", "Periode SPK", "Nama", "NIK", "Kecamatan", "Pendataan", "Pemeriksaan", 
-        "Pengolahan", "Jumlah", "SBML", "Status TTD", "Status Notif", "Keterangan"
-      ];
-
-      // Persiapkan data baru untuk diupdate
-      const newRows = [headerRow];
-      const currentPeriode = `${filterBulan} ${filterTahun}`;
-
-      dataToSync.forEach((row, index) => {
-        const sbmlStatus = row.isExceeded ? "Melebihi" : "OK";
-        const newRow = [
-          (index + 1).toString(), // No
-          currentPeriode, // Periode SPK
-          row.namaMitra, // Nama
-          row.nik, // NIK
-          row.kecamatan || "-", // Kecamatan
-          formatRupiah(row.pendataan), // Pendataan
-          formatRupiah(row.pemeriksaan), // Pemeriksaan
-          formatRupiah(row.pengolahan), // Pengolahan
-          formatRupiah(row.jumlah), // Jumlah
-          sbmlStatus, // SBML
-          row.statusTTD, // Status TTD
-          row.statusNotif, // Status Notif
-          "" // Keterangan (kosong)
-        ];
-        newRows.push(newRow);
-      });
-
-      // Update seluruh sheet dengan data baru
-      await callEdgeFunction("update", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1",
-        values: newRows
-      });
-
-      console.log("✅ Successfully synced data to WA-SPK sheet");
-    } catch (error: any) {
-      console.error("❌ Error syncing to WA-SPK sheet:", error);
-      // Tidak throw error agar tidak mengganggu flow utama
-    }
-  }, [isPPK, callEdgeFunction, filterBulan, filterTahun, formatRupiah]);
 
   const fetchData = useCallback(async () => {
     if (!filterBulan || !filterTahun) {
@@ -538,7 +554,13 @@ export default function RekapSPKBAST() {
 
       // Sync ke WA-SPK sheet setelah load data
       if (finalData.length > 0 && isPPK) {
-        await syncToWaSpkSheet(finalData);
+        try {
+          await syncToWaSpkSheet(finalData);
+          console.log("✅ Auto-sync to WA-SPK completed");
+        } catch (syncError) {
+          console.error("❌ Auto-sync failed:", syncError);
+          // Tidak tampilkan error untuk auto-sync agar tidak mengganggu user
+        }
       }
 
       if (finalData.length > 0) {
@@ -846,56 +868,6 @@ export default function RekapSPKBAST() {
     }));
   }, [data, sortField, sortDirection, statusFilter, searchQuery]);
 
-  const handleExportExcel = useCallback(async () => {
-    if (!isPPK) {
-      toast({
-        title: "Akses Ditolak",
-        description: "Hanya PPK yang dapat mengekspor data",
-        variant: "destructive"
-      });
-      return;
-    }
-    try {
-      const exportData = filteredAndSortedData.map(row => ({
-        'No': row.no,
-        'Nama Mitra Statistik': row.namaMitra,
-        'Kecamatan': row.kecamatan,
-        'Pendataan': formatRupiah(row.pendataan),
-        'Pemeriksaan': formatRupiah(row.pemeriksaan),
-        'Pengolahan': formatRupiah(row.pengolahan),
-        'Jumlah': formatRupiah(row.jumlah),
-        'Status': row.statusTTD,
-        'Peringatan SBML': row.isExceeded ? 'YA' : 'TIDAK'
-      }));
-      const csvContent = [
-        ['No', 'Nama Mitra Statistik', 'Kecamatan', 'Pendataan', 'Pemeriksaan', 'Pengolahan', 'Jumlah', 'Status', 'Peringatan SBML'],
-        ...exportData.map(row => [row.No, row['Nama Mitra Statistik'], row.Kecamatan, row.Pendataan, row.Pemeriksaan, row.Pengolahan, row.Jumlah, row.Status, row['Peringatan SBML']])
-      ].map(row => row.join(',')).join('\n');
-      const blob = new Blob([csvContent], {
-        type: 'text/csv;charset=utf-8;'
-      });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Rekap_SPK_BAST_${filterBulan}_${filterTahun}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast({
-        title: "Berhasil",
-        description: "Data berhasil diekspor"
-      });
-    } catch (error: any) {
-      console.error("Error exporting data:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengekspor data: " + error.message,
-        variant: "destructive"
-      });
-    }
-  }, [filteredAndSortedData, isPPK, filterBulan, filterTahun, formatRupiah, toast]);
-
   const handleManualSyncToWaSpk = useCallback(async () => {
     if (!isPPK) {
       toast({
@@ -906,12 +878,30 @@ export default function RekapSPKBAST() {
       return;
     }
 
+    if (!filterBulan || !filterTahun) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih bulan dan tahun terlebih dahulu",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (filteredAndSortedData.length === 0) {
+      toast({
+        title: "Peringatan",
+        description: "Tidak ada data untuk disinkronisasi",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await syncToWaSpkSheet(filteredAndSortedData);
       toast({
         title: "Berhasil",
-        description: "Data berhasil disinkronisasi ke sheet WA-SPK"
+        description: `Data berhasil disinkronisasi ke sheet WA-SPK - ${filteredAndSortedData.length} records`
       });
     } catch (error: any) {
       console.error("Error syncing to WA-SPK:", error);
@@ -923,7 +913,7 @@ export default function RekapSPKBAST() {
     } finally {
       setLoading(false);
     }
-  }, [filteredAndSortedData, isPPK, syncToWaSpkSheet, toast]);
+  }, [filteredAndSortedData, isPPK, syncToWaSpkSheet, toast, filterBulan, filterTahun]);
 
   useEffect(() => {
     if (filterTahun) {
@@ -1010,14 +1000,8 @@ export default function RekapSPKBAST() {
             <div className="flex gap-2">
               {isPPK && (
                 <Button onClick={handleManualSyncToWaSpk} size="sm" className="h-8 gap-2" disabled={loading}>
-                  <Download className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" />
                   Sync WA-SPK
-                </Button>
-              )}
-              {isPPK && (
-                <Button onClick={handleExportExcel} size="sm" className="h-8 gap-2">
-                  <Download className="h-4 w-4" />
-                  Ekspor Excel
                 </Button>
               )}
             </div>
