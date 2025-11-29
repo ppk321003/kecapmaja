@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { UserCog, Plus, Pencil, Trash2, Users, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User } from "lucide-react";
+import { UserCog, Plus, Pencil, Trash2, Users, Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User, Phone } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,7 +48,7 @@ const KECAMATAN_LIST = [
   "Talaga"
 ];
 
-// Schemas
+// Schemas - UPDATE: Tambah field whatsapp
 const pengelolaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
   nip: z.string().min(1, "NIP harus diisi").max(50),
@@ -63,7 +63,8 @@ const mitraSchema = z.object({
   alamat: z.string().min(1, "Alamat harus diisi").max(200),
   bank: z.string().min(1, "Bank harus diisi").max(100),
   rekening: z.string().min(1, "Rekening harus diisi").max(50),
-  kecamatan: z.string().min(1, "Kecamatan harus dipilih")
+  kecamatan: z.string().min(1, "Kecamatan harus dipilih"),
+  whatsapp: z.string().min(1, "Nomor WhatsApp harus diisi").max(20)
 });
 
 type PengelolaFormData = z.infer<typeof pengelolaSchema>;
@@ -84,6 +85,7 @@ interface Organik {
   pangkat: string;
 }
 
+// UPDATE: Tambah field whatsapp di interface Mitra
 interface Mitra extends MitraFormData {
   rowIndex: number;
 }
@@ -114,12 +116,11 @@ export default function EntriPengelola() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Role-based permissions - YANG DIPERBAIKI
+  // Role-based permissions
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   const canEditPengelola = isPPK;
-  const canAddMitra = isPPK; // Hanya PPK yang bisa tambah mitra
-  const canDeleteMitra = isPPK; // Hanya PPK yang bisa hapus mitra
-  // SEMUA ROLE BISA EDIT MITRA - tidak perlu variabel khusus karena tombol edit selalu tampil
+  const canAddMitra = isPPK;
+  const canDeleteMitra = isPPK;
 
   const pengelolaForm = useForm<PengelolaFormData>({
     resolver: zodResolver(pengelolaSchema),
@@ -130,6 +131,7 @@ export default function EntriPengelola() {
     }
   });
 
+  // UPDATE: Tambah default value untuk whatsapp
   const mitraForm = useForm<MitraFormData>({
     resolver: zodResolver(mitraSchema),
     defaultValues: {
@@ -140,7 +142,8 @@ export default function EntriPengelola() {
       alamat: "",
       bank: "",
       rekening: "",
-      kecamatan: ""
+      kecamatan: "",
+      whatsapp: ""
     }
   });
 
@@ -216,7 +219,7 @@ export default function EntriPengelola() {
     }
   };
 
-  // Fetch data Mitra Kepka
+  // UPDATE: Fetch data Mitra Kepka dengan kolom whatsapp (No. HP)
   const fetchMitra = async () => {
     try {
       setLoadingMitra(true);
@@ -224,7 +227,7 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.MITRA!A:H"
+          range: "MASTER.MITRA!A:I" // UPDATE: Range diperluas sampai kolom I untuk No. HP
         }
       });
       
@@ -240,7 +243,8 @@ export default function EntriPengelola() {
         alamat: row[4] || "",
         bank: row[5] || "",
         rekening: row[6] || "",
-        kecamatan: row[7] || ""
+        kecamatan: row[7] || "",
+        whatsapp: row[8] || "" // UPDATE: Tambah field whatsapp dari kolom No. HP
       }));
       
       setMitra(mitraData);
@@ -339,7 +343,7 @@ export default function EntriPengelola() {
     }
   };
 
-  // Mitra Kepka CRUD
+  // UPDATE: Mitra Kepka CRUD dengan kolom whatsapp
   const onSubmitMitra = async (values: MitraFormData) => {
     try {
       const operation = editingMitra ? "update" : "append";
@@ -348,10 +352,11 @@ export default function EntriPengelola() {
         values.nik,
         values.nama,
         values.pekerjaan,
-        values.alamat,
+        values.alamat, // Tetap disimpan di sheet tapi tidak ditampilkan di UI
         values.bank,
         values.rekening,
-        values.kecamatan
+        values.kecamatan,
+        values.whatsapp // UPDATE: Tambah kolom whatsapp
       ];
 
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -437,13 +442,15 @@ export default function EntriPengelola() {
     o.pangkat.toLowerCase().includes(searchOrganik.toLowerCase())
   );
 
+  // UPDATE: Tambah pencarian di field whatsapp
   const filteredMitra = mitra.filter(m =>
     m.nama.toLowerCase().includes(searchMitra.toLowerCase()) ||
     m.nik.toLowerCase().includes(searchMitra.toLowerCase()) ||
     m.pekerjaan.toLowerCase().includes(searchMitra.toLowerCase()) ||
     m.alamat.toLowerCase().includes(searchMitra.toLowerCase()) ||
     m.bank.toLowerCase().includes(searchMitra.toLowerCase()) ||
-    m.kecamatan.toLowerCase().includes(searchMitra.toLowerCase())
+    m.kecamatan.toLowerCase().includes(searchMitra.toLowerCase()) ||
+    m.whatsapp.toLowerCase().includes(searchMitra.toLowerCase())
   );
 
   // Sorting untuk Mitra
@@ -717,14 +724,13 @@ export default function EntriPengelola() {
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cari nama, NIK, pekerjaan, alamat, bank, atau kecamatan..."
+                placeholder="Cari nama, NIK, pekerjaan, bank, kecamatan, atau WhatsApp..."
                 value={searchMitra}
                 onChange={(e) => setSearchMitra(e.target.value)}
                 className="max-w-sm"
               />
             </div>
             
-            {/* Tombol Tambah Mitra - hanya untuk PPK */}
             {canAddMitra && (
               <Button onClick={() => {
                 setEditingMitra(null);
@@ -737,7 +743,7 @@ export default function EntriPengelola() {
             )}
           </div>
 
-          {/* DIALOG UNTUK TAMBAH/EDIT MITRA - SELALU ADA UNTUK SEMUA ROLE */}
+          {/* DIALOG UNTUK TAMBAH/EDIT MITRA - UPDATE: Tambah field whatsapp */}
           <Dialog open={mitraDialogOpen} onOpenChange={(open) => {
             setMitraDialogOpen(open);
             if (!open) {
@@ -832,6 +838,21 @@ export default function EntriPengelola() {
                         </FormItem>
                       )} 
                     />
+                    {/* UPDATE: Tambah field whatsapp di form */}
+                    <FormField 
+                      control={mitraForm.control} 
+                      name="whatsapp" 
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nomor WhatsApp</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Contoh: 081234567890" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+                    {/* UPDATE: Alamat tetap ada di form tapi tidak ditampilkan di tabel */}
                     <FormField 
                       control={mitraForm.control} 
                       name="alamat" 
@@ -912,7 +933,7 @@ export default function EntriPengelola() {
                           </div>
                         </TableHead>
                         <TableHead className="w-24">NIK</TableHead>
-                        <TableHead className="w-48">Alamat</TableHead>
+                        {/* UPDATE: Hapus kolom Alamat dari UI tabel */}
                         <TableHead 
                           className="cursor-pointer hover:bg-gray-50 w-32"
                           onClick={() => handleSort("kecamatan")}
@@ -926,6 +947,20 @@ export default function EntriPengelola() {
                           </div>
                         </TableHead>
                         <TableHead className="w-32">Pekerjaan</TableHead>
+                        {/* UPDATE: Tambah kolom WhatsApp */}
+                        <TableHead 
+                          className="cursor-pointer hover:bg-gray-50 w-32"
+                          onClick={() => handleSort("whatsapp")}
+                        >
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            WhatsApp
+                            <ArrowUpDown className="h-4 w-4" />
+                            {sortField === "whatsapp" && (
+                              <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                            )}
+                          </div>
+                        </TableHead>
                         <TableHead className="w-24">Bank</TableHead>
                         <TableHead className="w-28">Rekening</TableHead>
                         <TableHead className="text-right w-20">Aksi</TableHead>
@@ -937,18 +972,18 @@ export default function EntriPengelola() {
                           <TableCell className="py-2">{m.no}</TableCell>
                           <TableCell className="py-2 font-medium">{m.nama}</TableCell>
                           <TableCell className="py-2">{m.nik}</TableCell>
-                          <TableCell className="py-2 max-w-[200px] truncate" title={m.alamat}>{m.alamat}</TableCell>
+                          {/* UPDATE: Hapus tampilan Alamat dari UI tabel */}
                           <TableCell className="py-2">{m.kecamatan}</TableCell>
                           <TableCell className="py-2">{m.pekerjaan}</TableCell>
+                          {/* UPDATE: Tambah kolom WhatsApp di tabel */}
+                          <TableCell className="py-2">{m.whatsapp}</TableCell>
                           <TableCell className="py-2">{m.bank}</TableCell>
                           <TableCell className="py-2">{m.rekening}</TableCell>
                           <TableCell className="py-2 text-right">
                             <div className="flex justify-end gap-1">
-                              {/* TOMBOL EDIT - SELALU TAMPIL UNTUK SEMUA ROLE */}
                               <Button variant="ghost" size="sm" onClick={() => handleEditMitra(m)}>
                                 <Pencil className="h-3 w-3" />
                               </Button>
-                              {/* TOMBOL HAPUS - HANYA TAMPIL UNTUK PPK */}
                               {canDeleteMitra && (
                                 <Button variant="ghost" size="sm" onClick={() => handleDeleteMitra(m)}>
                                   <Trash2 className="h-3 w-3" />
