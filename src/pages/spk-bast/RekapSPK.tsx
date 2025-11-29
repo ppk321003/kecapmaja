@@ -259,49 +259,49 @@ export default function RekapSPKBAST() {
 
     const allRows = [headerRow, ...dataRows];
 
-    // **STRATEGI BARU: Baca seluruh data dulu, lalu replace yang sesuai periode**
-    console.log("📊 Reading existing WA-SPK data...");
+    // **STRATEGI SEDERHANA: Gunakan append dengan menghapus data periode yang sama terlebih dahulu**
+    console.log("📊 Reading existing WA-SPK data to find duplicates...");
     const existingData = await callEdgeFunction("read", {
       spreadsheetId: WA_SPK_SPREADSHEET_ID,
-      range: "WA-SPK!A:Z"
+      range: "WA-SPK!A:M" // Hanya baca kolom yang diperlukan
     });
 
     const existingRows = existingData?.values || [];
     console.log("📋 Existing rows count:", existingRows.length);
 
-    if (existingRows.length === 0) {
-      // Jika sheet kosong, tulis data baru
-      console.log("📝 Sheet kosong, writing new data...");
-      await callEdgeFunction("update", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1",
-        values: allRows
-      });
-    } else {
-      // Cari dan replace data dengan periode yang sama
-      const filteredRows = existingRows.filter(row => {
-        const rowPeriode = row[1]?.toString() || ""; // Kolom B adalah Periode SPK
-        return rowPeriode !== currentPeriode;
-      });
+    if (existingRows.length > 0) {
+      // Cari baris dengan periode yang sama
+      const rowsToDelete = [];
+      for (let i = 1; i < existingRows.length; i++) { // Skip header
+        const rowPeriode = existingRows[i][1]?.toString() || ""; // Kolom B adalah Periode SPK
+        if (rowPeriode === currentPeriode) {
+          rowsToDelete.push(i + 1); // +1 karena spreadsheet index mulai dari 1
+        }
+      }
 
-      // Hapus semua data yang ada
-      console.log("🧹 Clearing existing data...");
-      await callEdgeFunction("update", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A:Z",
-        values: []
-      });
+      console.log(`🗑️ Found ${rowsToDelete.length} rows with same period to delete`);
 
-      // Gabungkan data lama (kecuali periode yang sama) dengan data baru
-      const finalRows = [...filteredRows.slice(0, 1), ...allRows.slice(1), ...filteredRows.slice(1)];
-      
-      console.log("📝 Writing updated data...");
-      await callEdgeFunction("update", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1",
-        values: finalRows
-      });
+      // Hapus baris dengan periode yang sama (dari bawah ke atas agar index tidak berubah)
+      if (rowsToDelete.length > 0) {
+        rowsToDelete.sort((a, b) => b - a); // Urutkan dari terbesar ke terkecil
+        for (const rowIndex of rowsToDelete) {
+          console.log(`🗑️ Deleting row ${rowIndex}`);
+          await callEdgeFunction("delete", {
+            spreadsheetId: WA_SPK_SPREADSHEET_ID,
+            range: `WA-SPK!A${rowIndex}:M${rowIndex}`
+          });
+          await delay(500); // Tunggu sebentar antara delete
+        }
+      }
     }
+
+    // Append data baru
+    console.log("📝 Appending new data...");
+    const result = await callEdgeFunction("append", {
+      spreadsheetId: WA_SPK_SPREADSHEET_ID,
+      range: "WA-SPK!A1",
+      values: allRows
+    });
 
     console.log("✅ Sync completed successfully");
     return true;
