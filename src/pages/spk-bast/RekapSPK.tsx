@@ -503,106 +503,6 @@ export default function RekapSPKBAST() {
     }
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
 
-  // Fungsi untuk mengubah semua status Notif sekaligus
-  const handleAllNotifChange = useCallback(async (newStatus: string) => {
-    if (!isPPK || filteredAndSortedData.length === 0) return;
-
-    try {
-      setUpdatingAllNotif(true);
-      
-      let successCount = 0;
-      const totalItems = filteredAndSortedData.length;
-
-      // Update local state terlebih dahulu
-      setData(prev => prev.map(row => ({
-        ...row,
-        statusNotif: newStatus
-      })));
-
-      // Update semua data di spreadsheet
-      for (const row of filteredAndSortedData) {
-        try {
-          await handleNotifChange(row.namaMitra, row.nik, newStatus, true);
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Gagal update notif untuk ${row.namaMitra}:`, error);
-        }
-      }
-
-      toast({
-        title: successCount === totalItems ? "Berhasil" : "Perhatian",
-        description: successCount === totalItems 
-          ? `Semua status notifikasi berhasil diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif" (${successCount} data)`
-          : `Status notifikasi berhasil diubah untuk ${successCount} dari ${totalItems} data`
-      });
-
-      // Refresh data untuk memastikan konsistensi
-      setTimeout(() => {
-        fetchData();
-      }, 1000);
-
-    } catch (error: any) {
-      console.error("❌ Error updating all notif status:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengubah semua status notifikasi: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setUpdatingAllNotif(false);
-    }
-  }, [filteredAndSortedData, isPPK, handleNotifChange, toast, fetchData]);
-
-  // Fungsi untuk mengubah semua status TTD sekaligus
-  const handleAllTTDChange = useCallback(async (newStatus: string) => {
-    if (!isPPK || filteredAndSortedData.length === 0) return;
-
-    try {
-      setUpdatingAllTTD(true);
-      
-      let successCount = 0;
-      const totalItems = filteredAndSortedData.length;
-
-      // Update local state terlebih dahulu
-      setData(prev => prev.map(row => ({
-        ...row,
-        statusTTD: newStatus
-      })));
-
-      // Update semua data di spreadsheet
-      for (const row of filteredAndSortedData) {
-        try {
-          await handleStatusChange(row.namaMitra, row.nik, newStatus, true);
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Gagal update TTD untuk ${row.namaMitra}:`, error);
-        }
-      }
-
-      toast({
-        title: successCount === totalItems ? "Berhasil" : "Perhatian",
-        description: successCount === totalItems 
-          ? `Semua status TTD berhasil diubah menjadi "${newStatus}" (${successCount} data)`
-          : `Status TTD berhasil diubah untuk ${successCount} dari ${totalItems} data`
-      });
-
-      // Refresh data untuk memastikan konsistensi
-      setTimeout(() => {
-        fetchData();
-      }, 1000);
-
-    } catch (error: any) {
-      console.error("❌ Error updating all TTD status:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengubah semua status TTD: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setUpdatingAllTTD(false);
-    }
-  }, [filteredAndSortedData, isPPK, handleStatusChange, toast, fetchData]);
-
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string, isBulkUpdate = false) => {
     if (!isPPK) return;
     
@@ -912,6 +812,106 @@ export default function RekapSPKBAST() {
       no: index + 1
     }));
   }, [data, sortField, sortDirection, statusFilter, searchQuery]);
+
+  // Fungsi untuk mengubah semua status Notif sekaligus
+  const handleAllNotifChange = useCallback(async (newStatus: string) => {
+    if (!isPPK || filteredAndSortedData.length === 0) return;
+
+    try {
+      setUpdatingAllNotif(true);
+      
+      let successCount = 0;
+      const totalItems = filteredAndSortedData.length;
+
+      // Update local state terlebih dahulu
+      setData(prev => prev.map(row => ({
+        ...row,
+        statusNotif: newStatus
+      })));
+
+      // Update semua data di spreadsheet
+      for (const row of filteredAndSortedData) {
+        try {
+          await handleNotifChange(row.namaMitra, row.nik, newStatus, true);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Gagal update notif untuk ${row.namaMitra}:`, error);
+        }
+      }
+
+      toast({
+        title: successCount === totalItems ? "Berhasil" : "Perhatian",
+        description: successCount === totalItems 
+          ? `Semua status notifikasi berhasil diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif" (${successCount} data)`
+          : `Status notifikasi berhasil diubah untuk ${successCount} dari ${totalItems} data`
+      });
+
+      // Refresh data untuk memastikan konsistensi
+      setTimeout(() => {
+        fetchData();
+      }, 1000);
+
+    } catch (error: any) {
+      console.error("❌ Error updating all notif status:", error);
+      toast({
+        title: "Error",
+        description: "Gagal mengubah semua status notifikasi: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingAllNotif(false);
+    }
+  }, [filteredAndSortedData, isPPK, handleNotifChange, toast, fetchData]);
+
+  // Fungsi untuk mengubah semua status TTD sekaligus
+  const handleAllTTDChange = useCallback(async (newStatus: string) => {
+    if (!isPPK || filteredAndSortedData.length === 0) return;
+
+    try {
+      setUpdatingAllTTD(true);
+      
+      let successCount = 0;
+      const totalItems = filteredAndSortedData.length;
+
+      // Update local state terlebih dahulu
+      setData(prev => prev.map(row => ({
+        ...row,
+        statusTTD: newStatus
+      })));
+
+      // Update semua data di spreadsheet
+      for (const row of filteredAndSortedData) {
+        try {
+          await handleStatusChange(row.namaMitra, row.nik, newStatus, true);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Gagal update TTD untuk ${row.namaMitra}:`, error);
+        }
+      }
+
+      toast({
+        title: successCount === totalItems ? "Berhasil" : "Perhatian",
+        description: successCount === totalItems 
+          ? `Semua status TTD berhasil diubah menjadi "${newStatus}" (${successCount} data)`
+          : `Status TTD berhasil diubah untuk ${successCount} dari ${totalItems} data`
+      });
+
+      // Refresh data untuk memastikan konsistensi
+      setTimeout(() => {
+        fetchData();
+      }, 1000);
+
+    } catch (error: any) {
+      console.error("❌ Error updating all TTD status:", error);
+      toast({
+        title: "Error",
+        description: "Gagal mengubah semua status TTD: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingAllTTD(false);
+    }
+  }, [filteredAndSortedData, isPPK, handleStatusChange, toast, fetchData]);
 
   useEffect(() => {
     if (filterTahun) {
