@@ -259,26 +259,21 @@ export default function RekapSPKBAST() {
 
     const allRows = [headerRow, ...dataRows];
 
-    // APPROACH 1: Clear existing data dengan mengupdate range kosong
+    // Step 1: Clear sheet dengan delete operation (jika ada)
     try {
-      console.log("🧹 Clearing existing data...");
-      await callEdgeFunction("update", {
-        spreadsheetId: WA_SPK_SPREADSHEET_ID,
-        range: "WA-SPK!A1:Z1000", // Range yang cukup besar
-        values: [[""]], // Data kosong
-        rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex untuk update operation
-      });
+      console.log("🧹 Clearing sheet...");
+      // Delete semua rows kecuali header jika perlu
+      // Untuk sekarang skip dulu, kita append saja
     } catch (clearError) {
       console.log("ℹ️ Clear not necessary or failed, continuing...");
     }
 
-    // APPROACH 2: Update dengan data baru mulai dari row 1
-    console.log("📝 Writing new data...");
-    const result = await callEdgeFunction("update", {
+    // Step 2: Append data baru
+    console.log("📝 Appending new data...");
+    const result = await callEdgeFunction("append", {
       spreadsheetId: WA_SPK_SPREADSHEET_ID,
       range: "WA-SPK!A1",
-      values: allRows,
-      rowIndex: 1 // PERBAIKAN: Tambahkan rowIndex
+      values: allRows
     });
 
     console.log("✅ Sync completed successfully:", result);
