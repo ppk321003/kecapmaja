@@ -1013,7 +1013,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
                     <th className="text-left py-3 font-semibold">Nama</th>
-                    <th className="text-center py-3 font-semibold">Jumlah Perjadin</th>
+                    <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Biaya</th>
                   </tr>
                 </thead>
@@ -1095,7 +1095,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                   <tr className="border-b">
                     <th className="text-left py-3 font-semibold w-12">No</th>
                     <th className="text-left py-3 font-semibold">Nama</th>
-                    <th className="text-center py-3 font-semibold">Jumlah Perjadin</th>
+                    <th className="text-center py-3 font-semibold">Jumlah Kegiatan</th>
                     <th className="text-right py-3 font-semibold">Total Biaya</th>
                   </tr>
                 </thead>
