@@ -774,11 +774,11 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       <div className="space-y-6">
         <Card className="border-dashed">
           <CardHeader>
-            <CardTitle>Memuat data perjadin...</CardTitle>
+            <CardTitle>Memuat data Perjalanan Dinas...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-              <p className="text-muted-foreground">Sedang memuat data perjadin...</p>
+              <p className="text-muted-foreground">Sedang memuat data Perjalanan Dinas...</p>
             </div>
           </CardContent>
         </Card>
@@ -809,7 +809,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       {/* Filter Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter Data Perjadin</CardTitle>
+          <CardTitle className="text-lg">Filter Data Perjalanan Dinas</CardTitle>
           <CardDescription>
             Filter data perjalanan dinas berdasarkan kriteria tertentu
           </CardDescription>
@@ -853,7 +853,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">
-              Total Perjadin
+              Total Perjalanan Dinas
             </CardTitle>
             <MapPin className="h-4 w-4 text-blue-600" />
           </CardHeader>
@@ -894,7 +894,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">
-              Rata-rata per Perjadin
+              Rata-rata per Perjalanan Dinas
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
@@ -921,8 +921,8 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           </CardTitle>
           <CardDescription>
             {viewMode === 'anggaran' 
-              ? `Perkembangan biaya perjadin selama tahun ${filterTahun}`
-              : `Perkembangan durasi perjadin selama tahun ${filterTahun}`
+              ? `Perkembangan biaya Perjalanan Dinas selama tahun ${filterTahun}`
+              : `Perkembangan durasi Perjalanan Dinas selama tahun ${filterTahun}`
             }
           </CardDescription>
         </CardHeader>
@@ -986,7 +986,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Distribusi Realisasi Perjadin - Organik
+                Distribusi Realisasi Perjalanan Dinas - Organik
                 <span className="text-sm font-normal text-muted-foreground">
                   ({organikSearchQuery ? `${filteredOrganikData.length} hasil` : 'Top 15'})
                 </span>
@@ -998,7 +998,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
               />
             </div>
             <CardDescription>
-              Detail realisasi perjadin per petugas organik
+              Detail realisasi Perjalanan Dinas per petugas organik
               {organikSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
                   Pencarian: "{organikSearchQuery}" - Menampilkan {filteredOrganikData.length} dari {allPetugasData.organik.length} total data
@@ -1068,7 +1068,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Distribusi Realisasi Perjadin - Mitra Statistik
+                Distribusi Realisasi Perjalanan Dinas - Mitra Statistik
                 <span className="text-sm font-normal text-muted-foreground">
                   ({mitraSearchQuery ? `${filteredMitraData.length} hasil` : 'Top 15'})
                 </span>
@@ -1080,7 +1080,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
               />
             </div>
             <CardDescription>
-              Detail realisasi perjadin per mitra statistik
+              Detail realisasi Perjalanan Dinas per mitra statistik
               {mitraSearchQuery && (
                 <div className="mt-1 text-xs text-blue-600">
                   Pencarian: "{mitraSearchQuery}" - Menampilkan {filteredMitraData.length} dari {allPetugasData.mitra.length} total data
