@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2, Search, Plus } from "lucide-react";
+import { CalendarIcon, Trash2, Search, Plus, ChevronDown, Check } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -18,6 +18,7 @@ import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Constants
 const CONSTANTS = {
@@ -32,27 +33,42 @@ const CONSTANTS = {
   }
 } as const;
 
-const SearchableSelect: React.FC<{
+// Custom SearchableSelect dengan dropdown manual
+interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
   options: Array<{ id: string; name: string }>;
   placeholder?: string;
   disabled?: boolean;
-}> = ({ value, onValueChange, options, placeholder = "Pilih...", disabled = false }) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  emptyMessage?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  emptyMessage = "Tidak ada hasil ditemukan"
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectTriggerRef = useRef<HTMLButtonElement>(null);
-  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Measure trigger width when it becomes available
+  // Reset input value when value changes
   useEffect(() => {
-    if (selectTriggerRef.current) {
-      const width = selectTriggerRef.current.offsetWidth;
-      setTriggerWidth(width);
+    if (value) {
+      const selectedOption = options.find(opt => opt.id === value);
+      setInputValue(selectedOption?.name || "");
+    } else {
+      setInputValue("");
     }
-  }, [isOpen]);
+  }, [value, options]);
 
+  // Filter options based on search term
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
@@ -60,92 +76,143 @@ const SearchableSelect: React.FC<{
     );
   }, [options, searchTerm]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Auto focus input when dropdown opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      // Small delay to ensure the dropdown is fully rendered
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     }
   }, [isOpen]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+    if (!disabled) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleSelectOption = (optionId: string, optionName: string) => {
+    onValueChange(optionId);
+    setInputValue(optionName);
+    setSearchTerm("");
+    setIsOpen(false);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
-    // Prevent Enter key from closing the dropdown
-    if (e.key === 'Enter') {
-      e.preventDefault();
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+      setSearchTerm("");
+    }
+    if (e.key === 'Enter' && filteredOptions.length === 1) {
+      handleSelectOption(filteredOptions[0].id, filteredOptions[0].name);
     }
   };
 
-  // Reset search term ketika dropdown ditutup
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm("");
-    }
-  }, [isOpen]);
+  const selectedOption = options.find(opt => opt.id === value);
 
   return (
-    <Select 
-      value={value} 
-      onValueChange={onValueChange} 
-      disabled={disabled}
-      open={isOpen}
-      onOpenChange={setIsOpen}
-    >
-      <SelectTrigger ref={selectTriggerRef} className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent 
-        className="max-h-60"
-        style={{ 
-          width: triggerWidth ? `${triggerWidth}px` : 'auto',
-          minWidth: 'var(--radix-select-trigger-width)'
-        }}
-        position="popper"
-        align="start"
+    <div className="relative w-full" ref={containerRef}>
+      {/* Trigger Input */}
+      <div
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground",
+          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+          disabled && "cursor-not-allowed opacity-50",
+          "min-h-[40px]"
+        )}
+        onClick={handleInputClick}
       >
-        {/* Sticky search header */}
-        <div className="sticky top-0 z-10 bg-popover p-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              placeholder="Cari..."
-              value={searchTerm}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
-              className="pl-8"
-              // Prevent blur when clicking inside input
-              onMouseDown={(e) => e.preventDefault()}
-            />
-          </div>
-        </div>
-        
-        <div className="max-h-44 overflow-y-auto">
-          {filteredOptions.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground px-2">
-              Tidak ada hasil ditemukan
-            </div>
+        <div className="flex-1 overflow-hidden">
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.name}</span>
           ) : (
-            filteredOptions.map((option) => (
-              <SelectItem 
-                key={option.id} 
-                value={option.id}
-                className="truncate"
-              >
-                {option.name}
-              </SelectItem>
-            ))
+            <span className="text-muted-foreground">{placeholder}</span>
           )}
         </div>
-      </SelectContent>
-    </Select>
+        <ChevronDown className={cn(
+          "h-4 w-4 opacity-50 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </div>
+
+      {/* Custom Dropdown */}
+      {isOpen && !disabled && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+          style={{
+            width: containerRef.current?.offsetWidth || 'auto'
+          }}
+        >
+          {/* Search Input */}
+          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={inputRef}
+                placeholder="Cari..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyDown={handleKeyDown}
+                className="pl-8 h-9"
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Options List */}
+          <ScrollArea className="max-h-60">
+            <div className="py-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <div
+                    key={option.id}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      value === option.id && "bg-accent font-medium"
+                    )}
+                    onClick={() => handleSelectOption(option.id, option.name)}
+                  >
+                    {value === option.id && (
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <Check className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="truncate">{option.name}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -163,7 +230,7 @@ interface PersonGroup {
   trips: Trip[];
 }
 
-// Form Schema dengan validasi tanggal duplikat
+// Form Schema
 const formSchema = z.object({
   tujuanPelaksanaan: z.string().min(1, "Tujuan pelaksanaan harus diisi"),
   nomorSuratTugas: z.string().max(50, "Nomor surat tugas maksimal 50 karakter"),
@@ -186,13 +253,12 @@ const formSchema = z.object({
     nama: z.string().optional()
   })).min(1, "Minimal harus ada 1 peserta")
 }).refine((data) => {
-  // Validasi: nama tidak boleh bepergian di tanggal yang sama
   const datePersonMap = new Map();
   
   for (const detail of data.transportDetails) {
     const key = `${detail.nama}-${detail.tanggalPelaksanaan?.toISOString().split('T')[0]}`;
     if (datePersonMap.has(key)) {
-      return false; // Duplikat ditemukan
+      return false;
     }
     datePersonMap.set(key, true);
   }
@@ -220,7 +286,7 @@ const defaultValues: Partial<FormValues> = {
   transportDetails: []
 };
 
-// PersonTransportGroup Component
+// PersonTransportGroup Component - DIUBAH untuk lebih responsif
 const PersonTransportGroup: React.FC<{
   personId: string;
   personName: string;
@@ -257,7 +323,7 @@ const PersonTransportGroup: React.FC<{
   return (
     <Card className="mb-4 border-l-4 border-l-blue-500">
       <CardContent className="p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
           <h4 className="font-semibold text-blue-700">
             {type === "organik" ? "Organik BPS" : "Mitra Statistik"}
           </h4>
@@ -266,9 +332,10 @@ const PersonTransportGroup: React.FC<{
             variant="ghost"
             size="sm"
             onClick={onRemovePerson}
-            className="text-red-600 hover:text-red-800"
+            className="text-red-600 hover:text-red-800 self-start sm:self-center"
           >
             <Trash2 className="h-4 w-4" />
+            <span className="ml-2 sm:hidden">Hapus</span>
           </Button>
         </div>
 
@@ -286,24 +353,32 @@ const PersonTransportGroup: React.FC<{
           <div className="space-y-2">
             <FormLabel>Dari Kecamatan *</FormLabel>
             <Select value={dariKecamatan} onValueChange={onUpdateDariKecamatan}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Pilih kecamatan" />
               </SelectTrigger>
               <SelectContent>
-                {kecamatanList.map(kecamatan => (
-                  <SelectItem key={kecamatan} value={kecamatan}>
-                    {kecamatan}
-                  </SelectItem>
-                ))}
+                <ScrollArea className="max-h-60">
+                  {kecamatanList.map(kecamatan => (
+                    <SelectItem key={kecamatan} value={kecamatan}>
+                      {kecamatan}
+                    </SelectItem>
+                  ))}
+                </ScrollArea>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <FormLabel>Detail Perjalanan</FormLabel>
-            <Button type="button" variant="outline" size="sm" onClick={onAddTrip}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={onAddTrip}
+              className="self-start sm:self-center"
+            >
               <Plus className="h-4 w-4 mr-1" />
               Tambah Perjalanan
             </Button>
@@ -311,7 +386,7 @@ const PersonTransportGroup: React.FC<{
 
           {trips.map((trip, tripIndex) => (
             <div key={tripIndex} className="p-4 border rounded-lg bg-gray-50">
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
                 <span className="text-sm font-medium">Perjalanan {tripIndex + 1}</span>
                 {trips.length > 1 && (
                   <Button
@@ -319,14 +394,14 @@ const PersonTransportGroup: React.FC<{
                     variant="ghost"
                     size="sm"
                     onClick={() => onRemoveTrip(tripIndex)}
-                    className="text-red-500 h-8 w-8 p-0"
+                    className="text-red-500 h-8 w-8 p-0 self-start sm:self-center"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <FormLabel>Kecamatan Tujuan *</FormLabel>
                   <Select
@@ -337,11 +412,13 @@ const PersonTransportGroup: React.FC<{
                       <SelectValue placeholder="Pilih kecamatan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {kecamatanList.map(kecamatan => (
-                        <SelectItem key={kecamatan} value={kecamatan}>
-                          {kecamatan}
-                        </SelectItem>
-                      ))}
+                      <ScrollArea className="max-h-60">
+                        {kecamatanList.map(kecamatan => (
+                          <SelectItem key={kecamatan} value={kecamatan}>
+                            {kecamatan}
+                          </SelectItem>
+                        ))}
+                      </ScrollArea>
                     </SelectContent>
                   </Select>
                 </div>
@@ -372,7 +449,7 @@ const PersonTransportGroup: React.FC<{
                         {trip.tanggalPelaksanaan ? format(trip.tanggalPelaksanaan, "PPP", { locale: idLocale }) : "Pilih tanggal"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={trip.tanggalPelaksanaan || undefined}
@@ -391,7 +468,7 @@ const PersonTransportGroup: React.FC<{
           <div className="mt-4 pt-4 border-t">
             <div className="flex justify-between items-center">
               <span className="font-medium">Total {personName}:</span>
-              <span className="font-bold text-green-600">
+              <span className="font-bold text-green-600 text-sm sm:text-base">
                 Rp {calculateTotal().toLocaleString('id-ID')}
               </span>
             </div>
@@ -464,7 +541,6 @@ const useKuitansiSequenceGenerator = () => {
 
     if (values.length <= 1) return `${prefix}001`;
 
-    // Filter hanya ID yang sesuai format dan bulan/tahun yang sama
     const currentMonthIds = values
       .slice(1)
       .map((row: any[]) => row[0])
@@ -525,7 +601,7 @@ const extractDisplayName = (fullText: string) => {
   return parts.length > 1 ? parts[1] : fullText;
 };
 
-// Main Component
+// Main Component - DIUBAH untuk lebih responsif
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
@@ -670,7 +746,7 @@ const KuitansiTransportLokal = () => {
     setOrganikGroups(prev => prev.filter((_, i) => i !== groupIndex));
   }, []);
 
-  // Mitra handlers (similar to organik)
+  // Mitra handlers
   const handleUpdateMitraPerson = useCallback((groupIndex: number, personId: string) => {
     setMitraGroups(prev => {
       const updated = [...prev];
@@ -727,11 +803,9 @@ const KuitansiTransportLokal = () => {
       generateKuitansiId()
     ]);
 
-    // Pisahkan data organik dan mitra
     const organikDetails = data.transportDetails.filter(detail => detail.type === "organik");
     const mitraDetails = data.transportDetails.filter(detail => detail.type === "mitra");
 
-    // Ambil data program, kegiatan, dll dari form dan format display name
     const selectedProgram = extractDisplayName(programs.find(p => p.id === data.program)?.name || "");
     const selectedKegiatan = extractDisplayName(kegiatanList.find(k => k.id === data.kegiatan)?.name || "");
     const selectedKRO = extractDisplayName(kroList.find(k => k.id === data.kro)?.name || "");
@@ -740,7 +814,6 @@ const KuitansiTransportLokal = () => {
     const selectedAkun = extractDisplayName(akunList.find(a => a.id === data.akun)?.name || "");
     const pembuatDaftarName = organikList.find(p => p.id === data.pembuatDaftar)?.name || "";
 
-    // Gabungkan semua data dengan pemisah |
     const organikNames = organikDetails.map(detail => detail.nama).filter(Boolean).join(" | ");
     const mitraNames = mitraDetails.map(detail => detail.nama).filter(Boolean).join(" | ");
 
@@ -754,39 +827,37 @@ const KuitansiTransportLokal = () => {
     const mitraRates = mitraDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
     const mitraTanggal = mitraDetails.map(detail => formatTanggalIndonesia(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
-    // Siapkan data untuk spreadsheet sesuai urutan header
     return [
-      sequenceNumber.toString(), // No
-      kuitansiId, // Id
-      data.tujuanPelaksanaan, // Tujuan
-      data.nomorSuratTugas, // Nomor Surat
-      formatTanggalIndonesia(data.tanggalSuratTugas), // Tanggal Surat Tugas
-      selectedProgram, // Program
-      selectedKegiatan, // Kegiatan
-      selectedKRO, // KRO
-      selectedRO, // RO
-      selectedKomponen, // Komponen
-      selectedAkun, // Akun
-      formatTanggalIndonesia(data.tanggalSpj), // Tanggal Pengajuan
-      pembuatDaftarName, // Pembuat daftar
-      organikNames, // Organik
-      organikDariKecamatan, // Dari Kecamatan (organik)
-      organikKecamatanTujuan, // Kecamatan Tujuan (organik)
-      organikRates, // rate (organik)
-      organikTanggal, // tanggal (organik)
-      mitraNames, // Mitra Statistik
-      mitraDariKecamatan, // Dari Kecamatan (mitra)
-      mitraKecamatanTujuan, // Kecamatan Tujuan (mitra)
-      mitraRates, // rate (mitra)
-      mitraTanggal, // tanggal (mitra)
-      grandTotal.toString() // Total
+      sequenceNumber.toString(),
+      kuitansiId,
+      data.tujuanPelaksanaan,
+      data.nomorSuratTugas,
+      formatTanggalIndonesia(data.tanggalSuratTugas),
+      selectedProgram,
+      selectedKegiatan,
+      selectedKRO,
+      selectedRO,
+      selectedKomponen,
+      selectedAkun,
+      formatTanggalIndonesia(data.tanggalSpj),
+      pembuatDaftarName,
+      organikNames,
+      organikDariKecamatan,
+      organikKecamatanTujuan,
+      organikRates,
+      organikTanggal,
+      mitraNames,
+      mitraDariKecamatan,
+      mitraKecamatanTujuan,
+      mitraRates,
+      mitraTanggal,
+      grandTotal.toString()
     ];
   }, [programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, grandTotal, getNextSequenceNumber, generateKuitansiId]);
 
   // Form submission
   const onSubmit = async (data: FormValues) => {
     try {
-      // Cek duplikat sebelum submit
       if (Object.keys(duplicateErrors).length > 0) {
         toast({
           variant: "destructive",
@@ -796,7 +867,6 @@ const KuitansiTransportLokal = () => {
         return;
       }
 
-      // Tambahkan nama ke transport details
       const transportDetailsWithNames = data.transportDetails.map(detail => ({
         ...detail,
         nama: detail.type === "organik" 
@@ -809,12 +879,8 @@ const KuitansiTransportLokal = () => {
         transportDetails: transportDetailsWithNames
       };
 
-      // Format data untuk spreadsheet
       const rowData = await formatDataForSpreadsheet(formDataWithNames);
       
-      console.log("Data yang akan dikirim ke spreadsheet:", rowData);
-      
-      // Submit ke Google Sheets
       await submitData(rowData);
 
       toast({ 
@@ -845,10 +911,10 @@ const KuitansiTransportLokal = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-2 sm:p-4">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
-          <p className="text-muted-foreground mt-2">Formulir Kuitansi Transport Lokal</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-orange-600">Kuitansi Transport Lokal</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">Formulir Kuitansi Transport Lokal</p>
         </div>
 
         {/* Tampilkan error duplikat */}
@@ -869,13 +935,13 @@ const KuitansiTransportLokal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Informasi Umum */}
             <Card>
-              <CardHeader>
-                <CardTitle>Informasi Umum</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg sm:text-xl">Informasi Umum</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="bg-muted/50 border rounded-lg p-4">
+                <div className="bg-muted/50 border rounded-lg p-3 sm:p-4">
                   <h4 className="text-sm font-medium mb-2">Contoh penulisan:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
+                  <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
                     <li>• Pengawasan lapangan pendataan Sakernas Agustus 2025</li>
                     <li>• Pendataan lapangan Kerangka Sampel Area (KSA) Padi</li>
                   </ul>
@@ -884,16 +950,20 @@ const KuitansiTransportLokal = () => {
                 <FormField control={form.control} name="tujuanPelaksanaan" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tujuan Pelaksanaan / Kegiatan</FormLabel>
-                    <FormControl><Input {...field} placeholder="Masukkan tujuan pelaksanaan" /></FormControl>
+                    <FormControl>
+                      <Input {...field} placeholder="Masukkan tujuan pelaksanaan" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <FormField control={form.control} name="nomorSuratTugas" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nomor Surat Tugas</FormLabel>
-                      <FormControl><Input {...field} placeholder="Masukkan nomor surat tugas" /></FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder="Masukkan nomor surat tugas" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -906,24 +976,40 @@ const KuitansiTransportLokal = () => {
                           <FormControl>
                             <Button variant="outline" className={cn("w-full justify-start text-left", !field.value && "text-muted-foreground")}>
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP", { locale: idLocale }) : "Pilih tanggal"}
+                              <span className="truncate">
+                                {field.value ? format(field.value, "PPP", { locale: idLocale }) : "Pilih tanggal"}
+                              </span>
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
                       </Popover>
                       <FormMessage />
                     </FormItem>
                   )} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <FormField control={form.control} name="program" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Program</FormLabel>
                       <Select onValueChange={(value) => { field.onChange(value); form.setValue("kegiatan", ""); form.setValue("kro", ""); form.setValue("ro", ""); }} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Pilih program" /></SelectTrigger></FormControl>
-                        <SelectContent>{programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih program" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <ScrollArea className="max-h-60">
+                            {programs.map(p => (
+                              <SelectItem key={p.id} value={p.id}>
+                                <span className="truncate">{p.name}</span>
+                              </SelectItem>
+                            ))}
+                          </ScrollArea>
+                        </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
@@ -939,6 +1025,7 @@ const KuitansiTransportLokal = () => {
                           options={kegiatanList}
                           placeholder="Pilih kegiatan"
                           disabled={!form.watch("program")}
+                          emptyMessage="Pilih program terlebih dahulu"
                         />
                       </FormControl>
                       <FormMessage />
@@ -955,6 +1042,7 @@ const KuitansiTransportLokal = () => {
                           options={kroList}
                           placeholder="Pilih KRO"
                           disabled={!form.watch("kegiatan")}
+                          emptyMessage="Pilih kegiatan terlebih dahulu"
                         />
                       </FormControl>
                       <FormMessage />
@@ -971,6 +1059,7 @@ const KuitansiTransportLokal = () => {
                           options={roList}
                           placeholder="Pilih RO"
                           disabled={!form.watch("kro")}
+                          emptyMessage="Pilih KRO terlebih dahulu"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1015,11 +1104,15 @@ const KuitansiTransportLokal = () => {
                           <FormControl>
                             <Button variant="outline" className={cn("w-full justify-start text-left", !field.value && "text-muted-foreground")}>
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP", { locale: idLocale }) : "Pilih tanggal"}
+                              <span className="truncate">
+                                {field.value ? format(field.value, "PPP", { locale: idLocale }) : "Pilih tanggal"}
+                              </span>
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
                       </Popover>
                       <FormMessage />
                     </FormItem>
@@ -1045,13 +1138,20 @@ const KuitansiTransportLokal = () => {
 
             {/* Organik Section */}
             <Card>
-              <CardHeader>
-                <CardTitle>Organik BPS</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg sm:text-xl">Organik BPS</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
                   <h3 className="text-lg font-semibold">Organik BPS</h3>
-                  <Button type="button" onClick={addOrganik} variant="default">Tambah Organik</Button>
+                  <Button 
+                    type="button" 
+                    onClick={addOrganik} 
+                    variant="default"
+                    className="w-full sm:w-auto"
+                  >
+                    Tambah Organik
+                  </Button>
                 </div>
                 
                 {organikGroups.map((group, groupIndex) => (
@@ -1074,13 +1174,20 @@ const KuitansiTransportLokal = () => {
 
             {/* Mitra Section */}
             <Card>
-              <CardHeader>
-                <CardTitle>Mitra Statistik</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg sm:text-xl">Mitra Statistik</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
                   <h3 className="text-lg font-semibold">Mitra Statistik</h3>
-                  <Button type="button" onClick={addMitra} variant="default">Tambah Mitra</Button>
+                  <Button 
+                    type="button" 
+                    onClick={addMitra} 
+                    variant="default"
+                    className="w-full sm:w-auto"
+                  >
+                    Tambah Mitra
+                  </Button>
                 </div>
                 
                 {mitraGroups.map((group, groupIndex) => (
@@ -1103,9 +1210,9 @@ const KuitansiTransportLokal = () => {
 
             {/* Total Section */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="text-right">
-                  <h3 className="text-lg font-semibold text-sky-600">
+                  <h3 className="text-base sm:text-lg font-semibold text-sky-600">
                     Total Keseluruhan: Rp {grandTotal.toLocaleString("id-ID")}
                   </h3>
                 </div>
@@ -1113,14 +1220,24 @@ const KuitansiTransportLokal = () => {
             </Card>
 
             {/* Submit Button */}
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0}>
-              {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
-            </Button>
-          </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate("/e-dokumen/buat")} 
+                disabled={isLoading}
+                className="w-full sm:w-auto"
+              >
+                Batal
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isLoading || flattenedTransportDetails.length === 0 || Object.keys(duplicateErrors).length > 0}
+                className="w-full sm:w-auto"
+              >
+                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+              </Button>
+            </div>
           </form>
         </Form>
       </div>
