@@ -917,6 +917,8 @@ interface CalculatedData {
     rekomendasi: string;
     pertimbanganKhusus: string;
   };
+  koefisien: number;
+  effectiveKoefisien: number;
 }
 
 const EditKonversiModal: React.FC<{
@@ -957,7 +959,9 @@ const EditKonversiModal: React.FC<{
           jenisKenaikan: '',
           rekomendasi: '',
           pertimbanganKhusus: ''
-        }
+        },
+        koefisien: 0,
+        effectiveKoefisien: 0
       };
     }
 
@@ -976,6 +980,9 @@ const EditKonversiModal: React.FC<{
     );
 
     const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
+    const effectiveKoefisien = formData.Jenis_Periode === 'Tahunan' 
+      ? koefisien 
+      : koefisien * 0.5;
 
     const akKonversi = KonversiCalculator.calculateAKFromPredikat(
       formData.Predikat_Kinerja!,
@@ -1021,7 +1028,9 @@ const EditKonversiModal: React.FC<{
       kurlebPangkat,
       kurlebJabatan,
       estimasiBulan,
-      analisis
+      analisis,
+      koefisien,
+      effectiveKoefisien
     };
   };
 
@@ -1071,7 +1080,6 @@ const EditKonversiModal: React.FC<{
   };
 
   const calculatedData = calculateAllData();
-  const koefisien = KonversiCalculator.getKoefisien(karyawan.jabatan, karyawan.kategori, karyawan.golongan);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -1110,6 +1118,23 @@ const EditKonversiModal: React.FC<{
             </div>
           </div>
 
+          <div>
+            <Label htmlFor="predikatKinerja">Predikat Kinerja</Label>
+            <Select 
+              value={formData.Predikat_Kinerja || "Baik"} 
+              onValueChange={(value) => setFormData({...formData, Predikat_Kinerja: value as any})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih predikat" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Sangat Baik">Sangat Baik</SelectItem>
+                <SelectItem value="Baik">Baik</SelectItem>
+                <SelectItem value="Cukup">Cukup</SelectItem>
+                <SelectItem value="Kurang">Kurang</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -1165,11 +1190,12 @@ const EditKonversiModal: React.FC<{
                 
                 <div>
                   <p><strong>Perhitungan AK:</strong></p>
-                  <p>• Koefisien: {koefisien}</p>
+                  <p>• Koefisien Tahunan: {calculatedData.koefisien.toFixed(1)}</p>
+                  <p>• Koefisien Efektif ({formData.Jenis_Periode || 'Semester'}): {calculatedData.effectiveKoefisien.toFixed(1)}</p>
                   <p>• Predikat: {formData.Predikat_Kinerja} ({
                     {'Sangat Baik': '1.50', 'Baik': '1.00', 'Cukup': '0.75', 'Kurang': '0.50'}[formData.Predikat_Kinerja]
                   })</p>
-                  <p>• AK Konversi: {calculatedData.akKonversi}</p>
+                  <p>• AK Konversi: {calculatedData.akKonversi.toFixed(3)}</p>
                   <p>• Total Kumulatif: {calculatedData.totalKumulatif.toFixed(3)}</p>
                 </div>
               </div>
@@ -2006,7 +2032,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
               <span className="ml-2">{karyawan.golongan}</span>
             </div>
             <div>
-              <span className="font-semibold text-primary">Koefisien:</span>
+              <span className="font-semibold text-primary">Koefisien Tahunan:</span>
               <span className="ml-2">{koefisien}</span>
             </div>
           </div>
