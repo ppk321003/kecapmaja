@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,8 @@ import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { AkunSelect } from "@/components/AkunSelect";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Types
 interface FormValues {
@@ -95,7 +97,6 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return format(date, "dd MMMM yyyy", { locale: id });
 };
 
-// Fungsi untuk mendapatkan nama dari kode
 const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
   if (!kode) return kode;
   
@@ -113,14 +114,10 @@ const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' 
       return kode;
     }
 
-    const rows = data.values.slice(1); // Skip header
-    const foundRow = rows.find((row: any[]) => {
-      // Cari berdasarkan kode di kolom B (index 1)
-      return row[1] === kode;
-    });
+    const rows = data.values.slice(1);
+    const foundRow = rows.find((row: any[]) => row[1] === kode);
 
     if (foundRow) {
-      // Kolom C = index 2, Kolom D = index 3
       const columnIndex = namaColumn === 'C' ? 2 : 3;
       return foundRow[columnIndex] || kode;
     }
@@ -181,7 +178,7 @@ const useSequenceGenerator = () => {
     return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
   }, [fetchSheetData]);
 
-    const generateDaftarHadirId = useCallback(async (): Promise<string> => {
+  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -194,10 +191,9 @@ const useSequenceGenerator = () => {
 
     if (values.length <= 1) return `${prefix}001`;
 
-    // Filter hanya ID yang sesuai format dan bulan/tahun yang sama
     const currentMonthIds = values
-      .slice(1) // Skip header
-      .map((row: any[]) => row[0]) // Kolom B adalah index 0 dalam array
+      .slice(1)
+      .map((row: any[]) => row[0])
       .filter((id: string) => id && id.startsWith(prefix))
       .map((id: string) => {
         const match = id.match(/dh-(\d{2})(\d{2})(\d{3})/);
@@ -244,82 +240,217 @@ const useDataSubmission = () => {
   return { submitData, isSubmitting };
 };
 
-// Multi Select Component untuk PESERTA (Organik dan Mitra)
-const MultiSelect: React.FC<{
+// Improved MultiSelect Component
+interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
-  options: Array<{ id: string; name: string; jabatan?: string; kecamatan?: string }>;
+  options: Option[];
   placeholder?: string;
-}> = ({ value, onValueChange, options, placeholder = "Pilih..." }) => {
+  loading?: boolean;
+  type: 'organik' | 'mitra';
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  loading = false,
+  type
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const filteredOptions = options.filter(option =>
-    option.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (option.jabatan && option.jabatan.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (option.kecamatan && option.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [options, searchTerm]);
 
-  const handleSelect = (selectedValue: string) => {
-    if (value.includes(selectedValue)) {
-      onValueChange(value.filter(v => v !== selectedValue));
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (optionId: string) => {
+    if (value.includes(optionId)) {
+      onValueChange(value.filter(id => id !== optionId));
     } else {
-      onValueChange([...value, selectedValue]);
+      onValueChange([...value, optionId]);
+    }
+    // Don't close dropdown after selection
+  };
+
+  const handleSelectAll = () => {
+    if (value.length === filteredOptions.length) {
+      onValueChange([]);
+    } else {
+      onValueChange(filteredOptions.map(option => option.id));
     }
   };
 
-  const isSelected = (optionId: string) => value.includes(optionId);
+  const selectedOptions = useMemo(() => {
+    return options.filter(option => value.includes(option.id));
+  }, [options, value]);
+
+  const toggleDropdown = () => setIsOpen(!isOpen);
 
   return (
-    <div className="space-y-2">
-      <Select onValueChange={handleSelect}>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent className="max-h-60">
-          <div className="p-2 border-b">
+    <div className="relative w-full" ref={dropdownRef}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={toggleDropdown}
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "min-h-[40px]"
+        )}
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : selectedOptions.length > 0 ? (
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              <span className="truncate">
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'} terpilih
+              </span>
+            </div>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {/* Dropdown Content */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+          {/* Search Input - Fixed: Tidak kehilangan fokus */}
+          <div className="border-b p-3">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Cari..."
+                placeholder="Cari nama, jabatan, atau kecamatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-                onClick={(e) => e.stopPropagation()}
+                className="pl-9 h-9"
+                autoFocus
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
               />
             </div>
           </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filteredOptions.map((option) => (
-              <SelectItem 
-                key={option.id} 
-                value={option.id}
-                className={cn(
-                  "cursor-pointer",
-                  isSelected(option.id) && "bg-blue-50 text-blue-700"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="font-medium">{option.name}</span>
-                    {option.jabatan && (
-                      <span className="text-xs text-muted-foreground">{option.jabatan}</span>
-                    )}
-                    {option.kecamatan && (
-                      <span className="text-xs text-muted-foreground">{option.kecamatan}</span>
-                    )}
-                  </div>
-                  {isSelected(option.id) && (
-                    <div className="w-2 h-2 bg-blue-600 rounded-full ml-2" />
-                  )}
-                </div>
-              </SelectItem>
-            ))}
+
+          {/* Select All Button */}
+          <div className="px-3 py-2 border-b">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full h-8 justify-start"
+              onClick={handleSelectAll}
+            >
+              {value.length === filteredOptions.length ? (
+                <>Batalkan semua pilihan</>
+              ) : (
+                <>Pilih semua ({filteredOptions.length})</>
+              )}
+            </Button>
           </div>
-        </SelectContent>
-      </Select>
-      
-      {value.length > 0 && (
-        <p className="text-xs text-green-600">
-          {value.length} peserta terpilih
-        </p>
+
+          {/* Options List */}
+          <ScrollArea className="max-h-64">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = value.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => handleSelect(option.id)}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-blue-50 border border-blue-200"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "border-gray-300"
+                      )}>
+                        {isSelected && (
+                          <div className="h-2 w-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn(
+                            "font-medium truncate",
+                            isSelected && "text-blue-700"
+                          )}>
+                            {option.name}
+                          </p>
+                          {isSelected && (
+                            <Badge variant="outline" className="text-xs">
+                              Terpilih
+                            </Badge>
+                          )}
+                        </div>
+                        {option.jabatan && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {option.jabatan}
+                          </p>
+                        )}
+                        {option.kecamatan && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Kecamatan: {option.kecamatan}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Selected Count */}
+          <div className="border-t px-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Terpilih:</span>
+              <span className="font-medium text-green-600">
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
+              </span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -333,6 +464,8 @@ const DaftarHadir = () => {
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
   const [organikList, setOrganikList] = useState<Option[]>([]);
   const [mitraList, setMitraList] = useState<Option[]>([]);
+  const [loadingOrganik, setLoadingOrganik] = useState(false);
+  const [loadingMitra, setLoadingMitra] = useState(false);
 
   const { submitData, isSubmitting: isSubmitLoading } = useDataSubmission();
   const { getNextSequenceNumber, generateDaftarHadirId } = useSequenceGenerator();
@@ -374,10 +507,13 @@ const DaftarHadir = () => {
     }
   }, [watchedKRO, setValue]);
 
-  // Fetch initial data untuk organik dan mitra
+  // Fetch initial data dengan loading state
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
+        setLoadingOrganik(true);
+        setLoadingMitra(true);
+
         // Fetch organik
         const organikRows = await fetchSheetData(
           CONSTANTS.SPREADSHEET.MASTER_ID,
@@ -391,6 +527,7 @@ const DaftarHadir = () => {
           })).filter((item: any) => item.id && item.name);
           setOrganikList(organikData);
         }
+        setLoadingOrganik(false);
 
         // Fetch mitra
         const mitraRows = await fetchSheetData(
@@ -405,8 +542,16 @@ const DaftarHadir = () => {
           })).filter((item: any) => item.id && item.name);
           setMitraList(mitraData);
         }
+        setLoadingMitra(false);
       } catch (error) {
         console.error("Error fetching initial data:", error);
+        toast({
+          variant: "destructive",
+          title: "Gagal memuat data",
+          description: "Terjadi kesalahan saat memuat data peserta"
+        });
+        setLoadingOrganik(false);
+        setLoadingMitra(false);
       }
     };
 
@@ -435,7 +580,7 @@ const DaftarHadir = () => {
         generateDaftarHadirId()
       ]);
 
-      // Dapatkan nama dari kode untuk setiap field - PERBAIKAN UTAMA
+      // Dapatkan nama dari kode untuk setiap field
       const [
         programNama,
         kegiatanNama, 
@@ -460,12 +605,12 @@ const DaftarHadir = () => {
         data.namaKegiatan,
         data.detil || "",
         data.jenis,
-        programNama,      // ← GUNAKAN NAMA program
-        kegiatanNama,     // ← GUNAKAN NAMA kegiatan
-        kroNama,          // ← GUNAKAN NAMA KRO
-        roNama,           // ← GUNAKAN NAMA RO
-        komponenNama,     // ← GUNAKAN NAMA komponen
-        akunNama,         // ← GUNAKAN NAMA akun
+        programNama,
+        kegiatanNama,
+        kroNama,
+        roNama,
+        komponenNama,
+        akunNama,
         formatTanggalIndonesia(data.tanggalMulai),
         formatTanggalIndonesia(data.tanggalSelesai),
         pembuatDaftar?.name || data.pembuatDaftar,
@@ -596,7 +741,7 @@ const DaftarHadir = () => {
                 </div>
               </div>
 
-              {/* Program dan Kegiatan - MENGGUNAKAN KOMPONEN EXTERNAL */}
+              {/* Program dan Kegiatan */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
@@ -798,7 +943,10 @@ const DaftarHadir = () => {
                         <SelectContent>
                           {organikList.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
-                              {item.name} - {item.jabatan}
+                              <div className="flex flex-col">
+                                <span className="font-medium">{item.name}</span>
+                                <span className="text-xs text-muted-foreground">{item.jabatan}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -813,7 +961,10 @@ const DaftarHadir = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Peserta Organik BPS</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Peserta Organik BPS
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -825,31 +976,59 @@ const DaftarHadir = () => {
                             value={field.value}
                             onValueChange={field.onChange}
                             options={organikList}
-                            placeholder="Pilih organik BPS"
+                            placeholder="Pilih peserta organik BPS"
+                            loading={loadingOrganik}
+                            type="organik"
                           />
                         )} 
                       />
                     </div>
                     
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedOrganik.map(org => (
-                        <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{org.name}</p>
-                            <p className="text-sm text-muted-foreground">{org.jabatan}</p>
-                          </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeOrganik(org.id)}>
-                            <Trash className="h-4 w-4 text-destructive" />
-                          </Button>
+                    {selectedOrganik.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">Daftar Organik Terpilih:</h4>
+                          <Badge variant="secondary">
+                            {selectedOrganik.length} organik
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
+                        <ScrollArea className="max-h-60 rounded-md border p-2">
+                          <div className="space-y-2">
+                            {selectedOrganik.map(org => (
+                              <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium truncate">{org.name}</p>
+                                    <Badge variant="outline" className="text-xs">
+                                      Terpilih
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{org.jabatan}</p>
+                                </div>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => removeOrganik(org.id)}
+                                  className="ml-2"
+                                >
+                                  <Trash className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Peserta Mitra Statistik</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Peserta Mitra Statistik
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -861,38 +1040,70 @@ const DaftarHadir = () => {
                             value={field.value}
                             onValueChange={field.onChange}
                             options={mitraList}
-                            placeholder="Pilih mitra statistik"
+                            placeholder="Pilih peserta mitra statistik"
+                            loading={loadingMitra}
+                            type="mitra"
                           />
                         )} 
                       />
                     </div>
                     
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {selectedMitra.map(mitra => (
-                        <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{mitra.name}</p>
-                            <p className="text-sm text-muted-foreground">{mitra.kecamatan}</p>
-                          </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeMitra(mitra.id)}>
-                            <Trash className="h-4 w-4 text-destructive" />
-                          </Button>
+                    {selectedMitra.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">Daftar Mitra Terpilih:</h4>
+                          <Badge variant="secondary">
+                            {selectedMitra.length} mitra
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
+                        <ScrollArea className="max-h-60 rounded-md border p-2">
+                          <div className="space-y-2">
+                            {selectedMitra.map(mitra => (
+                              <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium truncate">{mitra.name}</p>
+                                    <Badge variant="outline" className="text-xs">
+                                      Terpilih
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Kecamatan: {mitra.kecamatan}
+                                  </p>
+                                </div>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => removeMitra(mitra.id)}
+                                  className="ml-2"
+                                >
+                                  <Trash className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
               {/* Tombol Aksi */}
-            <div className="flex justify-end gap-4 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
-                Batal
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
-              </Button>
-            </div>
+              <div className="flex justify-end gap-4 pt-6 border-t">
+                <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : "Simpan Dokumen"}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
