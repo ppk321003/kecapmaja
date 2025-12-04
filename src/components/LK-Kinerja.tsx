@@ -58,7 +58,12 @@ interface KinerjaData {
 const SPREADSHEET_ID = "1w1wMlrsGpYLNWrkGuPVoGbLffT9HN6GXnZmnbITKEBA";
 const SHEET_NAME = "OLAH-KINERJA";
 
-export default function LKKinerja() {
+interface LKKinerjaProps {
+  viewMode?: 'kegiatan' | 'anggaran';
+  filterTahun?: string;
+}
+
+export default function LKKinerja({ viewMode, filterTahun }: LKKinerjaProps) {
   const [kinerjaData, setKinerjaData] = useState<KinerjaData[]>([]);
   const [filteredData, setFilteredData] = useState<KinerjaData[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<KinerjaData | null>(null);

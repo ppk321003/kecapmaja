@@ -21,13 +21,16 @@ export interface Karyawan {
   golongan: string;
   jabatan: string;
   kategori: 'Keahlian' | 'Keterampilan' | 'Reguler';
-  tglPenghitunganAkTerakhir: string; // Pastikan ini ada
+  tglPenghitunganAkTerakhir: string;
   akKumulatif: number;
-  status: 'Aktif' | 'Pensiun' | 'Mutasi'; // Pastikan ini ada
+  status?: 'Aktif' | 'Pensiun' | 'Mutasi';
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
   pendidikan: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  jenisKelamin: 'Laki-laki' | 'Perempuan' | 'L' | 'P';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
 }

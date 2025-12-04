@@ -27,7 +27,7 @@ interface Karyawan {
   tmtPangkat: string;
   pendidikan: string;
   tanggalLahir: string;
-  jenisKelamin: 'Laki-laki' | 'Perempuan';
+  jenisKelamin: 'Laki-laki' | 'Perempuan' | 'L' | 'P';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
 }
