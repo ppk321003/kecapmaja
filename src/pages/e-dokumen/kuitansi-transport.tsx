@@ -33,7 +33,240 @@ const CONSTANTS = {
   }
 } as const;
 
-// Komponen SearchableKecamatanSelect untuk Kecamatan (baik Dari Kecamatan maupun Kecamatan Tujuan)
+// Komponen SearchableSelect dengan search dan scroll yang berfungsi
+interface SearchableSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ id: string; name: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+  emptyMessage?: string;
+  label?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  emptyMessage = "Tidak ada hasil ditemukan",
+  label
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Prevent scroll event from propagating to parent when dropdown is open
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (isOpen) {
+        e.stopPropagation();
+      }
+    };
+
+    const scrollAreaElement = scrollAreaRef.current;
+    if (scrollAreaElement && isOpen) {
+      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    // Add event listener to dropdown container
+    const dropdownElement = dropdownRef.current;
+    if (dropdownElement && isOpen) {
+      dropdownElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (scrollAreaElement) {
+        scrollAreaElement.removeEventListener('wheel', handleWheel);
+      }
+      if (dropdownElement) {
+        dropdownElement.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [isOpen]);
+
+  // Auto focus input when dropdown opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleSelectOption = (optionId: string) => {
+    onValueChange(optionId);
+    setSearchTerm("");
+    setIsOpen(false);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+      setSearchTerm("");
+    }
+    if (e.key === 'Enter' && filteredOptions.length === 1) {
+      handleSelectOption(filteredOptions[0].id);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    inputRef.current?.focus();
+  };
+
+  // Handle wheel event on dropdown
+  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const selectedOption = options.find(opt => opt.id === value);
+
+  return (
+    <div className="space-y-2">
+      {label && <FormLabel>{label}</FormLabel>}
+      <div className="relative w-full" ref={containerRef}>
+        {/* Trigger Input */}
+        <div
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+            disabled && "cursor-not-allowed opacity-50",
+            "min-h-[40px] cursor-pointer"
+          )}
+          onClick={handleTriggerClick}
+        >
+          <div className="flex-1 overflow-hidden">
+            {selectedOption ? (
+              <span className="truncate">{selectedOption.name}</span>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            "h-4 w-4 opacity-50 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        </div>
+
+        {/* Custom Dropdown */}
+        {isOpen && !disabled && (
+          <div
+            ref={dropdownRef}
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+            style={{
+              width: containerRef.current?.offsetWidth || 'auto',
+            }}
+            onWheel={handleDropdownWheel}
+          >
+            {/* Search Input */}
+            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Cari..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleKeyDown}
+                  className="pl-8 pr-8 h-9"
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options List with Scroll */}
+            <div className="max-h-[250px] overflow-hidden">
+              <ScrollArea 
+                ref={scrollAreaRef}
+                className="h-[250px]"
+                onWheel={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <div className="py-1">
+                  {filteredOptions.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      {emptyMessage}
+                    </div>
+                  ) : (
+                    filteredOptions.map((option) => (
+                      <div
+                        key={option.id}
+                        className={cn(
+                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          "transition-colors duration-150",
+                          value === option.id && "bg-accent font-medium"
+                        )}
+                        onClick={() => handleSelectOption(option.id)}
+                      >
+                        {value === option.id && (
+                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                            <Check className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span className="truncate">{option.name}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Komponen SearchableKecamatanSelect untuk Kecamatan
 interface SearchableKecamatanSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -51,11 +284,10 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [inputValue, setInputValue] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const kecamatanList = [
     "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", 
@@ -63,16 +295,6 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
     "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
     "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"
   ];
-
-  // Set input value based on selected value
-  useEffect(() => {
-    if (value) {
-      const selectedKecamatan = kecamatanList.find(k => k === value);
-      setInputValue(selectedKecamatan || "");
-    } else {
-      setInputValue("");
-    }
-  }, [value]);
 
   // Filter kecamatan based on search term
   const filteredKecamatan = useMemo(() => {
@@ -95,11 +317,12 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Prevent scroll event from propagating to parent
+  // Prevent scroll event from propagating to parent when dropdown is open
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      e.stopPropagation();
-      // Biarkan scroll area menangani wheel event-nya sendiri
+      if (isOpen) {
+        e.stopPropagation();
+      }
     };
 
     const scrollAreaElement = scrollAreaRef.current;
@@ -107,9 +330,17 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
       scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
     }
 
+    const dropdownElement = dropdownRef.current;
+    if (dropdownElement && isOpen) {
+      dropdownElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
     return () => {
       if (scrollAreaElement) {
         scrollAreaElement.removeEventListener('wheel', handleWheel);
+      }
+      if (dropdownElement) {
+        dropdownElement.removeEventListener('wheel', handleWheel);
       }
     };
   }, [isOpen]);
@@ -123,9 +354,7 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
     }
   }, [isOpen]);
 
-  const handleTriggerClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleTriggerClick = () => {
     if (!disabled) {
       setIsOpen(true);
     }
@@ -133,7 +362,6 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
 
   const handleSelectKecamatan = (kecamatan: string) => {
     onValueChange(kecamatan);
-    setInputValue(kecamatan);
     setSearchTerm("");
     setIsOpen(false);
   };
@@ -160,7 +388,6 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
   // Handle wheel event on dropdown
   const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
     e.stopPropagation();
-    // Biarkan ScrollArea menangani scroll-nya sendiri
   }, []);
 
   return (
@@ -227,16 +454,12 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
               </div>
             </div>
 
-            {/* Options List with Scroll - DIPERBAIKI */}
-            <div 
-              className="max-h-[250px] overflow-hidden"
-              onWheel={(e) => e.stopPropagation()}
-            >
+            {/* Options List with Scroll */}
+            <div className="max-h-[250px] overflow-hidden">
               <ScrollArea 
                 ref={scrollAreaRef}
-                className="h-[250px]" 
+                className="h-[250px]"
                 onWheel={(e) => {
-                  // Biarkan scroll area menangani wheel event-nya
                   e.stopPropagation();
                 }}
               >
@@ -263,472 +486,6 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
                           </span>
                         )}
                         <span className="truncate">{kecamatan}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Custom SearchableSelect untuk dropdown lainnya
-interface SearchableSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ id: string; name: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-  emptyMessage?: string;
-  label?: string;
-}
-
-const SearchableSelect: React.FC<SearchableSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false,
-  emptyMessage = "Tidak ada hasil ditemukan",
-  label
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [inputValue, setInputValue] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Reset input value when value changes
-  useEffect(() => {
-    if (value) {
-      const selectedOption = options.find(opt => opt.id === value);
-      setInputValue(selectedOption?.name || "");
-    } else {
-      setInputValue("");
-    }
-  }, [value, options]);
-
-  // Filter options based on search term
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [options, searchTerm]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Prevent scroll event from propagating to parent
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (isOpen) {
-        e.stopPropagation();
-      }
-    };
-
-    const scrollAreaElement = scrollAreaRef.current;
-    if (scrollAreaElement && isOpen) {
-      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
-    }
-
-    return () => {
-      if (scrollAreaElement) {
-        scrollAreaElement.removeEventListener('wheel', handleWheel);
-      }
-    };
-  }, [isOpen]);
-
-  // Auto focus input when dropdown opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
-  const handleInputClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!disabled) {
-      setIsOpen(true);
-    }
-  };
-
-  const handleSelectOption = (optionId: string, optionName: string) => {
-    onValueChange(optionId);
-    setInputValue(optionName);
-    setSearchTerm("");
-    setIsOpen(false);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-      setSearchTerm("");
-    }
-    if (e.key === 'Enter' && filteredOptions.length === 1) {
-      handleSelectOption(filteredOptions[0].id, filteredOptions[0].name);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    inputRef.current?.focus();
-  };
-
-  // Handle wheel event on dropdown
-  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
-  }, []);
-
-  const selectedOption = options.find(opt => opt.id === value);
-
-  return (
-    <div className="space-y-2">
-      {label && <FormLabel>{label}</FormLabel>}
-      <div className="relative w-full" ref={containerRef}>
-        {/* Trigger Input */}
-        <div
-          className={cn(
-            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-            "hover:bg-accent hover:text-accent-foreground",
-            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-            disabled && "cursor-not-allowed opacity-50",
-            "min-h-[40px] cursor-pointer"
-          )}
-          onClick={handleInputClick}
-        >
-          <div className="flex-1 overflow-hidden">
-            {selectedOption ? (
-              <span className="truncate">{selectedOption.name}</span>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </div>
-          <ChevronDown className={cn(
-            "h-4 w-4 opacity-50 transition-transform",
-            isOpen && "rotate-180"
-          )} />
-        </div>
-
-        {/* Custom Dropdown */}
-        {isOpen && !disabled && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
-            style={{
-              width: containerRef.current?.offsetWidth || 'auto',
-            }}
-            onWheel={handleDropdownWheel}
-          >
-            {/* Search Input */}
-            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  placeholder="Cari..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  onKeyDown={handleKeyDown}
-                  className="pl-8 pr-8 h-9"
-                  onClick={(e) => e.stopPropagation()}
-                  autoFocus
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Options List with Scroll - DIPERBAIKI */}
-            <div 
-              className="max-h-[250px] overflow-hidden"
-              onWheel={(e) => e.stopPropagation()}
-            >
-              <ScrollArea 
-                ref={scrollAreaRef}
-                className="h-[250px]"
-                onWheel={(e) => {
-                  // Biarkan scroll area menangani wheel event-nya
-                  e.stopPropagation();
-                }}
-              >
-                <div className="py-1">
-                  {filteredOptions.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      {emptyMessage}
-                    </div>
-                  ) : (
-                    filteredOptions.map((option) => (
-                      <div
-                        key={option.id}
-                        className={cn(
-                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          "transition-colors duration-150",
-                          value === option.id && "bg-accent font-medium"
-                        )}
-                        onClick={() => handleSelectOption(option.id, option.name)}
-                      >
-                        {value === option.id && (
-                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                            <Check className="h-4 w-4" />
-                          </span>
-                        )}
-                        <span className="truncate">{option.name}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Custom Select untuk Program dengan search dan scroll
-interface SearchableProgramSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ id: string; name: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-  label?: string;
-}
-
-const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  disabled = false,
-  label
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Filter options based on search term
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [options, searchTerm]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Prevent scroll event from propagating to parent
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (isOpen) {
-        e.stopPropagation();
-      }
-    };
-
-    const scrollAreaElement = scrollAreaRef.current;
-    if (scrollAreaElement && isOpen) {
-      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
-    }
-
-    return () => {
-      if (scrollAreaElement) {
-        scrollAreaElement.removeEventListener('wheel', handleWheel);
-      }
-    };
-  }, [isOpen]);
-
-  // Auto focus input when dropdown opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
-  const handleTriggerClick = () => {
-    if (!disabled) {
-      setIsOpen(true);
-    }
-  };
-
-  const handleSelectOption = (optionId: string) => {
-    onValueChange(optionId);
-    setSearchTerm("");
-    setIsOpen(false);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-      setSearchTerm("");
-    }
-    if (e.key === 'Enter' && filteredOptions.length === 1) {
-      handleSelectOption(filteredOptions[0].id);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    inputRef.current?.focus();
-  };
-
-  // Handle wheel event on dropdown
-  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
-  }, []);
-
-  const selectedOption = options.find(opt => opt.id === value);
-
-  return (
-    <div className="space-y-2">
-      {label && <FormLabel>{label}</FormLabel>}
-      <div className="relative w-full" ref={containerRef}>
-        <div
-          className={cn(
-            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-            "hover:bg-accent hover:text-accent-foreground",
-            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-            disabled && "cursor-not-allowed opacity-50",
-            "min-h-[40px] cursor-pointer"
-          )}
-          onClick={handleTriggerClick}
-        >
-          <div className="flex-1 overflow-hidden">
-            {selectedOption ? (
-              <span className="truncate">{selectedOption.name}</span>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </div>
-          <ChevronDown className={cn(
-            "h-4 w-4 opacity-50 transition-transform",
-            isOpen && "rotate-180"
-          )} />
-        </div>
-
-        {/* Custom Dropdown */}
-        {isOpen && !disabled && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
-            style={{
-              width: containerRef.current?.offsetWidth || 'auto',
-            }}
-            onWheel={handleDropdownWheel}
-          >
-            {/* Search Input */}
-            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  placeholder="Cari program..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  onKeyDown={handleKeyDown}
-                  className="pl-8 pr-8 h-9"
-                  onClick={(e) => e.stopPropagation()}
-                  autoFocus
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Options List with Scroll - DIPERBAIKI */}
-            <div 
-              className="max-h-[250px] overflow-hidden"
-              onWheel={(e) => e.stopPropagation()}
-            >
-              <ScrollArea 
-                ref={scrollAreaRef}
-                className="h-[250px]"
-                onWheel={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <div className="py-1">
-                  {filteredOptions.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      Tidak ada program ditemukan
-                    </div>
-                  ) : (
-                    filteredOptions.map((option) => (
-                      <div
-                        key={option.id}
-                        className={cn(
-                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          "transition-colors duration-150",
-                          value === option.id && "bg-accent font-medium"
-                        )}
-                        onClick={() => handleSelectOption(option.id)}
-                      >
-                        {value === option.id && (
-                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                            <Check className="h-4 w-4" />
-                          </span>
-                        )}
-                        <span className="truncate">{option.name}</span>
                       </div>
                     ))
                   )}
@@ -1490,20 +1247,27 @@ const KuitansiTransportLokal = () => {
                   )} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* ROW 1: Program, Kegiatan, KRO */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField control={form.control} name="program" render={({ field }) => (
-                    <SearchableProgramSelect
-                      value={field.value}
-                      onValueChange={(value) => { 
-                        field.onChange(value); 
-                        form.setValue("kegiatan", ""); 
-                        form.setValue("kro", ""); 
-                        form.setValue("ro", ""); 
-                      }}
-                      options={programs}
-                      placeholder="Pilih program"
-                      label="Program"
-                    />
+                    <FormItem>
+                      <FormLabel>Program</FormLabel>
+                      <FormControl>
+                        <SearchableSelect
+                          value={field.value}
+                          onValueChange={(value) => { 
+                            field.onChange(value); 
+                            form.setValue("kegiatan", ""); 
+                            form.setValue("kro", ""); 
+                            form.setValue("ro", ""); 
+                          }}
+                          options={programs}
+                          placeholder="Pilih program"
+                          emptyMessage="Tidak ada program ditemukan"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )} />
 
                   <FormField control={form.control} name="kegiatan" render={({ field }) => (
@@ -1520,7 +1284,7 @@ const KuitansiTransportLokal = () => {
                           options={kegiatanList}
                           placeholder="Pilih kegiatan"
                           disabled={!form.watch("program")}
-                          emptyMessage="Pilih program terlebih dahulu"
+                          emptyMessage={form.watch("program") ? "Tidak ada kegiatan ditemukan" : "Pilih program terlebih dahulu"}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1540,13 +1304,16 @@ const KuitansiTransportLokal = () => {
                           options={kroList}
                           placeholder="Pilih KRO"
                           disabled={!form.watch("kegiatan")}
-                          emptyMessage="Pilih kegiatan terlebih dahulu"
+                          emptyMessage={form.watch("kegiatan") ? "Tidak ada KRO ditemukan" : "Pilih kegiatan terlebih dahulu"}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+                </div>
 
+                {/* ROW 2: RO, Komponen, Akun */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField control={form.control} name="ro" render={({ field }) => (
                     <FormItem>
                       <FormLabel>RO</FormLabel>
@@ -1557,7 +1324,7 @@ const KuitansiTransportLokal = () => {
                           options={roList}
                           placeholder="Pilih RO"
                           disabled={!form.watch("kro")}
-                          emptyMessage="Pilih KRO terlebih dahulu"
+                          emptyMessage={form.watch("kro") ? "Tidak ada RO ditemukan" : "Pilih KRO terlebih dahulu"}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1573,6 +1340,7 @@ const KuitansiTransportLokal = () => {
                           onValueChange={field.onChange}
                           options={komponenList}
                           placeholder="Pilih komponen"
+                          emptyMessage="Tidak ada komponen ditemukan"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1588,12 +1356,16 @@ const KuitansiTransportLokal = () => {
                           onValueChange={field.onChange}
                           options={akunList}
                           placeholder="Pilih akun"
+                          emptyMessage="Tidak ada akun ditemukan"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+                </div>
 
+                {/* ROW 3: Tanggal Pengajuan, Pembuat Daftar */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="tanggalSpj" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tanggal Pengajuan</FormLabel>
@@ -1625,6 +1397,7 @@ const KuitansiTransportLokal = () => {
                           onValueChange={field.onChange}
                           options={organikList}
                           placeholder="Pilih pembuat daftar"
+                          emptyMessage="Tidak ada data ditemukan"
                         />
                       </FormControl>
                       <FormMessage />
