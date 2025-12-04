@@ -72,33 +72,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className="border-r border-sidebar-border backdrop-blur-sm flex flex-col relative overflow-hidden"
+      className="border-r border-sidebar-border backdrop-blur-sm"
       style={{
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)",
       }}
     >
-      {/* Floating Bubbles Animation */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="bubble bubble-1"></div>
-        <div className="bubble bubble-2"></div>
-        <div className="bubble bubble-3"></div>
-        <div className="bubble bubble-4"></div>
-        <div className="bubble bubble-5"></div>
-        <div className="bubble bubble-6"></div>
-        <div className="bubble bubble-7"></div>
-        <div className="bubble bubble-8"></div>
-      </div>
-
-      {/* Fast Sparkle Animation at Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden pointer-events-none">
-        <div className="sparkle sparkle-1"></div>
-        <div className="sparkle sparkle-2"></div>
-        <div className="sparkle sparkle-3"></div>
-        <div className="sparkle sparkle-4"></div>
-        <div className="sparkle sparkle-5"></div>
-        <div className="sparkle sparkle-6"></div>
-      </div>
 
       <SidebarContent
         className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white relative z-10"
@@ -288,7 +267,29 @@ export function AppSidebar() {
           `}
         </style>
 
-        <div className="flex-1 sidebar-content-hidden">
+        {/* Floating Bubbles Animation */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="bubble bubble-1"></div>
+          <div className="bubble bubble-2"></div>
+          <div className="bubble bubble-3"></div>
+          <div className="bubble bubble-4"></div>
+          <div className="bubble bubble-5"></div>
+          <div className="bubble bubble-6"></div>
+          <div className="bubble bubble-7"></div>
+          <div className="bubble bubble-8"></div>
+        </div>
+
+        {/* Fast Sparkle Animation at Bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden pointer-events-none z-0">
+          <div className="sparkle sparkle-1"></div>
+          <div className="sparkle sparkle-2"></div>
+          <div className="sparkle sparkle-3"></div>
+          <div className="sparkle sparkle-4"></div>
+          <div className="sparkle sparkle-5"></div>
+          <div className="sparkle sparkle-6"></div>
+        </div>
+
+        <div className="flex-1 sidebar-content-hidden relative z-10">
           {/* HEADER LOGO */}
           <div className="px-5 py-7 border-b border-white/20">
             <div className="flex items-center gap-3 mb-2">
