@@ -90,6 +90,16 @@ export function AppSidebar() {
         <div className="bubble bubble-8"></div>
       </div>
 
+      {/* Fast Sparkle Animation at Bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 overflow-hidden pointer-events-none">
+        <div className="sparkle sparkle-1"></div>
+        <div className="sparkle sparkle-2"></div>
+        <div className="sparkle sparkle-3"></div>
+        <div className="sparkle sparkle-4"></div>
+        <div className="sparkle sparkle-5"></div>
+        <div className="sparkle sparkle-6"></div>
+      </div>
+
       <SidebarContent
         className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white relative z-10"
         style={{
@@ -195,6 +205,85 @@ export function AppSidebar() {
               left: 40%;
               animation-duration: 17s;
               animation-delay: 7s;
+            }
+            
+            @keyframes sparkle-move {
+              0% {
+                transform: translateX(-10px) scale(0);
+                opacity: 0;
+              }
+              20% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+              }
+              80% {
+                opacity: 0.8;
+                transform: translateX(100px) scale(0.8);
+              }
+              100% {
+                transform: translateX(150px) scale(0);
+                opacity: 0;
+              }
+            }
+            
+            @keyframes sparkle-pulse {
+              0%, 100% {
+                box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+              }
+              50% {
+                box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+              }
+            }
+            
+            .sparkle {
+              position: absolute;
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: rgba(255, 255, 255, 0.9);
+              animation: sparkle-move 3s ease-in-out infinite, sparkle-pulse 1s ease-in-out infinite;
+            }
+            
+            .sparkle-1 {
+              bottom: 15%;
+              left: 5%;
+              animation-duration: 2.5s, 0.8s;
+              animation-delay: 0s;
+            }
+            
+            .sparkle-2 {
+              bottom: 45%;
+              left: 10%;
+              animation-duration: 3s, 1s;
+              animation-delay: 0.5s;
+            }
+            
+            .sparkle-3 {
+              bottom: 70%;
+              left: 15%;
+              animation-duration: 2s, 0.7s;
+              animation-delay: 1s;
+            }
+            
+            .sparkle-4 {
+              bottom: 25%;
+              left: 8%;
+              animation-duration: 2.8s, 0.9s;
+              animation-delay: 1.5s;
+            }
+            
+            .sparkle-5 {
+              bottom: 55%;
+              left: 3%;
+              animation-duration: 2.2s, 0.6s;
+              animation-delay: 2s;
+            }
+            
+            .sparkle-6 {
+              bottom: 35%;
+              left: 12%;
+              animation-duration: 2.6s, 1.1s;
+              animation-delay: 0.3s;
             }
           `}
         </style>
