@@ -94,96 +94,139 @@ export function AppSidebar() {
             
             @keyframes float-up {
               0% {
-                transform: translateY(100%) translateX(0) scale(0);
+                transform: translateY(0) translateX(0) scale(0.5);
                 opacity: 0;
               }
-              10% {
-                opacity: 0.6;
-                transform: translateY(90%) translateX(5px) scale(1);
+              15% {
+                opacity: 0.7;
+                transform: translateY(-15%) translateX(8px) scale(1);
               }
-              50% {
-                transform: translateY(50%) translateX(-10px) scale(1.1);
+              30% {
+                transform: translateY(-30%) translateX(-12px) scale(1.15);
+              }
+              45% {
+                transform: translateY(-45%) translateX(15px) scale(1.05);
+              }
+              60% {
+                transform: translateY(-60%) translateX(-8px) scale(1.1);
+              }
+              75% {
+                opacity: 0.5;
+                transform: translateY(-75%) translateX(10px) scale(0.95);
               }
               90% {
-                opacity: 0.4;
-                transform: translateY(10%) translateX(5px) scale(0.9);
+                opacity: 0.3;
+                transform: translateY(-90%) translateX(-5px) scale(0.8);
               }
               100% {
-                transform: translateY(-10%) translateX(0) scale(0);
+                transform: translateY(-105%) translateX(0) scale(0.3);
                 opacity: 0;
               }
             }
             
             .bubble {
               position: absolute;
+              bottom: -10%;
               border-radius: 50%;
-              background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
-              animation: float-up linear infinite;
-              box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+              background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.15));
+              animation: float-up ease-in-out infinite;
+              box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.3), 0 0 8px rgba(255, 255, 255, 0.1);
             }
             
             .bubble-1 {
-              width: 20px;
-              height: 20px;
-              left: 10%;
-              animation-duration: 12s;
+              width: 28px;
+              height: 28px;
+              left: 8%;
+              animation-duration: 8s;
               animation-delay: 0s;
             }
             
             .bubble-2 {
-              width: 15px;
-              height: 15px;
-              left: 30%;
-              animation-duration: 15s;
-              animation-delay: 2s;
-            }
-            
-            .bubble-3 {
-              width: 25px;
-              height: 25px;
-              left: 50%;
-              animation-duration: 18s;
-              animation-delay: 4s;
-            }
-            
-            .bubble-4 {
-              width: 12px;
-              height: 12px;
-              left: 70%;
-              animation-duration: 14s;
+              width: 22px;
+              height: 22px;
+              left: 25%;
+              animation-duration: 9s;
               animation-delay: 1s;
             }
             
-            .bubble-5 {
+            .bubble-3 {
+              width: 35px;
+              height: 35px;
+              left: 45%;
+              animation-duration: 10s;
+              animation-delay: 2s;
+            }
+            
+            .bubble-4 {
               width: 18px;
               height: 18px;
-              left: 85%;
-              animation-duration: 16s;
-              animation-delay: 3s;
+              left: 65%;
+              animation-duration: 7s;
+              animation-delay: 0.5s;
+            }
+            
+            .bubble-5 {
+              width: 26px;
+              height: 26px;
+              left: 80%;
+              animation-duration: 9s;
+              animation-delay: 1.5s;
             }
             
             .bubble-6 {
-              width: 10px;
-              height: 10px;
-              left: 20%;
-              animation-duration: 20s;
-              animation-delay: 5s;
+              width: 16px;
+              height: 16px;
+              left: 15%;
+              animation-duration: 11s;
+              animation-delay: 3s;
             }
             
             .bubble-7 {
-              width: 22px;
-              height: 22px;
-              left: 60%;
-              animation-duration: 13s;
-              animation-delay: 6s;
+              width: 30px;
+              height: 30px;
+              left: 55%;
+              animation-duration: 8s;
+              animation-delay: 2.5s;
             }
             
             .bubble-8 {
+              width: 20px;
+              height: 20px;
+              left: 35%;
+              animation-duration: 10s;
+              animation-delay: 4s;
+            }
+            
+            .bubble-9 {
+              width: 24px;
+              height: 24px;
+              left: 5%;
+              animation-duration: 7.5s;
+              animation-delay: 1.2s;
+            }
+            
+            .bubble-10 {
+              width: 32px;
+              height: 32px;
+              left: 70%;
+              animation-duration: 9.5s;
+              animation-delay: 3.5s;
+            }
+            
+            .bubble-11 {
               width: 14px;
               height: 14px;
+              left: 90%;
+              animation-duration: 6.5s;
+              animation-delay: 0.8s;
+            }
+            
+            .bubble-12 {
+              width: 28px;
+              height: 28px;
               left: 40%;
-              animation-duration: 17s;
-              animation-delay: 7s;
+              animation-duration: 8.5s;
+              animation-delay: 2.2s;
             }
             
             @keyframes sparkle-move {
@@ -277,6 +320,10 @@ export function AppSidebar() {
           <div className="bubble bubble-6"></div>
           <div className="bubble bubble-7"></div>
           <div className="bubble bubble-8"></div>
+          <div className="bubble bubble-9"></div>
+          <div className="bubble bubble-10"></div>
+          <div className="bubble bubble-11"></div>
+          <div className="bubble bubble-12"></div>
         </div>
 
         {/* Fast Sparkle Animation at Bottom */}
