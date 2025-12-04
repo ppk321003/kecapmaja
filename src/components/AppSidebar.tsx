@@ -72,14 +72,26 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col"
+      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col relative overflow-hidden"
       style={{
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)",
       }}
     >
+      {/* Floating Bubbles Animation */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="bubble bubble-1"></div>
+        <div className="bubble bubble-2"></div>
+        <div className="bubble bubble-3"></div>
+        <div className="bubble bubble-4"></div>
+        <div className="bubble bubble-5"></div>
+        <div className="bubble bubble-6"></div>
+        <div className="bubble bubble-7"></div>
+        <div className="bubble bubble-8"></div>
+      </div>
+
       <SidebarContent
-        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white"
+        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white relative z-10"
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
@@ -89,6 +101,100 @@ export function AppSidebar() {
           {`
             .sidebar-content-hidden::-webkit-scrollbar {
               display: none;
+            }
+            
+            @keyframes float-up {
+              0% {
+                transform: translateY(100%) translateX(0) scale(0);
+                opacity: 0;
+              }
+              10% {
+                opacity: 0.6;
+                transform: translateY(90%) translateX(5px) scale(1);
+              }
+              50% {
+                transform: translateY(50%) translateX(-10px) scale(1.1);
+              }
+              90% {
+                opacity: 0.4;
+                transform: translateY(10%) translateX(5px) scale(0.9);
+              }
+              100% {
+                transform: translateY(-10%) translateX(0) scale(0);
+                opacity: 0;
+              }
+            }
+            
+            .bubble {
+              position: absolute;
+              border-radius: 50%;
+              background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+              animation: float-up linear infinite;
+              box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+            
+            .bubble-1 {
+              width: 20px;
+              height: 20px;
+              left: 10%;
+              animation-duration: 12s;
+              animation-delay: 0s;
+            }
+            
+            .bubble-2 {
+              width: 15px;
+              height: 15px;
+              left: 30%;
+              animation-duration: 15s;
+              animation-delay: 2s;
+            }
+            
+            .bubble-3 {
+              width: 25px;
+              height: 25px;
+              left: 50%;
+              animation-duration: 18s;
+              animation-delay: 4s;
+            }
+            
+            .bubble-4 {
+              width: 12px;
+              height: 12px;
+              left: 70%;
+              animation-duration: 14s;
+              animation-delay: 1s;
+            }
+            
+            .bubble-5 {
+              width: 18px;
+              height: 18px;
+              left: 85%;
+              animation-duration: 16s;
+              animation-delay: 3s;
+            }
+            
+            .bubble-6 {
+              width: 10px;
+              height: 10px;
+              left: 20%;
+              animation-duration: 20s;
+              animation-delay: 5s;
+            }
+            
+            .bubble-7 {
+              width: 22px;
+              height: 22px;
+              left: 60%;
+              animation-duration: 13s;
+              animation-delay: 6s;
+            }
+            
+            .bubble-8 {
+              width: 14px;
+              height: 14px;
+              left: 40%;
+              animation-duration: 17s;
+              animation-delay: 7s;
             }
           `}
         </style>
