@@ -126,7 +126,7 @@ export function AppSidebar() {
             
             .bubble {
               position: absolute;
-              bottom: -10%;
+              bottom: 5%;
               border-radius: 50%;
               background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.15));
               animation: float-up ease-in-out infinite;
@@ -311,7 +311,7 @@ export function AppSidebar() {
         </style>
 
         {/* Floating Bubbles Animation */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute inset-0 pointer-events-none z-0" style={{ overflow: 'visible' }}>
           <div className="bubble bubble-1"></div>
           <div className="bubble bubble-2"></div>
           <div className="bubble bubble-3"></div>
