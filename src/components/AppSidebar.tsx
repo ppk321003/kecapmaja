@@ -92,44 +92,44 @@ export function AppSidebar() {
               display: none;
             }
             
-            @keyframes float-up {
+            @keyframes float-around {
               0% {
-                transform: translateY(0) translateX(0) scale(0.5);
-                opacity: 0;
+                transform: translate(0, 0) scale(0.8);
+                opacity: 0.3;
               }
               15% {
                 opacity: 0.7;
-                transform: translateY(-15%) translateX(8px) scale(1);
+                transform: translate(20px, 30px) scale(1);
               }
               30% {
-                transform: translateY(-30%) translateX(-12px) scale(1.15);
+                transform: translate(-25px, 60px) scale(1.1);
               }
               45% {
-                transform: translateY(-45%) translateX(15px) scale(1.05);
+                transform: translate(30px, 90px) scale(0.95);
               }
               60% {
-                transform: translateY(-60%) translateX(-8px) scale(1.1);
+                transform: translate(-20px, 120px) scale(1.05);
               }
               75% {
                 opacity: 0.5;
-                transform: translateY(-75%) translateX(10px) scale(0.95);
+                transform: translate(25px, 150px) scale(0.9);
               }
               90% {
                 opacity: 0.3;
-                transform: translateY(-90%) translateX(-5px) scale(0.8);
+                transform: translate(-15px, 180px) scale(0.85);
               }
               100% {
-                transform: translateY(-105%) translateX(0) scale(0.3);
+                transform: translate(0, 200px) scale(0.7);
                 opacity: 0;
               }
             }
             
             .bubble {
               position: absolute;
-              bottom: 5%;
+              top: -5%;
               border-radius: 50%;
               background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.15));
-              animation: float-up ease-in-out infinite;
+              animation: float-around ease-in-out infinite;
               box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.3), 0 0 8px rgba(255, 255, 255, 0.1);
             }
             
