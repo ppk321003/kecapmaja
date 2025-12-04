@@ -16,7 +16,9 @@ export function Layout({ children }: LayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        <div className="sticky top-0 h-screen">
+          <AppSidebar />
+        </div>
         <div className="flex-1 flex flex-col">
           <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10" style={{ background: "var(--gradient-header)" }}>
             <div className="flex items-center">
