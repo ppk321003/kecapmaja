@@ -33,19 +33,21 @@ const CONSTANTS = {
   }
 } as const;
 
-// Komponen SearchableSelect untuk Kecamatan Tujuan dengan search dan scroll
+// Komponen SearchableKecamatanSelect untuk Kecamatan (baik Dari Kecamatan maupun Kecamatan Tujuan)
 interface SearchableKecamatanSelectProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  label?: string;
 }
 
 const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
   value,
   onValueChange,
   placeholder = "Pilih kecamatan...",
-  disabled = false
+  disabled = false,
+  label
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -136,101 +138,103 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
   };
 
   return (
-    <div className="relative w-full" ref={containerRef}>
-      {/* Trigger Input */}
-      <div
-        className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-          "hover:bg-accent hover:text-accent-foreground",
-          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-          disabled && "cursor-not-allowed opacity-50",
-          "min-h-[40px] cursor-pointer"
-        )}
-        onClick={handleTriggerClick}
-      >
-        <div className="flex-1 overflow-hidden">
-          {value ? (
-            <span className="truncate">{value}</span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-        </div>
-        <ChevronDown className={cn(
-          "h-4 w-4 opacity-50 transition-transform",
-          isOpen && "rotate-180"
-        )} />
-      </div>
-
-      {/* Custom Dropdown */}
-      {isOpen && !disabled && (
+    <div className="space-y-2">
+      {label && <FormLabel>{label}</FormLabel>}
+      <div className="relative w-full" ref={containerRef}>
+        {/* Trigger Input */}
         <div
-          ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
-          style={{
-            width: containerRef.current?.offsetWidth || 'auto',
-            maxHeight: '300px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+            disabled && "cursor-not-allowed opacity-50",
+            "min-h-[40px] cursor-pointer"
+          )}
+          onClick={handleTriggerClick}
         >
-          {/* Search Input */}
-          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                placeholder="Cari kecamatan..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                onKeyDown={handleSearchKeyDown}
-                className="pl-8 pr-8 h-9"
-                onClick={(e) => e.stopPropagation()}
-                autoFocus
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+          <div className="flex-1 overflow-hidden">
+            {value ? (
+              <span className="truncate">{value}</span>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            "h-4 w-4 opacity-50 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        </div>
+
+        {/* Custom Dropdown */}
+        {isOpen && !disabled && (
+          <div
+            ref={dropdownRef}
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+            style={{
+              width: containerRef.current?.offsetWidth || 'auto',
+            }}
+          >
+            {/* Search Input */}
+            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Cari kecamatan..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleSearchKeyDown}
+                  className="pl-8 pr-8 h-9"
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options List with Scroll - DIPERBAIKI */}
+            <div className="max-h-[250px] overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="py-1">
+                  {filteredKecamatan.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Tidak ada kecamatan ditemukan
+                    </div>
+                  ) : (
+                    filteredKecamatan.map((kecamatan) => (
+                      <div
+                        key={kecamatan}
+                        className={cn(
+                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          "transition-colors duration-150",
+                          value === kecamatan && "bg-accent font-medium"
+                        )}
+                        onClick={() => handleSelectKecamatan(kecamatan)}
+                      >
+                        {value === kecamatan && (
+                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                            <Check className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span className="truncate">{kecamatan}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
-
-          {/* Options List with Scroll */}
-          <ScrollArea className="flex-1">
-            <div className="py-1 max-h-[250px]">
-              {filteredKecamatan.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada kecamatan ditemukan
-                </div>
-              ) : (
-                filteredKecamatan.map((kecamatan) => (
-                  <div
-                    key={kecamatan}
-                    className={cn(
-                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      "transition-colors duration-150",
-                      value === kecamatan && "bg-accent font-medium"
-                    )}
-                    onClick={() => handleSelectKecamatan(kecamatan)}
-                  >
-                    {value === kecamatan && (
-                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                        <Check className="h-4 w-4" />
-                      </span>
-                    )}
-                    <span className="truncate">{kecamatan}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -243,6 +247,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   disabled?: boolean;
   emptyMessage?: string;
+  label?: string;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -251,7 +256,8 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   placeholder = "Pilih...",
   disabled = false,
-  emptyMessage = "Tidak ada hasil ditemukan"
+  emptyMessage = "Tidak ada hasil ditemukan",
+  label
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -337,102 +343,292 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const selectedOption = options.find(opt => opt.id === value);
 
   return (
-    <div className="relative w-full" ref={containerRef}>
-      {/* Trigger Input */}
-      <div
-        className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-          "hover:bg-accent hover:text-accent-foreground",
-          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-          disabled && "cursor-not-allowed opacity-50",
-          "min-h-[40px] cursor-pointer"
-        )}
-        onClick={handleInputClick}
-      >
-        <div className="flex-1 overflow-hidden">
-          {selectedOption ? (
-            <span className="truncate">{selectedOption.name}</span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-        </div>
-        <ChevronDown className={cn(
-          "h-4 w-4 opacity-50 transition-transform",
-          isOpen && "rotate-180"
-        )} />
-      </div>
-
-      {/* Custom Dropdown */}
-      {isOpen && !disabled && (
+    <div className="space-y-2">
+      {label && <FormLabel>{label}</FormLabel>}
+      <div className="relative w-full" ref={containerRef}>
+        {/* Trigger Input */}
         <div
-          ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
-          style={{
-            width: containerRef.current?.offsetWidth || 'auto',
-            maxHeight: '300px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+            disabled && "cursor-not-allowed opacity-50",
+            "min-h-[40px] cursor-pointer"
+          )}
+          onClick={handleInputClick}
         >
-          {/* Search Input */}
-          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={inputRef}
-                placeholder="Cari..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                onKeyDown={handleKeyDown}
-                className="pl-8 pr-8 h-9"
-                onClick={(e) => e.stopPropagation()}
-                autoFocus
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+          <div className="flex-1 overflow-hidden">
+            {selectedOption ? (
+              <span className="truncate">{selectedOption.name}</span>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            "h-4 w-4 opacity-50 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        </div>
+
+        {/* Custom Dropdown */}
+        {isOpen && !disabled && (
+          <div
+            ref={dropdownRef}
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+            style={{
+              width: containerRef.current?.offsetWidth || 'auto',
+            }}
+          >
+            {/* Search Input */}
+            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Cari..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleKeyDown}
+                  className="pl-8 pr-8 h-9"
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options List with Scroll - DIPERBAIKI */}
+            <div className="max-h-[250px] overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="py-1">
+                  {filteredOptions.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      {emptyMessage}
+                    </div>
+                  ) : (
+                    filteredOptions.map((option) => (
+                      <div
+                        key={option.id}
+                        className={cn(
+                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          "transition-colors duration-150",
+                          value === option.id && "bg-accent font-medium"
+                        )}
+                        onClick={() => handleSelectOption(option.id, option.name)}
+                      >
+                        {value === option.id && (
+                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                            <Check className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span className="truncate">{option.name}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
-
-          {/* Options List with Scroll */}
-          <ScrollArea className="flex-1">
-            <div className="py-1 max-h-[250px]">
-              {filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <div
-                    key={option.id}
-                    className={cn(
-                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      "transition-colors duration-150",
-                      value === option.id && "bg-accent font-medium"
-                    )}
-                    onClick={() => handleSelectOption(option.id, option.name)}
-                  >
-                    {value === option.id && (
-                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                        <Check className="h-4 w-4" />
-                      </span>
-                    )}
-                    <span className="truncate">{option.name}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
+        )}
+      </div>
     </div>
+  );
+};
+
+// Custom Select untuk Program dengan search dan scroll
+interface SearchableProgramSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ id: string; name: string }>;
+  placeholder?: string;
+  disabled?: boolean;
+  label?: string;
+}
+
+const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  disabled = false,
+  label
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Auto focus input when dropdown opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleSelectOption = (optionId: string) => {
+    onValueChange(optionId);
+    setSearchTerm("");
+    setIsOpen(false);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+      setSearchTerm("");
+    }
+    if (e.key === 'Enter' && filteredOptions.length === 1) {
+      handleSelectOption(filteredOptions[0].id);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    inputRef.current?.focus();
+  };
+
+  const selectedOption = options.find(opt => opt.id === value);
+
+  return (
+    <FormItem>
+      {label && <FormLabel>{label}</FormLabel>}
+      <div className="relative" ref={containerRef}>
+        <div
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+            disabled && "cursor-not-allowed opacity-50",
+            "min-h-[40px] cursor-pointer"
+          )}
+          onClick={handleTriggerClick}
+        >
+          <div className="flex-1 overflow-hidden">
+            {selectedOption ? (
+              <span className="truncate">{selectedOption.name}</span>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            "h-4 w-4 opacity-50 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        </div>
+
+        {/* Custom Dropdown */}
+        {isOpen && !disabled && (
+          <div
+            ref={dropdownRef}
+            className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+            style={{
+              width: containerRef.current?.offsetWidth || 'auto',
+            }}
+          >
+            {/* Search Input */}
+            <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Cari program..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleKeyDown}
+                  className="pl-8 pr-8 h-9"
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Options List with Scroll - DIPERBAIKI */}
+            <div className="max-h-[250px] overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="py-1">
+                  {filteredOptions.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Tidak ada program ditemukan
+                    </div>
+                  ) : (
+                    filteredOptions.map((option) => (
+                      <div
+                        key={option.id}
+                        className={cn(
+                          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          "transition-colors duration-150",
+                          value === option.id && "bg-accent font-medium"
+                        )}
+                        onClick={() => handleSelectOption(option.id)}
+                      >
+                        {value === option.id && (
+                          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                            <Check className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span className="truncate">{option.name}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        )}
+      </div>
+    </FormItem>
   );
 };
 
@@ -506,7 +702,7 @@ const defaultValues: Partial<FormValues> = {
   transportDetails: []
 };
 
-// PersonTransportGroup Component - DIUBAH dengan SearchableKecamatanSelect
+// PersonTransportGroup Component - DIPERBAIKI dengan scroll yang benar
 const PersonTransportGroup: React.FC<{
   personId: string;
   personName: string;
@@ -560,33 +756,20 @@ const PersonTransportGroup: React.FC<{
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div className="space-y-2">
-            <FormLabel>Nama {type === "organik" ? "Organik" : "Mitra"} *</FormLabel>
-            <SearchableSelect
-              value={personId}
-              onValueChange={onUpdatePerson}
-              options={personList}
-              placeholder={`Pilih ${type}`}
-            />
-          </div>
+          <SearchableSelect
+            value={personId}
+            onValueChange={onUpdatePerson}
+            options={personList}
+            placeholder={`Pilih ${type === "organik" ? "organik" : "mitra"}`}
+            label={`Nama ${type === "organik" ? "Organik" : "Mitra"} *`}
+          />
 
-          <div className="space-y-2">
-            <FormLabel>Dari Kecamatan *</FormLabel>
-            <Select value={dariKecamatan} onValueChange={onUpdateDariKecamatan}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Pilih kecamatan" />
-              </SelectTrigger>
-              <SelectContent>
-                <ScrollArea className="max-h-60">
-                  {kecamatanList.map(kecamatan => (
-                    <SelectItem key={kecamatan} value={kecamatan}>
-                      {kecamatan}
-                    </SelectItem>
-                  ))}
-                </ScrollArea>
-              </SelectContent>
-            </Select>
-          </div>
+          <SearchableKecamatanSelect
+            value={dariKecamatan}
+            onValueChange={onUpdateDariKecamatan}
+            placeholder="Pilih kecamatan"
+            label="Dari Kecamatan *"
+          />
         </div>
 
         <div className="space-y-4">
@@ -622,14 +805,12 @@ const PersonTransportGroup: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <FormLabel>Kecamatan Tujuan *</FormLabel>
-                  <SearchableKecamatanSelect
-                    value={trip.kecamatanTujuan}
-                    onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
-                    placeholder="Pilih kecamatan tujuan"
-                  />
-                </div>
+                <SearchableKecamatanSelect
+                  value={trip.kecamatanTujuan}
+                  onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
+                  placeholder="Pilih kecamatan tujuan"
+                  label="Kecamatan Tujuan *"
+                />
 
                 <div className="space-y-2">
                   <FormLabel>Rate Transport (Rp) *</FormLabel>
@@ -1201,26 +1382,18 @@ const KuitansiTransportLokal = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <FormField control={form.control} name="program" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Program</FormLabel>
-                      <Select onValueChange={(value) => { field.onChange(value); form.setValue("kegiatan", ""); form.setValue("kro", ""); form.setValue("ro", ""); }} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih program" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <ScrollArea className="max-h-60">
-                            {programs.map(p => (
-                              <SelectItem key={p.id} value={p.id}>
-                                <span className="truncate">{p.name}</span>
-                              </SelectItem>
-                            ))}
-                          </ScrollArea>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                    <SearchableProgramSelect
+                      value={field.value}
+                      onValueChange={(value) => { 
+                        field.onChange(value); 
+                        form.setValue("kegiatan", ""); 
+                        form.setValue("kro", ""); 
+                        form.setValue("ro", ""); 
+                      }}
+                      options={programs}
+                      placeholder="Pilih program"
+                      label="Program"
+                    />
                   )} />
 
                   <FormField control={form.control} name="kegiatan" render={({ field }) => (
@@ -1229,7 +1402,11 @@ const KuitansiTransportLokal = () => {
                       <FormControl>
                         <SearchableSelect
                           value={field.value}
-                          onValueChange={(value) => { field.onChange(value); form.setValue("kro", ""); form.setValue("ro", ""); }}
+                          onValueChange={(value) => { 
+                            field.onChange(value); 
+                            form.setValue("kro", ""); 
+                            form.setValue("ro", ""); 
+                          }}
                           options={kegiatanList}
                           placeholder="Pilih kegiatan"
                           disabled={!form.watch("program")}
@@ -1246,7 +1423,10 @@ const KuitansiTransportLokal = () => {
                       <FormControl>
                         <SearchableSelect
                           value={field.value}
-                          onValueChange={(value) => { field.onChange(value); form.setValue("ro", ""); }}
+                          onValueChange={(value) => { 
+                            field.onChange(value); 
+                            form.setValue("ro", ""); 
+                          }}
                           options={kroList}
                           placeholder="Pilih KRO"
                           disabled={!form.watch("kegiatan")}
