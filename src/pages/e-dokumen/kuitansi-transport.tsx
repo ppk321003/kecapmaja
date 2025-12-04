@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2, Search, Plus, ChevronDown, Check } from "lucide-react";
+import { CalendarIcon, Trash2, Search, Plus, ChevronDown, Check, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -33,7 +33,209 @@ const CONSTANTS = {
   }
 } as const;
 
-// Custom SearchableSelect dengan dropdown manual
+// Komponen SearchableSelect untuk Kecamatan Tujuan dengan search dan scroll
+interface SearchableKecamatanSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
+  value,
+  onValueChange,
+  placeholder = "Pilih kecamatan...",
+  disabled = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const kecamatanList = [
+    "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", 
+    "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", 
+    "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", 
+    "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"
+  ];
+
+  // Set input value based on selected value
+  useEffect(() => {
+    if (value) {
+      const selectedKecamatan = kecamatanList.find(k => k === value);
+      setInputValue(selectedKecamatan || "");
+    } else {
+      setInputValue("");
+    }
+  }, [value]);
+
+  // Filter kecamatan based on search term
+  const filteredKecamatan = useMemo(() => {
+    if (!searchTerm.trim()) return kecamatanList;
+    return kecamatanList.filter(kecamatan =>
+      kecamatan.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Auto focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleSelectKecamatan = (kecamatan: string) => {
+    onValueChange(kecamatan);
+    setInputValue(kecamatan);
+    setSearchTerm("");
+    setIsOpen(false);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+      setSearchTerm("");
+    }
+    if (e.key === 'Enter' && filteredKecamatan.length === 1) {
+      handleSelectKecamatan(filteredKecamatan[0]);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    searchInputRef.current?.focus();
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {/* Trigger Input */}
+      <div
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground",
+          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+          disabled && "cursor-not-allowed opacity-50",
+          "min-h-[40px] cursor-pointer"
+        )}
+        onClick={handleTriggerClick}
+      >
+        <div className="flex-1 overflow-hidden">
+          {value ? (
+            <span className="truncate">{value}</span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown className={cn(
+          "h-4 w-4 opacity-50 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </div>
+
+      {/* Custom Dropdown */}
+      {isOpen && !disabled && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
+          style={{
+            width: containerRef.current?.offsetWidth || 'auto',
+            maxHeight: '300px',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Search Input */}
+          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Cari kecamatan..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
+                className="pl-8 pr-8 h-9"
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Options List with Scroll */}
+          <ScrollArea className="flex-1">
+            <div className="py-1 max-h-[250px]">
+              {filteredKecamatan.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada kecamatan ditemukan
+                </div>
+              ) : (
+                filteredKecamatan.map((kecamatan) => (
+                  <div
+                    key={kecamatan}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "transition-colors duration-150",
+                      value === kecamatan && "bg-accent font-medium"
+                    )}
+                    onClick={() => handleSelectKecamatan(kecamatan)}
+                  >
+                    {value === kecamatan && (
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <Check className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="truncate">{kecamatan}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Custom SearchableSelect untuk dropdown lainnya
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -127,6 +329,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
   };
 
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    inputRef.current?.focus();
+  };
+
   const selectedOption = options.find(opt => opt.id === value);
 
   return (
@@ -138,7 +345,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           "hover:bg-accent hover:text-accent-foreground",
           "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
           disabled && "cursor-not-allowed opacity-50",
-          "min-h-[40px]"
+          "min-h-[40px] cursor-pointer"
         )}
         onClick={handleInputClick}
       >
@@ -161,7 +368,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           ref={dropdownRef}
           className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80"
           style={{
-            width: containerRef.current?.offsetWidth || 'auto'
+            width: containerRef.current?.offsetWidth || 'auto',
+            maxHeight: '300px',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
           {/* Search Input */}
@@ -174,16 +384,25 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 value={searchTerm}
                 onChange={handleSearchChange}
                 onKeyDown={handleKeyDown}
-                className="pl-8 h-9"
+                className="pl-8 pr-8 h-9"
                 onClick={(e) => e.stopPropagation()}
                 autoFocus
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Options List */}
-          <ScrollArea className="max-h-60">
-            <div className="py-1">
+          {/* Options List with Scroll */}
+          <ScrollArea className="flex-1">
+            <div className="py-1 max-h-[250px]">
               {filteredOptions.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   {emptyMessage}
@@ -195,6 +414,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     className={cn(
                       "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm outline-none",
                       "hover:bg-accent hover:text-accent-foreground",
+                      "transition-colors duration-150",
                       value === option.id && "bg-accent font-medium"
                     )}
                     onClick={() => handleSelectOption(option.id, option.name)}
@@ -286,7 +506,7 @@ const defaultValues: Partial<FormValues> = {
   transportDetails: []
 };
 
-// PersonTransportGroup Component - DIUBAH untuk lebih responsif
+// PersonTransportGroup Component - DIUBAH dengan SearchableKecamatanSelect
 const PersonTransportGroup: React.FC<{
   personId: string;
   personName: string;
@@ -404,23 +624,11 @@ const PersonTransportGroup: React.FC<{
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <FormLabel>Kecamatan Tujuan *</FormLabel>
-                  <Select
+                  <SearchableKecamatanSelect
                     value={trip.kecamatanTujuan}
                     onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih kecamatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <ScrollArea className="max-h-60">
-                        {kecamatanList.map(kecamatan => (
-                          <SelectItem key={kecamatan} value={kecamatan}>
-                            {kecamatan}
-                          </SelectItem>
-                        ))}
-                      </ScrollArea>
-                    </SelectContent>
-                  </Select>
+                    placeholder="Pilih kecamatan tujuan"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -601,7 +809,7 @@ const extractDisplayName = (fullText: string) => {
   return parts.length > 1 ? parts[1] : fullText;
 };
 
-// Main Component - DIUBAH untuk lebih responsif
+// Main Component
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
