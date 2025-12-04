@@ -107,18 +107,20 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           </div>
 
           {/* Options List */}
-          <ScrollArea className="h-[250px]">
-            {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.name}
-                </SelectItem>
-              ))
-            )}
+          <ScrollArea className="max-h-[250px]">
+            <div className="p-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))
+              )}
+            </div>
           </ScrollArea>
         </SelectContent>
       </Select>
