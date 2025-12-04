@@ -54,6 +54,7 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
   const [inputValue, setInputValue] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const kecamatanList = [
@@ -93,6 +94,25 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Prevent scroll event from propagating to parent
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.stopPropagation();
+      // Biarkan scroll area menangani wheel event-nya sendiri
+    };
+
+    const scrollAreaElement = scrollAreaRef.current;
+    if (scrollAreaElement && isOpen) {
+      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (scrollAreaElement) {
+        scrollAreaElement.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [isOpen]);
 
   // Auto focus search input when dropdown opens
   useEffect(() => {
@@ -137,6 +157,12 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
     searchInputRef.current?.focus();
   };
 
+  // Handle wheel event on dropdown
+  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+    // Biarkan ScrollArea menangani scroll-nya sendiri
+  }, []);
+
   return (
     <div className="space-y-2">
       {label && <FormLabel>{label}</FormLabel>}
@@ -173,6 +199,7 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
             style={{
               width: containerRef.current?.offsetWidth || 'auto',
             }}
+            onWheel={handleDropdownWheel}
           >
             {/* Search Input */}
             <div className="sticky top-0 z-10 bg-popover p-2 border-b">
@@ -201,8 +228,18 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
             </div>
 
             {/* Options List with Scroll - DIPERBAIKI */}
-            <div className="max-h-[250px] overflow-hidden">
-              <ScrollArea className="h-full">
+            <div 
+              className="max-h-[250px] overflow-hidden"
+              onWheel={(e) => e.stopPropagation()}
+            >
+              <ScrollArea 
+                ref={scrollAreaRef}
+                className="h-[250px]" 
+                onWheel={(e) => {
+                  // Biarkan scroll area menangani wheel event-nya
+                  e.stopPropagation();
+                }}
+              >
                 <div className="py-1">
                   {filteredKecamatan.length === 0 ? (
                     <div className="py-6 text-center text-sm text-muted-foreground">
@@ -264,6 +301,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [inputValue, setInputValue] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Reset input value when value changes
@@ -296,6 +334,26 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Prevent scroll event from propagating to parent
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (isOpen) {
+        e.stopPropagation();
+      }
+    };
+
+    const scrollAreaElement = scrollAreaRef.current;
+    if (scrollAreaElement && isOpen) {
+      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (scrollAreaElement) {
+        scrollAreaElement.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [isOpen]);
 
   // Auto focus input when dropdown opens
   useEffect(() => {
@@ -340,6 +398,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     inputRef.current?.focus();
   };
 
+  // Handle wheel event on dropdown
+  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+  }, []);
+
   const selectedOption = options.find(opt => opt.id === value);
 
   return (
@@ -378,6 +441,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             style={{
               width: containerRef.current?.offsetWidth || 'auto',
             }}
+            onWheel={handleDropdownWheel}
           >
             {/* Search Input */}
             <div className="sticky top-0 z-10 bg-popover p-2 border-b">
@@ -406,8 +470,18 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
 
             {/* Options List with Scroll - DIPERBAIKI */}
-            <div className="max-h-[250px] overflow-hidden">
-              <ScrollArea className="h-full">
+            <div 
+              className="max-h-[250px] overflow-hidden"
+              onWheel={(e) => e.stopPropagation()}
+            >
+              <ScrollArea 
+                ref={scrollAreaRef}
+                className="h-[250px]"
+                onWheel={(e) => {
+                  // Biarkan scroll area menangani wheel event-nya
+                  e.stopPropagation();
+                }}
+              >
                 <div className="py-1">
                   {filteredOptions.length === 0 ? (
                     <div className="py-6 text-center text-sm text-muted-foreground">
@@ -466,6 +540,7 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter options based on search term
@@ -488,6 +563,26 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Prevent scroll event from propagating to parent
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (isOpen) {
+        e.stopPropagation();
+      }
+    };
+
+    const scrollAreaElement = scrollAreaRef.current;
+    if (scrollAreaElement && isOpen) {
+      scrollAreaElement.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (scrollAreaElement) {
+        scrollAreaElement.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [isOpen]);
 
   // Auto focus input when dropdown opens
   useEffect(() => {
@@ -529,12 +624,17 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
     inputRef.current?.focus();
   };
 
+  // Handle wheel event on dropdown
+  const handleDropdownWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+  }, []);
+
   const selectedOption = options.find(opt => opt.id === value);
 
   return (
-    <FormItem>
+    <div className="space-y-2">
       {label && <FormLabel>{label}</FormLabel>}
-      <div className="relative" ref={containerRef}>
+      <div className="relative w-full" ref={containerRef}>
         <div
           className={cn(
             "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
@@ -566,6 +666,7 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
             style={{
               width: containerRef.current?.offsetWidth || 'auto',
             }}
+            onWheel={handleDropdownWheel}
           >
             {/* Search Input */}
             <div className="sticky top-0 z-10 bg-popover p-2 border-b">
@@ -594,8 +695,17 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
             </div>
 
             {/* Options List with Scroll - DIPERBAIKI */}
-            <div className="max-h-[250px] overflow-hidden">
-              <ScrollArea className="h-full">
+            <div 
+              className="max-h-[250px] overflow-hidden"
+              onWheel={(e) => e.stopPropagation()}
+            >
+              <ScrollArea 
+                ref={scrollAreaRef}
+                className="h-[250px]"
+                onWheel={(e) => {
+                  e.stopPropagation();
+                }}
+              >
                 <div className="py-1">
                   {filteredOptions.length === 0 ? (
                     <div className="py-6 text-center text-sm text-muted-foreground">
@@ -628,7 +738,7 @@ const SearchableProgramSelect: React.FC<SearchableProgramSelectProps> = ({
           </div>
         )}
       </div>
-    </FormItem>
+    </div>
   );
 };
 
@@ -702,7 +812,7 @@ const defaultValues: Partial<FormValues> = {
   transportDetails: []
 };
 
-// PersonTransportGroup Component - DIPERBAIKI dengan scroll yang benar
+// PersonTransportGroup Component
 const PersonTransportGroup: React.FC<{
   personId: string;
   personName: string;
