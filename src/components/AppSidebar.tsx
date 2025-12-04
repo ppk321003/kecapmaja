@@ -72,7 +72,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className="border-r border-sidebar-border backdrop-blur-sm h-screen flex flex-col relative overflow-hidden"
+      className="border-r border-sidebar-border backdrop-blur-sm flex flex-col relative overflow-hidden"
       style={{
         background: "var(--gradient-primary)",
         boxShadow: "var(--shadow-sidebar)",
