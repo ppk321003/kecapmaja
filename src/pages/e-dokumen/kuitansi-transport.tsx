@@ -33,7 +33,7 @@ const CONSTANTS = {
   }
 } as const;
 
-// Komponen Select dengan Search - MENGADAPSI POLA DARI SKRIP ANDA
+// Komponen Select dengan Search - VERSI DIPERBAIKI
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -55,6 +55,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Filter options based on search term
   const filteredOptions = useMemo(() => {
@@ -74,15 +75,21 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div className="space-y-2">
       {label && <FormLabel>{label}</FormLabel>}
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+      <Select 
+        value={value} 
+        onValueChange={onValueChange} 
+        disabled={disabled}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      >
         <SelectTrigger>
           <SelectValue placeholder={placeholder}>
             {selectedOption ? selectedOption.name : null}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="p-0">
           {/* Search Input */}
-          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+          <div className="sticky top-0 z-50 bg-popover p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -106,29 +113,33 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
           </div>
 
-          {/* Options List */}
-          <ScrollArea className="max-h-[250px]">
-            <div className="p-1">
-              {filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
+          {/* Options List - DIPERBAIKI dengan struktur scroll yang benar */}
+          <div className="max-h-[250px] overflow-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              <div className="p-1">
+                {filteredOptions.map((option) => (
+                  <SelectItem 
+                    key={option.id} 
+                    value={option.id}
+                    className="cursor-pointer"
+                  >
                     {option.name}
                   </SelectItem>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                ))}
+              </div>
+            )}
+          </div>
         </SelectContent>
       </Select>
     </div>
   );
 };
 
-// Komponen Kecamatan Select dengan Search - MENGADAPSI POLA DARI SKRIP ANDA
+// Komponen Kecamatan Select dengan Search - VERSI DIPERBAIKI
 interface SearchableKecamatanSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -146,6 +157,7 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const kecamatanList = [
     "Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", 
@@ -170,15 +182,21 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
   return (
     <div className="space-y-2">
       {label && <FormLabel>{label}</FormLabel>}
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+      <Select 
+        value={value} 
+        onValueChange={onValueChange} 
+        disabled={disabled}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      >
         <SelectTrigger>
           <SelectValue placeholder={placeholder}>
             {value || null}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="p-0">
           {/* Search Input */}
-          <div className="sticky top-0 z-10 bg-popover p-2 border-b">
+          <div className="sticky top-0 z-50 bg-popover p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -202,20 +220,26 @@ const SearchableKecamatanSelect: React.FC<SearchableKecamatanSelectProps> = ({
             </div>
           </div>
 
-          {/* Options List */}
-          <ScrollArea className="h-[250px]">
+          {/* Options List - DIPERBAIKI dengan struktur scroll yang benar */}
+          <div className="max-h-[250px] overflow-auto">
             {filteredKecamatan.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Tidak ada kecamatan ditemukan
               </div>
             ) : (
-              filteredKecamatan.map((kecamatan) => (
-                <SelectItem key={kecamatan} value={kecamatan}>
-                  {kecamatan}
-                </SelectItem>
-              ))
+              <div className="p-1">
+                {filteredKecamatan.map((kecamatan) => (
+                  <SelectItem 
+                    key={kecamatan} 
+                    value={kecamatan}
+                    className="cursor-pointer"
+                  >
+                    {kecamatan}
+                  </SelectItem>
+                ))}
+              </div>
             )}
-          </ScrollArea>
+          </div>
         </SelectContent>
       </Select>
     </div>
@@ -292,7 +316,7 @@ const defaultValues: Partial<FormValues> = {
   transportDetails: []
 };
 
-// PersonTransportGroup Component - DIUBAH menggunakan Select shadcn dengan search
+// PersonTransportGroup Component - VERSI DIPERBAIKI
 const PersonTransportGroup: React.FC<{
   personId: string;
   personName: string;
