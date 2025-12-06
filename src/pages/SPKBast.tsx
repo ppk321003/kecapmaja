@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, ClipboardCheck, FileText, BarChart3 } from "lucide-react";
+import { CheckCircle, ClipboardCheck, FileText, BarChart3, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function SPKBast() {
@@ -29,6 +29,13 @@ export default function SPKBast() {
       border: "border-amber-200 dark:border-amber-800",
       button: "bg-amber-600 hover:bg-amber-700 text-white",
     },
+    {
+      bg: "bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950",
+      hover: "hover:from-gray-100 hover:via-gray-50 hover:to-gray-100 dark:hover:from-gray-800 dark:hover:via-gray-700 dark:hover:to-gray-800",
+      icon: "text-gray-800 dark:text-gray-200",
+      border: "border-gray-300 dark:border-gray-700",
+      button: "bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900",
+    },
   ];
 
   // Data menu SPK & BAST
@@ -53,6 +60,13 @@ export default function SPKBast() {
       icon: BarChart3,
       description:
         "Lihat rekapitulasi dan laporan data SPK & BAST yang telah dibuat",
+    },
+    {
+      title: "SBML Tahunan",
+      url: "/spk-bast/entri-sbml",
+      icon: DollarSign,
+      description:
+        "Kelola Standar Biaya Masukan Lainnya (SBML) untuk tahun anggaran berjalan",
     },
   ];
 
