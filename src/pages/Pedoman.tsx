@@ -47,6 +47,7 @@ import {
   Briefcase,
   GraduationCap,
 } from "lucide-react";
+
 interface PedomanItem {
   title: string;
   icon: React.ElementType;
@@ -56,6 +57,7 @@ interface PedomanItem {
   tips?: string[];
   accessInfo?: string;
 }
+
 const pedomanData = {
   utama: [
     {
@@ -328,10 +330,10 @@ const pedomanData = {
       accessInfo: "Semua pegawai BPS Kabupaten Majalengka dapat mengakses",
     },
     {
-      title: "Block Tanggal Perjalanan",
+      title: "Block Tanggal & Linkers",
       icon: Calendar,
       url: "/block-tanggal",
-      description: "Fitur untuk mencatat dan mengkoordinasikan jadwal perjalanan dinas mitra agar tidak bentrok antar fungsi.",
+      description: "Fitur untuk mencatat dan mengkoordinasikan jadwal perjalanan dinas mitra agar tidak bentrok antar fungsi. Juga mencakup kumpulan link dokumen penting dan referensi yang sering digunakan.",
       features: [
         "Pilih bulan dan tahun untuk melihat jadwal",
         "Setiap fungsi bisa menambah mitra dan tanggal kegiatan",
@@ -341,16 +343,24 @@ const pedomanData = {
         "Bisa menambah, edit, dan hapus kegiatan",
         "Data tersimpan di Google Sheets",
         "Lihat siapa penanggung jawab setiap mitra",
+        "Link SBM 2025 (Standar Biaya Masukan)",
+        "Link Perka BPS terkait",
+        "Link referensi lainnya",
+        "Kategori link berdasarkan jenis",
+        "Akses cepat ke dokumen penting",
+        "Update link terbaru",
       ],
       tips: [
         "Koordinasi dengan fungsi lain sebelum mem-block tanggal mitra",
         "Cek jadwal fungsi lain untuk menghindari konflik",
         "Pastikan login dengan role yang benar",
+        "Bookmark halaman ini untuk akses cepat",
+        "Cek update link secara berkala",
       ],
       accessInfo: "Setiap fungsi hanya bisa edit jadwal milik fungsinya sendiri",
     },
   ],
-  linkersPengadaan: [
+  pengadaan: [
     {
       title: "Pengadaan",
       icon: ShoppingCart,
@@ -371,21 +381,24 @@ const pedomanData = {
       accessInfo: "Akses khusus untuk PPK, Bendahara, dan Pejabat Pengadaan",
     },
     {
-      title: "Linkers",
+      title: "Linkers & Referensi",
       icon: Link2,
       url: "/linkers",
-      description: "Kumpulan link dokumen penting dan referensi yang sering digunakan.",
+      description: "Kumpulan link dokumen penting dan referensi yang sering digunakan dalam proses pengadaan dan pekerjaan sehari-hari.",
       features: [
-        "Link SBM 2025 (Standar Biaya Masukan)",
-        "Link Perka BPS terkait",
-        "Link referensi lainnya",
-        "Kategori link berdasarkan jenis",
-        "Akses cepat ke dokumen penting",
-        "Update link terbaru",
+        "Link SBM 2025 (Standar Biaya Masukan) terupdate",
+        "Link Perka BPS terkait pengadaan",
+        "Link referensi pengadaan barang/jasa",
+        "Kategori link berdasarkan jenis dokumen",
+        "Akses cepat ke dokumen penting pengadaan",
+        "Update link terbaru secara berkala",
+        "Pencarian cepat berdasarkan kata kunci",
       ],
       tips: [
-        "Bookmark halaman ini untuk akses cepat",
-        "Cek update link secara berkala",
+        "Bookmark halaman ini untuk akses cepat ke referensi pengadaan",
+        "Cek update link secara berkala untuk versi terbaru",
+        "Gunakan pencarian untuk menemukan dokumen spesifik",
+        "Laporkan link rusak untuk perbaikan cepat",
       ],
     },
   ],
@@ -466,17 +479,20 @@ const pedomanData = {
     },
   ],
 };
+
 const tabConfig = [
   { value: "utama", label: "Home", icon: Home, color: "text-blue-500" },
   { value: "spkBast", label: "SPK dan BAST", icon: FileText, color: "text-emerald-500" },
   { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
   { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },
-  { value: "linkersPengadaan", label: "Linkers & Pengadaan", icon: ShoppingCart, color: "text-orange-500" },
+  { value: "pengadaan", label: "Pengadaan", icon: ShoppingCart, color: "text-orange-500" },
   { value: "lainnya", label: "Lainnya", icon: Package, color: "text-amber-500" },
 ];
+
 export default function Pedoman() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("utama");
+
   const renderPedomanCard = (item: PedomanItem) => (
     <Card
       key={item.title}
@@ -523,21 +539,24 @@ export default function Pedoman() {
             )}
           </ul>
         </div>
+        
         {item.tips && item.tips.length > 0 && (
           <div className="pt-3 border-t border-border/50">
             <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               Tips
             </h4>
-            <ul className="space-y-1 list-disc pl-5">
+            <ul className="space-y-1">
               {item.tips.map((tip, idx) => (
-                <li key={idx} className="text-xs text-muted-foreground">
-                  {tip}
+                <li key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
+                  <span className="text-amber-500 mt-1">•</span>
+                  <span className="flex-1">{tip}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
+        
         <Button
           variant="outline"
           className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
@@ -549,6 +568,7 @@ export default function Pedoman() {
       </CardContent>
     </Card>
   );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -565,6 +585,7 @@ export default function Pedoman() {
           Panduan lengkap fitur-fitur KECAP MAJA untuk membantu Anda memahami dan menggunakan sistem dengan optimal
         </p>
       </div>
+      
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex w-full max-w-3xl mx-auto mb-6 bg-muted/80 p-1 rounded-full shadow-inner justify-center">
@@ -579,6 +600,7 @@ export default function Pedoman() {
             </TabsTrigger>
           ))}
         </TabsList>
+        
         <TabsContent value="utama" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
@@ -586,6 +608,7 @@ export default function Pedoman() {
             </div>
           </ScrollArea>
         </TabsContent>
+        
         <TabsContent value="spkBast" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
@@ -593,6 +616,7 @@ export default function Pedoman() {
             </div>
           </ScrollArea>
         </TabsContent>
+        
         <TabsContent value="eDokumen" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
@@ -600,6 +624,7 @@ export default function Pedoman() {
             </div>
           </ScrollArea>
         </TabsContent>
+        
         <TabsContent value="karirJadwal" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
@@ -607,13 +632,15 @@ export default function Pedoman() {
             </div>
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="linkersPengadaan" className="mt-0">
+        
+        <TabsContent value="pengadaan" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
-              {pedomanData.linkersPengadaan.map(renderPedomanCard)}
+              {pedomanData.pengadaan.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
+        
         <TabsContent value="lainnya" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
@@ -622,6 +649,7 @@ export default function Pedoman() {
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      
       {/* Footer Info */}
       <div className="text-center pt-4 border-t border-border/50">
         <p className="text-xs text-muted-foreground">
