@@ -100,7 +100,7 @@ export default function SPKBast() {
       </div>
 
       {/* Grid Cards - proporsional dan fade-up */}
-      <div className="grid gap-8 max-w-6xl mx-auto sm:grid-cols-2 lg:grid-cols-3 px-4 py-6 auto-rows-fr">
+      <div className="grid gap-8 max-w-6xl mx-auto sm:grid-cols-2 lg:grid-cols-4 px-4 py-6 auto-rows-fr">
         {spkBastMenuItems.map((item, index) => {
           const colors = cardColors[index % cardColors.length];
           const Icon = item.icon;
