@@ -46,18 +46,7 @@ import {
   ExternalLink,
   Briefcase,
   GraduationCap,
-  ChevronRight,
-  Star,
-  Zap,
-  Shield,
-  Globe,
-  Clock4,
-  CalendarDays,
-  Users2,
-  FileStack,
-  Wallet,
 } from "lucide-react";
-
 interface PedomanItem {
   title: string;
   icon: React.ElementType;
@@ -66,11 +55,27 @@ interface PedomanItem {
   features: string[];
   tips?: string[];
   accessInfo?: string;
-  badge?: string;
 }
-
 const pedomanData = {
   utama: [
+    {
+      title: "Home",
+      icon: Home,
+      url: "/",
+      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun pegawai BPS Kabupaten Majalengka.",
+      features: [
+        "Tampilan selamat datang dengan gambaran umum aplikasi",
+        "Otomatis mendeteksi pegawai yang berulang tahun hari ini",
+        "Menampilkan popup ucapan selamat ulang tahun",
+        "Jika ada lebih dari satu pegawai berulang tahun, bisa dilihat satu per satu",
+        "Menghitung umur pegawai secara otomatis",
+        "Ringkasan fitur-fitur yang tersedia di KECAP MAJA",
+      ],
+      tips: [
+        "Buka halaman Home setiap hari untuk melihat siapa yang berulang tahun",
+        "Sistem akan menampilkan pemberitahuan jika ada pegawai berulang tahun",
+      ],
+    },
     {
       title: "Dashboard",
       icon: LayoutDashboard,
@@ -89,25 +94,6 @@ const pedomanData = {
         "Gunakan filter untuk fokus pada data tertentu",
         "Perhatikan warna merah/kuning pada Risk Assessment untuk mitra yang perlu diawasi",
       ],
-      badge: "🌟 Fitur Unggulan"
-    },
-    {
-      title: "Home",
-      icon: Home,
-      url: "/",
-      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun pegawai.",
-      features: [
-        "Tampilan selamat datang dengan gambaran umum aplikasi",
-        "Otomatis mendeteksi pegawai yang berulang tahun hari ini",
-        "Menampilkan popup ucapan selamat ulang tahun",
-        "Jika ada lebih dari satu pegawai berulang tahun, bisa dilihat satu per satu",
-        "Menghitung umur pegawai secara otomatis",
-        "Ringkasan fitur-fitur yang tersedia di KECAP MAJA",
-      ],
-      tips: [
-        "Buka halaman Home setiap hari untuk melihat siapa yang berulang tahun",
-        "Sistem akan menampilkan pemberitahuan jika ada pegawai berulang tahun",
-      ],
     },
   ],
   spkBast: [
@@ -125,7 +111,6 @@ const pedomanData = {
         "Mulai dari Entri Target untuk membuat SPK baru",
         "Cek SBML Tahunan sebelum menambah mitra baru",
       ],
-      badge: "📄 Dokumen"
     },
     {
       title: "Entri Target",
@@ -226,85 +211,105 @@ const pedomanData = {
       url: "/e-dokumen/buat",
       description: "Buat berbagai dokumen elektronik dengan 12 jenis template yang tersedia.",
       features: [
-        "12 jenis template dokumen lengkap",
+        "12 jenis template dokumen:",
+        "• Daftar Hadir - untuk rapat/pelatihan",
+        "• KAK (Kerangka Acuan Kerja) - dokumen perencanaan",
+        "• Kuitansi Perjalanan - bukti pengeluaran perjadin",
+        "• Kuitansi Transport - bukti pengeluaran transportasi",
+        "• SPJ Honor - Surat Pertanggungjawaban honor",
+        "• Surat Keputusan - SK resmi",
+        "• Surat Pernyataan - berbagai surat pernyataan",
+        "• Tanda Terima - bukti serah terima",
+        "• Transport Lokal - dokumen transport dalam kabupaten",
+        "• Uang Harian & Transport - dokumen perjadin",
+        "• Lembur & Laporan - dokumen lembur pegawai",
+        "• Dokumen Pengadaan - kelengkapan pengadaan",
         "Form mudah diisi dengan validasi otomatis",
         "Preview dokumen sebelum disimpan",
-        "Hasil siap cetak dalam format PDF",
-        "Template sesuai standar BPS",
-        "Auto-save dan history pembuatan",
+        "Hasil siap cetak",
       ],
       tips: [
-        "Pilih template yang sesuai kebutuhan dokumen",
-        "Isi semua kolom dengan data yang benar",
-        "Preview dokumen sebelum melakukan print",
-        "Simpan template favorit untuk penggunaan berulang",
+        "Pilih template yang sesuai kebutuhan",
+        "Isi semua kolom dengan benar",
+        "Preview dokumen sebelum print",
       ],
-      badge: "⚡ Cepat"
     },
     {
       title: "Download e-Dokumen",
       icon: Download,
       url: "/e-dokumen/download",
-      description: "Unduh dokumen elektronik yang sudah dibuat sebelumnya dengan berbagai filter.",
+      description: "Unduh dokumen elektronik yang sudah dibuat sebelumnya.",
       features: [
         "Tab navigasi per jenis dokumen",
         "Cari dokumen berdasarkan nama/tanggal",
         "Tampilan per halaman untuk dokumen yang banyak",
-        "Link download langsung ke PDF",
+        "Link download langsung",
         "Filter berdasarkan tanggal pembuatan",
         "Download beberapa dokumen sekaligus",
       ],
       tips: [
-        "Gunakan tab untuk navigasi cepat berdasarkan jenis dokumen",
+        "Gunakan tab untuk navigasi cepat",
         "Manfaatkan fitur pencarian untuk dokumen tertentu",
-        "Download dalam batch untuk efisiensi waktu",
       ],
     },
     {
-      title: "Kuitansi & SPJ",
-      icon: Receipt,
-      url: "/e-dokumen/kuitansi-perjalanan",
-      description: "Buat kuitansi dan Surat Pertanggungjawaban untuk keperluan administrasi keuangan.",
-      features: [
-        "Kuitansi perjalanan dinas standar",
-        "Kuitansi transport dan operasional",
-        "Nomor kuitansi otomatis ter-generate",
-        "Terbilang (angka ke huruf) otomatis",
-        "Format standar keuangan BPS",
-        "Template SPJ honor lengkap",
-      ],
-      tips: [
-        "Pastikan data penerima dan nominal sesuai",
-        "Cek terbilang otomatis sebelum print",
-        "Simpan draft sebelum finalisasi",
-      ],
-    },
-    {
-      title: "Daftar Hadir & Surat",
+      title: "Daftar Hadir",
       icon: Users,
       url: "/e-dokumen/daftar-hadir",
-      description: "Buat daftar hadir rapat dan berbagai surat resmi dengan template terstandarisasi.",
+      description: "Buat daftar hadir untuk kegiatan rapat, pelatihan, dan sosialisasi.",
       features: [
-        "Daftar hadir untuk rapat/pelatihan",
-        "Surat keputusan dan pernyataan",
-        "Template KAK (Kerangka Acuan Kerja)",
-        "Tanda terima dan berita acara",
-        "Export ke PDF dan Excel",
-        "Kolom tanda tangan teratur",
+        "Input nama kegiatan dan tanggal",
+        "Pilih peserta dari daftar pegawai",
+        "Tambah peserta dari luar (manual)",
+        "Kolom tanda tangan bisa diatur",
+        "Export ke PDF/Excel",
       ],
-      tips: [
-        "Pilih peserta dari daftar pegawai yang tersedia",
-        "Tambahkan peserta manual jika diperlukan",
-        "Export dalam format sesuai kebutuhan",
+    },
+    {
+      title: "KAK",
+      icon: FileText,
+      url: "/e-dokumen/kak",
+      description: "Buat Kerangka Acuan Kerja untuk perencanaan kegiatan.",
+      features: [
+        "Template KAK sesuai format BPS",
+        "Input latar belakang dan tujuan kegiatan",
+        "Rincian jadwal pelaksanaan",
+        "Estimasi anggaran otomatis",
+        "Siap untuk proses persetujuan",
+      ],
+    },
+    {
+      title: "Kuitansi",
+      icon: Receipt,
+      url: "/e-dokumen/kuitansi-perjalanan",
+      description: "Buat kuitansi untuk pertanggungjawaban keuangan.",
+      features: [
+        "Kuitansi perjalanan dinas",
+        "Kuitansi transport",
+        "Nomor kuitansi otomatis",
+        "Terbilang (angka ke huruf) otomatis",
+        "Format standar keuangan",
+      ],
+    },
+    {
+      title: "SPJ Honor",
+      icon: HandCoins,
+      url: "/e-dokumen/spj-honor",
+      description: "Buat Surat Pertanggungjawaban Honor untuk pembayaran kegiatan.",
+      features: [
+        "Terhubung dengan data SPK yang sudah dibuat",
+        "Perhitungan pajak otomatis",
+        "Rekap per kegiatan",
+        "Format SPJ standar",
       ],
     },
   ],
-  karirKoordinasi: [
+  karirJadwal: [
     {
       title: "KarierKu",
       icon: GraduationCap,
       url: "/karierku",
-      description: "Fitur untuk melihat estimasi kenaikan pangkat dan jabatan pegawai berdasarkan angka kredit.",
+      description: "Fitur untuk melihat estimasi kenaikan pangkat dan jabatan pegawai BPS Kabupaten Majalengka berdasarkan angka kredit.",
       features: [
         "Cari dan pilih pegawai dari daftar yang tersedia",
         "Lihat profil lengkap pegawai (NIP, pangkat, golongan, jabatan)",
@@ -319,10 +324,8 @@ const pedomanData = {
         "Gunakan fitur pencarian untuk menemukan pegawai dengan cepat",
         "Ubah asumsi predikat kinerja untuk melihat skenario berbeda",
         "Data diambil dari database pegawai yang terupdate",
-        "Simpan hasil estimasi untuk referensi",
       ],
       accessInfo: "Semua pegawai BPS Kabupaten Majalengka dapat mengakses",
-      badge: "🎯 Karir"
     },
     {
       title: "Block Tanggal Perjalanan",
@@ -342,57 +345,48 @@ const pedomanData = {
       tips: [
         "Koordinasi dengan fungsi lain sebelum mem-block tanggal mitra",
         "Cek jadwal fungsi lain untuk menghindari konflik",
-        "Pastikan login dengan role yang benar untuk fungsi masing-masing",
-        "Update jadwal secara berkala",
+        "Pastikan login dengan role yang benar",
       ],
       accessInfo: "Setiap fungsi hanya bisa edit jadwal milik fungsinya sendiri",
     },
-    {
-      title: "Linkers & Referensi",
-      icon: Link2,
-      url: "/linkers",
-      description: "Kumpulan link dokumen penting dan referensi yang sering digunakan dalam pekerjaan sehari-hari.",
-      features: [
-        "Link SBM 2025 (Standar Biaya Masukan) terupdate",
-        "Link Perka BPS terkait terbaru",
-        "Link referensi lainnya yang relevan",
-        "Kategori link berdasarkan jenis dokumen",
-        "Akses cepat ke dokumen penting",
-        "Update link terbaru secara berkala",
-        "Pencarian cepat berdasarkan kata kunci",
-      ],
-      tips: [
-        "Bookmark halaman ini untuk akses cepat ke referensi",
-        "Cek update link secara berkala untuk versi terbaru",
-        "Gunakan pencarian untuk menemukan dokumen spesifik",
-        "Laporkan link rusak untuk perbaikan cepat",
-      ],
-      badge: "🔗 Referensi"
-    },
   ],
-  pengadaan: [
+  linkersPengadaan: [
     {
       title: "Pengadaan",
       icon: ShoppingCart,
       url: "/pengadaan",
       description: "Fitur untuk mencatat dan memantau proses pengadaan barang/jasa di BPS Kabupaten Majalengka.",
       features: [
-        "Input usulan pengadaan baru dengan mudah",
+        "Input usulan pengadaan baru",
         "Pantau status pengadaan: Usulan → Proses → Kontrak → Selesai",
         "Filter data berdasarkan status dan periode",
-        "Lihat detail setiap pengadaan secara lengkap",
+        "Lihat detail setiap pengadaan",
         "Update status pengadaan sesuai perkembangan",
-        "Export data pengadaan ke Excel untuk laporan",
-        "Notifikasi update status otomatis",
+        "Export data pengadaan ke Excel",
       ],
       tips: [
-        "Update status pengadaan secara rutin setiap ada perkembangan",
-        "Gunakan filter untuk mencari pengadaan tertentu dengan cepat",
-        "Backup data export secara berkala",
-        "Pantau timeline pengadaan untuk menghindari keterlambatan",
+        "Update status pengadaan secara rutin",
+        "Gunakan filter untuk mencari pengadaan tertentu",
       ],
       accessInfo: "Akses khusus untuk PPK, Bendahara, dan Pejabat Pengadaan",
-      badge: "📦 Procurement"
+    },
+    {
+      title: "Linkers",
+      icon: Link2,
+      url: "/linkers",
+      description: "Kumpulan link dokumen penting dan referensi yang sering digunakan.",
+      features: [
+        "Link SBM 2025 (Standar Biaya Masukan)",
+        "Link Perka BPS terkait",
+        "Link referensi lainnya",
+        "Kategori link berdasarkan jenis",
+        "Akses cepat ke dokumen penting",
+        "Update link terbaru",
+      ],
+      tips: [
+        "Bookmark halaman ini untuk akses cepat",
+        "Cek update link secara berkala",
+      ],
     },
   ],
   lainnya: [
@@ -400,346 +394,239 @@ const pedomanData = {
       title: "Kecap to Bendahara",
       icon: Banknote,
       url: "/aki-to-bendahara",
-      description: "Rekap honor untuk keperluan bendahara dengan export ke Excel yang terstruktur.",
+      description: "Rekap honor untuk keperluan bendahara dengan export ke Excel.",
       features: [
-        "Rekap honor per periode dengan detail lengkap",
+        "Rekap honor per periode",
         "Filter berdasarkan fungsi, kegiatan, dan bulan",
-        "Hitung total honor dan pajak otomatis",
-        "Export ke format Excel siap pakai",
+        "Hitung total honor dan pajak",
+        "Export ke format Excel",
         "Preview data sebelum export",
         "Pengelompokan berdasarkan kegiatan/mitra",
-        "Format laporan sesuai standar bendahara",
       ],
       tips: [
-        "Gunakan filter untuk mendapatkan data yang spesifik",
-        "Export secara berkala untuk backup data",
-        "Preview sebelum export untuk memastikan kelengkapan",
-        "Simpan export dalam folder terorganisir",
+        "Gunakan filter untuk data yang spesifik",
+        "Export secara berkala untuk backup",
       ],
       accessInfo: "Akses khusus untuk Bendahara dan Admin",
-      badge: "💰 Keuangan"
     },
     {
       title: "Entri Pengelola",
-      icon: Users2,
+      icon: Users,
       url: "/entri-pengelola",
       description: "Kelola data Pengelola Anggaran (Padamel-3210) dan Pegawai Organik BPS Kabupaten Majalengka.",
       features: [
         "Tab Padamel-3210: Data pengelola anggaran (PPK, PPSPM, Bendahara)",
-        "Tab Organik: Data pegawai BPS lengkap",
-        "Tambah, lihat, edit, dan hapus data dengan mudah",
-        "Validasi NIP dan data pegawai otomatis",
-        "Import data dari Excel dalam satu klik",
-        "Export data ke Excel untuk backup",
-        "Cari dan filter data dengan cepat",
+        "Tab Organik: Data pegawai BPS",
+        "Tambah, lihat, edit, dan hapus data",
+        "Validasi NIP dan data pegawai",
+        "Import data dari Excel",
+        "Export data ke Excel",
+        "Cari dan filter data",
       ],
       tips: [
-        "Pastikan NIP valid (18 digit) sebelum input",
+        "Pastikan NIP valid (18 digit)",
         "Update data saat ada mutasi pegawai",
-        "Backup data sebelum melakukan perubahan besar",
-        "Gunakan import Excel untuk input data massal",
       ],
     },
     {
       title: "Mitra Kepka",
       icon: UserCheck,
       url: "/mitra-kepka",
-      description: "Kelola database Mitra Statistik (Kepka) BPS Kabupaten Majalengka secara terpusat.",
+      description: "Kelola database Mitra Statistik (Kepka) BPS Kabupaten Majalengka.",
       features: [
         "Data lengkap mitra: NIK, nama, alamat, kontak",
-        "Status aktif/non-aktif mitra dengan mudah",
+        "Status aktif/non-aktif mitra",
         "Riwayat kegiatan yang pernah diikuti",
         "Total honor yang sudah diterima",
-        "Sisa kuota SBML per mitra real-time",
+        "Sisa kuota SBML per mitra",
         "Tambah, edit, hapus data mitra",
-        "Import/export data mitra ke Excel",
+        "Import/export data mitra",
       ],
       tips: [
-        "Update status mitra secara berkala berdasarkan kinerja",
+        "Update status mitra secara berkala",
         "Cek sisa SBML sebelum menugaskan ke kegiatan baru",
-        "Validasi data NIK mitra secara berkala",
-        "Gunakan filter untuk mencari mitra spesifik",
       ],
-      badge: "🤝 Mitra"
     },
     {
       title: "Download Raw Data",
       icon: Database,
       url: "/download-raw-data",
-      description: "Unduh data mentah dari sistem untuk keperluan analisis lebih lanjut dan backup.",
+      description: "Unduh data mentah dari sistem untuk keperluan analisis.",
       features: [
-        "Download data SPK lengkap dengan semua field",
-        "Download data mitra dan kegiatan",
-        "Pilih periode data yang diinginkan",
-        "Format output: Excel/CSV pilihan",
-        "Data terstruktur untuk analisis",
-        "Backup data otomatis",
+        "Download data SPK",
+        "Download data mitra",
+        "Download data kegiatan",
+        "Pilih periode data",
+        "Format output: Excel/CSV",
       ],
       tips: [
-        "Gunakan untuk backup data berkala setiap bulan",
-        "Data mentah berguna untuk analisis khusus dan reporting",
-        "Pilih format CSV untuk kompatibilitas dengan berbagai tools",
-        "Simpan backup di lokasi aman",
+        "Gunakan untuk backup data berkala",
+        "Data mentah berguna untuk analisis khusus",
       ],
-      badge: "💾 Data"
     },
   ],
 };
-
 const tabConfig = [
-  { value: "utama", label: "Utama", icon: LayoutDashboard, color: "text-blue-500", gradient: "from-blue-500 to-cyan-500" },
-  { value: "spkBast", label: "SPK & BAST", icon: FileText, color: "text-emerald-500", gradient: "from-emerald-500 to-green-500" },
-  { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500", gradient: "from-purple-500 to-pink-500" },
-  { value: "karirKoordinasi", label: "Karir & Koordinasi", icon: CalendarDays, color: "text-amber-500", gradient: "from-amber-500 to-orange-500" },
-  { value: "pengadaan", label: "Pengadaan", icon: ShoppingCart, color: "text-red-500", gradient: "from-red-500 to-rose-500" },
-  { value: "lainnya", label: "Lainnya", icon: Package, color: "text-indigo-500", gradient: "from-indigo-500 to-violet-500" },
+  { value: "utama", label: "Home", icon: Home, color: "text-blue-500" },
+  { value: "spkBast", label: "SPK dan BAST", icon: FileText, color: "text-emerald-500" },
+  { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
+  { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },
+  { value: "linkersPengadaan", label: "Linkers & Pengadaan", icon: ShoppingCart, color: "text-orange-500" },
+  { value: "lainnya", label: "Lainnya", icon: Package, color: "text-amber-500" },
 ];
-
 export default function Pedoman() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("utama");
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-
   const renderPedomanCard = (item: PedomanItem) => (
-    <Card 
-      key={item.title} 
-      className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-border/50 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm overflow-hidden relative"
-      onMouseEnter={() => setHoveredCard(item.title)}
-      onMouseLeave={() => setHoveredCard(null)}
+    <Card
+      key={item.title}
+      className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card/50 backdrop-blur-sm"
     >
-      {/* Animated background effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
-      {/* Top accent bar */}
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${item.badge?.includes("Unggulan") ? "from-yellow-500 to-orange-500" : "from-primary/70 to-primary"} transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500`} />
-      
-      <CardHeader className="pb-4 relative z-10">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary group-hover:from-primary/25 group-hover:to-primary/10 transition-all duration-300 shadow-md ${hoveredCard === item.title ? 'scale-110 rotate-3' : ''}`}>
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
               <item.icon className="h-5 w-5" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-lg font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent truncate">
-                  {item.title}
-                </CardTitle>
-                {item.badge && (
-                  <Badge 
-                    variant="secondary" 
-                    className="text-xs font-semibold px-2 py-0.5 bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-primary/20"
-                  >
-                    {item.badge}
-                  </Badge>
-                )}
-              </div>
+            <div>
+              <CardTitle className="text-lg">{item.title}</CardTitle>
               {item.accessInfo && (
-                <Badge variant="outline" className="mt-1.5 text-xs border-primary/20 text-primary/80 bg-primary/5">
+                <Badge variant="outline" className="mt-1 text-xs">
                   <Lock className="h-3 w-3 mr-1" />
                   {item.accessInfo}
                 </Badge>
               )}
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
         </div>
-        <CardDescription className="mt-3 text-sm leading-relaxed text-muted-foreground/80 line-clamp-2">
+        <CardDescription className="mt-3 text-sm leading-relaxed">
           {item.description}
         </CardDescription>
       </CardHeader>
-      
-      <CardContent className="space-y-5 relative z-10">
-        {/* Features Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-primary/10">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <h4 className="text-sm font-semibold text-foreground">
-              Fitur Utama
-            </h4>
-          </div>
-          <ul className="space-y-2">
-            {item.features.slice(0, 4).map((feature, idx) => (
-              <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 group/feature">
-                <div className={`p-0.5 rounded-full mt-0.5 transition-all duration-300 ${hoveredCard === item.title ? 'scale-125' : ''}`}>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                </div>
-                <span className="leading-tight">{feature}</span>
+      <CardContent className="space-y-4">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Fitur Utama
+          </h4>
+          <ul className="space-y-1.5">
+            {item.features.slice(0, 6).map((feature, idx) => (
+              <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span>{feature}</span>
               </li>
             ))}
-            {item.features.length > 4 && (
-              <li className="text-xs text-muted-foreground/60 italic pl-6">
-                +{item.features.length - 4} fitur lainnya tersedia
+            {item.features.length > 6 && (
+              <li className="text-sm text-muted-foreground italic">
+                ... dan {item.features.length - 6} fitur lainnya
               </li>
             )}
           </ul>
         </div>
-
-        {/* Tips Section - Fixed alignment */}
         {item.tips && item.tips.length > 0 && (
-          <div className="pt-4 border-t border-border/30 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-              </div>
-              <h4 className="text-sm font-semibold text-foreground">
-                Tips & Rekomendasi
-              </h4>
-            </div>
-            <div className="grid grid-cols-1 gap-2 pl-6">
+          <div className="pt-3 border-t border-border/50">
+            <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              Tips
+            </h4>
+            <ul className="space-y-1 list-disc pl-5">
               {item.tips.map((tip, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500/60 mt-1.5 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground leading-tight flex-1">{tip}</span>
-                </div>
+                <li key={idx} className="text-xs text-muted-foreground">
+                  {tip}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
-
-        {/* Action Button */}
-        <Button 
-          variant="outline" 
-          className="w-full mt-4 group-hover:bg-gradient-to-r group-hover:from-primary group-hover:to-primary/80 group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+        <Button
+          variant="outline"
+          className="w-full mt-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
           onClick={() => navigate(item.url)}
         >
-          <span className="font-medium">Buka Halaman</span>
-          <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+          Buka Halaman
+          <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </CardContent>
     </Card>
   );
-
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4">
-      {/* Modern Header */}
-      <div className="text-center space-y-4 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 blur-3xl opacity-50" />
-        <div className="inline-flex items-center justify-center gap-4 mb-4 relative z-10">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 shadow-lg">
-            <BookOpen className="h-10 w-10 text-primary" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-              Pedoman KECAP MAJA
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Panduan lengkap untuk memaksimalkan penggunaan sistem
-            </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-3 mb-2">
+          <div className="p-3 rounded-2xl bg-primary/10">
+            <BookOpen className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <p className="text-muted-foreground/70 max-w-3xl mx-auto text-sm md:text-base relative z-10">
-          Jelajahi semua fitur KECAP MAJA dengan panduan step-by-step. Setiap tab menyediakan informasi detail untuk membantu Anda bekerja lebih efisien.
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-red-500 to-orange-500 bg-clip-text text-transparent">
+          Pedoman Penggunaan
+        </h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Panduan lengkap fitur-fitur KECAP MAJA untuk membantu Anda memahami dan menggunakan sistem dengan optimal
         </p>
       </div>
-
-      {/* Modern Tabs Navigation */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-transparent pointer-events-none" />
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full relative z-10">
-          <div className="overflow-x-auto pb-2">
-            <TabsList className="w-full flex flex-nowrap p-1.5 bg-gradient-to-b from-background/80 to-background/50 backdrop-blur-sm border border-border/50 rounded-2xl shadow-lg min-w-[900px] sm:min-w-0">
-              {tabConfig.map((tab) => (
-                <TabsTrigger 
-                  key={tab.value} 
-                  value={tab.value}
-                  className={`flex-1 flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl transition-all duration-300 data-[state=active]:shadow-lg hover:bg-accent/50 ${activeTab === tab.value ? `bg-gradient-to-r ${tab.gradient} text-white border-0` : 'bg-transparent'}`}
-                >
-                  <div className={`p-2 rounded-lg ${activeTab === tab.value ? 'bg-white/20' : 'bg-accent'}`}>
-                    <tab.icon className={`h-5 w-5 ${activeTab === tab.value ? 'text-white' : tab.color}`} />
-                  </div>
-                  <span className="font-semibold whitespace-nowrap">{tab.label}</span>
-                  {activeTab === tab.value && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white rounded-t-full" />
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          {/* Tab Contents with improved visual feedback */}
-          <div className="mt-8">
-            {/* Utama Tab */}
-            <TabsContent value="utama" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.utama.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-
-            {/* SPK & BAST Tab */}
-            <TabsContent value="spkBast" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.spkBast.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-
-            {/* e-Dokumen Tab */}
-            <TabsContent value="eDokumen" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.eDokumen.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-
-            {/* Karir & Koordinasi Tab (Combined) */}
-            <TabsContent value="karirKoordinasi" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.karirKoordinasi.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-
-            {/* Pengadaan Tab */}
-            <TabsContent value="pengadaan" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.pengadaan.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-
-            {/* Lainnya Tab */}
-            <TabsContent value="lainnya" className="mt-0 animate-in fade-in duration-500">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                {pedomanData.lainnya.map(renderPedomanCard)}
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
-
-      {/* Modern Footer */}
-      <div className="text-center pt-8 border-t border-border/50 relative">
-        <div className="inline-flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 backdrop-blur-sm">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-medium text-foreground">
-              Butuh bantuan lebih lanjut?
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Hubungi Tim IT BPS Kabupaten Majalengka untuk dukungan teknis
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" className="ml-4">
-            Kontak
-            <ExternalLink className="h-3 w-3 ml-2" />
-          </Button>
-        </div>
-        
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground/60">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Aktif dan Terupdate</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span>Dokumentasi Lengkap</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <span>Tips Berguna</span>
-          </div>
-        </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex w-full max-w-3xl mx-auto mb-6 bg-muted/80 p-1 rounded-full shadow-inner justify-center">
+          {tabConfig.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary"
+            >
+              <tab.icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="utama" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.utama.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="spkBast" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.spkBast.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="eDokumen" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.eDokumen.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="karirJadwal" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.karirJadwal.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="linkersPengadaan" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.linkersPengadaan.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="lainnya" className="mt-0">
+          <ScrollArea className="h-[calc(100vh-320px)]">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+              {pedomanData.lainnya.map(renderPedomanCard)}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+      {/* Footer Info */}
+      <div className="text-center pt-4 border-t border-border/50">
+        <p className="text-xs text-muted-foreground">
+          Butuh bantuan lebih lanjut? Hubungi Tim IT BPS Kabupaten Majalengka
+        </p>
       </div>
     </div>
   );
