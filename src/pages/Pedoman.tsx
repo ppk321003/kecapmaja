@@ -432,42 +432,6 @@ const pedomanData = {
         "Pastikan NIK dan Nomor Telepon valid (mitra statistik)",
       ],
     },
-    {
-      title: "Mitra Kepka",
-      icon: UserCheck,
-      url: "/mitra-kepka",
-      description: "Kelola database Mitra Statistik (Kepka) BPS Kabupaten Majalengka.",
-      features: [
-        "Data lengkap mitra: NIK, nama, alamat, kontak",
-        "Status aktif/non-aktif mitra",
-        "Riwayat kegiatan yang pernah diikuti",
-        "Total honor yang sudah diterima",
-        "Sisa kuota SBML per mitra",
-        "Tambah, edit, hapus data mitra",
-        "Import/export data mitra",
-      ],
-      tips: [
-        "Update status mitra secara berkala",
-        "Cek sisa SBML sebelum menugaskan ke kegiatan baru",
-      ],
-    },
-    {
-      title: "Download Raw Data",
-      icon: Database,
-      url: "/download-raw-data",
-      description: "Unduh data mentah dari sistem untuk keperluan analisis.",
-      features: [
-        "Download data SPK",
-        "Download data mitra",
-        "Download data kegiatan",
-        "Pilih periode data",
-        "Format output: Excel/CSV",
-      ],
-      tips: [
-        "Gunakan untuk backup data berkala",
-        "Data mentah berguna untuk analisis khusus",
-      ],
-    },
   ],
 };
 
