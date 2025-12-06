@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TooltipProps } from 'recharts';
-import { TrendingUp, Calendar, DollarSign, Activity, Users, MapPin, Search } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Users, MapPin, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const PERJADIN_SPREADSHEET_ID = "1JNrpj2Ww42EU3FFBfoAmI6wuWl7l280m62iLXKHFpgQ";
