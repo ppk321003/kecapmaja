@@ -1,4 +1,4 @@
-import { ExternalLink, Archive, Database, FileText, Link2 } from "lucide-react";
+import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const accentColors = [
@@ -25,6 +25,7 @@ const linksData = [
   { title: "Perka PAK Sensus Survei", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei", icon: FileText },
   { title: "SBM 2025", url: "https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view", description: "Standar Biaya Masukan (SBM) tahun anggaran 2025", icon: FileText },
   { title: "SK Transport Lokal", url: "https://drive.google.com/file/d/1LCuubDY1R0gSDLoW9ihu3GN93hwuW-Sq/view", description: "Surat Keputusan tentang transportasi lokal BPS Kabupaten Majalengka", icon: FileText },
+  { title: "Sikostik28", url: "https://www.appsheet.com/start/c2a1181e-6f01-4763-ab5f-a34607e25b9d?platform=desktop#appName=2024ofSiKostik28-964413536-25-01-07&vss=H4sIAAAAAAAAA6XOsQrCMBgE4He5OU-QrYgUEetgcWkcYvMXgm1SmlQtIe9uqhXn4pgL3_0XcNf0OHlZ38Cr8HvtaQJHECinngS4wMYaP9hWgAkUsvuEWZHnxzITiIgX9uWeHHhYpflftxm0IuN1o2mYq2aYKhaWvmeUgoUgMnSjl9eW3msTiTFlja1HR-qchqwf4HZm--ylUQerUmMjW0fxBWjph9RgAQAA&view=ANGGOTA", description: "Aplikasi Simpan Pinjam Koperasi Simpatik 28", icon: DollarSignIcon },
 ];
 
 export default function Linkers() {
