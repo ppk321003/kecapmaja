@@ -96,75 +96,6 @@ const pedomanData = {
       ],
     },
   ],
-  fiturKarir: [
-    {
-      title: "KarierKu",
-      icon: GraduationCap,
-      url: "/karierku",
-      description: "Fitur untuk melihat estimasi kenaikan pangkat dan jabatan pegawai BPS Kabupaten Majalengka berdasarkan angka kredit.",
-      features: [
-        "Cari dan pilih pegawai dari daftar yang tersedia",
-        "Lihat profil lengkap pegawai (NIP, pangkat, golongan, jabatan)",
-        "Hitung otomatis angka kredit yang sudah terkumpul",
-        "Estimasi kapan bisa naik pangkat berdasarkan angka kredit",
-        "Estimasi kapan bisa naik jabatan",
-        "Simulasi dengan asumsi predikat kinerja yang berbeda",
-        "Menampilkan SK Jabatan dan SK Pangkat jika tersedia",
-        "Layanan karir untuk informasi lebih lanjut",
-      ],
-      tips: [
-        "Gunakan fitur pencarian untuk menemukan pegawai dengan cepat",
-        "Ubah asumsi predikat kinerja untuk melihat skenario berbeda",
-        "Data diambil dari database pegawai yang terupdate",
-      ],
-      accessInfo: "Semua pegawai BPS Kabupaten Majalengka dapat mengakses",
-    },
-  ],
-  blockTanggal: [
-    {
-      title: "Block Tanggal Perjalanan",
-      icon: Calendar,
-      url: "/block-tanggal",
-      description: "Fitur untuk mencatat dan mengkoordinasikan jadwal perjalanan dinas mitra agar tidak bentrok antar fungsi.",
-      features: [
-        "Pilih bulan dan tahun untuk melihat jadwal",
-        "Setiap fungsi bisa menambah mitra dan tanggal kegiatan",
-        "Maksimal 10 kegiatan per bulan untuk setiap fungsi",
-        "Kalender interaktif untuk memilih tanggal",
-        "Sistem mencegah tanggal yang sama di-block oleh fungsi lain",
-        "Bisa menambah, edit, dan hapus kegiatan",
-        "Data tersimpan di Google Sheets",
-        "Lihat siapa penanggung jawab setiap mitra",
-      ],
-      tips: [
-        "Koordinasi dengan fungsi lain sebelum mem-block tanggal mitra",
-        "Cek jadwal fungsi lain untuk menghindari konflik",
-        "Pastikan login dengan role yang benar",
-      ],
-      accessInfo: "Setiap fungsi hanya bisa edit jadwal milik fungsinya sendiri",
-    },
-  ],
-  pengadaan: [
-    {
-      title: "Pengadaan",
-      icon: ShoppingCart,
-      url: "/pengadaan",
-      description: "Fitur untuk mencatat dan memantau proses pengadaan barang/jasa di BPS Kabupaten Majalengka.",
-      features: [
-        "Input usulan pengadaan baru",
-        "Pantau status pengadaan: Usulan → Proses → Kontrak → Selesai",
-        "Filter data berdasarkan status dan periode",
-        "Lihat detail setiap pengadaan",
-        "Update status pengadaan sesuai perkembangan",
-        "Export data pengadaan ke Excel",
-      ],
-      tips: [
-        "Update status pengadaan secara rutin",
-        "Gunakan filter untuk mencari pengadaan tertentu",
-      ],
-      accessInfo: "Akses khusus untuk PPK, Bendahara, dan Pejabat Pengadaan",
-    },
-  ],
   spkBast: [
     {
       title: "SPK dan BAST",
@@ -373,6 +304,81 @@ const pedomanData = {
       ],
     },
   ],
+  karirJadwal: [
+    {
+      title: "KarierKu",
+      icon: GraduationCap,
+      url: "/karierku",
+      description: "Fitur untuk melihat estimasi kenaikan pangkat dan jabatan pegawai BPS Kabupaten Majalengka berdasarkan angka kredit.",
+      features: [
+        "Cari dan pilih pegawai dari daftar yang tersedia",
+        "Lihat profil lengkap pegawai (NIP, pangkat, golongan, jabatan)",
+        "Hitung otomatis angka kredit yang sudah terkumpul",
+        "Estimasi kapan bisa naik pangkat berdasarkan angka kredit",
+        "Estimasi kapan bisa naik jabatan",
+        "Simulasi dengan asumsi predikat kinerja yang berbeda",
+        "Menampilkan SK Jabatan dan SK Pangkat jika tersedia",
+        "Layanan karir untuk informasi lebih lanjut",
+      ],
+      tips: [
+        "Gunakan fitur pencarian untuk menemukan pegawai dengan cepat",
+        "Ubah asumsi predikat kinerja untuk melihat skenario berbeda",
+        "Data diambil dari database pegawai yang terupdate",
+      ],
+      accessInfo: "Semua pegawai BPS Kabupaten Majalengka dapat mengakses",
+    },
+    {
+      title: "Block Tanggal & Linkers",
+      icon: Calendar,
+      url: "/block-tanggal",
+      description: "Fitur untuk mencatat dan mengkoordinasikan jadwal perjalanan dinas mitra agar tidak bentrok antar fungsi. Juga mencakup kumpulan link dokumen penting dan referensi yang sering digunakan.",
+      features: [
+        "Pilih bulan dan tahun untuk melihat jadwal",
+        "Setiap fungsi bisa menambah mitra dan tanggal kegiatan",
+        "Maksimal 10 kegiatan per bulan untuk setiap fungsi",
+        "Kalender interaktif untuk memilih tanggal",
+        "Sistem mencegah tanggal yang sama di-block oleh fungsi lain",
+        "Bisa menambah, edit, dan hapus kegiatan",
+        "Data tersimpan di Google Sheets",
+        "Lihat siapa penanggung jawab setiap mitra",
+        "Link SBM 2025 (Standar Biaya Masukan)",
+        "Link Perka BPS terkait",
+        "Link referensi lainnya",
+        "Kategori link berdasarkan jenis",
+        "Akses cepat ke dokumen penting",
+        "Update link terbaru",
+      ],
+      tips: [
+        "Koordinasi dengan fungsi lain sebelum mem-block tanggal mitra",
+        "Cek jadwal fungsi lain untuk menghindari konflik",
+        "Pastikan login dengan role yang benar",
+        "Bookmark halaman ini untuk akses cepat",
+        "Cek update link secara berkala",
+      ],
+      accessInfo: "Setiap fungsi hanya bisa edit jadwal milik fungsinya sendiri",
+    },
+  ],
+  pengadaan: [
+    {
+      title: "Pengadaan",
+      icon: ShoppingCart,
+      url: "/pengadaan",
+      description: "Fitur untuk mencatat dan memantau proses pengadaan barang/jasa di BPS Kabupaten Majalengka.",
+      features: [
+        "Input usulan pengadaan baru",
+        "Pantau status pengadaan: Usulan → Proses → Kontrak → Selesai",
+        "Filter data berdasarkan status dan periode",
+        "Lihat detail setiap pengadaan",
+        "Update status pengadaan sesuai perkembangan",
+        "Export data pengadaan ke Excel",
+      ],
+      tips: [
+        "Update status pengadaan secara rutin",
+        "Gunakan filter untuk mencari pengadaan tertentu",
+      ],
+      accessInfo: "Akses khusus untuk PPK, Bendahara, dan Pejabat Pengadaan",
+    },
+  ],
   lainnya: [
     {
       title: "Kecap to Bendahara",
@@ -432,24 +438,6 @@ const pedomanData = {
       ],
     },
     {
-      title: "Linkers",
-      icon: Link2,
-      url: "/linkers",
-      description: "Kumpulan link dokumen penting dan referensi yang sering digunakan.",
-      features: [
-        "Link SBM 2025 (Standar Biaya Masukan)",
-        "Link Perka BPS terkait",
-        "Link referensi lainnya",
-        "Kategori link berdasarkan jenis",
-        "Akses cepat ke dokumen penting",
-        "Update link terbaru",
-      ],
-      tips: [
-        "Bookmark halaman ini untuk akses cepat",
-        "Cek update link secara berkala",
-      ],
-    },
-    {
       title: "Download Raw Data",
       icon: Database,
       url: "/download-raw-data",
@@ -472,8 +460,7 @@ const tabConfig = [
   { value: "utama", label: "Home", icon: Home, color: "text-blue-500" },
   { value: "spkBast", label: "SPK dan BAST", icon: FileText, color: "text-emerald-500" },
   { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
-  { value: "fiturKarir", label: "KarierKu", icon: GraduationCap, color: "text-pink-500" },
-  { value: "blockTanggal", label: "Block Tanggal Perjalanan", icon: Calendar, color: "text-cyan-500" },
+  { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },
   { value: "pengadaan", label: "Pengadaan", icon: ShoppingCart, color: "text-orange-500" },
   { value: "lainnya", label: "Lainnya", icon: Package, color: "text-amber-500" },
 ];
@@ -532,11 +519,10 @@ export default function Pedoman() {
               <AlertCircle className="h-4 w-4 text-amber-500" />
               Tips
             </h4>
-            <ul className="space-y-1">
+            <ul className="space-y-1 list-disc pl-5">
               {item.tips.map((tip, idx) => (
-                <li key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
-                  <span className="text-amber-500">•</span>
-                  <span>{tip}</span>
+                <li key={idx} className="text-xs text-muted-foreground">
+                  {tip}
                 </li>
               ))}
             </ul>
@@ -571,12 +557,12 @@ export default function Pedoman() {
       </div>
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7 max-w-2xl mx-auto mb-6">
+        <TabsList className="flex w-full max-w-3xl mx-auto mb-6 bg-muted/80 p-1 rounded-full shadow-inner justify-center">
           {tabConfig.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary"
             >
               <tab.icon className="h-4 w-4" />
               <span className="hidden sm:inline">{tab.label}</span>
@@ -604,17 +590,10 @@ export default function Pedoman() {
             </div>
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="fiturKarir" className="mt-0">
+        <TabsContent value="karirJadwal" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
-              {pedomanData.fiturKarir.map(renderPedomanCard)}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-        <TabsContent value="blockTanggal" className="mt-0">
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
-              {pedomanData.blockTanggal.map(renderPedomanCard)}
+              {pedomanData.karirJadwal.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
