@@ -38,19 +38,13 @@ import { useState } from "react";
 const mainMenuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
   { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
-];
-
-const spkBastSubItems = [
-  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
-  { title: "Entri Target", url: "/spk-bast/entri-target", icon: FilePlus },
-  { title: "Rekap SPK", url: "/spk-bast/rekap-spk", icon: FileCheck },
-  { title: "SBML Tahunan", url: "/spk-bast/entri-sbml", icon: DollarSign },
 ];
 
 const additionalMenuItems = [
@@ -73,9 +67,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
   const isEDokumenActive = currentPath.startsWith("/e-dokumen");
-  const isSpkBastActive = currentPath.startsWith("/spk-bast");
   const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
-  const [spkBastOpen, setSpkBastOpen] = useState(() => isSpkBastActive);
 
   return (
     <Sidebar
@@ -388,60 +380,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* MENU SPK DAN BAST */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                <Collapsible open={spkBastOpen} onOpenChange={setSpkBastOpen}>
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        className={
-                          isSpkBastActive
-                            ? "relative text-sidebar-foreground font-semibold transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-sidebar-foreground before:rounded-r-md"
-                            : "text-sidebar-foreground/90 hover:text-sidebar-foreground transition-all duration-200"
-                        }
-                      >
-                        <FileText className="h-4 w-4 text-sidebar-foreground transition-transform duration-200" />
-                        {open && <span className="font-medium">SPK dan BAST</span>}
-                        {open && (
-                          <ChevronDown
-                            className="ml-auto h-4 w-4 text-sidebar-foreground transition-transform duration-300"
-                            style={{
-                              transform: spkBastOpen ? "rotate(180deg)" : "rotate(0deg)",
-                            }}
-                          />
-                        )}
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent className="mt-1">
-                      <SidebarMenuSub className="ml-4 border-l border-sidebar-foreground/20 pl-2 space-y-1">
-                        {spkBastSubItems.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild>
-                              <NavLink
-                                to={subItem.url}
-                                end
-                                className={({ isActive }) =>
-                                  isActive
-                                    ? "text-sidebar-foreground font-medium transition-all duration-200"
-                                    : "text-sidebar-foreground/80 hover:text-sidebar-foreground transition-all duration-200"
-                                }
-                              >
-                                <subItem.icon className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200 group-hover:scale-110" />
-                                <span className="text-sm font-light">{subItem.title}</span>
-                              </NavLink>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
 
           {/* MENU E-DOKUMEN */}
           <SidebarGroup className="px-3 py-2">
