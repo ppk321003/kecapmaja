@@ -62,7 +62,7 @@ const pedomanData = {
       title: "Home",
       icon: Home,
       url: "/",
-      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun bagi karyawan BPS Kabupaten Majalengka.",
+      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun pegawai BPS Kabupaten Majalengka.",
       features: [
         "Tampilan selamat datang dengan gambaran umum aplikasi",
         "Otomatis mendeteksi pegawai yang berulang tahun hari ini",
@@ -80,13 +80,15 @@ const pedomanData = {
       title: "Dashboard",
       icon: LayoutDashboard,
       url: "/dashboard",
-      description: "Halaman untuk melihat ringkasan data dalam bentuk grafik, memantau honor mitra statistik, perjalanan dinas oragnik dan mitra statistik, dan LK karyawan berprestasi tahunan.",
+      description: "Halaman untuk melihat ringkasan data dalam bentuk grafik, memantau mitra, dan perjalanan dinas.",
       features: [
         "Grafik batang, pie, dan garis untuk visualisasi data",
         "Filter data berdasarkan Fungsi, Bulan, dan Tahun",
         "Pantau mitra yang mendekati batas honor maksimal (Risk Assessment)",
         "Lihat rekap perjalanan dinas per pegawai",
         "Cek capaian kinerja (LK Kinerja)",
+        "Konversi nilai predikat kinerja",
+        "Bisa menyembunyikan/menampilkan bagian tertentu",
       ],
       tips: [
         "Gunakan filter untuk fokus pada data tertentu",
@@ -102,9 +104,6 @@ const pedomanData = {
       description: "Menu utama untuk mengelola Surat Perintah Kerja (SPK) dan Berita Acara Serah Terima (BAST).",
       features: [
         "Akses ke 4 submenu: Entri Target, Download SPK BAST, Rekap SPK, dan SBML Tahunan",
-        "Entri target dan realisasi bulanan",
-        "Pantau honor bulanan mitra statistik",
-        "Terdapat peringatan untuk honor bulanan yang melebihi SBML",
         "Tampilan card untuk setiap submenu",
         "Navigasi mudah ke fitur yang dibutuhkan",
       ],
@@ -132,7 +131,6 @@ const pedomanData = {
         "Cek sisa kuota SBML mitra sebelum menambahkan ke kegiatan",
         "Isi semua kolom wajib sebelum menyimpan",
       ],
-      accessInfo: "Entri hanya bisa dilakukan user PJ Kegiatan",
     },
     {
       title: "Download SPK & BAST",
@@ -412,7 +410,7 @@ const pedomanData = {
       accessInfo: "Akses khusus untuk Bendahara dan Admin",
     },
     {
-      title: "Padamel-3210 | Mitra Kepka",
+      title: "Entri Pengelola",
       icon: Users,
       url: "/entri-pengelola",
       description: "Kelola data Pengelola Anggaran (Padamel-3210) dan Pegawai Organik BPS Kabupaten Majalengka.",
@@ -426,8 +424,8 @@ const pedomanData = {
         "Cari dan filter data",
       ],
       tips: [
-        "Pastikan NIP valid (organik)",
-        "Pastikan NIK dan Nomor Telepon valid (mitra statistik)",
+        "Pastikan NIP valid (18 digit)",
+        "Update data saat ada mutasi pegawai",
       ],
     },
     {
@@ -583,42 +581,42 @@ export default function Pedoman() {
         </TabsList>
         <TabsContent value="utama" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 pr-4">
               {pedomanData.utama.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="spkBast" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 pr-4">
               {pedomanData.spkBast.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="eDokumen" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 pr-4">
               {pedomanData.eDokumen.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="karirJadwal" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 pr-4">
               {pedomanData.karirJadwal.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="linkersPengadaan" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 pr-4">
               {pedomanData.linkersPengadaan.map(renderPedomanCard)}
             </div>
           </ScrollArea>
         </TabsContent>
         <TabsContent value="lainnya" className="mt-0">
           <ScrollArea className="h-[calc(100vh-320px)]">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pr-4">
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 pr-4">
               {pedomanData.lainnya.map(renderPedomanCard)}
             </div>
           </ScrollArea>
