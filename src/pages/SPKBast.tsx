@@ -55,7 +55,7 @@ export default function SPKBast() {
         "Unduh dokumen Surat Perjanjian Kerja dan Berita Acara Serah Terima",
     },
     {
-      title: "Cek SBML & Rekap SPK-BAST",
+      title: "Cek limit SBML",
       url: "/spk-bast/rekap-spk",
       icon: BarChart3,
       description:
