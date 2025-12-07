@@ -8,35 +8,39 @@ export default function SPKBast() {
 
   // Warna dan style untuk setiap kartu
   const cardColors = [
-    {
-      bg: "bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950",
-      hover: "hover:from-blue-100 hover:via-blue-50 hover:to-blue-100 dark:hover:from-blue-800 dark:hover:via-blue-700 dark:hover:to-blue-800",
-      icon: "text-blue-600 dark:text-blue-400",
-      border: "border-blue-200 dark:border-blue-800",
-      button: "bg-blue-600 hover:bg-blue-700 text-white",
-    },
-    {
-      bg: "bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
-      hover: "hover:from-emerald-100 hover:via-emerald-50 hover:to-emerald-100 dark:hover:from-emerald-800 dark:hover:via-emerald-700 dark:hover:to-emerald-800",
-      icon: "text-emerald-600 dark:text-emerald-400",
-      border: "border-emerald-200 dark:border-emerald-800",
-      button: "bg-emerald-600 hover:bg-emerald-700 text-white",
-    },
-    {
-      bg: "bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-amber-950 dark:via-amber-900 dark:to-amber-950",
-      hover: "hover:from-amber-100 hover:via-amber-50 hover:to-amber-100 dark:hover:from-amber-800 dark:hover:via-amber-700 dark:hover:to-amber-800",
-      icon: "text-amber-600 dark:text-amber-400",
-      border: "border-amber-200 dark:border-amber-800",
-      button: "bg-amber-600 hover:bg-amber-700 text-white",
-    },
-    {
-      bg: "bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950",
-      hover: "hover:from-gray-100 hover:via-gray-50 hover:to-gray-100 dark:hover:from-gray-800 dark:hover:via-gray-700 dark:hover:to-gray-800",
-      icon: "text-gray-800 dark:text-gray-200",
-      border: "border-gray-300 dark:border-gray-700",
-      button: "bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900",
-    },
-  ];
+  // Blue untuk Entri Kegiatan
+  {
+    bg: "bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950",
+    hover: "hover:from-blue-100 hover:via-blue-50 hover:to-blue-100 dark:hover:from-blue-800 dark:hover:via-blue-700 dark:hover:to-blue-800",
+    icon: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800",
+    button: "bg-blue-600 hover:bg-blue-700 text-white",
+  },
+  // Green untuk Download SPK & BAST
+  {
+    bg: "bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
+    hover: "hover:from-emerald-100 hover:via-emerald-50 hover:to-emerald-100 dark:hover:from-emerald-800 dark:hover:via-emerald-700 dark:hover:to-emerald-800",
+    icon: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-800",
+    button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  },
+  // Orange/Yellow untuk Cek limit SBML
+  {
+    bg: "bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-amber-950 dark:via-amber-900 dark:to-amber-950",
+    hover: "hover:from-amber-100 hover:via-amber-50 hover:to-amber-100 dark:hover:from-amber-800 dark:hover:via-amber-700 dark:hover:to-amber-800",
+    icon: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200 dark:border-amber-800",
+    button: "bg-amber-600 hover:bg-amber-700 text-white",
+  },
+  // Pink/Red untuk SBML Tahunan
+  {
+    bg: "bg-gradient-to-br from-pink-50 via-white to-pink-50 dark:from-pink-950 dark:via-pink-900 dark:to-pink-950",
+    hover: "hover:from-pink-100 hover:via-pink-50 hover:to-pink-100 dark:hover:from-pink-800 dark:hover:via-pink-700 dark:hover:to-pink-800",
+    icon: "text-pink-600 dark:text-pink-400",
+    border: "border-pink-200 dark:border-pink-800",
+    button: "bg-pink-600 hover:bg-pink-700 text-white",
+  },
+];
 
   // Data menu SPK & BAST
   const spkBastMenuItems = [
@@ -66,7 +70,7 @@ export default function SPKBast() {
       url: "/spk-bast/entri-sbml",
       icon: DollarSign,
       description:
-        "Kelola Standar Biaya Masukan Lainnya (SBML) untuk tahun anggaran berjalan",
+        "Riwayat Standar Biaya Masukan Lainnya (SBML) BPS Kabupaten Majalengka",
     },
   ];
 
