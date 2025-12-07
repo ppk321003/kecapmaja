@@ -21,6 +21,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNumberWithSeparator } from "@/lib/formatNumber";
 
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),

@@ -23,6 +23,7 @@ import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 // Interface for kecamatan details
 interface KecamatanDetail {
@@ -947,13 +948,14 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                             <FormLabel>Biaya Transport Kab/Kota Tujuan (PP)</FormLabel>
                             <FormControl>
                               <Input 
-                                {...field} 
                                 type="text" 
-                                placeholder="Rp 0" 
+                                placeholder="0" 
+                                value={formatNumberWithSeparator(field.value || "")}
                                 onChange={(e) => {
-                                  const value = e.target.value.replace(/[^\d]/g, "");
+                                  const value = parseFormattedNumber(e.target.value);
                                   field.onChange(value);
                                 }}
+                                className="text-right"
                               />
                             </FormControl>
                             <FormMessage />
@@ -970,13 +972,14 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                             <FormLabel>Biaya Pembelian BBM/Tol (PP)</FormLabel>
                             <FormControl>
                               <Input 
-                                {...field} 
                                 type="text" 
-                                placeholder="Rp 0" 
+                                placeholder="0" 
+                                value={formatNumberWithSeparator(field.value || "")}
                                 onChange={(e) => {
-                                  const value = e.target.value.replace(/[^\d]/g, "");
+                                  const value = parseFormattedNumber(e.target.value);
                                   field.onChange(value);
                                 }}
+                                className="text-right"
                               />
                             </FormControl>
                             <FormMessage />
@@ -993,13 +996,14 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                             <FormLabel>Biaya Penginapan/Hotel</FormLabel>
                             <FormControl>
                               <Input 
-                                {...field} 
                                 type="text" 
-                                placeholder="Rp 0" 
+                                placeholder="0" 
+                                value={formatNumberWithSeparator(field.value || "")}
                                 onChange={(e) => {
-                                  const value = e.target.value.replace(/[^\d]/g, "");
+                                  const value = parseFormattedNumber(e.target.value);
                                   field.onChange(value);
                                 }}
+                                className="text-right"
                               />
                             </FormControl>
                             <FormMessage />

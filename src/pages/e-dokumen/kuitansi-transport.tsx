@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 // Constants
 const CONSTANTS = {
@@ -431,9 +432,9 @@ const PersonTransportGroup: React.FC<{
                   <Input
                     type="text"
                     placeholder="0"
-                    value={trip.rate}
+                    value={formatNumberWithSeparator(trip.rate)}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d]/g, "");
+                      const value = parseFormattedNumber(e.target.value);
                       onUpdateTrip(tripIndex, 'rate', value);
                     }}
                     className="text-right"

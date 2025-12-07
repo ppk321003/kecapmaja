@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 const metodePengadaanOptions = ["Pengadaan Langsung", "Penunjukan Langsung", "E-Purchasing"];
 const bentukKontrakOptions = ["Kuitansi", "SPK", "Surat Perjanjian", "Bukti Pembelian", "Dokumen Lainnya"];
@@ -415,9 +416,10 @@ const DokumenPengadaan = () => {
                     <Input 
                       id="hargaSatuanAwal" 
                       type="text" 
-                      value={formValues.hargaSatuanAwal} 
-                      onChange={e => handleChange("hargaSatuanAwal", e.target.value)} 
+                      value={formatNumberWithSeparator(formValues.hargaSatuanAwal)} 
+                      onChange={e => handleChange("hargaSatuanAwal", parseFormattedNumber(e.target.value))} 
                       placeholder="0" 
+                      className="text-right"
                     />
                   </div>
 
@@ -426,9 +428,10 @@ const DokumenPengadaan = () => {
                     <Input 
                       id="hargaSatuanSetelahNego" 
                       type="text" 
-                      value={formValues.hargaSatuanSetelahNego} 
-                      onChange={e => handleChange("hargaSatuanSetelahNego", e.target.value)} 
+                      value={formatNumberWithSeparator(formValues.hargaSatuanSetelahNego)} 
+                      onChange={e => handleChange("hargaSatuanSetelahNego", parseFormattedNumber(e.target.value))} 
                       placeholder="0" 
+                      className="text-right"
                     />
                   </div>
 
