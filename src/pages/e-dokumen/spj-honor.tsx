@@ -21,6 +21,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
@@ -485,13 +486,13 @@ const SPJHonor = () => {
                          <Label>Harga Satuan (Rp)</Label>
                          <Input 
                            type="text" 
-                           pattern="[0-9]*"
-                           value={honor.honorPerOrang} 
+                           value={formatNumberWithSeparator(honor.honorPerOrang)} 
                            onChange={e => {
-                             const value = e.target.value.replace(/\D/g, '');
+                             const value = parseFormattedNumber(e.target.value);
                              updateHonorDetail("organik", index, "honorPerOrang", value);
                            }} 
-                           placeholder="0" 
+                           placeholder="0"
+                           className="text-right"
                          />
                        </div>
                       <div className="space-y-2">
@@ -517,7 +518,7 @@ const SPJHonor = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Total Honor (Rp)</Label>
-                      <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                      <Input value={formatNumberWithSeparator(honor.totalHonor)} readOnly className="font-bold text-right" />
                     </div>
                   </div>
                 ))}
@@ -565,13 +566,13 @@ const SPJHonor = () => {
                          <Label>Harga Satuan (Rp)</Label>
                          <Input 
                            type="text" 
-                           pattern="[0-9]*"
-                           value={honor.honorPerOrang} 
+                           value={formatNumberWithSeparator(honor.honorPerOrang)} 
                            onChange={e => {
-                             const value = e.target.value.replace(/\D/g, '');
+                             const value = parseFormattedNumber(e.target.value);
                              updateHonorDetail("mitra", index, "honorPerOrang", value);
                            }} 
-                           placeholder="0" 
+                           placeholder="0"
+                           className="text-right"
                          />
                        </div>
                       <div className="space-y-2">
@@ -597,7 +598,7 @@ const SPJHonor = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Total Honor (Rp)</Label>
-                      <Input value={honor.totalHonor.toLocaleString()} readOnly className="font-bold" />
+                      <Input value={formatNumberWithSeparator(honor.totalHonor)} readOnly className="font-bold text-right" />
                     </div>
                   </div>
                 ))}

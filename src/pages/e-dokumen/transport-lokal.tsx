@@ -21,6 +21,7 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
@@ -693,13 +694,13 @@ const TransportLokal = () => {
                          <Label>Rate (Rp)</Label>
                          <Input 
                            type="text" 
-                           pattern="[0-9]*" 
-                           value={transport.rate} 
+                           value={formatNumberWithSeparator(transport.rate)} 
                            onChange={e => {
-                             const value = e.target.value.replace(/\D/g, '');
+                             const value = parseFormattedNumber(e.target.value);
                              updateTransportDetail("organik", index, "rate", value);
                            }} 
-                           placeholder="0" 
+                           placeholder="0"
+                           className="text-right"
                          />
                        </div>
                       <div className="space-y-2">
@@ -783,13 +784,13 @@ const TransportLokal = () => {
                          <Label>Rate (Rp)</Label>
                          <Input 
                            type="text" 
-                           pattern="[0-9]*" 
-                           value={transport.rate} 
+                           value={formatNumberWithSeparator(transport.rate)} 
                            onChange={e => {
-                             const value = e.target.value.replace(/\D/g, '');
+                             const value = parseFormattedNumber(e.target.value);
                              updateTransportDetail("mitra", index, "rate", value);
                            }} 
-                           placeholder="0" 
+                           placeholder="0"
+                           className="text-right"
                          />
                        </div>
                       <div className="space-y-2">

@@ -19,6 +19,7 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
@@ -981,10 +982,11 @@ const KerangkaAcuanKerja = () => {
                 <div className="space-y-2">
                   <Label>Pagu Anggaran <span className="text-red-500">*</span></Label>
                   <Input
-                    type="number"
-                    value={formData.paguAnggaran}
-                    onChange={(e) => handleChange('paguAnggaran', e.target.value)}
+                    type="text"
+                    value={formatNumberWithSeparator(formData.paguAnggaran)}
+                    onChange={(e) => handleChange('paguAnggaran', parseFormattedNumber(e.target.value))}
                     placeholder="Masukkan pagu anggaran"
+                    className="text-right"
                     required
                   />
                 </div>
@@ -1182,10 +1184,11 @@ const KerangkaAcuanKerja = () => {
                         <div className="space-y-2">
                           <Label>Harga Satuan <span className="text-red-500">*</span></Label>
                           <Input
-                            type="number"
-                            value={kegiatan.hargaSatuan}
-                            onChange={(e) => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', e.target.value)}
+                            type="text"
+                            value={formatNumberWithSeparator(kegiatan.hargaSatuan)}
+                            onChange={(e) => handleKegiatanDetailChange(kegiatan.id, 'hargaSatuan', parseFormattedNumber(e.target.value))}
                             placeholder="Masukkan harga satuan"
+                            className="text-right"
                             required
                           />
                         </div>
