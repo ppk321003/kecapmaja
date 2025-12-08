@@ -123,8 +123,10 @@ const CurrencyTooltip = ({ active, payload, label, mode }: CurrencyTooltipProps)
   return null;
 };
 
-// Fix: Create a typed tooltip component for recharts compatibility
-const TypedCurrencyTooltip = (props: any) => <CurrencyTooltip {...props} />;
+// Fix: Create a tooltip content function for recharts compatibility
+const createCurrencyTooltipContent = (mode: 'anggaran' | 'kegiatan') => {
+  return (props: any) => <CurrencyTooltip {...props} mode={mode} />;
+};
 
 // Komponen RoleTooltip untuk hover di tabel
 const RoleTooltip = ({
@@ -444,7 +446,7 @@ const SafeBarChart = ({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
+        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
         <Legend />
         <Bar dataKey="value" name={mode === 'anggaran' ? 'Total Realisasi' : 'Jumlah Kegiatan'} fill={mode === 'anggaran' ? '#00C49F' : '#0088FE'} radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -472,7 +474,7 @@ const SafePieChart = ({
       }) => `${name}: ${(percent * 100).toFixed(0)}%`} outerRadius={80} fill="#8884d8" dataKey="value">
           {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
         </Pie>
-        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
+        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>;
@@ -509,7 +511,7 @@ const SafeLineChart = ({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={<TypedCurrencyTooltip mode={mode} />} />
+        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
         <Legend />
         <Line type="monotone" dataKey="value" name={mode === 'anggaran' ? 'Trend Realisasi' : 'Trend Kegiatan'} stroke={mode === 'anggaran' ? '#00C49F' : '#0088FE'} strokeWidth={3} dot={{
         r: 4
