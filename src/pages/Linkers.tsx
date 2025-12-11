@@ -19,8 +19,8 @@ const accentColors = [
 const linksData = [
   { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },
   { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
-  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1MUBorF7HngfDpQPaPZC_wIIcH9cN_AU1", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
-  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1bP4d3iQ61ogw6z1G9hoiIwFXw5DhH40P", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
+  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1r1CF6-3y8hhZcqdsRrsQ8iwPzd88yn-b?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
+  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/14ZtZiCPro-ynlxq_QHDXrgSncEV_c6QH?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
   { title: "Perka BPS", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan", icon: FileText },
   { title: "Perka PAK Sensus Survei", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei", icon: FileText },
   { title: "SBM 2025", url: "https://drive.google.com/file/d/1xZnV0JqqA2NnlnDw__A_PJMXBDQay89A/view", description: "Standar Biaya Masukan (SBM) tahun anggaran 2025", icon: FileText },
