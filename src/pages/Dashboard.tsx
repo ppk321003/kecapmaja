@@ -3,7 +3,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, TooltipProps } from 'recharts';
+import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { TrendingUp, Calendar, DollarSign, Activity, BarChart3, AlertTriangle, Table, Filter, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -92,16 +93,8 @@ interface RiskHoverData {
   filterFungsi: string;
 }
 
-// Fix: Proper interface for CurrencyTooltip
-interface CurrencyTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-  mode?: 'anggaran' | 'kegiatan';
-}
-
 // Custom Tooltip untuk currency dengan format yang lebih baik
-const CurrencyTooltip = ({ active, payload, label, mode }: CurrencyTooltipProps) => {
+const CurrencyTooltip = ({ active, payload, label, mode }: TooltipProps<ValueType, NameType> & { mode?: 'anggaran' | 'kegiatan' }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-3 border border-gray-300 rounded shadow-sm">
@@ -123,10 +116,10 @@ const CurrencyTooltip = ({ active, payload, label, mode }: CurrencyTooltipProps)
   return null;
 };
 
-// Fix: Create a tooltip content function for recharts compatibility
-const createCurrencyTooltipContent = (mode: 'anggaran' | 'kegiatan') => {
-  return (props: any) => <CurrencyTooltip {...props} mode={mode} />;
-};
+// Create typed currency tooltip component factory
+const CurrencyTooltipContent = ({ mode }: { mode: 'anggaran' | 'kegiatan' }) => (props: TooltipProps<ValueType, NameType>) => (
+  <CurrencyTooltip {...props} mode={mode} />
+);
 
 // Komponen RoleTooltip untuk hover di tabel
 const RoleTooltip = ({
@@ -446,7 +439,7 @@ const SafeBarChart = ({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
+        <Tooltip content={CurrencyTooltipContent({ mode: mode as 'anggaran' | 'kegiatan' })} />
         <Legend />
         <Bar dataKey="value" name={mode === 'anggaran' ? 'Total Realisasi' : 'Jumlah Kegiatan'} fill={mode === 'anggaran' ? '#00C49F' : '#0088FE'} radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -474,7 +467,7 @@ const SafePieChart = ({
       }) => `${name}: ${(percent * 100).toFixed(0)}%`} outerRadius={80} fill="#8884d8" dataKey="value">
           {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
         </Pie>
-        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
+        <Tooltip content={CurrencyTooltipContent({ mode: mode as 'anggaran' | 'kegiatan' })} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>;
@@ -511,7 +504,7 @@ const SafeLineChart = ({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis tickFormatter={formatYAxisTick} fontSize={12} />
-        <Tooltip content={createCurrencyTooltipContent(mode as 'anggaran' | 'kegiatan')} />
+        <Tooltip content={CurrencyTooltipContent({ mode: mode as 'anggaran' | 'kegiatan' })} />
         <Legend />
         <Line type="monotone" dataKey="value" name={mode === 'anggaran' ? 'Trend Realisasi' : 'Trend Kegiatan'} stroke={mode === 'anggaran' ? '#00C49F' : '#0088FE'} strokeWidth={3} dot={{
         r: 4
