@@ -22,6 +22,7 @@ import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
+
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
   detil: z.string().optional(),
@@ -45,7 +46,9 @@ const formSchema = z.object({
     totalHonor: z.number().min(0)
   })).optional()
 });
+
 type FormValues = z.infer<typeof formSchema>;
+
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -60,43 +63,27 @@ const defaultValues: FormValues = {
   pembuatDaftar: "",
   honorDetails: []
 };
+
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<any[]>([]);
   const [honorMitra, setHonorMitra] = useState<any[]>([]);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues
   });
 
   // Data queries
-  const {
-    data: jenisList = []
-  } = useJenis();
-  const {
-    data: programs = []
-  } = usePrograms();
-  const {
-    data: kegiatanList = []
-  } = useKegiatan(form.watch("program") || null);
-  const {
-    data: kroList = []
-  } = useKRO(form.watch("kegiatan") || null);
-  const {
-    data: roList = []
-  } = useRO(form.watch("kro") || null);
-  const {
-    data: komponenList = []
-  } = useKomponen();
-  const {
-    data: akunList = []
-  } = useAkun();
-  const {
-    data: organikList = []
-  } = useOrganikBPS();
-  const {
-    data: mitraList = []
-  } = useMitraStatistik();
+  const { data: jenisList = [] } = useJenis();
+  const { data: programs = [] } = usePrograms();
+  const { data: kegiatanList = [] } = useKegiatan(form.watch("program") || null);
+  const { data: kroList = [] } = useKRO(form.watch("kegiatan") || null);
+  const { data: roList = [] } = useRO(form.watch("kro") || null);
+  const { data: komponenList = [] } = useKomponen();
+  const { data: akunList = [] } = useAkun();
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
 
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
@@ -114,6 +101,11 @@ const SPJHonor = () => {
     spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
     sheetName: "SPJHonor",
     onSuccess: () => {
+      toast({
+        title: "Berhasil!",
+        description: "Data SPJ Honor berhasil disimpan ke Google Sheets",
+        variant: "default"
+      });
       navigate("/e-dokumen/buat");
     }
   });
@@ -135,6 +127,12 @@ const SPJHonor = () => {
         pph21: 5,
         totalHonor: 0
       }]);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Tidak ada data organik",
+        description: "Data organik belum tersedia"
+      });
     }
   };
 
@@ -149,6 +147,12 @@ const SPJHonor = () => {
         pph21: 0,
         totalHonor: 0
       }]);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Tidak ada data mitra",
+        description: "Data mitra belum tersedia"
+      });
     }
   };
 
@@ -156,37 +160,41 @@ const SPJHonor = () => {
   const updateHonorDetail = (type: "organik" | "mitra", index: number, field: string, value: any) => {
     if (type === "organik") {
       const updated = [...honorOrganik];
-      updated[index] = {
-        ...updated[index],
-        [field]: value
-      };
-
+      const currentItem = updated[index];
+      
+      // Update field
+      const newItem = { ...currentItem, [field]: value };
+      
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(updated[index].honorPerOrang) || 0;
-        const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
-        const pph21 = field === "pph21" ? value : updated[index].pph21;
+        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(newItem.honorPerOrang) || 0;
+        const kehadiran = field === "kehadiran" ? value : newItem.kehadiran;
+        const pph21 = field === "pph21" ? value : newItem.pph21;
         const subtotal = honorPerOrang * kehadiran;
         const pajak = subtotal * (pph21 / 100);
-        updated[index].totalHonor = subtotal - pajak;
+        newItem.totalHonor = Math.round(subtotal - pajak);
       }
+      
+      updated[index] = newItem;
       setHonorOrganik(updated);
     } else {
       const updated = [...honorMitra];
-      updated[index] = {
-        ...updated[index],
-        [field]: value
-      };
-
+      const currentItem = updated[index];
+      
+      // Update field
+      const newItem = { ...currentItem, [field]: value };
+      
       // Auto calculate total honor
       if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(updated[index].honorPerOrang) || 0;
-        const kehadiran = field === "kehadiran" ? value : updated[index].kehadiran;
-        const pph21 = field === "pph21" ? value : updated[index].pph21;
+        const honorPerOrang = field === "honorPerOrang" ? parseInt(value) || 0 : parseInt(newItem.honorPerOrang) || 0;
+        const kehadiran = field === "kehadiran" ? value : newItem.kehadiran;
+        const pph21 = field === "pph21" ? value : newItem.pph21;
         const subtotal = honorPerOrang * kehadiran;
         const pajak = subtotal * (pph21 / 100);
-        updated[index].totalHonor = subtotal - pajak;
+        newItem.totalHonor = Math.round(subtotal - pajak);
       }
+      
+      updated[index] = newItem;
       setHonorMitra(updated);
     }
   };
@@ -204,24 +212,72 @@ const SPJHonor = () => {
     }
   };
 
-  // Form submission handler
+  // Form submission handler - DIPERBAIKI
   const onSubmit = async (data: FormValues) => {
     try {
-      // Create a submission object with all the data plus mappings for proper display
-      const submitData = {
-        ...data,
-        _programNameMap: programsMap,
-        _kegiatanNameMap: kegiatanMap,
-        _kroNameMap: kroMap,
-        _roNameMap: roMap,
-        _komponenNameMap: komponenMap,
-        _akunNameMap: akunMap,
-        _jenisNameMap: jenisMap,
-        _organikNameMap: organikMap,
-        _mitraNameMap: mitraMap,
-        _pembuatDaftarName: organikMap[data.pembuatDaftar]
+      console.log("Form data submitted:", data);
+      
+      // Transform data ke format yang diharapkan Edge Function
+      // Edge Function mengharapkan: { spreadsheetId, operation, range, values }
+      const submissionData = {
+        spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+        operation: "append" as const,
+        range: "SPJHonor",
+        values: [
+          [
+            // 1. Timestamp
+            new Date().toISOString(),
+            
+            // 2. Nama Kegiatan
+            data.namaKegiatan || '',
+            
+            // 3. Detil
+            data.detil || '',
+            
+            // 4. Jenis (gunakan nama)
+            jenisMap[data.jenis] || data.jenis || '',
+            
+            // 5. Program (gunakan nama)
+            programsMap[data.program] || data.program || '',
+            
+            // 6. Kegiatan (gunakan nama)
+            kegiatanMap[data.kegiatan] || data.kegiatan || '',
+            
+            // 7. KRO (gunakan nama)
+            kroMap[data.kro] || data.kro || '',
+            
+            // 8. RO (gunakan nama)
+            roMap[data.ro] || data.ro || '',
+            
+            // 9. Komponen (gunakan nama)
+            komponenMap[data.komponen] || data.komponen || '',
+            
+            // 10. Akun (gunakan nama)
+            akunMap[data.akun] || data.akun || '',
+            
+            // 11. Tanggal SPJ
+            data.tanggalSpj ? format(new Date(data.tanggalSpj), 'yyyy-MM-dd') : '',
+            
+            // 12. Pembuat Daftar (gunakan nama)
+            organikMap[data.pembuatDaftar] || data.pembuatDaftar || '',
+            
+            // 13. Jumlah Penerima Honor
+            (data.honorDetails || []).length.toString(),
+            
+            // 14. Total Honor
+            (data.honorDetails || []).reduce((sum, item) => sum + (item.totalHonor || 0), 0).toString(),
+            
+            // 15. Detail Honor (JSON string)
+            JSON.stringify(data.honorDetails || [])
+          ]
+        ]
       };
-      await submitMutation.mutateAsync(submitData);
+
+      console.log("Submission data to Edge Function:", submissionData);
+      
+      // Kirim data yang sudah diformat dengan benar
+      await submitMutation.mutateAsync(submissionData);
+      
     } catch (error: any) {
       console.error("Error saving SPJ Honor:", error);
       toast({
@@ -234,11 +290,13 @@ const SPJHonor = () => {
 
   // Calculate grand total honor
   const calculateGrandTotal = () => {
-    const organikTotal = honorOrganik.reduce((sum, item) => sum + item.totalHonor, 0);
-    const mitraTotal = honorMitra.reduce((sum, item) => sum + item.totalHonor, 0);
+    const organikTotal = honorOrganik.reduce((sum, item) => sum + (item.totalHonor || 0), 0);
+    const mitraTotal = honorMitra.reduce((sum, item) => sum + (item.totalHonor || 0), 0);
     return organikTotal + mitraTotal;
   };
-  return <Layout>
+
+  return (
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-600">SPJ Honor</h1>
@@ -251,207 +309,219 @@ const SPJHonor = () => {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Nama Kegiatan */}
-                  <FormField control={form.control} name="namaKegiatan" render={({
-                  field
-                }) => <FormItem className="col-span-2">
-                        <FormLabel>Nama Kegiatan (cth: Honor Pendataan Petugas Potensi Desa Tahun 2025)</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan nama kegiatan" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="namaKegiatan" render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Nama Kegiatan (cth: Honor Pendataan Petugas Potensi Desa Tahun 2025)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Masukkan nama kegiatan" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   
                   {/* Detil */}
-                  <FormField control={form.control} name="detil" render={({
-                  field
-                }) => <FormItem className="col-span-2">
-                        <FormLabel>Detil (cth: Potensi Desa 2025)</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Masukkan detil kegiatan" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="detil" render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Detil (cth: Potensi Desa 2025)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Masukkan detil kegiatan" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Jenis */}
-                  <FormField control={form.control} name="jenis" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Jenis</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih jenis" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {jenisList.map(jenis => <SelectItem key={jenis.id} value={jenis.id}>
-                                {jenis.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="jenis" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jenis</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih jenis" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {jenisList.map(jenis => (
+                            <SelectItem key={jenis.id} value={jenis.id}>
+                              {jenis.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Program */}
-                  <FormField control={form.control} name="program" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Program</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("kegiatan", "");
-                    form.setValue("kro", "");
-                    form.setValue("ro", "");
-                  }} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih program" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {programs.map(program => <SelectItem key={program.id} value={program.id}>
-                                {program.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="program" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Program</FormLabel>
+                      <Select onValueChange={value => {
+                        field.onChange(value);
+                        form.setValue("kegiatan", "");
+                        form.setValue("kro", "");
+                        form.setValue("ro", "");
+                      }} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih program" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {programs.map(program => (
+                            <SelectItem key={program.id} value={program.id}>
+                              {program.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Kegiatan */}
-                  <FormField control={form.control} name="kegiatan" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Kegiatan</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("kro", "");
-                    form.setValue("ro", "");
-                  }} defaultValue={field.value} disabled={!form.watch("program")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih kegiatan" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {kegiatanList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="kegiatan" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kegiatan</FormLabel>
+                      <Select onValueChange={value => {
+                        field.onChange(value);
+                        form.setValue("kro", "");
+                        form.setValue("ro", "");
+                      }} defaultValue={field.value} disabled={!form.watch("program")}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih kegiatan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {kegiatanList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* KRO */}
-                  <FormField control={form.control} name="kro" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KRO</FormLabel>
-                        <Select onValueChange={value => {
-                    field.onChange(value);
-                    form.setValue("ro", "");
-                  }} defaultValue={field.value} disabled={!form.watch("kegiatan")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih KRO" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {kroList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="kro" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>KRO</FormLabel>
+                      <Select onValueChange={value => {
+                        field.onChange(value);
+                        form.setValue("ro", "");
+                      }} defaultValue={field.value} disabled={!form.watch("kegiatan")}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih KRO" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {kroList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* RO */}
-                  <FormField control={form.control} name="ro" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>RO</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("kro")}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih RO" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {roList.map(item => <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="ro" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>RO</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("kro")}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih RO" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roList.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Komponen */}
-                  <FormField control={form.control} name="komponen" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect value={field.value} onValueChange={field.onChange} />
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="komponen" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Komponen</FormLabel>
+                      <KomponenSelect value={field.value} onValueChange={field.onChange} />
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Akun */}
-                <FormField control={form.control} name="akun" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Akun</FormLabel>
-                        <FormControl>
-                          <AkunSelect 
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="akun" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Akun</FormLabel>
+                      <FormControl>
+                        <AkunSelect 
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Tanggal SPJ */}
-                  <FormField control={form.control} name="tanggalSpj" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Tanggal (SPJ)</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="tanggalSpj" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tanggal (SPJ)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP") : <span>Pilih tanggal</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Pembuat Daftar */}
-                  <FormField control={form.control} name="pembuatDaftar" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Pembuat Daftar</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih pembuat daftar" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {organikList.map(organik => <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>} />
+                  <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pembuat Daftar</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih pembuat daftar" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {organikList.map(organik => (
+                            <SelectItem key={organik.id} value={organik.id}>
+                              {organik.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Organik Section - Modified Layout */}
+            {/* Organik Section */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -462,9 +532,9 @@ const SPJHonor = () => {
                 </div>
 
                 {honorOrganik.map((honor, index) => (
-                  <div key={index} className="border p-4 rounded-md space-y-4">
+                  <div key={`organik-${index}`} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Organik BPS -{index + 1}</h3>
+                      <h3 className="font-medium">Organik BPS - {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("organik", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -482,19 +552,19 @@ const SPJHonor = () => {
                           onChange={value => updateHonorDetail("organik", index, "personId", value)}
                         />
                       </div>
-                       <div className="space-y-2">
-                         <Label>Harga Satuan (Rp)</Label>
-                         <Input 
-                           type="text" 
-                           value={formatNumberWithSeparator(honor.honorPerOrang)} 
-                           onChange={e => {
-                             const value = parseFormattedNumber(e.target.value);
-                             updateHonorDetail("organik", index, "honorPerOrang", value);
-                           }} 
-                           placeholder="0"
-                           className="text-right"
-                         />
-                       </div>
+                      <div className="space-y-2">
+                        <Label>Harga Satuan (Rp)</Label>
+                        <Input 
+                          type="text" 
+                          value={formatNumberWithSeparator(honor.honorPerOrang)} 
+                          onChange={e => {
+                            const value = parseFormattedNumber(e.target.value);
+                            updateHonorDetail("organik", index, "honorPerOrang", value);
+                          }} 
+                          placeholder="0"
+                          className="text-right"
+                        />
+                      </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
                         <Input 
@@ -503,7 +573,7 @@ const SPJHonor = () => {
                           onChange={e => updateHonorDetail("organik", index, "kehadiran", parseInt(e.target.value, 10) || 0)} 
                           placeholder="0" 
                           min="0" 
-                          max="10000" 
+                          max="1000" 
                         />
                       </div>
                       <div className="space-y-2">
@@ -531,7 +601,7 @@ const SPJHonor = () => {
               </CardContent>
             </Card>
 
-            {/* Mitra Section - Modified Layout */}
+            {/* Mitra Section */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between items-center">
@@ -542,9 +612,9 @@ const SPJHonor = () => {
                 </div>
 
                 {honorMitra.map((honor, index) => (
-                  <div key={index} className="border p-4 rounded-md space-y-4">
+                  <div key={`mitra-${index}`} className="border p-4 rounded-md space-y-4">
                     <div className="flex justify-between">
-                      <h3 className="font-medium">Mitra Statistik -{index + 1}</h3>
+                      <h3 className="font-medium">Mitra Statistik - {index + 1}</h3>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeHonorDetail("mitra", index)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -562,19 +632,19 @@ const SPJHonor = () => {
                           onChange={value => updateHonorDetail("mitra", index, "personId", value)}
                         />
                       </div>
-                       <div className="space-y-2">
-                         <Label>Harga Satuan (Rp)</Label>
-                         <Input 
-                           type="text" 
-                           value={formatNumberWithSeparator(honor.honorPerOrang)} 
-                           onChange={e => {
-                             const value = parseFormattedNumber(e.target.value);
-                             updateHonorDetail("mitra", index, "honorPerOrang", value);
-                           }} 
-                           placeholder="0"
-                           className="text-right"
-                         />
-                       </div>
+                      <div className="space-y-2">
+                        <Label>Harga Satuan (Rp)</Label>
+                        <Input 
+                          type="text" 
+                          value={formatNumberWithSeparator(honor.honorPerOrang)} 
+                          onChange={e => {
+                            const value = parseFormattedNumber(e.target.value);
+                            updateHonorDetail("mitra", index, "honorPerOrang", value);
+                          }} 
+                          placeholder="0"
+                          className="text-right"
+                        />
+                      </div>
                       <div className="space-y-2">
                         <Label>Banyaknya</Label>
                         <Input 
@@ -611,14 +681,27 @@ const SPJHonor = () => {
               </CardContent>
             </Card>
 
-            {/* Grand Total */}
+            {/* Grand Total dan Actions */}
             <Card>
               <CardContent className="p-6">
+                <div className="mb-4 p-4 bg-gray-50 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-lg">Total Keseluruhan:</span>
+                    <span className="font-bold text-lg text-green-600">
+                      Rp {formatNumberWithSeparator(calculateGrandTotal())}
+                    </span>
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/e-dokumen/buat")}>
                     Batal
                   </Button>
-                  <Button type="submit" disabled={submitMutation.isPending} className="w-full">
+                  <Button 
+                    type="submit" 
+                    disabled={submitMutation.isPending || !form.formState.isValid} 
+                    className="w-full"
+                  >
                     {submitMutation.isPending ? "Menyimpan..." : "Simpan Dokumen"}
                   </Button>
                 </div>
@@ -627,6 +710,8 @@ const SPJHonor = () => {
           </form>
         </Form>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default SPJHonor;
