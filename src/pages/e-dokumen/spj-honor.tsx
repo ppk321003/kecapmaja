@@ -212,81 +212,76 @@ const SPJHonor = () => {
     }
   };
 
-  // Form submission handler - DIPERBAIKI
-  const onSubmit = async (data: FormValues) => {
-    try {
-      console.log("Form data submitted:", data);
-      
-      // Transform data ke format yang diharapkan Edge Function
-      // Edge Function mengharapkan: { spreadsheetId, operation, range, values }
-      const submissionData = {
-        spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-        operation: "append" as const,
-        range: "SPJHonor",
-        values: [
-          [
-            // 1. Timestamp
-            new Date().toISOString(),
-            
-            // 2. Nama Kegiatan
-            data.namaKegiatan || '',
-            
-            // 3. Detil
-            data.detil || '',
-            
-            // 4. Jenis (gunakan nama)
-            jenisMap[data.jenis] || data.jenis || '',
-            
-            // 5. Program (gunakan nama)
-            programsMap[data.program] || data.program || '',
-            
-            // 6. Kegiatan (gunakan nama)
-            kegiatanMap[data.kegiatan] || data.kegiatan || '',
-            
-            // 7. KRO (gunakan nama)
-            kroMap[data.kro] || data.kro || '',
-            
-            // 8. RO (gunakan nama)
-            roMap[data.ro] || data.ro || '',
-            
-            // 9. Komponen (gunakan nama)
-            komponenMap[data.komponen] || data.komponen || '',
-            
-            // 10. Akun (gunakan nama)
-            akunMap[data.akun] || data.akun || '',
-            
-            // 11. Tanggal SPJ
-            data.tanggalSpj ? format(new Date(data.tanggalSpj), 'yyyy-MM-dd') : '',
-            
-            // 12. Pembuat Daftar (gunakan nama)
-            organikMap[data.pembuatDaftar] || data.pembuatDaftar || '',
-            
-            // 13. Jumlah Penerima Honor
-            (data.honorDetails || []).length.toString(),
-            
-            // 14. Total Honor
-            (data.honorDetails || []).reduce((sum, item) => sum + (item.totalHonor || 0), 0).toString(),
-            
-            // 15. Detail Honor (JSON string)
-            JSON.stringify(data.honorDetails || [])
-          ]
-        ]
-      };
-
-      console.log("Submission data to Edge Function:", submissionData);
-      
-      // Kirim data yang sudah diformat dengan benar
-      await submitMutation.mutateAsync(submissionData);
-      
-    } catch (error: any) {
-      console.error("Error saving SPJ Honor:", error);
+// Form submission handler - DIPERBAIKI
+const onSubmit = async (data: FormValues) => {
+  try {
+    console.log("Form data to be submitted:", data);
+    
+    // Validasi data sebelum dikirim
+    if (!data.honorDetails || data.honorDetails.length === 0) {
       toast({
         variant: "destructive",
-        title: "Gagal menyimpan data",
-        description: error.message || "Terjadi kesalahan saat menyimpan data"
+        title: "Gagal menyimpan",
+        description: "Minimal harus ada satu penerima honor"
       });
+      return;
     }
-  };
+
+    // Hitung total honor
+    const totalHonor = (data.honorDetails || []).reduce((sum, item) => sum + (item.totalHonor || 0), 0);
+    const jumlahPenerima = (data.honorDetails || []).length;
+
+    // Transform data untuk Google Sheets
+    const rowData = [
+      new Date().toISOString(), // Timestamp
+      data.namaKegiatan || '',
+      data.detil || '',
+      jenisMap[data.jenis] || data.jenis || '',
+      programsMap[data.program] || data.program || '',
+      kegiatanMap[data.kegiatan] || data.kegiatan || '',
+      kroMap[data.kro] || data.kro || '',
+      roMap[data.ro] || data.ro || '',
+      komponenMap[data.komponen] || data.komponen || '',
+      akunMap[data.akun] || data.akun || '',
+      data.tanggalSpj ? format(new Date(data.tanggalSpj), 'yyyy-MM-dd') : '',
+      organikMap[data.pembuatDaftar] || data.pembuatDaftar || '',
+      jumlahPenerima.toString(),
+      totalHonor.toString(),
+      JSON.stringify(data.honorDetails || [])
+    ];
+
+    console.log("Prepared row data for Google Sheets:", rowData);
+
+    // Buat payload sesuai dengan interface SheetOperation
+    const submissionData = {
+      spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
+      operation: "append" as const,
+      range: "SPJHonor!A:O", // Tentukan range yang jelas
+      values: [rowData]
+    };
+
+    console.log("Sending to Edge Function:", submissionData);
+    
+    // Kirim ke Edge Function
+    await submitMutation.mutateAsync(submissionData);
+    
+  } catch (error: any) {
+    console.error("Error in onSubmit:", error);
+    
+    // Tampilkan error yang lebih spesifik
+    const errorMessage = error.message || "Unknown error occurred";
+    const errorDetails = error.response?.data || error.toString();
+    
+    toast({
+      variant: "destructive",
+      title: "Gagal menyimpan data ke Google Sheets",
+      description: `Error: ${errorMessage}. Periksa log untuk detail.`,
+    });
+    
+    // Log detail error
+    console.error("Error details:", errorDetails);
+  }
+};
 
   // Calculate grand total honor
   const calculateGrandTotal = () => {
