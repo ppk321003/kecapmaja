@@ -18,10 +18,10 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
+import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
-import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 import { supabase } from "@/integrations/supabase/client";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 // Schema validation
 const formSchema = z.object({
@@ -54,8 +54,9 @@ interface HonorDetail {
 
 // Constants
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const SHEET_NAME = "SPJHonor";
 
-// Custom searchable select component
+// Custom searchable select component (sama seperti skrip sebelumnya)
 interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
@@ -178,13 +179,154 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
+// Custom hook untuk submit data (disesuaikan dari TransportLokal)
+const useSubmitSPJHonorToSheets = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      console.log('📤 Submitting SPJ Honor data to sheets:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: `${SHEET_NAME}!A:T`,
+          values: [data]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting SPJ Honor:', error);
+        throw error;
+      }
+
+      console.log('✅ SPJ Honor submission successful:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitData, isSubmitting };
+};
+
+// Fungsi untuk mendapatkan nomor urut berikutnya (sama seperti TransportLokal)
+const getNextSequenceNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error generating sequence number:", error);
+    throw error;
+  }
+};
+
+// Fungsi untuk generate ID SPJ (spj-yymmxxx) - disesuaikan
+const generateSPJId = async (): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `spj-${year}${month}`;
+
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        operation: "read",
+        range: `${SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) {
+      console.error("Error fetching SPJ IDs:", error);
+      throw new Error("Gagal mengambil ID SPJ terakhir");
+    }
+
+    const values = data?.values || [];
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter(num => num > 0);
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating SPJ ID:", error);
+    throw error;
+  }
+};
+
+// Format tanggal Indonesia (sama seperti TransportLokal)
+const formatTanggalIndonesia = (date: Date | null): string => {
+  if (!date) return "";
+  
+  const day = date.getDate();
+  const month = date.toLocaleDateString('id-ID', { month: 'long' });
+  const year = date.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+};
+
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [cachedSequence, setCachedSequence] = useState<{ number: number; timestamp: number } | null>(null);
-  
+
   // Setup form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -214,106 +356,34 @@ const SPJHonor = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Memoized data processing
-  const {
-    jenisMap,
-    programsMap,
-    kegiatanMap,
-    kroMap,
-    roMap,
-    komponenMap,
-    akunMap,
-    organikOptions,
-    mitraOptions,
-    organikMap
-  } = useMemo(() => {
-    const processItem = (item: any) => item.name.split(' - ')[1] || item.name;
-    
-    return {
-      jenisMap: Object.fromEntries((jenisList || []).map(item => [item.id, processItem(item)])),
-      programsMap: Object.fromEntries((programs || []).map(item => [item.id, processItem(item)])),
-      kegiatanMap: Object.fromEntries((kegiatanList || []).map(item => [item.id, processItem(item)])),
-      kroMap: Object.fromEntries((kroList || []).map(item => [item.id, processItem(item)])),
-      roMap: Object.fromEntries((roList || []).map(item => [item.id, processItem(item)])),
-      komponenMap: Object.fromEntries((komponenList || []).map(item => [item.id, processItem(item)])),
-      akunMap: Object.fromEntries((akunList || []).map(item => [item.id, processItem(item)])),
-      organikOptions: (organikList || []).map(item => ({
-        value: item.id,
-        label: processItem(item)
-      })),
-      mitraOptions: (mitraList || []).map(item => ({
-        value: item.id,
-        label: `${processItem(item)}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
-      })),
-      organikMap: Object.fromEntries((organikList || []).map(item => [item.id, processItem(item)]))
-    };
-  }, [jenisList, programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, mitraList]);
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSPJHonorToSheets();
 
-  // Cache sequence number untuk 30 detik
-  const getCachedSequenceNumber = async (): Promise<number> => {
-    const now = Date.now();
-    const cacheDuration = 30 * 1000; // 30 detik
+  // Create name mappings
+  const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
+  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
+  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
 
-    if (cachedSequence && (now - cachedSequence.timestamp) < cacheDuration) {
-      return cachedSequence.number + 1;
-    }
+  // Options untuk searchable select
+  const organikOptions = (organikList || []).map(item => ({
+    value: item.id,
+    label: item.name.split(' - ')[1] || item.name
+  }));
 
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "read",
-          range: "SPJHonor!A2:A1000"
-        }
-      });
-
-      if (error) throw error;
-
-      const values = data?.values || [];
-      let maxNumber = 0;
-
-      if (values.length > 0) {
-        values.forEach((row: any[]) => {
-          const value = row[0];
-          if (typeof value === 'string' && value.trim() !== '') {
-            const num = parseInt(value);
-            if (!isNaN(num) && num > maxNumber) {
-              maxNumber = num;
-            }
-          } else if (typeof value === 'number') {
-            if (value > maxNumber) {
-              maxNumber = value;
-            }
-          }
-        });
-      }
-
-      const nextNumber = maxNumber + 1;
-      setCachedSequence({ number: maxNumber, timestamp: now });
-      
-      return nextNumber;
-    } catch (error) {
-      console.error("Error fetching sequence number:", error);
-      // Fallback: gunakan timestamp jika gagal
-      return Math.floor(Date.now() / 1000);
-    }
-  };
-
-  // Optimized ID generation (tanpa fetch tambahan)
-  const generateSPJId = (): string => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    
-    return `spj-${year}${month}${day}${random}`;
-  };
+  const mitraOptions = (mitraList || []).map(item => ({
+    value: item.id,
+    label: `${item.name.split(' - ')[1] || item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
+  }));
 
   // Add organik handler
   const addOrganik = () => {
-    if (organikOptions.length > 0) {
-      setHonorOrganik(prev => [...prev, {
+    if (organikList.length > 0) {
+      setHonorOrganik([...honorOrganik, {
         type: "organik",
         personId: "",
         honorPerOrang: "0",
@@ -332,8 +402,8 @@ const SPJHonor = () => {
 
   // Add mitra handler
   const addMitra = () => {
-    if (mitraOptions.length > 0) {
-      setHonorMitra(prev => [...prev, {
+    if (mitraList.length > 0) {
+      setHonorMitra([...honorMitra, {
         type: "mitra",
         personId: "",
         honorPerOrang: "0",
@@ -350,8 +420,8 @@ const SPJHonor = () => {
     }
   };
 
-  // Memoized calculation
-  const calculateTotalHonor = useMemo(() => (detail: HonorDetail): number => {
+  // Calculate total honor for a detail
+  const calculateTotalHonor = (detail: HonorDetail): number => {
     const honorPerOrang = parseInt(detail.honorPerOrang) || 0;
     const kehadiran = detail.kehadiran || 0;
     const pph21 = detail.pph21 || 0;
@@ -359,194 +429,158 @@ const SPJHonor = () => {
     const subtotal = honorPerOrang * kehadiran;
     const pajak = subtotal * (pph21 / 100);
     return Math.max(0, subtotal - pajak);
-  }, []);
+  };
 
-  // Update honor detail value dengan debouncing
+  // Update honor detail value
   const updateHonorDetail = (type: "organik" | "mitra", index: number, field: string, value: any) => {
     if (type === "organik") {
-      setHonorOrganik(prev => {
-        const updated = [...prev];
-        const detail = { ...updated[index], [field]: value };
-        
-        if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-          detail.totalHonor = calculateTotalHonor(detail);
-        }
-        
-        updated[index] = detail;
-        return updated;
-      });
+      const updated = [...honorOrganik];
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
+      
+      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+        updated[index].totalHonor = calculateTotalHonor(updated[index]);
+      }
+      
+      setHonorOrganik(updated);
     } else {
-      setHonorMitra(prev => {
-        const updated = [...prev];
-        const detail = { ...updated[index], [field]: value };
-        
-        if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-          detail.totalHonor = calculateTotalHonor(detail);
-        }
-        
-        updated[index] = detail;
-        return updated;
-      });
+      const updated = [...honorMitra];
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
+      
+      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+        updated[index].totalHonor = calculateTotalHonor(updated[index]);
+      }
+      
+      setHonorMitra(updated);
     }
   };
 
   // Remove honor detail
   const removeHonorDetail = (type: "organik" | "mitra", index: number) => {
     if (type === "organik") {
-      setHonorOrganik(prev => {
-        const updated = [...prev];
-        updated.splice(index, 1);
-        return updated;
-      });
+      const updated = [...honorOrganik];
+      updated.splice(index, 1);
+      setHonorOrganik(updated);
     } else {
-      setHonorMitra(prev => {
-        const updated = [...prev];
-        updated.splice(index, 1);
-        return updated;
-      });
+      const updated = [...honorMitra];
+      updated.splice(index, 1);
+      setHonorMitra(updated);
     }
   };
 
-  // Memoized grand total calculation
-  const calculateGrandTotal = useMemo(() => (): number => {
+  // Calculate grand total honor
+  const calculateGrandTotal = (): number => {
     const organikTotal = honorOrganik.reduce((sum, item) => sum + item.totalHonor, 0);
     const mitraTotal = honorMitra.reduce((sum, item) => sum + item.totalHonor, 0);
     return organikTotal + mitraTotal;
-  }, [honorOrganik, honorMitra]);
+  };
 
   // Format data for display in Google Sheets
-  const formatHonorDetailsForSheets = useMemo(() => (): string => {
+  const formatHonorDetailsForSheets = (): string => {
     const allDetails = [...honorOrganik, ...honorMitra];
     
     const formatted = allDetails.map(detail => {
       const personName = detail.type === "organik" 
         ? organikMap[detail.personId] || detail.personId
-        : mitraOptions.find(m => m.value === detail.personId)?.label || detail.personId;
+        : mitraMap[detail.personId] || detail.personId;
       
       return `${personName}: ${formatNumberWithSeparator(detail.totalHonor)} (${detail.kehadiran}x${formatNumberWithSeparator(parseInt(detail.honorPerOrang))} - PPh ${detail.pph21}%)`;
     }).join("; ");
     
     return formatted;
-  }, [honorOrganik, honorMitra, organikMap, mitraOptions]);
-
-  // Format tanggal Indonesia
-  const formatTanggalIndonesia = (date: Date | null): string => {
-    if (!date) return "";
-    
-    const day = date.getDate();
-    const month = date.toLocaleDateString('id-ID', { month: 'long' });
-    const year = date.getFullYear();
-    
-    return `${day} ${month} ${year}`;
   };
 
-  // Validasi sebelum submit (dipanggil lebih awal)
-  const validateBeforeSubmit = (): boolean => {
-    const allHonorDetails = [...honorOrganik, ...honorMitra];
-    
-    if (allHonorDetails.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Data Honor Kosong",
-        description: "Tambahkan minimal satu data honor organik atau mitra"
-      });
-      return false;
-    }
-    
-    for (const detail of allHonorDetails) {
-      if (!detail.personId) {
+  // Form submission handler - DIPERBAIKI dengan pola TransportLokal
+  const onSubmit = async (formData: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Validasi honor details
+      const allHonorDetails = [...honorOrganik, ...honorMitra];
+      if (allHonorDetails.length === 0) {
         toast({
           variant: "destructive",
-          title: "Data Tidak Lengkap",
-          description: "Pilih nama untuk setiap detail honor"
+          title: "Data Honor Kosong",
+          description: "Tambahkan minimal satu data honor organik atau mitra"
         });
-        return false;
+        setIsSubmitting(false);
+        return;
       }
-    }
-    
-    return true;
-  };
+      
+      for (const detail of allHonorDetails) {
+        if (!detail.personId) {
+          toast({
+            variant: "destructive",
+            title: "Data Tidak Lengkap",
+            description: "Pilih nama untuk setiap detail honor"
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
-  // Optimized form submission handler
-  const onSubmit = async (formData: FormValues) => {
-    // Validasi cepat di awal (sync)
-    if (!validateBeforeSubmit()) {
-      return;
-    }
+      // Generate nomor urut baru dan ID SPJ (sama seperti TransportLokal)
+      const sequenceNumber = await getNextSequenceNumber();
+      const spjId = await generateSPJId();
 
-    // Persiapan data sebelum async operations
-    const honorDetailsFormatted = formatHonorDetailsForSheets();
-    const grandTotal = calculateGrandTotal();
-    
-    // Buat rowData tanpa async operations terlebih dahulu
-    const baseRowData = [
-      /* akan diisi: */ 0, // sequenceNumber
-      /* akan diisi: */ "", // spjId
-      formData.namaKegiatan,
-      formData.detil || "",
-      jenisMap[formData.jenis] || formData.jenis,
-      programsMap[formData.program] || formData.program,
-      kegiatanMap[formData.kegiatan] || formData.kegiatan,
-      kroMap[formData.kro] || formData.kro,
-      roMap[formData.ro] || formData.ro,
-      komponenMap[formData.komponen] || formData.komponen,
-      akunMap[formData.akun] || formData.akun,
-      formatTanggalIndonesia(formData.tanggalSpj),
-      organikMap[formData.pembuatDaftar] || formData.pembuatDaftar,
-      honorDetailsFormatted,
-      formatNumberWithSeparator(grandTotal),
-      honorOrganik.length.toString(),
-      honorMitra.length.toString(),
-      new Date().toISOString(),
-      "",
-      ""
-    ];
+      // Get names for display
+      const programName = programsMap[formData.program] || formData.program;
+      const kegiatanName = kegiatanMap[formData.kegiatan] || formData.kegiatan;
+      const kroName = kroMap[formData.kro] || formData.kro;
+      const roName = roMap[formData.ro] || formData.ro;
+      const komponenName = komponenMap[formData.komponen] || formData.komponen;
+      const akunName = akunMap[formData.akun] || formData.akun;
+      const pembuatDaftarName = organikMap[formData.pembuatDaftar] || formData.pembuatDaftar;
+      const jenisName = jenisMap[formData.jenis] || formData.jenis;
 
-    setIsSubmitting(true);
+      // Format honor details
+      const honorDetailsFormatted = formatHonorDetailsForSheets();
+      const grandTotal = calculateGrandTotal();
 
-    try {
-      // Async operations dipisah dan dijalankan setelah persiapan
-      const [sequenceNumber, spjId] = await Promise.all([
-        getCachedSequenceNumber(),
-        Promise.resolve(generateSPJId()) // Tidak async, tapi tetap dalam Promise.all untuk konsistensi
-      ]);
+      // Format data sesuai struktur spreadsheet SPJHonor
+      const rowData = [
+        sequenceNumber, // Kolom 1: No
+        spjId, // Kolom 2: Id (spj-yymmxxx)
+        formData.namaKegiatan, // Kolom 3: Nama Kegiatan
+        formData.detil || "", // Kolom 4: Detil
+        jenisName, // Kolom 5: Jenis
+        programName, // Kolom 6: Program
+        kegiatanName, // Kolom 7: Kegiatan
+        kroName, // Kolom 8: KRO
+        roName, // Kolom 9: RO
+        komponenName, // Kolom 10: Komponen
+        akunName, // Kolom 11: Akun
+        formatTanggalIndonesia(formData.tanggalSpj), // Kolom 12: Tanggal (SPJ)
+        pembuatDaftarName, // Kolom 13: Pembuat Daftar
+        honorOrganik.map(h => organikMap[h.personId] || "").filter(Boolean).join(" | "), // Kolom 14: Organik
+        honorMitra.map(m => mitraMap[m.personId] || "").filter(Boolean).join(" | "), // Kolom 15: Mitra Statistik
+        honorDetailsFormatted, // Kolom 16: Rincian Honor
+        formatNumberWithSeparator(grandTotal), // Kolom 17: Total Honor
+        honorOrganik.length.toString(), // Kolom 18: Jumlah Organik
+        honorMitra.length.toString(), // Kolom 19: Jumlah Mitra
+        new Date().toISOString() // Kolom 20: Timestamp
+      ];
 
-      // Update rowData dengan hasil async
-      const finalRowData = [...baseRowData];
-      finalRowData[0] = sequenceNumber;
-      finalRowData[1] = spjId;
-
-      console.log('📋 Final SPJ Honor data array length:', finalRowData.length);
+      console.log('📋 Final SPJ Honor data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
       console.log('🆔 SPJ ID:', spjId);
 
-      // Submit data ke Google Sheets
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "append",
-          range: "SPJHonor!A:T",
-          values: [finalRowData]
-        }
-      });
-
-      if (error) {
-        console.error('❌ Error submitting SPJ:', error);
-        throw error;
-      }
-
-      console.log('✅ SPJ submission successful');
+      // Submit to Google Sheets
+      await submitData(rowData);
 
       toast({
         title: "Berhasil!",
-        description: `Data SPJ Honor telah disimpan (ID: ${spjId})`,
-        variant: "default"
+        description: `Data SPJ Honor telah disimpan (ID: ${spjId})`
       });
       
-      // Navigasi tanpa delay
-      setTimeout(() => navigate("/e-dokumen/buat"), 100);
+      navigate("/e-dokumen/buat");
 
     } catch (error: any) {
-      console.error("❌ Error saving SPJ Honor:", error);
+      console.error("Error saving SPJ Honor:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
@@ -566,6 +600,8 @@ const SPJHonor = () => {
       navigate("/e-dokumen/buat");
     }
   };
+
+  const isLoading = isSubmitting || isSubmitLoading;
 
   return (
     <Layout>
@@ -1117,16 +1153,16 @@ const SPJHonor = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={handleCancel}
-                      disabled={isSubmitting}
+                      disabled={isLoading}
                     >
                       Batal
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={isSubmitting} 
+                      disabled={isLoading} 
                       className="w-full"
                     >
-                      {isSubmitting ? (
+                      {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Menyimpan...
