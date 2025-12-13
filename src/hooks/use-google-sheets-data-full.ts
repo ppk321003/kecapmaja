@@ -119,7 +119,8 @@ export const useJenis = () => {
     { id: "Pelatihan", name: "Pelatihan" },
     { id: "Briefing", name: "Briefing" },
     { id: "Rapat Persiapan", name: "Rapat Persiapan" },
-    { id: "Rapat Evaluasi", name: "Rapat Evaluasi" }
+    { id: "Rapat Evaluasi", name: "Rapat Evaluasi" },
+    { id: "Honor", name: "Honor" }
   ];
 
   return { data: jenis, loading: false, error: null };
