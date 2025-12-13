@@ -56,7 +56,7 @@ interface HonorDetail {
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 const SHEET_NAME = "SPJHonor";
 
-// Custom searchable select component (sama seperti skrip sebelumnya)
+// Custom searchable select component
 interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
@@ -179,33 +179,39 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
-// Custom hook untuk submit data (disesuaikan dari TransportLokal)
+// Custom hook untuk submit data
 const useSubmitSPJHonorToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
-      console.log('📤 Submitting SPJ Honor data to sheets:', data);
+      console.log('📤 [SPJHonor] Submitting to Google Sheets:', {
+        spreadsheetId: TARGET_SPREADSHEET_ID,
+        sheetName: SHEET_NAME,
+        range: `${SHEET_NAME}!A:Q`,
+        valuesLength: data.length,
+        dataPreview: data
+      });
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: `${SHEET_NAME}!A:Q`,
+          range: `${SHEET_NAME}!A:Q`, // ✅ 17 kolom sesuai informasi Anda
           values: [data]
         }
       });
 
       if (error) {
-        console.error('❌ Error submitting SPJ Honor:', error);
+        console.error('❌ [SPJHonor] Edge Function error:', error);
         throw error;
       }
 
-      console.log('✅ SPJ Honor submission successful:', result);
+      console.log('✅ [SPJHonor] Submission successful:', result);
       return result;
     } catch (error) {
-      console.error('❌ Submission error:', error);
+      console.error('❌ [SPJHonor] Submission error:', error);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -215,7 +221,7 @@ const useSubmitSPJHonorToSheets = () => {
   return { submitData, isSubmitting };
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya (sama seperti TransportLokal)
+// Fungsi untuk mendapatkan nomor urut berikutnya
 const getNextSequenceNumber = async (): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -260,7 +266,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
   }
 };
 
-// Fungsi untuk generate ID SPJ (spj-yymmxxx) - disesuaikan
+// Fungsi untuk generate ID SPJ (spj-yymmxxx)
 const generateSPJId = async (): Promise<string> => {
   try {
     const now = new Date();
@@ -310,7 +316,7 @@ const generateSPJId = async (): Promise<string> => {
   }
 };
 
-// Format tanggal Indonesia (sama seperti TransportLokal)
+// Format tanggal Indonesia
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   
@@ -495,11 +501,13 @@ const SPJHonor = () => {
     return formatted;
   };
 
-  // Form submission handler - DIPERBAIKI dengan pola TransportLokal
+  // Form submission handler - DIUBAH untuk 17 kolom
   const onSubmit = async (formData: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Validasi honor details
+      console.log('🔄 [SPJHonor] Starting submission process...');
+      
+      // 1. Validasi
       const allHonorDetails = [...honorOrganik, ...honorMitra];
       if (allHonorDetails.length === 0) {
         toast({
@@ -523,53 +531,58 @@ const SPJHonor = () => {
         }
       }
 
-      // Generate nomor urut baru dan ID SPJ (sama seperti TransportLokal)
+      // 2. Generate IDs
+      console.log('📊 [SPJHonor] Generating sequence number and ID...');
       const sequenceNumber = await getNextSequenceNumber();
       const spjId = await generateSPJId();
+      console.log(`✅ [SPJHonor] Generated: No=${sequenceNumber}, ID=${spjId}`);
 
-      // Get names for display
-      const programName = programsMap[formData.program] || formData.program;
-      const kegiatanName = kegiatanMap[formData.kegiatan] || formData.kegiatan;
-      const kroName = kroMap[formData.kro] || formData.kro;
-      const roName = roMap[formData.ro] || formData.ro;
-      const komponenName = komponenMap[formData.komponen] || formData.komponen;
-      const akunName = akunMap[formData.akun] || formData.akun;
-      const pembuatDaftarName = organikMap[formData.pembuatDaftar] || formData.pembuatDaftar;
-      const jenisName = jenisMap[formData.jenis] || formData.jenis;
+      // 3. Prepare data (17 kolom sesuai range A:Q)
+      const getDisplayName = (map: Record<string, string>, id: string, defaultValue: string = "") => {
+        return map[id] || defaultValue;
+      };
 
-      // Format honor details
+      const programName = getDisplayName(programsMap, formData.program, formData.program);
+      const kegiatanName = getDisplayName(kegiatanMap, formData.kegiatan, formData.kegiatan);
+      const kroName = getDisplayName(kroMap, formData.kro, formData.kro);
+      const roName = getDisplayName(roMap, formData.ro, formData.ro);
+      const komponenName = getDisplayName(komponenMap, formData.komponen, formData.komponen);
+      const akunName = getDisplayName(akunMap, formData.akun, formData.akun);
+      const pembuatDaftarName = getDisplayName(organikMap, formData.pembuatDaftar, formData.pembuatDaftar);
+      const jenisName = getDisplayName(jenisMap, formData.jenis, formData.jenis);
+
       const honorDetailsFormatted = formatHonorDetailsForSheets();
       const grandTotal = calculateGrandTotal();
 
-      // Format data sesuai struktur spreadsheet SPJHonor
+      // 4. Construct row data untuk 17 kolom (A:Q)
+      // Sesuaikan dengan struktur spreadsheet yang sebenarnya
       const rowData = [
-        sequenceNumber, // Kolom 1: No
-        spjId, // Kolom 2: Id (spj-yymmxxx)
-        formData.namaKegiatan, // Kolom 3: Nama Kegiatan
-        formData.detil || "", // Kolom 4: Detil
-        jenisName, // Kolom 5: Jenis
-        programName, // Kolom 6: Program
-        kegiatanName, // Kolom 7: Kegiatan
-        kroName, // Kolom 8: KRO
-        roName, // Kolom 9: RO
-        komponenName, // Kolom 10: Komponen
-        akunName, // Kolom 11: Akun
-        formatTanggalIndonesia(formData.tanggalSpj), // Kolom 12: Tanggal (SPJ)
-        pembuatDaftarName, // Kolom 13: Pembuat Daftar
-        honorOrganik.map(h => organikMap[h.personId] || "").filter(Boolean).join(" | "), // Kolom 14: Organik
-        honorMitra.map(m => mitraMap[m.personId] || "").filter(Boolean).join(" | "), // Kolom 15: Mitra Statistik
-        honorDetailsFormatted, // Kolom 16: Rincian Honor
-        formatNumberWithSeparator(grandTotal), // Kolom 17: Total Honor
-        honorOrganik.length.toString(), // Kolom 18: Jumlah Organik
-        honorMitra.length.toString(), // Kolom 19: Jumlah Mitra
-        new Date().toISOString() // Kolom 20: Timestamp
+        sequenceNumber,                    // Kolom A: No
+        spjId,                             // Kolom B: ID (spj-yymmxxx)
+        formData.namaKegiatan,             // Kolom C: Nama Kegiatan
+        formData.detil || "",              // Kolom D: Detil
+        jenisName,                         // Kolom E: Jenis
+        programName,                       // Kolom F: Program
+        kegiatanName,                      // Kolom G: Kegiatan
+        kroName,                           // Kolom H: KRO
+        roName,                            // Kolom I: RO
+        komponenName,                      // Kolom J: Komponen
+        akunName,                          // Kolom K: Akun
+        formatTanggalIndonesia(formData.tanggalSpj), // Kolom L: Tanggal SPJ
+        pembuatDaftarName,                 // Kolom M: Pembuat Daftar
+        honorDetailsFormatted,             // Kolom N: Rincian Honor
+        formatNumberWithSeparator(grandTotal), // Kolom O: Total Honor
+        honorOrganik.length.toString(),    // Kolom P: Jumlah Organik
+        honorMitra.length.toString()       // Kolom Q: Jumlah Mitra
+        // NOTE: Tidak ada kolom R,S,T karena range hanya A:Q (17 kolom)
       ];
 
-      console.log('📋 Final SPJ Honor data array:', rowData);
-      console.log('🔢 Total columns:', rowData.length);
-      console.log('🆔 SPJ ID:', spjId);
+      console.log('📋 [SPJHonor] Final data array (17 kolom):', rowData);
+      console.log('🔢 [SPJHonor] Total columns:', rowData.length);
+      console.log('🆔 [SPJHonor] SPJ ID:', spjId);
 
-      // Submit to Google Sheets
+      // 5. Submit ke Google Sheets
+      console.log('🚀 [SPJHonor] Calling submitData...');
       await submitData(rowData);
 
       toast({
@@ -577,10 +590,11 @@ const SPJHonor = () => {
         description: `Data SPJ Honor telah disimpan (ID: ${spjId})`
       });
       
-      navigate("/e-dokumen/buat");
+      // Navigasi setelah 500ms agar toast terlihat
+      setTimeout(() => navigate("/e-dokumen/buat"), 500);
 
     } catch (error: any) {
-      console.error("Error saving SPJ Honor:", error);
+      console.error("❌ [SPJHonor] Error saving:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
