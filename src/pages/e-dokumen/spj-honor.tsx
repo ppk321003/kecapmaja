@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2 } from "lucide-react";
+import { CalendarIcon, Trash2, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -20,8 +20,8 @@ import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrgan
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
-import { useSubmitToSheets } from "@/hooks/use-google-sheets-submit";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
+import { supabase } from "@/integrations/supabase/client";
 
 // Schema validation
 const formSchema = z.object({
@@ -52,10 +52,14 @@ interface HonorDetail {
   totalHonor: number;
 }
 
+// Constants
+const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Setup form
   const form = useForm<FormValues>({
@@ -86,30 +90,51 @@ const SPJHonor = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Setup submission to Google Sheets
-  const submitMutation = useSubmitToSheets({
-    spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-    sheetName: "SPJHonor",
-    onSuccess: () => {
-      toast({
-        title: "Berhasil!",
-        description: "Data SPJ Honor telah disimpan",
-        variant: "default"
-      });
-      navigate("/e-dokumen/buat");
-    }
-  });
-
-  // Create name mappings for display
-  const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name]));
-  const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name]));
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => [item.id, item.name]));
-  const kroMap = Object.fromEntries((kroList || []).map(item => [item.id, item.name]));
-  const roMap = Object.fromEntries((roList || []).map(item => [item.id, item.name]));
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => [item.id, item.name]));
-  const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name]));
-  const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
-  const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
+  // Create name mappings for display (sama seperti skrip 2)
+  const jenisMap = Object.fromEntries((jenisList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const programsMap = Object.fromEntries((programs || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const kroMap = Object.fromEntries((kroList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const roMap = Object.fromEntries((roList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const komponenMap = Object.fromEntries((komponenList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const akunMap = Object.fromEntries((akunList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const organikMap = Object.fromEntries((organikList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
+  
+  const mitraMap = Object.fromEntries((mitraList || []).map(item => {
+    const nameOnly = item.name.split(' - ')[1] || item.name;
+    return [item.id, nameOnly];
+  }));
 
   // Add organik handler
   const addOrganik = () => {
@@ -228,14 +253,120 @@ const SPJHonor = () => {
     return formatted;
   };
 
-  // Form submission handler
-  const onSubmit = async (data: FormValues) => {
+  // Format tanggal Indonesia (sama seperti skrip 2)
+  const formatTanggalIndonesia = (date: Date | null): string => {
+    if (!date) return "";
+    
+    const day = date.getDate();
+    const month = date.toLocaleDateString('id-ID', { month: 'long' });
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
+  };
+
+  // Fungsi untuk mendapatkan nomor urut berikutnya (sama seperti skrip 2)
+  const getNextSequenceNumber = async (): Promise<number> => {
     try {
-      console.log("Form submitted with data:", data);
-      console.log("Honor Organik:", honorOrganik);
-      console.log("Honor Mitra:", honorMitra);
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "read",
+          range: "SPJHonor!A:A"
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching sequence numbers:", error);
+        throw new Error("Gagal mengambil nomor urut terakhir");
+      }
+
+      const values = data?.values || [];
       
-      // Validate honor details
+      if (values.length <= 1) {
+        return 1;
+      }
+
+      const sequenceNumbers = values
+        .slice(1)
+        .map((row: any[]) => {
+          const value = row[0];
+          if (typeof value === 'string' && value.trim() !== '') {
+            const num = parseInt(value);
+            return isNaN(num) ? 0 : num;
+          }
+          return 0;
+        })
+        .filter(num => num > 0);
+
+      if (sequenceNumbers.length === 0) {
+        return 1;
+      }
+
+      return Math.max(...sequenceNumbers) + 1;
+    } catch (error) {
+      console.error("Error generating sequence number:", error);
+      throw error;
+    }
+  };
+
+  // Fungsi untuk generate ID SPJ (spj-yymmxxx) - sama seperti skrip 2
+  const generateSPJId = async (): Promise<string> => {
+    try {
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const prefix = `spj-${year}${month}`;
+
+      // Ambil semua data untuk mencari nomor terakhir di bulan ini
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "read",
+          range: "SPJHonor!B:B"
+        }
+      });
+
+      if (error) {
+        console.error("Error fetching SPJ IDs:", error);
+        throw new Error("Gagal mengambil ID SPJ terakhir");
+      }
+
+      const values = data?.values || [];
+      
+      if (values.length <= 1) {
+        return `${prefix}001`;
+      }
+
+      // Filter ID yang sesuai dengan prefix bulan ini
+      const currentMonthIds = values
+        .slice(1)
+        .map((row: any[]) => row[0])
+        .filter((id: string) => id && id.startsWith(prefix))
+        .map((id: string) => {
+          const numStr = id.replace(prefix, '');
+          const num = parseInt(numStr);
+          return isNaN(num) ? 0 : num;
+        })
+        .filter(num => num > 0);
+
+      if (currentMonthIds.length === 0) {
+        return `${prefix}001`;
+      }
+
+      const nextNum = Math.max(...currentMonthIds) + 1;
+      return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+    } catch (error) {
+      console.error("Error generating SPJ ID:", error);
+      throw error;
+    }
+  };
+
+  // Form submission handler - DIPERBAIKI mengikuti skrip 2
+  const onSubmit = async (formData: FormValues) => {
+    try {
+      console.log("🔄 Starting SPJ Honor submission...");
+      
+      // Validasi honor details
       const allHonorDetails = [...honorOrganik, ...honorMitra];
       if (allHonorDetails.length === 0) {
         toast({
@@ -257,53 +388,81 @@ const SPJHonor = () => {
           return;
         }
       }
-      
-      // Prepare data for Google Sheets (format as 2D array)
-      const values = [
-        [
-          // Main form data
-          data.namaKegiatan,
-          data.detil || "",
-          jenisMap[data.jenis] || data.jenis,
-          programsMap[data.program] || data.program,
-          kegiatanMap[data.kegiatan] || data.kegiatan,
-          kroMap[data.kro] || data.kro,
-          roMap[data.ro] || data.ro,
-          komponenMap[data.komponen] || data.komponen,
-          akunMap[data.akun] || data.akun,
-          format(data.tanggalSpj, 'yyyy-MM-dd'),
-          organikMap[data.pembuatDaftar] || data.pembuatDaftar,
-          
-          // Honor summary
-          formatHonorDetailsForSheets(),
-          formatNumberWithSeparator(calculateGrandTotal()),
-          
-          // Counts
-          honorOrganik.length.toString(),
-          honorMitra.length.toString(),
-          
-          // Timestamp
-          new Date().toISOString()
-        ]
+
+      setIsSubmitting(true);
+
+      // Generate nomor urut baru dan ID SPJ (sama seperti skrip 2)
+      const sequenceNumber = await getNextSequenceNumber();
+      const spjId = await generateSPJId();
+
+      // Format honor details untuk sheet
+      const honorDetailsFormatted = formatHonorDetailsForSheets();
+      const grandTotal = calculateGrandTotal();
+
+      // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
+      // Periksa urutan kolom di sheet "SPJHonor" dan sesuaikan
+      const rowData = [
+        sequenceNumber, // Kolom 1: No (urut)
+        spjId, // Kolom 2: id (spj-yymmxxx)
+        formData.namaKegiatan, // Kolom 3: Nama Kegiatan
+        formData.detil || "", // Kolom 4: Detil
+        jenisMap[formData.jenis] || formData.jenis, // Kolom 5: Jenis (hanya nama)
+        programsMap[formData.program] || formData.program, // Kolom 6: Program (hanya nama)
+        kegiatanMap[formData.kegiatan] || formData.kegiatan, // Kolom 7: Kegiatan (hanya nama)
+        kroMap[formData.kro] || formData.kro, // Kolom 8: KRO (hanya nama)
+        roMap[formData.ro] || formData.ro, // Kolom 9: RO (hanya nama)
+        komponenMap[formData.komponen] || formData.komponen, // Kolom 10: Komponen (hanya nama)
+        akunMap[formData.akun] || formData.akun, // Kolom 11: Akun (hanya nama)
+        formatTanggalIndonesia(formData.tanggalSpj), // Kolom 12: Tanggal SPJ
+        organikMap[formData.pembuatDaftar] || formData.pembuatDaftar, // Kolom 13: Pembuat Daftar
+        honorDetailsFormatted, // Kolom 14: Detail Honor
+        formatNumberWithSeparator(grandTotal), // Kolom 15: Total Honor
+        honorOrganik.length.toString(), // Kolom 16: Jumlah Organik
+        honorMitra.length.toString(), // Kolom 17: Jumlah Mitra
+        new Date().toISOString(), // Kolom 18: Timestamp
+        "", // Kolom 19: Status (opsional)
+        ""  // Kolom 20: Link (opsional)
       ];
+
+      console.log('📋 Final SPJ Honor data array:', rowData);
+      console.log('🔢 Total columns:', rowData.length);
+      console.log('🆔 SPJ ID:', spjId);
+      console.log('💰 Grand Total:', grandTotal);
+
+      // SUBMIT DATA - SAMA SEPERTI SKRIP 2 YANG BERHASIL
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "append",
+          range: "SPJHonor!A:T", // Sesuaikan range dengan jumlah kolom (20 kolom)
+          values: [rowData]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting SPJ:', error);
+        throw error;
+      }
+
+      console.log('✅ SPJ submission successful:', result);
+
+      toast({
+        title: "Berhasil!",
+        description: `Data SPJ Honor telah disimpan (ID: ${spjId})`,
+        variant: "default"
+      });
       
-      console.log("Submitting to sheets with values:", values);
-      
-      const submitData = {
-        spreadsheetId: "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc",
-        sheetName: "SPJHonor",
-        values
-      };
-      
-      await submitMutation.mutateAsync(submitData);
-      
+      navigate("/e-dokumen/buat");
+
     } catch (error: any) {
-      console.error("Error saving SPJ Honor:", error);
+      console.error("❌ Error saving SPJ Honor:", error);
       toast({
         variant: "destructive",
         title: "Gagal menyimpan data",
         description: error.message || "Terjadi kesalahan saat menyimpan data"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -375,11 +534,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {jenisList.map(jenis => (
-                              <SelectItem key={jenis.id} value={jenis.id}>
-                                {jenis.name}
-                              </SelectItem>
-                            ))}
+                            {jenisList.map(jenis => {
+                              const displayName = jenis.name.split(' - ')[1] || jenis.name;
+                              return (
+                                <SelectItem key={jenis.id} value={jenis.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -409,11 +571,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {programs.map(program => (
-                              <SelectItem key={program.id} value={program.id}>
-                                {program.name}
-                              </SelectItem>
-                            ))}
+                            {programs.map(program => {
+                              const displayName = program.name.split(' - ')[1] || program.name;
+                              return (
+                                <SelectItem key={program.id} value={program.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -443,11 +608,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kegiatanList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
+                            {kegiatanList.map(item => {
+                              const displayName = item.name.split(' - ')[1] || item.name;
+                              return (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -476,11 +644,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {kroList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
+                            {kroList.map(item => {
+                              const displayName = item.name.split(' - ')[1] || item.name;
+                              return (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -506,11 +677,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {roList.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
+                            {roList.map(item => {
+                              const displayName = item.name.split(' - ')[1] || item.name;
+                              return (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -603,11 +777,14 @@ const SPJHonor = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikList.map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
+                            {organikList.map(organik => {
+                              const displayName = organik.name.split(' - ')[1] || organik.name;
+                              return (
+                                <SelectItem key={organik.id} value={organik.id}>
+                                  {displayName}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -654,10 +831,13 @@ const SPJHonor = () => {
                         <Label>Nama</Label>
                         <FormSelect
                           placeholder="Pilih Organik BPS"
-                          options={organikList.map(organik => ({
-                            value: organik.id,
-                            label: organik.name
-                          }))}
+                          options={organikList.map(organik => {
+                            const displayName = organik.name.split(' - ')[1] || organik.name;
+                            return {
+                              value: organik.id,
+                              label: displayName
+                            };
+                          })}
                           value={honor.personId}
                           onChange={(value) => updateHonorDetail("organik", index, "personId", value)}
                         />
@@ -764,10 +944,13 @@ const SPJHonor = () => {
                         <Label>Nama</Label>
                         <FormSelect
                           placeholder="Pilih Mitra Statistik"
-                          options={mitraList.map(mitra => ({
-                            value: mitra.id,
-                            label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
-                          }))}
+                          options={mitraList.map(mitra => {
+                            const displayName = mitra.name.split(' - ')[1] || mitra.name;
+                            return {
+                              value: mitra.id,
+                              label: `${displayName}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
+                            };
+                          })}
                           value={honor.personId}
                           onChange={(value) => updateHonorDetail("mitra", index, "personId", value)}
                         />
@@ -863,17 +1046,18 @@ const SPJHonor = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={handleCancel}
+                      disabled={isSubmitting}
                     >
                       Batal
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={submitMutation.isPending} 
+                      disabled={isSubmitting} 
                       className="w-full"
                     >
-                      {submitMutation.isPending ? (
+                      {isSubmitting ? (
                         <>
-                          <span className="animate-spin mr-2">⟳</span>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Menyimpan...
                         </>
                       ) : (
