@@ -192,7 +192,7 @@ const useSubmitSPJHonorToSheets = () => {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: `${SHEET_NAME}!A:T`,
+          range: `${SHEET_NAME}!A:Q`,
           values: [data]
         }
       });
