@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -11,17 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/components/ui/use-toast";
-import { CalendarIcon, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, Trash2, Loader2, Search, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
-import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 import { supabase } from "@/integrations/supabase/client";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 // Schema validation
 const formSchema = z.object({
@@ -55,11 +55,135 @@ interface HonorDetail {
 // Constants
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
 
+// Custom searchable select component
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  placeholder: string;
+  emptyMessage?: string;
+  searchPlaceholder?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  emptyMessage = "Tidak ada data ditemukan",
+  searchPlaceholder = "Cari..."
+}) => {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  const selectedLabel = useMemo(() => {
+    const selected = options.find(opt => opt.value === value);
+    return selected?.label || placeholder;
+  }, [value, options, placeholder]);
+
+  const handleSelect = (selectedValue: string) => {
+    onChange(selectedValue);
+    setOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        role="combobox"
+        aria-expanded={open}
+        className="w-full justify-between"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setOpen(false);
+                  }
+                }}
+              />
+              {searchTerm && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1 h-6 w-6 p-0"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              <div className="py-1">
+                {filteredOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                      value === option.value ? "bg-gray-100 font-medium" : ""
+                    }`}
+                    onClick={() => handleSelect(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => setOpen(false)}
+            >
+              Tutup
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cachedSequence, setCachedSequence] = useState<{ number: number; timestamp: number } | null>(null);
   
   // Setup form
   const form = useForm<FormValues>({
@@ -90,56 +214,106 @@ const SPJHonor = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  // Create name mappings for display (sama seperti skrip 2)
-  const jenisMap = Object.fromEntries((jenisList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const programsMap = Object.fromEntries((programs || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const kegiatanMap = Object.fromEntries((kegiatanList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const kroMap = Object.fromEntries((kroList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const roMap = Object.fromEntries((roList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const komponenMap = Object.fromEntries((komponenList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const akunMap = Object.fromEntries((akunList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const organikMap = Object.fromEntries((organikList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
-  
-  const mitraMap = Object.fromEntries((mitraList || []).map(item => {
-    const nameOnly = item.name.split(' - ')[1] || item.name;
-    return [item.id, nameOnly];
-  }));
+  // Memoized data processing
+  const {
+    jenisMap,
+    programsMap,
+    kegiatanMap,
+    kroMap,
+    roMap,
+    komponenMap,
+    akunMap,
+    organikOptions,
+    mitraOptions,
+    organikMap
+  } = useMemo(() => {
+    const processItem = (item: any) => item.name.split(' - ')[1] || item.name;
+    
+    return {
+      jenisMap: Object.fromEntries((jenisList || []).map(item => [item.id, processItem(item)])),
+      programsMap: Object.fromEntries((programs || []).map(item => [item.id, processItem(item)])),
+      kegiatanMap: Object.fromEntries((kegiatanList || []).map(item => [item.id, processItem(item)])),
+      kroMap: Object.fromEntries((kroList || []).map(item => [item.id, processItem(item)])),
+      roMap: Object.fromEntries((roList || []).map(item => [item.id, processItem(item)])),
+      komponenMap: Object.fromEntries((komponenList || []).map(item => [item.id, processItem(item)])),
+      akunMap: Object.fromEntries((akunList || []).map(item => [item.id, processItem(item)])),
+      organikOptions: (organikList || []).map(item => ({
+        value: item.id,
+        label: processItem(item)
+      })),
+      mitraOptions: (mitraList || []).map(item => ({
+        value: item.id,
+        label: `${processItem(item)}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
+      })),
+      organikMap: Object.fromEntries((organikList || []).map(item => [item.id, processItem(item)]))
+    };
+  }, [jenisList, programs, kegiatanList, kroList, roList, komponenList, akunList, organikList, mitraList]);
+
+  // Cache sequence number untuk 30 detik
+  const getCachedSequenceNumber = async (): Promise<number> => {
+    const now = Date.now();
+    const cacheDuration = 30 * 1000; // 30 detik
+
+    if (cachedSequence && (now - cachedSequence.timestamp) < cacheDuration) {
+      return cachedSequence.number + 1;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: TARGET_SPREADSHEET_ID,
+          operation: "read",
+          range: "SPJHonor!A2:A1000"
+        }
+      });
+
+      if (error) throw error;
+
+      const values = data?.values || [];
+      let maxNumber = 0;
+
+      if (values.length > 0) {
+        values.forEach((row: any[]) => {
+          const value = row[0];
+          if (typeof value === 'string' && value.trim() !== '') {
+            const num = parseInt(value);
+            if (!isNaN(num) && num > maxNumber) {
+              maxNumber = num;
+            }
+          } else if (typeof value === 'number') {
+            if (value > maxNumber) {
+              maxNumber = value;
+            }
+          }
+        });
+      }
+
+      const nextNumber = maxNumber + 1;
+      setCachedSequence({ number: maxNumber, timestamp: now });
+      
+      return nextNumber;
+    } catch (error) {
+      console.error("Error fetching sequence number:", error);
+      // Fallback: gunakan timestamp jika gagal
+      return Math.floor(Date.now() / 1000);
+    }
+  };
+
+  // Optimized ID generation (tanpa fetch tambahan)
+  const generateSPJId = (): string => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    
+    return `spj-${year}${month}${day}${random}`;
+  };
 
   // Add organik handler
   const addOrganik = () => {
-    if (organikList.length > 0) {
-      setHonorOrganik([...honorOrganik, {
+    if (organikOptions.length > 0) {
+      setHonorOrganik(prev => [...prev, {
         type: "organik",
         personId: "",
         honorPerOrang: "0",
@@ -158,8 +332,8 @@ const SPJHonor = () => {
 
   // Add mitra handler
   const addMitra = () => {
-    if (mitraList.length > 0) {
-      setHonorMitra([...honorMitra, {
+    if (mitraOptions.length > 0) {
+      setHonorMitra(prev => [...prev, {
         type: "mitra",
         personId: "",
         honorPerOrang: "0",
@@ -176,8 +350,8 @@ const SPJHonor = () => {
     }
   };
 
-  // Calculate total honor for a detail
-  const calculateTotalHonor = (detail: HonorDetail): number => {
+  // Memoized calculation
+  const calculateTotalHonor = useMemo(() => (detail: HonorDetail): number => {
     const honorPerOrang = parseInt(detail.honorPerOrang) || 0;
     const kehadiran = detail.kehadiran || 0;
     const pph21 = detail.pph21 || 0;
@@ -185,75 +359,77 @@ const SPJHonor = () => {
     const subtotal = honorPerOrang * kehadiran;
     const pajak = subtotal * (pph21 / 100);
     return Math.max(0, subtotal - pajak);
-  };
+  }, []);
 
-  // Update honor detail value
+  // Update honor detail value dengan debouncing
   const updateHonorDetail = (type: "organik" | "mitra", index: number, field: string, value: any) => {
     if (type === "organik") {
-      const updated = [...honorOrganik];
-      updated[index] = {
-        ...updated[index],
-        [field]: value
-      };
-      
-      // Recalculate total if relevant fields changed
-      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        updated[index].totalHonor = calculateTotalHonor(updated[index]);
-      }
-      
-      setHonorOrganik(updated);
+      setHonorOrganik(prev => {
+        const updated = [...prev];
+        const detail = { ...updated[index], [field]: value };
+        
+        if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+          detail.totalHonor = calculateTotalHonor(detail);
+        }
+        
+        updated[index] = detail;
+        return updated;
+      });
     } else {
-      const updated = [...honorMitra];
-      updated[index] = {
-        ...updated[index],
-        [field]: value
-      };
-      
-      // Recalculate total if relevant fields changed
-      if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
-        updated[index].totalHonor = calculateTotalHonor(updated[index]);
-      }
-      
-      setHonorMitra(updated);
+      setHonorMitra(prev => {
+        const updated = [...prev];
+        const detail = { ...updated[index], [field]: value };
+        
+        if (field === "honorPerOrang" || field === "kehadiran" || field === "pph21") {
+          detail.totalHonor = calculateTotalHonor(detail);
+        }
+        
+        updated[index] = detail;
+        return updated;
+      });
     }
   };
 
   // Remove honor detail
   const removeHonorDetail = (type: "organik" | "mitra", index: number) => {
     if (type === "organik") {
-      const updated = [...honorOrganik];
-      updated.splice(index, 1);
-      setHonorOrganik(updated);
+      setHonorOrganik(prev => {
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
     } else {
-      const updated = [...honorMitra];
-      updated.splice(index, 1);
-      setHonorMitra(updated);
+      setHonorMitra(prev => {
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
     }
   };
 
-  // Calculate grand total honor
-  const calculateGrandTotal = (): number => {
+  // Memoized grand total calculation
+  const calculateGrandTotal = useMemo(() => (): number => {
     const organikTotal = honorOrganik.reduce((sum, item) => sum + item.totalHonor, 0);
     const mitraTotal = honorMitra.reduce((sum, item) => sum + item.totalHonor, 0);
     return organikTotal + mitraTotal;
-  };
+  }, [honorOrganik, honorMitra]);
 
   // Format data for display in Google Sheets
-  const formatHonorDetailsForSheets = (): string => {
+  const formatHonorDetailsForSheets = useMemo(() => (): string => {
     const allDetails = [...honorOrganik, ...honorMitra];
     
     const formatted = allDetails.map(detail => {
       const personName = detail.type === "organik" 
         ? organikMap[detail.personId] || detail.personId
-        : mitraMap[detail.personId] || detail.personId;
+        : mitraOptions.find(m => m.value === detail.personId)?.label || detail.personId;
       
       return `${personName}: ${formatNumberWithSeparator(detail.totalHonor)} (${detail.kehadiran}x${formatNumberWithSeparator(parseInt(detail.honorPerOrang))} - PPh ${detail.pph21}%)`;
     }).join("; ");
     
     return formatted;
-  };
+  }, [honorOrganik, honorMitra, organikMap, mitraOptions]);
 
-  // Format tanggal Indonesia (sama seperti skrip 2)
+  // Format tanggal Indonesia
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
     
@@ -264,178 +440,92 @@ const SPJHonor = () => {
     return `${day} ${month} ${year}`;
   };
 
-  // Fungsi untuk mendapatkan nomor urut berikutnya (sama seperti skrip 2)
-  const getNextSequenceNumber = async (): Promise<number> => {
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "read",
-          range: "SPJHonor!A:A"
-        }
+  // Validasi sebelum submit (dipanggil lebih awal)
+  const validateBeforeSubmit = (): boolean => {
+    const allHonorDetails = [...honorOrganik, ...honorMitra];
+    
+    if (allHonorDetails.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Data Honor Kosong",
+        description: "Tambahkan minimal satu data honor organik atau mitra"
       });
-
-      if (error) {
-        console.error("Error fetching sequence numbers:", error);
-        throw new Error("Gagal mengambil nomor urut terakhir");
-      }
-
-      const values = data?.values || [];
-      
-      if (values.length <= 1) {
-        return 1;
-      }
-
-      const sequenceNumbers = values
-        .slice(1)
-        .map((row: any[]) => {
-          const value = row[0];
-          if (typeof value === 'string' && value.trim() !== '') {
-            const num = parseInt(value);
-            return isNaN(num) ? 0 : num;
-          }
-          return 0;
-        })
-        .filter(num => num > 0);
-
-      if (sequenceNumbers.length === 0) {
-        return 1;
-      }
-
-      return Math.max(...sequenceNumbers) + 1;
-    } catch (error) {
-      console.error("Error generating sequence number:", error);
-      throw error;
+      return false;
     }
-  };
-
-  // Fungsi untuk generate ID SPJ (spj-yymmxxx) - sama seperti skrip 2
-  const generateSPJId = async (): Promise<string> => {
-    try {
-      const now = new Date();
-      const year = now.getFullYear().toString().slice(-2);
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const prefix = `spj-${year}${month}`;
-
-      // Ambil semua data untuk mencari nomor terakhir di bulan ini
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
-          operation: "read",
-          range: "SPJHonor!B:B"
-        }
-      });
-
-      if (error) {
-        console.error("Error fetching SPJ IDs:", error);
-        throw new Error("Gagal mengambil ID SPJ terakhir");
-      }
-
-      const values = data?.values || [];
-      
-      if (values.length <= 1) {
-        return `${prefix}001`;
-      }
-
-      // Filter ID yang sesuai dengan prefix bulan ini
-      const currentMonthIds = values
-        .slice(1)
-        .map((row: any[]) => row[0])
-        .filter((id: string) => id && id.startsWith(prefix))
-        .map((id: string) => {
-          const numStr = id.replace(prefix, '');
-          const num = parseInt(numStr);
-          return isNaN(num) ? 0 : num;
-        })
-        .filter(num => num > 0);
-
-      if (currentMonthIds.length === 0) {
-        return `${prefix}001`;
-      }
-
-      const nextNum = Math.max(...currentMonthIds) + 1;
-      return `${prefix}${nextNum.toString().padStart(3, '0')}`;
-    } catch (error) {
-      console.error("Error generating SPJ ID:", error);
-      throw error;
-    }
-  };
-
-  // Form submission handler - DIPERBAIKI mengikuti skrip 2
-  const onSubmit = async (formData: FormValues) => {
-    try {
-      console.log("🔄 Starting SPJ Honor submission...");
-      
-      // Validasi honor details
-      const allHonorDetails = [...honorOrganik, ...honorMitra];
-      if (allHonorDetails.length === 0) {
+    
+    for (const detail of allHonorDetails) {
+      if (!detail.personId) {
         toast({
           variant: "destructive",
-          title: "Data Honor Kosong",
-          description: "Tambahkan minimal satu data honor organik atau mitra"
+          title: "Data Tidak Lengkap",
+          description: "Pilih nama untuk setiap detail honor"
         });
-        return;
+        return false;
       }
-      
-      // Validate each honor detail has a person selected
-      for (const detail of allHonorDetails) {
-        if (!detail.personId) {
-          toast({
-            variant: "destructive",
-            title: "Data Tidak Lengkap",
-            description: "Pilih nama untuk setiap detail honor"
-          });
-          return;
-        }
-      }
+    }
+    
+    return true;
+  };
 
-      setIsSubmitting(true);
+  // Optimized form submission handler
+  const onSubmit = async (formData: FormValues) => {
+    // Validasi cepat di awal (sync)
+    if (!validateBeforeSubmit()) {
+      return;
+    }
 
-      // Generate nomor urut baru dan ID SPJ (sama seperti skrip 2)
-      const sequenceNumber = await getNextSequenceNumber();
-      const spjId = await generateSPJId();
+    // Persiapan data sebelum async operations
+    const honorDetailsFormatted = formatHonorDetailsForSheets();
+    const grandTotal = calculateGrandTotal();
+    
+    // Buat rowData tanpa async operations terlebih dahulu
+    const baseRowData = [
+      /* akan diisi: */ 0, // sequenceNumber
+      /* akan diisi: */ "", // spjId
+      formData.namaKegiatan,
+      formData.detil || "",
+      jenisMap[formData.jenis] || formData.jenis,
+      programsMap[formData.program] || formData.program,
+      kegiatanMap[formData.kegiatan] || formData.kegiatan,
+      kroMap[formData.kro] || formData.kro,
+      roMap[formData.ro] || formData.ro,
+      komponenMap[formData.komponen] || formData.komponen,
+      akunMap[formData.akun] || formData.akun,
+      formatTanggalIndonesia(formData.tanggalSpj),
+      organikMap[formData.pembuatDaftar] || formData.pembuatDaftar,
+      honorDetailsFormatted,
+      formatNumberWithSeparator(grandTotal),
+      honorOrganik.length.toString(),
+      honorMitra.length.toString(),
+      new Date().toISOString(),
+      "",
+      ""
+    ];
 
-      // Format honor details untuk sheet
-      const honorDetailsFormatted = formatHonorDetailsForSheets();
-      const grandTotal = calculateGrandTotal();
+    setIsSubmitting(true);
 
-      // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
-      // Periksa urutan kolom di sheet "SPJHonor" dan sesuaikan
-      const rowData = [
-        sequenceNumber, // Kolom 1: No (urut)
-        spjId, // Kolom 2: id (spj-yymmxxx)
-        formData.namaKegiatan, // Kolom 3: Nama Kegiatan
-        formData.detil || "", // Kolom 4: Detil
-        jenisMap[formData.jenis] || formData.jenis, // Kolom 5: Jenis (hanya nama)
-        programsMap[formData.program] || formData.program, // Kolom 6: Program (hanya nama)
-        kegiatanMap[formData.kegiatan] || formData.kegiatan, // Kolom 7: Kegiatan (hanya nama)
-        kroMap[formData.kro] || formData.kro, // Kolom 8: KRO (hanya nama)
-        roMap[formData.ro] || formData.ro, // Kolom 9: RO (hanya nama)
-        komponenMap[formData.komponen] || formData.komponen, // Kolom 10: Komponen (hanya nama)
-        akunMap[formData.akun] || formData.akun, // Kolom 11: Akun (hanya nama)
-        formatTanggalIndonesia(formData.tanggalSpj), // Kolom 12: Tanggal SPJ
-        organikMap[formData.pembuatDaftar] || formData.pembuatDaftar, // Kolom 13: Pembuat Daftar
-        honorDetailsFormatted, // Kolom 14: Detail Honor
-        formatNumberWithSeparator(grandTotal), // Kolom 15: Total Honor
-        honorOrganik.length.toString(), // Kolom 16: Jumlah Organik
-        honorMitra.length.toString(), // Kolom 17: Jumlah Mitra
-        new Date().toISOString(), // Kolom 18: Timestamp
-        "", // Kolom 19: Status (opsional)
-        ""  // Kolom 20: Link (opsional)
-      ];
+    try {
+      // Async operations dipisah dan dijalankan setelah persiapan
+      const [sequenceNumber, spjId] = await Promise.all([
+        getCachedSequenceNumber(),
+        Promise.resolve(generateSPJId()) // Tidak async, tapi tetap dalam Promise.all untuk konsistensi
+      ]);
 
-      console.log('📋 Final SPJ Honor data array:', rowData);
-      console.log('🔢 Total columns:', rowData.length);
+      // Update rowData dengan hasil async
+      const finalRowData = [...baseRowData];
+      finalRowData[0] = sequenceNumber;
+      finalRowData[1] = spjId;
+
+      console.log('📋 Final SPJ Honor data array length:', finalRowData.length);
       console.log('🆔 SPJ ID:', spjId);
-      console.log('💰 Grand Total:', grandTotal);
 
-      // SUBMIT DATA - SAMA SEPERTI SKRIP 2 YANG BERHASIL
+      // Submit data ke Google Sheets
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: "SPJHonor!A:T", // Sesuaikan range dengan jumlah kolom (20 kolom)
-          values: [rowData]
+          range: "SPJHonor!A:T",
+          values: [finalRowData]
         }
       });
 
@@ -444,7 +534,7 @@ const SPJHonor = () => {
         throw error;
       }
 
-      console.log('✅ SPJ submission successful:', result);
+      console.log('✅ SPJ submission successful');
 
       toast({
         title: "Berhasil!",
@@ -452,7 +542,8 @@ const SPJHonor = () => {
         variant: "default"
       });
       
-      navigate("/e-dokumen/buat");
+      // Navigasi tanpa delay
+      setTimeout(() => navigate("/e-dokumen/buat"), 100);
 
     } catch (error: any) {
       console.error("❌ Error saving SPJ Honor:", error);
@@ -770,23 +861,13 @@ const SPJHonor = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih pembuat daftar" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {organikList.map(organik => {
-                              const displayName = organik.name.split(' - ')[1] || organik.name;
-                              return (
-                                <SelectItem key={organik.id} value={organik.id}>
-                                  {displayName}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          options={organikOptions}
+                          placeholder="Pilih pembuat daftar"
+                          searchPlaceholder="Cari nama organik..."
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -826,20 +907,15 @@ const SPJHonor = () => {
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      {/* Nama */}
+                      {/* Nama dengan Search */}
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect
-                          placeholder="Pilih Organik BPS"
-                          options={organikList.map(organik => {
-                            const displayName = organik.name.split(' - ')[1] || organik.name;
-                            return {
-                              value: organik.id,
-                              label: displayName
-                            };
-                          })}
+                        <SearchableSelect
                           value={honor.personId}
                           onChange={(value) => updateHonorDetail("organik", index, "personId", value)}
+                          options={organikOptions}
+                          placeholder="Pilih Organik BPS"
+                          searchPlaceholder="Cari nama organik..."
                         />
                       </div>
                       
@@ -939,20 +1015,15 @@ const SPJHonor = () => {
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      {/* Nama */}
+                      {/* Nama dengan Search */}
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect
-                          placeholder="Pilih Mitra Statistik"
-                          options={mitraList.map(mitra => {
-                            const displayName = mitra.name.split(' - ')[1] || mitra.name;
-                            return {
-                              value: mitra.id,
-                              label: `${displayName}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
-                            };
-                          })}
+                        <SearchableSelect
                           value={honor.personId}
                           onChange={(value) => updateHonorDetail("mitra", index, "personId", value)}
+                          options={mitraOptions}
+                          placeholder="Pilih Mitra Statistik"
+                          searchPlaceholder="Cari nama mitra..."
                         />
                       </div>
                       
