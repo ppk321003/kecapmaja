@@ -54,7 +54,6 @@ interface HonorDetail {
 
 // Constants
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
-const SHEET_NAME = "SPJHonor";
 
 // Custom searchable select component
 interface SearchableSelectProps {
@@ -183,22 +182,22 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 const useSubmitSPJHonorToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submitData = async (data: any[]) => {
+  const submitData = async (data: any[], sheetName: string) => {
     setIsSubmitting(true);
     try {
       console.log('📤 [SPJHonor] Submitting to Google Sheets:', {
         spreadsheetId: TARGET_SPREADSHEET_ID,
-        sheetName: SHEET_NAME,
-        range: `${SHEET_NAME}!A:Q`,
+        sheetName: sheetName,
+        range: `${sheetName}!A:Q`,
         valuesLength: data.length,
-        dataPreview: data
+        dataPreview: data.slice(0, 3)
       });
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: `${SHEET_NAME}!A:Q`, // ✅ 17 kolom sesuai informasi Anda
+          range: `${sheetName}!A:Q`,
           values: [data]
         }
       });
@@ -222,13 +221,13 @@ const useSubmitSPJHonorToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (sheetName: string): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: `${SHEET_NAME}!A:A`
+        range: `${sheetName}!A:A`
       }
     });
 
@@ -267,7 +266,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk generate ID SPJ (spj-yymmxxx)
-const generateSPJId = async (): Promise<string> => {
+const generateSPJId = async (sheetName: string): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -278,7 +277,7 @@ const generateSPJId = async (): Promise<string> => {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: `${SHEET_NAME}!B:B`
+        range: `${sheetName}!B:B`
       }
     });
 
@@ -327,11 +326,39 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
+// Helper untuk mendapatkan nama sheet yang benar
+const getCorrectSheetName = (): string => {
+  // Pilih salah satu opsi berikut:
+  
+  // OPTION 1: Jika sheet bernama "SPJHonor" (tanpa spasi)
+  // return "SPJHonor";
+  
+  // OPTION 2: Jika sheet bernama "SPJ Honor" (dengan spasi) - butuh single quotes
+  // return "'SPJ Honor'";
+  
+  // OPTION 3: Jika sheet bernama "Sheet1" (sheet default)
+  // return "Sheet1";
+  
+  // OPTION 4: Coba beberapa kemungkinan
+  const possibleNames = [
+    "SPJHonor",      // tanpa spasi
+    "'SPJ Honor'",   // dengan spasi dan quotes
+    "Sheet1",        // sheet default
+    "Honor",         // nama singkat
+    "SPJ"           // nama sangat singkat
+  ];
+  
+  // Untuk sekarang, gunakan "Sheet1" untuk testing
+  console.log('🔍 [SPJHonor] Using sheet name: Sheet1 (for testing)');
+  return "Sheet1";
+};
+
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sheetName, setSheetName] = useState<string>("Sheet1"); // Default untuk testing
 
   // Setup form
   const form = useForm<FormValues>({
@@ -501,7 +528,7 @@ const SPJHonor = () => {
     return formatted;
   };
 
-  // Form submission handler - DIUBAH untuk 17 kolom
+  // Form submission handler
   const onSubmit = async (formData: FormValues) => {
     setIsSubmitting(true);
     try {
@@ -531,13 +558,17 @@ const SPJHonor = () => {
         }
       }
 
-      // 2. Generate IDs
+      // 2. Tentukan nama sheet yang benar
+      const currentSheetName = getCorrectSheetName();
+      console.log(`📄 [SPJHonor] Using sheet: ${currentSheetName}`);
+      
+      // 3. Generate IDs
       console.log('📊 [SPJHonor] Generating sequence number and ID...');
-      const sequenceNumber = await getNextSequenceNumber();
-      const spjId = await generateSPJId();
+      const sequenceNumber = await getNextSequenceNumber(currentSheetName);
+      const spjId = await generateSPJId(currentSheetName);
       console.log(`✅ [SPJHonor] Generated: No=${sequenceNumber}, ID=${spjId}`);
 
-      // 3. Prepare data (17 kolom sesuai range A:Q)
+      // 4. Prepare data (17 kolom sesuai range A:Q)
       const getDisplayName = (map: Record<string, string>, id: string, defaultValue: string = "") => {
         return map[id] || defaultValue;
       };
@@ -554,8 +585,7 @@ const SPJHonor = () => {
       const honorDetailsFormatted = formatHonorDetailsForSheets();
       const grandTotal = calculateGrandTotal();
 
-      // 4. Construct row data untuk 17 kolom (A:Q)
-      // Sesuaikan dengan struktur spreadsheet yang sebenarnya
+      // 5. Construct row data untuk 17 kolom (A:Q)
       const rowData = [
         sequenceNumber,                    // Kolom A: No
         spjId,                             // Kolom B: ID (spj-yymmxxx)
@@ -574,16 +604,15 @@ const SPJHonor = () => {
         formatNumberWithSeparator(grandTotal), // Kolom O: Total Honor
         honorOrganik.length.toString(),    // Kolom P: Jumlah Organik
         honorMitra.length.toString()       // Kolom Q: Jumlah Mitra
-        // NOTE: Tidak ada kolom R,S,T karena range hanya A:Q (17 kolom)
       ];
 
       console.log('📋 [SPJHonor] Final data array (17 kolom):', rowData);
       console.log('🔢 [SPJHonor] Total columns:', rowData.length);
       console.log('🆔 [SPJHonor] SPJ ID:', spjId);
 
-      // 5. Submit ke Google Sheets
+      // 6. Submit ke Google Sheets
       console.log('🚀 [SPJHonor] Calling submitData...');
-      await submitData(rowData);
+      await submitData(rowData, currentSheetName);
 
       toast({
         title: "Berhasil!",
