@@ -52,8 +52,9 @@ interface HonorDetail {
   totalHonor: number;
 }
 
-// Constants
+// Constants - DIPERBAHARUI!
 const TARGET_SPREADSHEET_ID = "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM";
+const SHEET_NAME = "SPJHonor";
 
 // Custom searchable select component
 interface SearchableSelectProps {
@@ -182,13 +183,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 const useSubmitSPJHonorToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submitData = async (data: any[], sheetName: string) => {
+  const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
       console.log('📤 [SPJHonor] Submitting to Google Sheets:', {
         spreadsheetId: TARGET_SPREADSHEET_ID,
-        sheetName: sheetName,
-        range: `${sheetName}!A:Q`,
+        sheetName: SHEET_NAME,
+        range: `${SHEET_NAME}!A:R`,
         valuesLength: data.length,
         dataPreview: data.slice(0, 3)
       });
@@ -197,7 +198,7 @@ const useSubmitSPJHonorToSheets = () => {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: `${sheetName}!A:Q`,
+          range: `${SHEET_NAME}!A:R`, // A:R = 18 kolom sesuai header
           values: [data]
         }
       });
@@ -221,13 +222,13 @@ const useSubmitSPJHonorToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (sheetName: string): Promise<number> => {
+const getNextSequenceNumber = async (): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: `${sheetName}!A:A`
+        range: `${SHEET_NAME}!B:B` // Kolom B untuk nomor urut
       }
     });
 
@@ -266,7 +267,7 @@ const getNextSequenceNumber = async (sheetName: string): Promise<number> => {
 };
 
 // Fungsi untuk generate ID SPJ (spj-yymmxxx)
-const generateSPJId = async (sheetName: string): Promise<string> => {
+const generateSPJId = async (): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -277,7 +278,7 @@ const generateSPJId = async (sheetName: string): Promise<string> => {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: `${sheetName}!B:B`
+        range: `${SHEET_NAME}!A:A` // Kolom A untuk ID
       }
     });
 
@@ -326,39 +327,11 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
-// Helper untuk mendapatkan nama sheet yang benar
-const getCorrectSheetName = (): string => {
-  // Pilih salah satu opsi berikut:
-  
-  // OPTION 1: Jika sheet bernama "SPJHonor" (tanpa spasi)
-  // return "SPJHonor";
-  
-  // OPTION 2: Jika sheet bernama "SPJ Honor" (dengan spasi) - butuh single quotes
-  // return "'SPJ Honor'";
-  
-  // OPTION 3: Jika sheet bernama "Sheet1" (sheet default)
-  // return "Sheet1";
-  
-  // OPTION 4: Coba beberapa kemungkinan
-  const possibleNames = [
-    "SPJHonor",      // tanpa spasi
-    "'SPJ Honor'",   // dengan spasi dan quotes
-    "Sheet1",        // sheet default
-    "Honor",         // nama singkat
-    "SPJ"           // nama sangat singkat
-  ];
-  
-  // Untuk sekarang, gunakan "Sheet1" untuk testing
-  console.log('🔍 [SPJHonor] Using sheet name: Sheet1 (for testing)');
-  return "Sheet1";
-};
-
 const SPJHonor = () => {
   const navigate = useNavigate();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sheetName, setSheetName] = useState<string>("Sheet1"); // Default untuk testing
 
   // Setup form
   const form = useForm<FormValues>({
@@ -523,12 +496,12 @@ const SPJHonor = () => {
         : mitraMap[detail.personId] || detail.personId;
       
       return `${personName}: ${formatNumberWithSeparator(detail.totalHonor)} (${detail.kehadiran}x${formatNumberWithSeparator(parseInt(detail.honorPerOrang))} - PPh ${detail.pph21}%)`;
-    }).join("; ");
+    }).join(" | ");
     
     return formatted;
   };
 
-  // Form submission handler
+  // Form submission handler - SESUAI DENGAN HEADER BARU
   const onSubmit = async (formData: FormValues) => {
     setIsSubmitting(true);
     try {
@@ -558,17 +531,13 @@ const SPJHonor = () => {
         }
       }
 
-      // 2. Tentukan nama sheet yang benar
-      const currentSheetName = getCorrectSheetName();
-      console.log(`📄 [SPJHonor] Using sheet: ${currentSheetName}`);
-      
-      // 3. Generate IDs
-      console.log('📊 [SPJHonor] Generating sequence number and ID...');
-      const sequenceNumber = await getNextSequenceNumber(currentSheetName);
-      const spjId = await generateSPJId(currentSheetName);
-      console.log(`✅ [SPJHonor] Generated: No=${sequenceNumber}, ID=${spjId}`);
+      // 2. Generate IDs
+      console.log('📊 [SPJHonor] Generating ID...');
+      const spjId = await generateSPJId();
+      const sequenceNumber = await getNextSequenceNumber();
+      console.log(`✅ [SPJHonor] Generated: ID=${spjId}, No=${sequenceNumber}`);
 
-      // 4. Prepare data (17 kolom sesuai range A:Q)
+      // 3. Prepare data
       const getDisplayName = (map: Record<string, string>, id: string, defaultValue: string = "") => {
         return map[id] || defaultValue;
       };
@@ -585,34 +554,38 @@ const SPJHonor = () => {
       const honorDetailsFormatted = formatHonorDetailsForSheets();
       const grandTotal = calculateGrandTotal();
 
-      // 5. Construct row data untuk 17 kolom (A:Q)
+      // 4. Construct row data sesuai HEADER (18 kolom: A:R)
+      // Header: Id | Nama Kegiatan | Detil | Jenis | Program | Kegiatan | KRO | RO | Komponen | Akun | Tanggal (SPJ) | Pembuat Daftar | Organik | Mitra Statistik | Rincian Keseluruhan | Status | Link
       const rowData = [
-        sequenceNumber,                    // Kolom A: No
-        spjId,                             // Kolom B: ID (spj-yymmxxx)
-        formData.namaKegiatan,             // Kolom C: Nama Kegiatan
-        formData.detil || "",              // Kolom D: Detil
-        jenisName,                         // Kolom E: Jenis
-        programName,                       // Kolom F: Program
-        kegiatanName,                      // Kolom G: Kegiatan
-        kroName,                           // Kolom H: KRO
-        roName,                            // Kolom I: RO
-        komponenName,                      // Kolom J: Komponen
-        akunName,                          // Kolom K: Akun
-        formatTanggalIndonesia(formData.tanggalSpj), // Kolom L: Tanggal SPJ
-        pembuatDaftarName,                 // Kolom M: Pembuat Daftar
-        honorDetailsFormatted,             // Kolom N: Rincian Honor
-        formatNumberWithSeparator(grandTotal), // Kolom O: Total Honor
-        honorOrganik.length.toString(),    // Kolom P: Jumlah Organik
-        honorMitra.length.toString()       // Kolom Q: Jumlah Mitra
+        spjId,                             // Kolom A: Id (spj-yymmxxx)
+        formData.namaKegiatan,             // Kolom B: Nama Kegiatan
+        formData.detil || "",              // Kolom C: Detil
+        jenisName,                         // Kolom D: Jenis
+        programName,                       // Kolom E: Program
+        kegiatanName,                      // Kolom F: Kegiatan
+        kroName,                           // Kolom G: KRO
+        roName,                            // Kolom H: RO
+        komponenName,                      // Kolom I: Komponen
+        akunName,                          // Kolom J: Akun
+        formatTanggalIndonesia(formData.tanggalSpj), // Kolom K: Tanggal (SPJ)
+        pembuatDaftarName,                 // Kolom L: Pembuat Daftar
+        honorOrganik.map(h => organikMap[h.personId] || "").filter(Boolean).join(" | "), // Kolom M: Organik
+        honorMitra.map(m => mitraMap[m.personId] || "").filter(Boolean).join(" | "), // Kolom N: Mitra Statistik
+        honorDetailsFormatted,             // Kolom O: Rincian Keseluruhan
+        "",                               // Kolom P: Status (kosong dulu)
+        ""                                // Kolom Q: Link (kosong dulu)
+        // TOTAL 17 kolom? Mari kita hitung: A-Q = 17 kolom
+        // Tapi header ada 17 item? Mari kita buat 17 kolom dulu
       ];
 
-      console.log('📋 [SPJHonor] Final data array (17 kolom):', rowData);
+      console.log('📋 [SPJHonor] Final data array:', rowData);
       console.log('🔢 [SPJHonor] Total columns:', rowData.length);
       console.log('🆔 [SPJHonor] SPJ ID:', spjId);
+      console.log('📊 [SPJHonor] Range yang akan digunakan:', `${SHEET_NAME}!A:Q`);
 
-      // 6. Submit ke Google Sheets
+      // 5. Submit ke Google Sheets
       console.log('🚀 [SPJHonor] Calling submitData...');
-      await submitData(rowData, currentSheetName);
+      await submitData(rowData);
 
       toast({
         title: "Berhasil!",
