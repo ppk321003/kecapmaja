@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarIcon, FileText } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarIcon, FileText, Search, ChevronDown, User, Users, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
-import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,12 @@ const suratKeputusanSchema = z.object({
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 
+type Person = {
+  id: string;
+  name: string;
+  jabatan?: string;
+};
+
 type MasterKegiatan = {
   index: number;
   role: string;
@@ -76,6 +83,354 @@ type MasterKegiatan = {
 const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
+
+// Custom hook untuk mengambil data organik dari database
+const useOrganikList = () => {
+  const [organikList, setOrganikList] = useState<Person[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchOrganik = async () => {
+      try {
+        console.log('📥 Fetching organik data...');
+        
+        // Gunakan RPC atau langsung query dengan type assertion
+        const { data, error: fetchError } = await supabase
+          .from('organik_bps')
+          .select('id, name, jabatan')
+          .order('name');
+
+        if (fetchError) {
+          console.error('❌ Error fetching organik:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('✅ Organik data fetched:', data);
+        
+        if (data && data.length > 0) {
+          const formattedData: Person[] = data.map(item => ({
+            id: item.id.toString(),
+            name: item.name,
+            jabatan: item.jabatan
+          }));
+          setOrganikList(formattedData);
+        }
+      } catch (err: any) {
+        console.error('❌ Error in useOrganikList:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrganik();
+  }, []);
+
+  return { data: organikList, isLoading, error };
+};
+
+// Custom hook untuk mengambil data mitra dari database
+const useMitraList = () => {
+  const [mitraList, setMitraList] = useState<Person[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMitra = async () => {
+      try {
+        console.log('📥 Fetching mitra data...');
+        
+        // Gunakan RPC atau langsung query dengan type assertion
+        const { data, error: fetchError } = await supabase
+          .from('mitra_statistik')
+          .select('id, name, jabatan')
+          .order('name');
+
+        if (fetchError) {
+          console.error('❌ Error fetching mitra:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('✅ Mitra data fetched:', data);
+        
+        if (data && data.length > 0) {
+          const formattedData: Person[] = data.map(item => ({
+            id: item.id.toString(),
+            name: item.name,
+            jabatan: item.jabatan
+          }));
+          setMitraList(formattedData);
+        }
+      } catch (err: any) {
+        console.error('❌ Error in useMitraList:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMitra();
+  }, []);
+
+  return { data: mitraList, isLoading, error };
+};
+
+// Custom MultiSelect Component berdasarkan skrip DaftarHadir
+interface MultiSelectProps {
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  options: Person[];
+  placeholder?: string;
+  loading?: boolean;
+  type: 'organik' | 'mitra';
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  loading = false,
+  type
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (option.jabatan && option.jabatan.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [options, searchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (optionId: string) => {
+    if (value.includes(optionId)) {
+      onValueChange(value.filter(id => id !== optionId));
+    } else {
+      onValueChange([...value, optionId]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (value.length === filteredOptions.length) {
+      onValueChange([]);
+    } else {
+      onValueChange(filteredOptions.map(option => option.id));
+    }
+  };
+
+  const selectedOptions = useMemo(() => {
+    return options.filter(option => value.includes(option.id));
+  }, [options, value]);
+
+  const toggleDropdown = () => setIsOpen(!isOpen);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={toggleDropdown}
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "min-h-[40px]"
+        )}
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : selectedOptions.length > 0 ? (
+            <div className="flex items-center gap-1">
+              {type === 'organik' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+              <span className="truncate">
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'} terpilih
+              </span>
+            </div>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+          <div className="border-b p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={`Cari ${type === 'organik' ? 'organik' : 'mitra'}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+                autoFocus
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+
+          <div className="px-3 py-2 border-b">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full h-8 justify-start"
+              onClick={handleSelectAll}
+            >
+              {value.length === filteredOptions.length ? (
+                <>Batalkan semua pilihan</>
+              ) : (
+                <>Pilih semua ({filteredOptions.length})</>
+              )}
+            </Button>
+          </div>
+
+          <ScrollArea className="max-h-64">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = value.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => handleSelect(option.id)}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-blue-50 border border-blue-200"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "border-gray-300"
+                      )}>
+                        {isSelected && (
+                          <div className="h-2 w-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn(
+                            "font-medium truncate",
+                            isSelected && "text-blue-700"
+                          )}>
+                            {option.name}
+                          </p>
+                          {isSelected && (
+                            <Badge variant="outline" className="text-xs">
+                              Terpilih
+                            </Badge>
+                          )}
+                        </div>
+                        {option.jabatan && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {option.jabatan}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="border-t px-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Terpilih:</span>
+              <span className="font-medium text-green-600">
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Custom hook untuk mengambil data master kegiatan
+const useMasterKegiatan = () => {
+  const [masterData, setMasterData] = useState<MasterKegiatan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: MASTER_SPREADSHEET_ID,
+            operation: "read",
+            range: "Sheet1!A:F"
+          }
+        });
+
+        if (error) {
+          throw new Error(`Gagal mengambil data master: ${error.message}`);
+        }
+
+        const values = data?.values || [];
+        
+        if (values.length <= 1) {
+          setMasterData([]);
+          return;
+        }
+
+        const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
+          index: index + 1,
+          role: row[1] || "",
+          namaKegiatan: row[2] || "",
+          bebanAnggaran: row[3] || "",
+          harga: row[4] || "",
+          satuan: row[5] || ""
+        })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
+
+        setMasterData(kegiatanData);
+      } catch (err: any) {
+        console.error('❌ Error loading master kegiatan:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMasterData();
+  }, []);
+
+  return { masterData, isLoading, error };
+};
 
 // Custom hook untuk submit data
 const useSubmitSKToSheets = () => {
@@ -208,129 +563,13 @@ const generateSKId = async (): Promise<string> => {
   }
 };
 
-// Custom hook untuk mengambil data master kegiatan
-const useMasterKegiatan = () => {
-  const [masterData, setMasterData] = useState<MasterKegiatan[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchMasterData = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: MASTER_SPREADSHEET_ID,
-            operation: "read",
-            range: "Sheet1!A:F"
-          }
-        });
-
-        if (error) {
-          throw new Error(`Gagal mengambil data master: ${error.message}`);
-        }
-
-        const values = data?.values || [];
-        
-        if (values.length <= 1) {
-          setMasterData([]);
-          return;
-        }
-
-        const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
-          index: index + 1,
-          role: row[1] || "",
-          namaKegiatan: row[2] || "",
-          bebanAnggaran: row[3] || "",
-          harga: row[4] || "",
-          satuan: row[5] || ""
-        })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
-
-        setMasterData(kegiatanData);
-      } catch (err: any) {
-        console.error('❌ Error loading master kegiatan:', err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMasterData();
-  }, []);
-
-  return { masterData, isLoading, error };
-};
-
-// Custom Select Component dengan search
-interface CustomSelectProps {
-  placeholder?: string;
-  options: { value: string; label: string; }[];
-  value: any;
-  onChange: (value: any) => void;
-  isMulti?: boolean;
-  isSearchable?: boolean;
-  isDisabled?: boolean;
-  isLoading?: boolean;
-  noOptionsMessage?: () => string;
-}
-
-const CustomSelect: React.FC<CustomSelectProps> = ({
-  placeholder,
-  options,
-  value,
-  onChange,
-  isMulti = false,
-  isSearchable = true,
-  isDisabled = false,
-  isLoading = false,
-  noOptionsMessage,
-}) => {
-  return (
-    <Select
-      placeholder={placeholder}
-      options={options}
-      value={isMulti 
-        ? options.filter(option => value.includes(option.value))
-        : options.find(option => option.value === value)
-      }
-      onChange={(selected) => {
-        if (isMulti) {
-          const values = selected ? (Array.isArray(selected) ? selected.map(s => s.value) : []) : [];
-          onChange(values);
-        } else {
-          onChange(selected?.value || "");
-        }
-      }}
-      isMulti={isMulti}
-      isSearchable={isSearchable}
-      isDisabled={isDisabled}
-      isLoading={isLoading}
-      noOptionsMessage={noOptionsMessage}
-      className="react-select-container"
-      classNamePrefix="react-select"
-      styles={{
-        control: (base) => ({
-          ...base,
-          minHeight: '42px',
-          borderColor: '#e2e8f0',
-          '&:hover': {
-            borderColor: '#cbd5e1'
-          }
-        }),
-        menu: (base) => ({
-          ...base,
-          zIndex: 50
-        })
-      }}
-    />
-  );
-};
-
 const SuratKeputusan = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
+  const [selectedOrganikDetails, setSelectedOrganikDetails] = useState<Person[]>([]);
+  const [selectedMitraDetails, setSelectedMitraDetails] = useState<Person[]>([]);
+  const { data: organikList, isLoading: isLoadingOrganik } = useOrganikList();
+  const { data: mitraList, isLoading: isLoadingMitra } = useMitraList();
   const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
   
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
@@ -356,20 +595,23 @@ const SuratKeputusan = () => {
     }
   });
 
-  const organikOptions = organikList.map(organik => ({
-    value: organik.id,
-    label: organik.name
-  }));
+  // Watch untuk mendapatkan nilai yang dipilih
+  const watchedOrganik = form.watch("organik") || [];
+  const watchedMitra = form.watch("mitraStatistik") || [];
 
-  const mitraOptions = mitraList.map(mitra => ({
-    value: mitra.id,
-    label: mitra.name
-  }));
-
-  const kegiatanOptions = masterData.map(item => ({
-    value: item.index.toString(),
-    label: item.namaKegiatan
-  }));
+  // Update selected organik and mitra details
+  useEffect(() => {
+    const updatedOrganik = watchedOrganik
+      .map(id => organikList.find(item => item.id === id))
+      .filter(Boolean) as Person[];
+    
+    const updatedMitra = watchedMitra
+      .map(id => mitraList.find(item => item.id === id))
+      .filter(Boolean) as Person[];
+    
+    setSelectedOrganikDetails(updatedOrganik);
+    setSelectedMitraDetails(updatedMitra);
+  }, [watchedOrganik, watchedMitra, organikList, mitraList]);
 
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
@@ -401,8 +643,6 @@ const SuratKeputusan = () => {
       const sequenceNumber = await getNextSequenceNumber();
       const skId = await generateSKId();
 
-      const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
-      const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
       const rowData = [
@@ -418,15 +658,20 @@ const SuratKeputusan = () => {
         data.memutuskanKedua,
         `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
         formatTanggalIndonesia(data.tanggalSuratKeputusan),
-        selectedOrganiks.map(o => o.name).join(" | "),
-        selectedMitras.map(m => m.name).join(" | "),
+        selectedOrganikDetails.map(o => o.name).join(" | "),
+        selectedMitraDetails.map(m => m.name).join(" | "),
         selectedPembuat?.name || "",
         data.selectedKegiatanId || ""
       ];
 
+      console.log('📝 Submitting SK data:', rowData);
+
       await submitData(rowData);
 
       form.reset();
+      setSelectedOrganikDetails([]);
+      setSelectedMitraDetails([]);
+      
       toast({
         title: "Berhasil",
         description: `Surat keputusan berhasil disimpan (ID: ${skId})`
@@ -443,6 +688,19 @@ const SuratKeputusan = () => {
     }
   };
 
+  // Fungsi untuk menghapus organik
+  const removeOrganik = (id: string) => {
+    const currentOrganik = form.getValues("organik") || [];
+    form.setValue("organik", currentOrganik.filter(orgId => orgId !== id));
+  };
+
+  // Fungsi untuk menghapus mitra
+  const removeMitra = (id: string) => {
+    const currentMitra = form.getValues("mitraStatistik") || [];
+    form.setValue("mitraStatistik", currentMitra.filter(mitraId => mitraId !== id));
+  };
+
+  const totalSelected = selectedOrganikDetails.length + selectedMitraDetails.length;
   const isLoading = isSubmitting || isSubmitLoading;
 
   return (
@@ -467,41 +725,46 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Nomor Surat Keputusan dan Tentang dengan layout yang lebih baik */}
+                {/* Nomor Surat Keputusan dan Tentang */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   <div className="lg:col-span-1">
                     <FormField control={form.control} name="nomorSuratKeputusan" render={({
-                    field
-                  }) => <FormItem>
-                          <FormLabel>Nomor Surat Keputusan</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Contoh: 123/KD.01/ST/2024" 
-                              className="w-full" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
+                      field
+                    }) => (
+                      <FormItem>
+                        <FormLabel>Nomor Surat Keputusan</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Contoh: 123/KD.01/ST/2024" 
+                            className="w-full" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                   
                   <div className="lg:col-span-3">
                     <FormField control={form.control} name="tentang" render={({
-                    field
-                  }) => <FormItem>
-                          <FormLabel>Tentang</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Masukkan tentang (dapat berisi teks panjang)" 
-                              className="min-h-[100px]" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
+                      field
+                    }) => (
+                      <FormItem>
+                        <FormLabel>Tentang</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Masukkan tentang (dapat berisi teks panjang)" 
+                            className="min-h-[100px]" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                 </div>
 
+                {/* Bagian Menimbang */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
                   <div className="bg-blue-50 p-4 rounded-lg text-sm text-gray-700">
@@ -531,46 +794,55 @@ const SuratKeputusan = () => {
                   </div>
                   
                   <FormField control={form.control} name="menimbangKesatu" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KESATU - (Wajib)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem>
+                      <FormLabel>KESATU - (Wajib)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   <FormField control={form.control} name="menimbangKedua" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KEDUA (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem>
+                      <FormLabel>KEDUA (Opsional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   <FormField control={form.control} name="menimbangKetiga" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KETIGA - (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem>
+                      <FormLabel>KETIGA - (Opsional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   <FormField control={form.control} name="menimbangKeempat" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KEEMPAT - (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem>
+                      <FormLabel>KEEMPAT - (Opsional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
 
+                {/* Bagian Memutuskan */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
                   <div className="bg-green-50 p-4 rounded-lg text-sm text-gray-700">
@@ -597,45 +869,53 @@ const SuratKeputusan = () => {
                   </div>
                   
                   <FormField control={form.control} name="memutuskanKesatu" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KESATU - (Wajib)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem>
+                      <FormLabel>KESATU - (Wajib)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
                   {/* Bagian Memutuskan Kedua dengan dropdown */}
                   <div className="space-y-4">
                     <FormField control={form.control} name="memutuskanKedua" render={({
-                    field
-                  }) => <FormItem>
-                          <FormLabel>KEDUA - (Wajib)</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" 
-                              className="min-h-[100px] font-mono text-sm" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
+                      field
+                    }) => (
+                      <FormItem>
+                        <FormLabel>KEDUA - (Wajib)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" 
+                            className="min-h-[100px] font-mono text-sm" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
 
                     {/* Dropdown untuk memilih dari master kegiatan */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Pilih dari Master Kegiatan (Opsional):</label>
-                      <CustomSelect
-                        placeholder={isLoadingMaster ? "Memuat data..." : "Cari dan pilih kegiatan..."}
-                        options={kegiatanOptions}
-                        value={form.watch("selectedKegiatanId")}
-                        onChange={handleKegiatanSelect}
-                        isMulti={false}
-                        isSearchable={true}
-                        isDisabled={isLoadingMaster}
-                        isLoading={isLoadingMaster}
-                        noOptionsMessage={() => "Data tidak ditemukan"}
-                      />
+                      <Select
+                        onValueChange={handleKegiatanSelect}
+                        disabled={isLoadingMaster}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingMaster ? "Memuat data..." : "Cari dan pilih kegiatan..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {masterData.map((item) => (
+                            <SelectItem key={item.index} value={item.index.toString()}>
+                              {item.namaKegiatan}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <p className="text-xs text-muted-foreground">
                         Pilih dari dropdown atau ketik manual dengan format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
                       </p>
@@ -647,148 +927,265 @@ const SuratKeputusan = () => {
                     <h4 className="text-md font-semibold text-gray-700">KETIGA - (Wajib)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField control={form.control} name="tanggalMulai" render={({
-                      field
-                    }) => <FormItem className="flex flex-col">
-                            <FormLabel>Tanggal Mulai</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd MMMM yyyy", {
-                                locale: id
-                              }) : <span>Pilih tanggal mulai</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar 
-                                  mode="single" 
-                                  selected={field.value} 
-                                  onSelect={field.onChange} 
-                                  disabled={date => date < new Date("1900-01-01")} 
-                                  initialFocus 
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>} />
+                        field
+                      }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Tanggal Mulai</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal mulai"}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={field.value} 
+                                onSelect={field.onChange} 
+                                disabled={date => date < new Date("1900-01-01")} 
+                                initialFocus 
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
 
                       <FormField control={form.control} name="tanggalSelesai" render={({
-                      field
-                    }) => <FormItem className="flex flex-col">
-                            <FormLabel>Tanggal Selesai</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd MMMM yyyy", {
-                                locale: id
-                              }) : <span>Pilih tanggal selesai</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar 
-                                  mode="single" 
-                                  selected={field.value} 
-                                  onSelect={field.onChange} 
-                                  disabled={date => {
-                                    const tanggalMulai = form.getValues("tanggalMulai");
-                                    return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
-                                  }} 
-                                  initialFocus 
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>} />
+                        field
+                      }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Tanggal Selesai</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal selesai"}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={field.value} 
+                                onSelect={field.onChange} 
+                                disabled={date => {
+                                  const tanggalMulai = form.getValues("tanggalMulai");
+                                  return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
+                                }} 
+                                initialFocus 
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="tanggalSuratKeputusan" render={({
-                  field
-                }) => <FormItem className="flex flex-col">
-                        <FormLabel>Tanggal Surat Keputusan</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "dd MMMM yyyy", {
-                            locale: id
-                          }) : <span>Pilih tanggal</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar 
-                              mode="single" 
-                              selected={field.value} 
-                              onSelect={field.onChange} 
-                              disabled={date => date < new Date("1900-01-01")} 
-                              initialFocus 
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>} />
+                    field
+                  }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Tanggal Surat Keputusan</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                              {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal"}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar 
+                            mode="single" 
+                            selected={field.value} 
+                            onSelect={field.onChange} 
+                            disabled={date => date < new Date("1900-01-01")} 
+                            initialFocus 
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField control={form.control} name="organik" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Organik</FormLabel>
+                {/* Bagian Personel */}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Organik */}
+                    <FormField control={form.control} name="organik" render={({
+                      field
+                    }) => (
+                      <FormItem>
+                        <FormLabel>Organik BPS</FormLabel>
                         <FormControl>
-                          <CustomSelect 
-                            placeholder="Cari dan pilih organik" 
-                            options={organikOptions} 
-                            value={field.value} 
-                            onChange={field.onChange} 
-                            isMulti={true} 
-                            isSearchable={true}
+                          <MultiSelect
+                            value={field.value || []}
+                            onValueChange={field.onChange}
+                            options={organikList}
+                            placeholder={isLoadingOrganik ? "Memuat data..." : "Pilih organik"}
+                            loading={isLoadingOrganik}
+                            type="organik"
                           />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )} />
 
-                  <FormField control={form.control} name="mitraStatistik" render={({
-                  field
-                }) => <FormItem>
+                    {/* Mitra Statistik */}
+                    <FormField control={form.control} name="mitraStatistik" render={({
+                      field
+                    }) => (
+                      <FormItem>
                         <FormLabel>Mitra Statistik</FormLabel>
                         <FormControl>
-                          <CustomSelect 
-                            placeholder="Cari dan pilih mitra statistik" 
-                            options={mitraOptions} 
-                            value={field.value} 
-                            onChange={field.onChange} 
-                            isMulti={true} 
-                            isSearchable={true}
+                          <MultiSelect
+                            value={field.value || []}
+                            onValueChange={field.onChange}
+                            options={mitraList}
+                            placeholder={isLoadingMitra ? "Memuat data..." : "Pilih mitra"}
+                            loading={isLoadingMitra}
+                            type="mitra"
                           />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )} />
 
-                  <FormField control={form.control} name="pembuatDaftar" render={({
-                  field
-                }) => <FormItem>
+                    {/* Pembuat Daftar */}
+                    <FormField control={form.control} name="pembuatDaftar" render={({
+                      field
+                    }) => (
+                      <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <FormControl>
-                          <CustomSelect 
-                            placeholder="Cari dan pilih pembuat daftar" 
-                            options={organikOptions} 
-                            value={field.value} 
-                            onChange={field.onChange} 
-                            isMulti={false} 
-                            isSearchable={true}
-                          />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih pembuat daftar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organikList.map((organik) => (
+                              <SelectItem key={organik.id} value={organik.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{organik.name}</span>
+                                  {organik.jabatan && (
+                                    <span className="text-xs text-muted-foreground">{organik.jabatan}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
-                      </FormItem>} />
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  {/* Tampilkan yang dipilih */}
+                  <Card className="border">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Users className="h-5 w-5" />
+                          Personel Terpilih
+                        </CardTitle>
+                        <Badge variant="outline" className="text-sm">
+                          Total: {totalSelected} orang
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Organik Terpilih */}
+                      {selectedOrganikDetails.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <h4 className="font-medium text-blue-700">Organik BPS ({selectedOrganikDetails.length})</h4>
+                          </div>
+                          <ScrollArea className="max-h-40 rounded-md border p-2">
+                            <div className="space-y-2">
+                              {selectedOrganikDetails.map(org => (
+                                <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-blue-50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium truncate">{org.name}</p>
+                                      <Badge variant="outline" className="text-xs bg-blue-100">
+                                        Organik
+                                      </Badge>
+                                    </div>
+                                    {org.jabatan && (
+                                      <p className="text-sm text-muted-foreground mt-1">{org.jabatan}</p>
+                                    )}
+                                  </div>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => removeOrganik(org.id)}
+                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+
+                      {/* Mitra Terpilih */}
+                      {selectedMitraDetails.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-green-600" />
+                            <h4 className="font-medium text-green-700">Mitra Statistik ({selectedMitraDetails.length})</h4>
+                          </div>
+                          <ScrollArea className="max-h-40 rounded-md border p-2">
+                            <div className="space-y-2">
+                              {selectedMitraDetails.map(mitra => (
+                                <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-green-50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium truncate">{mitra.name}</p>
+                                      <Badge variant="outline" className="text-xs bg-green-100">
+                                        Mitra
+                                      </Badge>
+                                    </div>
+                                    {mitra.jabatan && (
+                                      <p className="text-sm text-muted-foreground mt-1">{mitra.jabatan}</p>
+                                    )}
+                                  </div>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => removeMitra(mitra.id)}
+                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+
+                      {totalSelected === 0 && (
+                        <div className="text-center py-4 text-gray-500">
+                          Belum ada personel yang dipilih
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <div className="flex justify-end space-x-4 pt-6 border-t">
@@ -799,8 +1196,17 @@ const SuratKeputusan = () => {
                   >
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isLoading || isLoadingMaster}>
-                    {isLoading ? "Menyimpan..." : "Simpan Surat Keputusan"}
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading || isLoadingMaster}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
               </form>
