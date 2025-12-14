@@ -96,6 +96,14 @@ const DEFAULT_KEGIATAN: KegiatanItem = {
   satuan: ""
 };
 
+// CONTOH TEXT untuk membantu user
+const CONTOH_MENIMBANG_KESATU = "Bahwa untuk kelancaran Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka perlu menetapkan Petugas Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka;";
+const CONTOH_MENIMBANG_KEDUA = "Bahwa dalam upaya meningkatkan kualitas data dan pengawasan pelaksanaan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026, diperlukan pengaturan yang jelas mengenai tugas dan tanggung jawab setiap petugas;";
+const CONTOH_MENIMBANG_KETIGA = "Bahwa untuk memenuhi kebutuhan data yang akurat dan tepat waktu sesuai dengan target yang telah ditetapkan oleh Badan Pusat Statistik Pusat, diperlukan penunjukkan petugas yang kompeten dan berdedikasi;";
+const CONTOH_MENIMBANG_KEEMPAT = "Bahwa segala biaya yang timbul sebagai akibat pelaksanaan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 dibebankan pada DIPA Badan Pusat Statistik Kabupaten Majalengka Tahun Anggaran 2026;";
+
+const CONTOH_MEMUTUSKAN_KESATU = "PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026";
+
 // Custom hook untuk mengambil data organik DARI GOOGLE SHEETS (bukan database)
 const useOrganikList = () => {
   const [organikList, setOrganikList] = useState<Person[]>([]);
@@ -517,7 +525,7 @@ const useSubmitSKToSheets = () => {
   return { submitData, isSubmitting };
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya
+// FUNGSI YANG DIPERBAIKI: Mendapatkan nomor urut berikutnya dengan benar
 const getNextSequenceNumber = async (): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
@@ -532,39 +540,54 @@ const getNextSequenceNumber = async (): Promise<number> => {
 
     const values = data?.values || [];
     
+    // Jika hanya header atau kosong
     if (values.length <= 1) return 1;
 
+    // Ambil semua nilai dari kolom A, skip header
     const sequenceNumbers = values
       .slice(1)
       .map((row: any[]) => {
         const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
+        if (!value) return 0;
+        
+        // Coba parse sebagai number
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed === '') return 0;
+          const num = parseInt(trimmed);
           return isNaN(num) ? 0 : num;
+        } else if (typeof value === 'number') {
+          return value;
         }
         return 0;
       })
       .filter(num => num > 0);
 
-    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+    if (sequenceNumbers.length === 0) return 1;
+
+    // Cari nilai maksimum dan tambah 1
+    const maxNumber = Math.max(...sequenceNumbers);
+    return maxNumber + 1;
   } catch (error) {
+    console.error("Error generating sequence number:", error);
     throw error;
   }
 };
 
-// Fungsi untuk generate ID surat keputusan
+// FUNGSI YANG DIPERBAIKI: Generate ID surat keputusan yang benar
 const generateSKId = async (): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `sk-${year}${month}`;
+    const prefix = `SK-${year}${month}`;
 
+    // Ambil semua ID yang sudah ada
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
         operation: "read",
-        range: `${SHEET_NAME}!B:B`
+        range: `${SHEET_NAME}!B:B` // Kolom B adalah ID
       }
     });
 
@@ -572,24 +595,41 @@ const generateSKId = async (): Promise<string> => {
 
     const values = data?.values || [];
     
-    if (values.length <= 1) return `${prefix}001`;
+    // Jika hanya header atau kosong
+    if (values.length <= 1) return `${prefix}-001`;
 
+    // Ambil semua ID dari bulan ini
     const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[1])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
+      .slice(1) // Skip header
+      .map((row: any[]) => {
+        const id = row[0];
+        if (!id || typeof id !== 'string') return null;
+        
+        // Cek apakah ID sesuai dengan pattern bulan ini
+        if (id.startsWith(prefix)) {
+          // Ekstrak angka dari format SK-YYMM-XXX
+          const parts = id.split('-');
+          if (parts.length >= 2) {
+            const numPart = parts[parts.length - 1];
+            const num = parseInt(numPart);
+            return isNaN(num) ? 0 : num;
+          }
+        }
+        return null;
       })
-      .filter(num => num > 0);
+      .filter((num): num is number => num !== null && num > 0);
 
-    if (currentMonthIds.length === 0) return `${prefix}001`;
+    // Jika tidak ada ID untuk bulan ini
+    if (currentMonthIds.length === 0) return `${prefix}-001`;
 
-    const nextNum = Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+    // Cari nilai maksimum dan tambah 1
+    const maxNumber = Math.max(...currentMonthIds);
+    const nextNumber = maxNumber + 1;
+    
+    // Format dengan leading zeros
+    return `${prefix}-${nextNumber.toString().padStart(3, '0')}`;
   } catch (error) {
+    console.error("Error generating SK ID:", error);
     throw error;
   }
 };
@@ -614,11 +654,11 @@ const SuratKeputusan = () => {
     defaultValues: {
       nomorSuratKeputusan: "",
       tentang: "",
-      menimbangKesatu: "",
+      menimbangKesatu: CONTOH_MENIMBANG_KESATU, // Default dengan contoh
       menimbangKedua: "",
       menimbangKetiga: "",
       menimbangKeempat: "",
-      memutuskanKesatu: "",
+      memutuskanKesatu: CONTOH_MEMUTUSKAN_KESATU, // Default dengan contoh
       kegiatanList: [DEFAULT_KEGIATAN],
       tanggalMulai: undefined,
       tanggalSelesai: undefined,
@@ -717,16 +757,18 @@ const SuratKeputusan = () => {
         data.kegiatanList.length.toString()
       ];
 
+      console.log('Submitting data:', rowData);
       await submitData(rowData);
 
+      // Reset form dengan contoh default
       form.reset({
         nomorSuratKeputusan: "",
         tentang: "",
-        menimbangKesatu: "",
+        menimbangKesatu: CONTOH_MENIMBANG_KESATU,
         menimbangKedua: "",
         menimbangKetiga: "",
         menimbangKeempat: "",
-        memutuskanKesatu: "",
+        memutuskanKesatu: CONTOH_MEMUTUSKAN_KESATU,
         kegiatanList: [DEFAULT_KEGIATAN],
         tanggalMulai: undefined,
         tanggalSelesai: undefined,
@@ -828,171 +870,291 @@ const SuratKeputusan = () => {
 
                 {/* Bagian MENIMBANG */}
                 <AccordionSection title="MENIMBANG" color="red" badge="Wajib">
-                  <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm text-red-600 flex items-center gap-1">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                        <span>Bahwa untuk kelancaran...</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Contoh: Bahwa untuk kelancaran Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026..."
-                          className="min-h-[80px] text-sm" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )} />
+                  <div className="space-y-3">
+                    <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                          <FormLabel className="text-sm text-red-600">(Wajib diisi)</FormLabel>
+                        </div>
+                        <div className="mb-2 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                          <div className="font-medium mb-1">Contoh lengkap:</div>
+                          <div className="italic">{CONTOH_MENIMBANG_KESATU}</div>
+                        </div>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Salin atau modifikasi contoh di atas sesuai kebutuhan"
+                            className="min-h-[100px] text-sm" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )} />
 
-                  <div className="space-y-2">
-                    {!showMenimbangKedua && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowMenimbangKedua(true)}
-                        className="h-8 text-xs border-dashed"
-                      >
-                        + Tambah Menimbang Kedua (Opsional)
-                      </Button>
-                    )}
-                    
-                    {showMenimbangKedua && (
-                      <div className="border-l-2 border-gray-200 pl-3">
-                        <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
-                          <FormItem>
-                            <div className="flex justify-between items-center mb-1">
-                              <FormLabel className="text-sm text-gray-600">KEDUA (Opsional)</FormLabel>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowMenimbangKedua(false)}
-                                className="h-6 w-6 text-gray-500"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Menimbang kedua..." 
-                                className="min-h-[60px] text-sm" 
-                                {...field} 
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-                    )}
+                    {/* Tombol untuk menambah menimbang opsional */}
+                    <div className="space-y-2">
+                      {!showMenimbangKedua && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKedua(true)}
+                          className="h-8 text-xs border-dashed w-full"
+                        >
+                          + Tambah Menimbang Kedua (Opsional)
+                        </Button>
+                      )}
+                      
+                      {showMenimbangKedua && (
+                        <div className="border-l-2 border-gray-200 pl-3">
+                          <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
+                            <FormItem>
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEDUA</Badge>
+                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowMenimbangKedua(false)}
+                                  className="h-6 w-6 text-gray-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                                <div className="font-medium mb-1">Contoh:</div>
+                                <div className="italic">{CONTOH_MENIMBANG_KEDUA}</div>
+                              </div>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Menimbang kedua..." 
+                                  className="min-h-[80px] text-sm" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )} />
+                        </div>
+                      )}
+
+                      {showMenimbangKedua && !showMenimbangKetiga && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKetiga(true)}
+                          className="h-8 text-xs border-dashed w-full"
+                        >
+                          + Tambah Menimbang Ketiga (Opsional)
+                        </Button>
+                      )}
+                      
+                      {showMenimbangKetiga && (
+                        <div className="border-l-2 border-gray-200 pl-3">
+                          <FormField control={form.control} name="menimbangKetiga" render={({ field }) => (
+                            <FormItem>
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KETIGA</Badge>
+                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowMenimbangKetiga(false)}
+                                  className="h-6 w-6 text-gray-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                                <div className="font-medium mb-1">Contoh:</div>
+                                <div className="italic">{CONTOH_MENIMBANG_KETIGA}</div>
+                              </div>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Menimbang ketiga..." 
+                                  className="min-h-[80px] text-sm" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )} />
+                        </div>
+                      )}
+
+                      {showMenimbangKetiga && !showMenimbangKeempat && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKeempat(true)}
+                          className="h-8 text-xs border-dashed w-full"
+                        >
+                          + Tambah Menimbang Keempat (Opsional)
+                        </Button>
+                      )}
+                      
+                      {showMenimbangKeempat && (
+                        <div className="border-l-2 border-gray-200 pl-3">
+                          <FormField control={form.control} name="menimbangKeempat" render={({ field }) => (
+                            <FormItem>
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEEMPAT</Badge>
+                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowMenimbangKeempat(false)}
+                                  className="h-6 w-6 text-gray-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                                <div className="font-medium mb-1">Contoh:</div>
+                                <div className="italic">{CONTOH_MENIMBANG_KEEMPAT}</div>
+                              </div>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Menimbang keempat..." 
+                                  className="min-h-[80px] text-sm" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )} />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </AccordionSection>
 
                 {/* Bagian MEMUTUSKAN */}
                 <AccordionSection title="MEMUTUSKAN" color="red">
-                  <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm text-red-600 flex items-center gap-1">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                        <span>PETUGAS...</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
-                          className="h-10" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )} />
-
-                  {/* Kegiatan */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <FormLabel className="text-sm font-medium text-gray-700">KEGIATAN YANG DIPUTUSKAN</FormLabel>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddKegiatan}
-                        className="h-8 px-3 text-xs"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Tambah
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      {fields.map((field, index) => (
-                        <KegiatanItemCompact
-                          key={field.id}
-                          index={index}
-                          item={kegiatanList[index] || DEFAULT_KEGIATAN}
-                          onUpdate={handleUpdateKegiatan}
-                          onRemove={handleRemoveKegiatan}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                    <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                          <FormLabel className="text-sm text-red-600">Menetapkan</FormLabel>
+                        </div>
+                        <div className="mb-2 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                          <div className="font-medium mb-1">Contoh:</div>
+                          <div className="italic">{CONTOH_MEMUTUSKAN_KESATU}</div>
+                        </div>
+                        <FormControl>
+                          <Input 
+                            placeholder="Salin atau modifikasi contoh di atas" 
+                            className="h-10" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )} />
 
-                  {/* Tanggal Range */}
-                  <div className="space-y-2">
-                    <FormLabel className="text-sm font-medium text-gray-700">JANGKA WAKTU PELAKSANAAN</FormLabel>
-                    <div className="flex items-center gap-3">
-                      <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Mulai"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar 
-                                  mode="single" 
-                                  selected={field.value} 
-                                  onSelect={field.onChange} 
-                                  initialFocus 
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )} />
+                    {/* Kegiatan */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KEDUA</Badge>
+                          <FormLabel className="text-sm font-medium text-gray-700">Kegiatan yang Diputuskan (Minimal 1)</FormLabel>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddKegiatan}
+                          className="h-8 px-3 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Tambah Kegiatan
+                        </Button>
+                      </div>
                       
-                      <span className="text-gray-400">sampai</span>
-                      
-                      <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Selesai"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar 
-                                  mode="single" 
-                                  selected={field.value} 
-                                  onSelect={field.onChange}
-                                  disabled={date => {
-                                    const tanggalMulai = form.getValues("tanggalMulai");
-                                    return tanggalMulai ? date < tanggalMulai : false;
-                                  }}
-                                  initialFocus 
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </FormControl>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )} />
+                      <div className="space-y-2">
+                        {fields.map((field, index) => (
+                          <KegiatanItemCompact
+                            key={field.id}
+                            index={index}
+                            item={kegiatanList[index] || DEFAULT_KEGIATAN}
+                            onUpdate={handleUpdateKegiatan}
+                            onRemove={handleRemoveKegiatan}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tanggal Range */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KETIGA</Badge>
+                        <FormLabel className="text-sm font-medium text-gray-700">Jangka Waktu Pelaksanaan</FormLabel>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Mulai"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar 
+                                    mode="single" 
+                                    selected={field.value} 
+                                    onSelect={field.onChange} 
+                                    initialFocus 
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+                        
+                        <span className="text-gray-400">sampai</span>
+                        
+                        <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Selesai"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar 
+                                    mode="single" 
+                                    selected={field.value} 
+                                    onSelect={field.onChange}
+                                    disabled={date => {
+                                      const tanggalMulai = form.getValues("tanggalMulai");
+                                      return tanggalMulai ? date < tanggalMulai : false;
+                                    }}
+                                    initialFocus 
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )} />
+                      </div>
                     </div>
                   </div>
                 </AccordionSection>
