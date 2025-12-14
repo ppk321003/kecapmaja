@@ -21,12 +21,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 // Type untuk Kegiatan Item
-interface KegiatanItem {
+type KegiatanItem = {
   namaKegiatan: string;
   bebanAnggaran: string;
   harga: string;
   satuan: string;
-}
+};
 
 // Schema Zod dengan validasi baru untuk multiple kegiatan
 const suratKeputusanSchema = z.object({
@@ -69,20 +69,20 @@ const suratKeputusanSchema = z.object({
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 
-interface Person {
+type Person = {
   id: string;
   name: string;
   jabatan?: string;
-}
+};
 
-interface MasterKegiatan {
+type MasterKegiatan = {
   index: number;
   role: string;
   namaKegiatan: string;
   bebanAnggaran: string;
   harga: string;
   satuan: string;
-}
+};
 
 // Constants
 const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
@@ -416,8 +416,6 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
   masterData,
   onSelectFromMaster
 }) => {
-  const [showMasterDropdown, setShowMasterDropdown] = useState(false);
-
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
       <div className="flex items-center justify-between">
@@ -448,7 +446,6 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               const selectedMaster = masterData.find(m => m.index.toString() === value);
               if (selectedMaster) {
                 onSelectFromMaster(index, selectedMaster);
-                setShowMasterDropdown(false);
               }
             }}
           >
@@ -740,7 +737,8 @@ const SuratKeputusan = () => {
     name: "kegiatanList"
   });
 
-  const kegiatanList = form.watch("kegiatanList") || [DEFAULT_KEGIATAN];
+  // Gunakan watch untuk mendapatkan nilai kegiatanList dengan tipe yang benar
+  const kegiatanList = form.watch("kegiatanList");
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
 
@@ -774,16 +772,20 @@ const SuratKeputusan = () => {
 
   // Handler untuk menghapus kegiatan
   const handleRemoveKegiatan = (index: number) => {
-    if (kegiatanList.length > 1) {
+    if (fields.length > 1) {
       remove(index);
     }
   };
 
   // Handler untuk update data kegiatan
   const handleUpdateKegiatan = (index: number, field: keyof KegiatanItem, value: string) => {
-    const currentKegiatanList = [...kegiatanList];
-    currentKegiatanList[index] = { ...currentKegiatanList[index], [field]: value };
-    form.setValue("kegiatanList", currentKegiatanList);
+    // Dapatkan nilai saat ini dari form
+    const currentValues = form.getValues("kegiatanList");
+    if (currentValues && currentValues[index]) {
+      const updatedList = [...currentValues];
+      updatedList[index] = { ...updatedList[index], [field]: value };
+      form.setValue("kegiatanList", updatedList);
+    }
   };
 
   // Handler untuk memilih dari master kegiatan
@@ -795,9 +797,12 @@ const SuratKeputusan = () => {
       satuan: masterItem.satuan
     };
     
-    const currentKegiatanList = [...kegiatanList];
-    currentKegiatanList[index] = updatedKegiatan;
-    form.setValue("kegiatanList", currentKegiatanList);
+    const currentValues = form.getValues("kegiatanList");
+    if (currentValues && currentValues[index]) {
+      const updatedList = [...currentValues];
+      updatedList[index] = updatedKegiatan;
+      form.setValue("kegiatanList", updatedList);
+    }
   };
 
   // Fungsi untuk format kegiatan menjadi string untuk spreadsheet
@@ -1048,7 +1053,7 @@ const SuratKeputusan = () => {
                         <KegiatanFormItem
                           key={field.id}
                           index={index}
-                          item={kegiatanList[index]}
+                          item={kegiatanList[index] || DEFAULT_KEGIATAN}
                           onUpdate={handleUpdateKegiatan}
                           onRemove={handleRemoveKegiatan}
                           masterData={masterData}
@@ -1058,7 +1063,7 @@ const SuratKeputusan = () => {
                     </div>
 
                     {/* Preview format yang akan disimpan */}
-                    {kegiatanList.some(k => k.namaKegiatan.trim() !== "") && (
+                    {kegiatanList && kegiatanList.some(k => k.namaKegiatan.trim() !== "") && (
                       <Card className="border-blue-200 bg-blue-50">
                         <CardContent className="pt-6">
                           <div className="space-y-2">
