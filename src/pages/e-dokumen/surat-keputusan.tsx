@@ -84,7 +84,7 @@ const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
-// Custom hook untuk mengambil data organik dari database
+// Custom hook untuk mengambil data organik DARI GOOGLE SHEETS (bukan database)
 const useOrganikList = () => {
   const [organikList, setOrganikList] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,28 +93,33 @@ const useOrganikList = () => {
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
-        console.log('📥 Fetching organik data...');
+        console.log('📥 Fetching organik data from Google Sheets...');
         
-        // Gunakan RPC atau langsung query dengan type assertion
-        const { data, error: fetchError } = await supabase
-          .from('organik_bps')
-          .select('id, name, jabatan')
-          .order('name');
+        // Ambil dari Google Sheets langsung (seperti di DaftarHadir)
+        const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+            operation: "read",
+            range: "MASTER.ORGANIK!A:E"
+          }
+        });
 
         if (fetchError) {
-          console.error('❌ Error fetching organik:', fetchError);
+          console.error('❌ Error fetching organik from Sheets:', fetchError);
           throw fetchError;
         }
 
-        console.log('✅ Organik data fetched:', data);
+        console.log('✅ Organik data fetched from Sheets:', data);
         
-        if (data && data.length > 0) {
-          const formattedData: Person[] = data.map(item => ({
-            id: item.id.toString(),
-            name: item.name,
-            jabatan: item.jabatan
-          }));
+        if (data?.values && data.values.length > 1) {
+          const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
+            id: row[1] || row[0] || "", // Column B is ID, fallback to Column A
+            name: row[3] || row[2] || "", // Column D is name, fallback to Column C
+            jabatan: row[4] || "" // Column E is jabatan
+          })).filter((item: Person) => item.id && item.name);
+          
           setOrganikList(formattedData);
+          console.log('📊 Formatted organik data:', formattedData);
         }
       } catch (err: any) {
         console.error('❌ Error in useOrganikList:', err);
@@ -130,7 +135,7 @@ const useOrganikList = () => {
   return { data: organikList, isLoading, error };
 };
 
-// Custom hook untuk mengambil data mitra dari database
+// Custom hook untuk mengambil data mitra DARI GOOGLE SHEETS (bukan database)
 const useMitraList = () => {
   const [mitraList, setMitraList] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,28 +144,33 @@ const useMitraList = () => {
   useEffect(() => {
     const fetchMitra = async () => {
       try {
-        console.log('📥 Fetching mitra data...');
+        console.log('📥 Fetching mitra data from Google Sheets...');
         
-        // Gunakan RPC atau langsung query dengan type assertion
-        const { data, error: fetchError } = await supabase
-          .from('mitra_statistik')
-          .select('id, name, jabatan')
-          .order('name');
+        // Ambil dari Google Sheets langsung
+        const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+            operation: "read",
+            range: "MASTER.MITRA!A:H"
+          }
+        });
 
         if (fetchError) {
-          console.error('❌ Error fetching mitra:', fetchError);
+          console.error('❌ Error fetching mitra from Sheets:', fetchError);
           throw fetchError;
         }
 
-        console.log('✅ Mitra data fetched:', data);
+        console.log('✅ Mitra data fetched from Sheets:', data);
         
-        if (data && data.length > 0) {
-          const formattedData: Person[] = data.map(item => ({
-            id: item.id.toString(),
-            name: item.name,
-            jabatan: item.jabatan
-          }));
+        if (data?.values && data.values.length > 1) {
+          const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
+            id: row[1] || row[0] || "", // Column B is ID
+            name: row[2] || "", // Column C is name
+            jabatan: row[4] || "" // Column E is jabatan/keterangan
+          })).filter((item: Person) => item.id && item.name);
+          
           setMitraList(formattedData);
+          console.log('📊 Formatted mitra data:', formattedData);
         }
       } catch (err: any) {
         console.error('❌ Error in useMitraList:', err);
@@ -703,6 +713,14 @@ const SuratKeputusan = () => {
   const totalSelected = selectedOrganikDetails.length + selectedMitraDetails.length;
   const isLoading = isSubmitting || isSubmitLoading;
 
+  // Debug: Log data untuk memastikan
+  useEffect(() => {
+    console.log('🔍 Organik List:', organikList);
+    console.log('🔍 Mitra List:', mitraList);
+    console.log('🔍 Selected Organik IDs:', watchedOrganik);
+    console.log('🔍 Selected Mitra IDs:', watchedMitra);
+  }, [organikList, mitraList, watchedOrganik, watchedMitra]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -767,31 +785,6 @@ const SuratKeputusan = () => {
                 {/* Bagian Menimbang */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
-                  <div className="bg-blue-50 p-4 rounded-lg text-sm text-gray-700">
-                    <p className="font-medium mb-2">Contoh penulisan:</p>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="font-semibold">- KESATU :</span>
-                        <br />
-                        bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka
-                      </div>
-                      <div>
-                        <span className="font-semibold">- KEDUA :</span>
-                        <br />
-                        (Opsional) bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka
-                      </div>
-                      <div>
-                        <span className="font-semibold">- KETIGA :</span>
-                        <br />
-                        (Opsional)
-                      </div>
-                      <div>
-                        <span className="font-semibold">- KEEMPAT :</span>
-                        <br />
-                        (Opsional)
-                      </div>
-                    </div>
-                  </div>
                   
                   <FormField control={form.control} name="menimbangKesatu" render={({
                     field
@@ -845,28 +838,6 @@ const SuratKeputusan = () => {
                 {/* Bagian Memutuskan */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
-                  <div className="bg-green-50 p-4 rounded-lg text-sm text-gray-700">
-                    <p className="font-medium mb-2">Contoh penulisan:</p>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="font-semibold">- KESATU :</span>
-                        <br />
-                        Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.
-                      </div>
-                      <div>
-                        <span className="font-semibold">- KEDUA :</span>
-                        <br />
-                        <strong>Format wajib:</strong> Nama Kegiatan | Beban Anggaran | Harga | Satuan<br />
-                        Contoh: honor petugas pendataan lapangan sksppi di kab/kota | 2898.BMA.007.005.A.521213 | 75000 | Dok
-                      </div>
-                      <div>
-                        <span className="font-semibold">- KETIGA :</span>
-                        <br />
-                        <strong>Sekarang menjadi:</strong> Tanggal Mulai | Tanggal Selesai<br />
-                        Contoh: 15 Desember 2025 | 31 Desember 2025
-                      </div>
-                    </div>
-                  </div>
                   
                   <FormField control={form.control} name="memutuskanKesatu" render={({
                     field
