@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
@@ -234,7 +234,7 @@ const AccordionSection: React.FC<{
   );
 };
 
-// Custom MultiSelect Component - SIMPLIFIED VERSION
+// Custom MultiSelect Component - FIXED SCROLL ISSUE
 interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
@@ -294,7 +294,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm",
           "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring",
-          "h-10"
+          "h-10 border-amber-400 focus:border-amber-500"
         )}
       >
         <div className="flex items-center gap-2 overflow-hidden">
@@ -333,7 +333,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             </div>
           </div>
 
-          <ScrollArea className="h-60">
+          <div className="max-h-[200px] overflow-y-auto">
             <div className="p-1">
               {loading ? (
                 <div className="flex justify-center p-4">
@@ -370,14 +370,14 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 })
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-// Custom Select dengan Search untuk Master Kegiatan - SIMPLIFIED
+// Custom Select dengan Search untuk Master Kegiatan - FIXED SCROLL ISSUE
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -429,7 +429,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         type="button"
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between h-10 text-sm font-normal"
+        className={cn(
+          "w-full justify-between h-10 text-sm font-normal",
+          "border-amber-400 hover:border-amber-500 focus:border-amber-500"
+        )}
       >
         <span className={!value ? "text-muted-foreground" : "text-gray-700"}>
           {value || placeholder}
@@ -452,7 +455,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
           </div>
 
-          <ScrollArea className="h-60">
+          <div className="max-h-[200px] overflow-y-auto">
             <div className="p-1">
               {loading ? (
                 <div className="flex justify-center p-4">
@@ -474,7 +477,114 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 ))
               )}
             </div>
-          </ScrollArea>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Custom Select dengan Search untuk Pembuat Daftar
+interface SearchablePembuatSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Person[];
+  placeholder?: string;
+  loading?: boolean;
+}
+
+const SearchablePembuatSelect: React.FC<SearchablePembuatSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  loading = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(option => option.id === value);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-full justify-between h-10 text-sm font-normal",
+          "border-amber-400 hover:border-amber-500 focus:border-amber-500"
+        )}
+      >
+        <span className={!value ? "text-muted-foreground" : "text-gray-700"}>
+          {selectedOption?.name || placeholder}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Cari pembuat daftar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-8 text-sm"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="max-h-[200px] overflow-y-auto">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <div
+                    key={option.id}
+                    onClick={() => {
+                      onValueChange(option.id);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "px-3 py-2 cursor-pointer text-sm hover:bg-accent hover:text-accent-foreground text-gray-700",
+                      value === option.id && "bg-blue-50 text-blue-700"
+                    )}
+                  >
+                    {option.name}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -544,8 +654,8 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          {/* Nama Kegiatan - Lebih lebar 2x */}
-          <div className="md:col-span-5">
+          {/* Nama Kegiatan - Lebih lebar */}
+          <div className="md:col-span-6">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Nama Kegiatan
             </label>
@@ -553,11 +663,11 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.namaKegiatan}
               onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
               placeholder="Nama kegiatan"
-              className="h-9 text-sm"
+              className="h-9 text-sm border-amber-400 focus:border-amber-500"
             />
           </div>
           
-          {/* Beban Anggaran */}
+          {/* Beban Anggaran - Disesuaikan */}
           <div className="md:col-span-3">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Beban Anggaran
@@ -566,11 +676,11 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.bebanAnggaran}
               onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
               placeholder="2898.BMA.007.005.A.521213"
-              className="h-9 text-sm"
+              className="h-9 text-sm border-amber-400 focus:border-amber-500"
             />
           </div>
           
-          {/* Harga - 10 digit */}
+          {/* Harga - Disesuaikan */}
           <div className="md:col-span-2">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Harga
@@ -579,21 +689,21 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.harga}
               onChange={(e) => onUpdate(index, 'harga', e.target.value)}
               placeholder="1000000000"
-              className="h-9 text-sm"
+              className="h-9 text-sm border-amber-400 focus:border-amber-500"
               maxLength={10}
             />
           </div>
           
-          {/* Satuan - 10 digit */}
-          <div className="md:col-span-2">
+          {/* Satuan - Disesuaikan */}
+          <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Satuan
             </label>
             <Input
               value={item.satuan}
               onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
-              placeholder="Orang/Hari"
-              className="h-9 text-sm"
+              placeholder="Orang"
+              className="h-9 text-sm border-amber400 focus:border-amber-500"
               maxLength={10}
             />
           </div>
@@ -1098,71 +1208,69 @@ const SuratKeputusan = () => {
                 {/* Nomor dan Tentang */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                   <div>
-                    <FormField control={form.control} name="nomorSuratKeputusan" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">Nomor SK</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Contoh: 123" className="h-10" {...field} />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Nomor SK</FormLabel>
+                      <Input 
+                        placeholder="Contoh: 123" 
+                        className="h-10 border-amber-400 focus:border-amber-500"
+                        {...form.register("nomorSuratKeputusan")}
+                      />
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.nomorSuratKeputusan?.message}
+                      </FormMessage>
+                    </FormItem>
                   </div>
                   
                   <div className="lg:col-span-3">
-                    <FormField control={form.control} name="tentang" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">Tentang</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Contoh: Penetapan Petugas Survei Konversi Gabah ke Beras (SKGB) Tahun 2026"
-                            className="text-sm resize-none overflow-hidden" 
-                            style={{ 
-                              height: `${calculateTentangHeight()}px`,
-                              minHeight: '40px',
-                              maxHeight: '120px'
-                            }}
-                            value={tentangValue}
-                            onChange={(e) => handleTentangChange(e.target.value)}
-                            onInput={(e) => {
-                              const target = e.target as HTMLTextAreaElement;
-                              target.style.height = 'auto';
-                              target.style.height = `${target.scrollHeight}px`;
-                            }}
-                          />
-                        </FormControl>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Isi tentang surat keputusan (1 baris, otomatis generate Memutuskan Kesatu)
-                        </div>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Tentang</FormLabel>
+                      <Textarea 
+                        placeholder="Contoh: Penetapan Petugas Survei Konversi Gabah ke Beras (SKGB) Tahun 2026"
+                        className="text-sm resize-none overflow-hidden border-amber-400 focus:border-amber-500" 
+                        style={{ 
+                          height: `${calculateTentangHeight()}px`,
+                          minHeight: '40px',
+                          maxHeight: '120px'
+                        }}
+                        value={tentangValue}
+                        onChange={(e) => handleTentangChange(e.target.value)}
+                        onInput={(e) => {
+                          const target = e.target as HTMLTextAreaElement;
+                          target.style.height = 'auto';
+                          target.style.height = `${target.scrollHeight}px`;
+                        }}
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Isi tentang surat keputusan (1 baris, otomatis generate Memutuskan Kesatu)
+                      </div>
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.tentang?.message}
+                      </FormMessage>
+                    </FormItem>
                   </div>
                 </div>
 
                 {/* Bagian MENIMBANG */}
                 <AccordionSection title="MENIMBANG" color="red" badge="Wajib" defaultOpen={true}>
                   <div className="space-y-4">
-                    <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                          <FormLabel className="text-sm text-red-600">(Wajib diisi)</FormLabel>
-                        </div>
-                        <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
-                          <div className="font-medium mb-1">Contoh lengkap:</div>
-                          <div className="italic">{CONTOH_MENIMBANG_KESATU}</div>
-                        </div>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Salin atau modifikasi contoh di atas sesuai kebutuhan"
-                            className="min-h-[120px] text-sm" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                        <FormLabel className="text-sm text-red-600">(Wajib diisi)</FormLabel>
+                      </div>
+                      <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                        <div className="font-medium mb-1">Contoh lengkap:</div>
+                        <div className="italic">{CONTOH_MENIMBANG_KESATU}</div>
+                      </div>
+                      <Textarea 
+                        placeholder="Salin atau modifikasi contoh di atas sesuai kebutuhan"
+                        className="min-h-[120px] text-sm border-amber-400 focus:border-amber-500" 
+                        {...form.register("menimbangKesatu")}
+                      />
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.menimbangKesatu?.message}
+                      </FormMessage>
+                    </FormItem>
 
                     {/* Tombol untuk menambah menimbang opsional */}
                     <div className="space-y-4">
@@ -1180,36 +1288,32 @@ const SuratKeputusan = () => {
                       
                       {showMenimbangKedua && (
                         <div className="border-l-2 border-gray-200 pl-4">
-                          <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
-                            <FormItem>
-                              <div className="flex justify-between items-center mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEDUA</Badge>
-                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setShowMenimbangKedua(false)}
-                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
+                          <FormItem>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEDUA</Badge>
+                                <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
                               </div>
-                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
-                                <div className="font-medium mb-1">Contoh:</div>
-                                <div className="italic">{CONTOH_MENIMBANG_KEDUA}</div>
-                              </div>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Menimbang kedua..." 
-                                  className="min-h-[100px] text-sm" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowMenimbangKedua(false)}
+                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="font-medium mb-1">Contoh:</div>
+                              <div className="italic">{CONTOH_MENIMBANG_KEDUA}</div>
+                            </div>
+                            <Textarea 
+                              placeholder="Menimbang kedua..." 
+                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              {...form.register("menimbangKedua")}
+                            />
+                          </FormItem>
                         </div>
                       )}
 
@@ -1227,36 +1331,32 @@ const SuratKeputusan = () => {
                       
                       {showMenimbangKetiga && (
                         <div className="border-l-2 border-gray-200 pl-4">
-                          <FormField control={form.control} name="menimbangKetiga" render={({ field }) => (
-                            <FormItem>
-                              <div className="flex justify-between items-center mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KETIGA</Badge>
-                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setShowMenimbangKetiga(false)}
-                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
+                          <FormItem>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KETIGA</Badge>
+                                <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
                               </div>
-                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
-                                <div className="font-medium mb-1">Contoh:</div>
-                                <div className="italic">{CONTOH_MENIMBANG_KETIGA}</div>
-                              </div>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Menimbang ketiga..." 
-                                  className="min-h-[100px] text-sm" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowMenimbangKetiga(false)}
+                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="font-medium mb-1">Contoh:</div>
+                              <div className="italic">{CONTOH_MENIMBANG_KETIGA}</div>
+                            </div>
+                            <Textarea 
+                              placeholder="Menimbang ketiga..." 
+                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              {...form.register("menimbangKetiga")}
+                            />
+                          </FormItem>
                         </div>
                       )}
 
@@ -1274,36 +1374,32 @@ const SuratKeputusan = () => {
                       
                       {showMenimbangKeempat && (
                         <div className="border-l-2 border-gray-200 pl-4">
-                          <FormField control={form.control} name="menimbangKeempat" render={({ field }) => (
-                            <FormItem>
-                              <div className="flex justify-between items-center mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEEMPAT</Badge>
-                                  <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setShowMenimbangKeempat(false)}
-                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
+                          <FormItem>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEEMPAT</Badge>
+                                <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
                               </div>
-                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
-                                <div className="font-medium mb-1">Contoh:</div>
-                                <div className="italic">{CONTOH_MENIMBANG_KEEMPAT}</div>
-                              </div>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Menimbang keempat..." 
-                                  className="min-h-[100px] text-sm" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowMenimbangKeempat(false)}
+                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="font-medium mb-1">Contoh:</div>
+                              <div className="italic">{CONTOH_MENIMBANG_KEEMPAT}</div>
+                            </div>
+                            <Textarea 
+                              placeholder="Menimbang keempat..." 
+                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              {...form.register("menimbangKeempat")}
+                            />
+                          </FormItem>
                         </div>
                       )}
                     </div>
@@ -1313,53 +1409,51 @@ const SuratKeputusan = () => {
                 {/* Bagian MEMUTUSKAN */}
                 <AccordionSection title="MEMUTUSKAN" color="red" defaultOpen={true}>
                   <div className="space-y-6">
-                    <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                            <FormLabel className="text-sm text-red-600">Menetapkan (Otomatis dari Tentang)</FormLabel>
-                          </div>
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
-                            Auto-generated
-                          </Badge>
+                    <FormItem>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                          <FormLabel className="text-sm text-red-600">Menetapkan (Otomatis dari Tentang)</FormLabel>
                         </div>
-                        <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded text-sm">
-                          <div className="flex items-start gap-2">
-                            <div className="text-green-600 mt-0.5">💡</div>
-                            <div>
-                              <p className="text-green-700 font-medium mb-1">Otomatis dihasilkan dari field "Tentang"</p>
-                              <p className="text-green-600 text-xs">Anda dapat mengedit teks di bawah ini sesuai kebutuhan</p>
-                            </div>
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          Auto-generated
+                        </Badge>
+                      </div>
+                      <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded text-sm">
+                        <div className="flex items-start gap-2">
+                          <div className="text-green-600 mt-0.5">💡</div>
+                          <div>
+                            <p className="text-green-700 font-medium mb-1">Otomatis dihasilkan dari field "Tentang"</p>
+                            <p className="text-green-600 text-xs">Anda dapat mengedit teks di bawah ini sesuai kebutuhan</p>
                           </div>
                         </div>
-                        <FormControl>
-                          <Input 
-                            placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
-                            className="h-10 text-sm" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(e);
-                              // Jika user mengosongkan, otomatis generate lagi dari tentang
-                              if (!e.target.value.trim() && tentangValue.trim()) {
-                                const generated = generateMemutuskanKesatu(tentangValue);
-                                form.setValue("memutuskanKesatu", generated);
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {tentangValue ? (
-                            <span className="text-green-600">
-                              Diotomasi dari: "{tentangValue.substring(0, 50)}{tentangValue.length > 50 ? '...' : ''}"
-                            </span>
-                          ) : (
-                            <span className="text-amber-600">Isi field "Tentang" terlebih dahulu untuk generate otomatis</span>
-                          )}
-                        </div>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                      </div>
+                      <Input 
+                        placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
+                        className="h-10 text-sm border-amber-400 focus:border-amber-500" 
+                        {...form.register("memutuskanKesatu")}
+                        onChange={(e) => {
+                          form.setValue("memutuskanKesatu", e.target.value);
+                          // Jika user mengosongkan, otomatis generate lagi dari tentang
+                          if (!e.target.value.trim() && tentangValue.trim()) {
+                            const generated = generateMemutuskanKesatu(tentangValue);
+                            form.setValue("memutuskanKesatu", generated);
+                          }
+                        }}
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        {tentangValue ? (
+                          <span className="text-green-600">
+                            Diotomasi dari: "{tentangValue.substring(0, 50)}{tentangValue.length > 50 ? '...' : ''}"
+                          </span>
+                        ) : (
+                          <span className="text-amber-600">Isi field "Tentang" terlebih dahulu untuk generate otomatis</span>
+                        )}
+                      </div>
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.memutuskanKesatu?.message}
+                      </FormMessage>
+                    </FormItem>
 
                     {/* Kegiatan */}
                     <div className="space-y-4">
@@ -1402,59 +1496,55 @@ const SuratKeputusan = () => {
                         <FormLabel className="text-sm font-medium text-gray-700">Jangka Waktu Pelaksanaan</FormLabel>
                       </div>
                       <div className="flex flex-col md:flex-row items-center gap-3">
-                        <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
-                          <FormItem className="flex-1 w-full">
-                            <FormControl>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Mulai"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar 
-                                    mode="single" 
-                                    selected={field.value} 
-                                    onSelect={field.onChange} 
-                                    initialFocus 
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )} />
+                        <FormItem className="flex-1 w-full">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalMulai") && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {form.watch("tanggalMulai") ? format(form.watch("tanggalMulai"), "dd/MM/yyyy") : "Tanggal Mulai"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={form.watch("tanggalMulai")} 
+                                onSelect={(date) => form.setValue("tanggalMulai", date)} 
+                                initialFocus 
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage className="text-xs">
+                            {form.formState.errors.tanggalMulai?.message}
+                          </FormMessage>
+                        </FormItem>
                         
                         <span className="text-gray-400 text-sm">sampai</span>
                         
-                        <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
-                          <FormItem className="flex-1 w-full">
-                            <FormControl>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Selesai"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar 
-                                    mode="single" 
-                                    selected={field.value} 
-                                    onSelect={field.onChange}
-                                    disabled={date => {
-                                      const tanggalMulai = form.getValues("tanggalMulai");
-                                      return tanggalMulai ? date < tanggalMulai : false;
-                                    }}
-                                    initialFocus 
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )} />
+                        <FormItem className="flex-1 w-full">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalSelesai") && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {form.watch("tanggalSelesai") ? format(form.watch("tanggalSelesai"), "dd/MM/yyyy") : "Tanggal Selesai"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar 
+                                mode="single" 
+                                selected={form.watch("tanggalSelesai")} 
+                                onSelect={(date) => form.setValue("tanggalSelesai", date)}
+                                disabled={date => {
+                                  const tanggalMulai = form.watch("tanggalMulai");
+                                  return tanggalMulai ? date < tanggalMulai : false;
+                                }}
+                                initialFocus 
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage className="text-xs">
+                            {form.formState.errors.tanggalSelesai?.message}
+                          </FormMessage>
+                        </FormItem>
                       </div>
                     </div>
                   </div>
@@ -1462,30 +1552,28 @@ const SuratKeputusan = () => {
 
                 {/* Tanggal Surat Keputusan */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Tanggal Surat Keputusan</FormLabel>
-                      <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "dd/MM/yyyy") : "Pilih tanggal"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar 
-                              mode="single" 
-                              selected={field.value} 
-                              onSelect={field.onChange} 
-                              initialFocus 
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )} />
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Tanggal Surat Keputusan</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalSuratKeputusan") && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.watch("tanggalSuratKeputusan") ? format(form.watch("tanggalSuratKeputusan"), "dd/MM/yyyy") : "Pilih tanggal"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar 
+                          mode="single" 
+                          selected={form.watch("tanggalSuratKeputusan")} 
+                          onSelect={(date) => form.setValue("tanggalSuratKeputusan", date)} 
+                          initialFocus 
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage className="text-xs">
+                      {form.formState.errors.tanggalSuratKeputusan?.message}
+                    </FormMessage>
+                  </FormItem>
                 </div>
 
                 {/* PERSONEL */}
@@ -1507,66 +1595,57 @@ const SuratKeputusan = () => {
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Organik */}
-                    <FormField control={form.control} name="organik" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium text-blue-600 flex items-center gap-2 mb-2">
-                          <User className="h-4 w-4" />
-                          Organik BPS
-                        </FormLabel>
-                        <FormControl>
-                          <MultiSelect
-                            value={field.value || []}
-                            onValueChange={field.onChange}
-                            options={organikList}
-                            placeholder={isLoadingOrganik ? "Memuat data..." : "Pilih organik"}
-                            loading={isLoadingOrganik}
-                            type="organik"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-blue-600 flex items-center gap-2 mb-2">
+                        <User className="h-4 w-4" />
+                        Organik BPS
+                      </FormLabel>
+                      <MultiSelect
+                        value={form.watch("organik") || []}
+                        onValueChange={(value) => form.setValue("organik", value)}
+                        options={organikList}
+                        placeholder={isLoadingOrganik ? "Memuat data..." : "Pilih organik"}
+                        loading={isLoadingOrganik}
+                        type="organik"
+                      />
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.organik?.message}
+                      </FormMessage>
+                    </FormItem>
 
                     {/* Mitra */}
-                    <FormField control={form.control} name="mitraStatistik" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium text-green-600 flex items-center gap-2 mb-2">
-                          <Users className="h-4 w-4" />
-                          Mitra Statistik
-                        </FormLabel>
-                        <FormControl>
-                          <MultiSelect
-                            value={field.value || []}
-                            onValueChange={field.onChange}
-                            options={mitraList}
-                            placeholder={isLoadingMitra ? "Memuat data..." : "Pilih mitra"}
-                            loading={isLoadingMitra}
-                            type="mitra"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-green-600 flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4" />
+                        Mitra Statistik
+                      </FormLabel>
+                      <MultiSelect
+                        value={form.watch("mitraStatistik") || []}
+                        onValueChange={(value) => form.setValue("mitraStatistik", value)}
+                        options={mitraList}
+                        placeholder={isLoadingMitra ? "Memuat data..." : "Pilih mitra"}
+                        loading={isLoadingMitra}
+                        type="mitra"
+                      />
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.mitraStatistik?.message}
+                      </FormMessage>
+                    </FormItem>
 
                     {/* Pembuat Daftar */}
-                    <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700 mb-2">Pembuat Daftar</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Pilih pembuat daftar" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-2 text-gray-700">
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700 mb-2">Pembuat Daftar</FormLabel>
+                      <SearchablePembuatSelect
+                        value={form.watch("pembuatDaftar")}
+                        onValueChange={(value) => form.setValue("pembuatDaftar", value)}
+                        options={organikList}
+                        placeholder="Pilih pembuat daftar"
+                        loading={isLoadingOrganik}
+                      />
+                      <FormMessage className="text-xs">
+                        {form.formState.errors.pembuatDaftar?.message}
+                      </FormMessage>
+                    </FormItem>
                   </div>
 
                   {/* Badges yang dipilih */}
