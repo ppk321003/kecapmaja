@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
@@ -21,12 +21,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 // Type untuk Kegiatan Item
-type KegiatanItem = {
+interface KegiatanItem {
   namaKegiatan: string;
   bebanAnggaran: string;
   harga: string;
   satuan: string;
-};
+}
 
 // Schema Zod dengan validasi baru untuk multiple kegiatan
 const suratKeputusanSchema = z.object({
@@ -69,20 +69,20 @@ const suratKeputusanSchema = z.object({
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 
-type Person = {
+interface Person {
   id: string;
   name: string;
   jabatan?: string;
-};
+}
 
-type MasterKegiatan = {
+interface MasterKegiatan {
   index: number;
   role: string;
   namaKegiatan: string;
   bebanAnggaran: string;
   harga: string;
   satuan: string;
-};
+}
 
 // Constants
 const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
@@ -725,7 +725,7 @@ const SuratKeputusan = () => {
       menimbangKetiga: "",
       menimbangKeempat: "",
       memutuskanKesatu: "",
-      kegiatanList: [DEFAULT_KEGIATAN], // Menggunakan default value yang sudah didefinisikan
+      kegiatanList: [DEFAULT_KEGIATAN],
       tanggalMulai: undefined,
       tanggalSelesai: undefined,
       tanggalSuratKeputusan: undefined,
@@ -735,6 +735,11 @@ const SuratKeputusan = () => {
     }
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "kegiatanList"
+  });
+
   const kegiatanList = form.watch("kegiatanList") || [DEFAULT_KEGIATAN];
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
@@ -742,11 +747,11 @@ const SuratKeputusan = () => {
   useEffect(() => {
     const updatedOrganik = watchedOrganik
       .map(id => organikList.find(item => item.id === id))
-      .filter(Boolean) as Person[];
+      .filter((item): item is Person => item !== undefined);
     
     const updatedMitra = watchedMitra
       .map(id => mitraList.find(item => item.id === id))
-      .filter(Boolean) as Person[];
+      .filter((item): item is Person => item !== undefined);
     
     setSelectedOrganikDetails(updatedOrganik);
     setSelectedMitraDetails(updatedMitra);
@@ -764,36 +769,35 @@ const SuratKeputusan = () => {
 
   // Handler untuk menambah kegiatan baru
   const handleAddKegiatan = () => {
-    const currentKegiatanList = form.getValues("kegiatanList") || [];
-    form.setValue("kegiatanList", [
-      ...currentKegiatanList,
-      { ...DEFAULT_KEGIATAN }
-    ]);
+    append(DEFAULT_KEGIATAN);
   };
 
   // Handler untuk menghapus kegiatan
   const handleRemoveKegiatan = (index: number) => {
-    const currentKegiatanList = form.getValues("kegiatanList") || [];
-    if (currentKegiatanList.length > 1) {
-      const newList = currentKegiatanList.filter((_, i) => i !== index);
-      form.setValue("kegiatanList", newList);
+    if (kegiatanList.length > 1) {
+      remove(index);
     }
   };
 
   // Handler untuk update data kegiatan
   const handleUpdateKegiatan = (index: number, field: keyof KegiatanItem, value: string) => {
-    const currentKegiatanList = form.getValues("kegiatanList") || [];
-    const updatedList = [...currentKegiatanList];
-    updatedList[index] = { ...updatedList[index], [field]: value };
-    form.setValue("kegiatanList", updatedList);
+    const currentKegiatanList = [...kegiatanList];
+    currentKegiatanList[index] = { ...currentKegiatanList[index], [field]: value };
+    form.setValue("kegiatanList", currentKegiatanList);
   };
 
   // Handler untuk memilih dari master kegiatan
   const handleSelectFromMaster = (index: number, masterItem: MasterKegiatan) => {
-    handleUpdateKegiatan(index, 'namaKegiatan', masterItem.namaKegiatan);
-    handleUpdateKegiatan(index, 'bebanAnggaran', masterItem.bebanAnggaran);
-    handleUpdateKegiatan(index, 'harga', masterItem.harga);
-    handleUpdateKegiatan(index, 'satuan', masterItem.satuan);
+    const updatedKegiatan: KegiatanItem = {
+      namaKegiatan: masterItem.namaKegiatan,
+      bebanAnggaran: masterItem.bebanAnggaran,
+      harga: masterItem.harga,
+      satuan: masterItem.satuan
+    };
+    
+    const currentKegiatanList = [...kegiatanList];
+    currentKegiatanList[index] = updatedKegiatan;
+    form.setValue("kegiatanList", currentKegiatanList);
   };
 
   // Fungsi untuk format kegiatan menjadi string untuk spreadsheet
@@ -1040,11 +1044,11 @@ const SuratKeputusan = () => {
                     </div>
                     
                     <div className="space-y-4">
-                      {kegiatanList.map((kegiatan, index) => (
+                      {fields.map((field, index) => (
                         <KegiatanFormItem
-                          key={index}
+                          key={field.id}
                           index={index}
-                          item={kegiatan}
+                          item={kegiatanList[index]}
                           onUpdate={handleUpdateKegiatan}
                           onRemove={handleRemoveKegiatan}
                           masterData={masterData}
