@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarIcon, FileText, Search, ChevronDown, User, Users, Trash2, Loader2, Plus, X } from "lucide-react";
+import { CalendarIcon, FileText, Search, ChevronDown, ChevronUp, User, Users, Trash2, Loader2, Plus, X, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,8 +105,6 @@ const useOrganikList = () => {
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
-        console.log('📥 Fetching organik data from Google Sheets...');
-        
         const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
@@ -116,12 +113,7 @@ const useOrganikList = () => {
           }
         });
 
-        if (fetchError) {
-          console.error('❌ Error fetching organik from Sheets:', fetchError);
-          throw fetchError;
-        }
-
-        console.log('✅ Organik data fetched from Sheets:', data);
+        if (fetchError) throw fetchError;
         
         if (data?.values && data.values.length > 1) {
           const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
@@ -131,10 +123,9 @@ const useOrganikList = () => {
           })).filter((item: Person) => item.id && item.name);
           
           setOrganikList(formattedData);
-          console.log('📊 Formatted organik data:', formattedData);
         }
       } catch (err: any) {
-        console.error('❌ Error in useOrganikList:', err);
+        console.error('Error in useOrganikList:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
@@ -156,8 +147,6 @@ const useMitraList = () => {
   useEffect(() => {
     const fetchMitra = async () => {
       try {
-        console.log('📥 Fetching mitra data from Google Sheets...');
-        
         const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
@@ -166,12 +155,7 @@ const useMitraList = () => {
           }
         });
 
-        if (fetchError) {
-          console.error('❌ Error fetching mitra from Sheets:', fetchError);
-          throw fetchError;
-        }
-
-        console.log('✅ Mitra data fetched from Sheets:', data);
+        if (fetchError) throw fetchError;
         
         if (data?.values && data.values.length > 1) {
           const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
@@ -181,10 +165,9 @@ const useMitraList = () => {
           })).filter((item: Person) => item.id && item.name);
           
           setMitraList(formattedData);
-          console.log('📊 Formatted mitra data:', formattedData);
         }
       } catch (err: any) {
-        console.error('❌ Error in useMitraList:', err);
+        console.error('Error in useMitraList:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
@@ -197,17 +180,62 @@ const useMitraList = () => {
   return { data: mitraList, isLoading, error };
 };
 
-// Custom MultiSelect Component - VERSION IMPROVED
-interface MultiSelectProps {
+// Komponen Accordion Section
+const AccordionSection: React.FC<{
+  title: string;
+  color: "red" | "blue" | "green" | "orange" | "purple";
+  badge?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}> = ({ title, color, badge, defaultOpen = true, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  const colorClasses = {
+    red: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700" },
+    blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
+    green: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700" },
+    orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
+    purple: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" }
+  };
+
+  return (
+    <div className={`border ${colorClasses[color].border} rounded-lg mb-3 overflow-hidden`}>
+      <div 
+        className={`${colorClasses[color].bg} p-3 flex justify-between items-center cursor-pointer`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-2">
+          <h3 className={`font-semibold ${colorClasses[color].text} text-sm`}>{title}</h3>
+          {badge && (
+            <Badge variant="outline" className={`text-xs ${colorClasses[color].text} border-${color}-300 bg-white`}>
+              {badge}
+            </Badge>
+          )}
+        </div>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4 text-gray-500" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-500" />
+        )}
+      </div>
+      {isOpen && (
+        <div className="p-4 space-y-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// MultiSelect Component - Ringkas
+const MultiSelect: React.FC<{
   value: string[];
   onValueChange: (value: string[]) => void;
   options: Person[];
   placeholder?: string;
   loading?: boolean;
   type: 'organik' | 'mitra';
-}
-
-const MultiSelect: React.FC<MultiSelectProps> = ({
+}> = ({
   value,
   onValueChange,
   options,
@@ -245,29 +273,19 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     }
   };
 
-  const handleSelectAll = () => {
-    if (value.length === filteredOptions.length) {
-      onValueChange([]);
-    } else {
-      onValueChange(filteredOptions.map(option => option.id));
-    }
-  };
-
   const selectedOptions = useMemo(() => {
     return options.filter(option => value.includes(option.id));
   }, [options, value]);
-
-  const toggleDropdown = () => setIsOpen(!isOpen);
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <button
         type="button"
-        onClick={toggleDropdown}
+        onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm",
-          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          "min-h-[40px]"
+          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+          "h-10"
         )}
       >
         <div className="flex items-center gap-2 overflow-hidden">
@@ -275,9 +293,13 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : selectedOptions.length > 0 ? (
             <div className="flex items-center gap-1">
-              {type === 'organik' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+              {type === 'organik' ? (
+                <User className="h-4 w-4 text-blue-600" />
+              ) : (
+                <Users className="h-4 w-4 text-green-600" />
+              )}
               <span className="truncate text-sm">
-                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'} terpilih
+                {selectedOptions.length} terpilih
               </span>
             </div>
           ) : (
@@ -288,218 +310,55 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder={`Cari ${type === 'organik' ? 'organik' : 'mitra'}...`}
+                placeholder={`Cari ${type}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-8 text-sm"
+                className="pl-8 h-8 text-sm"
                 autoFocus
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
               />
             </div>
           </div>
 
-          <div className="p-1 border-b">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full h-7 justify-start text-xs px-2"
-              onClick={handleSelectAll}
-            >
-              {value.length === filteredOptions.length ? (
-                <>Batalkan semua pilihan</>
-              ) : (
-                <>Pilih semua ({filteredOptions.length})</>
-              )}
-            </Button>
-          </div>
-
-          <div className="max-h-[250px] overflow-auto">
-            <div className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground px-2">
-                  Tidak ada data ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((option) => {
-                  const isSelected = value.includes(option.id);
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => handleSelect(option.id)}
-                      className={cn(
-                        "flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors text-sm",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        isSelected && "bg-blue-50"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-4 w-4 items-center justify-center rounded-sm border flex-shrink-0",
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "border-gray-300"
-                      )}>
-                        {isSelected && (
-                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={cn(
-                          "truncate text-sm",
-                          isSelected ? "text-blue-700" : "text-gray-700"
-                        )}>
-                          {option.name}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          <div className="border-t px-2 py-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Terpilih:</span>
-              <span className="text-green-600">
-                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Custom Select dengan Search untuk Master Kegiatan - IMPROVED VERSION
-interface SearchableSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: MasterKegiatan[];
-  placeholder?: string;
-  loading?: boolean;
-  onItemSelect: (item: MasterKegiatan) => void;
-}
-
-const SearchableSelect: React.FC<SearchableSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  loading = false,
-  onItemSelect
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [options, searchTerm]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (item: MasterKegiatan) => {
-    onItemSelect(item);
-    setIsOpen(false);
-  };
-
-  const toggleDropdown = () => {
-    setIsOpen(!isOpen);
-    setSearchTerm("");
-  };
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={toggleDropdown}
-        className="w-full justify-between h-10"
-      >
-        <span className={!value ? "text-muted-foreground text-sm" : "text-sm"}>
-          {value || placeholder}
-        </span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
-      </Button>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
-          <div className="p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Cari kegiatan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-8 text-sm"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setIsOpen(false);
-                  }
-                  e.stopPropagation();
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="max-h-[250px] overflow-auto">
-            <div className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground px-2">
-                  Tidak ada data ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((item) => (
+          <div className="max-h-48 overflow-auto p-1">
+            {loading ? (
+              <div className="flex justify-center p-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : filteredOptions.length === 0 ? (
+              <div className="p-2 text-center text-sm text-gray-500">
+                Tidak ada data
+              </div>
+            ) : (
+              filteredOptions.map((option) => {
+                const isSelected = value.includes(option.id);
+                return (
                   <div
-                    key={item.index}
-                    onClick={() => handleSelect(item)}
-                    className="px-2 py-1.5 cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground text-sm"
+                    key={option.id}
+                    onClick={() => handleSelect(option.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 cursor-pointer text-sm",
+                      "hover:bg-accent",
+                      isSelected && "bg-blue-50"
+                    )}
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-gray-700">
-                        {item.namaKegiatan}
-                      </p>
-                    </div>
+                    <div className={cn(
+                      "h-4 w-4 rounded border flex-shrink-0",
+                      isSelected 
+                        ? "bg-blue-600 border-blue-600" 
+                        : "border-gray-300"
+                    )} />
+                    <span className={cn(isSelected && "text-blue-700")}>
+                      {option.name}
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -507,121 +366,72 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
-// Komponen untuk form kegiatan yang disederhanakan
-interface KegiatanFormItemProps {
+// Kegiatan Item Ringkas
+const KegiatanItemCompact: React.FC<{
   index: number;
   item: KegiatanItem;
   onUpdate: (index: number, field: keyof KegiatanItem, value: string) => void;
   onRemove: (index: number) => void;
-  masterData: MasterKegiatan[];
-  onSelectFromMaster: (index: number, masterItem: MasterKegiatan) => void;
-}
-
-const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
+}> = ({
   index,
   item,
   onUpdate,
-  onRemove,
-  masterData,
-  onSelectFromMaster
+  onRemove
 }) => {
-  const [selectedMaster, setSelectedMaster] = useState<string>("");
-
-  // Fungsi untuk memecah format string menjadi bagian-bagian
-  const parseKegiatanString = (str: string): KegiatanItem => {
-    const parts = str.split("|").map(part => part.trim());
-    return {
-      namaKegiatan: parts[0] || "",
-      bebanAnggaran: parts[1] || "",
-      harga: parts[2] || "",
-      satuan: parts[3] || ""
-    };
-  };
-
-  // Fungsi untuk menggabungkan menjadi string
-  const formatKegiatanString = (kegiatan: KegiatanItem): string => {
-    return `${kegiatan.namaKegiatan} | ${kegiatan.bebanAnggaran} | ${kegiatan.harga} | ${kegiatan.satuan}`;
-  };
-
-  // Nilai saat ini dalam format string
-  const [textValue, setTextValue] = useState(formatKegiatanString(item));
-
-  // Handler untuk perubahan manual di textarea
-  const handleTextChange = (value: string) => {
-    setTextValue(value);
-    try {
-      const parsed = parseKegiatanString(value);
-      onUpdate(index, 'namaKegiatan', parsed.namaKegiatan);
-      onUpdate(index, 'bebanAnggaran', parsed.bebanAnggaran);
-      onUpdate(index, 'harga', parsed.harga);
-      onUpdate(index, 'satuan', parsed.satuan);
-    } catch (error) {
-      console.error("Error parsing kegiatan string:", error);
-    }
-  };
-
-  // Handler untuk pilih dari master
-  const handleMasterSelect = (masterItem: MasterKegiatan) => {
-    const formattedString = formatKegiatanString({
-      namaKegiatan: masterItem.namaKegiatan,
-      bebanAnggaran: masterItem.bebanAnggaran,
-      harga: masterItem.harga,
-      satuan: masterItem.satuan
-    });
-    setTextValue(formattedString);
-    onSelectFromMaster(index, masterItem);
-  };
-
   return (
-    <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm">
-            {index + 1}
-          </div>
-          <h4 className="font-medium text-sm">Kegiatan {index + 1}</h4>
-        </div>
-        {index > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onRemove(index)}
-            className="h-7 w-7 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        )}
+    <div className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50">
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-medium mt-1 flex-shrink-0">
+        {index + 1}
       </div>
-
-      <div className="space-y-3">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
-          <label className="text-sm font-medium mb-1 block">
-            Pilih dari Master Kegiatan:
-          </label>
-          <SearchableSelect
-            value={selectedMaster}
-            onValueChange={setSelectedMaster}
-            options={masterData}
-            placeholder="Cari dan pilih kegiatan..."
-            loading={false}
-            onItemSelect={handleMasterSelect}
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Kegiatan</label>
+          <Input
+            value={item.namaKegiatan}
+            onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
+            placeholder="Nama kegiatan"
+            className="h-8 text-sm"
           />
         </div>
-
         <div>
-          <label className="text-sm font-medium mb-1 block">
-            Atau ketik manual (Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan):
-          </label>
-          <Textarea
-            value={textValue}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Contoh: Survei Sosial Ekonomi | DIPA | 1000000 | Orang/Hari"
-            className="min-h-[60px] text-sm py-2 px-3"
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Beban Anggaran</label>
+          <Input
+            value={item.bebanAnggaran}
+            onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
+            placeholder="DIPA/Pihak Ketiga"
+            className="h-8 text-sm"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Format harus sesuai: Nama Kegiatan | Beban Anggaran | Harga | Satuan
-          </p>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-1 block">Harga</label>
+          <Input
+            value={item.harga}
+            onChange={(e) => onUpdate(index, 'harga', e.target.value)}
+            placeholder="Rp 1.000.000"
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Satuan</label>
+            <Input
+              value={item.satuan}
+              onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
+              placeholder="Orang/Hari"
+              className="h-8 text-sm"
+            />
+          </div>
+          {index > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onRemove(index)}
+              className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -646,9 +456,7 @@ const useMasterKegiatan = () => {
           }
         });
 
-        if (error) {
-          throw new Error(`Gagal mengambil data master: ${error.message}`);
-        }
+        if (error) throw error;
 
         const values = data?.values || [];
         
@@ -668,7 +476,7 @@ const useMasterKegiatan = () => {
 
         setMasterData(kegiatanData);
       } catch (err: any) {
-        console.error('❌ Error loading master kegiatan:', err);
+        console.error('Error loading master kegiatan:', err);
         setError(err.message);
       } finally {
         setIsLoading(false);
@@ -688,8 +496,6 @@ const useSubmitSKToSheets = () => {
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
-      console.log('📤 Submitting SK data to sheets:', data);
-      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
@@ -699,15 +505,9 @@ const useSubmitSKToSheets = () => {
         }
       });
 
-      if (error) {
-        console.error('❌ Error submitting SK:', error);
-        throw error;
-      }
-
-      console.log('✅ SK submission successful:', result);
+      if (error) throw error;
       return result;
     } catch (error) {
-      console.error('❌ Submission error:', error);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -728,16 +528,11 @@ const getNextSequenceNumber = async (): Promise<number> => {
       }
     });
 
-    if (error) {
-      console.error("Error fetching sequence numbers:", error);
-      throw new Error("Gagal mengambil nomor urut terakhir");
-    }
+    if (error) throw error;
 
     const values = data?.values || [];
     
-    if (values.length <= 1) {
-      return 1;
-    }
+    if (values.length <= 1) return 1;
 
     const sequenceNumbers = values
       .slice(1)
@@ -751,13 +546,8 @@ const getNextSequenceNumber = async (): Promise<number> => {
       })
       .filter(num => num > 0);
 
-    if (sequenceNumbers.length === 0) {
-      return 1;
-    }
-
-    return Math.max(...sequenceNumbers) + 1;
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
   } catch (error) {
-    console.error("Error generating sequence number:", error);
     throw error;
   }
 };
@@ -778,16 +568,11 @@ const generateSKId = async (): Promise<string> => {
       }
     });
 
-    if (error) {
-      console.error("Error fetching SK IDs:", error);
-      throw new Error("Gagal mengambil ID SK terakhir");
-    }
+    if (error) throw error;
 
     const values = data?.values || [];
     
-    if (values.length <= 1) {
-      return `${prefix}001`;
-    }
+    if (values.length <= 1) return `${prefix}001`;
 
     const currentMonthIds = values
       .slice(1)
@@ -800,14 +585,11 @@ const generateSKId = async (): Promise<string> => {
       })
       .filter(num => num > 0);
 
-    if (currentMonthIds.length === 0) {
-      return `${prefix}001`;
-    }
+    if (currentMonthIds.length === 0) return `${prefix}001`;
 
     const nextNum = Math.max(...currentMonthIds) + 1;
     return `${prefix}${nextNum.toString().padStart(3, '0')}`;
   } catch (error) {
-    console.error("Error generating SK ID:", error);
     throw error;
   }
 };
@@ -852,7 +634,6 @@ const SuratKeputusan = () => {
     name: "kegiatanList"
   });
 
-  // Gunakan watch untuk mendapatkan nilai kegiatanList dengan tipe yang benar
   const kegiatanList = form.watch("kegiatanList");
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
@@ -872,29 +653,21 @@ const SuratKeputusan = () => {
 
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
-    
     const day = date.getDate();
     const month = date.toLocaleDateString('id-ID', { month: 'long' });
     const year = date.getFullYear();
-    
     return `${day} ${month} ${year}`;
   };
 
-  // Handler untuk menambah kegiatan baru
   const handleAddKegiatan = () => {
     append(DEFAULT_KEGIATAN);
   };
 
-  // Handler untuk menghapus kegiatan
   const handleRemoveKegiatan = (index: number) => {
-    if (fields.length > 1) {
-      remove(index);
-    }
+    if (fields.length > 1) remove(index);
   };
 
-  // Handler untuk update data kegiatan
   const handleUpdateKegiatan = (index: number, field: keyof KegiatanItem, value: string) => {
-    // Dapatkan nilai saat ini dari form
     const currentValues = form.getValues("kegiatanList");
     if (currentValues && currentValues[index]) {
       const updatedList = [...currentValues];
@@ -903,24 +676,6 @@ const SuratKeputusan = () => {
     }
   };
 
-  // Handler untuk memilih dari master kegiatan
-  const handleSelectFromMaster = (index: number, masterItem: MasterKegiatan) => {
-    const updatedKegiatan: KegiatanItem = {
-      namaKegiatan: masterItem.namaKegiatan,
-      bebanAnggaran: masterItem.bebanAnggaran,
-      harga: masterItem.harga,
-      satuan: masterItem.satuan
-    };
-    
-    const currentValues = form.getValues("kegiatanList");
-    if (currentValues && currentValues[index]) {
-      const updatedList = [...currentValues];
-      updatedList[index] = updatedKegiatan;
-      form.setValue("kegiatanList", updatedList);
-    }
-  };
-
-  // Fungsi untuk format kegiatan menjadi string untuk spreadsheet
   const formatKegiatanForSpreadsheet = (kegiatanList: KegiatanItem[]): string => {
     return kegiatanList
       .filter(kegiatan => 
@@ -941,7 +696,6 @@ const SuratKeputusan = () => {
 
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
-      // Format kegiatan untuk disimpan di spreadsheet
       const kegiatanFormatted = formatKegiatanForSpreadsheet(data.kegiatanList);
 
       const rowData = [
@@ -954,16 +708,14 @@ const SuratKeputusan = () => {
         data.menimbangKetiga || "",
         data.menimbangKeempat || "",
         data.memutuskanKesatu,
-        kegiatanFormatted, // Disimpan dengan pemisah ";"
+        kegiatanFormatted,
         `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
         formatTanggalIndonesia(data.tanggalSuratKeputusan),
         selectedOrganikDetails.map(o => o.name).join(" | "),
         selectedMitraDetails.map(m => m.name).join(" | "),
         selectedPembuat?.name || "",
-        data.kegiatanList.length.toString() // Menyimpan jumlah kegiatan
+        data.kegiatanList.length.toString()
       ];
-
-      console.log('📝 Submitting SK data:', rowData);
 
       await submitData(rowData);
 
@@ -991,7 +743,7 @@ const SuratKeputusan = () => {
       
       toast({
         title: "Berhasil",
-        description: `Surat keputusan berhasil disimpan dengan ${data.kegiatanList.length} kegiatan (ID: ${skId})`
+        description: `Surat keputusan berhasil disimpan (ID: ${skId})`
       });
     } catch (error: any) {
       console.error("Error submitting form:", error);
@@ -1005,13 +757,11 @@ const SuratKeputusan = () => {
     }
   };
 
-  // Fungsi untuk menghapus organik
   const removeOrganik = (id: string) => {
     const currentOrganik = form.getValues("organik") || [];
     form.setValue("organik", currentOrganik.filter(orgId => orgId !== id));
   };
 
-  // Fungsi untuk menghapus mitra
   const removeMitra = (id: string) => {
     const currentMitra = form.getValues("mitraStatistik") || [];
     form.setValue("mitraStatistik", currentMitra.filter(mitraId => mitraId !== id));
@@ -1022,516 +772,383 @@ const SuratKeputusan = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-            <FileText className="h-6 w-6 text-purple-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-purple-600 tracking-tight">Surat Keputusan</h1>
-            <p className="text-muted-foreground">
-              Formulir pembuatan surat keputusan dengan multiple kegiatan
-            </p>
-          </div>
+      <div className="space-y-4 p-4">
+        {/* Header Ringkas */}
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-purple-700 flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <FileText className="h-6 w-6 text-purple-600" />
+            </div>
+            Surat Keputusan
+          </h1>
+          <p className="text-gray-600 ml-12 text-sm">Formulir pembuatan surat keputusan</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-orange-600">Data Surat Keputusan</CardTitle>
+        <Card className="border shadow-sm">
+          <CardHeader className="pb-3 bg-orange-50 border-b">
+            <CardTitle className="text-orange-700 text-lg flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Data Surat Keputusan
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="p-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Nomor Surat Keputusan dan Tentang */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                  <div className="lg:col-span-1">
-                    <FormField control={form.control} name="nomorSuratKeputusan" render={({
-                      field
-                    }) => (
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {/* Nomor dan Tentang */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                  <div>
+                    <FormField control={form.control} name="nomorSuratKeputusan" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nomor Surat Keputusan</FormLabel>
+                        <FormLabel className="text-sm">Nomor SK</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Contoh: 123" 
-                            className="w-full" 
-                            {...field} 
-                          />
+                          <Input placeholder="Contoh: 123" className="h-10" {...field} />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
                   </div>
                   
                   <div className="lg:col-span-3">
-                    <FormField control={form.control} name="tentang" render={({
-                      field
-                    }) => (
+                    <FormField control={form.control} name="tentang" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tentang</FormLabel>
+                        <FormLabel className="text-sm">Tentang</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Masukkan tentang (dapat berisi teks panjang)" 
-                            className="min-h-[100px]" 
+                            placeholder="Masukkan tentang surat keputusan" 
+                            className="min-h-[80px] text-sm" 
                             {...field} 
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
                   </div>
                 </div>
 
-                {/* Bagian Menimbang - Sederhana */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
-                    <div className="flex gap-2">
-                      {!showMenimbangKedua && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowMenimbangKedua(true)}
-                        >
-                          + Kedua
-                        </Button>
-                      )}
-                      {!showMenimbangKetiga && showMenimbangKedua && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowMenimbangKetiga(true)}
-                        >
-                          + Ketiga
-                        </Button>
-                      )}
-                      {!showMenimbangKeempat && showMenimbangKetiga && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowMenimbangKeempat(true)}
-                        >
-                          + Keempat
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <FormField control={form.control} name="menimbangKesatu" render={({
-                    field
-                  }) => (
+                {/* Bagian MENIMBANG */}
+                <AccordionSection title="MENIMBANG" color="red" badge="Wajib">
+                  <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>KESATU - Cth: Bahwa untuk kelancaran Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka perlu menetapkan Petugas Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
+                      <FormLabel className="text-sm text-red-600 flex items-center gap-1">
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                        <span>Bahwa untuk kelancaran...</span>
+                      </FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  {showMenimbangKedua && (
-                    <FormField control={form.control} name="menimbangKedua" render={({
-                      field
-                    }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>KEDUA (Opsional)</FormLabel>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowMenimbangKedua(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  )}
-
-                  {showMenimbangKetiga && (
-                    <FormField control={form.control} name="menimbangKetiga" render={({
-                      field
-                    }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>KETIGA (Opsional)</FormLabel>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowMenimbangKetiga(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  )}
-
-                  {showMenimbangKeempat && (
-                    <FormField control={form.control} name="menimbangKeempat" render={({
-                      field
-                    }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel>KEEMPAT (Opsional)</FormLabel>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowMenimbangKeempat(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  )}
-                </div>
-
-                {/* Bagian Memutuskan */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
-                  
-                  <FormField control={form.control} name="memutuskanKesatu" render={({
-                    field
-                  }) => (
-                    <FormItem>
-                      <FormLabel>KESATU - Cth: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Masukkan memutuskan kesatu" 
-                          className="w-full" 
+                        <Textarea 
+                          placeholder="Contoh: Bahwa untuk kelancaran Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026..."
+                          className="min-h-[80px] text-sm" 
                           {...field} 
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )} />
 
-                  {/* Bagian Memutuskan Kedua dengan multiple kegiatan */}
-                  <div className="space-y-4">
+                  <div className="space-y-2">
+                    {!showMenimbangKedua && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowMenimbangKedua(true)}
+                        className="h-8 text-xs border-dashed"
+                      >
+                        + Tambah Menimbang Kedua (Opsional)
+                      </Button>
+                    )}
+                    
+                    {showMenimbangKedua && (
+                      <div className="border-l-2 border-gray-200 pl-3">
+                        <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
+                          <FormItem>
+                            <div className="flex justify-between items-center mb-1">
+                              <FormLabel className="text-sm text-gray-600">KEDUA (Opsional)</FormLabel>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowMenimbangKedua(false)}
+                                className="h-6 w-6 text-gray-500"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Menimbang kedua..." 
+                                className="min-h-[60px] text-sm" 
+                                {...field} 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                      </div>
+                    )}
+                  </div>
+                </AccordionSection>
+
+                {/* Bagian MEMUTUSKAN */}
+                <AccordionSection title="MEMUTUSKAN" color="red">
+                  <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm text-red-600 flex items-center gap-1">
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                        <span>PETUGAS...</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
+                          className="h-10" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )} />
+
+                  {/* Kegiatan */}
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <FormLabel className="text-base font-semibold">KEDUA - Kegiatan yang Diputuskan (Minimal 1)</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">KEGIATAN YANG DIPUTUSKAN</FormLabel>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleAddKegiatan}
-                        className="gap-1 h-8"
+                        className="h-8 px-3 text-xs"
                       >
-                        <Plus className="h-3.5 w-3.5" />
-                        Tambah Kegiatan
+                        <Plus className="h-3 w-3 mr-1" />
+                        Tambah
                       </Button>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {fields.map((field, index) => (
-                        <KegiatanFormItem
+                        <KegiatanItemCompact
                           key={field.id}
                           index={index}
                           item={kegiatanList[index] || DEFAULT_KEGIATAN}
                           onUpdate={handleUpdateKegiatan}
                           onRemove={handleRemoveKegiatan}
-                          masterData={masterData}
-                          onSelectFromMaster={handleSelectFromMaster}
                         />
                       ))}
                     </div>
                   </div>
 
-                  {/* Bagian Memutuskan Ketiga (tanggal range) */}
-                  <div className="space-y-4">
-                    <h4 className="text-md font-semibold text-gray-700">KETIGA - (Wajib)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="tanggalMulai" render={({
-                        field
-                      }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Tanggal Mulai</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal mulai"}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  {/* Tanggal Range */}
+                  <div className="space-y-2">
+                    <FormLabel className="text-sm font-medium text-gray-700">JANGKA WAKTU PELAKSANAAN</FormLabel>
+                    <div className="flex items-center gap-3">
+                      <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Mulai"}
                                 </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar 
-                                mode="single" 
-                                selected={field.value} 
-                                onSelect={field.onChange} 
-                                disabled={date => date < new Date("1900-01-01")} 
-                                initialFocus 
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange} 
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </FormControl>
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )} />
-
-                      <FormField control={form.control} name="tanggalSelesai" render={({
-                        field
-                      }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Tanggal Selesai</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal selesai"}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      
+                      <span className="text-gray-400">sampai</span>
+                      
+                      <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Selesai"}
                                 </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar 
-                                mode="single" 
-                                selected={field.value} 
-                                onSelect={field.onChange} 
-                                disabled={date => {
-                                  const tanggalMulai = form.getValues("tanggalMulai");
-                                  return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
-                                }} 
-                                initialFocus 
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange}
+                                  disabled={date => {
+                                    const tanggalMulai = form.getValues("tanggalMulai");
+                                    return tanggalMulai ? date < tanggalMulai : false;
+                                  }}
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </FormControl>
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )} />
                     </div>
                   </div>
-                </div>
+                </AccordionSection>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({
-                    field
-                  }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Tanggal Surat Keputusan</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                              {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal"}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                {/* Tanggal Surat Keputusan */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Tanggal Surat Keputusan</FormLabel>
+                      <FormControl>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal", !field.value && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "dd/MM/yyyy") : "Pilih tanggal"}
                             </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar 
-                            mode="single" 
-                            selected={field.value} 
-                            onSelect={field.onChange} 
-                            disabled={date => date < new Date("1900-01-01")} 
-                            initialFocus 
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar 
+                              mode="single" 
+                              selected={field.value} 
+                              onSelect={field.onChange} 
+                              initialFocus 
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </FormControl>
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )} />
                 </div>
 
-                {/* Bagian Personel */}
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* PERSONEL */}
+                <AccordionSection title="PERSONEL" color="blue" badge={`${totalSelected} orang`}>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Organik */}
-                    <FormField control={form.control} name="organik" render={({
-                      field
-                    }) => (
+                    <FormField control={form.control} name="organik" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Organik BPS</FormLabel>
+                        <FormLabel className="text-sm text-blue-600 flex items-center gap-1">
+                          <User className="h-3.5 w-3.5" />
+                          Organik BPS
+                        </FormLabel>
                         <FormControl>
                           <MultiSelect
                             value={field.value || []}
                             onValueChange={field.onChange}
                             options={organikList}
-                            placeholder={isLoadingOrganik ? "Memuat data..." : "Pilih organik"}
+                            placeholder={isLoadingOrganik ? "Memuat..." : "Pilih organik"}
                             loading={isLoadingOrganik}
                             type="organik"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
 
-                    {/* Mitra Statistik */}
-                    <FormField control={form.control} name="mitraStatistik" render={({
-                      field
-                    }) => (
+                    {/* Mitra */}
+                    <FormField control={form.control} name="mitraStatistik" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mitra Statistik</FormLabel>
+                        <FormLabel className="text-sm text-green-600 flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          Mitra Statistik
+                        </FormLabel>
                         <FormControl>
                           <MultiSelect
                             value={field.value || []}
                             onValueChange={field.onChange}
                             options={mitraList}
-                            placeholder={isLoadingMitra ? "Memuat data..." : "Pilih mitra"}
+                            placeholder={isLoadingMitra ? "Memuat..." : "Pilih mitra"}
                             loading={isLoadingMitra}
                             type="mitra"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
 
                     {/* Pembuat Daftar */}
-                    <FormField control={form.control} name="pembuatDaftar" render={({
-                      field
-                    }) => (
+                    <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pembuat Daftar</FormLabel>
+                        <FormLabel className="text-sm">Pembuat Daftar</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Pilih pembuat daftar" />
+                            <SelectValue placeholder="Pilih pembuat" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-[250px]">
+                          <SelectContent className="max-h-60">
                             {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-1.5">
+                              <SelectItem key={organik.id} value={organik.id} className="text-sm">
                                 {organik.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
                   </div>
 
-                  {/* Tampilkan yang dipilih */}
-                  <Card className="border">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Personel Terpilih
-                        </CardTitle>
-                        <Badge variant="outline" className="text-xs">
-                          Total: {totalSelected} orang
-                        </Badge>
+                  {/* Badges yang dipilih */}
+                  {(selectedOrganikDetails.length > 0 || selectedMitraDetails.length > 0) && (
+                    <div className="mt-3 space-y-2">
+                      <div className="text-xs font-medium text-gray-600">Personel Terpilih:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedOrganikDetails.map(org => (
+                          <Badge key={org.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100">
+                            <User className="h-3 w-3 mr-1" />
+                            {org.name}
+                            <button 
+                              onClick={() => removeOrganik(org.id)}
+                              className="ml-1 text-blue-500 hover:text-blue-700"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {selectedMitraDetails.map(mitra => (
+                          <Badge key={mitra.id} variant="outline" className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100">
+                            <Users className="h-3 w-3 mr-1" />
+                            {mitra.name}
+                            <button 
+                              onClick={() => removeMitra(mitra.id)}
+                              className="ml-1 text-green-500 hover:text-green-700"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Organik Terpilih */}
-                      {selectedOrganikDetails.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-blue-600" />
-                            <h4 className="font-medium text-blue-700 text-sm">Organik BPS ({selectedOrganikDetails.length})</h4>
-                          </div>
-                          <div className="max-h-40 overflow-auto rounded-md border p-2">
-                            <div className="space-y-1">
-                              {selectedOrganikDetails.map(org => (
-                                <div key={org.id} className="flex items-center justify-between p-2 border rounded hover:bg-blue-50">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="truncate text-sm">{org.name}</p>
-                                      <Badge variant="outline" className="text-xs bg-blue-100">
-                                        Organik
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => removeOrganik(org.id)}
-                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50 h-6 w-6 p-0"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                    </div>
+                  )}
+                </AccordionSection>
 
-                      {/* Mitra Terpilih */}
-                      {selectedMitraDetails.length > 0 && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-green-600" />
-                            <h4 className="font-medium text-green-700 text-sm">Mitra Statistik ({selectedMitraDetails.length})</h4>
-                          </div>
-                          <div className="max-h-40 overflow-auto rounded-md border p-2">
-                            <div className="space-y-1">
-                              {selectedMitraDetails.map(mitra => (
-                                <div key={mitra.id} className="flex items-center justify-between p-2 border rounded hover:bg-green-50">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="truncate text-sm">{mitra.name}</p>
-                                      <Badge variant="outline" className="text-xs bg-green-100">
-                                        Mitra
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => removeMitra(mitra.id)}
-                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50 h-6 w-6 p-0"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {totalSelected === 0 && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          Belum ada personel yang dipilih
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="flex justify-end space-x-4 pt-6 border-t">
+                {/* Tombol Aksi */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => window.location.href = "https://kecapmaja.vercel.app/e-dokumen/buat"}
+                    size="sm"
+                    onClick={() => window.history.back()}
+                    className="h-10"
                   >
                     Batal
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={isLoading || isLoadingMaster}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    disabled={isLoading}
+                    className="bg-purple-600 hover:bg-purple-700 h-10 px-6"
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Menyimpan...
                       </>
-                    ) : "Simpan Surat Keputusan"}
+                    ) : (
+                      "Simpan Surat Keputusan"
+                    )}
                   </Button>
                 </div>
               </form>
