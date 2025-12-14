@@ -398,7 +398,136 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   );
 };
 
-// Komponen untuk form kegiatan
+// Custom Select dengan Search untuk Master Kegiatan
+interface SearchableSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: MasterKegiatan[];
+  placeholder?: string;
+  loading?: boolean;
+  onItemSelect: (item: MasterKegiatan) => void;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  loading = false,
+  onItemSelect
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      option.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (item: MasterKegiatan) => {
+    onItemSelect(item);
+    setIsOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={toggleDropdown}
+        className="w-full justify-between"
+      >
+        <span className={!value ? "text-muted-foreground" : ""}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+          <div className="border-b p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Cari kegiatan..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsOpen(false);
+                  }
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              />
+            </div>
+          </div>
+
+          <ScrollArea className="max-h-64">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((item) => (
+                  <div
+                    key={item.index}
+                    onClick={() => handleSelect(item)}
+                    className="flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">
+                          {item.namaKegiatan}
+                        </p>
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <div>Beban: {item.bebanAnggaran}</div>
+                        <div>Harga: {item.harga} {item.satuan}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Komponen untuk form kegiatan yang disederhanakan
 interface KegiatanFormItemProps {
   index: number;
   item: KegiatanItem;
@@ -416,8 +545,55 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
   masterData,
   onSelectFromMaster
 }) => {
+  const [selectedMaster, setSelectedMaster] = useState<string>("");
+
+  // Fungsi untuk memecah format string menjadi bagian-bagian
+  const parseKegiatanString = (str: string): KegiatanItem => {
+    const parts = str.split("|").map(part => part.trim());
+    return {
+      namaKegiatan: parts[0] || "",
+      bebanAnggaran: parts[1] || "",
+      harga: parts[2] || "",
+      satuan: parts[3] || ""
+    };
+  };
+
+  // Fungsi untuk menggabungkan menjadi string
+  const formatKegiatanString = (kegiatan: KegiatanItem): string => {
+    return `${kegiatan.namaKegiatan} | ${kegiatan.bebanAnggaran} | ${kegiatan.harga} | ${kegiatan.satuan}`;
+  };
+
+  // Nilai saat ini dalam format string
+  const [textValue, setTextValue] = useState(formatKegiatanString(item));
+
+  // Handler untuk perubahan manual di textarea
+  const handleTextChange = (value: string) => {
+    setTextValue(value);
+    try {
+      const parsed = parseKegiatanString(value);
+      onUpdate(index, 'namaKegiatan', parsed.namaKegiatan);
+      onUpdate(index, 'bebanAnggaran', parsed.bebanAnggaran);
+      onUpdate(index, 'harga', parsed.harga);
+      onUpdate(index, 'satuan', parsed.satuan);
+    } catch (error) {
+      console.error("Error parsing kegiatan string:", error);
+    }
+  };
+
+  // Handler untuk pilih dari master
+  const handleMasterSelect = (masterItem: MasterKegiatan) => {
+    const formattedString = formatKegiatanString({
+      namaKegiatan: masterItem.namaKegiatan,
+      bebanAnggaran: masterItem.bebanAnggaran,
+      harga: masterItem.harga,
+      satuan: masterItem.satuan
+    });
+    setTextValue(formattedString);
+    onSelectFromMaster(index, masterItem);
+  };
+
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+    <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-medium">
@@ -440,76 +616,31 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm font-medium mb-1 block">Pilih dari Master Kegiatan:</label>
-          <Select
-            onValueChange={(value) => {
-              const selectedMaster = masterData.find(m => m.index.toString() === value);
-              if (selectedMaster) {
-                onSelectFromMaster(index, selectedMaster);
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Cari dan pilih dari master..." />
-            </SelectTrigger>
-            <SelectContent>
-              {masterData.map((masterItem) => (
-                <SelectItem key={masterItem.index} value={masterItem.index.toString()}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{masterItem.namaKegiatan}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {masterItem.bebanAnggaran} | {masterItem.harga} {masterItem.satuan}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium mb-2 block">
+            Pilih dari Master Kegiatan:
+          </label>
+          <SearchableSelect
+            value={selectedMaster}
+            onValueChange={setSelectedMaster}
+            options={masterData}
+            placeholder="Cari dan pilih kegiatan..."
+            loading={false}
+            onItemSelect={handleMasterSelect}
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Nama Kegiatan *</label>
-            <Input
-              placeholder="Nama kegiatan"
-              value={item.namaKegiatan}
-              onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
-              className="font-medium"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Beban Anggaran *</label>
-            <Input
-              placeholder="Contoh: DIPA"
-              value={item.bebanAnggaran}
-              onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Harga *</label>
-            <Input
-              placeholder="Contoh: 1000000"
-              value={item.harga}
-              onChange={(e) => onUpdate(index, 'harga', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Satuan *</label>
-            <Input
-              placeholder="Contoh: Orang/Hari"
-              value={item.satuan}
-              onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="pt-2 border-t">
-          <p className="text-sm font-mono bg-white p-2 rounded border">
-            <span className="text-blue-600">Format yang akan disimpan:</span><br />
-            {item.namaKegiatan} | {item.bebanAnggaran} | {item.harga} | {item.satuan}
+        <div>
+          <label className="text-sm font-medium mb-2 block">
+            Atau ketik manual (Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan):
+          </label>
+          <Textarea
+            value={textValue}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Contoh: Survei Sosial Ekonomi | DIPA | 1000000 | Orang/Hari"
+            className="min-h-[80px] font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Format harus sesuai: Nama Kegiatan | Beban Anggaran | Harga | Satuan
           </p>
         </div>
       </div>
@@ -706,6 +837,10 @@ const SuratKeputusan = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganikDetails, setSelectedOrganikDetails] = useState<Person[]>([]);
   const [selectedMitraDetails, setSelectedMitraDetails] = useState<Person[]>([]);
+  const [showMenimbangKedua, setShowMenimbangKedua] = useState(false);
+  const [showMenimbangKetiga, setShowMenimbangKetiga] = useState(false);
+  const [showMenimbangKeempat, setShowMenimbangKeempat] = useState(false);
+  
   const { data: organikList, isLoading: isLoadingOrganik } = useOrganikList();
   const { data: mitraList, isLoading: isLoadingMitra } = useMitraList();
   const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
@@ -870,6 +1005,9 @@ const SuratKeputusan = () => {
       });
       setSelectedOrganikDetails([]);
       setSelectedMitraDetails([]);
+      setShowMenimbangKedua(false);
+      setShowMenimbangKetiga(false);
+      setShowMenimbangKeempat(false);
       
       toast({
         title: "Berhasil",
@@ -963,9 +1101,43 @@ const SuratKeputusan = () => {
                   </div>
                 </div>
 
-                {/* Bagian Menimbang */}
+                {/* Bagian Menimbang - Sederhana */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
+                    <div className="flex gap-2">
+                      {!showMenimbangKedua && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKedua(true)}
+                        >
+                          + Tambah Kedua
+                        </Button>
+                      )}
+                      {!showMenimbangKetiga && showMenimbangKedua && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKetiga(true)}
+                        >
+                          + Tambah Ketiga
+                        </Button>
+                      )}
+                      {!showMenimbangKeempat && showMenimbangKetiga && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMenimbangKeempat(true)}
+                        >
+                          + Tambah Keempat
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   
                   <FormField control={form.control} name="menimbangKesatu" render={({
                     field
@@ -979,41 +1151,80 @@ const SuratKeputusan = () => {
                     </FormItem>
                   )} />
 
-                  <FormField control={form.control} name="menimbangKedua" render={({
-                    field
-                  }) => (
-                    <FormItem>
-                      <FormLabel>KEDUA (Opsional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  {showMenimbangKedua && (
+                    <FormField control={form.control} name="menimbangKedua" render={({
+                      field
+                    }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>KEDUA (Opsional)</FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowMenimbangKedua(false)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
 
-                  <FormField control={form.control} name="menimbangKetiga" render={({
-                    field
-                  }) => (
-                    <FormItem>
-                      <FormLabel>KETIGA - (Opsional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  {showMenimbangKetiga && (
+                    <FormField control={form.control} name="menimbangKetiga" render={({
+                      field
+                    }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>KETIGA (Opsional)</FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowMenimbangKetiga(false)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
 
-                  <FormField control={form.control} name="menimbangKeempat" render={({
-                    field
-                  }) => (
-                    <FormItem>
-                      <FormLabel>KEEMPAT - (Opsional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  {showMenimbangKeempat && (
+                    <FormField control={form.control} name="menimbangKeempat" render={({
+                      field
+                    }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>KEEMPAT (Opsional)</FormLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowMenimbangKeempat(false)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
                 </div>
 
                 {/* Bagian Memutuskan */}
@@ -1061,32 +1272,6 @@ const SuratKeputusan = () => {
                         />
                       ))}
                     </div>
-
-                    {/* Preview format yang akan disimpan */}
-                    {kegiatanList && kegiatanList.some(k => k.namaKegiatan.trim() !== "") && (
-                      <Card className="border-blue-200 bg-blue-50">
-                        <CardContent className="pt-6">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-blue-600" />
-                              <h4 className="font-medium text-blue-700">Preview Format Penyimpanan</h4>
-                            </div>
-                            <div className="bg-white p-3 rounded border font-mono text-sm whitespace-pre-wrap">
-                              {kegiatanList
-                                .filter(k => k.namaKegiatan.trim() !== "")
-                                .map((kegiatan, index) => (
-                                  <div key={index} className="mb-1">
-                                    {kegiatan.namaKegiatan} | {kegiatan.bebanAnggaran} | {kegiatan.harga} | {kegiatan.satuan}
-                                  </div>
-                                ))}
-                              <div className="mt-2 text-xs text-gray-500">
-                                Catatan: Kegiatan akan disimpan dengan pemisah ";"
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
                   </div>
 
                   {/* Bagian Memutuskan Ketiga (tanggal range) */}
