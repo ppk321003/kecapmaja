@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarIcon, FileText, Search, ChevronDown, User, Users, Trash2, Loader2 } from "lucide-react";
+import { CalendarIcon, FileText, Search, ChevronDown, User, Users, Trash2, Loader2, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,15 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Schema Zod dengan validasi baru
+// Type untuk Kegiatan Item
+type KegiatanItem = {
+  namaKegiatan: string;
+  bebanAnggaran: string;
+  harga: string;
+  satuan: string;
+};
+
+// Schema Zod dengan validasi baru untuk multiple kegiatan
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
   tentang: z.string().min(1, "Tentang harus diisi"),
@@ -29,14 +37,12 @@ const suratKeputusanSchema = z.object({
   menimbangKetiga: z.string().optional(),
   menimbangKeempat: z.string().optional(),
   memutuskanKesatu: z.string().min(1, "Memutuskan kesatu harus diisi"),
-  memutuskanKedua: z.string()
-    .min(1, "Memutuskan kedua harus diisi")
-    .refine((val) => {
-      const parts = val.split("|").map(part => part.trim());
-      return parts.length === 4 && parts.every(part => part.length > 0);
-    }, {
-      message: "Format harus: Nama Kegiatan | Beban Anggaran | Harga | Satuan"
-    }),
+  kegiatanList: z.array(z.object({
+    namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
+    bebanAnggaran: z.string().min(1, "Beban anggaran harus diisi"),
+    harga: z.string().min(1, "Harga harus diisi"),
+    satuan: z.string().min(1, "Satuan harus diisi")
+  })).min(1, "Minimal satu kegiatan harus dipilih"),
   tanggalMulai: z.date({
     required_error: "Tanggal mulai harus diisi"
   }),
@@ -48,8 +54,7 @@ const suratKeputusanSchema = z.object({
   }),
   organik: z.array(z.string()),
   mitraStatistik: z.array(z.string()),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
-  selectedKegiatanId: z.string().optional()
+  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
 }).refine(data => {
   return data.organik.length > 0 || data.mitraStatistik.length > 0;
 }, {
@@ -84,6 +89,14 @@ const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
+// Default value untuk kegiatan
+const DEFAULT_KEGIATAN: KegiatanItem = {
+  namaKegiatan: "",
+  bebanAnggaran: "",
+  harga: "",
+  satuan: ""
+};
+
 // Custom hook untuk mengambil data organik DARI GOOGLE SHEETS (bukan database)
 const useOrganikList = () => {
   const [organikList, setOrganikList] = useState<Person[]>([]);
@@ -95,7 +108,6 @@ const useOrganikList = () => {
       try {
         console.log('📥 Fetching organik data from Google Sheets...');
         
-        // Ambil dari Google Sheets langsung (seperti di DaftarHadir)
         const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
@@ -113,9 +125,9 @@ const useOrganikList = () => {
         
         if (data?.values && data.values.length > 1) {
           const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || "", // Column B is ID, fallback to Column A
-            name: row[3] || row[2] || "", // Column D is name, fallback to Column C
-            jabatan: row[4] || "" // Column E is jabatan
+            id: row[1] || row[0] || "",
+            name: row[3] || row[2] || "",
+            jabatan: row[4] || ""
           })).filter((item: Person) => item.id && item.name);
           
           setOrganikList(formattedData);
@@ -146,7 +158,6 @@ const useMitraList = () => {
       try {
         console.log('📥 Fetching mitra data from Google Sheets...');
         
-        // Ambil dari Google Sheets langsung
         const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
@@ -164,9 +175,9 @@ const useMitraList = () => {
         
         if (data?.values && data.values.length > 1) {
           const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || "", // Column B is ID
-            name: row[2] || "", // Column C is name
-            jabatan: row[4] || "" // Column E is jabatan/keterangan
+            id: row[1] || row[0] || "",
+            name: row[2] || "",
+            jabatan: row[4] || ""
           })).filter((item: Person) => item.id && item.name);
           
           setMitraList(formattedData);
@@ -208,7 +219,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  // Filter options based on search term
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
@@ -217,7 +227,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     );
   }, [options, searchTerm]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -385,6 +394,128 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Komponen untuk form kegiatan
+interface KegiatanFormItemProps {
+  index: number;
+  item: KegiatanItem;
+  onUpdate: (index: number, field: keyof KegiatanItem, value: string) => void;
+  onRemove: (index: number) => void;
+  masterData: MasterKegiatan[];
+  onSelectFromMaster: (index: number, masterItem: MasterKegiatan) => void;
+}
+
+const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
+  index,
+  item,
+  onUpdate,
+  onRemove,
+  masterData,
+  onSelectFromMaster
+}) => {
+  const [showMasterDropdown, setShowMasterDropdown] = useState(false);
+
+  return (
+    <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-medium">
+            {index + 1}
+          </div>
+          <h4 className="font-medium">Kegiatan {index + 1}</h4>
+        </div>
+        {index > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(index)}
+            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm font-medium mb-1 block">Pilih dari Master Kegiatan:</label>
+          <Select
+            onValueChange={(value) => {
+              const selectedMaster = masterData.find(m => m.index.toString() === value);
+              if (selectedMaster) {
+                onSelectFromMaster(index, selectedMaster);
+                setShowMasterDropdown(false);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Cari dan pilih dari master..." />
+            </SelectTrigger>
+            <SelectContent>
+              {masterData.map((masterItem) => (
+                <SelectItem key={masterItem.index} value={masterItem.index.toString()}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{masterItem.namaKegiatan}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {masterItem.bebanAnggaran} | {masterItem.harga} {masterItem.satuan}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nama Kegiatan *</label>
+            <Input
+              placeholder="Nama kegiatan"
+              value={item.namaKegiatan}
+              onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
+              className="font-medium"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Beban Anggaran *</label>
+            <Input
+              placeholder="Contoh: DIPA"
+              value={item.bebanAnggaran}
+              onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Harga *</label>
+            <Input
+              placeholder="Contoh: 1000000"
+              value={item.harga}
+              onChange={(e) => onUpdate(index, 'harga', e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Satuan *</label>
+            <Input
+              placeholder="Contoh: Orang/Hari"
+              value={item.satuan}
+              onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="pt-2 border-t">
+          <p className="text-sm font-mono bg-white p-2 rounded border">
+            <span className="text-blue-600">Format yang akan disimpan:</span><br />
+            {item.namaKegiatan} | {item.bebanAnggaran} | {item.harga} | {item.satuan}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -594,22 +725,20 @@ const SuratKeputusan = () => {
       menimbangKetiga: "",
       menimbangKeempat: "",
       memutuskanKesatu: "",
-      memutuskanKedua: "",
+      kegiatanList: [DEFAULT_KEGIATAN], // Menggunakan default value yang sudah didefinisikan
       tanggalMulai: undefined,
       tanggalSelesai: undefined,
       tanggalSuratKeputusan: undefined,
       organik: [],
       mitraStatistik: [],
-      pembuatDaftar: "",
-      selectedKegiatanId: ""
+      pembuatDaftar: ""
     }
   });
 
-  // Watch untuk mendapatkan nilai yang dipilih
+  const kegiatanList = form.watch("kegiatanList") || [DEFAULT_KEGIATAN];
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
 
-  // Update selected organik and mitra details
   useEffect(() => {
     const updatedOrganik = watchedOrganik
       .map(id => organikList.find(item => item.id === id))
@@ -633,18 +762,51 @@ const SuratKeputusan = () => {
     return `${day} ${month} ${year}`;
   };
 
-  // Handler untuk ketika user memilih dari dropdown kegiatan
-  const handleKegiatanSelect = (selectedValue: string) => {
-    const selectedIndex = parseInt(selectedValue);
-    const selectedKegiatan = masterData.find(item => item.index === selectedIndex);
-    
-    if (selectedKegiatan) {
-      const formattedValue = `${selectedKegiatan.namaKegiatan} | ${selectedKegiatan.bebanAnggaran} | ${selectedKegiatan.harga} | ${selectedKegiatan.satuan}`;
-      
-      form.setValue("memutuskanKedua", formattedValue);
-      form.setValue("selectedKegiatanId", selectedIndex.toString());
-      form.trigger("memutuskanKedua");
+  // Handler untuk menambah kegiatan baru
+  const handleAddKegiatan = () => {
+    const currentKegiatanList = form.getValues("kegiatanList") || [];
+    form.setValue("kegiatanList", [
+      ...currentKegiatanList,
+      { ...DEFAULT_KEGIATAN }
+    ]);
+  };
+
+  // Handler untuk menghapus kegiatan
+  const handleRemoveKegiatan = (index: number) => {
+    const currentKegiatanList = form.getValues("kegiatanList") || [];
+    if (currentKegiatanList.length > 1) {
+      const newList = currentKegiatanList.filter((_, i) => i !== index);
+      form.setValue("kegiatanList", newList);
     }
+  };
+
+  // Handler untuk update data kegiatan
+  const handleUpdateKegiatan = (index: number, field: keyof KegiatanItem, value: string) => {
+    const currentKegiatanList = form.getValues("kegiatanList") || [];
+    const updatedList = [...currentKegiatanList];
+    updatedList[index] = { ...updatedList[index], [field]: value };
+    form.setValue("kegiatanList", updatedList);
+  };
+
+  // Handler untuk memilih dari master kegiatan
+  const handleSelectFromMaster = (index: number, masterItem: MasterKegiatan) => {
+    handleUpdateKegiatan(index, 'namaKegiatan', masterItem.namaKegiatan);
+    handleUpdateKegiatan(index, 'bebanAnggaran', masterItem.bebanAnggaran);
+    handleUpdateKegiatan(index, 'harga', masterItem.harga);
+    handleUpdateKegiatan(index, 'satuan', masterItem.satuan);
+  };
+
+  // Fungsi untuk format kegiatan menjadi string untuk spreadsheet
+  const formatKegiatanForSpreadsheet = (kegiatanList: KegiatanItem[]): string => {
+    return kegiatanList
+      .filter(kegiatan => 
+        kegiatan.namaKegiatan.trim() !== "" && 
+        kegiatan.bebanAnggaran.trim() !== "" && 
+        kegiatan.harga.trim() !== "" && 
+        kegiatan.satuan.trim() !== ""
+      )
+      .map(kegiatan => `${kegiatan.namaKegiatan} | ${kegiatan.bebanAnggaran} | ${kegiatan.harga} | ${kegiatan.satuan}`)
+      .join("; ");
   };
 
   const onSubmit = async (data: SuratKeputusanFormData) => {
@@ -654,6 +816,9 @@ const SuratKeputusan = () => {
       const skId = await generateSKId();
 
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
+
+      // Format kegiatan untuk disimpan di spreadsheet
+      const kegiatanFormatted = formatKegiatanForSpreadsheet(data.kegiatanList);
 
       const rowData = [
         sequenceNumber,
@@ -665,26 +830,41 @@ const SuratKeputusan = () => {
         data.menimbangKetiga || "",
         data.menimbangKeempat || "",
         data.memutuskanKesatu,
-        data.memutuskanKedua,
+        kegiatanFormatted, // Disimpan dengan pemisah ";"
         `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
         formatTanggalIndonesia(data.tanggalSuratKeputusan),
         selectedOrganikDetails.map(o => o.name).join(" | "),
         selectedMitraDetails.map(m => m.name).join(" | "),
         selectedPembuat?.name || "",
-        data.selectedKegiatanId || ""
+        data.kegiatanList.length.toString() // Menyimpan jumlah kegiatan
       ];
 
       console.log('📝 Submitting SK data:', rowData);
 
       await submitData(rowData);
 
-      form.reset();
+      form.reset({
+        nomorSuratKeputusan: "",
+        tentang: "",
+        menimbangKesatu: "",
+        menimbangKedua: "",
+        menimbangKetiga: "",
+        menimbangKeempat: "",
+        memutuskanKesatu: "",
+        kegiatanList: [DEFAULT_KEGIATAN],
+        tanggalMulai: undefined,
+        tanggalSelesai: undefined,
+        tanggalSuratKeputusan: undefined,
+        organik: [],
+        mitraStatistik: [],
+        pembuatDaftar: ""
+      });
       setSelectedOrganikDetails([]);
       setSelectedMitraDetails([]);
       
       toast({
         title: "Berhasil",
-        description: `Surat keputusan berhasil disimpan (ID: ${skId})`
+        description: `Surat keputusan berhasil disimpan dengan ${data.kegiatanList.length} kegiatan (ID: ${skId})`
       });
     } catch (error: any) {
       console.error("Error submitting form:", error);
@@ -713,14 +893,6 @@ const SuratKeputusan = () => {
   const totalSelected = selectedOrganikDetails.length + selectedMitraDetails.length;
   const isLoading = isSubmitting || isSubmitLoading;
 
-  // Debug: Log data untuk memastikan
-  useEffect(() => {
-    console.log('🔍 Organik List:', organikList);
-    console.log('🔍 Mitra List:', mitraList);
-    console.log('🔍 Selected Organik IDs:', watchedOrganik);
-    console.log('🔍 Selected Mitra IDs:', watchedMitra);
-  }, [organikList, mitraList, watchedOrganik, watchedMitra]);
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -731,7 +903,7 @@ const SuratKeputusan = () => {
           <div>
             <h1 className="text-2xl font-bold text-purple-600 tracking-tight">Surat Keputusan</h1>
             <p className="text-muted-foreground">
-              Formulir pembuatan surat keputusan
+              Formulir pembuatan surat keputusan dengan multiple kegiatan
             </p>
           </div>
         </div>
@@ -851,49 +1023,64 @@ const SuratKeputusan = () => {
                     </FormItem>
                   )} />
 
-                  {/* Bagian Memutuskan Kedua dengan dropdown */}
+                  {/* Bagian Memutuskan Kedua dengan multiple kegiatan */}
                   <div className="space-y-4">
-                    <FormField control={form.control} name="memutuskanKedua" render={({
-                      field
-                    }) => (
-                      <FormItem>
-                        <FormLabel>KEDUA - (Wajib)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" 
-                            className="min-h-[100px] font-mono text-sm" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
-                    {/* Dropdown untuk memilih dari master kegiatan */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Pilih dari Master Kegiatan (Opsional):</label>
-                      <Select
-                        onValueChange={handleKegiatanSelect}
-                        disabled={isLoadingMaster}
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-semibold">KEDUA - Kegiatan yang Diputuskan (Minimal 1)</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddKegiatan}
+                        className="gap-1"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingMaster ? "Memuat data..." : "Cari dan pilih kegiatan..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {masterData.map((item) => (
-                            <SelectItem key={item.index} value={item.index.toString()}>
-                              {item.namaKegiatan}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Pilih dari dropdown atau ketik manual dengan format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
-                      </p>
+                        <Plus className="h-4 w-4" />
+                        Tambah Kegiatan
+                      </Button>
                     </div>
+                    
+                    <div className="space-y-4">
+                      {kegiatanList.map((kegiatan, index) => (
+                        <KegiatanFormItem
+                          key={index}
+                          index={index}
+                          item={kegiatan}
+                          onUpdate={handleUpdateKegiatan}
+                          onRemove={handleRemoveKegiatan}
+                          masterData={masterData}
+                          onSelectFromMaster={handleSelectFromMaster}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Preview format yang akan disimpan */}
+                    {kegiatanList.some(k => k.namaKegiatan.trim() !== "") && (
+                      <Card className="border-blue-200 bg-blue-50">
+                        <CardContent className="pt-6">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-blue-600" />
+                              <h4 className="font-medium text-blue-700">Preview Format Penyimpanan</h4>
+                            </div>
+                            <div className="bg-white p-3 rounded border font-mono text-sm whitespace-pre-wrap">
+                              {kegiatanList
+                                .filter(k => k.namaKegiatan.trim() !== "")
+                                .map((kegiatan, index) => (
+                                  <div key={index} className="mb-1">
+                                    {kegiatan.namaKegiatan} | {kegiatan.bebanAnggaran} | {kegiatan.harga} | {kegiatan.satuan}
+                                  </div>
+                                ))}
+                              <div className="mt-2 text-xs text-gray-500">
+                                Catatan: Kegiatan akan disimpan dengan pemisah ";"
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
 
-                  {/* Bagian Memutuskan Ketiga (sekarang jadi tanggal range) */}
+                  {/* Bagian Memutuskan Ketiga (tanggal range) */}
                   <div className="space-y-4">
                     <h4 className="text-md font-semibold text-gray-700">KETIGA - (Wajib)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
