@@ -11,10 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
@@ -292,9 +290,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm",
+          "flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm",
           "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring",
-          "h-10 border-amber-400 focus:border-amber-500"
+          "h-10 border-amber-600 focus:border-amber-700"
         )}
       >
         <div className="flex items-center gap-2 overflow-hidden">
@@ -431,7 +429,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full justify-between h-10 text-sm font-normal",
-          "border-amber-400 hover:border-amber-500 focus:border-amber-500"
+          "border-amber-600 hover:border-amber-700 focus:border-amber-700"
         )}
       >
         <span className={!value ? "text-muted-foreground" : "text-gray-700"}>
@@ -532,7 +530,7 @@ const SearchablePembuatSelect: React.FC<SearchablePembuatSelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full justify-between h-10 text-sm font-normal",
-          "border-amber-400 hover:border-amber-500 focus:border-amber-500"
+          "border-amber-600 hover:border-amber-700 focus:border-amber-700"
         )}
       >
         <span className={!value ? "text-muted-foreground" : "text-gray-700"}>
@@ -654,8 +652,8 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          {/* Nama Kegiatan - Lebih lebar */}
-          <div className="md:col-span-6">
+          {/* Nama Kegiatan - TAMBAH LEBAR */}
+          <div className="md:col-span-8">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Nama Kegiatan
             </label>
@@ -663,12 +661,12 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.namaKegiatan}
               onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
               placeholder="Nama kegiatan"
-              className="h-9 text-sm border-amber-400 focus:border-amber-500"
+              className="h-9 text-sm border-amber-600 focus:border-amber-700"
             />
           </div>
           
-          {/* Beban Anggaran - Disesuaikan */}
-          <div className="md:col-span-3">
+          {/* Beban Anggaran - KURANGI LEBAR 10% (dari 3 jadi 2.7, dibulatkan ke 2) */}
+          <div className="md:col-span-2">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Beban Anggaran
             </label>
@@ -676,12 +674,12 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.bebanAnggaran}
               onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
               placeholder="2898.BMA.007.005.A.521213"
-              className="h-9 text-sm border-amber-400 focus:border-amber-500"
+              className="h-9 text-sm border-amber-600 focus:border-amber-700"
             />
           </div>
           
-          {/* Harga - Disesuaikan */}
-          <div className="md:col-span-2">
+          {/* Harga - KURANGI LEBAR 50% (dari 2 jadi 1) */}
+          <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Harga
             </label>
@@ -689,12 +687,12 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.harga}
               onChange={(e) => onUpdate(index, 'harga', e.target.value)}
               placeholder="1000000000"
-              className="h-9 text-sm border-amber-400 focus:border-amber-500"
+              className="h-9 text-sm border-amber-600 focus:border-amber-700"
               maxLength={10}
             />
           </div>
           
-          {/* Satuan - Disesuaikan */}
+          {/* Satuan - KURANGI LEBAR 50% (dari 1 jadi 1, tetap) */}
           <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Satuan
@@ -703,7 +701,7 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               value={item.satuan}
               onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
               placeholder="Orang"
-              className="h-9 text-sm border-amber400 focus:border-amber-500"
+              className="h-9 text-sm border-amber-600 focus:border-amber-700"
               maxLength={10}
             />
           </div>
@@ -1212,7 +1210,7 @@ const SuratKeputusan = () => {
                       <FormLabel className="text-sm font-medium">Nomor SK</FormLabel>
                       <Input 
                         placeholder="Contoh: 123" 
-                        className="h-10 border-amber-400 focus:border-amber-500"
+                        className="h-10 border-amber-600 focus:border-amber-700"
                         {...form.register("nomorSuratKeputusan")}
                       />
                       <FormMessage className="text-xs">
@@ -1226,7 +1224,7 @@ const SuratKeputusan = () => {
                       <FormLabel className="text-sm font-medium">Tentang</FormLabel>
                       <Textarea 
                         placeholder="Contoh: Penetapan Petugas Survei Konversi Gabah ke Beras (SKGB) Tahun 2026"
-                        className="text-sm resize-none overflow-hidden border-amber-400 focus:border-amber-500" 
+                        className="text-sm resize-none overflow-hidden border-amber-600 focus:border-amber-700" 
                         style={{ 
                           height: `${calculateTentangHeight()}px`,
                           minHeight: '40px',
@@ -1264,7 +1262,7 @@ const SuratKeputusan = () => {
                       </div>
                       <Textarea 
                         placeholder="Salin atau modifikasi contoh di atas sesuai kebutuhan"
-                        className="min-h-[120px] text-sm border-amber-400 focus:border-amber-500" 
+                        className="min-h-[120px] text-sm border-amber-600 focus:border-amber-700" 
                         {...form.register("menimbangKesatu")}
                       />
                       <FormMessage className="text-xs">
@@ -1310,7 +1308,7 @@ const SuratKeputusan = () => {
                             </div>
                             <Textarea 
                               placeholder="Menimbang kedua..." 
-                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              className="min-h-[100px] text-sm border-amber-600 focus:border-amber-700" 
                               {...form.register("menimbangKedua")}
                             />
                           </FormItem>
@@ -1353,7 +1351,7 @@ const SuratKeputusan = () => {
                             </div>
                             <Textarea 
                               placeholder="Menimbang ketiga..." 
-                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              className="min-h-[100px] text-sm border-amber-600 focus:border-amber-700" 
                               {...form.register("menimbangKetiga")}
                             />
                           </FormItem>
@@ -1396,7 +1394,7 @@ const SuratKeputusan = () => {
                             </div>
                             <Textarea 
                               placeholder="Menimbang keempat..." 
-                              className="min-h-[100px] text-sm border-amber-400 focus:border-amber-500" 
+                              className="min-h-[100px] text-sm border-amber-600 focus:border-amber-700" 
                               {...form.register("menimbangKeempat")}
                             />
                           </FormItem>
@@ -1430,7 +1428,7 @@ const SuratKeputusan = () => {
                       </div>
                       <Input 
                         placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
-                        className="h-10 text-sm border-amber-400 focus:border-amber-500" 
+                        className="h-10 text-sm border-amber-600 focus:border-amber-700" 
                         {...form.register("memutuskanKesatu")}
                         onChange={(e) => {
                           form.setValue("memutuskanKesatu", e.target.value);
@@ -1499,7 +1497,7 @@ const SuratKeputusan = () => {
                         <FormItem className="flex-1 w-full">
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalMulai") && "text-muted-foreground")}>
+                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-600 hover:border-amber-700", !form.watch("tanggalMulai") && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {form.watch("tanggalMulai") ? format(form.watch("tanggalMulai"), "dd/MM/yyyy") : "Tanggal Mulai"}
                               </Button>
@@ -1523,7 +1521,7 @@ const SuratKeputusan = () => {
                         <FormItem className="flex-1 w-full">
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalSelesai") && "text-muted-foreground")}>
+                              <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-600 hover:border-amber-700", !form.watch("tanggalSelesai") && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {form.watch("tanggalSelesai") ? format(form.watch("tanggalSelesai"), "dd/MM/yyyy") : "Tanggal Selesai"}
                               </Button>
@@ -1556,7 +1554,7 @@ const SuratKeputusan = () => {
                     <FormLabel className="text-sm font-medium">Tanggal Surat Keputusan</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-400 hover:border-amber-500", !form.watch("tanggalSuratKeputusan") && "text-muted-foreground")}>
+                        <Button variant="outline" className={cn("w-full h-10 justify-start text-sm font-normal border-amber-600 hover:border-amber-700", !form.watch("tanggalSuratKeputusan") && "text-muted-foreground")}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {form.watch("tanggalSuratKeputusan") ? format(form.watch("tanggalSuratKeputusan"), "dd/MM/yyyy") : "Pilih tanggal"}
                         </Button>
