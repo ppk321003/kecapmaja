@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
@@ -207,7 +208,7 @@ const AccordionSection: React.FC<{
   };
 
   return (
-    <div className={`border ${colorClasses[color].border} rounded-lg mb-3 overflow-hidden`}>
+    <div className={`border ${colorClasses[color].border} rounded-lg mb-4 overflow-hidden`}>
       <div 
         className={`${colorClasses[color].bg} p-3 flex justify-between items-center cursor-pointer`}
         onClick={() => setIsOpen(!isOpen)}
@@ -227,7 +228,7 @@ const AccordionSection: React.FC<{
         )}
       </div>
       {isOpen && (
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-4">
           {children}
         </div>
       )}
@@ -235,15 +236,17 @@ const AccordionSection: React.FC<{
   );
 };
 
-// MultiSelect Component - Ringkas
-const MultiSelect: React.FC<{
+// Custom MultiSelect Component - IMPROVED VERSION dengan z-index tinggi
+interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
   options: Person[];
   placeholder?: string;
   loading?: boolean;
   type: 'organik' | 'mitra';
-}> = ({
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({
   value,
   onValueChange,
   options,
@@ -318,7 +321,7 @@ const MultiSelect: React.FC<{
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
@@ -332,41 +335,57 @@ const MultiSelect: React.FC<{
             </div>
           </div>
 
-          <div className="max-h-48 overflow-auto p-1">
-            {loading ? (
-              <div className="flex justify-center p-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : filteredOptions.length === 0 ? (
-              <div className="p-2 text-center text-sm text-gray-500">
-                Tidak ada data
-              </div>
-            ) : (
-              filteredOptions.map((option) => {
-                const isSelected = value.includes(option.id);
-                return (
-                  <div
-                    key={option.id}
-                    onClick={() => handleSelect(option.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 cursor-pointer text-sm",
-                      "hover:bg-accent",
-                      isSelected && "bg-blue-50"
-                    )}
-                  >
-                    <div className={cn(
-                      "h-4 w-4 rounded border flex-shrink-0",
-                      isSelected 
-                        ? "bg-blue-600 border-blue-600" 
-                        : "border-gray-300"
-                    )} />
-                    <span className={cn(isSelected && "text-blue-700")}>
-                      {option.name}
-                    </span>
-                  </div>
-                );
-              })
-            )}
+          <ScrollArea className="h-60">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = value.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => handleSelect(option.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 cursor-pointer text-sm",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-blue-50"
+                      )}
+                    >
+                      <div className={cn(
+                        "h-4 w-4 rounded border flex-shrink-0",
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600" 
+                          : "border-gray-300"
+                      )} />
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("truncate", isSelected ? "text-blue-700 font-medium" : "text-gray-700")}>
+                          {option.name}
+                        </p>
+                        {option.jabatan && (
+                          <p className="text-xs text-gray-500 truncate">{option.jabatan}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="border-t p-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Terpilih:</span>
+              <span className={type === 'organik' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -374,72 +393,223 @@ const MultiSelect: React.FC<{
   );
 };
 
-// Kegiatan Item Ringkas
-const KegiatanItemCompact: React.FC<{
+// Custom Select dengan Search untuk Master Kegiatan
+interface SearchableSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: MasterKegiatan[];
+  placeholder?: string;
+  loading?: boolean;
+  onItemSelect: (item: MasterKegiatan) => void;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  loading = false,
+  onItemSelect
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      option.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (item: MasterKegiatan) => {
+    onItemSelect(item);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between h-10 text-sm font-normal"
+      >
+        <span className={!value ? "text-muted-foreground" : ""}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Cari kegiatan atau role..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-8 text-sm"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <ScrollArea className="h-60">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500">
+                  Tidak ada kegiatan ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((item) => (
+                  <div
+                    key={item.index}
+                    onClick={() => handleSelect(item)}
+                    className="px-3 py-2 cursor-pointer text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <div className="font-medium text-gray-800">{item.namaKegiatan}</div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>Role: {item.role}</span>
+                      <span>{item.harga} / {item.satuan}</span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">Anggaran: {item.bebanAnggaran}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Komponen untuk form kegiatan dengan dropdown
+interface KegiatanFormItemProps {
   index: number;
   item: KegiatanItem;
   onUpdate: (index: number, field: keyof KegiatanItem, value: string) => void;
   onRemove: (index: number) => void;
-}> = ({
+  masterData: MasterKegiatan[];
+  onSelectFromMaster: (index: number, masterItem: MasterKegiatan) => void;
+}
+
+const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
   index,
   item,
   onUpdate,
-  onRemove
+  onRemove,
+  masterData,
+  onSelectFromMaster
 }) => {
+  const [selectedMaster, setSelectedMaster] = useState<string>("");
+
+  const handleMasterSelect = (masterItem: MasterKegiatan) => {
+    onSelectFromMaster(index, masterItem);
+    setSelectedMaster(masterItem.namaKegiatan);
+  };
+
   return (
-    <div className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50">
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-medium mt-1 flex-shrink-0">
-        {index + 1}
+    <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+            {index + 1}
+          </div>
+          <h4 className="font-medium text-sm">Kegiatan {index + 1}</h4>
+        </div>
+        {index > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(index)}
+            className="h-7 w-7 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+
+      <div className="space-y-4">
         <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Kegiatan</label>
-          <Input
-            value={item.namaKegiatan}
-            onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
-            placeholder="Nama kegiatan"
-            className="h-8 text-sm"
+          <label className="text-xs font-medium text-gray-600 mb-2 block">
+            Pilih dari Master Kegiatan:
+          </label>
+          <SearchableSelect
+            value={selectedMaster}
+            onValueChange={setSelectedMaster}
+            options={masterData}
+            placeholder="Cari dan pilih kegiatan..."
+            loading={false}
+            onItemSelect={handleMasterSelect}
           />
         </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Beban Anggaran</label>
-          <Input
-            value={item.bebanAnggaran}
-            onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
-            placeholder="DIPA/Pihak Ketiga"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">Harga</label>
-          <Input
-            value={item.harga}
-            onChange={(e) => onUpdate(index, 'harga', e.target.value)}
-            placeholder="Rp 1.000.000"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Satuan</label>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Nama Kegiatan
+            </label>
+            <Input
+              value={item.namaKegiatan}
+              onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
+              placeholder="Nama kegiatan"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Beban Anggaran
+            </label>
+            <Input
+              value={item.bebanAnggaran}
+              onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
+              placeholder="DIPA/Pihak Ketiga"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Harga
+            </label>
+            <Input
+              value={item.harga}
+              onChange={(e) => onUpdate(index, 'harga', e.target.value)}
+              placeholder="Rp 1.000.000"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Satuan
+            </label>
             <Input
               value={item.satuan}
               onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
               placeholder="Orang/Hari"
-              className="h-8 text-sm"
+              className="h-9 text-sm"
             />
           </div>
-          {index > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(index)}
-              className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          )}
         </div>
       </div>
     </div>
@@ -716,6 +886,22 @@ const SuratKeputusan = () => {
     }
   };
 
+  const handleSelectFromMaster = (index: number, masterItem: MasterKegiatan) => {
+    const updatedKegiatan: KegiatanItem = {
+      namaKegiatan: masterItem.namaKegiatan,
+      bebanAnggaran: masterItem.bebanAnggaran,
+      harga: masterItem.harga,
+      satuan: masterItem.satuan
+    };
+    
+    const currentValues = form.getValues("kegiatanList");
+    if (currentValues && currentValues[index]) {
+      const updatedList = [...currentValues];
+      updatedList[index] = updatedKegiatan;
+      form.setValue("kegiatanList", updatedList);
+    }
+  };
+
   const formatKegiatanForSpreadsheet = (kegiatanList: KegiatanItem[]): string => {
     return kegiatanList
       .filter(kegiatan => 
@@ -814,9 +1000,9 @@ const SuratKeputusan = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 p-4">
-        {/* Header Ringkas */}
-        <div className="mb-4">
+      <div className="space-y-6 p-4">
+        {/* Header */}
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-purple-700 flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <FileText className="h-6 w-6 text-purple-600" />
@@ -834,15 +1020,15 @@ const SuratKeputusan = () => {
             </CardTitle>
           </CardHeader>
           
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Nomor dan Tentang */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                   <div>
                     <FormField control={form.control} name="nomorSuratKeputusan" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm">Nomor SK</FormLabel>
+                        <FormLabel className="text-sm font-medium">Nomor SK</FormLabel>
                         <FormControl>
                           <Input placeholder="Contoh: 123" className="h-10" {...field} />
                         </FormControl>
@@ -854,7 +1040,7 @@ const SuratKeputusan = () => {
                   <div className="lg:col-span-3">
                     <FormField control={form.control} name="tentang" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm">Tentang</FormLabel>
+                        <FormLabel className="text-sm font-medium">Tentang</FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Masukkan tentang surat keputusan" 
@@ -869,22 +1055,22 @@ const SuratKeputusan = () => {
                 </div>
 
                 {/* Bagian MENIMBANG */}
-                <AccordionSection title="MENIMBANG" color="red" badge="Wajib">
-                  <div className="space-y-3">
+                <AccordionSection title="MENIMBANG" color="red" badge="Wajib" defaultOpen={true}>
+                  <div className="space-y-4">
                     <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
                           <FormLabel className="text-sm text-red-600">(Wajib diisi)</FormLabel>
                         </div>
-                        <div className="mb-2 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                        <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
                           <div className="font-medium mb-1">Contoh lengkap:</div>
                           <div className="italic">{CONTOH_MENIMBANG_KESATU}</div>
                         </div>
                         <FormControl>
                           <Textarea 
                             placeholder="Salin atau modifikasi contoh di atas sesuai kebutuhan"
-                            className="min-h-[100px] text-sm" 
+                            className="min-h-[120px] text-sm" 
                             {...field} 
                           />
                         </FormControl>
@@ -893,24 +1079,24 @@ const SuratKeputusan = () => {
                     )} />
 
                     {/* Tombol untuk menambah menimbang opsional */}
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       {!showMenimbangKedua && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKedua(true)}
-                          className="h-8 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full"
                         >
                           + Tambah Menimbang Kedua (Opsional)
                         </Button>
                       )}
                       
                       {showMenimbangKedua && (
-                        <div className="border-l-2 border-gray-200 pl-3">
+                        <div className="border-l-2 border-gray-200 pl-4">
                           <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
                             <FormItem>
-                              <div className="flex justify-between items-center mb-1">
+                              <div className="flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEDUA</Badge>
                                   <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
@@ -920,19 +1106,19 @@ const SuratKeputusan = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => setShowMenimbangKedua(false)}
-                                  className="h-6 w-6 text-gray-500"
+                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
                                 <div className="font-medium mb-1">Contoh:</div>
                                 <div className="italic">{CONTOH_MENIMBANG_KEDUA}</div>
                               </div>
                               <FormControl>
                                 <Textarea 
                                   placeholder="Menimbang kedua..." 
-                                  className="min-h-[80px] text-sm" 
+                                  className="min-h-[100px] text-sm" 
                                   {...field} 
                                 />
                               </FormControl>
@@ -947,17 +1133,17 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKetiga(true)}
-                          className="h-8 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full"
                         >
                           + Tambah Menimbang Ketiga (Opsional)
                         </Button>
                       )}
                       
                       {showMenimbangKetiga && (
-                        <div className="border-l-2 border-gray-200 pl-3">
+                        <div className="border-l-2 border-gray-200 pl-4">
                           <FormField control={form.control} name="menimbangKetiga" render={({ field }) => (
                             <FormItem>
-                              <div className="flex justify-between items-center mb-1">
+                              <div className="flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KETIGA</Badge>
                                   <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
@@ -967,19 +1153,19 @@ const SuratKeputusan = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => setShowMenimbangKetiga(false)}
-                                  className="h-6 w-6 text-gray-500"
+                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
                                 <div className="font-medium mb-1">Contoh:</div>
                                 <div className="italic">{CONTOH_MENIMBANG_KETIGA}</div>
                               </div>
                               <FormControl>
                                 <Textarea 
                                   placeholder="Menimbang ketiga..." 
-                                  className="min-h-[80px] text-sm" 
+                                  className="min-h-[100px] text-sm" 
                                   {...field} 
                                 />
                               </FormControl>
@@ -994,17 +1180,17 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKeempat(true)}
-                          className="h-8 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full"
                         >
                           + Tambah Menimbang Keempat (Opsional)
                         </Button>
                       )}
                       
                       {showMenimbangKeempat && (
-                        <div className="border-l-2 border-gray-200 pl-3">
+                        <div className="border-l-2 border-gray-200 pl-4">
                           <FormField control={form.control} name="menimbangKeempat" render={({ field }) => (
                             <FormItem>
-                              <div className="flex justify-between items-center mb-1">
+                              <div className="flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEEMPAT</Badge>
                                   <FormLabel className="text-sm text-gray-600">(Opsional)</FormLabel>
@@ -1014,19 +1200,19 @@ const SuratKeputusan = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => setShowMenimbangKeempat(false)}
-                                  className="h-6 w-6 text-gray-500"
+                                  className="h-6 w-6 text-gray-500 hover:text-red-600"
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <div className="mb-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
+                              <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
                                 <div className="font-medium mb-1">Contoh:</div>
                                 <div className="italic">{CONTOH_MENIMBANG_KEEMPAT}</div>
                               </div>
                               <FormControl>
                                 <Textarea 
                                   placeholder="Menimbang keempat..." 
-                                  className="min-h-[80px] text-sm" 
+                                  className="min-h-[100px] text-sm" 
                                   {...field} 
                                 />
                               </FormControl>
@@ -1039,15 +1225,15 @@ const SuratKeputusan = () => {
                 </AccordionSection>
 
                 {/* Bagian MEMUTUSKAN */}
-                <AccordionSection title="MEMUTUSKAN" color="red">
-                  <div className="space-y-3">
+                <AccordionSection title="MEMUTUSKAN" color="red" defaultOpen={true}>
+                  <div className="space-y-6">
                     <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
                           <FormLabel className="text-sm text-red-600">Menetapkan</FormLabel>
                         </div>
-                        <div className="mb-2 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                        <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
                           <div className="font-medium mb-1">Contoh:</div>
                           <div className="italic">{CONTOH_MEMUTUSKAN_KESATU}</div>
                         </div>
@@ -1063,7 +1249,7 @@ const SuratKeputusan = () => {
                     )} />
 
                     {/* Kegiatan */}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KEDUA</Badge>
@@ -1074,35 +1260,37 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={handleAddKegiatan}
-                          className="h-8 px-3 text-xs"
+                          className="h-9 px-4 text-sm"
                         >
-                          <Plus className="h-3 w-3 mr-1" />
+                          <Plus className="h-3.5 w-3.5 mr-1" />
                           Tambah Kegiatan
                         </Button>
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         {fields.map((field, index) => (
-                          <KegiatanItemCompact
+                          <KegiatanFormItem
                             key={field.id}
                             index={index}
                             item={kegiatanList[index] || DEFAULT_KEGIATAN}
                             onUpdate={handleUpdateKegiatan}
                             onRemove={handleRemoveKegiatan}
+                            masterData={masterData}
+                            onSelectFromMaster={handleSelectFromMaster}
                           />
                         ))}
                       </div>
                     </div>
 
                     {/* Tanggal Range */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KETIGA</Badge>
                         <FormLabel className="text-sm font-medium text-gray-700">Jangka Waktu Pelaksanaan</FormLabel>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col md:flex-row items-center gap-3">
                         <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
-                          <FormItem className="flex-1">
+                          <FormItem className="flex-1 w-full">
                             <FormControl>
                               <Popover>
                                 <PopoverTrigger asChild>
@@ -1111,7 +1299,7 @@ const SuratKeputusan = () => {
                                     {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Mulai"}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
+                                <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar 
                                     mode="single" 
                                     selected={field.value} 
@@ -1125,10 +1313,10 @@ const SuratKeputusan = () => {
                           </FormItem>
                         )} />
                         
-                        <span className="text-gray-400">sampai</span>
+                        <span className="text-gray-400 text-sm">sampai</span>
                         
                         <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
-                          <FormItem className="flex-1">
+                          <FormItem className="flex-1 w-full">
                             <FormControl>
                               <Popover>
                                 <PopoverTrigger asChild>
@@ -1137,7 +1325,7 @@ const SuratKeputusan = () => {
                                     {field.value ? format(field.value, "dd/MM/yyyy") : "Tanggal Selesai"}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
+                                <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar 
                                     mode="single" 
                                     selected={field.value} 
@@ -1160,10 +1348,10 @@ const SuratKeputusan = () => {
                 </AccordionSection>
 
                 {/* Tanggal Surat Keputusan */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="tanggalSuratKeputusan" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Tanggal Surat Keputusan</FormLabel>
+                      <FormLabel className="text-sm font-medium">Tanggal Surat Keputusan</FormLabel>
                       <FormControl>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -1172,7 +1360,7 @@ const SuratKeputusan = () => {
                               {field.value ? format(field.value, "dd/MM/yyyy") : "Pilih tanggal"}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
+                          <PopoverContent className="w-auto p-0" align="start">
                             <Calendar 
                               mode="single" 
                               selected={field.value} 
@@ -1187,14 +1375,29 @@ const SuratKeputusan = () => {
                   )} />
                 </div>
 
-                {/* PERSONEL */}
-                <AccordionSection title="PERSONEL" color="blue" badge={`${totalSelected} orang`}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* PERSONEL - TIDAK DIPAKSAKAN DI ACCORDION YANG SEMPIT */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Users className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-blue-700 text-lg">PERSONEL</h3>
+                        <p className="text-sm text-gray-600">Pilih personel untuk surat keputusan</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-sm bg-blue-50 text-blue-700 border-blue-300">
+                      {totalSelected} orang terpilih
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Organik */}
                     <FormField control={form.control} name="organik" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm text-blue-600 flex items-center gap-1">
-                          <User className="h-3.5 w-3.5" />
+                        <FormLabel className="text-sm font-medium text-blue-600 flex items-center gap-2 mb-2">
+                          <User className="h-4 w-4" />
                           Organik BPS
                         </FormLabel>
                         <FormControl>
@@ -1202,7 +1405,7 @@ const SuratKeputusan = () => {
                             value={field.value || []}
                             onValueChange={field.onChange}
                             options={organikList}
-                            placeholder={isLoadingOrganik ? "Memuat..." : "Pilih organik"}
+                            placeholder={isLoadingOrganik ? "Memuat data..." : "Pilih organik"}
                             loading={isLoadingOrganik}
                             type="organik"
                           />
@@ -1214,8 +1417,8 @@ const SuratKeputusan = () => {
                     {/* Mitra */}
                     <FormField control={form.control} name="mitraStatistik" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm text-green-600 flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
+                        <FormLabel className="text-sm font-medium text-green-600 flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4" />
                           Mitra Statistik
                         </FormLabel>
                         <FormControl>
@@ -1223,7 +1426,7 @@ const SuratKeputusan = () => {
                             value={field.value || []}
                             onValueChange={field.onChange}
                             options={mitraList}
-                            placeholder={isLoadingMitra ? "Memuat..." : "Pilih mitra"}
+                            placeholder={isLoadingMitra ? "Memuat data..." : "Pilih mitra"}
                             loading={isLoadingMitra}
                             type="mitra"
                           />
@@ -1235,15 +1438,20 @@ const SuratKeputusan = () => {
                     {/* Pembuat Daftar */}
                     <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm">Pembuat Daftar</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700 mb-2">Pembuat Daftar</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Pilih pembuat" />
+                            <SelectValue placeholder="Pilih pembuat daftar" />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id} className="text-sm">
-                                {organik.name}
+                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-2">
+                                <div className="flex flex-col">
+                                  <span>{organik.name}</span>
+                                  {organik.jabatan && (
+                                    <span className="text-xs text-gray-500">{organik.jabatan}</span>
+                                  )}
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1255,53 +1463,55 @@ const SuratKeputusan = () => {
 
                   {/* Badges yang dipilih */}
                   {(selectedOrganikDetails.length > 0 || selectedMitraDetails.length > 0) && (
-                    <div className="mt-3 space-y-2">
-                      <div className="text-xs font-medium text-gray-600">Personel Terpilih:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedOrganikDetails.map(org => (
-                          <Badge key={org.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100">
-                            <User className="h-3 w-3 mr-1" />
-                            {org.name}
-                            <button 
-                              onClick={() => removeOrganik(org.id)}
-                              className="ml-1 text-blue-500 hover:text-blue-700"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                        {selectedMitraDetails.map(mitra => (
-                          <Badge key={mitra.id} variant="outline" className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100">
-                            <Users className="h-3 w-3 mr-1" />
-                            {mitra.name}
-                            <button 
-                              onClick={() => removeMitra(mitra.id)}
-                              className="ml-1 text-green-500 hover:text-green-700"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+                    <Card className="border shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="text-sm font-medium text-gray-700 mb-3">Personel Terpilih:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedOrganikDetails.map(org => (
+                            <Badge key={org.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 py-1.5 px-3">
+                              <User className="h-3 w-3 mr-1.5" />
+                              <span className="mr-1.5">{org.name}</span>
+                              <button 
+                                onClick={() => removeOrganik(org.id)}
+                                className="text-blue-500 hover:text-blue-700 ml-auto"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                          {selectedMitraDetails.map(mitra => (
+                            <Badge key={mitra.id} variant="outline" className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100 py-1.5 px-3">
+                              <Users className="h-3 w-3 mr-1.5" />
+                              <span className="mr-1.5">{mitra.name}</span>
+                              <button 
+                                onClick={() => removeMitra(mitra.id)}
+                                className="text-green-500 hover:text-green-700 ml-auto"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
-                </AccordionSection>
+                </div>
 
                 {/* Tombol Aksi */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
+                <div className="flex justify-end gap-3 pt-6 border-t">
                   <Button 
                     type="button" 
                     variant="outline" 
-                    size="sm"
+                    size="lg"
                     onClick={() => window.history.back()}
-                    className="h-10"
+                    className="h-11 px-6"
                   >
                     Batal
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 h-10 px-6"
+                    className="bg-purple-600 hover:bg-purple-700 h-11 px-8"
                   >
                     {isLoading ? (
                       <>
