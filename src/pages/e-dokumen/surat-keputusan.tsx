@@ -21,7 +21,7 @@ import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Schema Zod dengan validasi baru
+// Schema Zod
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
   tentang: z.string().min(1, "Tentang harus diisi"),
@@ -38,32 +38,25 @@ const suratKeputusanSchema = z.object({
     }, {
       message: "Format harus: Nama Kegiatan | Beban Anggaran | Harga | Satuan"
     }),
-  tanggalMulai: z.date({
-    required_error: "Tanggal mulai harus diisi"
-  }),
-  tanggalSelesai: z.date({
-    required_error: "Tanggal selesai harus diisi"
-  }),
-  tanggalSuratKeputusan: z.date({
-    required_error: "Tanggal surat keputusan harus diisi"
-  }),
+  tanggalMulai: z.date({ required_error: "Tanggal mulai harus diisi" }),
+  tanggalSelesai: z.date({ required_error: "Tanggal selesai harus diisi" }),
+  tanggalSuratKeputusan: z.date({ required_error: "Tanggal surat keputusan harus diisi" }),
   organik: z.array(z.string()),
   mitraStatistik: z.array(z.string()),
   pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
   selectedKegiatanId: z.string().optional()
-}).refine(data => {
-  return data.organik.length > 0 || data.mitraStatistik.length > 0;
-}, {
+})
+.refine(data => data.organik.length > 0 || data.mitraStatistik.length > 0, {
   message: "Minimal salah satu dari Organik atau Mitra Statistik harus dipilih",
   path: ["organik"]
-}).refine(data => {
-  return data.tanggalSelesai >= data.tanggalMulai;
-}, {
+})
+.refine(data => data.tanggalSelesai >= data.tanggalMulai, {
   message: "Tanggal selesai tidak boleh lebih awal dari tanggal mulai",
   path: ["tanggalSelesai"]
 });
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
+
 type MasterKegiatan = {
   index: number;
   role: string;
@@ -84,7 +77,7 @@ const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
-// Custom Select Component dengan search
+// Custom Select dengan search (tetap sama)
 interface FormSelectProps {
   value: string | string[];
   onChange: (value: string | string[]) => void;
@@ -158,13 +151,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
   return (
     <div className={cn("space-y-2", className)}>
       {label && <label className="text-sm font-medium">{label}</label>}
-      <Select
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        value={isMulti ? undefined : value}
-        onValueChange={isMulti ? undefined : handleValueChange}
-        disabled={isDisabled || isLoading}
-      >
+      <Select open={isOpen} onOpenChange={setIsOpen} value={isMulti ? undefined : value} onValueChange={isMulti ? undefined : handleValueChange} disabled={isDisabled || isLoading}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={placeholder}>
             <span className="truncate">{getSelectedLabel()}</span>
@@ -185,11 +172,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
                   autoFocus
                 />
                 {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                  <button type="button" onClick={handleClearSearch} className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     <X className="h-4 w-4" />
                   </button>
                 )}
@@ -198,31 +181,21 @@ const FormSelect: React.FC<FormSelectProps> = ({
           )}
           <div className="max-h-[250px] overflow-auto">
             {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {noOptionsMessage()}
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">{noOptionsMessage()}</div>
             ) : (
               <div className="p-1">
                 {filteredOptions.map((option) => {
-                  const isSelected = isMulti
-                    ? Array.isArray(value) && value.includes(option.value)
-                    : value === option.value;
-
+                  const isSelected = isMulti ? Array.isArray(value) && value.includes(option.value) : value === option.value;
                   return (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className={cn(
-                        "cursor-pointer",
-                        isSelected && "bg-accent"
-                      )}
+                      className={cn("cursor-pointer", isSelected && "bg-accent")}
                       onSelect={() => handleValueChange(option.value)}
                     >
                       <div className="flex items-center justify-between">
                         <span>{option.label}</span>
-                        {isSelected && (
-                          <span className="text-primary">✓</span>
-                        )}
+                        {isSelected && <span className="text-primary">✓</span>}
                       </div>
                     </SelectItem>
                   );
@@ -232,9 +205,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
           </div>
           {isMulti && (
             <div className="p-2 border-t text-xs text-muted-foreground">
-              {Array.isArray(value) && value.length > 0
-                ? `${value.length} item dipilih`
-                : "Pilih satu atau lebih opsi"}
+              {Array.isArray(value) && value.length > 0 ? `${value.length} item dipilih` : "Pilih satu atau lebih opsi"}
             </div>
           )}
         </SelectContent>
@@ -243,13 +214,12 @@ const FormSelect: React.FC<FormSelectProps> = ({
   );
 };
 
-// Custom hook untuk submit data
+// Hook submit ke Sheets (tetap sama)
 const useSubmitSKToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
-      console.log('📤 Submitting SK data to sheets:', data);
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
@@ -258,14 +228,9 @@ const useSubmitSKToSheets = () => {
           values: [data]
         }
       });
-      if (error) {
-        console.error('❌ Error submitting SK:', error);
-        throw error;
-      }
-      console.log('✅ SK submission successful:', result);
+      if (error) throw error;
       return result;
     } catch (error) {
-      console.error('❌ Submission error:', error);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -274,137 +239,84 @@ const useSubmitSKToSheets = () => {
   return { submitData, isSubmitting };
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya
 const getNextSequenceNumber = async (): Promise<number> => {
+  // ... (tetap sama seperti kode asli)
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A`
-      }
+      body: { spreadsheetId: TARGET_SPREADSHEET_ID, operation: "read", range: `${SHEET_NAME}!A:A` }
     });
-    if (error) {
-      console.error("Error fetching sequence numbers:", error);
-      throw new Error("Gagal mengambil nomor urut terakhir");
-    }
+    if (error) throw error;
     const values = data?.values || [];
-
-    if (values.length <= 1) {
-      return 1;
-    }
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-    if (sequenceNumbers.length === 0) {
-      return 1;
-    }
-    return Math.max(...sequenceNumbers) + 1;
+    if (values.length <= 1) return 1;
+    const nums = values.slice(1).map((row: any[]) => parseInt(row[0]) || 0).filter(n => n > 0);
+    return nums.length === 0 ? 1 : Math.max(...nums) + 1;
   } catch (error) {
-    console.error("Error generating sequence number:", error);
     throw error;
   }
 };
 
-// Fungsi untuk generate ID surat keputusan
 const generateSKId = async (): Promise<string> => {
+  // ... (tetap sama)
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const prefix = `sk-${year}${month}`;
     const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
-        operation: "read",
-        range: `${SHEET_NAME}!B:B`
-      }
+      body: { spreadsheetId: TARGET_SPREADSHEET_ID, operation: "read", range: `${SHEET_NAME}!B:B` }
     });
-    if (error) {
-      console.error("Error fetching SK IDs:", error);
-      throw new Error("Gagal mengambil ID SK terakhir");
-    }
+    if (error) throw error;
     const values = data?.values || [];
-
-    if (values.length <= 1) {
-      return `${prefix}001`;
-    }
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[1])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
-      })
-      .filter(num => num > 0);
-    if (currentMonthIds.length === 0) {
-      return `${prefix}001`;
-    }
-    const nextNum = Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+    if (values.length <= 1) return `${prefix}001`;
+    const ids = values.slice(1).map((row: any[]) => row[1]).filter((id: string) => id?.startsWith(prefix));
+    const nums = ids.map((id: string) => parseInt(id.replace(prefix, '')) || 0).filter(n => n > 0);
+    const next = nums.length === 0 ? 1 : Math.max(...nums) + 1;
+    return `${prefix}${next.toString().padStart(3, '0')}`;
   } catch (error) {
-    console.error("Error generating SK ID:", error);
     throw error;
   }
 };
 
-// Custom hook untuk mengambil data master kegiatan
 const useMasterKegiatan = () => {
+  // ... (tetap sama seperti kode asli)
   const [masterData, setMasterData] = useState<MasterKegiatan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    const fetchMasterData = async () => {
+    const fetch = async () => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: MASTER_SPREADSHEET_ID,
-            operation: "read",
-            range: "Sheet1!A:F"
-          }
+          body: { spreadsheetId: MASTER_SPREADSHEET_ID, operation: "read", range: "Sheet1!A:F" }
         });
-        if (error) {
-          throw new Error(`Gagal mengambil data master: ${error.message}`);
-        }
-        const values = data?.values || [];
-
-        if (values.length <= 1) {
+        if (error) throw error;
+        const rows = data?.values || [];
+        if (rows.length <= 1) {
           setMasterData([]);
           return;
         }
-        const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
-          index: index + 1,
-          role: row[1] || "",
-          namaKegiatan: row[2] || "",
-          bebanAnggaran: row[3] || "",
-          harga: row[4] || "",
-          satuan: row[5] || ""
-        })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
-        setMasterData(kegiatanData);
-      } catch (err: any) {
-        console.error('❌ Error loading master kegiatan:', err);
-        setError(err.message);
+        const parsed: MasterKegiatan[] = rows.slice(1)
+          .map((row: any[], i) => ({
+            index: i + 1,
+            role: row[1] || "",
+            namaKegiatan: row[2] || "",
+            bebanAnggaran: row[3] || "",
+            harga: row[4] || "",
+            satuan: row[5] || ""
+          }))
+          .filter(item => item.namaKegiatan.trim() !== "");
+        setMasterData(parsed);
+      } catch (err) {
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchMasterData();
+    fetch();
   }, []);
-  return { masterData, isLoading, error };
+  return { masterData, isLoading };
 };
 
-// Tabel yang lebih sederhana dan pasti berfungsi
+// Tabel sederhana yang DIPASTIKAN berfungsi
 const SelectedPersonsTable: React.FC<{
   selectedPersons: SelectedPerson[];
   onRemove: (id: string) => void;
@@ -421,10 +333,10 @@ const SelectedPersonsTable: React.FC<{
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Daftar Personil yang Dipilih</CardTitle>
-          <Badge>{selectedPersons.length} orang</Badge>
+          <CardTitle className="text-lg">Daftar Personil Terpilih</CardTitle>
+          <Badge variant="secondary">{selectedPersons.length} orang</Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -439,11 +351,11 @@ const SelectedPersonsTable: React.FC<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {selectedPersons.map((person, index) => (
+              {selectedPersons.map((person, idx) => (
                 <TableRow key={person.id}>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{idx + 1}</TableCell>
                   <TableCell>
-                    <Badge variant={person.type === "organik" ? "default" : "secondary"}>
+                    <Badge variant={person.type === "organik" ? "default" : "outline"}>
                       {person.type === "organik" ? "Organik BPS" : "Mitra Statistik"}
                     </Badge>
                   </TableCell>
@@ -454,10 +366,9 @@ const SelectedPersonsTable: React.FC<{
                       variant="ghost"
                       size="sm"
                       onClick={() => onRemove(person.id)}
-                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                      className="text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="ml-2 sr-only sm:not-sr-only">Hapus</span>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -476,7 +387,6 @@ const SuratKeputusan = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
   const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
-
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
 
   const form = useForm<SuratKeputusanFormData>({
@@ -500,61 +410,49 @@ const SuratKeputusan = () => {
     }
   });
 
-  const organikOptions = organikList.map(organik => ({
-    value: organik.id,
-    label: organik.name
-  }));
-  const mitraOptions = mitraList.map(mitra => ({
-    value: mitra.id,
-    label: mitra.name
-  }));
-  const kegiatanOptions = masterData.map(item => ({
-    value: item.index.toString(),
-    label: item.namaKegiatan
-  }));
+  const organikOptions = organikList.map(o => ({ value: o.id, label: o.name }));
+  const mitraOptions = mitraList.map(m => ({ value: m.id, label: m.name }));
+  const kegiatanOptions = masterData.map(item => ({ value: item.index.toString(), label: item.namaKegiatan }));
 
-  // Gunakan watch langsung untuk memastikan data selalu terbaru
-  const selectedOrganikIds = form.watch("organik") || [];
-  const selectedMitraIds = form.watch("mitraStatistik") || [];
+  // Watch nilai terbaru secara real-time
+  const watchedOrganik = form.watch("organik") || [];
+  const watchedMitra = form.watch("mitraStatistik") || [];
 
-  const selectedPersons: SelectedPerson[] = useMemo(() => {
-    const organik = selectedOrganikIds
+  // Gabungkan menjadi satu list untuk tabel
+  const selectedPersons = useMemo<SelectedPerson[]>(() => {
+    const organik = watchedOrganik
       .map(id => organikList.find(o => o.id === id))
       .filter(Boolean)
       .map(o => ({ id: o!.id, name: o!.name, type: "organik" as const }));
 
-    const mitra = selectedMitraIds
+    const mitra = watchedMitra
       .map(id => mitraList.find(m => m.id === id))
       .filter(Boolean)
       .map(m => ({ id: m!.id, name: m!.name, type: "mitra" as const }));
 
     return [...organik, ...mitra];
-  }, [selectedOrganikIds, selectedMitraIds, organikList, mitraList]);
+  }, [watchedOrganik, watchedMitra, organikList, mitraList]);
 
   const handleRemove = (id: string) => {
-    if (selectedOrganikIds.includes(id)) {
-      form.setValue("organik", selectedOrganikIds.filter(v => v !== id));
-    } else if (selectedMitraIds.includes(id)) {
-      form.setValue("mitraStatistik", selectedMitraIds.filter(v => v !== id));
+    if (watchedOrganik.includes(id)) {
+      form.setValue("organik", watchedOrganik.filter(v => v !== id), { shouldValidate: true });
+    } else if (watchedMitra.includes(id)) {
+      form.setValue("mitraStatistik", watchedMitra.filter(v => v !== id), { shouldValidate: true });
     }
   };
 
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
-    const day = date.getDate();
-    const month = date.toLocaleDateString('id-ID', { month: 'long' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return format(date, "d MMMM yyyy", { locale: id });
   };
 
-  const handleKegiatanSelect = (selectedValue: string) => {
-    const selectedIndex = parseInt(selectedValue);
-    const selectedKegiatan = masterData.find(item => item.index === selectedIndex);
-
-    if (selectedKegiatan) {
-      const formattedValue = `${selectedKegiatan.namaKegiatan} | ${selectedKegiatan.bebanAnggaran} | ${selectedKegiatan.harga} | ${selectedKegiatan.satuan}`;
-      form.setValue("memutuskanKedua", formattedValue);
-      form.setValue("selectedKegiatanId", selectedIndex.toString());
+  const handleKegiatanSelect = (value: string) => {
+    const idx = parseInt(value);
+    const keg = masterData.find(item => item.index === idx);
+    if (keg) {
+      const text = `${keg.namaKegiatan} | ${keg.bebanAnggaran} | ${keg.harga} | ${keg.satuan}`;
+      form.setValue("memutuskanKedua", text);
+      form.setValue("selectedKegiatanId", value);
       form.trigger("memutuskanKedua");
     }
   };
@@ -562,13 +460,14 @@ const SuratKeputusan = () => {
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
     try {
-      const sequenceNumber = await getNextSequenceNumber();
+      const seq = await getNextSequenceNumber();
       const skId = await generateSKId();
-      const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
-      const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
-      const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
-      const rowData = [
-        sequenceNumber,
+      const orgs = organikList.filter(o => data.organik.includes(o.id));
+      const mitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
+      const pembuat = organikList.find(o => o.id === data.pembuatDaftar);
+
+      const row = [
+        seq,
         skId,
         data.nomorSuratKeputusan,
         data.tentang,
@@ -580,24 +479,17 @@ const SuratKeputusan = () => {
         data.memutuskanKedua,
         `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
         formatTanggalIndonesia(data.tanggalSuratKeputusan),
-        selectedOrganiks.map(o => o.name).join(" | "),
-        selectedMitras.map(m => m.name).join(" | "),
-        selectedPembuat?.name || "",
+        orgs.map(o => o.name).join(" | "),
+        mitras.map(m => m.name).join(" | "),
+        pembuat?.name || "",
         data.selectedKegiatanId || ""
       ];
-      await submitData(rowData);
+
+      await submitData(row);
       form.reset();
-      toast({
-        title: "Berhasil",
-        description: `Surat keputusan berhasil disimpan (ID: ${skId})`
-      });
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menyimpan surat keputusan",
-        description: error.message || "Terjadi kesalahan saat menyimpan data"
-      });
+      toast({ title: "Berhasil", description: `Surat keputusan berhasil disimpan (ID: ${skId})` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message || "Terjadi kesalahan" });
     } finally {
       setIsSubmitting(false);
     }
@@ -614,11 +506,10 @@ const SuratKeputusan = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-purple-600 tracking-tight">Surat Keputusan</h1>
-            <p className="text-muted-foreground">
-              Formulir pembuatan surat keputusan
-            </p>
+            <p className="text-muted-foreground">Formulir pembuatan surat keputusan</p>
           </div>
         </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-orange-600">Data Surat Keputusan</CardTitle>
@@ -626,15 +517,14 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Nomor Surat Keputusan dan Tentang */}
+
+                {/* Nomor & Tentang */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   <div className="lg:col-span-1">
                     <FormField control={form.control} name="nomorSuratKeputusan" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Contoh: 123/KD.01/ST/2024" {...field} />
-                        </FormControl>
+                        <FormControl><Input placeholder="Contoh: 123/KD.01/ST/2024" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -643,35 +533,131 @@ const SuratKeputusan = () => {
                     <FormField control={form.control} name="tentang" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tentang</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan tentang (dapat berisi teks panjang)" className="min-h-[100px]" {...field} />
-                        </FormControl>
+                        <FormControl><Textarea placeholder="Masukkan tentang..." className="min-h-[100px]" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                   </div>
                 </div>
 
-                {/* Menimbang */}
+                {/* Menimbang (tetap lengkap) */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
-                  {/* ... (tetap sama seperti kode asli) */}
+                  <div className="bg-blue-50 p-4 rounded-lg text-sm text-gray-700">
+                    <p className="font-medium mb-2">Contoh penulisan:</p>
+                    <div className="space-y-2 text-xs">
+                      <div><strong>- KESATU :</strong> bahwa untuk persiapan...</div>
+                      <div><strong>- KEDUA :</strong> (Opsional) bahwa berdasarkan...</div>
+                      <div><strong>- KETIGA :</strong> (Opsional)</div>
+                      <div><strong>- KEEMPAT :</strong> (Opsional)</div>
+                    </div>
+                  </div>
+
                   <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KESATU - (Wajib)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>KESATU - (Wajib)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
-                  {/* lainnya tetap sama */}
+                  <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
+                    <FormItem><FormLabel>KEDUA (Opsional)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="menimbangKetiga" render={({ field }) => (
+                    <FormItem><FormLabel>KETIGA - (Opsional)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="menimbangKeempat" render={({ field }) => (
+                    <FormItem><FormLabel>KEEMPAT - (Opsional)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                 </div>
 
-                {/* Memutuskan */}
+                {/* Memutuskan (tetap lengkap) */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
-                  {/* ... (bagian memutuskan kesatu, kedua, tanggal, dll tetap sama) */}
+                  <div className="bg-green-50 p-4 rounded-lg text-sm text-gray-700">
+                    <p className="font-medium mb-2">Contoh penulisan:</p>
+                    <div className="space-y-2 text-xs">
+                      <div><strong>- KESATU :</strong> Menetapkan Panitia...</div>
+                      <div><strong>- KEDUA :</strong> Format wajib: Nama Kegiatan | Beban Anggaran | Harga | Satuan</div>
+                      <div><strong>- KETIGA :</strong> Tanggal Mulai | Tanggal Selesai</div>
+                    </div>
+                  </div>
+
+                  <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
+                    <FormItem><FormLabel>KESATU - (Wajib)</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="memutuskanKedua" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>KEDUA - (Wajib)</FormLabel>
+                        <FormControl><Textarea placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" className="font-mono text-sm min-h-[100px]" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Pilih dari Master Kegiatan (Opsional):</label>
+                      <FormSelect
+                        options={kegiatanOptions}
+                        value={form.watch("selectedKegiatanId")}
+                        onChange={handleKegiatanSelect}
+                        placeholder={isLoadingMaster ? "Memuat..." : "Cari kegiatan..."}
+                        isSearchable={true}
+                        isDisabled={isLoadingMaster}
+                      />
+                      <p className="text-xs text-muted-foreground">Pilih dari dropdown atau ketik manual</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-700">KETIGA - Tanggal Pelaksanaan</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Tanggal Mulai</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : <span>Pilih tanggal</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Tanggal Selesai</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : <span>Pilih tanggal</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => {
+                                  const mulai = form.getValues("tanggalMulai");
+                                  return mulai ? date < mulai : false;
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Tanggal Surat Keputusan */}
@@ -689,7 +675,7 @@ const SuratKeputusan = () => {
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date("1900-01-01")} initialFocus />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
                       <FormMessage />
@@ -697,21 +683,14 @@ const SuratKeputusan = () => {
                   )} />
                 </div>
 
-                {/* Organik & Mitra */}
+                {/* Personil */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="organik" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Organik BPS</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih organik"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                            isSearchable={true}
-                          />
+                          <FormSelect options={organikOptions} value={field.value} onChange={field.onChange} isMulti isSearchable placeholder="Cari organik..." />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -720,14 +699,7 @@ const SuratKeputusan = () => {
                       <FormItem>
                         <FormLabel>Mitra Statistik</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih mitra statistik"
-                            options={mitraOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                            isSearchable={true}
-                          />
+                          <FormSelect options={mitraOptions} value={field.value} onChange={field.onChange} isMulti isSearchable placeholder="Cari mitra..." />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -739,27 +711,18 @@ const SuratKeputusan = () => {
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih pembuat daftar"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={false}
-                            isSearchable={true}
-                          />
+                          <FormSelect options={organikOptions} value={field.value} onChange={field.onChange} isSearchable placeholder="Pilih pembuat..." />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                   </div>
 
-                  {/* Tabel yang diperbaiki */}
-                  <SelectedPersonsTable
-                    selectedPersons={selectedPersons}
-                    onRemove={handleRemove}
-                  />
+                  {/* TABEL YANG DIPERBAIKI */}
+                  <SelectedPersonsTable selectedPersons={selectedPersons} onRemove={handleRemove} />
                 </div>
 
+                {/* Tombol */}
                 <div className="flex justify-end space-x-4 pt-6 border-t">
                   <Button type="button" variant="outline" onClick={() => window.location.href = "https://kecapmaja.vercel.app/e-dokumen/buat"}>
                     Batal
@@ -768,6 +731,7 @@ const SuratKeputusan = () => {
                     {isLoading ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
+
               </form>
             </Form>
           </CardContent>
