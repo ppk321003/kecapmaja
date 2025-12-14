@@ -438,139 +438,6 @@ const useMasterKegiatan = () => {
   return { masterData, isLoading, error };
 };
 
-// Komponen untuk menampilkan daftar orang yang dipilih dalam tabel
-interface SelectedPersonsTableProps {
-  selectedOrganik: SelectedPerson[];
-  selectedMitra: SelectedPerson[];
-  onRemoveOrganik: (id: string) => void;
-  onRemoveMitra: (id: string) => void;
-}
-
-const SelectedPersonsTable: React.FC<SelectedPersonsTableProps> = ({
-  selectedOrganik,
-  selectedMitra,
-  onRemoveOrganik,
-  onRemoveMitra
-}) => {
-  if (selectedOrganik.length === 0 && selectedMitra.length === 0) {
-    return (
-      <div className="text-center py-8 border rounded-lg bg-gray-50">
-        <Users className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-        <p className="text-gray-500">Belum ada organik atau mitra statistik yang dipilih</p>
-        <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Tabel Organik */}
-      {selectedOrganik.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-md bg-blue-100">
-                  <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <CardTitle className="text-blue-700">Organik BPS</CardTitle>
-              </div>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                {selectedOrganik.length} orang
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">No</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedOrganik.map((person, index) => (
-                    <TableRow key={person.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell className="font-medium">{person.name}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRemoveOrganik(person.id)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="ml-2 sr-only sm:not-sr-only">Hapus</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabel Mitra Statistik */}
-      {selectedMitra.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-md bg-green-100">
-                  <Users className="h-5 w-5 text-green-600" />
-                </div>
-                <CardTitle className="text-green-700">Mitra Statistik</CardTitle>
-              </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700">
-                {selectedMitra.length} orang
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">No</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedMitra.map((person, index) => (
-                    <TableRow key={person.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell className="font-medium">{person.name}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRemoveMitra(person.id)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="ml-2 sr-only sm:not-sr-only">Hapus</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-};
-
 const SuratKeputusan = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -644,6 +511,129 @@ const SuratKeputusan = () => {
   const handleRemoveMitra = (id: string) => {
     const currentValues = form.getValues("mitraStatistik") || [];
     form.setValue("mitraStatistik", currentValues.filter(item => item !== id));
+  };
+
+  // Komponen Tabel Sederhana untuk menampilkan organik dan mitra yang dipilih
+  const SelectedPersonsTable = () => {
+    const hasSelectedPersons = selectedOrganik.length > 0 || selectedMitra.length > 0;
+
+    if (!hasSelectedPersons) {
+      return (
+        <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+          <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+          <p className="text-gray-500 font-medium">Belum ada personel yang dipilih</p>
+          <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan organik atau mitra statistik</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-700">Daftar Personel Terpilih</h3>
+        
+        {/* Tabel Organik */}
+        {selectedOrganik.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-blue-50 px-4 py-3 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-blue-700">Organik BPS</span>
+                </div>
+                <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                  {selectedOrganik.length} orang
+                </Badge>
+              </div>
+            </div>
+            <div className="divide-y">
+              {selectedOrganik.map((person, index) => (
+                <div key={person.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 text-center font-medium text-gray-500">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium">{person.name}</p>
+                      <p className="text-xs text-gray-500">ID: {person.id}</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveOrganik(person.id)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only md:not-sr-only md:ml-2">Hapus</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tabel Mitra Statistik */}
+        {selectedMitra.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-green-50 px-4 py-3 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-green-600" />
+                  <span className="font-semibold text-green-700">Mitra Statistik</span>
+                </div>
+                <Badge variant="outline" className="bg-green-100 text-green-700">
+                  {selectedMitra.length} orang
+                </Badge>
+              </div>
+            </div>
+            <div className="divide-y">
+              {selectedMitra.map((person, index) => (
+                <div key={person.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 text-center font-medium text-gray-500">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium">{person.name}</p>
+                      <p className="text-xs text-gray-500">ID: {person.id}</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveMitra(person.id)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only md:not-sr-only md:ml-2">Hapus</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Ringkasan Total */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-gray-600">Total Personel Terpilih</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {selectedOrganik.length + selectedMitra.length} orang
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Rincian</p>
+              <p className="text-sm font-medium">
+                {selectedOrganik.length} Organik + {selectedMitra.length} Mitra
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const formatTanggalIndonesia = (date: Date | null): string => {
@@ -1017,9 +1007,11 @@ const SuratKeputusan = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Dropdown Organik */}
-                    <FormField control={form.control} name="organik" render={({
-                    field
-                  }) => <FormItem>
+                    <FormField
+                      control={form.control}
+                      name="organik"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Organik BPS</FormLabel>
                           <FormControl>
                             <FormSelect 
@@ -1032,12 +1024,16 @@ const SuratKeputusan = () => {
                             />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
 
                     {/* Dropdown Mitra Statistik */}
-                    <FormField control={form.control} name="mitraStatistik" render={({
-                    field
-                  }) => <FormItem>
+                    <FormField
+                      control={form.control}
+                      name="mitraStatistik"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Mitra Statistik</FormLabel>
                           <FormControl>
                             <FormSelect 
@@ -1050,14 +1046,18 @@ const SuratKeputusan = () => {
                             />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   {/* Dropdown Pembuat Daftar */}
                   <div className="max-w-md">
-                    <FormField control={form.control} name="pembuatDaftar" render={({
-                    field
-                  }) => <FormItem>
+                    <FormField
+                      control={form.control}
+                      name="pembuatDaftar"
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel>Pembuat Daftar</FormLabel>
                           <FormControl>
                             <FormSelect 
@@ -1070,16 +1070,13 @@ const SuratKeputusan = () => {
                             />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>} />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   {/* Tabel untuk menampilkan daftar yang dipilih */}
-                  <SelectedPersonsTable
-                    selectedOrganik={selectedOrganik}
-                    selectedMitra={selectedMitra}
-                    onRemoveOrganik={handleRemoveOrganik}
-                    onRemoveMitra={handleRemoveMitra}
-                  />
+                  <SelectedPersonsTable />
                 </div>
 
                 <div className="flex justify-end space-x-4 pt-6 border-t">
