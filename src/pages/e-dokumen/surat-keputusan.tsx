@@ -1182,11 +1182,11 @@ const SuratKeputusan = () => {
   return (
     <Layout>
       <div className="space-y-6 p-4">
-        {/* Header */}
+        {/* Header - WARNA DIUBAH SESUAI TEMA SPJHonor */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-purple-700 flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <FileText className="h-6 w-6 text-purple-600" />
+          <h1 className="text-2xl font-bold text-orange-600 flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <FileText className="h-6 w-6 text-orange-600" />
             </div>
             Surat Keputusan
           </h1>
@@ -1683,7 +1683,7 @@ const SuratKeputusan = () => {
                   )}
                 </div>
 
-                {/* Tombol Aksi */}
+                {/* Tombol Aksi - WARNA DIUBAH SESUAI TEMA SPJHonor */}
                 <div className="flex justify-end gap-3 pt-6 border-t">
                   <Button 
                     type="button" 
@@ -1697,7 +1697,7 @@ const SuratKeputusan = () => {
                   <Button 
                     type="submit" 
                     disabled={isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 h-11 px-8"
+                    className="bg-orange-600 hover:bg-orange-700 h-11 px-8 text-white"
                   >
                     {isLoading ? (
                       <>
