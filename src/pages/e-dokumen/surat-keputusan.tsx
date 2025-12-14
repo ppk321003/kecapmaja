@@ -197,7 +197,7 @@ const useMitraList = () => {
   return { data: mitraList, isLoading, error };
 };
 
-// Custom MultiSelect Component berdasarkan skrip DaftarHadir - SIMPLIFIED VERSION
+// Custom MultiSelect Component - VERSION IMPROVED
 interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
@@ -265,7 +265,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
         type="button"
         onClick={toggleDropdown}
         className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm",
           "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           "min-h-[40px]"
         )}
@@ -276,27 +276,27 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           ) : selectedOptions.length > 0 ? (
             <div className="flex items-center gap-1">
               {type === 'organik' ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
-              <span className="truncate">
+              <span className="truncate text-sm">
                 {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'} terpilih
               </span>
             </div>
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted-foreground text-sm">{placeholder}</span>
           )}
         </div>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-in fade-in-80 max-h-[300px] flex flex-col">
-          <div className="border-b p-3">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
+          <div className="p-2 border-b">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={`Cari ${type === 'organik' ? 'organik' : 'mitra'}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 h-8 text-sm"
                 autoFocus
                 onClick={(e) => {
                   e.stopPropagation();
@@ -307,12 +307,12 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             </div>
           </div>
 
-          <div className="px-3 py-2 border-b">
+          <div className="p-1 border-b">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full h-8 justify-start"
+              className="w-full h-7 justify-start text-xs px-2"
               onClick={handleSelectAll}
             >
               {value.length === filteredOptions.length ? (
@@ -323,60 +323,58 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             </Button>
           </div>
 
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-[200px]">
-              <div className="p-1">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : filteredOptions.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    Tidak ada data ditemukan
-                  </div>
-                ) : (
-                  filteredOptions.map((option) => {
-                    const isSelected = value.includes(option.id);
-                    return (
-                      <div
-                        key={option.id}
-                        onClick={() => handleSelect(option.id)}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          isSelected && "bg-blue-50 border border-blue-200"
+          <div className="max-h-[250px] overflow-auto">
+            <div className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-4 text-center text-xs text-muted-foreground px-2">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = value.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => handleSelect(option.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors text-sm",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-blue-50"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-4 w-4 items-center justify-center rounded-sm border flex-shrink-0",
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600" 
+                          : "border-gray-300"
+                      )}>
+                        {isSelected && (
+                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
                         )}
-                      >
-                        <div className={cn(
-                          "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
-                          isSelected 
-                            ? "bg-blue-600 border-blue-600 text-white" 
-                            : "border-gray-300"
-                        )}>
-                          {isSelected && (
-                            <div className="h-2 w-2 rounded-full bg-white" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "font-medium truncate",
-                            isSelected && "text-blue-700"
-                          )}>
-                            {option.name}
-                          </p>
-                        </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn(
+                          "truncate text-sm",
+                          isSelected ? "text-blue-700" : "text-gray-700"
+                        )}>
+                          {option.name}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
 
-          <div className="border-t px-3 py-2">
-            <div className="flex items-center justify-between text-sm">
+          <div className="border-t px-2 py-1.5">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Terpilih:</span>
-              <span className="font-medium text-green-600">
+              <span className="text-green-600">
                 {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
               </span>
             </div>
@@ -387,7 +385,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   );
 };
 
-// Custom Select dengan Search untuk Master Kegiatan - SIMPLIFIED VERSION
+// Custom Select dengan Search untuk Master Kegiatan - IMPROVED VERSION
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -443,24 +441,24 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         type="button"
         variant="outline"
         onClick={toggleDropdown}
-        className="w-full justify-between"
+        className="w-full justify-between h-10"
       >
-        <span className={!value ? "text-muted-foreground" : ""}>
+        <span className={!value ? "text-muted-foreground text-sm" : "text-sm"}>
           {value || placeholder}
         </span>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-in fade-in-80 max-h-[300px] flex flex-col">
-          <div className="border-b p-3">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg animate-in fade-in-80">
+          <div className="p-2 border-b">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari kegiatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 h-8 text-sm"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -476,34 +474,32 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-[250px]">
-              <div className="p-1">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : filteredOptions.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    Tidak ada data ditemukan
-                  </div>
-                ) : (
-                  filteredOptions.map((item) => (
-                    <div
-                      key={item.index}
-                      onClick={() => handleSelect(item)}
-                      className="flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {item.namaKegiatan}
-                        </p>
-                      </div>
+          <div className="max-h-[250px] overflow-auto">
+            <div className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-4 text-center text-xs text-muted-foreground px-2">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((item) => (
+                  <div
+                    key={item.index}
+                    onClick={() => handleSelect(item)}
+                    className="px-2 py-1.5 cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground text-sm"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-gray-700">
+                        {item.namaKegiatan}
+                      </p>
                     </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -580,10 +576,10 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
     <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-medium">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm">
             {index + 1}
           </div>
-          <h4 className="font-medium">Kegiatan {index + 1}</h4>
+          <h4 className="font-medium text-sm">Kegiatan {index + 1}</h4>
         </div>
         {index > 0 && (
           <Button
@@ -591,16 +587,16 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => onRemove(index)}
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+            className="h-7 w-7 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm font-medium mb-2 block">
+          <label className="text-sm font-medium mb-1 block">
             Pilih dari Master Kegiatan:
           </label>
           <SearchableSelect
@@ -614,14 +610,14 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-2 block">
+          <label className="text-sm font-medium mb-1 block">
             Atau ketik manual (Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan):
           </label>
           <Textarea
             value={textValue}
             onChange={(e) => handleTextChange(e.target.value)}
             placeholder="Contoh: Survei Sosial Ekonomi | DIPA | 1000000 | Orang/Hari"
-            className="min-h-[80px] font-mono text-sm"
+            className="min-h-[60px] text-sm py-2 px-3"
           />
           <p className="text-xs text-muted-foreground mt-1">
             Format harus sesuai: Nama Kegiatan | Beban Anggaran | Harga | Satuan
@@ -1097,7 +1093,7 @@ const SuratKeputusan = () => {
                           size="sm"
                           onClick={() => setShowMenimbangKedua(true)}
                         >
-                          + Tambah Kedua
+                          + Kedua
                         </Button>
                       )}
                       {!showMenimbangKetiga && showMenimbangKedua && (
@@ -1107,7 +1103,7 @@ const SuratKeputusan = () => {
                           size="sm"
                           onClick={() => setShowMenimbangKetiga(true)}
                         >
-                          + Tambah Ketiga
+                          + Ketiga
                         </Button>
                       )}
                       {!showMenimbangKeempat && showMenimbangKetiga && (
@@ -1117,7 +1113,7 @@ const SuratKeputusan = () => {
                           size="sm"
                           onClick={() => setShowMenimbangKeempat(true)}
                         >
-                          + Tambah Keempat
+                          + Keempat
                         </Button>
                       )}
                     </div>
@@ -1147,9 +1143,9 @@ const SuratKeputusan = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowMenimbangKedua(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                         <FormControl>
@@ -1172,9 +1168,9 @@ const SuratKeputusan = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowMenimbangKetiga(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                         <FormControl>
@@ -1197,9 +1193,9 @@ const SuratKeputusan = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowMenimbangKeempat(false)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-7 w-7 p-0"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                         <FormControl>
@@ -1221,7 +1217,11 @@ const SuratKeputusan = () => {
                     <FormItem>
                       <FormLabel>KESATU - (Wajib)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
+                        <Input 
+                          placeholder="Masukkan memutuskan kesatu" 
+                          className="w-full" 
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1236,14 +1236,14 @@ const SuratKeputusan = () => {
                         variant="outline"
                         size="sm"
                         onClick={handleAddKegiatan}
-                        className="gap-1"
+                        className="gap-1 h-8"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5" />
                         Tambah Kegiatan
                       </Button>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {fields.map((field, index) => (
                         <KegiatanFormItem
                           key={field.id}
@@ -1404,12 +1404,12 @@ const SuratKeputusan = () => {
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10">
                             <SelectValue placeholder="Pilih pembuat daftar" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-[300px]">
+                          <SelectContent className="max-h-[250px]">
                             {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id}>
+                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-1.5">
                                 {organik.name}
                               </SelectItem>
                             ))}
@@ -1424,11 +1424,11 @@ const SuratKeputusan = () => {
                   <Card className="border">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Users className="h-5 w-5" />
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Users className="h-4 w-4" />
                           Personel Terpilih
                         </CardTitle>
-                        <Badge variant="outline" className="text-sm">
+                        <Badge variant="outline" className="text-xs">
                           Total: {totalSelected} orang
                         </Badge>
                       </div>
@@ -1439,15 +1439,15 @@ const SuratKeputusan = () => {
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-blue-600" />
-                            <h4 className="font-medium text-blue-700">Organik BPS ({selectedOrganikDetails.length})</h4>
+                            <h4 className="font-medium text-blue-700 text-sm">Organik BPS ({selectedOrganikDetails.length})</h4>
                           </div>
-                          <ScrollArea className="max-h-40 rounded-md border p-2">
-                            <div className="space-y-2">
+                          <div className="max-h-40 overflow-auto rounded-md border p-2">
+                            <div className="space-y-1">
                               {selectedOrganikDetails.map(org => (
-                                <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-blue-50">
+                                <div key={org.id} className="flex items-center justify-between p-2 border rounded hover:bg-blue-50">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <p className="font-medium truncate">{org.name}</p>
+                                      <p className="truncate text-sm">{org.name}</p>
                                       <Badge variant="outline" className="text-xs bg-blue-100">
                                         Organik
                                       </Badge>
@@ -1456,16 +1456,16 @@ const SuratKeputusan = () => {
                                   <Button 
                                     type="button" 
                                     variant="ghost" 
-                                    size="sm" 
+                                    size="sm"
                                     onClick={() => removeOrganik(org.id)}
-                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50 h-6 w-6 p-0"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               ))}
                             </div>
-                          </ScrollArea>
+                          </div>
                         </div>
                       )}
 
@@ -1474,15 +1474,15 @@ const SuratKeputusan = () => {
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-green-600" />
-                            <h4 className="font-medium text-green-700">Mitra Statistik ({selectedMitraDetails.length})</h4>
+                            <h4 className="font-medium text-green-700 text-sm">Mitra Statistik ({selectedMitraDetails.length})</h4>
                           </div>
-                          <ScrollArea className="max-h-40 rounded-md border p-2">
-                            <div className="space-y-2">
+                          <div className="max-h-40 overflow-auto rounded-md border p-2">
+                            <div className="space-y-1">
                               {selectedMitraDetails.map(mitra => (
-                                <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-green-50">
+                                <div key={mitra.id} className="flex items-center justify-between p-2 border rounded hover:bg-green-50">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <p className="font-medium truncate">{mitra.name}</p>
+                                      <p className="truncate text-sm">{mitra.name}</p>
                                       <Badge variant="outline" className="text-xs bg-green-100">
                                         Mitra
                                       </Badge>
@@ -1491,21 +1491,21 @@ const SuratKeputusan = () => {
                                   <Button 
                                     type="button" 
                                     variant="ghost" 
-                                    size="sm" 
+                                    size="sm"
                                     onClick={() => removeMitra(mitra.id)}
-                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                    className="ml-2 text-red-600 hover:text-red-800 hover:bg-red-50 h-6 w-6 p-0"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               ))}
                             </div>
-                          </ScrollArea>
+                          </div>
                         </div>
                       )}
 
                       {totalSelected === 0 && (
-                        <div className="text-center py-4 text-gray-500">
+                        <div className="text-center py-4 text-gray-500 text-sm">
                           Belum ada personel yang dipilih
                         </div>
                       )}
