@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,6 +19,7 @@ import { FormSelect } from "@/components/FormSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
+// Schema Zod dengan validasi baru
 const suratKeputusanSchema = z.object({
   nomorSuratKeputusan: z.string().min(1, "Nomor surat keputusan harus diisi"),
   tentang: z.string().min(1, "Tentang harus diisi"),
@@ -27,26 +28,56 @@ const suratKeputusanSchema = z.object({
   menimbangKetiga: z.string().optional(),
   menimbangKeempat: z.string().optional(),
   memutuskanKesatu: z.string().min(1, "Memutuskan kesatu harus diisi"),
-  memutuskanKedua: z.string().optional(),
-  memutuskanKetiga: z.string().optional(),
+  memutuskanKedua: z.string()
+    .min(1, "Memutuskan kedua harus diisi")
+    .refine((val) => {
+      // Validasi format: harus ada 3 pemisah "|" untuk 4 bagian
+      const parts = val.split("|").map(part => part.trim());
+      return parts.length === 4 && parts.every(part => part.length > 0);
+    }, {
+      message: "Format harus: Nama Kegiatan | Beban Anggaran | Harga | Satuan"
+    }),
+  tanggalMulai: z.date({
+    required_error: "Tanggal mulai harus diisi"
+  }),
+  tanggalSelesai: z.date({
+    required_error: "Tanggal selesai harus diisi"
+  }),
   tanggalSuratKeputusan: z.date({
     required_error: "Tanggal surat keputusan harus diisi"
   }),
   organik: z.array(z.string()),
   mitraStatistik: z.array(z.string()),
-  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih")
+  pembuatDaftar: z.string().min(1, "Pembuat daftar harus dipilih"),
+  selectedKegiatanId: z.string().optional()
 }).refine(data => {
   return data.organik.length > 0 || data.mitraStatistik.length > 0;
 }, {
   message: "Minimal salah satu dari Organik atau Mitra Statistik harus dipilih",
   path: ["organik"]
+}).refine(data => {
+  return data.tanggalSelesai >= data.tanggalMulai;
+}, {
+  message: "Tanggal selesai tidak boleh lebih awal dari tanggal mulai",
+  path: ["tanggalSelesai"]
 });
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 
+// Types untuk data master kegiatan
+type MasterKegiatan = {
+  index: number;
+  role: string;
+  namaKegiatan: string;
+  bebanAnggaran: string;
+  harga: string;
+  satuan: string;
+};
+
 // Constants
 const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
+const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 // Custom hook untuk submit data
 const useSubmitSKToSheets = () => {
@@ -61,7 +92,7 @@ const useSubmitSKToSheets = () => {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
           operation: "append",
-          range: `${SHEET_NAME}!A:O`,
+          range: `${SHEET_NAME}!A:P`,
           values: [data]
         }
       });
@@ -137,7 +168,6 @@ const generateSKId = async (): Promise<string> => {
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const prefix = `sk-${year}${month}`;
 
-    // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
@@ -157,10 +187,9 @@ const generateSKId = async (): Promise<string> => {
       return `${prefix}001`;
     }
 
-    // Filter ID yang sesuai dengan prefix bulan ini
     const currentMonthIds = values
       .slice(1)
-      .map((row: any[]) => row[1]) // Kolom B adalah ID
+      .map((row: any[]) => row[1])
       .filter((id: string) => id && id.startsWith(prefix))
       .map((id: string) => {
         const numStr = id.replace(prefix, '');
@@ -181,11 +210,67 @@ const generateSKId = async (): Promise<string> => {
   }
 };
 
+// Custom hook untuk mengambil data master kegiatan
+const useMasterKegiatan = () => {
+  const [masterData, setMasterData] = useState<MasterKegiatan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: MASTER_SPREADSHEET_ID,
+            operation: "read",
+            range: "Sheet1!A:F"
+          }
+        });
+
+        if (error) {
+          throw new Error(`Gagal mengambil data master: ${error.message}`);
+        }
+
+        const values = data?.values || [];
+        
+        if (values.length <= 1) {
+          setMasterData([]);
+          return;
+        }
+
+        // Convert spreadsheet data to MasterKegiatan objects
+        const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
+          index: index + 1,
+          role: row[1] || "",
+          namaKegiatan: row[2] || "",
+          bebanAnggaran: row[3] || "",
+          harga: row[4] || "",
+          satuan: row[5] || ""
+        })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
+
+        setMasterData(kegiatanData);
+        console.log('📊 Master kegiatan loaded:', kegiatanData.length, 'items');
+      } catch (err: any) {
+        console.error('❌ Error loading master kegiatan:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMasterData();
+  }, []);
+
+  return { masterData, isLoading, error };
+};
+
 const SuratKeputusan = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
+  const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
   
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
 
@@ -200,12 +285,18 @@ const SuratKeputusan = () => {
       menimbangKeempat: "",
       memutuskanKesatu: "",
       memutuskanKedua: "",
-      memutuskanKetiga: "",
+      tanggalMulai: undefined,
+      tanggalSelesai: undefined,
+      tanggalSuratKeputusan: undefined,
       organik: [],
       mitraStatistik: [],
-      pembuatDaftar: ""
+      pembuatDaftar: "",
+      selectedKegiatanId: ""
     }
   });
+
+  // Watch untuk memutuskanKedua agar bisa validasi real-time
+  const memutuskanKeduaValue = form.watch("memutuskanKedua");
 
   const organikOptions = organikList.map(organik => ({
     value: organik.id,
@@ -217,6 +308,12 @@ const SuratKeputusan = () => {
     label: mitra.name
   }));
 
+  // Buat opsi untuk dropdown master kegiatan
+  const kegiatanOptions = masterData.map(item => ({
+    value: item.index.toString(),
+    label: item.namaKegiatan
+  }));
+
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
     
@@ -225,6 +322,24 @@ const SuratKeputusan = () => {
     const year = date.getFullYear();
     
     return `${day} ${month} ${year}`;
+  };
+
+  // Handler untuk ketika user memilih dari dropdown kegiatan
+  const handleKegiatanSelect = (selectedValue: string) => {
+    const selectedIndex = parseInt(selectedValue);
+    const selectedKegiatan = masterData.find(item => item.index === selectedIndex);
+    
+    if (selectedKegiatan) {
+      // Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
+      const formattedValue = `${selectedKegiatan.namaKegiatan} | ${selectedKegiatan.bebanAnggaran} | ${selectedKegiatan.harga} | ${selectedKegiatan.satuan}`;
+      
+      // Update kedua field sekaligus
+      form.setValue("memutuskanKedua", formattedValue);
+      form.setValue("selectedKegiatanId", selectedIndex.toString());
+      
+      // Trigger validation
+      form.trigger("memutuskanKedua");
+    }
   };
 
   const onSubmit = async (data: SuratKeputusanFormData) => {
@@ -239,6 +354,7 @@ const SuratKeputusan = () => {
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
       // Format data sesuai dengan header spreadsheet
+      // Note: Kolom memutuskanKetiga diubah menjadi tanggal range
       const rowData = [
         sequenceNumber, // Kolom 1: No
         skId, // Kolom 2: Id (sk-yymmxxx)
@@ -249,17 +365,20 @@ const SuratKeputusan = () => {
         data.menimbangKetiga || "", // Kolom 7: menimbang3
         data.menimbangKeempat || "", // Kolom 8: menimbang4
         data.memutuskanKesatu, // Kolom 9: kesatu
-        data.memutuskanKedua || "", // Kolom 10: kedua
-        data.memutuskanKetiga || "", // Kolom 11: ketiga
+        data.memutuskanKedua, // Kolom 10: kedua (format: Nama | Beban | Harga | Satuan)
+        // Kolom 11: ketiga (sekarang jadi tanggal range)
+        `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
         formatTanggalIndonesia(data.tanggalSuratKeputusan), // Kolom 12: tanggal
         selectedOrganiks.map(o => o.name).join(" | "), // Kolom 13: Organik
         selectedMitras.map(m => m.name).join(" | "), // Kolom 14: Mitra Statistik
-        selectedPembuat?.name || "" // Kolom 15: Pembuat daftar
+        selectedPembuat?.name || "", // Kolom 15: Pembuat daftar
+        data.selectedKegiatanId || "" // Kolom 16: ID kegiatan terpilih (untuk tracking)
       ];
 
       console.log('📋 Final SK data array:', rowData);
       console.log('🔢 Total columns:', rowData.length);
       console.log('🆔 SK ID:', skId);
+      console.log('📅 Date range:', rowData[10]);
 
       // Submit data ke spreadsheet
       await submitData(rowData);
@@ -411,12 +530,14 @@ const SuratKeputusan = () => {
                       <div>
                         <span className="font-semibold">- KEDUA :</span>
                         <br />
-                        Menetapkan Narasumber Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka dengan honorarium per orang per jam berdasarkan rate bruto sesuai jabatan
+                        <strong>Format wajib:</strong> Nama Kegiatan | Beban Anggaran | Harga | Satuan<br />
+                        Contoh: honor petugas pendataan lapangan sksppi di kab/kota | 2898.BMA.007.005.A.521213 | 75000 | Dok
                       </div>
                       <div>
                         <span className="font-semibold">- KETIGA :</span>
                         <br />
-                        Pelaksanaan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka diselenggarakan pada tanggal 11 s.d. 13 Desember 2022 di Fitra Hotel Majalengka
+                        <strong>Sekarang menjadi:</strong> Tanggal Mulai | Tanggal Selesai<br />
+                        Contoh: 15 Desember 2025 | 31 Desember 2025
                       </div>
                     </div>
                   </div>
@@ -431,25 +552,128 @@ const SuratKeputusan = () => {
                         <FormMessage />
                       </FormItem>} />
 
-                  <FormField control={form.control} name="memutuskanKedua" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KEDUA - (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan memutuskan kedua" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                  {/* Bagian Memutuskan Kedua dengan dropdown */}
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="memutuskanKedua" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>KEDUA - (Wajib)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" 
+                              className="min-h-[100px] font-mono text-sm" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
 
-                  <FormField control={form.control} name="memutuskanKetiga" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>KETIGA - (Opsional)</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan memutuskan ketiga" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                    {/* Dropdown untuk memilih dari master kegiatan */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Pilih dari Master Kegiatan:</label>
+                      <FormSelect
+                        placeholder={isLoadingMaster ? "Memuat data..." : "Cari dan pilih kegiatan..."}
+                        options={kegiatanOptions}
+                        value={form.watch("selectedKegiatanId")}
+                        onChange={(value) => handleKegiatanSelect(value as string)}
+                        isMulti={false}
+                        isSearchable={true}
+                        isDisabled={isLoadingMaster}
+                        isLoading={isLoadingMaster}
+                        noOptionsMessage={() => "Data tidak ditemukan"}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Pilih dari dropdown atau ketik manual dengan format: Nama | Beban Anggaran | Harga | Satuan
+                      </p>
+                    </div>
+                    
+                    {/* Validasi format real-time */}
+                    {memutuskanKeduaValue && memutuskanKeduaValue.includes("|") && (
+                      <div className="text-xs">
+                        <p className="font-medium">Format terdeteksi:</p>
+                        <div className="grid grid-cols-4 gap-2 mt-1">
+                          {memutuskanKeduaValue.split("|").map((part, index) => (
+                            <div key={index} className="p-2 bg-gray-50 rounded border">
+                              <span className="font-medium">
+                                {index === 0 ? "Nama" : 
+                                 index === 1 ? "Beban" : 
+                                 index === 2 ? "Harga" : "Satuan"}:
+                              </span>
+                              <p className="truncate">{part.trim()}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bagian Memutuskan Ketiga (sekarang jadi tanggal range) */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-700">KETIGA - (Wajib)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="tanggalMulai" render={({
+                      field
+                    }) => <FormItem className="flex flex-col">
+                            <FormLabel>Tanggal Mulai</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "dd MMMM yyyy", {
+                                locale: id
+                              }) : <span>Pilih tanggal mulai</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange} 
+                                  disabled={date => date < new Date("1900-01-01")} 
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>} />
+
+                      <FormField control={form.control} name="tanggalSelesai" render={({
+                      field
+                    }) => <FormItem className="flex flex-col">
+                            <FormLabel>Tanggal Selesai</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "dd MMMM yyyy", {
+                                locale: id
+                              }) : <span>Pilih tanggal selesai</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange} 
+                                  disabled={date => {
+                                    const tanggalMulai = form.getValues("tanggalMulai");
+                                    return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
+                                  }} 
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>} />
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Output: {formatTanggalIndonesia(form.watch("tanggalMulai"))} | {formatTanggalIndonesia(form.watch("tanggalSelesai"))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -469,7 +693,13 @@ const SuratKeputusan = () => {
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date("1900-01-01")} initialFocus />
+                            <Calendar 
+                              mode="single" 
+                              selected={field.value} 
+                              onSelect={field.onChange} 
+                              disabled={date => date < new Date("1900-01-01")} 
+                              initialFocus 
+                            />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -482,7 +712,14 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Organik</FormLabel>
                         <FormControl>
-                          <FormSelect placeholder="Pilih organik" options={organikOptions} value={field.value} onChange={field.onChange} isMulti={true} />
+                          <FormSelect 
+                            placeholder="Cari dan pilih organik" 
+                            options={organikOptions} 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            isMulti={true} 
+                            isSearchable={true}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
@@ -492,7 +729,14 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Mitra Statistik</FormLabel>
                         <FormControl>
-                          <FormSelect placeholder="Pilih mitra statistik" options={mitraOptions} value={field.value} onChange={field.onChange} isMulti={true} />
+                          <FormSelect 
+                            placeholder="Cari dan pilih mitra statistik" 
+                            options={mitraOptions} 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            isMulti={true} 
+                            isSearchable={true}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
@@ -502,7 +746,14 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <FormControl>
-                          <FormSelect placeholder="Pilih pembuat daftar" options={organikOptions} value={field.value} onChange={field.onChange} isMulti={false} />
+                          <FormSelect 
+                            placeholder="Cari dan pilih pembuat daftar" 
+                            options={organikOptions} 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            isMulti={false} 
+                            isSearchable={true}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
@@ -516,7 +767,7 @@ const SuratKeputusan = () => {
                   >
                     Batal
                   </Button>
-                  <Button type="submit" disabled={isLoading}>
+                  <Button type="submit" disabled={isLoading || isLoadingMaster}>
                     {isLoading ? "Menyimpan..." : "Simpan Surat Keputusan"}
                   </Button>
                 </div>
