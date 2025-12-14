@@ -197,7 +197,7 @@ const useMitraList = () => {
   return { data: mitraList, isLoading, error };
 };
 
-// Custom MultiSelect Component berdasarkan skrip DaftarHadir
+// Custom MultiSelect Component berdasarkan skrip DaftarHadir - SIMPLIFIED VERSION
 interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
@@ -222,8 +222,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (option.jabatan && option.jabatan.toLowerCase().includes(searchTerm.toLowerCase()))
+      option.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [options, searchTerm]);
 
@@ -289,7 +288,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-in fade-in-80 max-h-[300px] flex flex-col">
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -324,65 +323,55 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             </Button>
           </div>
 
-          <ScrollArea className="max-h-64">
-            <div className="p-1">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada data ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((option) => {
-                  const isSelected = value.includes(option.id);
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => handleSelect(option.id)}
-                      className={cn(
-                        "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        isSelected && "bg-blue-50 border border-blue-200"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600 text-white" 
-                          : "border-gray-300"
-                      )}>
-                        {isSelected && (
-                          <div className="h-2 w-2 rounded-full bg-white" />
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[200px]">
+              <div className="p-1">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : filteredOptions.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    Tidak ada data ditemukan
+                  </div>
+                ) : (
+                  filteredOptions.map((option) => {
+                    const isSelected = value.includes(option.id);
+                    return (
+                      <div
+                        key={option.id}
+                        onClick={() => handleSelect(option.id)}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          isSelected && "bg-blue-50 border border-blue-200"
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                      >
+                        <div className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
+                          isSelected 
+                            ? "bg-blue-600 border-blue-600 text-white" 
+                            : "border-gray-300"
+                        )}>
+                          {isSelected && (
+                            <div className="h-2 w-2 rounded-full bg-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <p className={cn(
                             "font-medium truncate",
                             isSelected && "text-blue-700"
                           )}>
                             {option.name}
                           </p>
-                          {isSelected && (
-                            <Badge variant="outline" className="text-xs">
-                              Terpilih
-                            </Badge>
-                          )}
                         </div>
-                        {option.jabatan && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {option.jabatan}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </ScrollArea>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
           <div className="border-t px-3 py-2">
             <div className="flex items-center justify-between text-sm">
@@ -398,7 +387,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   );
 };
 
-// Custom Select dengan Search untuk Master Kegiatan
+// Custom Select dengan Search untuk Master Kegiatan - SIMPLIFIED VERSION
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -423,8 +412,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
-      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.role.toLowerCase().includes(searchTerm.toLowerCase())
+      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [options, searchTerm]);
 
@@ -464,7 +452,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-in fade-in-80 max-h-[300px] flex flex-col">
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -488,39 +476,35 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
           </div>
 
-          <ScrollArea className="max-h-64">
-            <div className="p-1">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada data ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((item) => (
-                  <div
-                    key={item.index}
-                    onClick={() => handleSelect(item)}
-                    className="flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[250px]">
+              <div className="p-1">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : filteredOptions.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    Tidak ada data ditemukan
+                  </div>
+                ) : (
+                  filteredOptions.map((item) => (
+                    <div
+                      key={item.index}
+                      onClick={() => handleSelect(item)}
+                      className="flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
                           {item.namaKegiatan}
                         </p>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        <div>Beban: {item.bebanAnggaran}</div>
-                        <div>Harga: {item.harga} {item.satuan}</div>
-                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       )}
     </div>
@@ -1423,15 +1407,10 @@ const SuratKeputusan = () => {
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih pembuat daftar" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             {organikList.map((organik) => (
                               <SelectItem key={organik.id} value={organik.id}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{organik.name}</span>
-                                  {organik.jabatan && (
-                                    <span className="text-xs text-muted-foreground">{organik.jabatan}</span>
-                                  )}
-                                </div>
+                                {organik.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1473,9 +1452,6 @@ const SuratKeputusan = () => {
                                         Organik
                                       </Badge>
                                     </div>
-                                    {org.jabatan && (
-                                      <p className="text-sm text-muted-foreground mt-1">{org.jabatan}</p>
-                                    )}
                                   </div>
                                   <Button 
                                     type="button" 
@@ -1511,9 +1487,6 @@ const SuratKeputusan = () => {
                                         Mitra
                                       </Badge>
                                     </div>
-                                    {mitra.jabatan && (
-                                      <p className="text-sm text-muted-foreground mt-1">{mitra.jabatan}</p>
-                                    )}
                                   </div>
                                   <Button 
                                     type="button" 
