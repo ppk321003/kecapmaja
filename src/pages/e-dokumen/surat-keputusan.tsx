@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
@@ -63,6 +64,7 @@ const suratKeputusanSchema = z.object({
 });
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
+
 type MasterKegiatan = {
   index: number;
   role: string;
@@ -70,12 +72,6 @@ type MasterKegiatan = {
   bebanAnggaran: string;
   harga: string;
   satuan: string;
-};
-
-type SelectedPerson = {
-  id: string;
-  name: string;
-  type: "organik" | "mitra";
 };
 
 // Constants
@@ -195,6 +191,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
               </div>
             </div>
           )}
+
           <div className="max-h-[250px] overflow-auto">
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -203,10 +200,10 @@ const FormSelect: React.FC<FormSelectProps> = ({
             ) : (
               <div className="p-1">
                 {filteredOptions.map((option) => {
-                  const isSelected = isMulti
+                  const isSelected = isMulti 
                     ? Array.isArray(value) && value.includes(option.value)
                     : value === option.value;
-
+                  
                   return (
                     <SelectItem
                       key={option.value}
@@ -229,9 +226,10 @@ const FormSelect: React.FC<FormSelectProps> = ({
               </div>
             )}
           </div>
+
           {isMulti && (
             <div className="p-2 border-t text-xs text-muted-foreground">
-              {Array.isArray(value) && value.length > 0
+              {Array.isArray(value) && value.length > 0 
                 ? `${value.length} item dipilih`
                 : "Pilih satu atau lebih opsi"}
             </div>
@@ -245,10 +243,12 @@ const FormSelect: React.FC<FormSelectProps> = ({
 // Custom hook untuk submit data
 const useSubmitSKToSheets = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
       console.log('📤 Submitting SK data to sheets:', data);
+      
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: TARGET_SPREADSHEET_ID,
@@ -257,10 +257,12 @@ const useSubmitSKToSheets = () => {
           values: [data]
         }
       });
+
       if (error) {
         console.error('❌ Error submitting SK:', error);
         throw error;
       }
+
       console.log('✅ SK submission successful:', result);
       return result;
     } catch (error) {
@@ -270,6 +272,7 @@ const useSubmitSKToSheets = () => {
       setIsSubmitting(false);
     }
   };
+
   return { submitData, isSubmitting };
 };
 
@@ -283,14 +286,35 @@ const getNextSequenceNumber = async (): Promise<number> => {
         range: `${SHEET_NAME}!A:A`
       }
     });
-    if (error) throw new Error("Gagal mengambil nomor urut terakhir");
+
+    if (error) {
+      console.error("Error fetching sequence numbers:", error);
+      throw new Error("Gagal mengambil nomor urut terakhir");
+    }
+
     const values = data?.values || [];
-    if (values.length <= 1) return 1;
+    
+    if (values.length <= 1) {
+      return 1;
+    }
+
     const sequenceNumbers = values
       .slice(1)
-      .map((row: any[]) => parseInt(row[0]) || 0)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
       .filter(num => num > 0);
-    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+
+    if (sequenceNumbers.length === 0) {
+      return 1;
+    }
+
+    return Math.max(...sequenceNumbers) + 1;
   } catch (error) {
     console.error("Error generating sequence number:", error);
     throw error;
@@ -304,6 +328,7 @@ const generateSKId = async (): Promise<string> => {
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const prefix = `sk-${year}${month}`;
+
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: TARGET_SPREADSHEET_ID,
@@ -311,16 +336,34 @@ const generateSKId = async (): Promise<string> => {
         range: `${SHEET_NAME}!B:B`
       }
     });
-    if (error) throw new Error("Gagal mengambil ID SK terakhir");
+
+    if (error) {
+      console.error("Error fetching SK IDs:", error);
+      throw new Error("Gagal mengambil ID SK terakhir");
+    }
+
     const values = data?.values || [];
-    if (values.length <= 1) return `${prefix}001`;
+    
+    if (values.length <= 1) {
+      return `${prefix}001`;
+    }
+
     const currentMonthIds = values
       .slice(1)
       .map((row: any[]) => row[1])
       .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => parseInt(id.replace(prefix, '')) || 0)
+      .map((id: string) => {
+        const numStr = id.replace(prefix, '');
+        const num = parseInt(numStr);
+        return isNaN(num) ? 0 : num;
+      })
       .filter(num => num > 0);
-    const nextNum = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+
+    if (currentMonthIds.length === 0) {
+      return `${prefix}001`;
+    }
+
+    const nextNum = Math.max(...currentMonthIds) + 1;
     return `${prefix}${nextNum.toString().padStart(3, '0')}`;
   } catch (error) {
     console.error("Error generating SK ID:", error);
@@ -333,6 +376,7 @@ const useMasterKegiatan = () => {
   const [masterData, setMasterData] = useState<MasterKegiatan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchMasterData = async () => {
       setIsLoading(true);
@@ -344,12 +388,18 @@ const useMasterKegiatan = () => {
             range: "Sheet1!A:F"
           }
         });
-        if (error) throw new Error(`Gagal mengambil data master: ${error.message}`);
+
+        if (error) {
+          throw new Error(`Gagal mengambil data master: ${error.message}`);
+        }
+
         const values = data?.values || [];
+        
         if (values.length <= 1) {
           setMasterData([]);
           return;
         }
+
         const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
           index: index + 1,
           role: row[1] || "",
@@ -357,7 +407,8 @@ const useMasterKegiatan = () => {
           bebanAnggaran: row[3] || "",
           harga: row[4] || "",
           satuan: row[5] || ""
-        })).filter(item => item.namaKegiatan.trim() !== "");
+        })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
+
         setMasterData(kegiatanData);
       } catch (err: any) {
         console.error('❌ Error loading master kegiatan:', err);
@@ -366,54 +417,11 @@ const useMasterKegiatan = () => {
         setIsLoading(false);
       }
     };
+
     fetchMasterData();
   }, []);
+
   return { masterData, isLoading, error };
-};
-
-// Komponen badge list sebagai pengganti tabel
-const SelectedPersonsBadges: React.FC<{
-  selectedPersons: SelectedPerson[];
-  onRemove: (id: string) => void;
-}> = ({ selectedPersons, onRemove }) => {
-  if (selectedPersons.length === 0) {
-    return (
-      <div className="text-center py-8 border-2 border-dashed rounded-xl bg-gray-50">
-        <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-        <p className="text-gray-500 font-medium">Belum ada personil yang dipilih</p>
-        <p className="text-sm text-gray-400 mt-1">Pilih dari dropdown Organik BPS atau Mitra Statistik</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {selectedPersons.map((person) => (
-          <Badge
-            key={person.id}
-            variant={person.type === "organik" ? "default" : "secondary"}
-            className="px-3 py-1.5 text-sm"
-          >
-            <span className="mr-2">
-              {person.type === "organik" ? <User className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
-            </span>
-            {person.name}
-            <button
-              type="button"
-              onClick={() => onRemove(person.id)}
-              className="ml-2 hover:text-red-600"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </Badge>
-        ))}
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Total: <strong>{selectedPersons.length}</strong> personil dipilih
-      </p>
-    </div>
-  );
 };
 
 const SuratKeputusan = () => {
@@ -422,6 +430,7 @@ const SuratKeputusan = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
   const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
+  
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
 
   const form = useForm<SuratKeputusanFormData>({
@@ -449,56 +458,157 @@ const SuratKeputusan = () => {
     value: organik.id,
     label: organik.name
   }));
+
   const mitraOptions = mitraList.map(mitra => ({
     value: mitra.id,
     label: mitra.name
   }));
+
   const kegiatanOptions = masterData.map(item => ({
     value: item.index.toString(),
     label: item.namaKegiatan
   }));
 
-  // Watch nilai terbaru
+  // Mendapatkan daftar organik dan mitra yang dipilih
   const selectedOrganikIds = form.watch("organik") || [];
   const selectedMitraIds = form.watch("mitraStatistik") || [];
 
-  // Gabungkan semua personil yang dipilih
-  const selectedPersons: SelectedPerson[] = useMemo(() => {
-    const organik = selectedOrganikIds
+  const selectedOrganik = useMemo(() => {
+    return selectedOrganikIds
       .map(id => organikList.find(o => o.id === id))
       .filter(Boolean)
       .map(o => ({ id: o!.id, name: o!.name, type: "organik" as const }));
+  }, [selectedOrganikIds, organikList]);
 
-    const mitra = selectedMitraIds
+  const selectedMitra = useMemo(() => {
+    return selectedMitraIds
       .map(id => mitraList.find(m => m.id === id))
       .filter(Boolean)
       .map(m => ({ id: m!.id, name: m!.name, type: "mitra" as const }));
+  }, [selectedMitraIds, mitraList]);
 
-    return [...organik, ...mitra];
-  }, [selectedOrganikIds, selectedMitraIds, organikList, mitraList]);
+  // Fungsi untuk menghapus organik
+  const handleRemoveOrganik = (id: string) => {
+    const currentValues = form.getValues("organik") || [];
+    form.setValue("organik", currentValues.filter(item => item !== id));
+  };
 
-  // Hapus personil
-  const handleRemove = (id: string) => {
-    if (selectedOrganikIds.includes(id)) {
-      form.setValue("organik", selectedOrganikIds.filter(v => v !== id), { shouldValidate: true });
-    } else if (selectedMitraIds.includes(id)) {
-      form.setValue("mitraStatistik", selectedMitraIds.filter(v => v !== id), { shouldValidate: true });
+  // Fungsi untuk menghapus mitra
+  const handleRemoveMitra = (id: string) => {
+    const currentValues = form.getValues("mitraStatistik") || [];
+    form.setValue("mitraStatistik", currentValues.filter(item => item !== id));
+  };
+
+  // Komponen Tabel Sederhana yang langsung di-render
+  const SelectedPersonsTable = () => {
+    const totalPersons = selectedOrganik.length + selectedMitra.length;
+
+    if (totalPersons === 0) {
+      return (
+        <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+          <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+          <p className="text-gray-500 font-medium">Belum ada personel yang dipilih</p>
+          <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan organik atau mitra statistik</p>
+        </div>
+      );
     }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-700">Daftar Personel Terpilih</h3>
+          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+            Total: {totalPersons} orang
+          </Badge>
+        </div>
+
+        {/* Tabel untuk Organik */}
+        {selectedOrganik.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-md bg-blue-100">
+                <User className="h-4 w-4 text-blue-600" />
+              </div>
+              <h4 className="font-medium text-blue-700">Organik BPS ({selectedOrganik.length})</h4>
+            </div>
+            <div className="border rounded-md overflow-hidden">
+              <div className="divide-y">
+                {selectedOrganik.map((person, index) => (
+                  <div key={person.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
+                      <span className="font-medium">{person.name}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveOrganik(person.id)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tabel untuk Mitra Statistik */}
+        {selectedMitra.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-md bg-green-100">
+                <Users className="h-4 w-4 text-green-600" />
+              </div>
+              <h4 className="font-medium text-green-700">Mitra Statistik ({selectedMitra.length})</h4>
+            </div>
+            <div className="border rounded-md overflow-hidden">
+              <div className="divide-y">
+                {selectedMitra.map((person, index) => (
+                  <div key={person.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
+                      <span className="font-medium">{person.name}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveMitra(person.id)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const formatTanggalIndonesia = (date: Date | null): string => {
     if (!date) return "";
+    
     const day = date.getDate();
     const month = date.toLocaleDateString('id-ID', { month: 'long' });
     const year = date.getFullYear();
+    
     return `${day} ${month} ${year}`;
   };
 
+  // Handler untuk ketika user memilih dari dropdown kegiatan
   const handleKegiatanSelect = (selectedValue: string) => {
     const selectedIndex = parseInt(selectedValue);
     const selectedKegiatan = masterData.find(item => item.index === selectedIndex);
+    
     if (selectedKegiatan) {
       const formattedValue = `${selectedKegiatan.namaKegiatan} | ${selectedKegiatan.bebanAnggaran} | ${selectedKegiatan.harga} | ${selectedKegiatan.satuan}`;
+      
       form.setValue("memutuskanKedua", formattedValue);
       form.setValue("selectedKegiatanId", selectedIndex.toString());
       form.trigger("memutuskanKedua");
@@ -510,6 +620,7 @@ const SuratKeputusan = () => {
     try {
       const sequenceNumber = await getNextSequenceNumber();
       const skId = await generateSKId();
+
       const selectedOrganiks = organikList.filter(o => data.organik.includes(o.id));
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
@@ -534,6 +645,7 @@ const SuratKeputusan = () => {
       ];
 
       await submitData(rowData);
+
       form.reset();
       toast({
         title: "Berhasil",
@@ -562,7 +674,9 @@ const SuratKeputusan = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-purple-600 tracking-tight">Surat Keputusan</h1>
-            <p className="text-muted-foreground">Formulir pembuatan surat keputusan</p>
+            <p className="text-muted-foreground">
+              Formulir pembuatan surat keputusan
+            </p>
           </div>
         </div>
 
@@ -573,105 +687,162 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Nomor & Tentang */}
+                {/* Nomor Surat Keputusan dan Tentang */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   <div className="lg:col-span-1">
-                    <FormField control={form.control} name="nomorSuratKeputusan" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nomor Surat Keputusan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Contoh: 123/KD.01/ST/2024" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField control={form.control} name="nomorSuratKeputusan" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>Nomor Surat Keputusan</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Contoh: 123/KD.01/ST/2024" 
+                              className="w-full" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
                   </div>
+                  
                   <div className="lg:col-span-3">
-                    <FormField control={form.control} name="tentang" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tentang</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Masukkan tentang (dapat berisi teks panjang)" className="min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField control={form.control} name="tentang" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>Tentang</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Masukkan tentang (dapat berisi teks panjang)" 
+                              className="min-h-[100px]" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
                   </div>
                 </div>
 
-                {/* Menimbang */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-600">Menimbang</h3>
                   <div className="bg-blue-50 p-4 rounded-lg text-sm text-gray-700">
                     <p className="font-medium mb-2">Contoh penulisan:</p>
-                    <div className="space-y-2 text-xs">
-                      <div><span className="font-semibold">- KESATU :</span><br />bahwa untuk persiapan pelaksanaan...</div>
-                      <div><span className="font-semibold">- KEDUA :</span><br />(Opsional) bahwa berdasarkan pertimbangan...</div>
-                      <div><span className="font-semibold">- KETIGA / KEEMPAT :</span><br />(Opsional)</div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-semibold">- KESATU :</span>
+                        <br />
+                        bahwa untuk persiapan pelaksanaan Kegiatan Sensus Pertanian Tahun 2023, maka perlu dilaksanakan Rapat Koordinasi Daerah tentang Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka dengan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEDUA :</span>
+                        <br />
+                        (Opsional) bahwa berdasarkan pertimbangan sebagaimana dimaksud dalam huruf a, maka perlu menetapkan Keputusan Kepala Badan Pusat Statistik Kabupaten Majalengka tentang Pelaksanaan Rapat Koordinasi Daerah tentang persiapan pelaksanaan Sensus Pertanian Tahun 2023 Badan Pusat Statistik Kabupaten Majalengka
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KETIGA :</span>
+                        <br />
+                        (Opsional)
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEEMPAT :</span>
+                        <br />
+                        (Opsional)
+                      </div>
                     </div>
                   </div>
+                  
+                  <FormField control={form.control} name="menimbangKesatu" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>KESATU - (Wajib)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>} />
 
-                  <FormField control={form.control} name="menimbangKesatu" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KESATU - (Wajib)</FormLabel>
-                      <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="menimbangKedua" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KEDUA (Opsional)</FormLabel>
-                      <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="menimbangKetiga" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KETIGA (Opsional)</FormLabel>
-                      <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="menimbangKeempat" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KEEMPAT (Opsional)</FormLabel>
-                      <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField control={form.control} name="menimbangKedua" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>KEDUA (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang kedua" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>} />
+
+                  <FormField control={form.control} name="menimbangKetiga" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>KETIGA - (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang ketiga" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>} />
+
+                  <FormField control={form.control} name="menimbangKeempat" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>KEEMPAT - (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Masukkan menimbang keempat" className="min-h-[100px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>} />
                 </div>
 
-                {/* Memutuskan */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-red-700">Memutuskan</h3>
                   <div className="bg-green-50 p-4 rounded-lg text-sm text-gray-700">
                     <p className="font-medium mb-2">Contoh penulisan:</p>
-                    <div className="space-y-2 text-xs">
-                      <div><span className="font-semibold">- KESATU :</span><br />Menetapkan Panitia dan Peserta...</div>
-                      <div><span className="font-semibold">- KEDUA :</span><br />Format wajib: Nama Kegiatan | Beban Anggaran | Harga | Satuan</div>
-                      <div><span className="font-semibold">- KETIGA :</span><br />Tanggal Mulai | Tanggal Selesai</div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-semibold">- KESATU :</span>
+                        <br />
+                        Menetapkan Panitia dan Peserta Rapat Koordinasi Daerah (Rakorda) Sensus Pertanian Tahun (ST2023) tentang Sensus Pertanian Tahun 2023 (ST2023) Badan Pusat Statistik Kabupaten Majalengka.
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KEDUA :</span>
+                        <br />
+                        <strong>Format wajib:</strong> Nama Kegiatan | Beban Anggaran | Harga | Satuan<br />
+                        Contoh: honor petugas pendataan lapangan sksppi di kab/kota | 2898.BMA.007.005.A.521213 | 75000 | Dok
+                      </div>
+                      <div>
+                        <span className="font-semibold">- KETIGA :</span>
+                        <br />
+                        <strong>Sekarang menjadi:</strong> Tanggal Mulai | Tanggal Selesai<br />
+                        Contoh: 15 Desember 2025 | 31 Desember 2025
+                      </div>
                     </div>
                   </div>
-
-                  <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>KESATU - (Wajib)</FormLabel>
-                      <FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  <div className="space-y-4">
-                    <FormField control={form.control} name="memutuskanKedua" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>KEDUA - (Wajib)</FormLabel>
+                  
+                  <FormField control={form.control} name="memutuskanKesatu" render={({
+                  field
+                }) => <FormItem>
+                        <FormLabel>KESATU - (Wajib)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" className="min-h-[100px] font-mono text-sm" {...field} />
+                          <Textarea placeholder="Masukkan memutuskan kesatu" className="min-h-[100px]" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>} />
 
+                  {/* Bagian Memutuskan Kedua dengan dropdown */}
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="memutuskanKedua" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>KEDUA - (Wajib)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan" 
+                              className="min-h-[100px] font-mono text-sm" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
+
+                    {/* Dropdown untuk memilih dari master kegiatan */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Pilih dari Master Kegiatan (Opsional):</label>
                       <FormSelect
@@ -683,157 +854,216 @@ const SuratKeputusan = () => {
                         isSearchable={true}
                         isDisabled={isLoadingMaster}
                         isLoading={isLoadingMaster}
+                        noOptionsMessage={() => "Data tidak ditemukan"}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Pilih dari dropdown atau ketik manual dengan format yang benar
+                        Pilih dari dropdown atau ketik manual dengan format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
                       </p>
                     </div>
                   </div>
 
+                  {/* Bagian Memutuskan Ketiga (sekarang jadi tanggal range) */}
                   <div className="space-y-4">
                     <h4 className="text-md font-semibold text-gray-700">KETIGA - (Wajib)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="tanggalMulai" render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Tanggal Mulai</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : <span>Pilih tanggal mulai</span>}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date("1900-01-01")} initialFocus />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="tanggalSelesai" render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Tanggal Selesai</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                  {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : <span>Pilih tanggal selesai</span>}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={date => {
-                                  const tanggalMulai = form.getValues("tanggalMulai");
-                                  return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
-                                }}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
+                      <FormField control={form.control} name="tanggalMulai" render={({
+                      field
+                    }) => <FormItem className="flex flex-col">
+                            <FormLabel>Tanggal Mulai</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "dd MMMM yyyy", {
+                                locale: id
+                              }) : <span>Pilih tanggal mulai</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange} 
+                                  disabled={date => date < new Date("1900-01-01")} 
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>} />
+
+                      <FormField control={form.control} name="tanggalSelesai" render={({
+                      field
+                    }) => <FormItem className="flex flex-col">
+                            <FormLabel>Tanggal Selesai</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "dd MMMM yyyy", {
+                                locale: id
+                              }) : <span>Pilih tanggal selesai</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar 
+                                  mode="single" 
+                                  selected={field.value} 
+                                  onSelect={field.onChange} 
+                                  disabled={date => {
+                                    const tanggalMulai = form.getValues("tanggalMulai");
+                                    return tanggalMulai ? date < tanggalMulai : date < new Date("1900-01-01");
+                                  }} 
+                                  initialFocus 
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>} />
                     </div>
                   </div>
                 </div>
 
-                {/* Tanggal Surat Keputusan */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Tanggal Surat Keputusan</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                              {field.value ? format(field.value, "dd MMMM yyyy", { locale: id }) : <span>Pilih tanggal</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date("1900-01-01")} initialFocus />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField control={form.control} name="tanggalSuratKeputusan" render={({
+                  field
+                }) => <FormItem className="flex flex-col">
+                        <FormLabel>Tanggal Surat Keputusan</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "dd MMMM yyyy", {
+                            locale: id
+                          }) : <span>Pilih tanggal</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar 
+                              mode="single" 
+                              selected={field.value} 
+                              onSelect={field.onChange} 
+                              disabled={date => date < new Date("1900-01-01")} 
+                              initialFocus 
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>} />
                 </div>
 
-                {/* Personil */}
+                {/* Bagian Organik dan Mitra Statistik */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="organik" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Organik BPS</FormLabel>
-                        <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih organik"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                            isSearchable={true}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    {/* Dropdown Organik */}
+                    <FormField
+                      control={form.control}
+                      name="organik"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organik BPS</FormLabel>
+                          <FormControl>
+                            <FormSelect 
+                              placeholder="Cari dan pilih organik" 
+                              options={organikOptions} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              isMulti={true} 
+                              isSearchable={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                    <FormField control={form.control} name="mitraStatistik" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mitra Statistik</FormLabel>
-                        <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih mitra statistik"
-                            options={mitraOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={true}
-                            isSearchable={true}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    {/* Dropdown Mitra Statistik */}
+                    <FormField
+                      control={form.control}
+                      name="mitraStatistik"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mitra Statistik</FormLabel>
+                          <FormControl>
+                            <FormSelect 
+                              placeholder="Cari dan pilih mitra statistik" 
+                              options={mitraOptions} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              isMulti={true} 
+                              isSearchable={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
+                  {/* Dropdown Pembuat Daftar */}
                   <div className="max-w-md">
-                    <FormField control={form.control} name="pembuatDaftar" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pembuat Daftar</FormLabel>
-                        <FormControl>
-                          <FormSelect
-                            placeholder="Cari dan pilih pembuat daftar"
-                            options={organikOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            isMulti={false}
-                            isSearchable={true}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField
+                      control={form.control}
+                      name="pembuatDaftar"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pembuat Daftar</FormLabel>
+                          <FormControl>
+                            <FormSelect 
+                              placeholder="Cari dan pilih pembuat daftar" 
+                              options={organikOptions} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              isMulti={false} 
+                              isSearchable={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  {/* Daftar personil dalam bentuk badge (tanpa tabel) */}
-                  <div className="pt-4">
-                    <label className="text-base font-medium">Personil yang Dipilih</label>
-                    <SelectedPersonsBadges selectedPersons={selectedPersons} onRemove={handleRemove} />
+                  {/* Debug Info - Bisa dihapus setelah testing */}
+                  <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">Debug Info:</span>
+                      <Badge variant="outline" className="text-xs">
+                        {selectedOrganik.length + selectedMitra.length} personel terpilih
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-gray-600">Organik IDs:</span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {selectedOrganikIds.join(", ") || "(kosong)"}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Mitra IDs:</span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {selectedMitraIds.join(", ") || "(kosong)"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Tabel untuk menampilkan daftar yang dipilih */}
+                  <SelectedPersonsTable />
                 </div>
 
-                {/* Tombol Submit */}
                 <div className="flex justify-end space-x-4 pt-6 border-t">
-                  <Button type="button" variant="outline" onClick={() => window.location.href = "https://kecapmaja.vercel.app/e-dokumen/buat"}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => window.location.href = "https://kecapmaja.vercel.app/e-dokumen/buat"}
+                  >
                     Batal
                   </Button>
                   <Button type="submit" disabled={isLoading || isLoadingMaster}>
