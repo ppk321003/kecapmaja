@@ -5,6 +5,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { CalendarIcon, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { FormSelect } from "@/components/FormSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,6 @@ const suratKeputusanSchema = z.object({
   memutuskanKedua: z.string()
     .min(1, "Memutuskan kedua harus diisi")
     .refine((val) => {
-      // Validasi format: harus ada 3 pemisah "|" untuk 4 bagian
       const parts = val.split("|").map(part => part.trim());
       return parts.length === 4 && parts.every(part => part.length > 0);
     }, {
@@ -64,7 +63,6 @@ const suratKeputusanSchema = z.object({
 
 type SuratKeputusanFormData = z.infer<typeof suratKeputusanSchema>;
 
-// Types untuk data master kegiatan
 type MasterKegiatan = {
   index: number;
   role: string;
@@ -160,7 +158,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
   }
 };
 
-// Fungsi untuk generate ID surat keputusan (sk-yymmxxx)
+// Fungsi untuk generate ID surat keputusan
 const generateSKId = async (): Promise<string> => {
   try {
     const now = new Date();
@@ -239,7 +237,6 @@ const useMasterKegiatan = () => {
           return;
         }
 
-        // Convert spreadsheet data to MasterKegiatan objects
         const kegiatanData: MasterKegiatan[] = values.slice(1).map((row: any[], index: number) => ({
           index: index + 1,
           role: row[1] || "",
@@ -250,7 +247,6 @@ const useMasterKegiatan = () => {
         })).filter((item: MasterKegiatan) => item.namaKegiatan.trim() !== "");
 
         setMasterData(kegiatanData);
-        console.log('📊 Master kegiatan loaded:', kegiatanData.length, 'items');
       } catch (err: any) {
         console.error('❌ Error loading master kegiatan:', err);
         setError(err.message);
@@ -263,6 +259,71 @@ const useMasterKegiatan = () => {
   }, []);
 
   return { masterData, isLoading, error };
+};
+
+// Custom Select Component dengan search
+interface CustomSelectProps {
+  placeholder?: string;
+  options: { value: string; label: string; }[];
+  value: any;
+  onChange: (value: any) => void;
+  isMulti?: boolean;
+  isSearchable?: boolean;
+  isDisabled?: boolean;
+  isLoading?: boolean;
+  noOptionsMessage?: () => string;
+}
+
+const CustomSelect: React.FC<CustomSelectProps> = ({
+  placeholder,
+  options,
+  value,
+  onChange,
+  isMulti = false,
+  isSearchable = true,
+  isDisabled = false,
+  isLoading = false,
+  noOptionsMessage,
+}) => {
+  return (
+    <Select
+      placeholder={placeholder}
+      options={options}
+      value={isMulti 
+        ? options.filter(option => value.includes(option.value))
+        : options.find(option => option.value === value)
+      }
+      onChange={(selected) => {
+        if (isMulti) {
+          const values = selected ? (Array.isArray(selected) ? selected.map(s => s.value) : []) : [];
+          onChange(values);
+        } else {
+          onChange(selected?.value || "");
+        }
+      }}
+      isMulti={isMulti}
+      isSearchable={isSearchable}
+      isDisabled={isDisabled}
+      isLoading={isLoading}
+      noOptionsMessage={noOptionsMessage}
+      className="react-select-container"
+      classNamePrefix="react-select"
+      styles={{
+        control: (base) => ({
+          ...base,
+          minHeight: '42px',
+          borderColor: '#e2e8f0',
+          '&:hover': {
+            borderColor: '#cbd5e1'
+          }
+        }),
+        menu: (base) => ({
+          ...base,
+          zIndex: 50
+        })
+      }}
+    />
+  );
 };
 
 const SuratKeputusan = () => {
@@ -295,9 +356,6 @@ const SuratKeputusan = () => {
     }
   });
 
-  // Watch untuk memutuskanKedua agar bisa validasi real-time
-  const memutuskanKeduaValue = form.watch("memutuskanKedua");
-
   const organikOptions = organikList.map(organik => ({
     value: organik.id,
     label: organik.name
@@ -308,7 +366,6 @@ const SuratKeputusan = () => {
     label: mitra.name
   }));
 
-  // Buat opsi untuk dropdown master kegiatan
   const kegiatanOptions = masterData.map(item => ({
     value: item.index.toString(),
     label: item.namaKegiatan
@@ -330,14 +387,10 @@ const SuratKeputusan = () => {
     const selectedKegiatan = masterData.find(item => item.index === selectedIndex);
     
     if (selectedKegiatan) {
-      // Format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
       const formattedValue = `${selectedKegiatan.namaKegiatan} | ${selectedKegiatan.bebanAnggaran} | ${selectedKegiatan.harga} | ${selectedKegiatan.satuan}`;
       
-      // Update kedua field sekaligus
       form.setValue("memutuskanKedua", formattedValue);
       form.setValue("selectedKegiatanId", selectedIndex.toString());
-      
-      // Trigger validation
       form.trigger("memutuskanKedua");
     }
   };
@@ -345,7 +398,6 @@ const SuratKeputusan = () => {
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
     try {
-      // Generate nomor urut baru dan ID SK
       const sequenceNumber = await getNextSequenceNumber();
       const skId = await generateSKId();
 
@@ -353,34 +405,25 @@ const SuratKeputusan = () => {
       const selectedMitras = mitraList.filter(m => data.mitraStatistik.includes(m.id));
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
-      // Format data sesuai dengan header spreadsheet
-      // Note: Kolom memutuskanKetiga diubah menjadi tanggal range
       const rowData = [
-        sequenceNumber, // Kolom 1: No
-        skId, // Kolom 2: Id (sk-yymmxxx)
-        data.nomorSuratKeputusan, // Kolom 3: no_sk
-        data.tentang, // Kolom 4: tentang
-        data.menimbangKesatu, // Kolom 5: menimbang1
-        data.menimbangKedua || "", // Kolom 6: menimbang2
-        data.menimbangKetiga || "", // Kolom 7: menimbang3
-        data.menimbangKeempat || "", // Kolom 8: menimbang4
-        data.memutuskanKesatu, // Kolom 9: kesatu
-        data.memutuskanKedua, // Kolom 10: kedua (format: Nama | Beban | Harga | Satuan)
-        // Kolom 11: ketiga (sekarang jadi tanggal range)
+        sequenceNumber,
+        skId,
+        data.nomorSuratKeputusan,
+        data.tentang,
+        data.menimbangKesatu,
+        data.menimbangKedua || "",
+        data.menimbangKetiga || "",
+        data.menimbangKeempat || "",
+        data.memutuskanKesatu,
+        data.memutuskanKedua,
         `${formatTanggalIndonesia(data.tanggalMulai)} | ${formatTanggalIndonesia(data.tanggalSelesai)}`,
-        formatTanggalIndonesia(data.tanggalSuratKeputusan), // Kolom 12: tanggal
-        selectedOrganiks.map(o => o.name).join(" | "), // Kolom 13: Organik
-        selectedMitras.map(m => m.name).join(" | "), // Kolom 14: Mitra Statistik
-        selectedPembuat?.name || "", // Kolom 15: Pembuat daftar
-        data.selectedKegiatanId || "" // Kolom 16: ID kegiatan terpilih (untuk tracking)
+        formatTanggalIndonesia(data.tanggalSuratKeputusan),
+        selectedOrganiks.map(o => o.name).join(" | "),
+        selectedMitras.map(m => m.name).join(" | "),
+        selectedPembuat?.name || "",
+        data.selectedKegiatanId || ""
       ];
 
-      console.log('📋 Final SK data array:', rowData);
-      console.log('🔢 Total columns:', rowData.length);
-      console.log('🆔 SK ID:', skId);
-      console.log('📅 Date range:', rowData[10]);
-
-      // Submit data ke spreadsheet
       await submitData(rowData);
 
       form.reset();
@@ -424,24 +467,35 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField control={form.control} name="nomorSuratKeputusan" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Nomor Surat Keputusan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Masukkan nomor surat keputusan" className="max-w-[150px]" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
-
-                  <div className="md:col-span-2">
+                {/* Nomor Surat Keputusan dan Tentang dengan layout yang lebih baik */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  <div className="lg:col-span-1">
+                    <FormField control={form.control} name="nomorSuratKeputusan" render={({
+                    field
+                  }) => <FormItem>
+                          <FormLabel>Nomor Surat Keputusan</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Contoh: 123/KD.01/ST/2024" 
+                              className="w-full" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>} />
+                  </div>
+                  
+                  <div className="lg:col-span-3">
                     <FormField control={form.control} name="tentang" render={({
                     field
                   }) => <FormItem>
                           <FormLabel>Tentang</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Masukkan tentang (dapat berisi teks panjang)" className="min-h-[80px]" {...field} />
+                            <Textarea 
+                              placeholder="Masukkan tentang (dapat berisi teks panjang)" 
+                              className="min-h-[100px]" 
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>} />
@@ -570,12 +624,12 @@ const SuratKeputusan = () => {
 
                     {/* Dropdown untuk memilih dari master kegiatan */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Pilih dari Master Kegiatan:</label>
-                      <FormSelect
+                      <label className="text-sm font-medium">Pilih dari Master Kegiatan (Opsional):</label>
+                      <CustomSelect
                         placeholder={isLoadingMaster ? "Memuat data..." : "Cari dan pilih kegiatan..."}
                         options={kegiatanOptions}
                         value={form.watch("selectedKegiatanId")}
-                        onChange={(value) => handleKegiatanSelect(value as string)}
+                        onChange={handleKegiatanSelect}
                         isMulti={false}
                         isSearchable={true}
                         isDisabled={isLoadingMaster}
@@ -583,28 +637,9 @@ const SuratKeputusan = () => {
                         noOptionsMessage={() => "Data tidak ditemukan"}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Pilih dari dropdown atau ketik manual dengan format: Nama | Beban Anggaran | Harga | Satuan
+                        Pilih dari dropdown atau ketik manual dengan format: Nama Kegiatan | Beban Anggaran | Harga | Satuan
                       </p>
                     </div>
-                    
-                    {/* Validasi format real-time */}
-                    {memutuskanKeduaValue && memutuskanKeduaValue.includes("|") && (
-                      <div className="text-xs">
-                        <p className="font-medium">Format terdeteksi:</p>
-                        <div className="grid grid-cols-4 gap-2 mt-1">
-                          {memutuskanKeduaValue.split("|").map((part, index) => (
-                            <div key={index} className="p-2 bg-gray-50 rounded border">
-                              <span className="font-medium">
-                                {index === 0 ? "Nama" : 
-                                 index === 1 ? "Beban" : 
-                                 index === 2 ? "Harga" : "Satuan"}:
-                              </span>
-                              <p className="truncate">{part.trim()}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Bagian Memutuskan Ketiga (sekarang jadi tanggal range) */}
@@ -670,9 +705,6 @@ const SuratKeputusan = () => {
                             <FormMessage />
                           </FormItem>} />
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Output: {formatTanggalIndonesia(form.watch("tanggalMulai"))} | {formatTanggalIndonesia(form.watch("tanggalSelesai"))}
-                    </div>
                   </div>
                 </div>
 
@@ -712,7 +744,7 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Organik</FormLabel>
                         <FormControl>
-                          <FormSelect 
+                          <CustomSelect 
                             placeholder="Cari dan pilih organik" 
                             options={organikOptions} 
                             value={field.value} 
@@ -729,7 +761,7 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Mitra Statistik</FormLabel>
                         <FormControl>
-                          <FormSelect 
+                          <CustomSelect 
                             placeholder="Cari dan pilih mitra statistik" 
                             options={mitraOptions} 
                             value={field.value} 
@@ -746,7 +778,7 @@ const SuratKeputusan = () => {
                 }) => <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
                         <FormControl>
-                          <FormSelect 
+                          <CustomSelect 
                             placeholder="Cari dan pilih pembuat daftar" 
                             options={organikOptions} 
                             value={field.value} 
@@ -759,7 +791,7 @@ const SuratKeputusan = () => {
                       </FormItem>} />
                 </div>
 
-                <div className="flex justify-end space-x-4">
+                <div className="flex justify-end space-x-4 pt-6 border-t">
                   <Button 
                     type="button" 
                     variant="outline" 
