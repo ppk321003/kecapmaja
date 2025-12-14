@@ -14,7 +14,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
@@ -111,6 +110,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Filter options berdasarkan search term
   const filteredOptions = useMemo(() => {
     if (!searchTerm.trim()) return options;
     return options.filter(option =>
@@ -123,6 +123,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
     inputRef.current?.focus();
   };
 
+  // Fungsi untuk mendapatkan label yang dipilih
   const getSelectedLabel = () => {
     if (isMulti) {
       if (Array.isArray(value) && value.length > 0) {
@@ -140,13 +141,15 @@ const FormSelect: React.FC<FormSelectProps> = ({
     if (isMulti) {
       const currentValues = Array.isArray(value) ? value : [];
       if (currentValues.includes(selectedValue)) {
+        // Hapus jika sudah ada
         onChange(currentValues.filter(v => v !== selectedValue));
       } else {
+        // Tambah jika belum ada
         onChange([...currentValues, selectedValue]);
       }
     } else {
       onChange(selectedValue);
-      setIsOpen(false);
+      setIsOpen(false); // Tutup dropdown untuk single select
     }
   };
 
@@ -166,6 +169,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
           </SelectValue>
         </SelectTrigger>
         <SelectContent className="p-0" position="popper" align="start">
+          {/* Search Input */}
           {isSearchable && (
             <div className="sticky top-0 z-50 bg-popover p-2 border-b">
               <div className="relative">
@@ -192,6 +196,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
             </div>
           )}
 
+          {/* Options List */}
           <div className="max-h-[250px] overflow-auto">
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -227,6 +232,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
             )}
           </div>
 
+          {/* Multi-select info */}
           {isMulti && (
             <div className="p-2 border-t text-xs text-muted-foreground">
               {Array.isArray(value) && value.length > 0 
@@ -473,19 +479,16 @@ const SuratKeputusan = () => {
   const selectedOrganikIds = form.watch("organik") || [];
   const selectedMitraIds = form.watch("mitraStatistik") || [];
 
-  const selectedOrganik = useMemo(() => {
-    return selectedOrganikIds
-      .map(id => organikList.find(o => o.id === id))
-      .filter(Boolean)
-      .map(o => ({ id: o!.id, name: o!.name, type: "organik" as const }));
-  }, [selectedOrganikIds, organikList]);
+  // Fungsi untuk mendapatkan nama berdasarkan ID
+  const getOrganikName = (id: string) => {
+    const organik = organikList.find(o => o.id === id);
+    return organik?.name || id;
+  };
 
-  const selectedMitra = useMemo(() => {
-    return selectedMitraIds
-      .map(id => mitraList.find(m => m.id === id))
-      .filter(Boolean)
-      .map(m => ({ id: m!.id, name: m!.name, type: "mitra" as const }));
-  }, [selectedMitraIds, mitraList]);
+  const getMitraName = (id: string) => {
+    const mitra = mitraList.find(m => m.id === id);
+    return mitra?.name || id;
+  };
 
   // Fungsi untuk menghapus organik
   const handleRemoveOrganik = (id: string) => {
@@ -497,98 +500,6 @@ const SuratKeputusan = () => {
   const handleRemoveMitra = (id: string) => {
     const currentValues = form.getValues("mitraStatistik") || [];
     form.setValue("mitraStatistik", currentValues.filter(item => item !== id));
-  };
-
-  // Komponen Tabel Sederhana yang langsung di-render
-  const SelectedPersonsTable = () => {
-    const totalPersons = selectedOrganik.length + selectedMitra.length;
-
-    if (totalPersons === 0) {
-      return (
-        <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
-          <Users className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-500 font-medium">Belum ada personel yang dipilih</p>
-          <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan organik atau mitra statistik</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-700">Daftar Personel Terpilih</h3>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            Total: {totalPersons} orang
-          </Badge>
-        </div>
-
-        {/* Tabel untuk Organik */}
-        {selectedOrganik.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-blue-100">
-                <User className="h-4 w-4 text-blue-600" />
-              </div>
-              <h4 className="font-medium text-blue-700">Organik BPS ({selectedOrganik.length})</h4>
-            </div>
-            <div className="border rounded-md overflow-hidden">
-              <div className="divide-y">
-                {selectedOrganik.map((person, index) => (
-                  <div key={person.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
-                      <span className="font-medium">{person.name}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveOrganik(person.id)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tabel untuk Mitra Statistik */}
-        {selectedMitra.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-green-100">
-                <Users className="h-4 w-4 text-green-600" />
-              </div>
-              <h4 className="font-medium text-green-700">Mitra Statistik ({selectedMitra.length})</h4>
-            </div>
-            <div className="border rounded-md overflow-hidden">
-              <div className="divide-y">
-                {selectedMitra.map((person, index) => (
-                  <div key={person.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
-                      <span className="font-medium">{person.name}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveMitra(person.id)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const formatTanggalIndonesia = (date: Date | null): string => {
@@ -687,7 +598,7 @@ const SuratKeputusan = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Nomor Surat Keputusan dan Tentang */}
+                {/* Nomor Surat Keputusan dan Tentang dengan layout yang lebih baik */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   <div className="lg:col-span-1">
                     <FormField control={form.control} name="nomorSuratKeputusan" render={({
@@ -958,7 +869,7 @@ const SuratKeputusan = () => {
                       </FormItem>} />
                 </div>
 
-                {/* Bagian Organik dan Mitra Statistik */}
+                {/* Bagian Organik dan Mitra Statistik - SEDERHANA */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Dropdown Organik */}
@@ -1030,32 +941,92 @@ const SuratKeputusan = () => {
                     />
                   </div>
 
-                  {/* Debug Info - Bisa dihapus setelah testing */}
-                  <div className="bg-gray-50 p-4 rounded-lg text-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">Debug Info:</span>
-                      <Badge variant="outline" className="text-xs">
-                        {selectedOrganik.length + selectedMitra.length} personel terpilih
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-gray-600">Organik IDs:</span>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {selectedOrganikIds.join(", ") || "(kosong)"}
-                        </div>
+                  {/* Daftar Organik yang Dipilih - SEDERHANA */}
+                  {selectedOrganikIds.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <User className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-medium text-blue-700">
+                          Organik Terpilih ({selectedOrganikIds.length})
+                        </h3>
                       </div>
-                      <div>
-                        <span className="text-gray-600">Mitra IDs:</span>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {selectedMitraIds.join(", ") || "(kosong)"}
-                        </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedOrganikIds.map((id) => (
+                          <div
+                            key={id}
+                            className="flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200"
+                          >
+                            <span className="text-sm">{getOrganikName(id)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOrganik(id)}
+                              className="ml-1 text-blue-500 hover:text-blue-700"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Tabel untuk menampilkan daftar yang dipilih */}
-                  <SelectedPersonsTable />
+                  {/* Daftar Mitra yang Dipilih - SEDERHANA */}
+                  {selectedMitraIds.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-green-600" />
+                        <h3 className="font-medium text-green-700">
+                          Mitra Statistik Terpilih ({selectedMitraIds.length})
+                        </h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedMitraIds.map((id) => (
+                          <div
+                            key={id}
+                            className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-200"
+                          >
+                            <span className="text-sm">{getMitraName(id)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMitra(id)}
+                              className="ml-1 text-green-500 hover:text-green-700"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ringkasan */}
+                  {(selectedOrganikIds.length > 0 || selectedMitraIds.length > 0) && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Total Personel Terpilih</p>
+                          <p className="text-lg font-semibold text-gray-800">
+                            {selectedOrganikIds.length + selectedMitraIds.length} orang
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">Rincian</p>
+                          <p className="text-sm font-medium">
+                            {selectedOrganikIds.length} Organik + {selectedMitraIds.length} Mitra
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pesan jika belum ada yang dipilih */}
+                  {selectedOrganikIds.length === 0 && selectedMitraIds.length === 0 && (
+                    <div className="text-center py-6 border-2 border-dashed rounded-lg bg-gray-50">
+                      <Users className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                      <p className="text-gray-500">Belum ada personel yang dipilih</p>
+                      <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-4 pt-6 border-t">
