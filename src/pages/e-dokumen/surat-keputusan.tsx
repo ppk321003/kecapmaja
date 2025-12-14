@@ -446,7 +446,6 @@ interface SelectedPersonsTableProps {
   onRemoveMitra: (id: string) => void;
 }
 
-// Ganti komponen SelectedPersonsTable dengan versi sederhana:
 const SelectedPersonsTable: React.FC<SelectedPersonsTableProps> = ({
   selectedOrganik,
   selectedMitra,
@@ -458,6 +457,7 @@ const SelectedPersonsTable: React.FC<SelectedPersonsTableProps> = ({
       <div className="text-center py-8 border rounded-lg bg-gray-50">
         <Users className="h-12 w-12 mx-auto text-gray-400 mb-2" />
         <p className="text-gray-500">Belum ada organik atau mitra statistik yang dipilih</p>
+        <p className="text-sm text-gray-400 mt-1">Gunakan dropdown di atas untuk menambahkan</p>
       </div>
     );
   }
@@ -466,52 +466,106 @@ const SelectedPersonsTable: React.FC<SelectedPersonsTableProps> = ({
     <div className="space-y-6">
       {/* Tabel Organik */}
       {selectedOrganik.length > 0 && (
-        <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-blue-700">Organik BPS ({selectedOrganik.length})</h3>
-          </div>
-          <div className="space-y-2">
-            {selectedOrganik.map((person, index) => (
-              <div key={person.id} className="flex items-center justify-between p-2 border rounded">
-                <span>{index + 1}. {person.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemoveOrganik(person.id)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-md bg-blue-100">
+                  <User className="h-5 w-5 text-blue-600" />
+                </div>
+                <CardTitle className="text-blue-700">Organik BPS</CardTitle>
               </div>
-            ))}
-          </div>
-        </div>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                {selectedOrganik.length} orang
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedOrganik.map((person, index) => (
+                    <TableRow key={person.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{person.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemoveOrganik(person.id)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="ml-2 sr-only sm:not-sr-only">Hapus</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Tabel Mitra */}
+      {/* Tabel Mitra Statistik */}
       {selectedMitra.length > 0 && (
-        <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-green-700">Mitra Statistik ({selectedMitra.length})</h3>
-          </div>
-          <div className="space-y-2">
-            {selectedMitra.map((person, index) => (
-              <div key={person.id} className="flex items-center justify-between p-2 border rounded">
-                <span>{index + 1}. {person.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemoveMitra(person.id)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-md bg-green-100">
+                  <Users className="h-5 w-5 text-green-600" />
+                </div>
+                <CardTitle className="text-green-700">Mitra Statistik</CardTitle>
               </div>
-            ))}
-          </div>
-        </div>
+              <Badge variant="outline" className="bg-green-50 text-green-700">
+                {selectedMitra.length} orang
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">No</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedMitra.map((person, index) => (
+                    <TableRow key={person.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{person.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemoveMitra(person.id)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="ml-2 sr-only sm:not-sr-only">Hapus</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
