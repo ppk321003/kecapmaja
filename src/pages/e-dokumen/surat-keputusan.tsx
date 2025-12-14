@@ -1052,7 +1052,7 @@ const SuratKeputusan = () => {
                         <FormLabel>Nomor Surat Keputusan</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="Contoh: 123/KD.01/ST/2024" 
+                            placeholder="Contoh: 123" 
                             className="w-full" 
                             {...field} 
                           />
@@ -1123,7 +1123,7 @@ const SuratKeputusan = () => {
                     field
                   }) => (
                     <FormItem>
-                      <FormLabel>KESATU - (Wajib)</FormLabel>
+                      <FormLabel>KESATU - Cth: Bahwa untuk kelancaran Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka perlu menetapkan Petugas Pendataan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 Badan Pusat Statistik Kabupaten Majalengka</FormLabel>
                       <FormControl>
                         <Textarea placeholder="Masukkan menimbang kesatu" className="min-h-[100px]" {...field} />
                       </FormControl>
@@ -1215,7 +1215,7 @@ const SuratKeputusan = () => {
                     field
                   }) => (
                     <FormItem>
-                      <FormLabel>KESATU - (Wajib)</FormLabel>
+                      <FormLabel>KESATU - Cth: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Masukkan memutuskan kesatu" 
