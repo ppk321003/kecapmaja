@@ -185,10 +185,10 @@ const useMitraList = () => {
   return { data: mitraList, isLoading, error };
 };
 
-// Komponen Accordion Section
+// Komponen Accordion Section - Warna netral untuk merah
 const AccordionSection: React.FC<{
   title: string;
-  color: "red" | "blue" | "green" | "orange" | "purple";
+  color: "neutral" | "blue" | "green" | "orange" | "purple";
   badge?: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
@@ -196,7 +196,7 @@ const AccordionSection: React.FC<{
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   const colorClasses = {
-    red: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700" },
+    neutral: { bg: "bg-gray-50", border: "border-gray-200", text: "text-gray-700" },
     blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
     green: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700" },
     orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
@@ -589,7 +589,7 @@ const SearchablePembuatSelect: React.FC<SearchablePembuatSelectProps> = ({
   );
 };
 
-// Komponen untuk form kegiatan dengan dropdown
+// Komponen untuk form kegiatan dengan dropdown - DIPERBAIKI LEBAR KOLOM
 interface KegiatanFormItemProps {
   index: number;
   item: KegiatanItem;
@@ -651,9 +651,10 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
           />
         </div>
 
+        {/* GRID DENGAN LEBAR KOLOM YANG DIPERBAIKI */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          {/* Nama Kegiatan - TAMBAH LEBAR */}
-          <div className="md:col-span-8">
+          {/* Nama Kegiatan - 7 kolom (58.3%) */}
+          <div className="md:col-span-7">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Nama Kegiatan
             </label>
@@ -665,8 +666,8 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
             />
           </div>
           
-          {/* Beban Anggaran - KURANGI LEBAR 10% (dari 3 jadi 2.7, dibulatkan ke 2) */}
-          <div className="md:col-span-2">
+          {/* Beban Anggaran - 2 kolom (16.7%) + 7% = 2.8 ≈ 3 kolom */}
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Beban Anggaran
             </label>
@@ -678,7 +679,7 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
             />
           </div>
           
-          {/* Harga - KURANGI LEBAR 50% (dari 2 jadi 1) */}
+          {/* Harga - 1 kolom (8.3%) + 5% = 1.4 ≈ 1 kolom */}
           <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Harga
@@ -692,7 +693,7 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
             />
           </div>
           
-          {/* Satuan - KURANGI LEBAR 50% (dari 1 jadi 1, tetap) */}
+          {/* Satuan - 1 kolom (8.3%) + 5% = 1.4 ≈ 1 kolom */}
           <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Satuan
@@ -1248,15 +1249,15 @@ const SuratKeputusan = () => {
                   </div>
                 </div>
 
-                {/* Bagian MENIMBANG */}
-                <AccordionSection title="MENIMBANG" color="red" badge="Wajib" defaultOpen={true}>
+                {/* Bagian MENIMBANG - WARNA NETRAL */}
+                <AccordionSection title="MENIMBANG" color="neutral" badge="Wajib" defaultOpen={true}>
                   <div className="space-y-4">
                     <FormItem>
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                        <FormLabel className="text-sm text-red-600">(Wajib diisi)</FormLabel>
+                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KESATU</Badge>
+                        <FormLabel className="text-sm text-gray-700">(Wajib diisi)</FormLabel>
                       </div>
-                      <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
+                      <div className="mb-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs text-gray-600">
                         <div className="font-medium mb-1">Contoh lengkap:</div>
                         <div className="italic">{CONTOH_MENIMBANG_KESATU}</div>
                       </div>
@@ -1278,7 +1279,7 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKedua(true)}
-                          className="h-9 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full border-gray-300"
                         >
                           + Tambah Menimbang Kedua (Opsional)
                         </Button>
@@ -1297,7 +1298,7 @@ const SuratKeputusan = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setShowMenimbangKedua(false)}
-                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                                className="h-6 w-6 text-gray-500 hover:text-gray-700"
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -1321,7 +1322,7 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKetiga(true)}
-                          className="h-9 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full border-gray-300"
                         >
                           + Tambah Menimbang Ketiga (Opsional)
                         </Button>
@@ -1340,7 +1341,7 @@ const SuratKeputusan = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setShowMenimbangKetiga(false)}
-                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                                className="h-6 w-6 text-gray-500 hover:text-gray-700"
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -1364,7 +1365,7 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setShowMenimbangKeempat(true)}
-                          className="h-9 text-xs border-dashed w-full"
+                          className="h-9 text-xs border-dashed w-full border-gray-300"
                         >
                           + Tambah Menimbang Keempat (Opsional)
                         </Button>
@@ -1383,7 +1384,7 @@ const SuratKeputusan = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setShowMenimbangKeempat(false)}
-                                className="h-6 w-6 text-gray-500 hover:text-red-600"
+                                className="h-6 w-6 text-gray-500 hover:text-gray-700"
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -1404,14 +1405,14 @@ const SuratKeputusan = () => {
                   </div>
                 </AccordionSection>
 
-                {/* Bagian MEMUTUSKAN */}
-                <AccordionSection title="MEMUTUSKAN" color="red" defaultOpen={true}>
+                {/* Bagian MEMUTUSKAN - WARNA NETRAL */}
+                <AccordionSection title="MEMUTUSKAN" color="neutral" defaultOpen={true}>
                   <div className="space-y-6">
                     <FormItem>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                          <FormLabel className="text-sm text-red-600">Menetapkan (Otomatis dari Tentang)</FormLabel>
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KESATU</Badge>
+                          <FormLabel className="text-sm text-gray-700">Menetapkan (Otomatis dari Tentang)</FormLabel>
                         </div>
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
                           Auto-generated
@@ -1457,7 +1458,7 @@ const SuratKeputusan = () => {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KEDUA</Badge>
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KEDUA</Badge>
                           <FormLabel className="text-sm font-medium text-gray-700">Kegiatan yang Diputuskan (Minimal 1)</FormLabel>
                         </div>
                         <Button
@@ -1465,7 +1466,7 @@ const SuratKeputusan = () => {
                           variant="outline"
                           size="sm"
                           onClick={handleAddKegiatan}
-                          className="h-9 px-4 text-sm"
+                          className="h-9 px-4 text-sm border-gray-300"
                         >
                           <Plus className="h-3.5 w-3.5 mr-1" />
                           Tambah Kegiatan
@@ -1490,7 +1491,7 @@ const SuratKeputusan = () => {
                     {/* Tanggal Range */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KETIGA</Badge>
+                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">KETIGA</Badge>
                         <FormLabel className="text-sm font-medium text-gray-700">Jangka Waktu Pelaksanaan</FormLabel>
                       </div>
                       <div className="flex flex-col md:flex-row items-center gap-3">
@@ -1689,7 +1690,7 @@ const SuratKeputusan = () => {
                     variant="outline" 
                     size="lg"
                     onClick={() => window.history.back()}
-                    className="h-11 px-6"
+                    className="h-11 px-6 border-gray-300"
                   >
                     Batal
                   </Button>
