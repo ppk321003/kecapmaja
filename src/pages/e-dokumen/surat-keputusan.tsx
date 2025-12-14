@@ -234,7 +234,7 @@ const AccordionSection: React.FC<{
   );
 };
 
-// Custom MultiSelect Component - IMPROVED VERSION dengan z-index tinggi
+// Custom MultiSelect Component - SIMPLIFIED VERSION
 interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
@@ -362,36 +362,22 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                           ? "bg-blue-600 border-blue-600" 
                           : "border-gray-300"
                       )} />
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("truncate", isSelected ? "text-blue-700 font-medium" : "text-gray-700")}>
-                          {option.name}
-                        </p>
-                        {option.jabatan && (
-                          <p className="text-xs text-gray-500 truncate">{option.jabatan}</p>
-                        )}
-                      </div>
+                      <span className={cn("text-gray-700", isSelected && "text-blue-700")}>
+                        {option.name}
+                      </span>
                     </div>
                   );
                 })
               )}
             </div>
           </ScrollArea>
-
-          <div className="border-t p-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Terpilih:</span>
-              <span className={type === 'organik' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
-                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
-              </span>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
 
-// Custom Select dengan Search untuk Master Kegiatan
+// Custom Select dengan Search untuk Master Kegiatan - SIMPLIFIED
 interface SearchableSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -416,8 +402,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
-      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.role.toLowerCase().includes(searchTerm.toLowerCase())
+      option.namaKegiatan.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [options, searchTerm]);
 
@@ -446,7 +431,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full justify-between h-10 text-sm font-normal"
       >
-        <span className={!value ? "text-muted-foreground" : ""}>
+        <span className={!value ? "text-muted-foreground" : "text-gray-700"}>
           {value || placeholder}
         </span>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
@@ -458,7 +443,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             <div className="relative">
               <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Cari kegiatan atau role..."
+                placeholder="Cari kegiatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 h-8 text-sm"
@@ -482,14 +467,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <div
                     key={item.index}
                     onClick={() => handleSelect(item)}
-                    className="px-3 py-2 cursor-pointer text-sm hover:bg-accent hover:text-accent-foreground"
+                    className="px-3 py-2 cursor-pointer text-sm hover:bg-accent hover:text-accent-foreground text-gray-700"
                   >
-                    <div className="font-medium text-gray-800">{item.namaKegiatan}</div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Role: {item.role}</span>
-                      <span>{item.harga} / {item.satuan}</span>
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">Anggaran: {item.bebanAnggaran}</div>
+                    {item.namaKegiatan}
                   </div>
                 ))
               )}
@@ -533,7 +513,7 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
             {index + 1}
           </div>
-          <h4 className="font-medium text-sm">Kegiatan {index + 1}</h4>
+          <h4 className="font-medium text-sm text-gray-700">Kegiatan {index + 1}</h4>
         </div>
         {index > 0 && (
           <Button
@@ -563,8 +543,9 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          {/* Nama Kegiatan - Lebih lebar 2x */}
+          <div className="md:col-span-5">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Nama Kegiatan
             </label>
@@ -575,29 +556,36 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               className="h-9 text-sm"
             />
           </div>
-          <div>
+          
+          {/* Beban Anggaran */}
+          <div className="md:col-span-3">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Beban Anggaran
             </label>
             <Input
               value={item.bebanAnggaran}
               onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
-              placeholder="DIPA/Pihak Ketiga"
+              placeholder="2898.BMA.007.005.A.521213"
               className="h-9 text-sm"
             />
           </div>
-          <div>
+          
+          {/* Harga - 10 digit */}
+          <div className="md:col-span-2">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Harga
             </label>
             <Input
               value={item.harga}
               onChange={(e) => onUpdate(index, 'harga', e.target.value)}
-              placeholder="Rp 1.000.000"
+              placeholder="1000000000"
               className="h-9 text-sm"
+              maxLength={10}
             />
           </div>
-          <div>
+          
+          {/* Satuan - 10 digit */}
+          <div className="md:col-span-2">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Satuan
             </label>
@@ -606,6 +594,7 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
               onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
               placeholder="Orang/Hari"
               className="h-9 text-sm"
+              maxLength={10}
             />
           </div>
         </div>
@@ -824,10 +813,6 @@ const toProperCase = (text: string): string => {
 // Fungsi untuk mengenerate Memutuskan Kesatu otomatis dari Tentang
 const generateMemutuskanKesatu = (tentang: string): string => {
   if (!tentang) return "";
-  
-  // Ekstrak bagian yang relevan dari "tentang"
-  // Contoh: "tentang Penetapan Petugas Survei ABC Tahun 2026"
-  // Menjadi: "PETUGAS SURVEI ABC TAHUN 2026"
   
   let result = tentang;
   
@@ -1573,13 +1558,8 @@ const SuratKeputusan = () => {
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
                             {organikList.map((organik) => (
-                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-2">
-                                <div className="flex flex-col">
-                                  <span>{organik.name}</span>
-                                  {organik.jabatan && (
-                                    <span className="text-xs text-gray-500">{organik.jabatan}</span>
-                                  )}
-                                </div>
+                              <SelectItem key={organik.id} value={organik.id} className="text-sm py-2 text-gray-700">
+                                {organik.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
