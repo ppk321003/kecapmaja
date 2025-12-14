@@ -103,8 +103,6 @@ const CONTOH_MENIMBANG_KEDUA = "Bahwa dalam upaya meningkatkan kualitas data dan
 const CONTOH_MENIMBANG_KETIGA = "Bahwa untuk memenuhi kebutuhan data yang akurat dan tepat waktu sesuai dengan target yang telah ditetapkan oleh Badan Pusat Statistik Pusat, diperlukan penunjukkan petugas yang kompeten dan berdedikasi;";
 const CONTOH_MENIMBANG_KEEMPAT = "Bahwa segala biaya yang timbul sebagai akibat pelaksanaan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 dibebankan pada DIPA Badan Pusat Statistik Kabupaten Majalengka Tahun Anggaran 2026;";
 
-const CONTOH_MEMUTUSKAN_KESATU = "PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026";
-
 // Custom hook untuk mengambil data organik DARI GOOGLE SHEETS (bukan database)
 const useOrganikList = () => {
   const [organikList, setOrganikList] = useState<Person[]>([]);
@@ -804,6 +802,60 @@ const generateSKId = async (): Promise<string> => {
   }
 };
 
+// Fungsi untuk mengubah teks menjadi format PROPER (Huruf Kapital Setiap Kata)
+const toProperCase = (text: string): string => {
+  if (!text) return "";
+  
+  // Ubah semua ke uppercase terlebih dahulu
+  return text
+    .toUpperCase()
+    .split(' ')
+    .map(word => {
+      // Handle singkatan (BPS, SKGB, dll)
+      if (['BPS', 'SKGB', 'DIPA', 'TAHUN'].includes(word)) {
+        return word;
+      }
+      // Untuk kata lainnya, pastikan huruf pertama kapital, sisanya kecil
+      return word.charAt(0) + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
+
+// Fungsi untuk mengenerate Memutuskan Kesatu otomatis dari Tentang
+const generateMemutuskanKesatu = (tentang: string): string => {
+  if (!tentang) return "";
+  
+  // Ekstrak bagian yang relevan dari "tentang"
+  // Contoh: "tentang Penetapan Petugas Survei ABC Tahun 2026"
+  // Menjadi: "PETUGAS SURVEI ABC TAHUN 2026"
+  
+  let result = tentang;
+  
+  // Hapus kata-kata umum di awal
+  const prefixes = [
+    "tentang ", "mengenai ", "perihal ", "penetapan ", "penunjukan ",
+    "pengangkatan ", "pembentukan ", "penetapan petugas ", "penetapan tim "
+  ];
+  
+  prefixes.forEach(prefix => {
+    if (result.toLowerCase().startsWith(prefix)) {
+      result = result.substring(prefix.length);
+    }
+  });
+  
+  // Ubah ke format PROPER
+  result = toProperCase(result);
+  
+  // Tambahkan "PETUGAS" di depan jika belum ada
+  if (!result.toUpperCase().includes('PETUGAS') && 
+      !result.toUpperCase().includes('TIM') && 
+      !result.toUpperCase().includes('PENGAWAS')) {
+    result = `PETUGAS ${result}`;
+  }
+  
+  return result;
+};
+
 const SuratKeputusan = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -812,6 +864,7 @@ const SuratKeputusan = () => {
   const [showMenimbangKedua, setShowMenimbangKedua] = useState(false);
   const [showMenimbangKetiga, setShowMenimbangKetiga] = useState(false);
   const [showMenimbangKeempat, setShowMenimbangKeempat] = useState(false);
+  const [tentangValue, setTentangValue] = useState("");
   
   const { data: organikList, isLoading: isLoadingOrganik } = useOrganikList();
   const { data: mitraList, isLoading: isLoadingMitra } = useMitraList();
@@ -824,11 +877,11 @@ const SuratKeputusan = () => {
     defaultValues: {
       nomorSuratKeputusan: "",
       tentang: "",
-      menimbangKesatu: CONTOH_MENIMBANG_KESATU, // Default dengan contoh
+      menimbangKesatu: CONTOH_MENIMBANG_KESATU,
       menimbangKedua: "",
       menimbangKetiga: "",
       menimbangKeempat: "",
-      memutuskanKesatu: CONTOH_MEMUTUSKAN_KESATU, // Default dengan contoh
+      memutuskanKesatu: "",
       kegiatanList: [DEFAULT_KEGIATAN],
       tanggalMulai: undefined,
       tanggalSelesai: undefined,
@@ -847,6 +900,29 @@ const SuratKeputusan = () => {
   const kegiatanList = form.watch("kegiatanList");
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
+  const memutuskanKesatuValue = form.watch("memutuskanKesatu");
+  const tentangFormValue = form.watch("tentang");
+
+  // Fungsi untuk handle perubahan pada field "tentang"
+  const handleTentangChange = (value: string) => {
+    setTentangValue(value);
+    form.setValue("tentang", value);
+    
+    // Generate otomatis Memutuskan Kesatu
+    if (value.trim()) {
+      const generated = generateMemutuskanKesatu(value);
+      form.setValue("memutuskanKesatu", generated);
+    } else {
+      form.setValue("memutuskanKesatu", "");
+    }
+  };
+
+  // Reset Memutuskan Kesatu jika user mengosongkan Tentang
+  useEffect(() => {
+    if (!tentangFormValue && memutuskanKesatuValue) {
+      form.setValue("memutuskanKesatu", "");
+    }
+  }, [tentangFormValue, memutuskanKesatuValue, form]);
 
   useEffect(() => {
     const updatedOrganik = watchedOrganik
@@ -954,7 +1030,7 @@ const SuratKeputusan = () => {
         menimbangKedua: "",
         menimbangKetiga: "",
         menimbangKeempat: "",
-        memutuskanKesatu: CONTOH_MEMUTUSKAN_KESATU,
+        memutuskanKesatu: "",
         kegiatanList: [DEFAULT_KEGIATAN],
         tanggalMulai: undefined,
         tanggalSelesai: undefined,
@@ -963,6 +1039,7 @@ const SuratKeputusan = () => {
         mitraStatistik: [],
         pembuatDaftar: ""
       });
+      setTentangValue("");
       setSelectedOrganikDetails([]);
       setSelectedMitraDetails([]);
       setShowMenimbangKedua(false);
@@ -997,6 +1074,16 @@ const SuratKeputusan = () => {
 
   const totalSelected = selectedOrganikDetails.length + selectedMitraDetails.length;
   const isLoading = isSubmitting || isSubmitLoading;
+
+  // Hitung tinggi dinamis untuk textarea "tentang"
+  const calculateTentangHeight = () => {
+    const lineHeight = 20; // 1.25rem = 20px
+    const minLines = 1;
+    const maxLines = 6;
+    const lines = tentangValue.split('\n').length;
+    const calculatedLines = Math.min(Math.max(lines, minLines), maxLines);
+    return calculatedLines * lineHeight;
+  };
 
   return (
     <Layout>
@@ -1043,11 +1130,25 @@ const SuratKeputusan = () => {
                         <FormLabel className="text-sm font-medium">Tentang</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Masukkan tentang surat keputusan" 
-                            className="min-h-[80px] text-sm" 
-                            {...field} 
+                            placeholder="Contoh: Penetapan Petugas Survei Konversi Gabah ke Beras (SKGB) Tahun 2026"
+                            className="text-sm resize-none overflow-hidden" 
+                            style={{ 
+                              height: `${calculateTentangHeight()}px`,
+                              minHeight: '40px',
+                              maxHeight: '120px'
+                            }}
+                            value={tentangValue}
+                            onChange={(e) => handleTentangChange(e.target.value)}
+                            onInput={(e) => {
+                              const target = e.target as HTMLTextAreaElement;
+                              target.style.height = 'auto';
+                              target.style.height = `${target.scrollHeight}px`;
+                            }}
                           />
                         </FormControl>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Isi tentang surat keputusan (1 baris, otomatis generate Memutuskan Kesatu)
+                        </div>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
@@ -1229,21 +1330,48 @@ const SuratKeputusan = () => {
                   <div className="space-y-6">
                     <FormField control={form.control} name="memutuskanKesatu" render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
-                          <FormLabel className="text-sm text-red-600">Menetapkan</FormLabel>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs">KESATU</Badge>
+                            <FormLabel className="text-sm text-red-600">Menetapkan (Otomatis dari Tentang)</FormLabel>
+                          </div>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            Auto-generated
+                          </Badge>
                         </div>
-                        <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded text-xs text-red-700">
-                          <div className="font-medium mb-1">Contoh:</div>
-                          <div className="italic">{CONTOH_MEMUTUSKAN_KESATU}</div>
+                        <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded text-sm">
+                          <div className="flex items-start gap-2">
+                            <div className="text-green-600 mt-0.5">💡</div>
+                            <div>
+                              <p className="text-green-700 font-medium mb-1">Otomatis dihasilkan dari field "Tentang"</p>
+                              <p className="text-green-600 text-xs">Anda dapat mengedit teks di bawah ini sesuai kebutuhan</p>
+                            </div>
+                          </div>
                         </div>
                         <FormControl>
                           <Input 
-                            placeholder="Salin atau modifikasi contoh di atas" 
-                            className="h-10" 
+                            placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
+                            className="h-10 text-sm" 
                             {...field} 
+                            onChange={(e) => {
+                              field.onChange(e);
+                              // Jika user mengosongkan, otomatis generate lagi dari tentang
+                              if (!e.target.value.trim() && tentangValue.trim()) {
+                                const generated = generateMemutuskanKesatu(tentangValue);
+                                form.setValue("memutuskanKesatu", generated);
+                              }
+                            }}
                           />
                         </FormControl>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {tentangValue ? (
+                            <span className="text-green-600">
+                              Diotomasi dari: "{tentangValue.substring(0, 50)}{tentangValue.length > 50 ? '...' : ''}"
+                            </span>
+                          ) : (
+                            <span className="text-amber-600">Isi field "Tentang" terlebih dahulu untuk generate otomatis</span>
+                          )}
+                        </div>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )} />
@@ -1375,7 +1503,7 @@ const SuratKeputusan = () => {
                   )} />
                 </div>
 
-                {/* PERSONEL - TIDAK DIPAKSAKAN DI ACCORDION YANG SEMPIT */}
+                {/* PERSONEL */}
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
