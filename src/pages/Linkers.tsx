@@ -18,6 +18,7 @@ const accentColors = [
 
 const linksData = [
   { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },
+  { title: "Bahan Revisi 3210 (Excel)", url: "https://drive.google.com/drive/folders/1vnf0jN9YFL5GqjxJqdycHa0lPCvVrB8A?usp=sharing", description: "Bahan revisi untuk kegiatan BPS 3210", icon: Archive },
   { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
   { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1r1CF6-3y8hhZcqdsRrsQ8iwPzd88yn-b?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
   { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/14ZtZiCPro-ynlxq_QHDXrgSncEV_c6QH?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
