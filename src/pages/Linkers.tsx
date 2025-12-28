@@ -17,12 +17,12 @@ const accentColors = [
 ];
 
 const linksData = [
-  { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },
-   
+  { title: "Bahan Revisi 3210", url: "https://bahanrevisi-3210.vercel.app/", description: "Aplikasi pengelolaan bahan revisi untuk kegiatan BPS 3210", icon: Archive },   
   { title: "Bahan Revisi 3210 (Excel)", url: "https://drive.google.com/drive/folders/1vnf0jN9YFL5GqjxJqdycHa0lPCvVrB8A?usp=sharing", description: "Bahan revisi untuk kegiatan BPS 3210", icon: Archive },
+  { title: "DIPA (Daftar Isian Pelaksanaan Anggaran)", url: "https://drive.google.com/drive/folders/1V5XvCBWtXVMvcqkUICA2igmmPYQJ8BcP?usp=sharing", description: "DIPA dokumen anggaran resmi yang digunakan oleh BPS sebagai dasar pelaksanaan kegiatan dan penggunaan anggaran", icon: Archive },
   { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
-  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1r1CF6-3y8hhZcqdsRrsQ8iwPzd88yn-b?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
-  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/14ZtZiCPro-ynlxq_QHDXrgSncEV_c6QH?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
+  { title: "Kertas Kerja (Excel)", url: "https://drive.google.com/drive/folders/1PdOs2vYu4YsSJQwobmHGXiVcnRwyL1vm?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk Excel", icon: FileText },
+  { title: "Kertas Kerja (PDF)", url: "https://drive.google.com/drive/folders/1IXpdXcLIGoNJHMdn-7RdE9v355FsdfRv?usp=sharing", description: "Riwayat Kertas Kerja dalam bentuk PDF", icon: FileText },
   { title: "Perka BPS", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS terkait pengelolaan anggaran dan keuangan", icon: FileText },
   { title: "Perka PAK Sensus Survei", url: "https://drive.google.com/file/d/1ms-k2xz6uX5__8_jjwWikoEa1ffW9NKl/view", description: "Peraturan Kepala BPS tentang PAK Sensus dan Survei", icon: FileText },
   { title: "Rencana Penarikan Dana (RPD)", url: "https://docs.google.com/spreadsheets/d/1aG743mQVL7iR6NDbulDBPsFAQJCMGZH0nj9RLWTtPvE/edit?usp=sharing", description: "Rencana Penarikan Dana Kegiatan", icon: FileText },
