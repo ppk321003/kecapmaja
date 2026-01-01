@@ -40,46 +40,6 @@ interface SubmissionFormProps {
   editData?: Submission | null;
 }
 
-// Fungsi untuk mendapatkan waktu Jakarta (WIB) dalam format yang sesuai untuk spreadsheet
-function getJakartaTimeString(): string {
-  const now = new Date();
-  
-  // Jakarta adalah UTC+7 (WIB)
-  const jakartaOffset = 7 * 60; // 7 jam dalam menit
-  const localOffset = now.getTimezoneOffset(); // Offset waktu lokal browser dalam menit
-  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
-  
-  // Format: YYYY-MM-DD HH:mm:ss (format yang mudah dibaca di spreadsheet)
-  const year = jakartaTime.getFullYear();
-  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
-  const day = String(jakartaTime.getDate()).padStart(2, '0');
-  const hours = String(jakartaTime.getHours()).padStart(2, '0');
-  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
-  const seconds = String(jakartaTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-
-// Fungsi untuk mendapatkan timestamp ISO Jakarta
-function getJakartaISOString(): string {
-  const now = new Date();
-  
-  // Jakarta adalah UTC+7 (WIB)
-  const jakartaOffset = 7 * 60; // 7 jam dalam menit
-  const localOffset = now.getTimezoneOffset(); // Offset waktu lokal browser dalam menit
-  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
-  
-  // Format ISO dengan timezone: 2025-04-15T21:30:00+07:00
-  const year = jakartaTime.getFullYear();
-  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
-  const day = String(jakartaTime.getDate()).padStart(2, '0');
-  const hours = String(jakartaTime.getHours()).padStart(2, '0');
-  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
-  const seconds = String(jakartaTime.getSeconds()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+07:00`;
-}
-
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
@@ -194,36 +154,20 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
 
-        // Mengambil nama dokumen yang sudah dicentang
         const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
         const documentsString = checkedDocs.join('|');
-        
-        // Format jenis pengajuan untuk spreadsheet
-        const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
-        
-        // Waktu Jakarta (WIB) untuk spreadsheet
-        const waktuPengajuan = getJakartaTimeString();
-        // Atau jika ingin format ISO: const waktuPengajuan = getJakartaISOString();
 
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
-            // Kolom A-M sesuai struktur spreadsheet
-            id: newId,                           // Kolom A: ID
-            uraianPengajuan: title.trim(),       // Kolom B: Uraian Pengajuan
-            namaPengaju: submitterName.trim(),   // Kolom C: Nama Pengaju  
-            jenisPengajuan: jenisPengajuan,      // Kolom D: Jenis Pengajuan
-            kelengkapan: documentsString,        // Kolom E: Kelengkapan
-            catatan: notes.trim() || '',         // Kolom F: Catatan
-            statusPengajuan: 'pending_ppk',      // Kolom G: Status Pengajuan
-            waktuPengajuan: waktuPengajuan,      // Kolom H: Waktu Pengajuan (WIB)
-            statusPpk: '',                       // Kolom I: Status PPK
-            waktuPpk: '',                        // Kolom J: Waktu PPK
-            statusBendahara: '',                 // Kolom K: Status Bendahara
-            waktuBendahara: '',                  // Kolom L: Waktu Bendahara
-            statusKppn: ''                       // Kolom M: Status KPPN
+            id: newId,
+            title: title.trim(),
+            submitterName: submitterName.trim(),
+            jenisBelanja: `${jenisBelanja} - ${subJenisBelanja}`,
+            documents: documentsString,
+            notes: notes.trim() || undefined,
+            status: 'pending_ppk',
           },
         });
-        
         if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
@@ -297,9 +241,9 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Uraian Pengajuan *</Label>
+            <Label>Judul Pengajuan *</Label>
             <Input
-              placeholder="Masukkan uraian pengajuan..."
+              placeholder="Masukkan judul pengajuan..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 rounded-xl"
