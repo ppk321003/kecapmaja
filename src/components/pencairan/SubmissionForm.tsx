@@ -172,14 +172,12 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
 
-      const submittedAt = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-
       onSubmit({
         title: title.trim(),
         submitterName: submitterName.trim(),
         jenisBelanja,
         subJenisBelanja,
-        submittedAt,
+        submittedAt: new Date(),
         documents,
         notes: notes.trim() || undefined,
       });
