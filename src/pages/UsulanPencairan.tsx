@@ -9,7 +9,7 @@ import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 function parseDocuments(docString: string, jenisBelanja: string) {
@@ -30,10 +30,6 @@ export default function UsulanPencairan() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
-  
-  // State untuk pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const userRole = user?.role as UserRole;
   const showCreateButton = canCreateSubmission(userRole);
@@ -72,23 +68,14 @@ export default function UsulanPencairan() {
       });
       converted.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
       setSubmissions(converted);
-      // Reset ke halaman 1 ketika data berubah
-      setCurrentPage(1);
     } else {
       setSubmissions([]);
-      setCurrentPage(1);
     }
   }, [sheetSubmissions]);
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter(sub => activeFilter === 'all' || sub.status === activeFilter);
   }, [submissions, activeFilter]);
-
-  // Hitung pagination
-  const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentSubmissions = filteredSubmissions.slice(startIndex, endIndex);
 
   const counts = useMemo(() => {
     const result: Record<string, number> = { 
@@ -105,18 +92,6 @@ export default function UsulanPencairan() {
     });
     return result;
   }, [submissions]);
-
-  // Fungsi untuk pagination
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  const goToFirstPage = () => goToPage(1);
-  const goToLastPage = () => goToPage(totalPages);
-  const goToPreviousPage = () => goToPage(currentPage - 1);
-  const goToNextPage = () => goToPage(currentPage + 1);
 
   const handleUpdateSubmission = (id: string, updates: Partial<Submission>) => {
     setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, ...updates } : sub));
@@ -216,15 +191,8 @@ export default function UsulanPencairan() {
       <Card className="w-full overflow-hidden">
         <CardHeader className="px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            {/* Title dengan lebar 12% lebih besar */}
-            <div className="w-[calc(100%)] min-w-0">
-              <CardTitle className="text-lg sm:text-xl truncate">Daftar Pengajuan</CardTitle>
-            </div>
-            
-            {/* Filter Tabs di tengah */}
-            <div className="flex-1 flex justify-center">
-              <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
-            </div>
+            <CardTitle className="text-lg sm:text-xl">Daftar Pengajuan</CardTitle>
+            <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
           </div>
         </CardHeader>
         
@@ -236,13 +204,12 @@ export default function UsulanPencairan() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground mb-4">
-                Menampilkan {currentSubmissions.length} dari {filteredSubmissions.length} pengajuan
-                {filteredSubmissions.length > itemsPerPage && ` (Halaman ${currentPage} dari ${totalPages})`}
+                Menampilkan {filteredSubmissions.length} dari {submissions.length} pengajuan
               </p>
               
               <div className="w-full overflow-x-auto">
                 <SubmissionTable 
-                  submissions={currentSubmissions} 
+                  submissions={filteredSubmissions} 
                   onView={setSelectedSubmission} 
                   onEdit={(sub) => { 
                     setEditingSubmission(sub); 
@@ -251,88 +218,6 @@ export default function UsulanPencairan() {
                   userRole={userRole} 
                 />
               </div>
-
-              {/* PAGINATION */}
-              {filteredSubmissions.length > itemsPerPage && (
-                <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-muted-foreground">
-                    Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredSubmissions.length)} dari {filteredSubmissions.length} entri
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {/* Tombol Awal */}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={goToFirstPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 rounded-md"
-                      title="Awal"
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    {/* Tombol Sebelumnya */}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 rounded-md"
-                      title="Sebelumnya"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    {/* Info Halaman */}
-                    <div className="flex items-center justify-center min-w-[120px]">
-                      <span className="text-sm font-medium">
-                        Halaman {currentPage} dari {totalPages}
-                      </span>
-                    </div>
-                    
-                    {/* Tombol Selanjutnya */}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 rounded-md"
-                      title="Selanjutnya"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    
-                    {/* Tombol Akhir */}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={goToLastPage}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 rounded-md"
-                      title="Akhir"
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  {/* Selector Halaman (opsional) */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Ke halaman:</span>
-                    <select
-                      value={currentPage}
-                      onChange={(e) => goToPage(Number(e.target.value))}
-                      className="h-8 w-16 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    >
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <option key={page} value={page}>
-                          {page}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </CardContent>
