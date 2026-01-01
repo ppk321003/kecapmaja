@@ -217,10 +217,9 @@ export default function UsulanPencairan() {
         <CardHeader className="px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {/* Title dengan lebar 12% lebih besar */}
-            <div className="w-[112px] sm:w-[136px] md:w-[150px]">
+            <div className="flex-shrink-0 w-1/5 min-w-[120px]">
               <CardTitle className="text-lg sm:text-xl truncate">Daftar Pengajuan</CardTitle>
-            </div>
-            
+            </div>            
             {/* Filter Tabs di tengah */}
             <div className="flex-1 flex justify-center">
               <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
