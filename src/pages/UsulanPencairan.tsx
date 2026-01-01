@@ -8,8 +8,8 @@ import { SubmissionTable } from '@/components/pencairan/SubmissionTable';
 import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
-import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getRelevantTimestamp, getDocumentsByJenisBelanja } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, LayoutGrid, TableIcon, RefreshCw, Loader2 } from 'lucide-react';
+import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 function parseDocuments(docString: string, jenisBelanja: string) {
@@ -78,8 +78,18 @@ export default function UsulanPencairan() {
   }, [submissions, activeFilter]);
 
   const counts = useMemo(() => {
-    const result: Record<string, number> = { all: submissions.length, pending_ppk: 0, pending_bendahara: 0, incomplete_sm: 0, incomplete_ppk: 0, incomplete_bendahara: 0, sent_kppn: 0 };
-    submissions.forEach(sub => { result[sub.status]++; });
+    const result: Record<string, number> = { 
+      all: submissions.length, 
+      pending_ppk: 0, 
+      pending_bendahara: 0, 
+      incomplete_sm: 0, 
+      incomplete_ppk: 0, 
+      incomplete_bendahara: 0, 
+      sent_kppn: 0 
+    };
+    submissions.forEach(sub => { 
+      result[sub.status]++; 
+    });
     return result;
   }, [submissions]);
 
@@ -94,6 +104,7 @@ export default function UsulanPencairan() {
 
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Usulan Pencairan</h1>
@@ -112,37 +123,125 @@ export default function UsulanPencairan() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard title="Total Pengajuan" value={counts.all} icon={FileText} />
-        <StatCard title="Menunggu Verifikasi Pejabat Pembuat Komitmen" value={counts.pending_ppk} icon={Clock} variant="warning" />
-        <StatCard title="Menunggu Verifikasi Bendahara Pengeluaran" value={counts.pending_bendahara} icon={Clock} variant="info" />
-        <StatCard title="Dikembalikan" value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} icon={XCircle} variant="danger" />
-        <StatCard title="Dikirim KPPN" value={counts.sent_kppn} icon={CheckCircle2} variant="success" />
+      {/* STATISTIC CARDS - SELEBAR TABEL */}
+      <div className="w-full">
+        <div className="grid grid-cols-12 gap-4">
+          {/* Card 1 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Total Pengajuan" 
+                value={counts.all} 
+                icon={FileText} 
+              />
+            </div>
+          </div>
+          
+          {/* Card 2 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Menunggu PPK" 
+                value={counts.pending_ppk} 
+                icon={Clock} 
+                variant="warning"
+              />
+            </div>
+          </div>
+          
+          {/* Card 3 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Menunggu Bendahara" 
+                value={counts.pending_bendahara} 
+                icon={Clock} 
+                variant="info"
+              />
+            </div>
+          </div>
+          
+          {/* Card 4 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Dikembalikan" 
+                value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} 
+                icon={XCircle} 
+                variant="danger"
+              />
+            </div>
+          </div>
+          
+          {/* Card 5 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Dikirim KPPN" 
+                value={counts.sent_kppn} 
+                icon={CheckCircle2} 
+                variant="success"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Daftar Pengajuan</CardTitle>
+      {/* DAFTAR PENGAJUAN CARD */}
+      <Card className="w-full overflow-hidden">
+        <CardHeader className="px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <CardTitle className="text-lg sm:text-xl">Daftar Pengajuan</CardTitle>
             <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
           </div>
         </CardHeader>
-        <CardContent>
+        
+        <CardContent className="px-6 py-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground mb-4">Menampilkan {filteredSubmissions.length} dari {submissions.length} pengajuan</p>
-              <SubmissionTable submissions={filteredSubmissions} onView={setSelectedSubmission} onEdit={(sub) => { setEditingSubmission(sub); setShowForm(true); }} userRole={userRole} />
+              <p className="text-sm text-muted-foreground mb-4">
+                Menampilkan {filteredSubmissions.length} dari {submissions.length} pengajuan
+              </p>
+              
+              <div className="w-full overflow-x-auto">
+                <SubmissionTable 
+                  submissions={filteredSubmissions} 
+                  onView={setSelectedSubmission} 
+                  onEdit={(sub) => { 
+                    setEditingSubmission(sub); 
+                    setShowForm(true); 
+                  }} 
+                  userRole={userRole} 
+                />
+              </div>
             </>
           )}
         </CardContent>
       </Card>
 
-      <SubmissionForm open={showForm} onClose={() => { setShowForm(false); setEditingSubmission(null); }} onSubmit={handleFormSubmit} editData={editingSubmission} />
-      <SubmissionDetail submission={selectedSubmission} open={!!selectedSubmission} onClose={() => setSelectedSubmission(null)} onUpdateSubmission={handleUpdateSubmission} userRole={userRole} onRefresh={refetch} />
+      {/* MODALS */}
+      <SubmissionForm 
+        open={showForm} 
+        onClose={() => { 
+          setShowForm(false); 
+          setEditingSubmission(null); 
+        }} 
+        onSubmit={handleFormSubmit} 
+        editData={editingSubmission} 
+      />
+      
+      <SubmissionDetail 
+        submission={selectedSubmission} 
+        open={!!selectedSubmission} 
+        onClose={() => setSelectedSubmission(null)} 
+        onUpdateSubmission={handleUpdateSubmission} 
+        userRole={userRole} 
+        onRefresh={refetch} 
+      />
     </div>
   );
 }
