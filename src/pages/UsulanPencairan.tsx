@@ -30,6 +30,8 @@ export default function UsulanPencairan() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const userRole = user?.role as UserRole;
   const showCreateButton = canCreateSubmission(userRole);
@@ -77,6 +79,13 @@ export default function UsulanPencairan() {
     return submissions.filter(sub => activeFilter === 'all' || sub.status === activeFilter);
   }, [submissions, activeFilter]);
 
+  const paginatedSubmissions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSubmissions.slice(start, start + pageSize);
+  }, [filteredSubmissions, currentPage]);
+
+  const totalPages = Math.ceil(filteredSubmissions.length / pageSize);
+
   const counts = useMemo(() => {
     const result: Record<string, number> = { 
       all: submissions.length, 
@@ -100,6 +109,10 @@ export default function UsulanPencairan() {
   const handleFormSubmit = () => {
     setEditingSubmission(null);
     setTimeout(() => refetch(), 1500);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
   return (
@@ -192,7 +205,9 @@ export default function UsulanPencairan() {
         <CardHeader className="px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="text-lg sm:text-xl">Daftar Pengajuan</CardTitle>
-            <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
+            <div className="flex justify-center w-full sm:w-auto">
+              <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
+            </div>
           </div>
         </CardHeader>
         
@@ -204,12 +219,12 @@ export default function UsulanPencairan() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground mb-4">
-                Menampilkan {filteredSubmissions.length} dari {submissions.length} pengajuan
+                Menampilkan {paginatedSubmissions.length} dari {filteredSubmissions.length} pengajuan
               </p>
               
               <div className="w-full overflow-x-auto">
                 <SubmissionTable 
-                  submissions={filteredSubmissions} 
+                  submissions={paginatedSubmissions} 
                   onView={setSelectedSubmission} 
                   onEdit={(sub) => { 
                     setEditingSubmission(sub); 
@@ -218,6 +233,46 @@ export default function UsulanPencairan() {
                   userRole={userRole} 
                 />
               </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(1)} 
+                    disabled={currentPage === 1}
+                  >
+                    Awal
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(currentPage - 1)} 
+                    disabled={currentPage === 1}
+                  >
+                    Sebelumnya
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-4">
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(currentPage + 1)} 
+                    disabled={currentPage === totalPages}
+                  >
+                    Selanjutnya
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePageChange(totalPages)} 
+                    disabled={currentPage === totalPages}
+                  >
+                    Akhir
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>
