@@ -263,19 +263,17 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder={isLoadingOrganik ? 'Memuat...' : 'Pilih nama pengaju'} />
               </SelectTrigger>
-              <SelectContent>
-                <ScrollArea className="h-60">
-                  {organikList.map((org, index) => (
-                    <SelectItem key={`${org.nip}-${index}`} value={org.nama}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{org.nama}</span>
-                        {org.jabatan && (
-                          <span className="text-xs text-muted-foreground">{org.jabatan}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </ScrollArea>
+              <SelectContent className="max-h-60 overflow-y-auto">
+                {organikList.map((org, index) => (
+                  <SelectItem key={`${org.nip}-${index}`} value={org.nama}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{org.nama}</span>
+                      {org.jabatan && (
+                        <span className="text-xs text-muted-foreground">{org.jabatan}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

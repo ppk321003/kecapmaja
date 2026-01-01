@@ -59,8 +59,8 @@ export interface Submission {
 }
 
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  pending_ppk: 'Menunggu PPK',
-  pending_bendahara: 'Menunggu Bendahara',
+  pending_ppk: 'Menunggu Verifikasi PPK',
+  pending_bendahara: 'Menunggu Verifikasi Bendahara',
   incomplete_sm: 'Dikembalikan ke SM',
   incomplete_ppk: 'Dikembalikan ke PPK',
   incomplete_bendahara: 'Dikembalikan ke Bendahara',
