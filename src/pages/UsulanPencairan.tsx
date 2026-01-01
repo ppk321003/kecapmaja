@@ -114,8 +114,8 @@ export default function UsulanPencairan() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard title="Total Pengajuan" value={counts.all} icon={FileText} />
-        <StatCard title="Menunggu PPK" value={counts.pending_ppk} icon={Clock} variant="warning" />
-        <StatCard title="Menunggu Bendahara" value={counts.pending_bendahara} icon={Clock} variant="info" />
+        <StatCard title="Menunggu Verifikasi PPK" value={counts.pending_ppk} icon={Clock} variant="warning" />
+        <StatCard title="Menunggu Verifikasi Bendahara" value={counts.pending_bendahara} icon={Clock} variant="info" />
         <StatCard title="Dikembalikan" value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} icon={XCircle} variant="danger" />
         <StatCard title="Dikirim KPPN" value={counts.sent_kppn} icon={CheckCircle2} variant="success" />
       </div>
