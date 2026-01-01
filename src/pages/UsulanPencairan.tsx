@@ -31,7 +31,7 @@ export default function UsulanPencairan() {
   const [showForm, setShowForm] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
 
-  const userRole: UserRole = (user?.role as UserRole) || 'user';
+  const userRole = user?.role as UserRole;
   const showCreateButton = canCreateSubmission(userRole);
 
   useEffect(() => {

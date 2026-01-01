@@ -54,14 +54,14 @@ const MONTHS = [
   { value: '11', label: 'Desember' },
 ];
 
-const YEARS = (() => {
-  const currentYear = new Date().getFullYear();
-  const years = [{ value: 'all', label: 'Semua Tahun' }];
-  for (let year = currentYear; year >= currentYear - 5; year--) {
-    years.push({ value: year.toString(), label: year.toString() });
-  }
-  return years;
-})();
+const YEARS = [
+  { value: 'all', label: 'Semua Tahun' },
+  { value: '2026', label: '2026' },
+  { value: '2027', label: '2027' },
+  { value: '2028', label: '2028' },
+  { value: '2029', label: '2029' },
+  { value: '2030', label: '2030' },
+];
 
 const ITEMS_PER_PAGE = 10;
 
@@ -190,7 +190,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
               <TableHead>Judul Pengajuan</TableHead>
               <TableHead>Pengaju</TableHead>
               <TableHead>Jenis Belanja</TableHead>
-              <TableHead className="w-[100px]">Dokumen</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Waktu</TableHead>
               <TableHead className="w-[100px]">Aksi</TableHead>
@@ -199,7 +198,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
           <TableBody>
             {paginatedSubmissions.length > 0 ? (
               paginatedSubmissions.map((submission) => {
-                const progress = getDocumentProgress(submission);
                 const relevantTime = getRelevantTimestamp(submission);
                 return (
                   <TableRow key={submission.id} className="hover:bg-muted/30">
@@ -218,19 +216,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                         {submission.jenisBelanja}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary rounded-full transition-all"
-                            style={{ width: `${progress.percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {progress.checked}/{progress.total}
-                        </span>
-                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={submission.status} size="sm" />
@@ -269,7 +254,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={7}>
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mb-3 opacity-50" />
                     <p className="font-medium">Tidak ada data pengajuan yang sesuai dengan filter</p>

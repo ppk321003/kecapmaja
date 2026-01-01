@@ -12,10 +12,10 @@ const filters: { value: string; label: string }[] = [
   { value: 'all', label: 'Semua' },
   { value: 'pending_ppk', label: 'Menunggu PPK' },
   { value: 'pending_bendahara', label: 'Menunggu Bendahara' },
-  { value: 'incomplete_sm', label: 'Dikembalikan SM' },
-  { value: 'incomplete_ppk', label: 'Dikembalikan PPK' },
-  { value: 'incomplete_bendahara', label: 'Dikembalikan Bendahara' },
-  { value: 'sent_kppn', label: 'Dikirim KPPN' },
+  { value: 'incomplete_sm', label: 'Dikembalikan ke SM' },
+  { value: 'incomplete_ppk', label: 'Dikembalikan ke PPK' },
+  { value: 'incomplete_bendahara', label: 'Dikembalikan ke Bendahara' },
+  { value: 'sent_kppn', label: 'Dikirim ke KPPN' },
 ];
 
 export function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsProps) {
