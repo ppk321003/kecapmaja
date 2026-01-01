@@ -128,93 +128,114 @@ export default function UsulanPencairan() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Usulan Pencairan</h1>
-          <p className="text-sm text-muted-foreground">Sistem Monitoring Pengajuan Administrasi</p>
+          <h1 className="text-2xl font-bold">Usulan Pencairan</h1>
+          <p className="text-muted-foreground">Sistem Monitoring Pengajuan Administrasi</p>
         </div>
         <div className="flex items-center gap-2">
           {showCreateButton && (
-            <Button onClick={() => setShowForm(true)} className="rounded-xl h-9">
-              <Plus className="w-3.5 h-3.5 mr-2" />
+            <Button onClick={() => setShowForm(true)} className="rounded-xl">
+              <Plus className="w-4 h-4 mr-2" />
               Buat Pengajuan
             </Button>
           )}
-          <Button variant="outline" onClick={() => refetch()} disabled={isLoading} className="rounded-xl h-9 w-9 p-0">
+          <Button variant="outline" onClick={() => refetch()} disabled={isLoading} className="rounded-xl">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
         </div>
       </div>
 
-      {/* STATISTIC CARDS */}
+      {/* STATISTIC CARDS - SELEBAR TABEL */}
       <div className="w-full">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard 
-            title="Total" 
-            value={counts.all} 
-            icon={FileText} 
-          />
+        <div className="grid grid-cols-12 gap-4">
+          {/* Card 1 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Total Pengajuan" 
+                value={counts.all} 
+                icon={FileText} 
+              />
+            </div>
+          </div>
           
-          <StatCard 
-            title="Menunggu PPK" 
-            value={counts.pending_ppk} 
-            icon={Clock} 
-            variant="warning"
-          />
+          {/* Card 2 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Menunggu PPK" 
+                value={counts.pending_ppk} 
+                icon={Clock} 
+                variant="warning"
+              />
+            </div>
+          </div>
           
-          <StatCard 
-            title="Menunggu Bendahara" 
-            value={counts.pending_bendahara} 
-            icon={Clock} 
-            variant="info"
-          />
+          {/* Card 3 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Menunggu Bendahara" 
+                value={counts.pending_bendahara} 
+                icon={Clock} 
+                variant="info"
+              />
+            </div>
+          </div>
           
-          <StatCard 
-            title="Dikembalikan" 
-            value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} 
-            icon={XCircle} 
-            variant="danger"
-          />
+          {/* Card 4 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Dikembalikan" 
+                value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} 
+                icon={XCircle} 
+                variant="danger"
+              />
+            </div>
+          </div>
           
-          <StatCard 
-            title="Dikirim KPPN" 
-            value={counts.sent_kppn} 
-            icon={CheckCircle2} 
-            variant="success"
-          />
+          {/* Card 5 */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Dikirim KPPN" 
+                value={counts.sent_kppn} 
+                icon={CheckCircle2} 
+                variant="success"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* DAFTAR PENGAJUAN CARD */}
-      <Card className="w-full overflow-hidden border shadow-sm">
-        <CardHeader className="px-4 py-3 border-b">
-          <div className="flex items-center justify-between">
-            {/* Title */}
-            <div className="flex-shrink-0">
-              <CardTitle className="text-base font-semibold">Daftar Pengajuan</CardTitle>
+      <Card className="w-full overflow-hidden">
+        <CardHeader className="px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Title dengan lebar 12% lebih besar */}
+            <div className="w-[calc(100%)] min-w-0">
+              <CardTitle className="text-lg sm:text-xl truncate">Daftar Pengajuan</CardTitle>
             </div>
             
-            {/* Filter Tabs - Rata Tengah */}
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-              <FilterTabs 
-                activeFilter={activeFilter} 
-                onFilterChange={setActiveFilter} 
-                counts={counts} 
-              />
+            {/* Filter Tabs di tengah */}
+            <div className="flex-1 flex justify-center">
+              <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
             </div>
           </div>
         </CardHeader>
         
-        <CardContent className="px-4 py-3">
+        <CardContent className="px-6 py-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground mb-3">
+              <p className="text-sm text-muted-foreground mb-4">
                 Menampilkan {currentSubmissions.length} dari {filteredSubmissions.length} pengajuan
                 {filteredSubmissions.length > itemsPerPage && ` (Halaman ${currentPage} dari ${totalPages})`}
               </p>
@@ -231,77 +252,77 @@ export default function UsulanPencairan() {
                 />
               </div>
 
-              {/* PAGINATION - Compact */}
+              {/* PAGINATION */}
               {filteredSubmissions.length > itemsPerPage && (
-                <div className="mt-4 pt-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="text-xs text-muted-foreground">
-                    {startIndex + 1} - {Math.min(endIndex, filteredSubmissions.length)} dari {filteredSubmissions.length}
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-muted-foreground">
+                    Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredSubmissions.length)} dari {filteredSubmissions.length} entri
                   </div>
                   
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-2">
                     {/* Tombol Awal */}
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={goToFirstPage}
                       disabled={currentPage === 1}
-                      className="h-7 w-7 rounded-md p-0"
+                      className="h-8 w-8 rounded-md"
                       title="Awal"
                     >
-                      <ChevronsLeft className="h-3.5 w-3.5" />
+                      <ChevronsLeft className="h-4 w-4" />
                     </Button>
                     
                     {/* Tombol Sebelumnya */}
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={goToPreviousPage}
                       disabled={currentPage === 1}
-                      className="h-7 w-7 rounded-md p-0"
+                      className="h-8 w-8 rounded-md"
                       title="Sebelumnya"
                     >
-                      <ChevronLeft className="h-3.5 w-3.5" />
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                     
                     {/* Info Halaman */}
-                    <div className="min-w-[80px] text-center">
-                      <span className="text-xs font-medium px-2">
-                        {currentPage} / {totalPages}
+                    <div className="flex items-center justify-center min-w-[120px]">
+                      <span className="text-sm font-medium">
+                        Halaman {currentPage} dari {totalPages}
                       </span>
                     </div>
                     
                     {/* Tombol Selanjutnya */}
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={goToNextPage}
                       disabled={currentPage === totalPages}
-                      className="h-7 w-7 rounded-md p-0"
+                      className="h-8 w-8 rounded-md"
                       title="Selanjutnya"
                     >
-                      <ChevronRight className="h-3.5 w-3.5" />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                     
                     {/* Tombol Akhir */}
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={goToLastPage}
                       disabled={currentPage === totalPages}
-                      className="h-7 w-7 rounded-md p-0"
+                      className="h-8 w-8 rounded-md"
                       title="Akhir"
                     >
-                      <ChevronsRight className="h-3.5 w-3.5" />
+                      <ChevronsRight className="h-4 w-4" />
                     </Button>
                   </div>
                   
-                  {/* Selector Halaman */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">Ke:</span>
+                  {/* Selector Halaman (opsional) */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Ke halaman:</span>
                     <select
                       value={currentPage}
                       onChange={(e) => goToPage(Number(e.target.value))}
-                      className="h-7 w-14 rounded border border-input bg-background px-2 py-0 text-xs"
+                      className="h-8 w-16 rounded-md border border-input bg-background px-3 py-1 text-sm"
                     >
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <option key={page} value={page}>
