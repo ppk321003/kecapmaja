@@ -334,35 +334,39 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               </div>
               
               {documents.length > 0 ? (
-                <ScrollArea className="h-56 rounded-lg border p-2">
-                  <div className="grid gap-2">
-                    {documents.map((doc, index) => (
-                      <div
-                        key={`${doc.type}-${index}`}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
-                        onClick={() => !editData && handleDocumentToggle(doc.type)}
-                      >
-                        <Checkbox
-                          checked={doc.isChecked}
-                          onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
-                          className="rounded-md"
-                          disabled={!!editData}
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm">
-                            {doc.name}
-                            {doc.isRequired && <span className="text-destructive ml-1">*</span>}
-                          </span>
-                          {!doc.isRequired && (
-                            <span className="text-muted-foreground text-xs ml-2">
-                              (Opsional{doc.note ? ` - ${doc.note}` : ''})
-                            </span>
-                          )}
-                        </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <ScrollArea className="h-auto max-h-72">
+                    <div className="p-2">
+                      <div className="grid gap-2">
+                        {documents.map((doc, index) => (
+                          <div
+                            key={`${doc.type}-${index}`}
+                            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => !editData && handleDocumentToggle(doc.type)}
+                          >
+                            <Checkbox
+                              checked={doc.isChecked}
+                              onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
+                              className="rounded-md"
+                              disabled={!!editData}
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm">
+                                {doc.name}
+                                {doc.isRequired && <span className="text-destructive ml-1">*</span>}
+                              </span>
+                              {!doc.isRequired && (
+                                <span className="text-muted-foreground text-xs ml-2">
+                                  (Opsional{doc.note ? ` - ${doc.note}` : ''})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                    </div>
+                  </ScrollArea>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <FileText className="w-8 h-8 mb-2 opacity-50" />
