@@ -8,14 +8,14 @@ interface FilterTabsProps {
   counts: Record<string, number>;
 }
 
-const filters: { value: string; label: string }[] = [
-  { value: 'all', label: 'Semua' },
-  { value: 'pending_ppk', label: 'Menunggu PPK' },
-  { value: 'pending_bendahara', label: 'Menunggu Bendahara' },
-  { value: 'incomplete_sm', label: 'Dikembalikan ke SM' },
-  { value: 'incomplete_ppk', label: 'Dikembalikan ke PPK' },
-  { value: 'incomplete_bendahara', label: 'Dikembalikan ke Bendahara' },
-  { value: 'sent_kppn', label: 'Dikirim ke KPPN' },
+const filters: { value: string; label: string; color: string }[] = [
+  { value: 'all', label: 'Semua', color: '' },
+  { value: 'pending_ppk', label: 'Menunggu Verifikasi PPK', color: 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' },
+  { value: 'incomplete_sm', label: 'Dikembalikan ke SM', color: 'bg-red-500 hover:bg-red-600 text-white border-red-500' },
+  { value: 'pending_bendahara', label: 'Menunggu Verifikasi Bendahara', color: 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500' },
+  { value: 'incomplete_ppk', label: 'Dikembalikan ke PPK', color: 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' },
+  { value: 'incomplete_bendahara', label: 'Dikembalikan ke Bendahara', color: 'bg-purple-500 hover:bg-purple-600 text-white border-purple-500' },
+  { value: 'sent_kppn', label: 'Dikirim ke KPPN', color: 'bg-green-500 hover:bg-green-600 text-white border-green-500' },
 ];
 
 export function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsProps) {
@@ -29,6 +29,7 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsP
           onClick={() => onFilterChange(filter.value)}
           className={cn(
             'rounded-full text-xs',
+            activeFilter === filter.value && filter.value !== 'all' && filter.color,
             activeFilter === filter.value && 'shadow-md'
           )}
         >
@@ -36,7 +37,7 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsP
           <span className={cn(
             'ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold',
             activeFilter === filter.value 
-              ? 'bg-primary-foreground/20 text-primary-foreground' 
+              ? 'bg-white/20 text-inherit' 
               : 'bg-muted text-muted-foreground'
           )}>
             {counts[filter.value] || 0}

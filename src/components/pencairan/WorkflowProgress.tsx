@@ -45,6 +45,27 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
 }
 
 export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
+  // Determine colors based on status
+  const getProgressColor = () => {
+    if (status === 'sent_kppn') return 'bg-green-500';
+    if (['pending_bendahara', 'incomplete_bendahara'].includes(status)) return 'bg-blue-500';
+    if (['pending_ppk', 'incomplete_ppk'].includes(status)) return 'bg-yellow-500';
+    if (status === 'incomplete_sm') return 'bg-red-500';
+    return 'bg-primary';
+  };
+
+  const getCurrentStepColor = () => {
+    switch (status) {
+      case 'pending_ppk': return 'bg-yellow-500 text-white ring-4 ring-yellow-200';
+      case 'incomplete_sm': return 'bg-red-500 text-white ring-4 ring-red-200';
+      case 'pending_bendahara': return 'bg-blue-500 text-white ring-4 ring-blue-200';
+      case 'incomplete_ppk': return 'bg-orange-500 text-white ring-4 ring-orange-200';
+      case 'incomplete_bendahara': return 'bg-purple-500 text-white ring-4 ring-purple-200';
+      case 'sent_kppn': return 'bg-green-500 text-white ring-4 ring-green-200';
+      default: return 'bg-primary text-primary-foreground ring-4 ring-primary/20';
+    }
+  };
+
   return (
     <div className={cn('w-full', className)}>
       <div className="flex items-center justify-between relative">
@@ -53,11 +74,14 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
         
         {/* Active progress line */}
         <div 
-          className="absolute top-5 left-[10%] h-1 bg-primary rounded-full transition-all duration-500"
+          className={cn(
+            "absolute top-5 left-[10%] h-1 rounded-full transition-all duration-500",
+            getProgressColor()
+          )}
           style={{
             width: status === 'sent_kppn' ? '80%' : 
                    ['pending_bendahara', 'incomplete_bendahara'].includes(status) ? '53%' :
-                   ['pending_ppk', 'incomplete_ppk'].includes(status) ? '27%' : '0%'
+                   ['pending_ppk', 'incomplete_ppk', 'incomplete_sm'].includes(status) ? '27%' : '0%'
           }}
         />
         
@@ -69,14 +93,14 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
               <div
                 className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300',
-                  stepStatus === 'complete' && 'bg-green-500 text-white',
-                  stepStatus === 'current' && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
-                  stepStatus === 'pending' && 'bg-muted text-muted-foreground',
-                  stepStatus === 'error' && 'bg-destructive text-destructive-foreground'
+                  stepStatus === 'complete' && 'bg-green-500 text-white shadow-lg',
+                  stepStatus === 'current' && getCurrentStepColor(),
+                  stepStatus === 'pending' && 'bg-muted text-muted-foreground border-2 border-muted-foreground/20',
+                  stepStatus === 'error' && 'bg-red-500 text-white ring-4 ring-red-200'
                 )}
               >
                 {stepStatus === 'complete' && <CheckCircle2 className="w-5 h-5" />}
-                {stepStatus === 'current' && <Clock className="w-5 h-5" />}
+                {stepStatus === 'current' && <Clock className="w-5 h-5 animate-pulse" />}
                 {stepStatus === 'pending' && (step.key === 'kppn' ? <Building2 className="w-5 h-5" /> : <span>{index + 1}</span>)}
                 {stepStatus === 'error' && <XCircle className="w-5 h-5" />}
               </div>
@@ -84,9 +108,12 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
               <div className="mt-2 text-center">
                 <p className={cn(
                   'text-sm font-medium',
-                  stepStatus === 'current' && 'text-primary',
+                  stepStatus === 'current' && status === 'pending_ppk' && 'text-yellow-600',
+                  stepStatus === 'current' && status === 'pending_bendahara' && 'text-blue-600',
+                  stepStatus === 'current' && status === 'incomplete_ppk' && 'text-orange-600',
+                  stepStatus === 'current' && status === 'incomplete_bendahara' && 'text-purple-600',
                   stepStatus === 'complete' && 'text-green-600',
-                  stepStatus === 'error' && 'text-destructive'
+                  stepStatus === 'error' && 'text-red-600'
                 )}>
                   {step.label}
                 </p>
