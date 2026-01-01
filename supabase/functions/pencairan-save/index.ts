@@ -1,0 +1,170 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
+const SHEET_NAME = 'data';
+
+async function getAccessToken() {
+  console.log('Getting access token for pencairan-save...');
+  
+  let privateKey: string;
+  let serviceAccountEmail: string;
+  
+  const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
+  const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  
+  try {
+    if (googlePrivateKeyEnv?.includes('"type"')) {
+      const serviceAccount = JSON.parse(googlePrivateKeyEnv);
+      privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+      serviceAccountEmail = serviceAccount.client_email;
+    } else if (googleServiceAccountEmailEnv?.includes('"type"')) {
+      const serviceAccount = JSON.parse(googleServiceAccountEmailEnv);
+      privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+      serviceAccountEmail = serviceAccount.client_email;
+    } else {
+      privateKey = googlePrivateKeyEnv?.replace(/\\n/g, '\n') || '';
+      serviceAccountEmail = googleServiceAccountEmailEnv || '';
+    }
+  } catch (e) {
+    console.error('Error parsing credentials:', e);
+    privateKey = googlePrivateKeyEnv?.replace(/\\n/g, '\n') || '';
+    serviceAccountEmail = googleServiceAccountEmailEnv || '';
+  }
+
+  if (!privateKey || !serviceAccountEmail) {
+    throw new Error('Missing Google credentials');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = now + 3600;
+
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: serviceAccountEmail,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: expiry,
+    iat: now,
+  };
+
+  const encodedHeader = btoa(JSON.stringify(header))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const encodedPayload = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = privateKey.replace(pemHeader, '').replace(pemFooter, '').replace(/\s/g, '');
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, encoder.encode(unsignedToken));
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const jwt = `${unsignedToken}.${encodedSignature}`;
+
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  const tokenData = await tokenResponse.json();
+  if (!tokenResponse.ok) {
+    throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
+  }
+  
+  return tokenData.access_token;
+}
+
+function formatDateTime(): string {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(now.getHours())}:${pad(now.getMinutes())} - ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+}
+
+serve(async (req) => {
+  console.log('pencairan-save function invoked');
+  
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    console.log('Request body:', JSON.stringify(body));
+    
+    const { id, title, submitterName, jenisBelanja, documents, notes, status } = body;
+    
+    const accessToken = await getAccessToken();
+    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
+    const waktuPengajuan = formatDateTime();
+
+    // Prepare row data - columns: id, title, submitterName, jenisBelanja, documents, notes, status, waktuPengajuan, waktuPpk, waktuBendahara, statusPpk, statusBendahara, statusKppn, updatedAt
+    const rowData = [
+      id,
+      title,
+      submitterName,
+      jenisBelanja,
+      documents || '',
+      notes || '',
+      status || 'pending_ppk',
+      waktuPengajuan,
+      '', // waktuPpk
+      '', // waktuBendahara
+      '', // statusPpk
+      '', // statusBendahara
+      '', // statusKppn
+      waktuPengajuan, // updatedAt
+    ];
+
+    console.log('Appending row:', rowData);
+
+    const response = await fetch(
+      `${baseUrl}/values/${SHEET_NAME}!A:N:append?valueInputOption=USER_ENTERED`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [rowData] }),
+      }
+    );
+
+    const data = await response.json();
+    console.log('Append response:', JSON.stringify(data));
+
+    if (!response.ok) {
+      throw new Error(`Append failed: ${JSON.stringify(data)}`);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, data }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error in pencairan-save:', errorMessage);
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

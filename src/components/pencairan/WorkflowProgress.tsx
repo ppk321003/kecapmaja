@@ -1,0 +1,103 @@
+import { SubmissionStatus } from '@/types/pencairan';
+import { cn } from '@/lib/utils';
+import { CheckCircle2, Clock, XCircle, Building2 } from 'lucide-react';
+
+interface WorkflowProgressProps {
+  status: SubmissionStatus;
+  className?: string;
+}
+
+const steps = [
+  { key: 'sm', label: 'SM', description: 'Subjek Meter' },
+  { key: 'ppk', label: 'PPK', description: 'Pejabat Pembuat Komitmen' },
+  { key: 'bendahara', label: 'Bendahara', description: 'Bendahara Pengeluaran' },
+  { key: 'kppn', label: 'KPPN', description: 'Kantor Pelayanan Perbendaharaan Negara' },
+];
+
+function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | undefined): 'complete' | 'current' | 'pending' | 'error' {
+  if (!submissionStatus) return 'pending';
+  
+  switch (submissionStatus) {
+    case 'pending_ppk':
+      if (stepKey === 'sm') return 'complete';
+      if (stepKey === 'ppk') return 'current';
+      return 'pending';
+    case 'incomplete_sm':
+      if (stepKey === 'sm') return 'error';
+      return 'pending';
+    case 'pending_bendahara':
+      if (stepKey === 'sm' || stepKey === 'ppk') return 'complete';
+      if (stepKey === 'bendahara') return 'current';
+      return 'pending';
+    case 'incomplete_ppk':
+      if (stepKey === 'sm') return 'complete';
+      if (stepKey === 'ppk') return 'error';
+      return 'pending';
+    case 'incomplete_bendahara':
+      if (stepKey === 'sm' || stepKey === 'ppk') return 'complete';
+      if (stepKey === 'bendahara') return 'error';
+      return 'pending';
+    case 'sent_kppn':
+      return 'complete';
+    default:
+      return 'pending';
+  }
+}
+
+export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
+  return (
+    <div className={cn('w-full', className)}>
+      <div className="flex items-center justify-between relative">
+        {/* Progress line background */}
+        <div className="absolute top-5 left-[10%] right-[10%] h-1 bg-muted rounded-full" />
+        
+        {/* Active progress line */}
+        <div 
+          className="absolute top-5 left-[10%] h-1 bg-primary rounded-full transition-all duration-500"
+          style={{
+            width: status === 'sent_kppn' ? '80%' : 
+                   ['pending_bendahara', 'incomplete_bendahara'].includes(status) ? '53%' :
+                   ['pending_ppk', 'incomplete_ppk'].includes(status) ? '27%' : '0%'
+          }}
+        />
+        
+        {steps.map((step, index) => {
+          const stepStatus = getStepStatus(step.key, status);
+          
+          return (
+            <div key={step.key} className="flex flex-col items-center relative z-10">
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300',
+                  stepStatus === 'complete' && 'bg-green-500 text-white',
+                  stepStatus === 'current' && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
+                  stepStatus === 'pending' && 'bg-muted text-muted-foreground',
+                  stepStatus === 'error' && 'bg-destructive text-destructive-foreground'
+                )}
+              >
+                {stepStatus === 'complete' && <CheckCircle2 className="w-5 h-5" />}
+                {stepStatus === 'current' && <Clock className="w-5 h-5" />}
+                {stepStatus === 'pending' && (step.key === 'kppn' ? <Building2 className="w-5 h-5" /> : <span>{index + 1}</span>)}
+                {stepStatus === 'error' && <XCircle className="w-5 h-5" />}
+              </div>
+
+              <div className="mt-2 text-center">
+                <p className={cn(
+                  'text-sm font-medium',
+                  stepStatus === 'current' && 'text-primary',
+                  stepStatus === 'complete' && 'text-green-600',
+                  stepStatus === 'error' && 'text-destructive'
+                )}>
+                  {step.label}
+                </p>
+                <p className="text-[10px] text-muted-foreground max-w-[80px]">
+                  {step.description}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

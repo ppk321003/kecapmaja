@@ -40,6 +40,7 @@ import Pedoman from "./pages/Pedoman";
 import KarierKu from "./pages/KarierKu";
 import Linkers from "./pages/Linkers";
 import NotFound from "./pages/NotFound";
+import UsulanPencairan from "./pages/UsulanPencairan";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/usulan-pencairan" element={<ProtectedRoute><Layout><UsulanPencairan /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />
             <Route path="/KarierKu" element={<ProtectedRoute><Layout><KarierKu /></Layout></ProtectedRoute>} />             
