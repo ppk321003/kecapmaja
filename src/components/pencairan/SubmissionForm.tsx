@@ -20,9 +20,8 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Submission, 
+import {
+  Submission,
   Document,
   generateSubmissionId,
   getDocumentsByJenisBelanja,
@@ -44,7 +43,7 @@ interface SubmissionFormProps {
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
-  
+
   const [title, setTitle] = useState(editData?.title || '');
   const [submitterName, setSubmitterName] = useState(editData?.submitterName || '');
   const [jenisBelanja, setJenisBelanja] = useState(editData?.jenisBelanja || '');
@@ -127,7 +126,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
     const requiredDocuments = documents.filter(doc => doc.isRequired);
     const uncheckedRequired = requiredDocuments.filter(doc => !doc.isChecked);
-    
+
     if (uncheckedRequired.length > 0) {
       toast({
         title: 'Dokumen Wajib Belum Lengkap',
@@ -138,7 +137,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     }
 
     setIsSubmitting(true);
-
     try {
       if (editData) {
         const { data, error } = await supabase.functions.invoke('pencairan-update', {
@@ -150,13 +148,12 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             action: 'approve',
           },
         });
-
         if (error) throw new Error(error.message || 'Gagal memperbarui catatan');
         if (!data?.success) throw new Error(data?.error || 'Gagal memperbarui data');
       } else {
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
-        
+
         const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
         const documentsString = checkedDocs.join('|');
 
@@ -171,7 +168,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             status: 'pending_ppk',
           },
         });
-
         if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
@@ -193,7 +189,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
       setNotes('');
       setDocuments([]);
       onClose();
-
       toast({
         title: 'Berhasil',
         description: editData ? 'Catatan berhasil diperbarui' : 'Pengajuan berhasil dikirim ke PPK',
@@ -244,7 +239,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             </div>
           </div>
         </DialogHeader>
-
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Judul Pengajuan *</Label>
@@ -256,7 +250,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               disabled={!!editData}
             />
           </div>
-
           <div className="space-y-2">
             <Label>Nama Pengaju *</Label>
             <Select value={submitterName} onValueChange={setSubmitterName} disabled={!!editData}>
@@ -277,7 +270,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label>Jenis Belanja *</Label>
             <Select value={jenisBelanja} onValueChange={handleJenisBelanjaChange} disabled={!!editData}>
@@ -293,17 +285,16 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               </SelectContent>
             </Select>
           </div>
-
           {jenisBelanja && availableSubTypes.length > 0 && (
             <div className="space-y-2">
               <Label>Sub-Jenis Belanja *</Label>
               <Tabs value={subJenisBelanja} onValueChange={handleSubJenisChange} className="w-full">
                 <TabsList className="w-full flex-wrap h-auto p-1 gap-1">
                   {availableSubTypes.map((subType) => (
-                    <TabsTrigger 
-                      key={subType} 
-                      value={subType} 
-                      className="flex-1 min-w-fit text-xs sm:text-sm" 
+                    <TabsTrigger
+                      key={subType}
+                      value={subType}
+                      className="flex-1 min-w-fit text-xs sm:text-sm"
                       disabled={!!editData}
                     >
                       {subType}
@@ -313,7 +304,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               </Tabs>
             </div>
           )}
-
           {hasJenisBelanja && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -332,40 +322,36 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
                   <span>• {requiredCheckedCount}/{requiredDocs.length} wajib</span>
                 </div>
               </div>
-              
+
               {documents.length > 0 ? (
-                <div className="border rounded-lg overflow-hidden">
-                  <ScrollArea className="h-auto max-h-72">
-                    <div className="p-2">
-                      <div className="grid gap-2">
-                        {documents.map((doc, index) => (
-                          <div
-                            key={`${doc.type}-${index}`}
-                            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
-                            onClick={() => !editData && handleDocumentToggle(doc.type)}
-                          >
-                            <Checkbox
-                              checked={doc.isChecked}
-                              onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
-                              className="rounded-md"
-                              disabled={!!editData}
-                            />
-                            <div className="flex-1">
-                              <span className="text-sm">
-                                {doc.name}
-                                {doc.isRequired && <span className="text-destructive ml-1">*</span>}
-                              </span>
-                              {!doc.isRequired && (
-                                <span className="text-muted-foreground text-xs ml-2">
-                                  (Opsional{doc.note ? ` - ${doc.note}` : ''})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                <div className="max-h-56 overflow-y-auto rounded-lg border p-2">
+                  <div className="grid grid-cols-1 gap-2">
+                    {documents.map((doc, index) => (
+                      <div
+                        key={`${doc.type}-${index}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => !editData && handleDocumentToggle(doc.type)}
+                      >
+                        <Checkbox
+                          checked={doc.isChecked}
+                          onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
+                          className="rounded-md"
+                          disabled={!!editData}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm">
+                            {doc.name}
+                            {doc.isRequired && <span className="text-destructive ml-1">*</span>}
+                          </span>
+                          {!doc.isRequired && (
+                            <span className="text-muted-foreground text-xs ml-2">
+                              (Opsional{doc.note ? ` - ${doc.note}` : ''})
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </ScrollArea>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -376,7 +362,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               <p className="text-xs text-muted-foreground">* Dokumen wajib harus dilengkapi</p>
             </div>
           )}
-
           <div className="space-y-2">
             <Label>Catatan (Opsional)</Label>
             <Textarea
@@ -388,15 +373,14 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             />
           </div>
         </div>
-
         <DialogFooter className="gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel} className="rounded-xl" disabled={isSubmitting}>
             <X className="w-4 h-4 mr-2" />
             Batal
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            className="rounded-xl shadow-sm hover:shadow-md transition-all" 
+          <Button
+            onClick={handleSubmit}
+            className="rounded-xl shadow-sm hover:shadow-md transition-all"
             disabled={isSubmitting || (!editData && !hasJenisBelanja)}
           >
             {isSubmitting ? (
