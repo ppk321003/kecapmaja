@@ -604,7 +604,7 @@ export default function AkiToBendahara() {
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
                 <p>
-                  Anda login sebagai <strong>{currentUser.role}</strong>. Untuk mengakses fitur spreadsheet/download excel hubungi PPK, Bendahara, atau Pejabat Pengadaan.
+                  Anda login sebagai <strong>{currentUser.role}</strong>. Akses fitur spreadsheet/download excel tersedia untuk role Pejabat Pembuat Komitmen, Bendahara, atau Pejabat Pengadaan.
                 </p>
               </div>
             </div>
