@@ -80,8 +80,8 @@ export const JENIS_BELANJA_OPTIONS = [
 export const SUB_JENIS_BELANJA: Record<string, string[]> = {
   'Honorarium': ['Tim Pelaksana', 'Pengajar/Instruktur', 'Narasumber', 'Petugas Mitra', 'Petugas PNS'],
   'Perjalanan Dinas': ['Transport Lokal', 'Perjadin dalam kota > 8 Jam', 'Perjadin Luar Kota'],
-  'Belanja Bahan': ['Konsumsi', 'Pulsa/ Paket Data', 'Perlengkapan'],
-  'Belanja Barang Persediaan': ['ATK dan CS', 'Pencetakan'],
+  'Belanja Bahan': ['Konsumsi', 'Pulsa/Paket Data', 'Perlengkapan'],
+  'Belanja Barang Persediaan': ['ATK dan Computer Supplies', 'Pencetakan'],
   'Paket Meeting Dalam Kota': ['Paket Meeting', 'Perjalanan'],
 };
 
@@ -91,7 +91,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
     'Tim Pelaksana': [
       { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
-      { type: 'sk_kpa', name: 'SK KPA', isRequired: true, isChecked: false },
+      { type: 'sk_kpa', name: 'Surat Keputusan KPA', isRequired: true, isChecked: false },
       { type: 'rekap_honor', name: 'Rekap Honor/Kuitansi', isRequired: true, isChecked: false },
       { type: 'laporan', name: 'Laporan', isRequired: true, isChecked: false },
       { type: 'ssp_pph21', name: 'SSP PPh Pasal 21', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
@@ -99,7 +99,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
     'Pengajar/Instruktur': [
       { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
-      { type: 'sk_kpa', name: 'SK KPA', isRequired: true, isChecked: false },
+      { type: 'sk_kpa', name: 'Surat Keputusan KPA', isRequired: true, isChecked: false },
       { type: 'rekap_honor', name: 'Rekap Honor/Kuitansi', isRequired: true, isChecked: false },
       { type: 'laporan', name: 'Laporan', isRequired: true, isChecked: false },
       { type: 'jadwal', name: 'Jadwal Kegiatan/Rundown Acara', isRequired: true, isChecked: false },
@@ -109,7 +109,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
     'Narasumber': [
       { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
-      { type: 'sk_kpa', name: 'SK KPA', isRequired: true, isChecked: false },
+      { type: 'sk_kpa', name: 'Surat Keputusan KPA', isRequired: true, isChecked: false },
       { type: 'rekap_honor', name: 'Rekap Honor/Kuitansi', isRequired: true, isChecked: false },
       { type: 'undangan', name: 'Undangan', isRequired: true, isChecked: false },
       { type: 'jadwal', name: 'Jadwal Kegiatan/Rundown Acara', isRequired: true, isChecked: false },
@@ -121,7 +121,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
     'Petugas Mitra': [
       { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
-      { type: 'sk_kpa', name: 'SK KPA', isRequired: true, isChecked: false },
+      { type: 'sk_kpa', name: 'Surat Keputusan KPA', isRequired: true, isChecked: false },
       { type: 'spk', name: 'Surat Perjanjian Kerja (SPK)', isRequired: true, isChecked: false },
       { type: 'bast', name: 'Berita Acara Serah Terima (BAST)', isRequired: true, isChecked: false },
       { type: 'rekap_honor', name: 'Rekap Honor/Kuitansi', isRequired: true, isChecked: false },
@@ -130,7 +130,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
     'Petugas PNS': [
       { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
-      { type: 'sk_kpa', name: 'SK KPA', isRequired: true, isChecked: false },
+      { type: 'sk_kpa', name: 'Surat Keputusan KPA', isRequired: true, isChecked: false },
       { type: 'bast', name: 'Berita Acara Serah Terima (BAST)', isRequired: true, isChecked: false },
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
       { type: 'rekap_honor', name: 'Rekap Honor/Kuitansi', isRequired: true, isChecked: false },
@@ -139,7 +139,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
   },
   'Perjalanan Dinas': {
     'Transport Lokal': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
       { type: 'visum', name: 'Visum', isRequired: true, isChecked: false },
@@ -150,8 +150,8 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'rekap_translok', name: 'Rekapitulasi Translok', isRequired: true, isChecked: false },
     ],
     'Perjadin dalam kota > 8 Jam': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
       { type: 'spd', name: 'Surat Perjalanan Dinas (SPD)', isRequired: true, isChecked: false },
       { type: 'visum', name: 'Visum', isRequired: true, isChecked: false },
@@ -162,8 +162,8 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'laporan_perjadin', name: 'Laporan Perjadin dan Dokumentasi', isRequired: true, isChecked: false },
     ],
     'Perjadin Luar Kota': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
       { type: 'spd', name: 'Surat Perjalanan Dinas (SPD)', isRequired: true, isChecked: false },
       { type: 'visum', name: 'Visum', isRequired: true, isChecked: false },
@@ -176,8 +176,8 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
   },
   'Belanja Bahan': {
     'Konsumsi': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'undangan', name: 'Undangan', isRequired: true, isChecked: false },
       { type: 'daftar_hadir', name: 'Daftar Hadir', isRequired: true, isChecked: false },
       { type: 'notulen', name: 'Notulen dan Dokumentasi Rapat', isRequired: true, isChecked: false },
@@ -186,34 +186,34 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'super_fasilitas', name: 'Super Fasilitas Kantor Tidak Memadai', isRequired: false, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false },
     ],
-    'Pulsa/ Paket Data': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+    'Pulsa/Paket Data': [
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'bukti_pembelian', name: 'Komitmen/Kontrak/Bukti Pembelian/Kuitansi *)', isRequired: true, isChecked: false },
       { type: 'tanda_terima', name: 'Tanda Terima', isRequired: true, isChecked: false },
       { type: 'foto_penerimaan', name: 'Foto penerimaan paket data/pulsa', isRequired: true, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
     ],
     'Perlengkapan': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'bukti_pembelian', name: 'Komitmen/Kontrak/Bukti Pembelian/Kuitansi *)', isRequired: true, isChecked: false },
       { type: 'tanda_terima', name: 'Tanda Terima', isRequired: true, isChecked: false },
-      { type: 'bast', name: 'BAST', isRequired: true, isChecked: false },
+      { type: 'bast', name: 'Berita Acara Serah Terima (BAST)', isRequired: true, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
     ],
   },
   'Belanja Barang Persediaan': {
-    'ATK dan CS': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+    'ATK dan Computer Supplies': [
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'bukti_pembelian', name: 'Komitmen/Kontrak/Bukti Pembelian/Kuitansi *)', isRequired: true, isChecked: false },
       { type: 'bukti_prestasi', name: 'Bukti Prestasi (BAPP/BAST/BAP)', isRequired: true, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
     ],
     'Pencetakan': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'bukti_pembelian', name: 'Komitmen/Kontrak/Bukti Pembelian/Kuitansi *)', isRequired: true, isChecked: false },
       { type: 'bukti_prestasi', name: 'Bukti Prestasi (BAPP/BAST/BAP)', isRequired: true, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
@@ -221,8 +221,8 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
   },
   'Paket Meeting Dalam Kota': {
     'Paket Meeting': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
-      { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
       { type: 'undangan', name: 'Undangan', isRequired: true, isChecked: false },
       { type: 'jadwal', name: 'Jadwal Kegiatan', isRequired: true, isChecked: false },
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
@@ -237,7 +237,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
     ],
     'Perjalanan': [
-      { type: 'kak', name: 'KAK', isRequired: true, isChecked: false },
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
       { type: 'form_permintaan', name: 'Form Permintaan', isRequired: true, isChecked: false },
       { type: 'undangan', name: 'Undangan', isRequired: true, isChecked: false },
       { type: 'jadwal', name: 'Jadwal Kegiatan', isRequired: true, isChecked: false },
