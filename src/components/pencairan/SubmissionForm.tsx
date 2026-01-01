@@ -20,13 +20,14 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Submission, 
+  Document,
   generateSubmissionId,
   getDocumentsByJenisBelanja,
   JENIS_BELANJA_OPTIONS,
   SUB_JENIS_BELANJA,
-  DocumentType
 } from '@/types/pencairan';
 import { Send, X, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -50,7 +51,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   const [subJenisBelanja, setSubJenisBelanja] = useState(editData?.subJenisBelanja || '');
   const [notes, setNotes] = useState(editData?.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [documents, setDocuments] = useState(editData?.documents || []);
+  const [documents, setDocuments] = useState<Document[]>(editData?.documents || []);
 
   const availableSubTypes = jenisBelanja ? SUB_JENIS_BELANJA[jenisBelanja] || [] : [];
 
@@ -98,10 +99,10 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     }
   }, [editData, open]);
 
-  const handleDocumentToggle = (type: DocumentType) => {
+  const handleDocumentToggle = (docType: string) => {
     setDocuments(prev =>
       prev.map(doc =>
-        doc.type === type ? { ...doc, isChecked: !doc.isChecked } : doc
+        doc.type === docType ? { ...doc, isChecked: !doc.isChecked } : doc
       )
     );
   };
@@ -263,14 +264,18 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
                 <SelectValue placeholder={isLoadingOrganik ? 'Memuat...' : 'Pilih nama pengaju'} />
               </SelectTrigger>
               <SelectContent>
-                {organikList.map((org: any) => (
-                  <SelectItem key={org.nip} value={org.nama}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{org.nama}</span>
-                      <span className="text-xs text-muted-foreground">{org.jabatan}</span>
-                    </div>
-                  </SelectItem>
-                ))}
+                <ScrollArea className="h-60">
+                  {organikList.map((org, index) => (
+                    <SelectItem key={`${org.nip}-${index}`} value={org.nama}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{org.nama}</span>
+                        {org.jabatan && (
+                          <span className="text-xs text-muted-foreground">{org.jabatan}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </ScrollArea>
               </SelectContent>
             </Select>
           </div>
@@ -295,9 +300,14 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             <div className="space-y-2">
               <Label>Sub-Jenis Belanja *</Label>
               <Tabs value={subJenisBelanja} onValueChange={handleSubJenisChange} className="w-full">
-                <TabsList className="w-full flex-wrap h-auto p-1">
+                <TabsList className="w-full flex-wrap h-auto p-1 gap-1">
                   {availableSubTypes.map((subType) => (
-                    <TabsTrigger key={subType} value={subType} className="flex-1" disabled={!!editData}>
+                    <TabsTrigger 
+                      key={subType} 
+                      value={subType} 
+                      className="flex-1 min-w-fit text-xs sm:text-sm" 
+                      disabled={!!editData}
+                    >
                       {subType}
                     </TabsTrigger>
                   ))}
@@ -326,27 +336,35 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               </div>
               
               {documents.length > 0 ? (
-                <div className="grid gap-2 max-h-48 overflow-y-auto p-1">
-                  {documents.map((doc) => (
-                    <div
-                      key={doc.type}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => !editData && handleDocumentToggle(doc.type)}
-                    >
-                      <Checkbox
-                        checked={doc.isChecked}
-                        onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
-                        className="rounded-md"
-                        disabled={!!editData}
-                      />
-                      <span className="text-sm flex-1">
-                        {doc.name}
-                        {doc.isRequired && <span className="text-destructive ml-1">*</span>}
-                        {!doc.isRequired && <span className="text-muted-foreground text-xs ml-2">(Opsional)</span>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <ScrollArea className="h-56 rounded-lg border p-2">
+                  <div className="grid gap-2">
+                    {documents.map((doc, index) => (
+                      <div
+                        key={`${doc.type}-${index}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => !editData && handleDocumentToggle(doc.type)}
+                      >
+                        <Checkbox
+                          checked={doc.isChecked}
+                          onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
+                          className="rounded-md"
+                          disabled={!!editData}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm">
+                            {doc.name}
+                            {doc.isRequired && <span className="text-destructive ml-1">*</span>}
+                          </span>
+                          {!doc.isRequired && (
+                            <span className="text-muted-foreground text-xs ml-2">
+                              (Opsional{doc.note ? ` - ${doc.note}` : ''})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                   <FileText className="w-8 h-8 mb-2 opacity-50" />

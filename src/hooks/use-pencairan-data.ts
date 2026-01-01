@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 const SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
 const SHEET_NAME = 'data';
 
+// Master Organik Spreadsheet
+const MASTER_SPREADSHEET_ID = '1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM';
+const MASTER_SHEET_NAME = 'MASTER.ORGANIK';
+
 export interface PencairanRawData {
   id: string;
   title: string;
@@ -19,6 +23,14 @@ export interface PencairanRawData {
   statusBendahara: string;
   statusKppn: string;
   updatedAt: string;
+}
+
+export interface OrganikData {
+  nip: string;
+  nama: string;
+  jabatan: string;
+  pangkat: string;
+  golongan: string;
 }
 
 export function usePencairanData() {
@@ -65,28 +77,32 @@ export function usePencairanData() {
 
 export function useOrganikPencairan() {
   return useQuery({
-    queryKey: ['organik-pencairan'],
-    queryFn: async () => {
+    queryKey: ['organik-pencairan-master'],
+    queryFn: async (): Promise<OrganikData[]> => {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1SvzXG0-CbMdEZXBpPMGq5pJOMEk3xnPP3XQQrmBCmUk',
+          spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: 'read',
-          range: 'dt_organik!A:E',
+          range: `${MASTER_SHEET_NAME}!A:E`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching organik data:', error);
+        throw error;
+      }
 
       const rows = data?.values || [];
       if (rows.length <= 1) return [];
 
+      // Skip header row, Column D is Nama (index 3)
       return rows.slice(1).map((row: string[]) => ({
         nip: row[0] || '',
-        nama: row[1] || '',
-        jabatan: row[2] || '',
-        pangkat: row[3] || '',
-        golongan: row[4] || '',
-      }));
+        nama: row[3] || '', // Column D - Nama
+        jabatan: row[4] || '', // Column E - Jabatan
+        pangkat: row[5] || '',
+        golongan: row[6] || '',
+      })).filter((item: OrganikData) => item.nama.trim() !== '');
     },
   });
 }
