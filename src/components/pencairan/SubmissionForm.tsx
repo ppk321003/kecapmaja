@@ -40,22 +40,6 @@ interface SubmissionFormProps {
   editData?: Submission | null;
 }
 
-// Fungsi untuk mendapatkan waktu Jakarta (WIB)
-function getJakartaTimeString(): string {
-  const now = new Date();
-  const jakartaOffset = 7 * 60;
-  const localOffset = now.getTimezoneOffset();
-  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
-  
-  const hours = String(jakartaTime.getHours()).padStart(2, '0');
-  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
-  const day = String(jakartaTime.getDate()).padStart(2, '0');
-  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
-  const year = jakartaTime.getFullYear();
-  
-  return `${hours}:${minutes} - ${day}/${month}/${year}`;
-}
-
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
@@ -124,7 +108,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      toast({ title: 'Error', description: 'Uraian pengajuan harus diisi', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Judul pengajuan harus diisi', variant: 'destructive' });
       return;
     }
     if (!submitterName.trim()) {
@@ -171,30 +155,19 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const newId = generateSubmissionId(existingIds);
 
         const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
-        const kelengkapan = checkedDocs.join('|');
-        
-        const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
-        const waktuPengajuan = getJakartaTimeString();
+        const documentsString = checkedDocs.join('|');
 
-        // ✅ PERBAIKAN DI SINI: Kirim field yang sesuai dengan backend
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
             id: newId,
-            uraianPengajuan: title.trim(),       // ✅ BENAR
-            namaPengaju: submitterName.trim(),   // ✅ BENAR
-            jenisPengajuan: jenisPengajuan,      // ✅ BENAR
-            kelengkapan: kelengkapan,            // ✅ BENAR
-            catatan: notes.trim() || '',         // ✅ BENAR
-            statusPengajuan: 'pending_ppk',      // ✅ BENAR
-            waktuPengajuan: waktuPengajuan,      // ✅ BENAR
-            statusPpk: '',                       // ✅ BENAR
-            waktuPpk: '',                        // ✅ BENAR
-            statusBendahara: '',                 // ✅ BENAR
-            waktuBendahara: '',                  // ✅ BENAR
-            statusKppn: ''                       // ✅ BENAR
+            title: title.trim(),
+            submitterName: submitterName.trim(),
+            jenisBelanja: `${jenisBelanja} - ${subJenisBelanja}`,
+            documents: documentsString,
+            notes: notes.trim() || undefined,
+            status: 'pending_ppk',
           },
         });
-        
         if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
@@ -268,9 +241,9 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Uraian Pengajuan *</Label>
+            <Label>Judul Pengajuan *</Label>
             <Input
-              placeholder="Masukkan uraian pengajuan..."
+              placeholder="Masukkan judul pengajuan..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 rounded-xl"
