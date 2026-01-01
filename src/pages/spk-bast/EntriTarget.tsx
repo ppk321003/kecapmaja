@@ -394,7 +394,7 @@ export default function EntriTarget() {
   const {
     user
   } = useAuth();
-  const [selectedYear, setSelectedYear] = useState("2025");
+  const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
   const [showJobTypesDialog, setShowJobTypesDialog] = useState(false);
