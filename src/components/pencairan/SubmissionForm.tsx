@@ -40,6 +40,22 @@ interface SubmissionFormProps {
   editData?: Submission | null;
 }
 
+// Fungsi untuk mendapatkan waktu Jakarta (WIB)
+function getJakartaTimeString(): string {
+  const now = new Date();
+  const jakartaOffset = 7 * 60;
+  const localOffset = now.getTimezoneOffset();
+  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
+  
+  const hours = String(jakartaTime.getHours()).padStart(2, '0');
+  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
+  const day = String(jakartaTime.getDate()).padStart(2, '0');
+  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+  const year = jakartaTime.getFullYear();
+  
+  return `${hours}:${minutes} - ${day}/${month}/${year}`;
+}
+
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
@@ -108,7 +124,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      toast({ title: 'Error', description: 'Judul pengajuan harus diisi', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Uraian pengajuan harus diisi', variant: 'destructive' });
       return;
     }
     if (!submitterName.trim()) {
@@ -155,19 +171,29 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const newId = generateSubmissionId(existingIds);
 
         const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
-        const documentsString = checkedDocs.join('|');
+        const kelengkapan = checkedDocs.join('|');
+        
+        const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
+        const waktuPengajuan = getJakartaTimeString();
 
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
             id: newId,
-            title: title.trim(),
-            submitterName: submitterName.trim(),
-            jenisBelanja: `${jenisBelanja} - ${subJenisBelanja}`,
-            documents: documentsString,
-            notes: notes.trim() || undefined,
-            status: 'pending_ppk',
+            uraianPengajuan: title.trim(),
+            namaPengaju: submitterName.trim(),
+            jenisPengajuan: jenisPengajuan,
+            kelengkapan: kelengkapan,
+            catatan: notes.trim() || '',
+            statusPengajuan: 'pending_ppk',
+            waktuPengajuan: waktuPengajuan,
+            statusPpk: '',
+            waktuPpk: '',
+            statusBendahara: '',
+            waktuBendahara: '',
+            statusKppn: ''
           },
         });
+        
         if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
@@ -241,9 +267,9 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Judul Pengajuan *</Label>
+            <Label>Uraian Pengajuan *</Label>
             <Input
-              placeholder="Masukkan judul pengajuan..."
+              placeholder="Masukkan uraian pengajuan..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 rounded-xl"
@@ -325,28 +351,40 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
               {documents.length > 0 ? (
                 <div className="max-h-56 overflow-y-auto rounded-lg border p-2">
-                  <div className="grid grid-cols-1 gap-2">
+                  {/* PERUBAHAN DI SINI: Grid 2 kolom untuk checkbox */}
+                  <div className="grid grid-cols-2 gap-2">
                     {documents.map((doc, index) => (
                       <div
                         key={`${doc.type}-${index}`}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex items-start gap-2 p-2 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors min-h-[60px]"
                         onClick={() => !editData && handleDocumentToggle(doc.type)}
                       >
                         <Checkbox
                           checked={doc.isChecked}
                           onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
-                          className="rounded-md"
+                          className="rounded-md mt-1 flex-shrink-0"
                           disabled={!!editData}
                         />
-                        <div className="flex-1">
-                          <span className="text-sm">
-                            {doc.name}
-                            {doc.isRequired && <span className="text-destructive ml-1">*</span>}
-                          </span>
-                          {!doc.isRequired && (
-                            <span className="text-muted-foreground text-xs ml-2">
-                              (Opsional{doc.note ? ` - ${doc.note}` : ''})
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start">
+                            <span className="text-sm font-medium break-words">
+                              {doc.name}
+                              {doc.isRequired && <span className="text-destructive ml-1">*</span>}
                             </span>
+                          </div>
+                          {!doc.isRequired && doc.note && (
+                            <div className="mt-1">
+                              <span className="text-xs text-muted-foreground break-words">
+                                {doc.note}
+                              </span>
+                            </div>
+                          )}
+                          {!doc.isRequired && !doc.note && (
+                            <div className="mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                (Opsional)
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
