@@ -217,7 +217,7 @@ export default function UsulanPencairan() {
         <CardHeader className="px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {/* Title dengan lebar 12% lebih besar */}
-            <div className="w-[calc(100%+12%)] min-w-0">
+            <div className="w-[112px] sm:w-[136px] md:w-[150px]">
               <CardTitle className="text-lg sm:text-xl truncate">Daftar Pengajuan</CardTitle>
             </div>
             
