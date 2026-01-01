@@ -40,6 +40,25 @@ interface SubmissionFormProps {
   editData?: Submission | null;
 }
 
+// Fungsi untuk mendapatkan waktu Jakarta (WIB) dalam format spreadsheet
+function getJakartaTimeString(): string {
+  const now = new Date();
+  
+  // Jakarta adalah UTC+7 (WIB)
+  const jakartaOffset = 7 * 60; // 7 jam dalam menit
+  const localOffset = now.getTimezoneOffset(); // Offset waktu lokal browser dalam menit
+  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
+  
+  // Format: "HH:mm - DD/MM/YYYY" (sesuai dengan format di spreadsheet)
+  const hours = String(jakartaTime.getHours()).padStart(2, '0');
+  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
+  const day = String(jakartaTime.getDate()).padStart(2, '0');
+  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+  const year = jakartaTime.getFullYear();
+  
+  return `${hours}:${minutes} - ${day}/${month}/${year}`;
+}
+
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
@@ -108,7 +127,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      toast({ title: 'Error', description: 'Judul pengajuan harus diisi', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Uraian pengajuan harus diisi', variant: 'destructive' });
       return;
     }
     if (!submitterName.trim()) {
@@ -154,20 +173,35 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
 
+        // Mengambil nama dokumen yang sudah dicentang
         const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
-        const documentsString = checkedDocs.join('|');
+        const kelengkapan = checkedDocs.join('|');
+        
+        // Format jenis pengajuan untuk spreadsheet
+        const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
+        
+        // Waktu Jakarta (WIB) untuk spreadsheet
+        const waktuPengajuan = getJakartaTimeString();
 
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
-            id: newId,
-            title: title.trim(),
-            submitterName: submitterName.trim(),
-            jenisBelanja: `${jenisBelanja} - ${subJenisBelanja}`,
-            documents: documentsString,
-            notes: notes.trim() || undefined,
-            status: 'pending_ppk',
+            // 13 kolom sesuai dengan header spreadsheet
+            id: newId,                           // Kolom A: ID
+            uraianPengajuan: title.trim(),       // Kolom B: Uraian Pengajuan
+            namaPengaju: submitterName.trim(),   // Kolom C: Nama Pengaju  
+            jenisPengajuan: jenisPengajuan,      // Kolom D: Jenis Pengajuan
+            kelengkapan: kelengkapan,            // Kolom E: Kelengkapan
+            catatan: notes.trim() || '',         // Kolom F: Catatan
+            statusPengajuan: 'pending_ppk',      // Kolom G: Status Pengajuan
+            waktuPengajuan: waktuPengajuan,      // Kolom H: Waktu Pengajuan (WIB)
+            statusPpk: '',                       // Kolom I: Status PPK
+            waktuPpk: '',                        // Kolom J: Waktu PPK
+            statusBendahara: '',                 // Kolom K: Status Bendahara
+            waktuBendahara: '',                  // Kolom L: Waktu Bendahara
+            statusKppn: ''                       // Kolom M: Status KPPN
           },
         });
+        
         if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
         if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
       }
@@ -241,9 +275,9 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Judul Pengajuan *</Label>
+            <Label>Uraian Pengajuan *</Label>
             <Input
-              placeholder="Masukkan judul pengajuan..."
+              placeholder="Masukkan uraian pengajuan..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 rounded-xl"
