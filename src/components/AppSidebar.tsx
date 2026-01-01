@@ -49,7 +49,6 @@ const mainMenuItems = [
 ];
 
 const additionalMenuItems = [
-  { title: "Download Raw Data", url: "/download-raw-data", icon: DownloadIcon },
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 

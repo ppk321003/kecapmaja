@@ -8,7 +8,24 @@ export type SubmissionStatus =
   | 'incomplete_bendahara'
   | 'sent_kppn';
 
-export type UserRole = 'user' | 'sm' | 'ppk' | 'bendahara' | 'admin';
+export type UserRole = 
+  | 'Fungsi Sosial'
+  | 'Fungsi Neraca'
+  | 'Fungsi Produksi'
+  | 'Fungsi Distribusi'
+  | 'Fungsi IPDS'
+  | 'Pejabat Pembuat Komitmen'
+  | 'Bendahara'
+  | 'admin';
+
+// Roles yang bisa mengajukan
+export const SUBMITTER_ROLES: UserRole[] = [
+  'Fungsi Sosial',
+  'Fungsi Neraca',
+  'Fungsi Produksi',
+  'Fungsi Distribusi',
+  'Fungsi IPDS',
+];
 
 export type DocumentType = 
   | 'spp'
@@ -181,18 +198,18 @@ export function generateSubmissionId(existingIds: string[]): string {
 }
 
 export function canCreateSubmission(role: UserRole): boolean {
-  return ['user', 'sm', 'admin'].includes(role);
+  return SUBMITTER_ROLES.includes(role) || role === 'admin';
 }
 
 export function canTakeAction(role: UserRole, status: SubmissionStatus): boolean {
   if (role === 'admin') return true;
-  if (role === 'ppk' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
-  if (role === 'bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
+  if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
+  if (role === 'Bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
   return false;
 }
 
 export function canReturnFromKppn(role: UserRole, status: SubmissionStatus): boolean {
-  return (role === 'ppk' || role === 'admin') && status === 'sent_kppn';
+  return (role === 'Pejabat Pembuat Komitmen' || role === 'admin') && status === 'sent_kppn';
 }
 
 export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean {
@@ -201,7 +218,7 @@ export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean
 
 export function canEdit(role: UserRole, status: SubmissionStatus): boolean {
   if (role === 'admin') return true;
-  if ((role === 'user' || role === 'sm') && status === 'incomplete_sm') return true;
+  if (SUBMITTER_ROLES.includes(role) && status === 'incomplete_sm') return true;
   return false;
 }
 
