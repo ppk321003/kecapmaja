@@ -230,7 +230,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'notulen', name: 'Notulen/Laporan dan Dokumentasi Rapat', isRequired: true, isChecked: false },
       { type: 'super_fasilitas', name: 'Super Fasilitas Kantor Tidak Memadai', isRequired: true, isChecked: false },
       { type: 'kontrak', name: 'Komitmen/Kontrak *)', isRequired: true, isChecked: false },
-      { type: 'bukti_prestasi', name: 'Bukti Prestasi', isRequired: true, isChecked: false },
+      { type: 'bukti_prestasi', name: 'Bukti Prestasi (BAPP/BAST/BAP)', isRequired: true, isChecked: false },
       { type: 'room_list', name: 'Room List', isRequired: true, isChecked: false },
       { type: 'invoice_kuitansi', name: 'Invoice/Kuitansi', isRequired: true, isChecked: false },
       { type: 'npwp_rekening', name: 'Fc. NPWP dan Rek Koran', isRequired: true, isChecked: false },
