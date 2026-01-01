@@ -4,22 +4,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 import simajaLogo from '@/assets/simaja-logo.png';
+
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const {
-    login
-  } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const handleSubmit = (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
+    
+    const success = await login(username, password);
+    
+    if (success) {
       toast({
         title: "Login berhasil",
         description: "Selamat datang di aplikasi KECAP MAJA BPS3210"
@@ -33,7 +35,9 @@ export default function Login() {
       });
     }
   };
-  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-accent p-4">
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-accent p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 py-0 mx-0 px-0 my-0">
           <div className="flex justify-center my-0 py-[30px] mx-[36px]">
@@ -48,17 +52,39 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} required />
+              <Input 
+                id="username" 
+                type="text" 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
+                required 
+                disabled={isLoading}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <Input 
+                id="password" 
+                type="password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                required 
+                disabled={isLoading}
+              />
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Memverifikasi...
+                </>
+              ) : (
+                'Login'
+              )}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 }

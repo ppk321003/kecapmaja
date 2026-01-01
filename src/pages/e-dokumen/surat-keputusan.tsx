@@ -1092,7 +1092,7 @@ const SuratKeputusan = () => {
 
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
-      const kegiatanFormatted = formatKegiatanForSpreadsheet(data.kegiatanList);
+      const kegiatanFormatted = formatKegiatanForSpreadsheet(data.kegiatanList as KegiatanItem[]);
 
       const rowData = [
         sequenceNumber,
@@ -1478,7 +1478,7 @@ const SuratKeputusan = () => {
                           <KegiatanFormItem
                             key={field.id}
                             index={index}
-                            item={kegiatanList[index] || DEFAULT_KEGIATAN}
+                            item={(kegiatanList[index] as KegiatanItem) || DEFAULT_KEGIATAN}
                             onUpdate={handleUpdateKegiatan}
                             onRemove={handleRemoveKegiatan}
                             masterData={masterData}
