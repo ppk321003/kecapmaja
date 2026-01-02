@@ -131,7 +131,24 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { id, title, submitterName, jenisBelanja, documents, notes, status } = body;
+    // Support both naming conventions from frontend
+    const {
+      id,
+      // New naming from frontend
+      uraianPengajuan,
+      namaPengaju,
+      jenisPengajuan,
+      kelengkapan,
+      catatan,
+      statusPengajuan,
+      // Legacy naming
+      title,
+      submitterName,
+      jenisBelanja,
+      documents,
+      notes,
+      status,
+    } = body;
     
     const accessToken = await getAccessToken();
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
@@ -139,13 +156,13 @@ serve(async (req) => {
 
     // Prepare row data - columns: id, title, submitterName, jenisBelanja, documents, notes, status, waktuPengajuan, waktuPpk, waktuBendahara, statusPpk, statusBendahara, statusKppn, updatedAt
     const rowData = [
-      id,
-      title,
-      submitterName,
-      jenisBelanja,
-      documents || '',
-      notes || '',
-      status || 'pending_ppk',
+      id || '',
+      uraianPengajuan || title || '',
+      namaPengaju || submitterName || '',
+      jenisPengajuan || jenisBelanja || '',
+      kelengkapan || documents || '',
+      catatan || notes || '',
+      statusPengajuan || status || 'pending_ppk',
       waktuPengajuan,
       '', // waktuPpk
       '', // waktuBendahara
