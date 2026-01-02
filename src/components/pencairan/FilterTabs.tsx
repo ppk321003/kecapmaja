@@ -20,7 +20,7 @@ const filters: { value: string; label: string; color: string }[] = [
 
 export function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 justify-center">
       {filters.map((filter) => (
         <Button
           key={filter.value}
