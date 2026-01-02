@@ -56,21 +56,28 @@ export default function UsulanPencairan() {
   useEffect(() => {
     if (sheetSubmissions.length > 0) {
       const converted: Submission[] = sheetSubmissions.map(item => {
-        let submittedDate = new Date();
-        const timeStr = item.waktuPengajuan || item.updatedAt || '';
-        if (timeStr && timeStr.trim()) {
-          const match = timeStr.match(/^(\d{2}):(\d{2}) - (\d{2})\/(\d{2})\/(\d{4})$/);
-          if (match) {
-            const [, hours, minutes, day, month, year] = match;
-            submittedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
-          } else {
-            const parsed = new Date(timeStr);
-            if (!isNaN(parsed.getTime())) submittedDate = parsed;
+        let submittedDate = item.submittedAt instanceof Date ? item.submittedAt : new Date();
+        
+        // Jika submittedAt invalid, coba parse dari waktuPengajuan
+        if (isNaN(submittedDate.getTime())) {
+          const timeStr = typeof item.waktuPengajuan === 'string' ? item.waktuPengajuan : '';
+          if (timeStr) {
+            const match = timeStr.match(/^(\d{2}):(\d{2}) - (\d{2})\/(\d{2})\/(\d{4})$/);
+            if (match) {
+              const [, hours, minutes, day, month, year] = match;
+              submittedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+            }
           }
+          if (isNaN(submittedDate.getTime())) submittedDate = new Date();
         }
         
         // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis"
         const { jenis, subJenis } = parseJenisBelanja(item.jenisBelanja);
+        
+        // Parse documents - item.documents bisa berupa array Document[] atau string
+        const docsInput = Array.isArray(item.documents) 
+          ? item.documents.map(d => d.name).join('|') 
+          : (typeof item.documents === 'string' ? item.documents : '');
         
         return {
           id: item.id || generateSubmissionId([]),
@@ -80,7 +87,7 @@ export default function UsulanPencairan() {
           subJenisBelanja: subJenis,
           submittedAt: submittedDate,
           status: (item.status || 'pending_ppk') as SubmissionStatus,
-          documents: parseDocuments(item.documents, item.jenisBelanja),
+          documents: parseDocuments(docsInput, item.jenisBelanja),
           notes: item.notes || undefined,
           waktuPengajuan: item.waktuPengajuan || '',
           waktuPpk: item.waktuPpk || '',
