@@ -190,8 +190,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
               <TableHead>Judul Pengajuan</TableHead>
               <TableHead>Pengaju</TableHead>
               <TableHead>Jenis Belanja</TableHead>
-              <TableHead>Sub-Jenis Belanja</TableHead>
-              <TableHead>Kelengkapan Dokumen</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Waktu</TableHead>
               <TableHead className="w-[100px]">Aksi</TableHead>
@@ -200,7 +198,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
           <TableBody>
             {paginatedSubmissions.length > 0 ? (
               paginatedSubmissions.map((submission) => {
-                const docProgress = getDocumentProgress(submission);
                 return (
                   <TableRow key={submission.id} className="hover:bg-muted/30">
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -218,30 +215,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                         {submission.jenisBelanja}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {submission.subJenisBelanja || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden min-w-[60px]">
-                          <div 
-                            className={`h-full rounded-full transition-all ${
-                              docProgress.percentage === 100 
-                                ? 'bg-green-500' 
-                                : docProgress.percentage >= 50 
-                                  ? 'bg-yellow-500' 
-                                  : 'bg-red-500'
-                            }`}
-                            style={{ width: `${docProgress.percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {docProgress.checked}/{docProgress.total}
-                        </span>
-                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={submission.status} size="sm" />
@@ -282,7 +255,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={9}>
+                <TableCell colSpan={7}>
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mb-3 opacity-50" />
                     <p className="font-medium">Tidak ada data pengajuan yang sesuai dengan filter</p>
