@@ -10,7 +10,7 @@ interface FilterTabsProps {
 
 const filters: { value: string; label: string; color: string }[] = [
   { value: 'all', label: 'Semua', color: '' },
-  { value: 'draft', label: 'Sedang Dikerjakan SM', color: 'bg-gray-500 hover:bg-gray-600 text-white border-gray-500'},
+  { value: 'draft', label: 'Sedang disiapkan SM', color: 'bg-gray-500 hover:bg-gray-600 text-white border-gray-500'},
   { value: 'pending_ppk', label: 'Menunggu Verifikasi PPK', color: 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' },
   { value: 'incomplete_sm', label: 'Dikembalikan ke SM', color: 'bg-red-500 hover:bg-red-600 text-white border-red-500' },
   { value: 'pending_bendahara', label: 'Menunggu Verifikasi Bendahara', color: 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500' },

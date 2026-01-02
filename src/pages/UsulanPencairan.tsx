@@ -190,7 +190,7 @@ export default function UsulanPencairan() {
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
-                title="Sedang Dikerjakan SM" 
+                title="Sedang disiapkan SM" 
                 value={counts.draft} 
                 icon={FileEdit} 
                 variant="default"
