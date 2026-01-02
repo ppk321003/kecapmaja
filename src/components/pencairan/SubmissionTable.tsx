@@ -205,7 +205,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       {submission.id}
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-sm max-w-[200px] truncate">
+                      <div className="font-medium text-sm max-w-[250px] whitespace-normal break-words">
                         {submission.title}
                       </div>
                     </TableCell>
