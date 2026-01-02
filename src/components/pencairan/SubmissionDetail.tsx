@@ -4,7 +4,8 @@ import {
   UserRole, 
   canTakeAction, 
   canReturnFromKppn,
-  getDocumentsByJenisBelanja
+  getDocumentsByJenisBelanja,
+  Document
 } from '@/types/pencairan';
 import { StatusBadge } from './StatusBadge';
 import { WorkflowProgress } from './WorkflowProgress';
@@ -55,13 +56,39 @@ export function SubmissionDetail({
   onRefresh
 }: SubmissionDetailProps) {
   const [notes, setNotes] = useState('');
-  const [documents, setDocuments] = useState(submission?.documents || []);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (submission) {
-      setDocuments(submission.documents);
+      // Rebuild documents berdasarkan jenisBelanja dan subJenisBelanja
+      const defaultDocs = getDocumentsByJenisBelanja(
+        submission.jenisBelanja, 
+        submission.subJenisBelanja || ''
+      );
+      
+      if (defaultDocs.length > 0 && submission.documents && submission.documents.length > 0) {
+        // Map checked status dari submission.documents ke defaultDocs
+        const checkedTypes = submission.documents
+          .filter(d => d.isChecked)
+          .map(d => d.type);
+        const checkedNames = submission.documents
+          .filter(d => d.isChecked)
+          .map(d => d.name.toLowerCase());
+          
+        const mergedDocs = defaultDocs.map(doc => ({
+          ...doc,
+          isChecked: checkedTypes.includes(doc.type) || 
+                     checkedNames.some(name => doc.name.toLowerCase().includes(name.split(' ')[0]))
+        }));
+        setDocuments(mergedDocs);
+      } else if (defaultDocs.length > 0) {
+        setDocuments(defaultDocs);
+      } else {
+        setDocuments(submission.documents || []);
+      }
+      
       setNotes(submission.notes || '');
     }
   }, [submission]);
@@ -262,6 +289,7 @@ export function SubmissionDetail({
                   <p className="text-xs text-muted-foreground mb-1">Jenis Belanja</p>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                     {submission.jenisBelanja}
+                    {submission.subJenisBelanja && ` - ${submission.subJenisBelanja}`}
                   </span>
                 </div>
               </div>

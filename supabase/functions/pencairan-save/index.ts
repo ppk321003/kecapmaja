@@ -93,10 +93,31 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
+// Fungsi untuk mendapatkan waktu Jakarta (WIB)
 function formatDateTime(): string {
   const now = new Date();
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(now.getHours())}:${pad(now.getMinutes())} - ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour12: false,
+  };
+  
+  const formatter = new Intl.DateTimeFormat('id-ID', options);
+  const parts = formatter.formatToParts(now);
+  
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+  
+  const hours = getPart('hour').padStart(2, '0');
+  const minutes = getPart('minute').padStart(2, '0');
+  const day = getPart('day').padStart(2, '0');
+  const month = getPart('month').padStart(2, '0');
+  const year = getPart('year');
+  
+  return `${hours}:${minutes} - ${day}/${month}/${year}`;
 }
 
 serve(async (req) => {
