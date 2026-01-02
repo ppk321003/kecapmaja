@@ -95,7 +95,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     subJenisBelanja: jenisParts[1] || '',
     status,
     submittedAt: parseCustomDate(raw.waktuPengajuan),
-    updatedAt: raw.updatedAt ? parseCustomDate(raw.updatedAt) : undefined,
+    updatedAt: raw.updatedAt || undefined,
     documents: parseDocuments(raw.documents),
     notes: raw.notes,
     waktuPengajuan: raw.waktuPengajuan,

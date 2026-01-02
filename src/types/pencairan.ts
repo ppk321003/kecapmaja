@@ -44,7 +44,7 @@ export interface Submission {
   jenisBelanja: string;
   subJenisBelanja?: string;
   submittedAt: Date;
-  updatedAt?: Date;
+  updatedAt?: string; // String format dari kolom N sheet
   status: SubmissionStatus;
   documents: Document[];
   notes?: string;
