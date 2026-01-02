@@ -18,6 +18,9 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
   if (!submissionStatus) return 'pending';
   
   switch (submissionStatus) {
+    case 'draft': // ← TAMBAH CASE DRAFT
+      if (stepKey === 'sm') return 'current'; // SM masih mengerjakan
+      return 'pending';
     case 'pending_ppk':
       if (stepKey === 'sm') return 'complete';
       if (stepKey === 'ppk') return 'current';

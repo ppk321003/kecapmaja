@@ -55,7 +55,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
   // Konversi status string ke SubmissionStatus
   const statusMap: Record<string, SubmissionStatus> = {
     'pending_ppk': 'pending_ppk',
-    'draft': 'pending_ppk', // draft dianggap pending_ppk
+    'draft': 'draft',
     'pending_bendahara': 'pending_bendahara',
     'incomplete_sm': 'incomplete_sm',
     'incomplete_ppk': 'incomplete_ppk',

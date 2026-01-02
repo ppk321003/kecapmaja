@@ -61,7 +61,7 @@ export interface Submission {
 }
 
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  draft: 'Draft',
+  draft: 'Sedang Dikerjakan SM',
   pending_ppk: 'Menunggu Verifikasi PPK',
   pending_bendahara: 'Menunggu Verifikasi Bendahara',
   incomplete_sm: 'Dikembalikan ke SM',
@@ -305,7 +305,8 @@ export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean
 
 export function canEdit(role: UserRole, status: SubmissionStatus): boolean {
   if (role === 'admin') return true;
-  if (SUBMITTER_ROLES.includes(role) && (status === 'incomplete_sm' || status === 'draft')) return true;
+  if (SUBMITTER_ROLES.includes(role) && status === 'incomplete_sm') return true;
+  if (SUBMITTER_ROLES.includes(role) && status === 'draft') return true; // ← TAMBAH INI
   return false;
 }
 
