@@ -9,7 +9,7 @@ import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis" di sheet
@@ -124,6 +124,7 @@ export default function UsulanPencairan() {
   const counts = useMemo(() => {
     const result: Record<string, number> = { 
       all: submissions.length, 
+      draft: 0,
       pending_ppk: 0, 
       pending_bendahara: 0, 
       incomplete_sm: 0, 
@@ -174,7 +175,7 @@ export default function UsulanPencairan() {
       {/* STATISTIC CARDS - SELEBAR TABEL */}
       <div className="w-full">
         <div className="grid grid-cols-12 gap-4">
-          {/* Card 1 */}
+          {/* Card 1 - Total */}
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
@@ -185,8 +186,20 @@ export default function UsulanPencairan() {
             </div>
           </div>
           
-          {/* Card 2 */}
-          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+          {/* Card 2 - Draft */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
+            <div className="w-full h-full">
+              <StatCard 
+                title="Draft" 
+                value={counts.draft} 
+                icon={FileEdit} 
+                variant="default"
+              />
+            </div>
+          </div>
+          
+          {/* Card 3 - Menunggu PPK */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Menunggu PPK" 
@@ -197,8 +210,8 @@ export default function UsulanPencairan() {
             </div>
           </div>
           
-          {/* Card 3 */}
-          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+          {/* Card 4 - Menunggu Bendahara */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Menunggu Bendahara" 
@@ -209,8 +222,8 @@ export default function UsulanPencairan() {
             </div>
           </div>
           
-          {/* Card 4 */}
-          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+          {/* Card 5 - Dikembalikan */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Dikembalikan" 
@@ -221,8 +234,8 @@ export default function UsulanPencairan() {
             </div>
           </div>
           
-          {/* Card 5 */}
-          <div className="col-span-12 sm:col-span-6 md:col-span-6 lg:col-span-2">
+          {/* Card 6 - Dikirim KPPN */}
+          <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Dikirim KPPN" 
