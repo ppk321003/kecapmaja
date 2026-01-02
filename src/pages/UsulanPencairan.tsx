@@ -12,13 +12,30 @@ import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSu
 import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-function parseDocuments(docString: string, jenisBelanja: string) {
-  if (!docString) return getDocumentsByJenisBelanja(jenisBelanja);
-  const docNames = docString.split('|').map(d => d.trim()).filter(Boolean);
-  const defaultDocs = getDocumentsByJenisBelanja(jenisBelanja);
+// Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis" di sheet
+function parseJenisBelanja(jenisBelanjaStr: string): { jenis: string; subJenis: string } {
+  if (!jenisBelanjaStr) return { jenis: '', subJenis: '' };
+  const parts = jenisBelanjaStr.split(' - ');
+  if (parts.length >= 2) {
+    return { jenis: parts[0].trim(), subJenis: parts.slice(1).join(' - ').trim() };
+  }
+  return { jenis: jenisBelanjaStr.trim(), subJenis: '' };
+}
+
+function parseDocuments(docString: string, jenisBelanjaStr: string) {
+  const { jenis, subJenis } = parseJenisBelanja(jenisBelanjaStr);
+  const defaultDocs = getDocumentsByJenisBelanja(jenis, subJenis);
+  
+  if (!docString || defaultDocs.length === 0) return defaultDocs;
+  
+  const docNames = docString.split('|').map(d => d.trim().toLowerCase()).filter(Boolean);
+  
   return defaultDocs.map(doc => ({
     ...doc,
-    isChecked: docNames.some(name => name.toLowerCase().includes(doc.name.toLowerCase().split(' ')[0].toLowerCase()))
+    isChecked: docNames.some(name => 
+      doc.name.toLowerCase().includes(name) || 
+      name.includes(doc.name.toLowerCase().split(' ')[0].toLowerCase())
+    )
   }));
 }
 
@@ -51,11 +68,16 @@ export default function UsulanPencairan() {
             if (!isNaN(parsed.getTime())) submittedDate = parsed;
           }
         }
+        
+        // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis"
+        const { jenis, subJenis } = parseJenisBelanja(item.jenisBelanja);
+        
         return {
           id: item.id || generateSubmissionId([]),
           title: item.title || 'Pengajuan Baru',
           submitterName: item.submitterName || '',
-          jenisBelanja: item.jenisBelanja || '',
+          jenisBelanja: jenis,
+          subJenisBelanja: subJenis,
           submittedAt: submittedDate,
           status: (item.status || 'pending_ppk') as SubmissionStatus,
           documents: parseDocuments(item.documents, item.jenisBelanja),

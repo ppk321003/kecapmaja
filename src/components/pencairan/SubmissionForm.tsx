@@ -40,18 +40,30 @@ interface SubmissionFormProps {
   editData?: Submission | null;
 }
 
-// Fungsi untuk mendapatkan waktu Jakarta (WIB)
+// Fungsi untuk mendapatkan waktu Jakarta (WIB) dengan format Indonesia
 function getJakartaTimeString(): string {
+  // Gunakan Intl.DateTimeFormat untuk mendapatkan waktu Jakarta yang akurat
   const now = new Date();
-  const jakartaOffset = 7 * 60;
-  const localOffset = now.getTimezoneOffset();
-  const jakartaTime = new Date(now.getTime() + (localOffset + jakartaOffset) * 60 * 1000);
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour12: false,
+  };
   
-  const hours = String(jakartaTime.getHours()).padStart(2, '0');
-  const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
-  const day = String(jakartaTime.getDate()).padStart(2, '0');
-  const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
-  const year = jakartaTime.getFullYear();
+  const formatter = new Intl.DateTimeFormat('id-ID', options);
+  const parts = formatter.formatToParts(now);
+  
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+  
+  const hours = getPart('hour').padStart(2, '0');
+  const minutes = getPart('minute').padStart(2, '0');
+  const day = getPart('day').padStart(2, '0');
+  const month = getPart('month').padStart(2, '0');
+  const year = getPart('year');
   
   return `${hours}:${minutes} - ${day}/${month}/${year}`;
 }
@@ -84,33 +96,43 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     const newSubTypes = SUB_JENIS_BELANJA[value] || [];
     const firstSubType = newSubTypes[0] || '';
     setSubJenisBelanja(firstSubType);
-    if (!editData) {
-      updateDocuments(value, firstSubType);
-    }
+    updateDocuments(value, firstSubType);
   };
 
   const handleSubJenisChange = (value: string) => {
     setSubJenisBelanja(value);
-    if (!editData) {
-      updateDocuments(jenisBelanja, value);
-    }
+    updateDocuments(jenisBelanja, value);
   };
 
   useEffect(() => {
-    if (editData) {
-      setTitle(editData.title);
-      setSubmitterName(editData.submitterName);
-      setJenisBelanja(editData.jenisBelanja);
-      setSubJenisBelanja(editData.subJenisBelanja || '');
-      setNotes(editData.notes || '');
-      setDocuments(editData.documents);
-    } else {
-      setTitle('');
-      setSubmitterName('');
-      setJenisBelanja('');
-      setSubJenisBelanja('');
-      setNotes('');
-      setDocuments([]);
+    if (open) {
+      if (editData) {
+        setTitle(editData.title);
+        setSubmitterName(editData.submitterName);
+        setJenisBelanja(editData.jenisBelanja);
+        setSubJenisBelanja(editData.subJenisBelanja || '');
+        setNotes(editData.notes || '');
+        // Untuk edit, rebuild documents berdasarkan jenis dan subJenis, lalu set isChecked
+        const defaultDocs = getDocumentsByJenisBelanja(editData.jenisBelanja, editData.subJenisBelanja || '');
+        if (editData.documents && editData.documents.length > 0) {
+          // Cocokkan dengan dokumen yang sudah dichecklist
+          const checkedTypes = editData.documents.filter(d => d.isChecked).map(d => d.type);
+          const mergedDocs = defaultDocs.map(doc => ({
+            ...doc,
+            isChecked: checkedTypes.includes(doc.type) || editData.documents.some(ed => ed.name === doc.name && ed.isChecked)
+          }));
+          setDocuments(mergedDocs);
+        } else {
+          setDocuments(defaultDocs);
+        }
+      } else {
+        setTitle('');
+        setSubmitterName('');
+        setJenisBelanja('');
+        setSubJenisBelanja('');
+        setNotes('');
+        setDocuments([]);
+      }
     }
   }, [editData, open]);
 
@@ -154,27 +176,33 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
     setIsSubmitting(true);
     try {
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+      const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
+      const waktuPengajuan = getJakartaTimeString();
+
       if (editData) {
+        // Update existing submission - update semua field yang bisa diedit
         const { data, error } = await supabase.functions.invoke('pencairan-update', {
           body: {
             id: editData.id,
             status: editData.status,
             notes: notes.trim() || undefined,
-            actor: 'ppk',
-            action: 'approve',
+            actor: 'sm',
+            action: 'edit',
+            // Data edit
+            uraianPengajuan: title.trim(),
+            namaPengaju: submitterName.trim(),
+            jenisPengajuan: jenisPengajuan,
+            kelengkapan: kelengkapan,
           },
         });
-        if (error) throw new Error(error.message || 'Gagal memperbarui catatan');
+        if (error) throw new Error(error.message || 'Gagal memperbarui data');
         if (!data?.success) throw new Error(data?.error || 'Gagal memperbarui data');
       } else {
+        // Create new submission
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
-
-        const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
-        const kelengkapan = checkedDocs.join('|');
-        
-        const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
-        const waktuPengajuan = getJakartaTimeString();
 
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
@@ -273,12 +301,11 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 rounded-xl"
-              disabled={!!editData}
             />
           </div>
           <div className="space-y-2">
             <Label>Nama Pengaju *</Label>
-            <Select value={submitterName} onValueChange={setSubmitterName} disabled={!!editData}>
+            <Select value={submitterName} onValueChange={setSubmitterName}>
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder={isLoadingOrganik ? 'Memuat...' : 'Pilih nama pengaju'} />
               </SelectTrigger>
@@ -298,7 +325,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
           </div>
           <div className="space-y-2">
             <Label>Jenis Belanja *</Label>
-            <Select value={jenisBelanja} onValueChange={handleJenisBelanjaChange} disabled={!!editData}>
+            <Select value={jenisBelanja} onValueChange={handleJenisBelanjaChange}>
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder="Pilih jenis belanja" />
               </SelectTrigger>
@@ -321,7 +348,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
                       key={subType}
                       value={subType}
                       className="flex-1 min-w-fit text-xs sm:text-sm"
-                      disabled={!!editData}
                     >
                       {subType}
                     </TabsTrigger>
@@ -357,13 +383,12 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
                       <div
                         key={`${doc.type}-${index}`}
                         className="flex items-start gap-2 p-2 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors min-h-[60px]"
-                        onClick={() => !editData && handleDocumentToggle(doc.type)}
+                        onClick={() => handleDocumentToggle(doc.type)}
                       >
                         <Checkbox
                           checked={doc.isChecked}
-                          onCheckedChange={() => !editData && handleDocumentToggle(doc.type)}
+                          onCheckedChange={() => handleDocumentToggle(doc.type)}
                           className="rounded-md mt-1 flex-shrink-0"
-                          disabled={!!editData}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start">

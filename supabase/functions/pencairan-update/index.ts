@@ -93,10 +93,31 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
+// Fungsi untuk mendapatkan waktu Jakarta (WIB)
 function formatDateTime(): string {
   const now = new Date();
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(now.getHours())}:${pad(now.getMinutes())} - ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour12: false,
+  };
+  
+  const formatter = new Intl.DateTimeFormat('id-ID', options);
+  const parts = formatter.formatToParts(now);
+  
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+  
+  const hours = getPart('hour').padStart(2, '0');
+  const minutes = getPart('minute').padStart(2, '0');
+  const day = getPart('day').padStart(2, '0');
+  const month = getPart('month').padStart(2, '0');
+  const year = getPart('year');
+  
+  return `${hours}:${minutes} - ${day}/${month}/${year}`;
 }
 
 serve(async (req) => {
@@ -110,7 +131,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { id, status, notes, actor, action } = body;
+    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan } = body;
     
     if (!id) {
       throw new Error('ID is required');
@@ -142,14 +163,28 @@ serve(async (req) => {
     const currentRow = rows[rowIndex - 1];
     const updatedAt = formatDateTime();
     
-    // Update the row based on actor and action
+    // Default values from current row
+    let newTitle = currentRow[1] || '';
+    let newSubmitterName = currentRow[2] || '';
+    let newJenisBelanja = currentRow[3] || '';
+    let newDocuments = currentRow[4] || '';
+    let newNotes = notes !== undefined ? notes : (currentRow[5] || '');
+    let newStatus = status || currentRow[6] || '';
     let waktuPpk = currentRow[8] || '';
     let waktuBendahara = currentRow[9] || '';
     let statusPpk = currentRow[10] || '';
     let statusBendahara = currentRow[11] || '';
     let statusKppn = currentRow[12] || '';
-    let newNotes = notes || currentRow[5] || '';
 
+    // Handle edit action from SM
+    if (actor === 'sm' && action === 'edit') {
+      if (uraianPengajuan) newTitle = uraianPengajuan;
+      if (namaPengaju) newSubmitterName = namaPengaju;
+      if (jenisPengajuan) newJenisBelanja = jenisPengajuan;
+      if (kelengkapan !== undefined) newDocuments = kelengkapan;
+    }
+    
+    // Handle approval/rejection actions
     if (actor === 'ppk') {
       waktuPpk = updatedAt;
       statusPpk = action === 'approve' ? 'approved' : 'rejected';
@@ -162,12 +197,12 @@ serve(async (req) => {
 
     const updatedRow = [
       currentRow[0], // id
-      currentRow[1], // title
-      currentRow[2], // submitterName
-      currentRow[3], // jenisBelanja
-      currentRow[4], // documents
+      newTitle,      // title
+      newSubmitterName, // submitterName
+      newJenisBelanja,  // jenisBelanja
+      newDocuments,  // documents
       newNotes,      // notes
-      status,        // status
+      newStatus,     // status
       currentRow[7], // waktuPengajuan
       waktuPpk,
       waktuBendahara,
