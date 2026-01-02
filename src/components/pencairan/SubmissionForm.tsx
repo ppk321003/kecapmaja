@@ -182,7 +182,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             status: 'draft', // Set status to draft
             notes: notes.trim() || undefined,
             actor: 'sm',
-            action: 'save_draft',
+            action: 'edit',
             uraianPengajuan: title.trim(),
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
@@ -276,7 +276,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             status: 'pending_ppk', // Submit to PPK
             notes: notes.trim() || undefined,
             actor: 'sm',
-            action: 'submit',
+            action: 'edit',
             uraianPengajuan: title.trim(),
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
