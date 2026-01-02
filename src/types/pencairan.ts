@@ -48,14 +48,17 @@ export interface Submission {
   jenisBelanja: string;
   subJenisBelanja?: string;
   submittedAt: Date;
-  updatedAt?: string; // String format dari kolom N sheet
+  updatedAt?: Date; // ✅ UBAH dari string ke Date
+  updatedAtString?: string; // ✅ TAMBAH ini - string asli dari kolom P
   status: SubmissionStatus;
   documents: Document[];
   notes?: string;
   waktuPengajuan?: string;
   waktuPpk?: string;
+  waktuPPSPM?: string; // ✅ TAMBAH ini untuk konsistensi dengan pencairan-fetch.ts
   waktuBendahara?: string;
   statusPpk?: string;
+  statusPPSPM?: string; // ✅ TAMBAH ini untuk konsistensi dengan pencairan-fetch.ts
   statusBendahara?: string;
   statusKppn?: string;
   ppkCheckedAt?: Date;
