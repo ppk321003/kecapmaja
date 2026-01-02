@@ -154,28 +154,32 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
     const waktuPengajuan = formatDateTime();
 
-    // Prepare row data - columns: id, title, submitterName, jenisBelanja, documents, notes, status, waktuPengajuan, waktuPpk, waktuBendahara, statusPpk, statusBendahara, statusKppn, updatedAt
+    // PERBAIKAN: Sesuaikan dengan 16 kolom (A:P) seperti di skrip 1
     const rowData = [
-      id || '',
-      uraianPengajuan || title || '',
-      namaPengaju || submitterName || '',
-      jenisPengajuan || jenisBelanja || '',
-      kelengkapan || documents || '',
-      catatan || notes || '',
-      statusPengajuan || status || 'pending_ppk',
-      waktuPengajuan,
-      '', // waktuPpk
-      '', // waktuBendahara
-      '', // statusPpk
-      '', // statusBendahara
-      '', // statusKppn
-      waktuPengajuan, // updatedAt
+      id || '',                                        // A: ID
+      uraianPengajuan || title || '',                 // B: Uraian Pengajuan
+      namaPengaju || submitterName || '',             // C: Nama Pengaju
+      jenisPengajuan || jenisBelanja || '',           // D: Jenis Pengajuan
+      kelengkapan || documents || '',                 // E: Kelengkapan
+      catatan || notes || '',                         // F: Catatan
+      statusPengajuan || status || 'pending_ppk',    // G: Status Pengajuan
+      waktuPengajuan,                                 // H: Waktu Pengajuan dari SM
+      '',                                             // I: Waktu PPK
+      '',                                             // J: Waktu PPSPM
+      '',                                             // K: Waktu Bendahara
+      '',                                             // L: Status PPK
+      '',                                             // M: Status PPSPM
+      '',                                             // N: Status Bendahara
+      '',                                             // O: Status KPPN
+      waktuPengajuan,                                 // P: update terakhir
     ];
 
-    console.log('Appending row:', rowData);
+    console.log('Appending row with 16 columns:', rowData);
+    console.log('Row length:', rowData.length);
 
+    // PERBAIKAN: Ganti menjadi A:P untuk 16 kolom
     const response = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A:N:append?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A:P:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {
