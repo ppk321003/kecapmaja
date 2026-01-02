@@ -69,12 +69,28 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [selectedYear, setSelectedYear] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // FIXED: Safe sorting function
   const sortedSubmissions = useMemo(() => {
     return [...submissions].sort((a, b) => {
-      // updatedAt sudah Date object dari pencairan-fetch.ts
-      const timeA = a.updatedAt?.getTime() || a.submittedAt.getTime();
-      const timeB = b.updatedAt?.getTime() || b.submittedAt.getTime();
-      return timeB - timeA;
+      // Helper function untuk mendapatkan timestamp dengan aman
+      const getSafeTimestamp = (sub: Submission): number => {
+        // Cek apakah updatedAt adalah Date object yang valid
+        if (sub.updatedAt && sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime())) {
+          return sub.updatedAt.getTime();
+        }
+        
+        // Fallback ke submittedAt
+        if (sub.submittedAt && sub.submittedAt instanceof Date && !isNaN(sub.submittedAt.getTime())) {
+          return sub.submittedAt.getTime();
+        }
+        
+        // Last resort - current time
+        return Date.now();
+      };
+      
+      const timeA = getSafeTimestamp(a);
+      const timeB = getSafeTimestamp(b);
+      return timeB - timeA; // Descending (terbaru dulu)
     });
   }, [submissions]);
 
@@ -128,8 +144,8 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
       return submission.waktuPengajuan;
     }
     
-    // Priority 3: Fallback - format from Date object
-    if (submission.updatedAt) {
+    // Priority 3: Fallback - format from Date object (updatedAt)
+    if (submission.updatedAt && submission.updatedAt instanceof Date && !isNaN(submission.updatedAt.getTime())) {
       const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
       const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
       const day = submission.updatedAt.getDate().toString().padStart(2, '0');
@@ -138,13 +154,18 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
       return `${hours}:${minutes} - ${day}/${month}/${year}`;
     }
     
+    // Priority 4: Fallback - format from submittedAt
+    if (submission.submittedAt && submission.submittedAt instanceof Date && !isNaN(submission.submittedAt.getTime())) {
+      const hours = submission.submittedAt.getHours().toString().padStart(2, '0');
+      const minutes = submission.submittedAt.getMinutes().toString().padStart(2, '0');
+      const day = submission.submittedAt.getDate().toString().padStart(2, '0');
+      const month = (submission.submittedAt.getMonth() + 1).toString().padStart(2, '0');
+      const year = submission.submittedAt.getFullYear();
+      return `${hours}:${minutes} - ${day}/${month}/${year}`;
+    }
+    
     // Last fallback
-    const hours = submission.submittedAt.getHours().toString().padStart(2, '0');
-    const minutes = submission.submittedAt.getMinutes().toString().padStart(2, '0');
-    const day = submission.submittedAt.getDate().toString().padStart(2, '0');
-    const month = (submission.submittedAt.getMonth() + 1).toString().padStart(2, '0');
-    const year = submission.submittedAt.getFullYear();
-    return `${hours}:${minutes} - ${day}/${month}/${year}`;
+    return 'No timestamp';
   };
 
   return (
