@@ -94,7 +94,8 @@ export default function UsulanPencairan() {
           waktuBendahara: item.waktuBendahara || '',
           statusPpk: item.statusPpk || '',
           statusBendahara: item.statusBendahara || '',
-          statusKppn: item.statusKppn || ''
+          statusKppn: item.statusKppn || '',
+          updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : ''
         };
       });
       converted.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());

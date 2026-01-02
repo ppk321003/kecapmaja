@@ -221,10 +221,8 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       <StatusBadge status={submission.status} size="sm" />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {submission.updatedAt 
-                        ? format(submission.updatedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })
-                        : submission.waktuPengajuan || 
-                          format(submission.submittedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })
+                      {submission.updatedAt || submission.waktuPengajuan || 
+                        format(submission.submittedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })
                       }
                     </TableCell>
                     <TableCell>
