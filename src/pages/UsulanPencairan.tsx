@@ -126,9 +126,11 @@ export default function UsulanPencairan() {
       all: submissions.length, 
       draft: 0,
       pending_ppk: 0, 
+      pending_ppspm: 0,
       pending_bendahara: 0, 
       incomplete_sm: 0, 
-      incomplete_ppk: 0, 
+      incomplete_ppk: 0,
+      incomplete_ppspm: 0, 
       incomplete_bendahara: 0, 
       sent_kppn: 0 
     };
@@ -209,18 +211,20 @@ export default function UsulanPencairan() {
               />
             </div>
           </div>
-           {/* Card 4 - Menunggu PPSPM */}
+          
+          {/* Card baru - Pemeriksaan PPSPM */}
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Pemeriksaan PPSPM" 
                 value={counts.pending_ppspm} 
                 icon={Clock} 
-                variant="warning"
+                variant="secondary"
               />
             </div>
-          </div>         
-          {/* Card 5 - Menunggu Bendahara */}
+          </div>
+          
+          {/* Card 4 - Menunggu Bendahara */}
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
@@ -232,12 +236,12 @@ export default function UsulanPencairan() {
             </div>
           </div>
           
-          {/* Card 6 - Dikembalikan */}
+          {/* Card 5 - Dikembalikan */}
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
                 title="Dikembalikan/ditolak" 
-                value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara+counts.incomplete_ppspm} 
+                value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara} 
                 icon={XCircle} 
                 variant="danger"
               />
