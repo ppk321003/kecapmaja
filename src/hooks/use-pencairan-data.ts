@@ -19,8 +19,10 @@ export interface PencairanRawData {
   status: string;
   waktuPengajuan: string;
   waktuPpk: string;
+  waktuPPSPM: string;
   waktuBendahara: string;
   statusPpk: string;
+  statusPPSPM: string;
   statusBendahara: string;
   statusKppn: string;
   updatedAt: string;
@@ -47,6 +49,28 @@ function parseDocuments(documentsStr: string): Document[] {
   }));
 }
 
+// Fungsi untuk parse tanggal dengan format "HH:mm - dd/MM/yyyy"
+function parseCustomDate(dateStr: string): Date {
+  if (!dateStr || dateStr.trim() === '') return new Date();
+  
+  try {
+    // Format: "HH:mm - dd/MM/yyyy"
+    const [timePart, datePart] = dateStr.split(' - ');
+    if (!timePart || !datePart) return new Date();
+    
+    const [hours, minutes] = timePart.split(':').map(Number);
+    const [day, month, year] = datePart.split('/').map(Number);
+    
+    // Year mungkin 2 digit, convert ke 4 digit
+    const fullYear = year < 100 ? 2000 + year : year;
+    
+    return new Date(fullYear, month - 1, day, hours, minutes);
+  } catch (error) {
+    console.warn('Failed to parse date:', dateStr, error);
+    return new Date();
+  }
+}
+
 // Fungsi untuk mapping raw data ke Submission object
 function mapRawToSubmission(raw: PencairanRawData): Submission {
   // Parse jenisBelanja untuk mendapatkan jenis dan sub-jenis
@@ -54,38 +78,18 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
   
   // Konversi status string ke SubmissionStatus
   const statusMap: Record<string, SubmissionStatus> = {
-    'pending_ppk': 'pending_ppk',
     'draft': 'draft',
+    'pending_ppk': 'pending_ppk',
+    'pending_ppspm': 'pending_ppspm',
     'pending_bendahara': 'pending_bendahara',
     'incomplete_sm': 'incomplete_sm',
     'incomplete_ppk': 'incomplete_ppk',
+    'incomplete_ppspm': 'incomplete_ppspm',
     'incomplete_bendahara': 'incomplete_bendahara',
     'sent_kppn': 'sent_kppn',
   };
   
   const status: SubmissionStatus = statusMap[raw.status] || 'pending_ppk';
-  
-  // Parse tanggal dengan format "HH:mm - dd/MM/yyyy"
-  function parseCustomDate(dateStr: string): Date {
-    if (!dateStr) return new Date();
-    
-    try {
-      // Format: "HH:mm - dd/MM/yyyy"
-      const [timePart, datePart] = dateStr.split(' - ');
-      if (!timePart || !datePart) return new Date();
-      
-      const [hours, minutes] = timePart.split(':').map(Number);
-      const [day, month, year] = datePart.split('/').map(Number);
-      
-      // Year mungkin 2 digit, convert ke 4 digit
-      const fullYear = year < 100 ? 2000 + year : year;
-      
-      return new Date(fullYear, month - 1, day, hours, minutes);
-    } catch (error) {
-      console.warn('Failed to parse date:', dateStr, error);
-      return new Date();
-    }
-  }
 
   return {
     id: raw.id,
@@ -95,13 +99,15 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     subJenisBelanja: jenisParts[1] || '',
     status,
     submittedAt: parseCustomDate(raw.waktuPengajuan),
-    updatedAt: raw.updatedAt || undefined,
+    updatedAt: raw.updatedAt ? parseCustomDate(raw.updatedAt) : undefined, // ✅ PERBAIKAN DI SINI
     documents: parseDocuments(raw.documents),
     notes: raw.notes,
     waktuPengajuan: raw.waktuPengajuan,
     waktuPpk: raw.waktuPpk,
+    waktuPPSPM: raw.waktuPPSPM,
     waktuBendahara: raw.waktuBendahara,
     statusPpk: raw.statusPpk,
+    statusPPSPM: raw.statusPPSPM,
     statusBendahara: raw.statusBendahara,
     statusKppn: raw.statusKppn,
   };
@@ -115,7 +121,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: 'read',
-          range: `${SHEET_NAME}!A:N`,
+          range: `${SHEET_NAME}!A:P`, // 16 kolom
         },
       });
 
@@ -139,11 +145,13 @@ export function usePencairanData() {
           status: row[6] || 'pending_ppk',
           waktuPengajuan: row[7] || '',
           waktuPpk: row[8] || '',
-          waktuBendahara: row[9] || '',
-          statusPpk: row[10] || '',
-          statusBendahara: row[11] || '',
-          statusKppn: row[12] || '',
-          updatedAt: row[13] || '',
+          waktuPPSPM: row[9] || '',
+          waktuBendahara: row[10] || '',
+          statusPpk: row[11] || '',
+          statusPPSPM: row[12] || '',
+          statusBendahara: row[13] || '',
+          statusKppn: row[14] || '',
+          updatedAt: row[15] || '',
         };
         
         return mapRawToSubmission(rawData);
@@ -163,7 +171,7 @@ export function useOrganikPencairan() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: 'read',
-          range: `${MASTER_SHEET_NAME}!A:G`, // Baca sampai kolom G
+          range: `${MASTER_SHEET_NAME}!A:G`,
         },
       });
 
@@ -175,14 +183,13 @@ export function useOrganikPencairan() {
       const rows = data?.values || [];
       if (rows.length <= 1) return [];
 
-      // Skip header row, Column D is Nama (index 3)
       return rows.slice(1)
         .map((row: string[]) => ({
           nip: row[0] || '',
-          nama: row[3] || '', // Column D - Nama
-          jabatan: row[4] || '', // Column E - Jabatan
-          pangkat: row[5] || '', // Column F - Pangkat
-          golongan: row[6] || '', // Column G - Golongan
+          nama: row[3] || '',
+          jabatan: row[4] || '',
+          pangkat: row[5] || '',
+          golongan: row[6] || '',
         }))
         .filter((item: OrganikData) => item.nama.trim() !== '');
     },
