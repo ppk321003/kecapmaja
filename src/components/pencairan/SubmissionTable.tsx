@@ -67,37 +67,82 @@ const generateYears = () => {
 const YEARS = generateYears();
 const ITEMS_PER_PAGE = 10;
 
+// Helper function to get submission timestamp with proper fallback
+const getSubmissionTimestamp = (submission: Submission): string => {
+  // Priority 1: updatedAtString (original string from column P)
+  if (submission.updatedAtString && submission.updatedAtString.trim() !== '') {
+    return submission.updatedAtString;
+  }
+  
+  // Priority 2: updatedAt (Date object from column P)
+  if (submission.updatedAt && submission.updatedAt instanceof Date && !isNaN(submission.updatedAt.getTime())) {
+    const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
+    const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
+    const day = submission.updatedAt.getDate().toString().padStart(2, '0');
+    const month = (submission.updatedAt.getMonth() + 1).toString().padStart(2, '0');
+    const year = submission.updatedAt.getFullYear();
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
+  }
+  
+  // Priority 3: waktuBendahara (column K) - fallback
+  if (submission.waktuBendahara && submission.waktuBendahara.trim() !== '') {
+    return submission.waktuBendahara;
+  }
+  
+  // Priority 4: waktuPpk (column I) - fallback
+  if (submission.waktuPpk && submission.waktuPpk.trim() !== '') {
+    return submission.waktuPpk;
+  }
+  
+  // Priority 5: waktuPengajuan (column H) - fallback
+  if (submission.waktuPengajuan && submission.waktuPengajuan.trim() !== '') {
+    return submission.waktuPengajuan;
+  }
+  
+  return '-';
+};
+
 export function SubmissionTable({ submissions, onView, onEdit, userRole }: SubmissionTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // DEBUG: Log data yang diterima
-  console.log('Total submissions:', submissions.length);
-  if (submissions.length > 0) {
-    console.log('First submission:', {
+  // Debug: Log data untuk memastikan struktur
+  console.log('SubmissionTable Data Debug:', {
+    totalSubmissions: submissions.length,
+    firstSubmission: submissions[0] ? {
       id: submissions[0].id,
+      hasUpdatedAtString: !!submissions[0].updatedAtString,
       updatedAtString: submissions[0].updatedAtString,
-      updatedAt: submissions[0].updatedAt,
-      waktuPengajuan: submissions[0].waktuPengajuan,
-      waktuPpk: submissions[0].waktuPpk,
-      waktuPPSPM: submissions[0].waktuPPSPM,
-      waktuBendahara: submissions[0].waktuBendahara,
-      status: submissions[0].status,
-    });
-  }
+      hasUpdatedAt: !!submissions[0].updatedAt,
+      updatedAtType: typeof submissions[0].updatedAt,
+      updatedAtValue: submissions[0].updatedAt,
+      allKeys: Object.keys(submissions[0])
+    } : 'No data'
+  });
 
-  // Safe sorting function - sort by updatedAt (from column P)
+  // Safe sorting function - sort by timestamp (prefer updatedAt)
   const sortedSubmissions = useMemo(() => {
     return [...submissions].sort((a, b) => {
-      const getSafeTimestamp = (sub: Submission): number => {
-        // Priority: Use updatedAt (from column P) if valid Date
-        if (sub.updatedAt && sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime())) {
-          return sub.updatedAt.getTime();
+      // Helper function to get timestamp for sorting
+      const getTimestampForSorting = (sub: Submission): number => {
+        // Try to parse from updatedAtString first (column P)
+        if (sub.updatedAtString && sub.updatedAtString.trim() !== '') {
+          try {
+            const [timePart, datePart] = sub.updatedAtString.split(' - ');
+            if (timePart && datePart) {
+              const [hours, minutes] = timePart.split(':').map(Number);
+              const [day, month, year] = datePart.split('/').map(Number);
+              const fullYear = year < 100 ? 2000 + year : year;
+              return new Date(fullYear, month - 1, day, hours, minutes).getTime();
+            }
+          } catch (error) {
+            console.warn('Failed to parse updatedAtString for sorting:', sub.updatedAtString, error);
+          }
         }
         
-        // Fallback: Use submittedAt (from column H)
+        // Fallback to submittedAt
         if (sub.submittedAt && sub.submittedAt instanceof Date && !isNaN(sub.submittedAt.getTime())) {
           return sub.submittedAt.getTime();
         }
@@ -106,7 +151,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         return Date.now();
       };
       
-      return getSafeTimestamp(b) - getSafeTimestamp(a);
+      return getTimestampForSorting(b) - getTimestampForSorting(a); // Descending (newest first)
     });
   }, [submissions]);
 
@@ -121,27 +166,45 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         sub.submitterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.jenisBelanja.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Month filter
+      // Month filter - use timestamp from getSubmissionTimestamp
       let matchesMonth = true;
       if (selectedMonth !== 'all') {
         const monthToFilter = parseInt(selectedMonth);
-        // Use updatedAt if available, otherwise submittedAt
-        const dateToCheck = sub.updatedAt || sub.submittedAt;
+        const timestamp = getSubmissionTimestamp(sub);
         
-        if (dateToCheck && dateToCheck instanceof Date && !isNaN(dateToCheck.getTime())) {
-          matchesMonth = dateToCheck.getMonth() === monthToFilter;
+        if (timestamp && timestamp !== '-') {
+          try {
+            const [_, datePart] = timestamp.split(' - ');
+            if (datePart) {
+              const [day, month, year] = datePart.split('/').map(Number);
+              const dateMonth = month - 1; // JavaScript months are 0-indexed
+              matchesMonth = dateMonth === monthToFilter;
+            }
+          } catch (error) {
+            // If parsing fails, don't filter out
+            console.warn('Failed to parse timestamp for month filter:', timestamp, error);
+          }
         }
       }
 
-      // Year filter
+      // Year filter - use timestamp from getSubmissionTimestamp
       let matchesYear = true;
       if (selectedYear !== 'all') {
         const yearToFilter = parseInt(selectedYear);
-        // Use updatedAt if available, otherwise submittedAt
-        const dateToCheck = sub.updatedAt || sub.submittedAt;
+        const timestamp = getSubmissionTimestamp(sub);
         
-        if (dateToCheck && dateToCheck instanceof Date && !isNaN(dateToCheck.getTime())) {
-          matchesYear = dateToCheck.getFullYear() === yearToFilter;
+        if (timestamp && timestamp !== '-') {
+          try {
+            const [_, datePart] = timestamp.split(' - ');
+            if (datePart) {
+              const [day, month, year] = datePart.split('/').map(Number);
+              const fullYear = year < 100 ? 2000 + year : year;
+              matchesYear = fullYear === yearToFilter;
+            }
+          } catch (error) {
+            // If parsing fails, don't filter out
+            console.warn('Failed to parse timestamp for year filter:', timestamp, error);
+          }
         }
       }
 
@@ -157,39 +220,8 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   }, [filteredSubmissions, currentPage]);
 
   const handleFilterChange = () => setCurrentPage(1);
-
   const showViewButton = (submission: Submission) => canViewDetail(userRole, submission.status);
   const showEditButton = (submission: Submission) => canEdit(userRole, submission.status);
-
-  // Function to display timestamp ONLY from column P
-  const displayTimestamp = (submission: Submission): string => {
-    // DEBUG: Log untuk setiap submission
-    if (submission.id === 'SUB26010001') {
-      console.log('DEBUG SUB26010001:', {
-        updatedAtString: submission.updatedAtString,
-        updatedAt: submission.updatedAt,
-        semuaProperti: Object.keys(submission).map(key => ({ key, value: submission[key as keyof Submission] }))
-      });
-    }
-
-    // Priority 1: Raw string from column P
-    if (submission.updatedAtString && submission.updatedAtString.trim() !== '') {
-      return submission.updatedAtString;
-    }
-    
-    // Priority 2: Formatted from updatedAt Date object
-    if (submission.updatedAt && submission.updatedAt instanceof Date && !isNaN(submission.updatedAt.getTime())) {
-      const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
-      const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
-      const day = submission.updatedAt.getDate().toString().padStart(2, '0');
-      const month = (submission.updatedAt.getMonth() + 1).toString().padStart(2, '0');
-      const year = submission.updatedAt.getFullYear();
-      return `${hours}:${minutes} - ${day}/${month}/${year}`;
-    }
-    
-    // Return placeholder if no data
-    return '-';
-  };
 
   return (
     <div className="space-y-4">
@@ -255,23 +287,17 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         </Select>
       </div>
 
-      {/* Debug Info (hanya di development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-          <div className="font-semibold text-yellow-800">Debug Info:</div>
-          <div className="text-yellow-700">
-            Menampilkan {filteredSubmissions.length} dari {submissions.length} pengajuan
-            {paginatedSubmissions.length > 0 && (
-              <div className="mt-1">
-                <span className="font-medium">Sample data (first item):</span>
-                <div className="mt-1 grid grid-cols-2 gap-1 text-xs">
-                  <div>ID: {paginatedSubmissions[0].id}</div>
-                  <div>updatedAtString: "{paginatedSubmissions[0].updatedAtString}"</div>
-                  <div>updatedAt: {paginatedSubmissions[0].updatedAt?.toString()}</div>
-                  <div>waktuPengajuan: {paginatedSubmissions[0].waktuPengajuan}</div>
-                </div>
-              </div>
-            )}
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && submissions.length > 0 && (
+        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <div className="font-semibold text-blue-800">Data Structure Check:</div>
+          <div className="text-blue-700 text-xs mt-1">
+            <div>Sample submission ID: {submissions[0].id}</div>
+            <div>Has updatedAtString: {submissions[0].updatedAtString ? 'YES' : 'NO'}</div>
+            <div>updatedAtString value: "{submissions[0].updatedAtString}"</div>
+            <div>Has waktuBendahara: {submissions[0].waktuBendahara ? 'YES' : 'NO'}</div>
+            <div>waktuBendahara value: "{submissions[0].waktuBendahara}"</div>
+            <div>Display timestamp: "{getSubmissionTimestamp(submissions[0])}"</div>
           </div>
         </div>
       )}
@@ -293,7 +319,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
           <TableBody>
             {paginatedSubmissions.length > 0 ? (
               paginatedSubmissions.map((submission) => {
-                const timestamp = displayTimestamp(submission);
+                const timestamp = getSubmissionTimestamp(submission);
                 
                 return (
                   <TableRow key={submission.id} className="hover:bg-muted/30">
