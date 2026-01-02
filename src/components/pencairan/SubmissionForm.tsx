@@ -162,8 +162,11 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   };
 
   const handleSaveAsDraft = async () => {
-    if (!validateForm()) return;
-
+    // Draft bisa disimpan tanpa validasi wajib - hanya perlu title minimal
+    if (!title.trim()) {
+      toast({ title: 'Error', description: 'Uraian pengajuan harus diisi minimal', variant: 'destructive' });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
@@ -532,21 +535,19 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             </Button>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            {editData && (
-              <Button
-                variant="secondary"
-                onClick={handleSaveAsDraft}
-                className="rounded-xl shadow-sm hover:shadow-md transition-all"
-                disabled={isSubmitting || !isFormValid}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Simpan Draft
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              onClick={handleSaveAsDraft}
+              className="rounded-xl shadow-sm hover:shadow-md transition-all"
+              disabled={isSubmitting || !title.trim()}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Simpan Draft
+            </Button>
             <Button
               onClick={handleSaveAndSubmit}
               className="rounded-xl shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90"

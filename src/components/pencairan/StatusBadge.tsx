@@ -1,6 +1,6 @@
 import { SubmissionStatus, STATUS_LABELS } from '@/types/pencairan';
 import { cn } from '@/lib/utils';
-import { Clock, CheckCircle2, XCircle, Send, ArrowLeft } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Send, ArrowLeft, FileEdit } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: SubmissionStatus;
@@ -14,6 +14,12 @@ const statusConfig: Record<SubmissionStatus, {
   textClass: string;
   borderClass: string;
 }> = {
+  draft: {
+    icon: FileEdit,
+    bgClass: 'bg-slate-100 dark:bg-slate-900/30',
+    textClass: 'text-slate-700 dark:text-slate-400',
+    borderClass: 'border-slate-300 dark:border-slate-700',
+  },
   pending_ppk: {
     icon: Clock,
     bgClass: 'bg-amber-100 dark:bg-amber-900/30',
