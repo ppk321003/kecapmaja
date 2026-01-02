@@ -71,23 +71,28 @@ export default function UsulanPencairan() {
           if (isNaN(submittedDate.getTime())) submittedDate = new Date();
         }
         
-        // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis"
-        const { jenis, subJenis } = parseJenisBelanja(item.jenisBelanja);
+        // Data sudah di-parse di use-pencairan-data.ts
+        // item.jenisBelanja sudah berisi jenis saja, item.subJenisBelanja sudah terpisah
         
         // Parse documents - item.documents bisa berupa array Document[] atau string
         const docsInput = Array.isArray(item.documents) 
           ? item.documents.map(d => d.name).join('|') 
           : (typeof item.documents === 'string' ? item.documents : '');
         
+        // Rebuild jenisBelanja string untuk parseDocuments
+        const fullJenisBelanja = item.subJenisBelanja 
+          ? `${item.jenisBelanja} - ${item.subJenisBelanja}` 
+          : item.jenisBelanja;
+        
         return {
           id: item.id || generateSubmissionId([]),
           title: item.title || 'Pengajuan Baru',
           submitterName: item.submitterName || '',
-          jenisBelanja: jenis,
-          subJenisBelanja: subJenis,
+          jenisBelanja: item.jenisBelanja,
+          subJenisBelanja: item.subJenisBelanja || '',
           submittedAt: submittedDate,
           status: (item.status || 'pending_ppk') as SubmissionStatus,
-          documents: parseDocuments(docsInput, item.jenisBelanja),
+          documents: parseDocuments(docsInput, fullJenisBelanja),
           notes: item.notes || undefined,
           waktuPengajuan: item.waktuPengajuan || '',
           waktuPpk: item.waktuPpk || '',
