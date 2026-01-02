@@ -99,7 +99,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     subJenisBelanja: jenisParts[1] || '',
     status,
     submittedAt: parseCustomDate(raw.waktuPengajuan),
-    updatedAt: raw.updatedAt ? parseCustomDate(raw.updatedAt) : undefined, // ✅ PERBAIKAN DI SINI
+    updatedAtString: raw.updatedAt, // ✅ TAMBAH INI - string asli dari kolom P
     documents: parseDocuments(raw.documents),
     notes: raw.notes,
     waktuPengajuan: raw.waktuPengajuan,
