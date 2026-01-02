@@ -52,14 +52,20 @@ const MONTHS = [
   { value: '11', label: 'Desember' },
 ];
 
-const YEARS = [
-  { value: 'all', label: 'Semua Tahun' },
-  { value: '2026', label: '2026' },
-  { value: '2027', label: '2027' },
-  { value: '2028', label: '2028' },
-  { value: '2029', label: '2029' },
-  { value: '2030', label: '2030' },
-];
+// Generate dynamic years from current year -5 to +5
+const generateYears = () => {
+  const currentYear = new Date().getFullYear();
+  const years = [{ value: 'all', label: 'Semua Tahun' }];
+  
+  for (let i = -2; i <= 3; i++) {
+    const year = currentYear + i;
+    years.push({ value: year.toString(), label: year.toString() });
+  }
+  
+  return years;
+};
+
+const YEARS = generateYears();
 
 const ITEMS_PER_PAGE = 10;
 
@@ -69,107 +75,110 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [selectedYear, setSelectedYear] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // FIXED: Safe sorting function
+  // Safe sorting function - sort by updatedAt (from column P) with fallback
   const sortedSubmissions = useMemo(() => {
     return [...submissions].sort((a, b) => {
-      // Helper function untuk mendapatkan timestamp dengan aman
+      // Helper function to get safe timestamp from column P
       const getSafeTimestamp = (sub: Submission): number => {
-        // Cek apakah updatedAt adalah Date object yang valid
+        // Priority 1: Use updatedAt (from column P) if valid Date
         if (sub.updatedAt && sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime())) {
           return sub.updatedAt.getTime();
         }
         
-        // Fallback ke submittedAt
+        // Priority 2: Fallback to submittedAt (from column H)
         if (sub.submittedAt && sub.submittedAt instanceof Date && !isNaN(sub.submittedAt.getTime())) {
           return sub.submittedAt.getTime();
         }
         
-        // Last resort - current time
+        // Last resort - current time (should not happen with valid data)
         return Date.now();
       };
       
       const timeA = getSafeTimestamp(a);
       const timeB = getSafeTimestamp(b);
-      return timeB - timeA; // Descending (terbaru dulu)
+      return timeB - timeA; // Descending (newest first)
     });
   }, [submissions]);
 
+  // Filter submissions based on search, month, and year
   const filteredSubmissions = useMemo(() => {
     return sortedSubmissions.filter((sub) => {
+      // Search filter
       const matchesSearch =
+        searchQuery === '' ||
         sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.submitterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.jenisBelanja.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesMonth =
-        selectedMonth === 'all' ||
-        sub.submittedAt.getMonth() === parseInt(selectedMonth);
+      // Month filter (use updatedAt from column P for filtering)
+      let matchesMonth = true;
+      if (selectedMonth !== 'all') {
+        const monthToFilter = parseInt(selectedMonth);
+        // Try updatedAt first, fallback to submittedAt
+        const dateToCheck = sub.updatedAt && sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime()) 
+          ? sub.updatedAt 
+          : sub.submittedAt;
+        
+        if (dateToCheck && dateToCheck instanceof Date && !isNaN(dateToCheck.getTime())) {
+          matchesMonth = dateToCheck.getMonth() === monthToFilter;
+        }
+      }
 
-      const matchesYear =
-        selectedYear === 'all' ||
-        sub.submittedAt.getFullYear() === parseInt(selectedYear);
+      // Year filter (use updatedAt from column P for filtering)
+      let matchesYear = true;
+      if (selectedYear !== 'all') {
+        const yearToFilter = parseInt(selectedYear);
+        // Try updatedAt first, fallback to submittedAt
+        const dateToCheck = sub.updatedAt && sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime())
+          ? sub.updatedAt
+          : sub.submittedAt;
+        
+        if (dateToCheck && dateToCheck instanceof Date && !isNaN(dateToCheck.getTime())) {
+          matchesYear = dateToCheck.getFullYear() === yearToFilter;
+        }
+      }
 
       return matchesSearch && matchesMonth && matchesYear;
     });
   }, [sortedSubmissions, searchQuery, selectedMonth, selectedYear]);
 
+  // Pagination
   const totalPages = Math.ceil(filteredSubmissions.length / ITEMS_PER_PAGE);
   const paginatedSubmissions = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredSubmissions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredSubmissions, currentPage]);
 
+  // Reset to first page when filters change
   const handleFilterChange = () => {
     setCurrentPage(1);
   };
 
+  // Check if view button should be shown
   const showViewButton = (submission: Submission) => {
     return canViewDetail(userRole, submission.status);
   };
 
+  // Check if edit button should be shown
   const showEditButton = (submission: Submission) => {
     return canEdit(userRole, submission.status);
   };
 
-  // Function to display timestamp from kolom P or fallback
+  // Function to display timestamp ONLY from column P (updatedAt)
   const displayTimestamp = (submission: Submission): string => {
-    // Priority 1: Kolom P - update terakhir (string asli)
+    // ONLY from column P - updatedAtString (original string from spreadsheet)
     if (submission.updatedAtString && submission.updatedAtString.trim() !== '') {
       return submission.updatedAtString;
     }
     
-    // Priority 2: Kolom H - waktu pengajuan SM
-    if (submission.waktuPengajuan && submission.waktuPengajuan.trim() !== '') {
-      return submission.waktuPengajuan;
-    }
-    
-    // Priority 3: Fallback - format from Date object (updatedAt)
-    if (submission.updatedAt && submission.updatedAt instanceof Date && !isNaN(submission.updatedAt.getTime())) {
-      const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
-      const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
-      const day = submission.updatedAt.getDate().toString().padStart(2, '0');
-      const month = (submission.updatedAt.getMonth() + 1).toString().padStart(2, '0');
-      const year = submission.updatedAt.getFullYear();
-      return `${hours}:${minutes} - ${day}/${month}/${year}`;
-    }
-    
-    // Priority 4: Fallback - format from submittedAt
-    if (submission.submittedAt && submission.submittedAt instanceof Date && !isNaN(submission.submittedAt.getTime())) {
-      const hours = submission.submittedAt.getHours().toString().padStart(2, '0');
-      const minutes = submission.submittedAt.getMinutes().toString().padStart(2, '0');
-      const day = submission.submittedAt.getDate().toString().padStart(2, '0');
-      const month = (submission.submittedAt.getMonth() + 1).toString().padStart(2, '0');
-      const year = submission.submittedAt.getFullYear();
-      return `${hours}:${minutes} - ${day}/${month}/${year}`;
-    }
-    
-    // Last fallback
-    return 'No timestamp';
+    // If column P is empty, show placeholder
+    return '-';
   };
 
   return (
     <div className="space-y-4">
+      {/* Filter Section */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-xl border">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Filter className="w-4 h-4" />
@@ -231,6 +240,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         </Select>
       </div>
 
+      {/* Table Section */}
       <div className="rounded-xl border overflow-hidden bg-card">
         <Table>
           <TableHeader>
@@ -319,6 +329,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         </Table>
       </div>
 
+      {/* Pagination Section */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <p className="text-sm text-muted-foreground">
