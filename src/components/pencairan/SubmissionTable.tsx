@@ -221,7 +221,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {submission.updatedAt || submission.waktuPengajuan || 
-                        format(submission.submittedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })
+                        format(submission.updatedAtString, 'HH:mm - dd/MM/yyyy', { locale: localeId })
                       }
                     </TableCell>
                     <TableCell>
