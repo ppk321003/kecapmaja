@@ -28,7 +28,7 @@ import {
   JENIS_BELANJA_OPTIONS,
   SUB_JENIS_BELANJA,
 } from '@/types/pencairan';
-import { Send, X, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Send, X, FileText, Loader2, AlertCircle, Save } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganikPencairan, usePencairanData } from '@/hooks/use-pencairan-data';
@@ -42,7 +42,6 @@ interface SubmissionFormProps {
 
 // Fungsi untuk mendapatkan waktu Jakarta (WIB) dengan format Indonesia
 function getJakartaTimeString(): string {
-  // Gunakan Intl.DateTimeFormat untuk mendapatkan waktu Jakarta yang akurat
   const now = new Date();
   const options: Intl.DateTimeFormatOptions = {
     timeZone: 'Asia/Jakarta',
@@ -112,10 +111,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         setJenisBelanja(editData.jenisBelanja);
         setSubJenisBelanja(editData.subJenisBelanja || '');
         setNotes(editData.notes || '');
-        // Untuk edit, rebuild documents berdasarkan jenis dan subJenis, lalu set isChecked
         const defaultDocs = getDocumentsByJenisBelanja(editData.jenisBelanja, editData.subJenisBelanja || '');
         if (editData.documents && editData.documents.length > 0) {
-          // Cocokkan dengan dokumen yang sudah dichecklist
           const checkedTypes = editData.documents.filter(d => d.isChecked).map(d => d.type);
           const mergedDocs = defaultDocs.map(doc => ({
             ...doc,
@@ -144,23 +141,110 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     );
   };
 
-  const handleSubmit = async () => {
+  const validateForm = () => {
     if (!title.trim()) {
       toast({ title: 'Error', description: 'Uraian pengajuan harus diisi', variant: 'destructive' });
-      return;
+      return false;
     }
     if (!submitterName.trim()) {
       toast({ title: 'Error', description: 'Nama pengaju harus dipilih', variant: 'destructive' });
-      return;
+      return false;
     }
     if (!jenisBelanja) {
       toast({ title: 'Error', description: 'Jenis belanja harus dipilih', variant: 'destructive' });
-      return;
+      return false;
     }
     if (!subJenisBelanja) {
       toast({ title: 'Error', description: 'Sub-jenis belanja harus dipilih', variant: 'destructive' });
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleSaveAsDraft = async () => {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+      const jenisPengajuan = `${jenisBelanja} - ${subJenisBelanja}`;
+      const waktuPengajuan = getJakartaTimeString();
+
+      if (editData) {
+        // Update existing submission as draft
+        const { data, error } = await supabase.functions.invoke('pencairan-update', {
+          body: {
+            id: editData.id,
+            status: 'draft', // Set status to draft
+            notes: notes.trim() || undefined,
+            actor: 'sm',
+            action: 'save_draft',
+            uraianPengajuan: title.trim(),
+            namaPengaju: submitterName.trim(),
+            jenisPengajuan: jenisPengajuan,
+            kelengkapan: kelengkapan,
+          },
+        });
+        if (error) throw new Error(error.message || 'Gagal menyimpan draft');
+        if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan draft');
+      } else {
+        // Create new submission as draft
+        const existingIds = existingSubmissions.map(s => s.id);
+        const newId = generateSubmissionId(existingIds);
+
+        const { data, error } = await supabase.functions.invoke('pencairan-save', {
+          body: {
+            id: newId,
+            uraianPengajuan: title.trim(),
+            namaPengaju: submitterName.trim(),
+            jenisPengajuan: jenisPengajuan,
+            kelengkapan: kelengkapan,
+            catatan: notes.trim() || '',
+            statusPengajuan: 'draft', // Save as draft
+            waktuPengajuan: waktuPengajuan,
+            statusPpk: '',
+            waktuPpk: '',
+            statusBendahara: '',
+            waktuBendahara: '',
+            statusKppn: ''
+          },
+        });
+        
+        if (error) throw new Error(error.message || 'Gagal menyimpan draft');
+        if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan draft');
+      }
+
+      onSubmit({
+        title: title.trim(),
+        submitterName: submitterName.trim(),
+        jenisBelanja,
+        subJenisBelanja,
+        submittedAt: new Date(),
+        documents,
+        notes: notes.trim() || undefined,
+      });
+
+      toast({
+        title: 'Berhasil',
+        description: editData ? 'Draft berhasil diperbarui' : 'Draft berhasil disimpan',
+      });
+      
+      // Tidak menutup dialog agar bisa lanjut edit
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Gagal menyimpan draft',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveAndSubmit = async () => {
+    if (!validateForm()) return;
 
     const requiredDocuments = documents.filter(doc => doc.isRequired);
     const uncheckedRequired = requiredDocuments.filter(doc => !doc.isChecked);
@@ -182,25 +266,24 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
       const waktuPengajuan = getJakartaTimeString();
 
       if (editData) {
-        // Update existing submission - update semua field yang bisa diedit
+        // Update and submit existing submission
         const { data, error } = await supabase.functions.invoke('pencairan-update', {
           body: {
             id: editData.id,
-            status: editData.status,
+            status: 'pending_ppk', // Submit to PPK
             notes: notes.trim() || undefined,
             actor: 'sm',
-            action: 'edit',
-            // Data edit
+            action: 'submit',
             uraianPengajuan: title.trim(),
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
           },
         });
-        if (error) throw new Error(error.message || 'Gagal memperbarui data');
-        if (!data?.success) throw new Error(data?.error || 'Gagal memperbarui data');
+        if (error) throw new Error(error.message || 'Gagal mengirim pengajuan');
+        if (!data?.success) throw new Error(data?.error || 'Gagal mengirim pengajuan');
       } else {
-        // Create new submission
+        // Create and submit new submission
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
 
@@ -222,8 +305,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
           },
         });
         
-        if (error) throw new Error(error.message || 'Gagal menyimpan ke Google Sheets');
-        if (!data?.success) throw new Error(data?.error || 'Gagal menyimpan data');
+        if (error) throw new Error(error.message || 'Gagal mengirim ke Google Sheets');
+        if (!data?.success) throw new Error(data?.error || 'Gagal mengirim data');
       }
 
       onSubmit({
@@ -245,13 +328,13 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
       onClose();
       toast({
         title: 'Berhasil',
-        description: editData ? 'Catatan berhasil diperbarui' : 'Pengajuan berhasil dikirim ke PPK',
+        description: editData ? 'Pengajuan berhasil diperbarui dan dikirim ke PPK' : 'Pengajuan berhasil dikirim ke PPK',
       });
     } catch (error) {
       console.error('Error submitting:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Gagal menyimpan data',
+        description: error instanceof Error ? error.message : 'Gagal mengirim data',
         variant: 'destructive',
       });
     } finally {
@@ -274,6 +357,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   const requiredCheckedCount = requiredDocs.filter(d => d.isChecked).length;
   const uncheckedRequiredCount = requiredDocs.filter(d => !d.isChecked).length;
   const hasJenisBelanja = Boolean(jenisBelanja && subJenisBelanja);
+  const isFormValid = title.trim() && submitterName.trim() && jenisBelanja && subJenisBelanja;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
@@ -377,7 +461,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
 
               {documents.length > 0 ? (
                 <div className="max-h-56 overflow-y-auto rounded-lg border p-2">
-                  {/* PERUBAHAN DI SINI: Grid 2 kolom untuk checkbox */}
                   <div className="grid grid-cols-2 gap-2">
                     {documents.map((doc, index) => (
                       <div
@@ -436,23 +519,47 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             />
           </div>
         </div>
-        <DialogFooter className="gap-3 pt-4">
-          <Button variant="outline" onClick={handleCancel} className="rounded-xl" disabled={isSubmitting}>
-            <X className="w-4 h-4 mr-2" />
-            Batal
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="rounded-xl shadow-sm hover:shadow-md transition-all"
-            disabled={isSubmitting || (!editData && !hasJenisBelanja)}
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
+        <DialogFooter className="gap-3 pt-4 flex-col sm:flex-row">
+          <div className="flex w-full sm:w-auto justify-start">
+            <Button 
+              variant="outline" 
+              onClick={handleCancel} 
+              className="rounded-xl"
+              disabled={isSubmitting}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Batal
+            </Button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            {editData && (
+              <Button
+                variant="secondary"
+                onClick={handleSaveAsDraft}
+                className="rounded-xl shadow-sm hover:shadow-md transition-all"
+                disabled={isSubmitting || !isFormValid}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Simpan Draft
+              </Button>
             )}
-            {isSubmitting ? 'Menyimpan...' : editData ? 'Simpan Catatan' : 'Kirim ke PPK'}
-          </Button>
+            <Button
+              onClick={handleSaveAndSubmit}
+              className="rounded-xl shadow-sm hover:shadow-md transition-all bg-primary hover:bg-primary/90"
+              disabled={isSubmitting || !isFormValid}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              {editData ? 'Simpan dan Kirim' : 'Kirim ke PPK'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
