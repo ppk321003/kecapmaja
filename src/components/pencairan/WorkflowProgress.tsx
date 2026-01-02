@@ -50,6 +50,7 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
 export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
   // Determine colors based on status
   const getProgressColor = () => {
+    if (status === 'draft') return 'bg-gray-500';
     if (status === 'sent_kppn') return 'bg-green-500';
     if (['pending_bendahara', 'incomplete_bendahara'].includes(status)) return 'bg-blue-500';
     if (['pending_ppk', 'incomplete_ppk'].includes(status)) return 'bg-yellow-500';
@@ -59,6 +60,7 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
 
   const getCurrentStepColor = () => {
     switch (status) {
+      case 'draft': return 'bg-gray-500 text-white ring-4 ring-gray-200';
       case 'pending_ppk': return 'bg-yellow-500 text-white ring-4 ring-yellow-200';
       case 'incomplete_sm': return 'bg-red-500 text-white ring-4 ring-red-200';
       case 'pending_bendahara': return 'bg-blue-500 text-white ring-4 ring-blue-200';
