@@ -71,7 +71,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
 
   const sortedSubmissions = useMemo(() => {
     return [...submissions].sort((a, b) => {
-      // Sort by last updated timestamp (kolom P) if available
+      // updatedAt sudah Date object dari pencairan-fetch.ts
       const timeA = a.updatedAt?.getTime() || a.submittedAt.getTime();
       const timeB = b.updatedAt?.getTime() || b.submittedAt.getTime();
       return timeB - timeA;
