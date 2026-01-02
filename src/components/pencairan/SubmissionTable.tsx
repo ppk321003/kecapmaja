@@ -221,7 +221,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       <StatusBadge status={submission.status} size="sm" />
                     </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {format(submission.updatedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })}
+                        {format(submission.submittedAt, 'HH:mm - dd/MM/yyyy', { locale: localeId })}
                       </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
