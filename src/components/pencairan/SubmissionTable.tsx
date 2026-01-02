@@ -17,9 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusBadge } from './StatusBadge';
-import { Submission, UserRole, canViewDetail, canEdit, getRelevantTimestamp } from '@/types/pencairan';
-import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { Submission, UserRole, canViewDetail, canEdit } from '@/types/pencairan';
 import {
   ChevronLeft,
   ChevronRight,
@@ -72,7 +70,12 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [currentPage, setCurrentPage] = useState(1);
 
   const sortedSubmissions = useMemo(() => {
-    return [...submissions].sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+    return [...submissions].sort((a, b) => {
+      // Sort by last updated timestamp (kolom P) if available
+      const timeA = a.updatedAt?.getTime() || a.submittedAt.getTime();
+      const timeB = b.updatedAt?.getTime() || b.submittedAt.getTime();
+      return timeB - timeA;
+    });
   }, [submissions]);
 
   const filteredSubmissions = useMemo(() => {
@@ -105,18 +108,43 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
     setCurrentPage(1);
   };
 
-  const getDocumentProgress = (submission: Submission) => {
-    const checked = submission.documents.filter(d => d.isChecked).length;
-    const total = submission.documents.length;
-    return { checked, total, percentage: total > 0 ? Math.round((checked / total) * 100) : 0 };
-  };
-
   const showViewButton = (submission: Submission) => {
     return canViewDetail(userRole, submission.status);
   };
 
   const showEditButton = (submission: Submission) => {
     return canEdit(userRole, submission.status);
+  };
+
+  // Function to display timestamp from kolom P or fallback
+  const displayTimestamp = (submission: Submission): string => {
+    // Priority 1: Kolom P - update terakhir (string asli)
+    if (submission.updatedAtString && submission.updatedAtString.trim() !== '') {
+      return submission.updatedAtString;
+    }
+    
+    // Priority 2: Kolom H - waktu pengajuan SM
+    if (submission.waktuPengajuan && submission.waktuPengajuan.trim() !== '') {
+      return submission.waktuPengajuan;
+    }
+    
+    // Priority 3: Fallback - format from Date object
+    if (submission.updatedAt) {
+      const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
+      const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
+      const day = submission.updatedAt.getDate().toString().padStart(2, '0');
+      const month = (submission.updatedAt.getMonth() + 1).toString().padStart(2, '0');
+      const year = submission.updatedAt.getFullYear();
+      return `${hours}:${minutes} - ${day}/${month}/${year}`;
+    }
+    
+    // Last fallback
+    const hours = submission.submittedAt.getHours().toString().padStart(2, '0');
+    const minutes = submission.submittedAt.getMinutes().toString().padStart(2, '0');
+    const day = submission.submittedAt.getDate().toString().padStart(2, '0');
+    const month = (submission.submittedAt.getMonth() + 1).toString().padStart(2, '0');
+    const year = submission.submittedAt.getFullYear();
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
   };
 
   return (
@@ -191,7 +219,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
               <TableHead>Pengaju</TableHead>
               <TableHead>Jenis Belanja</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Waktu</TableHead>
+              <TableHead>Update Terakhir</TableHead>
               <TableHead className="w-[100px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -214,15 +242,18 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                     <TableCell>
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                         {submission.jenisBelanja}
+                        {submission.subJenisBelanja && (
+                          <span className="ml-1 text-xs">
+                            • {submission.subJenisBelanja}
+                          </span>
+                        )}
                       </span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={submission.status} size="sm" />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {submission.updatedAt || submission.waktuPengajuan || 
-                        format(submission.updatedAtString, 'HH:mm - dd/MM/yyyy', { locale: localeId })
-                      }
+                      {displayTimestamp(submission)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
