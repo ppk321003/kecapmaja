@@ -190,7 +190,7 @@ export default function UsulanPencairan() {
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
-                title="Draft" 
+                title="Sedang Dikerjakan SM" 
                 value={counts.draft} 
                 icon={FileEdit} 
                 variant="default"
@@ -202,7 +202,7 @@ export default function UsulanPencairan() {
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
-                title="Menunggu PPK" 
+                title="Pemeriksaan PPK" 
                 value={counts.pending_ppk} 
                 icon={Clock} 
                 variant="warning"
@@ -214,7 +214,7 @@ export default function UsulanPencairan() {
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
-                title="Menunggu Bendahara" 
+                title="Pemeriksaan Bendahara" 
                 value={counts.pending_bendahara} 
                 icon={Clock} 
                 variant="info"
@@ -226,7 +226,7 @@ export default function UsulanPencairan() {
           <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-2">
             <div className="w-full h-full">
               <StatCard 
-                title="Dikembalikan" 
+                title="Dikembalikan/ditolak" 
                 value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_bendahara} 
                 icon={XCircle} 
                 variant="danger"
