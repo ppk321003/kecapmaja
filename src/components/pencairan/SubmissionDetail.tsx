@@ -109,7 +109,7 @@ export function SubmissionDetail({
   const updateStatusInSheet = async (
     newStatus: string, 
     newNotes?: string, 
-    actor: 'ppk' | 'bendahara' | 'kppn' = 'ppk',
+    actor: 'ppk' | 'ppspm' | 'bendahara' | 'kppn' = 'ppk',
     action: 'approve' | 'reject' | 'return' = 'approve'
   ) => {
     setIsUpdating(true);
@@ -149,13 +149,17 @@ export function SubmissionDetail({
 
   const handleApprove = async () => {
     let newStatus: string;
-    let actor: 'ppk' | 'bendahara' | 'kppn';
+    let actor: 'ppk' | 'ppspm' | 'bendahara' | 'kppn';
     
+    // Logika untuk PPSPM
     if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
-      newStatus = 'pending_bendahara';
+      newStatus = 'pending_ppspm'; // Setelah PPK approve, ke PPSPM
       actor = 'ppk';
+    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      newStatus = 'pending_bendahara'; // Setelah PPSPM approve, ke Bendahara
+      actor = 'ppspm';
     } else if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
-      newStatus = 'sent_kppn';
+      newStatus = 'sent_kppn'; // Setelah Bendahara approve, ke KPPN
       actor = 'bendahara';
     } else {
       return;
@@ -166,8 +170,9 @@ export function SubmissionDetail({
     onUpdateSubmission(submission.id, {
       status: newStatus as Submission['status'],
       documents,
-      ...(submission.status === 'pending_ppk' && { ppkCheckedAt: new Date() }),
-      ...(submission.status === 'pending_bendahara' && { 
+      ...(actor === 'ppk' && { ppkCheckedAt: new Date() }),
+      ...(actor === 'ppspm' && { ppspmCheckedAt: new Date() }),
+      ...(actor === 'bendahara' && { 
         bendaharaCheckedAt: new Date(),
         sentToKppnAt: newStatus === 'sent_kppn' ? new Date() : undefined
       }),
@@ -177,13 +182,16 @@ export function SubmissionDetail({
 
   const handleReject = async () => {
     let newStatus: string;
-    let actor: 'ppk' | 'bendahara' | 'kppn';
+    let actor: 'ppk' | 'ppspm' | 'bendahara' | 'kppn';
     
     if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
-      newStatus = 'incomplete_sm';
+      newStatus = 'incomplete_sm'; // PPK reject, kembali ke SM
       actor = 'ppk';
+    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      newStatus = 'incomplete_ppk'; // PPSPM reject, kembali ke PPK
+      actor = 'ppspm';
     } else if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
-      newStatus = 'incomplete_ppk';
+      newStatus = 'incomplete_ppspm'; // Bendahara reject, kembali ke PPSPM
       actor = 'bendahara';
     } else {
       return;
@@ -215,16 +223,31 @@ export function SubmissionDetail({
 
   const getApproveButtonLabel = () => {
     if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
-      return 'Kirim ke Bendahara';
+      return 'Setujui dan Kirim ke PPSPM';
+    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      return 'Setujui dan Kirim ke Bendahara';
+    } else if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
+      return 'Setujui dan Kirim ke KPPN';
     }
-    return 'Kirim ke KPPN';
+    return 'Setujui';
   };
 
   const getRejectButtonLabel = () => {
     if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
       return 'Kembalikan ke SM';
+    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      return 'Kembalikan ke PPK';
+    } else if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
+      return 'Kembalikan ke PPSPM';
     }
-    return 'Kembalikan ke PPK';
+    return 'Tolak';
+  };
+
+  const showWorkflowNote = () => {
+    if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      return "Pengajuan sedang diperiksa oleh PPSPM (Pemeriksa PPSPM)";
+    }
+    return null;
   };
 
   return (
@@ -250,6 +273,12 @@ export function SubmissionDetail({
               </div>
             )}
           </div>
+          {showWorkflowNote() && (
+            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded-md">
+              <AlertCircle className="w-3 h-3 inline mr-1" />
+              {showWorkflowNote()}
+            </div>
+          )}
         </SheetHeader>
 
         <div className="space-y-4 py-6">

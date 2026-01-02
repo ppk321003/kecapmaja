@@ -15,6 +15,7 @@ const filters: { value: string; label: string; color: string }[] = [
   { value: 'incomplete_sm', label: 'Dikembalikan ke SM', color: 'bg-red-500 hover:bg-red-600 text-white border-red-500' },
   { value: 'pending_bendahara', label: 'Menunggu Verifikasi Bendahara', color: 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500' },
   { value: 'incomplete_ppk', label: 'Dikembalikan ke PPK', color: 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' },
+  { value: 'ppspm', label: 'Dikembalikan ke PPSPM', color: 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' },
   { value: 'incomplete_bendahara', label: 'Dikembalikan ke Bendahara', color: 'bg-purple-500 hover:bg-purple-600 text-white border-purple-500' },
   { value: 'sent_kppn', label: 'Dikirim ke KPPN', color: 'bg-green-500 hover:bg-green-600 text-white border-green-500' },
 ];

@@ -10,6 +10,7 @@ interface WorkflowProgressProps {
 const steps = [
   { key: 'sm', label: 'SM', description: 'Subjek Meter' },
   { key: 'ppk', label: 'PPK', description: 'Pejabat Pembuat Komitmen' },
+  { key: 'ppspm', label: 'PPSPM', description: 'Pejabat Penandatangan Surat Perintah Membayar' },
   { key: 'bendahara', label: 'Bendahara', description: 'Bendahara Pengeluaran' },
   { key: 'kppn', label: 'KPPN', description: 'Kantor Pelayanan Perbendaharaan Negara' },
 ];
@@ -28,9 +29,17 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
     case 'incomplete_sm':
       if (stepKey === 'sm') return 'error';
       return 'pending';
+    case 'pending_ppspm':  // ← TAMBAH
+      if (stepKey === 'sm' || stepKey === 'ppk') return 'complete';
+      if (stepKey === 'ppspm') return 'current';
+      return 'pending';
     case 'pending_bendahara':
       if (stepKey === 'sm' || stepKey === 'ppk') return 'complete';
       if (stepKey === 'bendahara') return 'current';
+      return 'pending';
+    case 'incomplete_ppspm':  // ← TAMBAH
+      if (stepKey === 'sm' || stepKey === 'ppk') return 'complete';
+      if (stepKey === 'ppspm') return 'error';
       return 'pending';
     case 'incomplete_ppk':
       if (stepKey === 'sm') return 'complete';

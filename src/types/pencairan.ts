@@ -3,9 +3,11 @@
 export type SubmissionStatus = 
   | 'draft'
   | 'pending_ppk'
+  | 'pending_ppspm'  
   | 'pending_bendahara'
   | 'incomplete_sm'
   | 'incomplete_ppk'
+  | 'incomplete_ppspm'
   | 'incomplete_bendahara'
   | 'sent_kppn';
 
@@ -16,6 +18,7 @@ export type UserRole =
   | 'Fungsi Distribusi'
   | 'Fungsi IPDS'
   | 'Pejabat Pembuat Komitmen'
+  | 'Pejabat Penandatangan Surat Perintah Membayar'
   | 'Bendahara'
   | 'admin';
 
@@ -63,9 +66,11 @@ export interface Submission {
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   draft: 'Sedang disiapkan SM',
   pending_ppk: 'Menunggu Verifikasi PPK',
+  pending_ppspm: 'Menunggu Pemeriksaan PPSPM', 
   pending_bendahara: 'Menunggu Verifikasi Bendahara',
   incomplete_sm: 'Dikembalikan ke SM',
   incomplete_ppk: 'Dikembalikan ke PPK',
+  incomplete_ppspm: 'Dikembalikan ke PPSPM', 
   incomplete_bendahara: 'Dikembalikan ke Bendahara',
   sent_kppn: 'Dikirim ke KPPN',
 };
@@ -291,6 +296,7 @@ export function canCreateSubmission(role: UserRole): boolean {
 export function canTakeAction(role: UserRole, status: SubmissionStatus): boolean {
   if (role === 'admin') return true;
   if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
+  if (role === 'Pejabat Penandatangan Surat Perintah Membayar' &&  (status === 'pending_ppspm' || status === 'incomplete_ppspm')) return true;
   if (role === 'Bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
   return false;
 }
