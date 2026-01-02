@@ -44,6 +44,7 @@ export interface Submission {
   jenisBelanja: string;
   subJenisBelanja?: string;
   submittedAt: Date;
+  updatedAt?: Date;
   status: SubmissionStatus;
   documents: Document[];
   notes?: string;
