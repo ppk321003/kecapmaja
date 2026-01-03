@@ -21,7 +21,7 @@ const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli
 export default function DownloadSPKBAST() {
   const [data, setData] = useState<SPKData[]>([]);
   const [filteredData, setFilteredData] = useState<SPKData[]>([]);
-  const [selectedTahun, setSelectedTahun] = useState<number>(2025);
+  const [selectedTahun, setSelectedTahun] = useState<number>(2026);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const {
