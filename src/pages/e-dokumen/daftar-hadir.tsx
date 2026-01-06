@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2, X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,7 +54,6 @@ interface AkunOption {
   id: string;
   name: string;
   kode: string;
-  description: string;
 }
 
 // Constants
@@ -247,14 +246,14 @@ const useDataSubmission = () => {
   return { submitData, isSubmitting };
 };
 
-// Komponen AkunSelect dengan gaya yang sama seperti MultiSelect
+// Komponen AkunSelect dengan Search dalam 1 baris
 interface AkunSelectProps {
   value: string;
   onValueChange: (value: string) => void;
 }
 
 const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<AkunOption[]>([]);
+  const [akunOptions, setAkunOptions] = useState<{ id: string; name: string; kode: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -307,7 +306,6 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
         .map((row: any[]) => ({
           id: row[1] || '',
           kode: row[1] || '',
-          description: row[2] || '',
           name: `${row[1]} - ${row[2]}` || ''
         }))
         .filter((item: any) => item.id && item.name);
@@ -329,21 +327,18 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
     if (!searchTerm) return akunOptions;
     return akunOptions.filter(option =>
       option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.kode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.description.toLowerCase().includes(searchTerm.toLowerCase())
+      option.kode.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [akunOptions, searchTerm]);
 
   const selectedAkun = akunOptions.find(option => option.id === value);
 
-  const toggleDropdown = () => setIsOpen(!isOpen);
-
   return (
     <div className="relative w-full" ref={dropdownRef}>
-      {/* Trigger Button - Sama seperti MultiSelect */}
+      {/* Trigger Button */}
       <button
         type="button"
-        onClick={toggleDropdown}
+        onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
           "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -351,12 +346,8 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
         )}
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : selectedAkun ? (
-            <div className="flex items-center gap-1">
-              <span className="truncate">{selectedAkun.name}</span>
-            </div>
+          {selectedAkun ? (
+            <span className="truncate">{selectedAkun.name}</span>
           ) : (
             <span className="text-muted-foreground">Pilih akun...</span>
           )}
@@ -364,7 +355,7 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
-      {/* Dropdown Content - Sama seperti MultiSelect */}
+      {/* Dropdown Content */}
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
           {/* Search Input */}
@@ -400,6 +391,7 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
               ) : (
                 filteredOptions.map((option) => {
                   const isSelected = value === option.id;
+                  const [kode, nama] = option.name.split(' - ');
                   
                   return (
                     <div
@@ -430,7 +422,7 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
                             "font-medium truncate",
                             isSelected && "text-blue-700"
                           )}>
-                            {option.kode}
+                            {kode}
                           </p>
                           {isSelected && (
                             <Badge variant="outline" className="text-xs">
@@ -438,9 +430,9 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
                             </Badge>
                           )}
                         </div>
-                        {option.description && (
+                        {nama && (
                           <p className="text-sm text-muted-foreground mt-1 truncate">
-                            {option.description}
+                            {nama}
                           </p>
                         )}
                       </div>
@@ -450,18 +442,6 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
               )}
             </div>
           </div>
-
-          {/* Selected Info */}
-          {selectedAkun && (
-            <div className="border-t px-3 py-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Terpilih:</span>
-                <span className="font-medium text-green-600 truncate ml-2">
-                  {selectedAkun.name}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -707,6 +687,8 @@ const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
   title,
   type
 }) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -717,6 +699,7 @@ const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
       </div>
       <div className="border rounded-lg p-2">
         <div 
+          ref={scrollAreaRef}
           className="h-40 overflow-y-auto pr-2"
           style={{
             scrollbarWidth: 'thin',
