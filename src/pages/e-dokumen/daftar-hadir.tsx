@@ -22,19 +22,6 @@ import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover as CommandPopover,
-  PopoverContent as CommandPopoverContent,
-  PopoverTrigger as CommandPopoverTrigger,
-} from "@/components/ui/popover";
 
 // Types
 interface FormValues {
@@ -259,7 +246,7 @@ const useDataSubmission = () => {
   return { submitData, isSubmitting };
 };
 
-// Komponen AkunSelect dengan Search
+// Komponen AkunSelect dengan Search dalam 1 baris
 interface AkunSelectProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -268,10 +255,34 @@ interface AkunSelectProps {
 const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
   const [akunOptions, setAkunOptions] = useState<{ id: string; name: string; kode: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchAkunOptions();
+  }, []);
+
+  // Focus ke input search saat dropdown terbuka
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchAkunOptions = async () => {
@@ -312,61 +323,128 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
     }
   };
 
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return akunOptions;
+    return akunOptions.filter(option =>
+      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      option.kode.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [akunOptions, searchTerm]);
+
   const selectedAkun = akunOptions.find(option => option.id === value);
 
   return (
-    <CommandPopover open={open} onOpenChange={setOpen}>
-      <CommandPopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between"
-        >
+    <div className="relative w-full" ref={dropdownRef}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "min-h-[40px] text-left"
+        )}
+      >
+        <div className="flex items-center gap-2 overflow-hidden">
           {selectedAkun ? (
             <span className="truncate">{selectedAkun.name}</span>
           ) : (
             <span className="text-muted-foreground">Pilih akun...</span>
           )}
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </CommandPopoverTrigger>
-      <CommandPopoverContent className="w-full p-0" style={{ width: "var(--radix-popover-trigger-width)" }}>
-        <Command>
-          <CommandInput 
-            placeholder="Cari akun..." 
-            className="h-9"
-            autoFocus
-          />
-          <CommandList>
-            <CommandEmpty>
-              {loading ? "Memuat..." : "Tidak ditemukan"}
-            </CommandEmpty>
-            <CommandGroup>
-              <ScrollArea className="h-64">
-                {akunOptions.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={option.name}
-                    onSelect={() => {
-                      onValueChange(option.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{option.kode}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {option.name.split(' - ')[1]}
-                      </span>
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {/* Dropdown Content */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+          {/* Search Input */}
+          <div className="border-b p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Cari kode atau nama akun..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+
+          {/* Options List dengan Scroll */}
+          <div className="max-h-64 overflow-y-auto">
+            <div className="p-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada data akun ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => {
+                  const isSelected = value === option.id;
+                  const [kode, nama] = option.name.split(' - ');
+                  
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => {
+                        onValueChange(option.id);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-blue-50 border border-blue-200"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
+                        isSelected 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "border-gray-300"
+                      )}>
+                        {isSelected && (
+                          <div className="h-2 w-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn(
+                            "font-medium truncate",
+                            isSelected && "text-blue-700"
+                          )}>
+                            {kode}
+                          </p>
+                          {isSelected && (
+                            <Badge variant="outline" className="text-xs">
+                              Terpilih
+                            </Badge>
+                          )}
+                        </div>
+                        {nama && (
+                          <p className="text-sm text-muted-foreground mt-1 truncate">
+                            {nama}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </CommandItem>
-                ))}
-              </ScrollArea>
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </CommandPopoverContent>
-    </CommandPopover>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -391,6 +469,16 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Focus ke input search saat dropdown terbuka
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
 
   // Filter options based on search term
   const filteredOptions = useMemo(() => {
@@ -473,11 +561,11 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 placeholder="Cari nama, jabatan, atau kecamatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9"
-                autoFocus
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -504,8 +592,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
             </Button>
           </div>
 
-          {/* Options List */}
-          <ScrollArea className="max-h-64">
+          {/* Options List dengan Scroll */}
+          <div className="max-h-64 overflow-y-auto">
             <div className="p-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
@@ -568,7 +656,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 })
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Selected Count */}
           <div className="border-t px-3 py-2">
@@ -581,6 +669,76 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Komponen untuk menampilkan daftar peserta terpilih dengan scroll
+interface SelectedParticipantsProps {
+  participants: Option[];
+  onRemove: (id: string) => void;
+  title: string;
+  type: 'organik' | 'mitra';
+}
+
+const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
+  participants,
+  onRemove,
+  title,
+  type
+}) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-sm">{title}:</h4>
+        <Badge variant="secondary">
+          {participants.length} {type}
+        </Badge>
+      </div>
+      <div className="border rounded-lg p-2">
+        <div 
+          ref={scrollAreaRef}
+          className="h-40 overflow-y-auto pr-2"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#d1d5db #f3f4f6'
+          }}
+        >
+          <div className="space-y-2">
+            {participants.map(participant => (
+              <div key={participant.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate text-sm">{participant.name}</p>
+                    <Badge variant="outline" className="text-xs">
+                      Terpilih
+                    </Badge>
+                  </div>
+                  {participant.jabatan && (
+                    <p className="text-xs text-muted-foreground mt-1">{participant.jabatan}</p>
+                  )}
+                  {participant.kecamatan && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Kecamatan: {participant.kecamatan}
+                    </p>
+                  )}
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => onRemove(participant.id)}
+                  className="ml-2 h-7 w-7 p-0"
+                >
+                  <Trash className="h-3 w-3 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1070,7 +1228,7 @@ const DaftarHadir = () => {
                           <SelectValue placeholder="Pilih pembuat daftar" />
                         </SelectTrigger>
                         <SelectContent>
-                          <ScrollArea className="h-64">
+                          <div className="max-h-64 overflow-y-auto">
                             {organikList.map((item) => (
                               <SelectItem key={item.id} value={item.id}>
                                 <div className="flex flex-col">
@@ -1079,7 +1237,7 @@ const DaftarHadir = () => {
                                 </div>
                               </SelectItem>
                             ))}
-                          </ScrollArea>
+                          </div>
                         </SelectContent>
                       </Select>
                     )} 
@@ -1116,42 +1274,12 @@ const DaftarHadir = () => {
                     </div>
                     
                     {selectedOrganik.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-sm">Daftar Organik Terpilih:</h4>
-                          <Badge variant="secondary">
-                            {selectedOrganik.length} organik
-                          </Badge>
-                        </div>
-                        <div className="border rounded-lg p-2">
-                          <ScrollArea className="h-40">
-                            <div className="space-y-2 pr-4">
-                              {selectedOrganik.map(org => (
-                                <div key={org.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-medium truncate text-sm">{org.name}</p>
-                                      <Badge variant="outline" className="text-xs">
-                                        Terpilih
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">{org.jabatan}</p>
-                                  </div>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    onClick={() => removeOrganik(org.id)}
-                                    className="ml-2 h-7 w-7 p-0"
-                                  >
-                                    <Trash className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      </div>
+                      <SelectedParticipants
+                        participants={selectedOrganik}
+                        onRemove={removeOrganik}
+                        title="Daftar Organik Terpilih"
+                        type="organik"
+                      />
                     )}
                   </CardContent>
                 </Card>
@@ -1182,44 +1310,12 @@ const DaftarHadir = () => {
                     </div>
                     
                     {selectedMitra.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-sm">Daftar Mitra Terpilih:</h4>
-                          <Badge variant="secondary">
-                            {selectedMitra.length} mitra
-                          </Badge>
-                        </div>
-                        <div className="border rounded-lg p-2">
-                          <ScrollArea className="h-40">
-                            <div className="space-y-2 pr-4">
-                              {selectedMitra.map(mitra => (
-                                <div key={mitra.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-medium truncate text-sm">{mitra.name}</p>
-                                      <Badge variant="outline" className="text-xs">
-                                        Terpilih
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Kecamatan: {mitra.kecamatan}
-                                    </p>
-                                  </div>
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    onClick={() => removeMitra(mitra.id)}
-                                    className="ml-2 h-7 w-7 p-0"
-                                  >
-                                    <Trash className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      </div>
+                      <SelectedParticipants
+                        participants={selectedMitra}
+                        onRemove={removeMitra}
+                        title="Daftar Mitra Terpilih"
+                        type="mitra"
+                      />
                     )}
                   </CardContent>
                 </Card>
