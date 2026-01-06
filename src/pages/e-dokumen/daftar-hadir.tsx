@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2, X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,9 +20,21 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
-import { AkunSelect } from "@/components/AkunSelect";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover as CommandPopover,
+  PopoverContent as CommandPopoverContent,
+  PopoverTrigger as CommandPopoverTrigger,
+} from "@/components/ui/popover";
 
 // Types
 interface FormValues {
@@ -51,6 +63,12 @@ interface Option {
   kecamatan?: string;
 }
 
+interface AkunOption {
+  id: string;
+  name: string;
+  kode: string;
+}
+
 // Constants
 const CONSTANTS = {
   SPREADSHEET: {
@@ -61,7 +79,8 @@ const CONSTANTS = {
   SHEET_NAMES: {
     DAFTAR_HADIR: "DaftarHadir",
     ORGANIK: "MASTER.ORGANIK",
-    MITRA: "MASTER.MITRA"
+    MITRA: "MASTER.MITRA",
+    AKUN: "akun"
   }
 } as const;
 
@@ -240,6 +259,117 @@ const useDataSubmission = () => {
   return { submitData, isSubmitting };
 };
 
+// Komponen AkunSelect dengan Search
+interface AkunSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
+  const [akunOptions, setAkunOptions] = useState<{ id: string; name: string; kode: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    fetchAkunOptions();
+  }, []);
+
+  const fetchAkunOptions = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
+          operation: "read",
+          range: CONSTANTS.SHEET_NAMES.AKUN
+        }
+      });
+
+      if (error || !data?.values) {
+        console.error("Error fetching akun:", error);
+        return;
+      }
+
+      const rows = data.values.slice(1);
+      const options = rows
+        .map((row: any[]) => ({
+          id: row[1] || '',
+          kode: row[1] || '',
+          name: `${row[1]} - ${row[2]}` || ''
+        }))
+        .filter((item: any) => item.id && item.name);
+
+      setAkunOptions(options);
+    } catch (error) {
+      console.error("Error in fetchAkunOptions:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal memuat data akun",
+        description: "Terjadi kesalahan saat memuat data akun"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedAkun = akunOptions.find(option => option.id === value);
+
+  return (
+    <CommandPopover open={open} onOpenChange={setOpen}>
+      <CommandPopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          {selectedAkun ? (
+            <span className="truncate">{selectedAkun.name}</span>
+          ) : (
+            <span className="text-muted-foreground">Pilih akun...</span>
+          )}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </CommandPopoverTrigger>
+      <CommandPopoverContent className="w-full p-0" style={{ width: "var(--radix-popover-trigger-width)" }}>
+        <Command>
+          <CommandInput 
+            placeholder="Cari akun..." 
+            className="h-9"
+            autoFocus
+          />
+          <CommandList>
+            <CommandEmpty>
+              {loading ? "Memuat..." : "Tidak ditemukan"}
+            </CommandEmpty>
+            <CommandGroup>
+              <ScrollArea className="h-64">
+                {akunOptions.map((option) => (
+                  <CommandItem
+                    key={option.id}
+                    value={option.name}
+                    onSelect={() => {
+                      onValueChange(option.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{option.kode}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {option.name.split(' - ')[1]}
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </ScrollArea>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandPopoverContent>
+    </CommandPopover>
+  );
+};
+
 // Improved MultiSelect Component
 interface MultiSelectProps {
   value: string[];
@@ -290,7 +420,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     } else {
       onValueChange([...value, optionId]);
     }
-    // Don't close dropdown after selection
   };
 
   const handleSelectAll = () => {
@@ -339,7 +468,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       {/* Dropdown Content */}
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
-          {/* Search Input - Fixed: Tidak kehilangan fokus */}
+          {/* Search Input */}
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -941,14 +1070,16 @@ const DaftarHadir = () => {
                           <SelectValue placeholder="Pilih pembuat daftar" />
                         </SelectTrigger>
                         <SelectContent>
-                          {organikList.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.name}</span>
-                                <span className="text-xs text-muted-foreground">{item.jabatan}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <ScrollArea className="h-64">
+                            {organikList.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{item.name}</span>
+                                  <span className="text-xs text-muted-foreground">{item.jabatan}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </ScrollArea>
                         </SelectContent>
                       </Select>
                     )} 
@@ -992,32 +1123,34 @@ const DaftarHadir = () => {
                             {selectedOrganik.length} organik
                           </Badge>
                         </div>
-                        <ScrollArea className="max-h-60 rounded-md border p-2">
-                          <div className="space-y-2">
-                            {selectedOrganik.map(org => (
-                              <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium truncate">{org.name}</p>
-                                    <Badge variant="outline" className="text-xs">
-                                      Terpilih
-                                    </Badge>
+                        <div className="border rounded-lg p-2">
+                          <ScrollArea className="h-40">
+                            <div className="space-y-2 pr-4">
+                              {selectedOrganik.map(org => (
+                                <div key={org.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium truncate text-sm">{org.name}</p>
+                                      <Badge variant="outline" className="text-xs">
+                                        Terpilih
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">{org.jabatan}</p>
                                   </div>
-                                  <p className="text-sm text-muted-foreground mt-1">{org.jabatan}</p>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => removeOrganik(org.id)}
+                                    className="ml-2 h-7 w-7 p-0"
+                                  >
+                                    <Trash className="h-3 w-3 text-destructive" />
+                                  </Button>
                                 </div>
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => removeOrganik(org.id)}
-                                  className="ml-2"
-                                >
-                                  <Trash className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -1056,34 +1189,36 @@ const DaftarHadir = () => {
                             {selectedMitra.length} mitra
                           </Badge>
                         </div>
-                        <ScrollArea className="max-h-60 rounded-md border p-2">
-                          <div className="space-y-2">
-                            {selectedMitra.map(mitra => (
-                              <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium truncate">{mitra.name}</p>
-                                    <Badge variant="outline" className="text-xs">
-                                      Terpilih
-                                    </Badge>
+                        <div className="border rounded-lg p-2">
+                          <ScrollArea className="h-40">
+                            <div className="space-y-2 pr-4">
+                              {selectedMitra.map(mitra => (
+                                <div key={mitra.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium truncate text-sm">{mitra.name}</p>
+                                      <Badge variant="outline" className="text-xs">
+                                        Terpilih
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Kecamatan: {mitra.kecamatan}
+                                    </p>
                                   </div>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    Kecamatan: {mitra.kecamatan}
-                                  </p>
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => removeMitra(mitra.id)}
+                                    className="ml-2 h-7 w-7 p-0"
+                                  >
+                                    <Trash className="h-3 w-3 text-destructive" />
+                                  </Button>
                                 </div>
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => removeMitra(mitra.id)}
-                                  className="ml-2"
-                                >
-                                  <Trash className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
                       </div>
                     )}
                   </CardContent>
