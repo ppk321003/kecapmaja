@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2, X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -240,6 +240,166 @@ const useDataSubmission = () => {
   return { submitData, isSubmitting };
 };
 
+// Enhanced Select Component with Search
+interface SearchableSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Pilih...",
+  searchPlaceholder = "Cari..."
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return options.filter(option =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      option.value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (selectedValue: string) => {
+    onValueChange(selectedValue);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  const selectedOption = options.find(option => option.value === value);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) {
+            setSearchTerm("");
+          }
+        }}
+        className={cn(
+          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "min-h-[40px]"
+        )}
+      >
+        <span className={cn("truncate", !value && "text-muted-foreground")}>
+          {selectedOption?.label || placeholder}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
+          {/* Search Input */}
+          <div className="border-b p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Options List */}
+          <ScrollArea className="max-h-64">
+            <div className="p-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Tidak ada data ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => handleSelect(option.value)}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-md cursor-pointer transition-colors",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      value === option.value && "bg-blue-50 border border-blue-200"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-sm border",
+                      value === option.value 
+                        ? "bg-blue-600 border-blue-600 text-white" 
+                        : "border-gray-300"
+                    )}>
+                      {value === option.value && (
+                        <div className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        "truncate",
+                        value === option.value && "text-blue-700 font-medium"
+                      )}>
+                        {option.label}
+                      </p>
+                      {value === option.value && (
+                        <span className="text-xs text-blue-600 mt-1">Terpilih</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Improved MultiSelect Component
 interface MultiSelectProps {
   value: string[];
@@ -260,6 +420,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Filter options based on search term
@@ -272,11 +433,21 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     );
   }, [options, searchTerm]);
 
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setSearchTerm("");
       }
     };
 
@@ -305,7 +476,12 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
     return options.filter(option => value.includes(option.id));
   }, [options, value]);
 
-  const toggleDropdown = () => setIsOpen(!isOpen);
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      setSearchTerm("");
+    }
+  };
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
@@ -339,22 +515,27 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       {/* Dropdown Content */}
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
-          {/* Search Input - Fixed: Tidak kehilangan fokus */}
+          {/* Search Input */}
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 placeholder="Cari nama, jabatan, atau kecamatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9"
-                autoFocus
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -705,16 +886,16 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Jenis harus dipilih" }}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih jenis" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {JENIS_OPTIONS.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        options={JENIS_OPTIONS.map(option => ({
+                          value: option,
+                          label: option
+                        }))}
+                        placeholder="Pilih jenis"
+                        searchPlaceholder="Cari jenis..."
+                      />
                     )} 
                   />
                   {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
@@ -726,16 +907,16 @@ const DaftarHadir = () => {
                     name="trainingCenter" 
                     control={control} 
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih tempat kegiatan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TRAINING_CENTER_OPTIONS.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        options={TRAINING_CENTER_OPTIONS.map(option => ({
+                          value: option,
+                          label: option
+                        }))}
+                        placeholder="Pilih tempat kegiatan"
+                        searchPlaceholder="Cari tempat..."
+                      />
                     )} 
                   />
                 </div>
@@ -750,10 +931,15 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Program harus dipilih" }}
                     render={({ field }) => (
-                      <ProgramSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <div className="relative">
+                        <ProgramSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}
@@ -766,12 +952,17 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Kegiatan harus dipilih" }}
                     render={({ field }) => (
-                      <KegiatanSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        programId={watchedProgram}
-                        disabled={!watchedProgram}
-                      />
+                      <div className="relative">
+                        <KegiatanSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          programId={watchedProgram}
+                          disabled={!watchedProgram}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
@@ -784,12 +975,17 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "KRO harus dipilih" }}
                     render={({ field }) => (
-                      <KROSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        kegiatanId={watchedKegiatan}
-                        disabled={!watchedKegiatan}
-                      />
+                      <div className="relative">
+                        <KROSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          kegiatanId={watchedKegiatan}
+                          disabled={!watchedKegiatan}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
@@ -802,12 +998,17 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "RO harus dipilih" }}
                     render={({ field }) => (
-                      <ROSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        kroId={watchedKRO}
-                        disabled={!watchedKRO}
-                      />
+                      <div className="relative">
+                        <ROSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          kroId={watchedKRO}
+                          disabled={!watchedKRO}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
@@ -820,10 +1021,15 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Komponen harus dipilih" }}
                     render={({ field }) => (
-                      <KomponenSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <div className="relative">
+                        <KomponenSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
@@ -836,10 +1042,15 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Akun harus dipilih" }}
                     render={({ field }) => (
-                      <AkunSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <div className="relative">
+                        <AkunSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     )} 
                   />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
@@ -936,21 +1147,16 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Pembuat daftar harus dipilih" }}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih pembuat daftar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {organikList.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.name}</span>
-                                <span className="text-xs text-muted-foreground">{item.jabatan}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        options={organikList.map(item => ({
+                          value: item.id,
+                          label: `${item.name} - ${item.jabatan || ''}`
+                        }))}
+                        placeholder="Pilih pembuat daftar"
+                        searchPlaceholder="Cari nama atau jabatan..."
+                      />
                     )} 
                   />
                   {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
