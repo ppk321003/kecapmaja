@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2, X, Check } from "lucide-react";
+import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 // Types
 interface FormValues {
   namaKegiatan: string;
@@ -36,14 +37,12 @@ interface FormValues {
   mitra: string[];
   pembuatDaftar: string;
 }
-
 interface Option {
   id: string;
   name: string;
   jabatan?: string;
   kecamatan?: string;
 }
-
 // Constants
 const CONSTANTS = {
   SPREADSHEET: {
@@ -57,14 +56,11 @@ const CONSTANTS = {
     MITRA: "MASTER.MITRA"
   }
 } as const;
-
 const TRAINING_CENTER_OPTIONS = [
-  "BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", 
+  "BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel",
   "Garden Hotel", "Horison Ultima", "Achiera Hotel"
 ];
-
 const JENIS_OPTIONS = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
-
 const defaultValues: FormValues = {
   namaKegiatan: "",
   detil: "",
@@ -83,16 +79,14 @@ const defaultValues: FormValues = {
   mitra: [],
   pembuatDaftar: ""
 };
-
 // Utility Functions
 const formatTanggalIndonesia = (date: Date | null): string => {
   if (!date) return "";
   return format(date, "dd MMMM yyyy", { locale: id });
 };
-
 const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
   if (!kode) return kode;
-  
+ 
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
@@ -101,27 +95,22 @@ const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' 
         range: sheetName
       }
     });
-
     if (error || !data?.values) {
       console.error(`Error fetching ${sheetName}:`, error);
       return kode;
     }
-
     const rows = data.values.slice(1);
     const foundRow = rows.find((row: any[]) => row[1] === kode);
-
     if (foundRow) {
       const columnIndex = namaColumn === 'C' ? 2 : 3;
       return foundRow[columnIndex] || kode;
     }
-
     return kode;
   } catch (error) {
     console.error(`Error in getNamaFromKode for ${sheetName}:`, error);
     return kode;
   }
 };
-
 // Custom Hooks
 const useSheetData = () => {
   const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
@@ -133,7 +122,6 @@ const useSheetData = () => {
           range
         }
       });
-
       if (error) throw error;
       return data?.values || [];
     } catch (error) {
@@ -141,172 +129,83 @@ const useSheetData = () => {
       throw error;
     }
   }, []);
-
   return { fetchSheetData };
 };
-
-// Generic Searchable Select Component
-interface SearchableSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
-  searchPlaceholder?: string;
-  disabled?: boolean;
-}
-
-const SearchableSelect: React.FC<SearchableSelectProps> = ({
-  value,
-  onValueChange,
-  options,
-  placeholder = "Pilih...",
-  searchPlaceholder = "Cari...",
-  disabled = false
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.value.toLowerCase().includes(searchTerm.toLowerCase())
+const useSequenceGenerator = () => {
+  const { fetchSheetData } = useSheetData();
+  const getNextSequenceNumber = useCallback(async (): Promise<number> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:A`
     );
-  }, [options, searchTerm]);
-
-  // Focus search input when dropdown opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue);
-    setIsOpen(false);
-    setSearchTerm("");
-  };
-
-  const selectedOption = options.find(option => option.value === value);
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen(!isOpen);
-            if (!isOpen) {
-              setSearchTerm("");
-            }
-          }
-        }}
-        disabled={disabled}
-        className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          "min-h-[40px] text-left",
-          disabled && "opacity-50 cursor-not-allowed"
-        )}
-      >
-        <span className={cn("truncate", !value && "text-muted-foreground")}>
-          {selectedOption?.label || placeholder}
-        </span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
-          {/* Search Input */}
-          <div className="border-b p-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9"
-                onClick={(e) => e.stopPropagation()}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Options List */}
-          <ScrollArea className="max-h-64">
-            <div className="p-1">
-              {filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada data ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <div
-                    key={option.value}
-                    onClick={() => handleSelect(option.value)}
-                    className={cn(
-                      "flex items-center gap-2 p-3 rounded-md cursor-pointer transition-colors",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      value === option.value && "bg-blue-50 border border-blue-200"
-                    )}
-                  >
-                    <div className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-sm border",
-                      value === option.value 
-                        ? "bg-blue-600 border-blue-600" 
-                        : "border-gray-300"
-                    )}>
-                      {value === option.value && (
-                        <Check className="h-3 w-3 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        "truncate",
-                        value === option.value && "text-blue-700 font-medium"
-                      )}>
-                        {option.label}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-    </div>
-  );
+    if (values.length <= 1) return 1;
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+  }, [fetchSheetData]);
+  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `dh-${year}${month}`;
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!B:B`
+    );
+    if (values.length <= 1) return `${prefix}001`;
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const match = id.match(/dh-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          const sequence = parseInt(match[3]);
+          return isNaN(sequence) ? 0 : sequence;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+  }, [fetchSheetData]);
+  return { getNextSequenceNumber, generateDaftarHadirId };
 };
-
-// Simple MultiSelect with Search
-interface SimpleMultiSelectProps {
+const useDataSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitData = async (data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+          operation: "append",
+          range: `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:O`,
+          values: [data]
+        }
+      });
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Submission error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  return { submitData, isSubmitting };
+};
+// Improved MultiSelect Component
+interface MultiSelectProps {
   value: string[];
   onValueChange: (value: string[]) => void;
   options: Option[];
@@ -314,8 +213,7 @@ interface SimpleMultiSelectProps {
   loading?: boolean;
   type: 'organik' | 'mitra';
 }
-
-const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
+const MultiSelect: React.FC<MultiSelectProps> = ({
   value,
   onValueChange,
   options,
@@ -325,9 +223,8 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  // Filter options based on search term
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     return options.filter(option =>
@@ -336,48 +233,35 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
       (option.kecamatan && option.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [options, searchTerm]);
-
-  // Focus search input when dropdown opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setSearchTerm("");
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
   const handleSelect = (optionId: string) => {
     if (value.includes(optionId)) {
       onValueChange(value.filter(id => id !== optionId));
     } else {
       onValueChange([...value, optionId]);
     }
+    // Don't close dropdown after selection
   };
-
-  const toggleDropdown = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
-      setSearchTerm("");
+  const handleSelectAll = () => {
+    if (value.length === filteredOptions.length) {
+      onValueChange([]);
+    } else {
+      onValueChange(filteredOptions.map(option => option.id));
     }
   };
-
   const selectedOptions = useMemo(() => {
     return options.filter(option => value.includes(option.id));
   }, [options, value]);
-
+  const toggleDropdown = () => setIsOpen(!isOpen);
   return (
     <div className="relative w-full" ref={dropdownRef}>
       {/* Trigger Button */}
@@ -387,7 +271,7 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
           "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          "min-h-[40px] text-left"
+          "min-h-[40px]"
         )}
       >
         <div className="flex items-center gap-2 overflow-hidden">
@@ -406,36 +290,45 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
         </div>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </button>
-
       {/* Dropdown Content */}
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
-          {/* Search Input */}
+          {/* Search Input - Fixed: Tidak kehilangan fokus */}
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                ref={searchInputRef}
                 placeholder="Cari nama, jabatan, atau kecamatan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9"
-                onClick={(e) => e.stopPropagation()}
+                autoFocus
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
               />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
             </div>
           </div>
-
+          {/* Select All Button */}
+          <div className="px-3 py-2 border-b">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full h-8 justify-start"
+              onClick={handleSelectAll}
+            >
+              {value.length === filteredOptions.length ? (
+                <>Batalkan semua pilihan</>
+              ) : (
+                <>Pilih semua ({filteredOptions.length})</>
+              )}
+            </Button>
+          </div>
           {/* Options List */}
-          <ScrollArea className="h-64">
+          <ScrollArea className="max-h-64">
             <div className="p-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
@@ -455,17 +348,17 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
                       className={cn(
                         "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
                         "hover:bg-accent hover:text-accent-foreground",
-                        isSelected && "bg-blue-50"
+                        isSelected && "bg-blue-50 border border-blue-200"
                       )}
                     >
                       <div className={cn(
                         "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600" 
+                        isSelected
+                          ? "bg-blue-600 border-blue-600 text-white"
                           : "border-gray-300"
                       )}>
                         {isSelected && (
-                          <Check className="h-3 w-3 text-white" />
+                          <div className="h-2 w-2 rounded-full bg-white" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -476,14 +369,19 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
                           )}>
                             {option.name}
                           </p>
+                          {isSelected && (
+                            <Badge variant="outline" className="text-xs">
+                              Terpilih
+                            </Badge>
+                          )}
                         </div>
                         {option.jabatan && (
-                          <p className="text-sm text-muted-foreground mt-1 truncate">
+                          <p className="text-sm text-muted-foreground mt-1">
                             {option.jabatan}
                           </p>
                         )}
                         {option.kecamatan && (
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Kecamatan: {option.kecamatan}
                           </p>
                         )}
@@ -494,391 +392,20 @@ const SimpleMultiSelect: React.FC<SimpleMultiSelectProps> = ({
               )}
             </div>
           </ScrollArea>
+          {/* Selected Count */}
+          <div className="border-t px-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Terpilih:</span>
+              <span className="font-medium text-green-600">
+                {selectedOptions.length} {type === 'organik' ? 'organik' : 'mitra'}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
-
-// Custom Select Components with Search
-interface ProgramSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const ProgramSelectWithSearch: React.FC<ProgramSelectProps> = ({ value, onValueChange }) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchPrograms();
-  }, []);
-
-  const fetchPrograms = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "program!A:C"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const programOptions = data.values.slice(1).map((row: any[]) => ({
-          value: row[1] || '',
-          label: `${row[1] || ''} - ${row[2] || ''}`
-        })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(programOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching programs:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data program",
-        description: "Terjadi kesalahan saat memuat data program"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : "Pilih program"}
-      searchPlaceholder="Cari program..."
-    />
-  );
-};
-
-interface KegiatanSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  programId?: string;
-  disabled?: boolean;
-}
-
-const KegiatanSelectWithSearch: React.FC<KegiatanSelectProps> = ({ 
-  value, 
-  onValueChange, 
-  programId, 
-  disabled = false 
-}) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (programId) {
-      fetchKegiatans();
-    } else {
-      setOptions([]);
-    }
-  }, [programId]);
-
-  const fetchKegiatans = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "kegiatan!A:D"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const kegiatanOptions = data.values.slice(1)
-          .filter((row: any[]) => row[0] === programId)
-          .map((row: any[]) => ({
-            value: row[2] || '',
-            label: `${row[2] || ''} - ${row[3] || ''}`
-          })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(kegiatanOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching kegiatans:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data kegiatan",
-        description: "Terjadi kesalahan saat memuat data kegiatan"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : (programId ? "Pilih kegiatan" : "Pilih program dahulu")}
-      searchPlaceholder="Cari kegiatan..."
-      disabled={disabled || !programId}
-    />
-  );
-};
-
-interface KROSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  kegiatanId?: string;
-  disabled?: boolean;
-}
-
-const KROSelectWithSearch: React.FC<KROSelectProps> = ({ 
-  value, 
-  onValueChange, 
-  kegiatanId, 
-  disabled = false 
-}) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (kegiatanId) {
-      fetchKROs();
-    } else {
-      setOptions([]);
-    }
-  }, [kegiatanId]);
-
-  const fetchKROs = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "kro!A:D"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const kroOptions = data.values.slice(1)
-          .filter((row: any[]) => row[1] === kegiatanId)
-          .map((row: any[]) => ({
-            value: row[2] || '',
-            label: `${row[2] || ''} - ${row[3] || ''}`
-          })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(kroOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching KROs:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data KRO",
-        description: "Terjadi kesalahan saat memuat data KRO"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : (kegiatanId ? "Pilih KRO" : "Pilih kegiatan dahulu")}
-      searchPlaceholder="Cari KRO..."
-      disabled={disabled || !kegiatanId}
-    />
-  );
-};
-
-interface ROSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  kroId?: string;
-  disabled?: boolean;
-}
-
-const ROSelectWithSearch: React.FC<ROSelectProps> = ({ 
-  value, 
-  onValueChange, 
-  kroId, 
-  disabled = false 
-}) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (kroId) {
-      fetchROs();
-    } else {
-      setOptions([]);
-    }
-  }, [kroId]);
-
-  const fetchROs = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "ro!A:D"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const roOptions = data.values.slice(1)
-          .filter((row: any[]) => row[1] === kroId)
-          .map((row: any[]) => ({
-            value: row[2] || '',
-            label: `${row[2] || ''} - ${row[3] || ''}`
-          })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(roOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching ROs:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data RO",
-        description: "Terjadi kesalahan saat memuat data RO"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : (kroId ? "Pilih RO" : "Pilih KRO dahulu")}
-      searchPlaceholder="Cari RO..."
-      disabled={disabled || !kroId}
-    />
-  );
-};
-
-interface KomponenSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const KomponenSelectWithSearch: React.FC<KomponenSelectProps> = ({ value, onValueChange }) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchKomponen();
-  }, []);
-
-  const fetchKomponen = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "komponen!A:C"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const komponenOptions = data.values.slice(1).map((row: any[]) => ({
-          value: row[1] || '',
-          label: `${row[1] || ''} - ${row[2] || ''}`
-        })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(komponenOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching komponen:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data komponen",
-        description: "Terjadi kesalahan saat memuat data komponen"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : "Pilih komponen"}
-      searchPlaceholder="Cari komponen..."
-    />
-  );
-};
-
-interface AkunSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const AkunSelectWithSearch: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchAkun();
-  }, []);
-
-  const fetchAkun = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-          operation: "read",
-          range: "akun!A:C"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.values) {
-        const akunOptions = data.values.slice(1).map((row: any[]) => ({
-          value: row[1] || '',
-          label: `${row[1] || ''} - ${row[2] || ''}`
-        })).filter((opt: { value: string; label: string }) => opt.value);
-        setOptions(akunOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching akun:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data akun",
-        description: "Terjadi kesalahan saat memuat data akun"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SearchableSelect
-      value={value}
-      onValueChange={onValueChange}
-      options={options}
-      placeholder={loading ? "Memuat..." : "Pilih akun"}
-      searchPlaceholder="Cari akun..."
-    />
-  );
-};
-
 // Main Component
 const DaftarHadir = () => {
   const navigate = useNavigate();
@@ -889,9 +416,15 @@ const DaftarHadir = () => {
   const [mitraList, setMitraList] = useState<Option[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [loadingMitra, setLoadingMitra] = useState(false);
-
+  const [programData, setProgramData] = useState<any[][]>([]);
+  const [kegiatanData, setKegiatanData] = useState<any[][]>([]);
+  const [kroData, setKroData] = useState<any[][]>([]);
+  const [roData, setRoData] = useState<any[][]>([]);
+  const [komponenData, setKomponenData] = useState<any[][]>([]);
+  const [akunData, setAkunData] = useState<any[][]>([]);
+  const { submitData, isSubmitting: isSubmitLoading } = useDataSubmission();
+  const { getNextSequenceNumber, generateDaftarHadirId } = useSequenceGenerator();
   const { fetchSheetData } = useSheetData();
-
   const {
     control,
     handleSubmit,
@@ -899,13 +432,54 @@ const DaftarHadir = () => {
     setValue,
     formState: { errors }
   } = useForm<FormValues>({ defaultValues });
-
   const watchedProgram = watch('program');
   const watchedKegiatan = watch('kegiatan');
   const watchedKRO = watch('kro');
   const watchedOrganik = watch('organik');
   const watchedMitra = watch('mitra');
-
+  // Memoized options
+  const programOptions = useMemo(() => 
+    programData.map(row => ({
+      value: row[1] || '',
+      label: row[2] || ''
+    })).filter(opt => opt.value && opt.label),
+    [programData]
+  );
+  const kegiatanOptions = useMemo(() => 
+    kegiatanData.filter(row => row[1] === watchedProgram).map(row => ({
+      value: row[2] || '',
+      label: row[3] || ''
+    })).filter(opt => opt.value && opt.label),
+    [kegiatanData, watchedProgram]
+  );
+  const kroOptions = useMemo(() => 
+    kroData.filter(row => row[1] === watchedKegiatan).map(row => ({
+      value: row[2] || '',
+      label: row[3] || ''
+    })).filter(opt => opt.value && opt.label),
+    [kroData, watchedKegiatan]
+  );
+  const roOptions = useMemo(() => 
+    roData.filter(row => row[1] === watchedKRO).map(row => ({
+      value: row[2] || '',
+      label: row[3] || ''
+    })).filter(opt => opt.value && opt.label),
+    [roData, watchedKRO]
+  );
+  const komponenOptions = useMemo(() => 
+    komponenData.map(row => ({
+      value: row[1] || '',
+      label: row[2] || ''
+    })).filter(opt => opt.value && opt.label),
+    [komponenData]
+  );
+  const akunOptions = useMemo(() => 
+    akunData.map(row => ({
+      value: row[1] || '',
+      label: row[2] || ''
+    })).filter(opt => opt.value && opt.label),
+    [akunData]
+  );
   // Reset dependent fields when parent changes
   useEffect(() => {
     if (!watchedProgram) {
@@ -914,27 +488,23 @@ const DaftarHadir = () => {
       setValue('ro', '');
     }
   }, [watchedProgram, setValue]);
-
   useEffect(() => {
     if (!watchedKegiatan) {
       setValue('kro', '');
       setValue('ro', '');
     }
   }, [watchedKegiatan, setValue]);
-
   useEffect(() => {
     if (!watchedKRO) {
       setValue('ro', '');
     }
   }, [watchedKRO, setValue]);
-
-  // Fetch initial data
+  // Fetch initial data dengan loading state
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoadingOrganik(true);
         setLoadingMitra(true);
-
         // Fetch organik
         const organikRows = await fetchSheetData(
           CONSTANTS.SPREADSHEET.MASTER_ID,
@@ -949,7 +519,6 @@ const DaftarHadir = () => {
           setOrganikList(organikData);
         }
         setLoadingOrganik(false);
-
         // Fetch mitra
         const mitraRows = await fetchSheetData(
           CONSTANTS.SPREADSHEET.MASTER_ID,
@@ -964,6 +533,42 @@ const DaftarHadir = () => {
           setMitraList(mitraData);
         }
         setLoadingMitra(false);
+        // Fetch program
+        const programRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "program"
+        );
+        setProgramData(programRows.slice(1) || []);
+        // Fetch kegiatan
+        const kegiatanRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "kegiatan"
+        );
+        setKegiatanData(kegiatanRows.slice(1) || []);
+        // Fetch kro
+        const kroRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "kro"
+        );
+        setKroData(kroRows.slice(1) || []);
+        // Fetch ro
+        const roRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "ro"
+        );
+        setRoData(roRows.slice(1) || []);
+        // Fetch komponen
+        const komponenRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "komponen"
+        );
+        setKomponenData(komponenRows.slice(1) || []);
+        // Fetch akun
+        const akunRows = await fetchSheetData(
+          CONSTANTS.SPREADSHEET.SOURCE_ID,
+          "akun"
+        );
+        setAkunData(akunRows.slice(1) || []);
       } catch (error) {
         console.error("Error fetching initial data:", error);
         toast({
@@ -975,38 +580,72 @@ const DaftarHadir = () => {
         setLoadingMitra(false);
       }
     };
-
     fetchInitialData();
   }, [fetchSheetData]);
-
   // Update selected organik and mitra
   useEffect(() => {
     const updatedOrganik = (watchedOrganik || [])
       .map(id => organikList.find(item => item.id === id))
       .filter(Boolean) as Option[];
-    
+   
     const updatedMitra = (watchedMitra || [])
       .map(id => mitraList.find(item => item.id === id))
       .filter(Boolean) as Option[];
-    
+   
     setSelectedOrganik(updatedOrganik);
     setSelectedMitra(updatedMitra);
   }, [watchedOrganik, watchedMitra, organikList, mitraList]);
-
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // [Previous submit logic remains the same]
-      // Simplified for brevity
-      
+      const [sequenceNumber, daftarHadirId] = await Promise.all([
+        getNextSequenceNumber(),
+        generateDaftarHadirId()
+      ]);
+      // Dapatkan nama dari kode untuk setiap field
+      const [
+        programNama,
+        kegiatanNama,
+        kroNama,
+        roNama,
+        komponenNama,
+        akunNama
+      ] = await Promise.all([
+        getNamaFromKode("program", data.program, 'C'),
+        getNamaFromKode("kegiatan", data.kegiatan, 'D'),
+        getNamaFromKode("kro", data.kro, 'D'),
+        getNamaFromKode("ro", data.ro, 'D'),
+        getNamaFromKode("komponen", data.komponen, 'C'),
+        getNamaFromKode("akun", data.akun, 'C')
+      ]);
+      const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
+     
+      const rowData = [
+        sequenceNumber,
+        daftarHadirId,
+        data.namaKegiatan,
+        data.detil || "",
+        data.jenis,
+        programNama,
+        kegiatanNama,
+        kroNama,
+        roNama,
+        komponenNama,
+        akunNama,
+        formatTanggalIndonesia(data.tanggalMulai),
+        formatTanggalIndonesia(data.tanggalSelesai),
+        pembuatDaftar?.name || data.pembuatDaftar,
+        selectedOrganik.map(org => org.name).join(" | "),
+        selectedMitra.map(mitra => mitra.name).join(" | ")
+      ];
+      await submitData(rowData);
       toast({
         title: "Sukses!",
-        description: `Daftar Hadir berhasil disimpan`,
+        description: `Daftar Hadir berhasil disimpan (ID: ${daftarHadirId})`,
         variant: "default"
       });
-      
+     
       navigate("/e-dokumen/buat");
-
     } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
@@ -1018,28 +657,23 @@ const DaftarHadir = () => {
       setIsSubmitting(false);
     }
   };
-
   const removeOrganik = (id: string) => {
     const currentOrganik = watch('organik') || [];
     setValue('organik', currentOrganik.filter(orgId => orgId !== id));
   };
-
   const removeMitra = (id: string) => {
     const currentMitra = watch('mitra') || [];
     setValue('mitra', currentMitra.filter(mitraId => mitraId !== id));
   };
-
-  const isLoading = isSubmitting;
-
+  const isLoading = isSubmitting || isSubmitLoading;
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 bg-background rounded-xl shadow-sm">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-orange-600">Daftar Hadir</h1>
           <p className="text-muted-foreground mt-2">Formulir Daftar Hadir</p>
         </div>
-
-        <Card className="w-full">
+        <Card className="w-full border-none shadow-none">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl">Form Daftar Hadir</CardTitle>
           </CardHeader>
@@ -1049,291 +683,549 @@ const DaftarHadir = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="namaKegiatan">Nama Kegiatan <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="namaKegiatan" 
-                    control={control} 
+                  <Controller
+                    name="namaKegiatan"
+                    control={control}
                     rules={{ required: "Nama kegiatan harus diisi" }}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
+                      <Input
+                        {...field}
                         placeholder="Contoh: Pelatihan Petugas Pemutakhiran Perkembangan Desa Tahun 2025"
+                        className="rounded-lg border border-input/50 focus:border-primary/50 transition-colors"
                       />
-                    )} 
+                    )}
                   />
                   {errors.namaKegiatan && <p className="text-sm text-destructive">{errors.namaKegiatan.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="detil">Detil Kegiatan</Label>
-                  <Controller 
-                    name="detil" 
-                    control={control} 
+                  <Controller
+                    name="detil"
+                    control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
+                      <Input
+                        {...field}
                         placeholder="Contoh: Pemutakhiran Perkembangan Desa Tahun 2025"
+                        className="rounded-lg border border-input/50 focus:border-primary/50 transition-colors"
                       />
-                    )} 
+                    )}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label>Jenis <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="jenis" 
-                    control={control} 
+                  <Controller
+                    name="jenis"
+                    control={control}
                     rules={{ required: "Jenis harus dipilih" }}
                     render={({ field }) => (
-                      <SearchableSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        options={JENIS_OPTIONS.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        placeholder="Pilih jenis"
-                        searchPlaceholder="Cari jenis..."
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? JENIS_OPTIONS.find((option) => option === field.value)
+                              : "Pilih jenis"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari jenis..." autoFocus />
+                            <CommandEmpty>Tidak ada jenis ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {JENIS_OPTIONS.map((option) => (
+                                <CommandItem
+                                  key={option}
+                                  value={option}
+                                  onSelect={() => {
+                                    field.onChange(option);
+                                  }}
+                                >
+                                  {option}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Tempat Kegiatan</Label>
-                  <Controller 
-                    name="trainingCenter" 
-                    control={control} 
+                  <Controller
+                    name="trainingCenter"
+                    control={control}
                     render={({ field }) => (
-                      <SearchableSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        options={TRAINING_CENTER_OPTIONS.map(option => ({
-                          value: option,
-                          label: option
-                        }))}
-                        placeholder="Pilih tempat kegiatan"
-                        searchPlaceholder="Cari tempat..."
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? TRAINING_CENTER_OPTIONS.find((option) => option === field.value)
+                              : "Pilih tempat kegiatan"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari tempat kegiatan..." autoFocus />
+                            <CommandEmpty>Tidak ada tempat kegiatan ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {TRAINING_CENTER_OPTIONS.map((option) => (
+                                <CommandItem
+                                  key={option}
+                                  value={option}
+                                  onSelect={() => {
+                                    field.onChange(option);
+                                  }}
+                                >
+                                  {option}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                 </div>
               </div>
-
               {/* Program dan Kegiatan */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="program" 
-                    control={control} 
+                  <Controller
+                    name="program"
+                    control={control}
                     rules={{ required: "Program harus dipilih" }}
                     render={({ field }) => (
-                      <ProgramSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? programOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih program"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari program..." autoFocus />
+                            <CommandEmpty>Tidak ada program ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {programOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.program && <p className="text-sm text-destructive">{errors.program.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Kegiatan <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="kegiatan" 
-                    control={control} 
+                  <Controller
+                    name="kegiatan"
+                    control={control}
                     rules={{ required: "Kegiatan harus dipilih" }}
                     render={({ field }) => (
-                      <KegiatanSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        programId={watchedProgram}
-                        disabled={!watchedProgram}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild disabled={!watchedProgram}>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            disabled={!watchedProgram}
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? kegiatanOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih kegiatan"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari kegiatan..." autoFocus />
+                            <CommandEmpty>Tidak ada kegiatan ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {kegiatanOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.kegiatan && <p className="text-sm text-destructive">{errors.kegiatan.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>KRO <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="kro" 
-                    control={control} 
+                  <Controller
+                    name="kro"
+                    control={control}
                     rules={{ required: "KRO harus dipilih" }}
                     render={({ field }) => (
-                      <KROSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        kegiatanId={watchedKegiatan}
-                        disabled={!watchedKegiatan}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild disabled={!watchedKegiatan}>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            disabled={!watchedKegiatan}
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? kroOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih KRO"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari KRO..." autoFocus />
+                            <CommandEmpty>Tidak ada KRO ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {kroOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.kro && <p className="text-sm text-destructive">{errors.kro.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>RO <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="ro" 
-                    control={control} 
+                  <Controller
+                    name="ro"
+                    control={control}
                     rules={{ required: "RO harus dipilih" }}
                     render={({ field }) => (
-                      <ROSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        kroId={watchedKRO}
-                        disabled={!watchedKRO}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild disabled={!watchedKRO}>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            disabled={!watchedKRO}
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? roOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih RO"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari RO..." autoFocus />
+                            <CommandEmpty>Tidak ada RO ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {roOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.ro && <p className="text-sm text-destructive">{errors.ro.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Komponen <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="komponen" 
-                    control={control} 
+                  <Controller
+                    name="komponen"
+                    control={control}
                     rules={{ required: "Komponen harus dipilih" }}
                     render={({ field }) => (
-                      <KomponenSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? komponenOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih komponen"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari komponen..." autoFocus />
+                            <CommandEmpty>Tidak ada komponen ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {komponenOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Akun <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="akun" 
-                    control={control} 
+                  <Controller
+                    name="akun"
+                    control={control}
                     rules={{ required: "Akun harus dipilih" }}
                     render={({ field }) => (
-                      <AkunSelectWithSearch
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? akunOptions.find((option) => option.value === field.value)?.label
+                              : "Pilih akun"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari akun..." autoFocus />
+                            <CommandEmpty>Tidak ada akun ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {akunOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    field.onChange(option.value);
+                                  }}
+                                >
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
                 </div>
               </div>
-
               {/* Tanggal */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalMulai" 
-                    control={control} 
+                  <Controller
+                    name="tanggalMulai"
+                    control={control}
                     rules={{ required: "Tanggal mulai harus diisi" }}
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                            className={cn("w-full justify-start text-left font-normal rounded-lg border border-input/50 focus:border-primary/50 transition-colors", !field.value && "text-muted-foreground")}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
+                        <PopoverContent className="w-auto p-0 rounded-lg shadow-md">
                           <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
-                    )} 
+                    )}
                   />
                   {errors.tanggalMulai && <p className="text-sm text-destructive">{errors.tanggalMulai.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Tanggal Selesai <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalSelesai" 
-                    control={control} 
+                  <Controller
+                    name="tanggalSelesai"
+                    control={control}
                     rules={{ required: "Tanggal selesai harus diisi" }}
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                            className={cn("w-full justify-start text-left font-normal rounded-lg border border-input/50 focus:border-primary/50 transition-colors", !field.value && "text-muted-foreground")}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
+                        <PopoverContent className="w-auto p-0 rounded-lg shadow-md">
                           <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
-                    )} 
+                    )}
                   />
                   {errors.tanggalSelesai && <p className="text-sm text-destructive">{errors.tanggalSelesai.message}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label>Tanggal SPJ <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="tanggalSpj" 
-                    control={control} 
+                  <Controller
+                    name="tanggalSpj"
+                    control={control}
                     rules={{ required: "Tanggal SPJ harus diisi" }}
                     render={({ field }) => (
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                            className={cn("w-full justify-start text-left font-normal rounded-lg border border-input/50 focus:border-primary/50 transition-colors", !field.value && "text-muted-foreground")}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? format(field.value, "PPP", { locale: id }) : "Pilih tanggal"}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
+                        <PopoverContent className="w-auto p-0 rounded-lg shadow-md">
                           <Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
-                    )} 
+                    )}
                   />
                   {errors.tanggalSpj && <p className="text-sm text-destructive">{errors.tanggalSpj.message}</p>}
                 </div>
               </div>
-
               {/* Pembuat Daftar */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Pembuat Daftar <span className="text-red-500">*</span></Label>
-                  <Controller 
-                    name="pembuatDaftar" 
-                    control={control} 
+                  <Controller
+                    name="pembuatDaftar"
+                    control={control}
                     rules={{ required: "Pembuat daftar harus dipilih" }}
                     render={({ field }) => (
-                      <SearchableSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        options={organikList.map(item => ({
-                          value: item.id,
-                          label: `${item.name} - ${item.jabatan || ''}`
-                        }))}
-                        placeholder="Pilih pembuat daftar"
-                        searchPlaceholder="Cari nama atau jabatan..."
-                      />
-                    )} 
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between rounded-lg border border-input/50 focus:border-primary/50 transition-colors",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? organikList.find((item) => item.id === field.value)?.name
+                              : "Pilih pembuat daftar"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 rounded-lg shadow-md">
+                          <Command>
+                            <CommandInput placeholder="Cari nama atau jabatan..." autoFocus />
+                            <CommandEmpty>Tidak ada ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {organikList.map((item) => (
+                                <CommandItem
+                                  key={item.id}
+                                  value={item.name}
+                                  onSelect={() => {
+                                    field.onChange(item.id);
+                                  }}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{item.name}</span>
+                                    <span className="text-xs text-muted-foreground">{item.jabatan}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   />
                   {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
                 </div>
               </div>
-
               {/* Peserta Organik dan Mitra */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
+                <Card className="border border-input/50 rounded-lg shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <User className="h-5 w-5" />
@@ -1342,11 +1234,11 @@ const DaftarHadir = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Controller 
-                        name="organik" 
-                        control={control} 
+                      <Controller
+                        name="organik"
+                        control={control}
                         render={({ field }) => (
-                          <SimpleMultiSelect
+                          <MultiSelect
                             value={field.value}
                             onValueChange={field.onChange}
                             options={organikList}
@@ -1354,10 +1246,10 @@ const DaftarHadir = () => {
                             loading={loadingOrganik}
                             type="organik"
                           />
-                        )} 
+                        )}
                       />
                     </div>
-                    
+                   
                     {selectedOrganik.length > 0 && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -1366,24 +1258,27 @@ const DaftarHadir = () => {
                             {selectedOrganik.length} organik
                           </Badge>
                         </div>
-                        <ScrollArea className="h-40 rounded-md border p-2">
+                        <ScrollArea className="max-h-60 rounded-md border p-2">
                           <div className="space-y-2">
                             {selectedOrganik.map(org => (
-                              <div key={org.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
+                              <div key={org.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-medium truncate text-sm">{org.name}</p>
+                                    <p className="font-medium truncate">{org.name}</p>
+                                    <Badge variant="outline" className="text-xs">
+                                      Terpilih
+                                    </Badge>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1 truncate">{org.jabatan}</p>
+                                  <p className="text-sm text-muted-foreground mt-1">{org.jabatan}</p>
                                 </div>
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => removeOrganik(org.id)}
-                                  className="ml-2 h-6 w-6 p-0"
+                                  className="ml-2"
                                 >
-                                  <Trash className="h-3 w-3 text-destructive" />
+                                  <Trash className="h-4 w-4 text-destructive" />
                                 </Button>
                               </div>
                             ))}
@@ -1393,8 +1288,7 @@ const DaftarHadir = () => {
                     )}
                   </CardContent>
                 </Card>
-
-                <Card>
+                <Card className="border border-input/50 rounded-lg shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Users className="h-5 w-5" />
@@ -1403,11 +1297,11 @@ const DaftarHadir = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Controller 
-                        name="mitra" 
-                        control={control} 
+                      <Controller
+                        name="mitra"
+                        control={control}
                         render={({ field }) => (
-                          <SimpleMultiSelect
+                          <MultiSelect
                             value={field.value}
                             onValueChange={field.onChange}
                             options={mitraList}
@@ -1415,10 +1309,10 @@ const DaftarHadir = () => {
                             loading={loadingMitra}
                             type="mitra"
                           />
-                        )} 
+                        )}
                       />
                     </div>
-                    
+                   
                     {selectedMitra.length > 0 && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -1427,26 +1321,29 @@ const DaftarHadir = () => {
                             {selectedMitra.length} mitra
                           </Badge>
                         </div>
-                        <ScrollArea className="h-40 rounded-md border p-2">
+                        <ScrollArea className="max-h-60 rounded-md border p-2">
                           <div className="space-y-2">
                             {selectedMitra.map(mitra => (
-                              <div key={mitra.id} className="flex items-center justify-between p-2 border rounded hover:bg-accent/50">
+                              <div key={mitra.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-medium truncate text-sm">{mitra.name}</p>
+                                    <p className="font-medium truncate">{mitra.name}</p>
+                                    <Badge variant="outline" className="text-xs">
+                                      Terpilih
+                                    </Badge>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                                  <p className="text-sm text-muted-foreground mt-1">
                                     Kecamatan: {mitra.kecamatan}
                                   </p>
                                 </div>
-                                <Button 
-                                  type="button" 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => removeMitra(mitra.id)}
-                                  className="ml-2 h-6 w-6 p-0"
+                                  className="ml-2"
                                 >
-                                  <Trash className="h-3 w-3 text-destructive" />
+                                  <Trash className="h-4 w-4 text-destructive" />
                                 </Button>
                               </div>
                             ))}
@@ -1457,7 +1354,6 @@ const DaftarHadir = () => {
                   </CardContent>
                 </Card>
               </div>
-
               {/* Tombol Aksi */}
               <div className="flex justify-end gap-4 pt-6 border-t">
                 <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
@@ -1479,5 +1375,4 @@ const DaftarHadir = () => {
     </Layout>
   );
 };
-
 export default DaftarHadir;
