@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -18,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useOrganikBPS } from "@/hooks/use-database";
+import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
@@ -428,41 +428,20 @@ const LemburLaporan = () => {
 
                   <div className="space-y-4">
                     <Label>Organik BPS (Bisa pilih lebih dari 1)</Label>
-                    <div className="flex gap-2">
-                      <Select onValueChange={handleAddOrganik}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih organik BPS" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {organikList
-                            .filter(organik => !selectedOrganik.includes(organik.id))
-                            .map(organik => (
-                              <SelectItem key={organik.id} value={organik.id}>
-                                {organik.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {selectedOrganik.length > 0 && (
-                      <div className="space-y-2">
-                        <Label>Organik BPS Terpilih:</Label>
-                        {selectedOrganik.map(organikId => (
-                          <div key={organikId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                            <span>{getOrganikName(organikId)}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveOrganik(organikId)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <PersonMultiSelect
+                      placeholder="Pilih organik BPS"
+                      options={organikList.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        jabatan: (item as any).jabatan
+                      } as Person))}
+                      value={selectedOrganik}
+                      onValueChange={(values) => {
+                        setSelectedOrganik(values);
+                        form.setValue("organikBPS", values);
+                      }}
+                      type="organik"
+                    />
                     {form.formState.errors.organikBPS && (
                       <p className="text-sm font-medium text-destructive">
                         {form.formState.errors.organikBPS.message}
@@ -639,20 +618,18 @@ const LemburLaporan = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pembuat Daftar</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih pembuat daftar" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {organikList.map(organik => (
-                            <SelectItem key={organik.id} value={organik.id}>
-                              {organik.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <PersonSingleSelect
+                          placeholder="Pilih pembuat daftar"
+                          options={organikList.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            jabatan: (item as any).jabatan
+                          } as Person))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

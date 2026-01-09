@@ -171,7 +171,7 @@ export default function UsulanPencairan() {
           statusPpk: item.statusPpk || '',
           statusBendahara: item.statusBendahara || '',
           statusKppn: item.statusKppn || '',
-          updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : '',
+          updatedAt: typeof item.updatedAt === 'string' ? new Date(item.updatedAt) : new Date(),
           // Tambahkan properti yang mungkin hilang
           waktuPPSPM: (item as any).waktuPPSPM || '',
           statusPPSPM: (item as any).statusPPSPM || '',

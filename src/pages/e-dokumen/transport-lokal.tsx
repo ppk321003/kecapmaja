@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
-import { FormSelect } from "@/components/FormSelect";
+import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
@@ -624,20 +624,18 @@ const TransportLokal = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Pembuat Daftar</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih pembuat daftar" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {organikList.map(organik => (
-                            <SelectItem key={organik.id} value={organik.id}>
-                              {organik.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <PersonSingleSelect
+                          placeholder="Pilih pembuat daftar"
+                          options={organikList.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            jabatan: (item as any).jabatan
+                          } as Person))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
                 </div>
@@ -665,14 +663,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect 
+                        <PersonSingleSelect 
                           placeholder="Pilih Organik BPS" 
                           options={organikList.map(organik => ({
-                            value: organik.id,
-                            label: organik.name
-                          }))} 
+                            id: organik.id,
+                            name: organik.name,
+                            jabatan: (organik as any).jabatan
+                          } as Person))} 
                           value={transport.personId} 
-                          onChange={value => updateTransportDetail("organik", index, "personId", value)} 
+                          onValueChange={value => updateTransportDetail("organik", index, "personId", value)} 
                         />
                       </div>
                       <div className="space-y-2">
@@ -755,14 +754,15 @@ const TransportLokal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <FormSelect 
+                        <PersonSingleSelect 
                           placeholder="Pilih Mitra Statistik" 
                           options={mitraList.map(mitra => ({
-                            value: mitra.id,
-                            label: `${mitra.name}${mitra.kecamatan ? ` - ${mitra.kecamatan}` : ''}`
-                          }))} 
+                            id: mitra.id,
+                            name: mitra.name,
+                            kecamatan: (mitra as any).kecamatan
+                          } as Person))} 
                           value={transport.personId} 
-                          onChange={value => updateTransportDetail("mitra", index, "personId", value)} 
+                          onValueChange={value => updateTransportDetail("mitra", index, "personId", value)} 
                         />
                       </div>
                       <div className="space-y-2">
