@@ -276,14 +276,36 @@ type ActivityOption = {
   role: string;
   namaKegiatan: string;
   bebanAnggaran: string;
-  harga: string;
-  satuan: string;
-  komponenPOK?: string;
 };
 type KoordinatorOption = {
   nama: string;
   jabatan: string;
 };
+const komponenPOKOptions = [{
+  value: "005",
+  label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit"
+}, {
+  value: "051",
+  label: "051 - PERSIAPAN"
+}, {
+  value: "052",
+  label: "052 - PENGUMPULAN DATA"
+}, {
+  value: "053",
+  label: "053 - PENGOLAHAN DAN ANALISIS"
+}, {
+  value: "054",
+  label: "054 - DISEMINASI DAN EVALUASI"
+}, {
+  value: "506",
+  label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat"
+}, {
+  value: "516",
+  label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan"
+}, {
+  value: "519",
+  label: "519 - Penyusunan Bahan Publisitas"
+}];
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan wajib diisi"),
   tanggalSK: z.date({
@@ -300,7 +322,7 @@ const formSchema = z.object({
     return !isNaN(num) && num >= 0;
   }, "Harga satuan harus berupa angka positif"),
   satuan: z.string().min(1, "Satuan wajib dipilih"),
-  komponenPOK: z.string().min(1, "Komponen POK wajib diisi"),
+  komponenPOK: z.string().min(1, "Komponen POK wajib dipilih"),
   nomorSK: z.string().min(1, "Nomor SK wajib diisi"),
   koordinator: z.string().min(1, "Koordinator wajib dipilih")
 }).refine(data => data.tanggalMulai >= data.tanggalSK, {
@@ -315,7 +337,6 @@ const formSchema = z.object({
 });
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATA_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
-const ACTIVITY_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 const bulanMap: {
   [key: string]: string;
 } = {
@@ -718,31 +739,10 @@ export default function EntriTarget() {
     return petugasFromSheet.find(p => p.nik === nik);
   };
   const getKomponenPOKValueFromLabel = (label: string): string => {
-    // Cari di komponen POK options yang masih ada
-    const komponenPOKOptions = [
-      { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
-      { value: "051", label: "051 - PERSIAPAN" },
-      { value: "052", label: "052 - PENGUMPULAN DATA" },
-      { value: "053", label: "053 - PENGOLAHAN DAN ANALISIS" },
-      { value: "054", label: "054 - DISEMINASI DAN EVALUASI" },
-      { value: "506", label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat" },
-      { value: "516", label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan" },
-      { value: "519", label: "519 - Penyusunan Bahan Publisitas" }
-    ];
     const option = komponenPOKOptions.find(opt => opt.label === label);
     return option ? option.value : label;
   };
   const getKomponenPOKLabelFromValue = (value: string): string => {
-    const komponenPOKOptions = [
-      { value: "005", label: "005 - Dukungan Penyelenggaraan Tugas dan Fungsi Unit" },
-      { value: "051", label: "051 - PERSIAPAN" },
-      { value: "052", label: "052 - PENGUMPULAN DATA" },
-      { value: "053", label: "053 - PENGOLAHAN DAN ANALISIS" },
-      { value: "054", label: "054 - DISEMINASI DAN EVALUASI" },
-      { value: "506", label: "506 - Pemutakhiran Kerangka Geospasial dan Muatan Wilkerstat" },
-      { value: "516", label: "516 - Updating Direktori Usaha/Perusahaan Ekonomi Lanjutan" },
-      { value: "519", label: "519 - Penyusunan Bahan Publisitas" }
-    ];
     const option = komponenPOKOptions.find(opt => opt.value === value);
     return option ? option.label : value;
   };
@@ -884,9 +884,9 @@ export default function EntriTarget() {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: ACTIVITY_SPREADSHEET_ID,
+          spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
           operation: 'read',
-          range: 'Sheet1!A:G'
+          range: 'Sheet1!A:D'
         }
       });
       if (error) {
@@ -903,10 +903,7 @@ export default function EntriTarget() {
         // PERBAIKAN: Gunakan cleanNumberValue
         role: row[1] || '',
         namaKegiatan: row[2] || '',
-        bebanAnggaran: row[3] || '',
-        harga: row[4]?.toString().trim() || '0',
-        satuan: row[5]?.toString().trim() || '',
-        komponenPOK: row[6]?.toString().trim() || ''
+        bebanAnggaran: row[3] || ''
       })).filter((option: ActivityOption) => {
         if (!option.namaKegiatan.trim()) return false;
         // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
@@ -961,16 +958,9 @@ export default function EntriTarget() {
     form.setValue("namaKegiatan", selectedKegiatan);
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === selectedKegiatan);
     if (selectedActivity) {
-      // Set semua nilai dari spreadsheet
       setBebanAnggaran(selectedActivity.bebanAnggaran);
-      form.setValue("hargaSatuan", selectedActivity.harga || "0");
-      form.setValue("satuan", selectedActivity.satuan || "");
-      form.setValue("komponenPOK", selectedActivity.komponenPOK || "");
     } else {
       setBebanAnggaran("");
-      form.setValue("hargaSatuan", "0");
-      form.setValue("satuan", "");
-      form.setValue("komponenPOK", "");
     }
   };
   useEffect(() => {
@@ -1239,6 +1229,7 @@ export default function EntriTarget() {
     form.setValue("koordinator", activity.koordinator || "");
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === activity.namaKegiatan);
     setBebanAnggaran(selectedActivity?.bebanAnggaran || activity.bebanAnggaran || "");
+    setShowAddActivityDialog(true);
   };
   const handleAddWorker = (activity: Activity) => {
     setSelectedActivityForWorkers(activity);
@@ -1460,7 +1451,7 @@ export default function EntriTarget() {
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
-      const komponenPOKLabel = activity.komponenPOK; // Langsung gunakan nilai dari form
+      const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
       const rowData = [[nextNo.toString(),
       // A: No
       user?.role || "User",
@@ -1537,7 +1528,7 @@ export default function EntriTarget() {
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
-      const komponenPOKLabel = activity.komponenPOK; // Langsung gunakan nilai dari form
+      const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
       const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), activity.hargaSatuan, activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, formatCurrency(totalRealisasi), activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
       const {
         error
@@ -1603,8 +1594,8 @@ export default function EntriTarget() {
     }
   };
   const getKomponenPOKLabel = (value: string) => {
-    // Langsung return value karena sekarang tidak menggunakan dropdown
-    return value;
+    const option = komponenPOKOptions.find(opt => opt.value === value);
+    return option ? option.label : value;
   };
   const hasTargetButNoRealisasi = (worker: Worker) => {
     // PERBAIKAN: Gunakan cleanNumberValue
@@ -2181,9 +2172,18 @@ export default function EntriTarget() {
                 field
               }) => <FormItem>
                       <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
-                      <FormControl>
-                        <Input placeholder="Isi otomatis berdasarkan kegiatan" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih komponen POK" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {komponenPOKOptions.map(option => <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>)}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>} />
               </div>
