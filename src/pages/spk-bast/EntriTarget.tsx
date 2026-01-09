@@ -276,6 +276,8 @@ type ActivityOption = {
   role: string;
   namaKegiatan: string;
   bebanAnggaran: string;
+  harga: string;
+  satuan: string;
 };
 type KoordinatorOption = {
   nama: string;
@@ -886,7 +888,7 @@ export default function EntriTarget() {
         body: {
           spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
           operation: 'read',
-          range: 'Sheet1!A:D'
+          range: 'Sheet1!A:F'
         }
       });
       if (error) {
@@ -900,13 +902,13 @@ export default function EntriTarget() {
       const rows = data.values.slice(1);
       const options: ActivityOption[] = rows.map((row: any[], index: number) => ({
         no: cleanNumberValue(row[0]) || index + 1,
-        // PERBAIKAN: Gunakan cleanNumberValue
         role: row[1] || '',
         namaKegiatan: row[2] || '',
-        bebanAnggaran: row[3] || ''
+        bebanAnggaran: row[3] || '',
+        harga: row[4] || '',
+        satuan: row[5] || ''
       })).filter((option: ActivityOption) => {
         if (!option.namaKegiatan.trim()) return false;
-        // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi
         const roles = processMultipleValues(option.role);
         return roles.includes(user.role);
       });
@@ -959,6 +961,16 @@ export default function EntriTarget() {
     const selectedActivity = activityOptions.find(option => option.namaKegiatan === selectedKegiatan);
     if (selectedActivity) {
       setBebanAnggaran(selectedActivity.bebanAnggaran);
+      // Auto-fill hargaSatuan, satuan, dan komponenPOK dari master data
+      if (selectedActivity.harga) {
+        form.setValue("hargaSatuan", selectedActivity.harga);
+      }
+      if (selectedActivity.satuan) {
+        form.setValue("satuan", selectedActivity.satuan);
+      }
+      if (selectedActivity.bebanAnggaran) {
+        form.setValue("komponenPOK", selectedActivity.bebanAnggaran);
+      }
     } else {
       setBebanAnggaran("");
     }
@@ -2126,22 +2138,9 @@ export default function EntriTarget() {
                 field
               }) => <FormItem>
                       <FormLabel>Satuan <span className="text-destructive">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih satuan" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="BS">BS</SelectItem>
-                          <SelectItem value="Dokumen">Dokumen</SelectItem>
-                          <SelectItem value="EA">EA</SelectItem>
-                          <SelectItem value="Lembaga">Lembaga</SelectItem>
-                          <SelectItem value="Rumahtangga">Rumahtangga</SelectItem>
-                          <SelectItem value="Segmen">Segmen</SelectItem>
-                          <SelectItem value="SLS">SLS</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input placeholder="Masukkan satuan" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
               </div>
@@ -2172,18 +2171,9 @@ export default function EntriTarget() {
                 field
               }) => <FormItem>
                       <FormLabel>Komponen POK <span className="text-destructive">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih komponen POK" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {komponenPOKOptions.map(option => <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input placeholder="Masukkan komponen POK" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
               </div>
