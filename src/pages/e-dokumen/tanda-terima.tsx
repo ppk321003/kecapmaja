@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Plus, Trash } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { toast } from "@/hooks/use-toast";
@@ -427,6 +427,83 @@ const TandaTerima = () => {
                 />} />
                 </div>
               </div>
+
+              {/* Ringkasan Peserta Card */}
+              {(watch('organikBPS')?.length > 0 || watch('mitraStatistik')?.length > 0) && (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-primary">Ringkasan Peserta</h3>
+                      <span className="text-sm text-muted-foreground">
+                        ({(watch('organikBPS')?.length || 0) + (watch('mitraStatistik')?.length || 0)} orang terpilih)
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {/* Organik BPS List */}
+                      {watch('organikBPS')?.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Organik BPS ({watch('organikBPS')?.length})</p>
+                          <div className="flex flex-wrap gap-2">
+                            {watch('organikBPS')?.map(id => {
+                              const person = organikBPSList.find(item => item.id === id);
+                              return person ? (
+                                <div 
+                                  key={id} 
+                                  className="flex items-center gap-1.5 bg-background border rounded-full px-3 py-1.5 text-sm"
+                                >
+                                  <span>{person.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentValues = watch('organikBPS') || [];
+                                      setValue('organikBPS', currentValues.filter(v => v !== id));
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive transition-colors"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Mitra Statistik List */}
+                      {watch('mitraStatistik')?.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Mitra Statistik ({watch('mitraStatistik')?.length})</p>
+                          <div className="flex flex-wrap gap-2">
+                            {watch('mitraStatistik')?.map(id => {
+                              const person = mitraStatistikList.find(item => item.id === id);
+                              return person ? (
+                                <div 
+                                  key={id} 
+                                  className="flex items-center gap-1.5 bg-background border rounded-full px-3 py-1.5 text-sm"
+                                >
+                                  <span>{person.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentValues = watch('mitraStatistik') || [];
+                                      setValue('mitraStatistik', currentValues.filter(v => v !== id));
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive transition-colors"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="space-y-4 pt-4">
                 <div className="flex items-center justify-between">
