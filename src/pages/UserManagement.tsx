@@ -45,7 +45,9 @@ import {
   Circle,
   Clock,
   UserPlus,
-  Shield
+  Shield,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 const USERS_SPREADSHEET_ID = "1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938";
@@ -71,7 +73,8 @@ export default function UserManagement() {
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState("");
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAddPassword, setShowAddPassword] = useState(false);
   // Check if current user is PPK
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
 
@@ -168,6 +171,8 @@ export default function UserManagement() {
     setFormUsername("");
     setFormPassword("");
     setFormRole("");
+    setShowPassword(false);
+    setShowAddPassword(false);
   };
 
   const handleAddUser = async () => {
@@ -354,13 +359,29 @@ export default function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-password">Password</Label>
-                <Input
-                  id="add-password"
-                  type="password"
-                  placeholder="Masukkan password"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="add-password"
+                    type={showAddPassword ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowAddPassword(!showAddPassword)}
+                  >
+                    {showAddPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-role">Role</Label>
@@ -586,13 +607,29 @@ export default function UserManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-password">Password</Label>
-              <Input
-                id="edit-password"
-                type="password"
-                placeholder="Masukkan password"
-                value={formPassword}
-                onChange={(e) => setFormPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="edit-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-role">Role</Label>
