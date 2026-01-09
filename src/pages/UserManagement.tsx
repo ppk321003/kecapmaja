@@ -60,9 +60,18 @@ interface UserData {
   lastLogin: string;
 }
 
+interface GroupedUserData {
+  role: string;
+  usernames: string[];
+  lastLogin: string;
+  isOnline: boolean;
+  allRows: UserData[]; // Menyimpan semua user dalam group ini
+}
+
 export default function UserManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
+  const [groupedUsers, setGroupedUsers] = useState<GroupedUserData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -75,6 +84,7 @@ export default function UserManagement() {
   const [formRole, setFormRole] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
+  
   // Check if current user is PPK
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
 
@@ -83,6 +93,51 @@ export default function UserManagement() {
       fetchUsers();
     }
   }, [isPPK]);
+
+  // Fungsi untuk mengelompokkan user berdasarkan role
+  const groupUsersByRole = (usersData: UserData[]): GroupedUserData[] => {
+    const roleMap = new Map<string, GroupedUserData>();
+    
+    usersData.forEach(user => {
+      const roleKey = user.role.trim();
+      
+      if (!roleMap.has(roleKey)) {
+        roleMap.set(roleKey, {
+          role: roleKey,
+          usernames: [user.username],
+          lastLogin: user.lastLogin,
+          isOnline: isUserOnline(user.lastLogin),
+          allRows: [user]
+        });
+      } else {
+        const existing = roleMap.get(roleKey)!;
+        
+        // Tambahkan username jika belum ada
+        if (!existing.usernames.includes(user.username)) {
+          existing.usernames.push(user.username);
+        }
+        
+        // Update lastLogin ke yang paling baru
+        if (user.lastLogin) {
+          if (existing.lastLogin) {
+            const existingDate = new Date(existing.lastLogin);
+            const newDate = new Date(user.lastLogin);
+            if (newDate > existingDate) {
+              existing.lastLogin = user.lastLogin;
+              existing.isOnline = isUserOnline(user.lastLogin);
+            }
+          } else {
+            existing.lastLogin = user.lastLogin;
+            existing.isOnline = isUserOnline(user.lastLogin);
+          }
+        }
+        
+        existing.allRows.push(user);
+      }
+    });
+    
+    return Array.from(roleMap.values());
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -103,14 +158,17 @@ export default function UserManagement() {
 
       if (data?.values && data.values.length > 1) {
         const usersData: UserData[] = data.values.slice(1).map((row: string[], index: number) => ({
-          rowIndex: index + 2, // +2 because we skip header and array is 0-indexed
+          rowIndex: index + 2, // +2 karena skip header dan array 0-indexed
           username: row[0]?.trim() || "",
           password: row[1]?.trim() || "",
           role: row[2]?.trim() || "",
           lastLogin: row[3]?.trim() || ""
-        })).filter((u: UserData) => u.username); // Filter out empty rows
+        })).filter((u: UserData) => u.username && u.role); // Filter baris kosong
 
         setUsers(usersData);
+        // Buat grouped users untuk tampilan
+        const grouped = groupUsersByRole(usersData);
+        setGroupedUsers(grouped);
       }
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -126,7 +184,7 @@ export default function UserManagement() {
       const lastLoginDate = new Date(lastLogin);
       const now = new Date();
       const diffMinutes = (now.getTime() - lastLoginDate.getTime()) / (1000 * 60);
-      return diffMinutes <= 30; // Consider online if last login within 30 minutes
+      return diffMinutes <= 30; // Online jika login dalam 30 menit terakhir
     } catch {
       return false;
     }
@@ -260,7 +318,7 @@ export default function UserManagement() {
   };
 
   const handleDeleteUser = async (userData: UserData) => {
-    // Prevent deleting own account
+    // Mencegah penghapusan akun sendiri
     if (userData.username.toLowerCase() === user?.username.toLowerCase()) {
       toast.error("Tidak dapat menghapus akun Anda sendiri");
       return;
@@ -300,11 +358,15 @@ export default function UserManagement() {
     setIsEditDialogOpen(true);
   };
 
-  const filteredUsers = users.filter(u => 
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter grouped users berdasarkan search term
+  const filteredGroupedUsers = groupedUsers.filter(group => 
+    group.usernames.some(username => 
+      username.toLowerCase().includes(searchTerm.toLowerCase())
+    ) ||
+    group.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Hitung total user dan online count dari data asli
   const onlineCount = users.filter(u => isUserOnline(u.lastLogin)).length;
 
   if (!isPPK) {
@@ -409,7 +471,17 @@ export default function UserManagement() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pengguna</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Role</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{groupedUsers.length}</div>
+            <p className="text-xs text-muted-foreground">Jumlah role berbeda</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Akun</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -427,16 +499,6 @@ export default function UserManagement() {
             <p className="text-xs text-muted-foreground">Aktif dalam 30 menit terakhir</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Offline</CardTitle>
-            <Circle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length - onlineCount}</div>
-            <p className="text-xs text-muted-foreground">Tidak aktif</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* User Table */}
@@ -444,8 +506,8 @@ export default function UserManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Daftar Pengguna</CardTitle>
-              <CardDescription>Lihat dan kelola semua akun pengguna</CardDescription>
+              <CardTitle>Daftar Pengguna (Dikelompokkan per Role)</CardTitle>
+              <CardDescription>Setiap baris menampilkan semua username dengan role yang sama</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -477,14 +539,14 @@ export default function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading && users.length === 0 ? (
+                {loading && groupedUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                       <p className="text-muted-foreground">Memuat data...</p>
                     </TableCell>
                   </TableRow>
-                ) : filteredUsers.length === 0 ? (
+                ) : filteredGroupedUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
@@ -494,31 +556,42 @@ export default function UserManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((userData, index) => {
-                    const online = isUserOnline(userData.lastLogin);
-                    const isCurrentUser = userData.username.toLowerCase() === user?.username.toLowerCase();
+                  filteredGroupedUsers.map((group, index) => {
+                    // Cek apakah current user ada dalam group ini
+                    const isCurrentUserInGroup = group.allRows.some(
+                      userData => userData.username.toLowerCase() === user?.username.toLowerCase()
+                    );
                     
                     return (
-                      <TableRow key={userData.rowIndex} className={isCurrentUser ? "bg-primary/5" : ""}>
+                      <TableRow key={group.role} className={isCurrentUserInGroup ? "bg-primary/5" : ""}>
                         <TableCell className="font-medium">{index + 1}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{userData.username}</span>
-                            {isCurrentUser && (
-                              <Badge variant="secondary" className="text-xs">Anda</Badge>
-                            )}
+                          <div className="space-y-1">
+                            <span className="font-medium block">
+                              {group.usernames.join(' / ')}
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {isCurrentUserInGroup && (
+                                <Badge variant="secondary" className="text-xs">Anda</Badge>
+                              )}
+                              <Badge variant="outline" className="text-xs">
+                                {group.allRows.length} akun
+                              </Badge>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{userData.role}</Badge>
+                          <Badge variant="outline" className="font-medium">
+                            {group.role}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Circle 
-                              className={`h-2.5 w-2.5 ${online ? "text-green-500 fill-green-500" : "text-muted-foreground"}`} 
+                              className={`h-2.5 w-2.5 ${group.isOnline ? "text-green-500 fill-green-500" : "text-muted-foreground"}`} 
                             />
-                            <span className={online ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                              {online ? "Online" : "Offline"}
+                            <span className={group.isOnline ? "text-green-600 font-medium" : "text-muted-foreground"}>
+                              {group.isOnline ? "Online" : "Offline"}
                             </span>
                           </div>
                         </TableCell>
@@ -526,11 +599,11 @@ export default function UserManagement() {
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5 text-sm">
                               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                              {formatLastLogin(userData.lastLogin)}
+                              {formatLastLogin(group.lastLogin)}
                             </div>
-                            {userData.lastLogin && (
+                            {group.lastLogin && (
                               <p className="text-xs text-muted-foreground">
-                                {getTimeSinceLogin(userData.lastLogin)}
+                                {getTimeSinceLogin(group.lastLogin)}
                               </p>
                             )}
                           </div>
@@ -540,7 +613,8 @@ export default function UserManagement() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openEditDialog(userData)}
+                              onClick={() => openEditDialog(group.allRows[0])}
+                              title="Edit user pertama dalam group"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -550,26 +624,46 @@ export default function UserManagement() {
                                   variant="ghost"
                                   size="icon"
                                   className="text-destructive hover:text-destructive"
-                                  disabled={isCurrentUser}
+                                  disabled={isCurrentUserInGroup}
+                                  title="Hapus semua user dalam group"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Pengguna?</AlertDialogTitle>
+                                  <AlertDialogTitle>Hapus Semua User dengan Role ini?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Apakah Anda yakin ingin menghapus akun <strong>{userData.username}</strong>? 
-                                    Tindakan ini tidak dapat dibatalkan.
+                                    <div className="space-y-2">
+                                      <p>
+                                        Anda akan menghapus <strong>semua {group.allRows.length} akun</strong> dengan role <strong>{group.role}</strong>.
+                                      </p>
+                                      <p className="font-medium">Usernames yang akan dihapus:</p>
+                                      <ul className="list-disc pl-4 text-sm">
+                                        {group.usernames.map(username => (
+                                          <li key={username}>{username}</li>
+                                        ))}
+                                      </ul>
+                                      <p className="text-destructive font-medium mt-2">
+                                        Tindakan ini tidak dapat dibatalkan.
+                                      </p>
+                                    </div>
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Batal</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleDeleteUser(userData)}
+                                    onClick={() => {
+                                      // Hapus semua user dalam group
+                                      group.allRows.forEach(userData => {
+                                        if (userData.username.toLowerCase() !== user?.username.toLowerCase()) {
+                                          handleDeleteUser(userData);
+                                        }
+                                      });
+                                    }}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    Hapus
+                                    Hapus Semua
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
