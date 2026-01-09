@@ -14,7 +14,7 @@ import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { toast } from "@/hooks/use-toast";
 import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
-import { FormSelect } from "@/components/FormSelect";
+import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
 
 const TandaTerima = () => {
@@ -380,10 +380,16 @@ const TandaTerima = () => {
                   required: "Pembuat daftar harus dipilih"
                 }} render={({
                   field
-                }) => <FormSelect placeholder="Pilih pembuat daftar" options={organikBPSList.map(item => ({
-                  value: item.id,
-                  label: item.name
-                }))} value={field.value} onChange={field.onChange} />} />
+                }) => <PersonSingleSelect 
+                  placeholder="Pilih pembuat daftar" 
+                  options={organikBPSList.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    jabatan: (item as any).jabatan
+                  } as Person))} 
+                  value={field.value} 
+                  onValueChange={field.onChange} 
+                />} />
                   {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
                 </div>
 
@@ -391,20 +397,34 @@ const TandaTerima = () => {
                   <Label htmlFor="organikBPS">Organik BPS</Label>
                   <Controller control={control} name="organikBPS" render={({
                   field
-                }) => <FormSelect placeholder="Pilih organik BPS" options={organikBPSList.map(item => ({
-                  value: item.id,
-                  label: item.name
-                }))} value={field.value} onChange={field.onChange} isMulti />} />
+                }) => <PersonMultiSelect 
+                  placeholder="Pilih organik BPS" 
+                  options={organikBPSList.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    jabatan: (item as any).jabatan
+                  } as Person))} 
+                  value={field.value} 
+                  onValueChange={field.onChange}
+                  type="organik"
+                />} />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="mitraStatistik">Mitra Statistik</Label>
                   <Controller control={control} name="mitraStatistik" render={({
                   field
-                }) => <FormSelect placeholder="Pilih mitra statistik" options={mitraStatistikList.map(item => ({
-                  value: item.id,
-                  label: item.name
-                }))} value={field.value} onChange={field.onChange} isMulti />} />
+                }) => <PersonMultiSelect 
+                  placeholder="Pilih mitra statistik" 
+                  options={mitraStatistikList.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    kecamatan: (item as any).kecamatan
+                  } as Person))} 
+                  value={field.value} 
+                  onValueChange={field.onChange}
+                  type="mitra"
+                />} />
                 </div>
               </div>
 

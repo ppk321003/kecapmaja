@@ -18,8 +18,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
-import { FormSelect } from "@/components/FormSelect";
 import { AkunSelect } from "@/components/AkunSelect";
+import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumberWithSeparator } from "@/lib/formatNumber";
 
@@ -625,20 +625,18 @@ const UangHarianTransport = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Pembuat Daftar</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih pembuat daftar" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {organikList.map(organik => (
-                            <SelectItem key={organik.id} value={organik.id}>
-                              {organik.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <PersonSingleSelect
+                          placeholder="Pilih pembuat daftar"
+                          options={organikList.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            jabatan: (item as any).jabatan
+                          } as Person))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
                 </div>
@@ -655,15 +653,16 @@ const UangHarianTransport = () => {
                   <div className="space-y-2">
                     <FormField control={form.control} name="organik" render={({
                     field
-                  }) => <FormSelect 
+                  }) => <PersonMultiSelect 
                       placeholder="Pilih organik BPS" 
                       options={organikList.map(item => ({
-                        value: item.id,
-                        label: item.name
-                      }))} 
+                        id: item.id,
+                        name: item.name,
+                        jabatan: (item as any).jabatan
+                      } as Person))} 
                       value={field.value} 
-                      onChange={field.onChange}
-                      isMulti 
+                      onValueChange={field.onChange}
+                      type="organik"
                     />} />
                   </div>
                   
@@ -697,15 +696,16 @@ const UangHarianTransport = () => {
                   <div className="space-y-2">
                     <FormField control={form.control} name="mitra" render={({
                     field
-                  }) => <FormSelect 
+                  }) => <PersonMultiSelect 
                       placeholder="Pilih mitra statistik" 
                       options={mitraList.map(item => ({
-                        value: item.id,
-                        label: `${item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
-                      }))} 
+                        id: item.id,
+                        name: item.name,
+                        kecamatan: (item as any).kecamatan
+                      } as Person))} 
                       value={field.value} 
-                      onChange={field.onChange}
-                      isMulti 
+                      onValueChange={field.onChange}
+                      type="mitra"
                     />} />
                   </div>
                   
