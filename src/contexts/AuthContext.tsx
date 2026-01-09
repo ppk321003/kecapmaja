@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "read",
-          range: "user!A:C"
+          range: "user!A:D"
         }
       });
 
@@ -52,7 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data?.values && data.values.length > 1) {
         // Skip header row (index 0)
-        const users = data.values.slice(1).map((row: string[]) => ({
+        const users = data.values.slice(1).map((row: string[], index: number) => ({
+          rowIndex: index + 2, // +2 because we skip header and array is 0-indexed
           username: row[0]?.trim() || "",
           password: row[1]?.trim() || "",
           role: row[2]?.trim() || ""
@@ -67,6 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (foundUser) {
           setUser({ username: foundUser.username, role: foundUser.role });
+          
+          // Record login timestamp to Column D
+          const loginTimestamp = new Date().toISOString();
+          try {
+            await supabase.functions.invoke("google-sheets", {
+              body: {
+                spreadsheetId: USERS_SPREADSHEET_ID,
+                operation: "update",
+                range: `user!D${foundUser.rowIndex}`,
+                values: [[loginTimestamp]]
+              }
+            });
+          } catch (updateErr) {
+            console.error("Error updating login timestamp:", updateErr);
+            // Don't fail login if timestamp update fails
+          }
+          
           setIsLoading(false);
           return true;
         }

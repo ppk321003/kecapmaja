@@ -16,6 +16,7 @@ import {
   FileCheck,
   Link2,
   Briefcase,
+  UsersRound,
 } from "lucide-react";
 
 import {
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mainMenuItems = [
   { title: "Home", url: "/", icon: Home },
@@ -65,9 +67,13 @@ const eDokumenSubItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const { user } = useAuth();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
   const isEDokumenActive = currentPath.startsWith("/e-dokumen");
   const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
+  
+  // Check if user is PPK for User Management menu
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
 
   return (
     <Sidebar
@@ -469,6 +475,26 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                
+                {/* User Management - Only visible for PPK */}
+                {isPPK && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/user-management"
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <UsersRound className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">User Management</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
