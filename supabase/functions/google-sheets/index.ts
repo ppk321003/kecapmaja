@@ -201,11 +201,21 @@ serve(async (req) => {
       });
     }
 
-    if (operation === 'update' && rowIndex !== undefined) {
-      console.log(`Updating row ${rowIndex} in range: ${range || 'Sheet1'}`);
+    if (operation === 'update') {
+      // Support both rowIndex-based update and direct range update
+      let updateRange = range || 'Sheet1';
+      
+      if (rowIndex !== undefined) {
+        // Legacy support: if rowIndex is provided, use it with Sheet name
+        const sheetName = range?.split('!')[0] || 'Sheet1';
+        updateRange = `${sheetName}!A${rowIndex}`;
+      }
+      
+      console.log(`Updating range: ${updateRange}`);
       console.log('Values to update:', JSON.stringify(values));
+      
       const response = await fetch(
-        `${baseUrl}/values/${range || 'Sheet1'}!A${rowIndex}?valueInputOption=USER_ENTERED`,
+        `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: {
