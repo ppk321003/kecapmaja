@@ -92,19 +92,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  // Debug: Log data untuk memastikan struktur
-  console.log('SubmissionTable Data Debug:', {
-    totalSubmissions: submissions.length,
-    firstSubmission: submissions[0] ? {
-      id: submissions[0].id,
-      hasUpdatedAtString: !!submissions[0].updatedAtString,
-      updatedAtString: submissions[0].updatedAtString,
-      hasUpdatedAt: !!submissions[0].updatedAt,
-      updatedAtType: typeof submissions[0].updatedAt,
-      updatedAtValue: submissions[0].updatedAt,
-      allKeys: Object.keys(submissions[0])
-    } : 'No data'
-  });
 
   // Helper function to get timestamp for sorting
   const getTimestampForSorting = (sub: Submission): number => {
@@ -323,20 +310,6 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         </Select>
       </div>
 
-      {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && submissions.length > 0 && (
-        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-          <div className="font-semibold text-blue-800">Data Structure Check:</div>
-          <div className="text-blue-700 text-xs mt-1">
-            <div>Sample submission ID: {submissions[0].id}</div>
-            <div>Has updatedAtString: {submissions[0].updatedAtString ? 'YES' : 'NO'}</div>
-            <div>updatedAtString value: "{submissions[0].updatedAtString}"</div>
-            <div>Has waktuBendahara: {submissions[0].waktuBendahara ? 'YES' : 'NO'}</div>
-            <div>waktuBendahara value: "{submissions[0].waktuBendahara}"</div>
-            <div>Display timestamp: "{getSubmissionTimestamp(submissions[0])}"</div>
-          </div>
-        </div>
-      )}
 
       {/* Table Section */}
       <div className="rounded-xl border overflow-hidden bg-card">
