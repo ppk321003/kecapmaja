@@ -73,38 +73,14 @@ const generateYears = () => {
 const YEARS = generateYears();
 const ITEMS_PER_PAGE = 10;
 
-// Helper function to get submission timestamp with proper fallback
+// Helper function to get submission timestamp - showing column P (Update Terakhir) only
 const getSubmissionTimestamp = (submission: Submission): string => {
-  // Priority 1: updatedAtString (original string from column P)
+  // Show updatedAtString (original string from column P) directly
   if (submission.updatedAtString && submission.updatedAtString.trim() !== '') {
     return submission.updatedAtString;
   }
   
-  // Priority 2: updatedAt (Date object from column P)
-  if (submission.updatedAt && submission.updatedAt instanceof Date && !isNaN(submission.updatedAt.getTime())) {
-    const hours = submission.updatedAt.getHours().toString().padStart(2, '0');
-    const minutes = submission.updatedAt.getMinutes().toString().padStart(2, '0');
-    const day = submission.updatedAt.getDate().toString().padStart(2, '0');
-    const month = (submission.updatedAt.getMonth() + 1).toString().padStart(2, '0');
-    const year = submission.updatedAt.getFullYear();
-    return `${hours}:${minutes} - ${day}/${month}/${year}`;
-  }
-  
-  // Priority 3: waktuBendahara (column K) - fallback
-  if (submission.waktuBendahara && submission.waktuBendahara.trim() !== '') {
-    return submission.waktuBendahara;
-  }
-  
-  // Priority 4: waktuPpk (column I) - fallback
-  if (submission.waktuPpk && submission.waktuPpk.trim() !== '') {
-    return submission.waktuPpk;
-  }
-  
-  // Priority 5: waktuPengajuan (column H) - fallback
-  if (submission.waktuPengajuan && submission.waktuPengajuan.trim() !== '') {
-    return submission.waktuPengajuan;
-  }
-  
+  // If column P is empty, show dash
   return '-';
 };
 
