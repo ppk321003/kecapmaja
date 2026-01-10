@@ -27,7 +27,13 @@ import {
   Calendar,
   Filter,
   FileText,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
+
+type SortField = 'id' | 'title' | 'submitterName' | 'jenisBelanja' | 'status' | 'updatedAt';
+type SortDirection = 'asc' | 'desc';
 
 interface SubmissionTableProps {
   submissions: Submission[];
@@ -107,6 +113,8 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<SortField>('id');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Debug: Log data untuk memastikan struktur
   console.log('SubmissionTable Data Debug:', {
@@ -122,38 +130,69 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
     } : 'No data'
   });
 
-  // Safe sorting function - sort by timestamp (prefer updatedAt)
+  // Helper function to get timestamp for sorting
+  const getTimestampForSorting = (sub: Submission): number => {
+    // Try to parse from updatedAtString first (column P)
+    if (sub.updatedAtString && sub.updatedAtString.trim() !== '') {
+      try {
+        const [timePart, datePart] = sub.updatedAtString.split(' - ');
+        if (timePart && datePart) {
+          const [hours, minutes] = timePart.split(':').map(Number);
+          const [day, month, year] = datePart.split('/').map(Number);
+          const fullYear = year < 100 ? 2000 + year : year;
+          return new Date(fullYear, month - 1, day, hours, minutes).getTime();
+        }
+      } catch (error) {
+        console.warn('Failed to parse updatedAtString for sorting:', sub.updatedAtString, error);
+      }
+    }
+    
+    // Fallback to submittedAt
+    if (sub.submittedAt && sub.submittedAt instanceof Date && !isNaN(sub.submittedAt.getTime())) {
+      return sub.submittedAt.getTime();
+    }
+    
+    // Last resort
+    return Date.now();
+  };
+
+  // Helper to get numeric ID for sorting
+  const getNumericId = (id: string): number => {
+    const match = id.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
+
+  // Sorting function with multiple columns support
   const sortedSubmissions = useMemo(() => {
     return [...submissions].sort((a, b) => {
-      // Helper function to get timestamp for sorting
-      const getTimestampForSorting = (sub: Submission): number => {
-        // Try to parse from updatedAtString first (column P)
-        if (sub.updatedAtString && sub.updatedAtString.trim() !== '') {
-          try {
-            const [timePart, datePart] = sub.updatedAtString.split(' - ');
-            if (timePart && datePart) {
-              const [hours, minutes] = timePart.split(':').map(Number);
-              const [day, month, year] = datePart.split('/').map(Number);
-              const fullYear = year < 100 ? 2000 + year : year;
-              return new Date(fullYear, month - 1, day, hours, minutes).getTime();
-            }
-          } catch (error) {
-            console.warn('Failed to parse updatedAtString for sorting:', sub.updatedAtString, error);
-          }
-        }
-        
-        // Fallback to submittedAt
-        if (sub.submittedAt && sub.submittedAt instanceof Date && !isNaN(sub.submittedAt.getTime())) {
-          return sub.submittedAt.getTime();
-        }
-        
-        // Last resort
-        return Date.now();
-      };
+      let comparison = 0;
       
-      return getTimestampForSorting(b) - getTimestampForSorting(a); // Descending (newest first)
+      switch (sortField) {
+        case 'id':
+          comparison = getNumericId(a.id) - getNumericId(b.id);
+          break;
+        case 'title':
+          comparison = a.title.localeCompare(b.title, 'id');
+          break;
+        case 'submitterName':
+          comparison = a.submitterName.localeCompare(b.submitterName, 'id');
+          break;
+        case 'jenisBelanja':
+          comparison = a.jenisBelanja.localeCompare(b.jenisBelanja, 'id');
+          break;
+        case 'status':
+          comparison = a.status.localeCompare(b.status);
+          break;
+        case 'updatedAt':
+          comparison = getTimestampForSorting(a) - getTimestampForSorting(b);
+          break;
+        default:
+          comparison = getNumericId(a.id) - getNumericId(b.id);
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [submissions]);
+  }, [submissions, sortField, sortDirection]);
 
   // Filter submissions
   const filteredSubmissions = useMemo(() => {
@@ -222,6 +261,27 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const handleFilterChange = () => setCurrentPage(1);
   const showViewButton = (submission: Submission) => canViewDetail(userRole, submission.status);
   const showEditButton = (submission: Submission) => canEdit(userRole, submission.status);
+
+  // Sort toggle handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setCurrentPage(1);
+  };
+
+  // Sort icon component
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-primary" />
+  };
 
   return (
     <div className="space-y-4">
@@ -307,12 +367,60 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Judul Pengajuan</TableHead>
-              <TableHead>Pengaju</TableHead>
-              <TableHead>Jenis Belanja</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Update Terakhir</TableHead>
+              <TableHead className="w-[100px]">
+                <button 
+                  onClick={() => handleSort('id')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  ID
+                  <SortIcon field="id" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button 
+                  onClick={() => handleSort('title')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  Judul Pengajuan
+                  <SortIcon field="title" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button 
+                  onClick={() => handleSort('submitterName')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  Pengaju
+                  <SortIcon field="submitterName" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button 
+                  onClick={() => handleSort('jenisBelanja')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  Jenis Belanja
+                  <SortIcon field="jenisBelanja" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button 
+                  onClick={() => handleSort('status')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  Status
+                  <SortIcon field="status" />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button 
+                  onClick={() => handleSort('updatedAt')}
+                  className="flex items-center hover:text-primary transition-colors font-medium"
+                >
+                  Update Terakhir
+                  <SortIcon field="updatedAt" />
+                </button>
+              </TableHead>
               <TableHead className="text-right w-[100px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
