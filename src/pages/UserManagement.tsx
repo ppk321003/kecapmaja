@@ -280,12 +280,12 @@ export default function UserManagement() {
     }
 
     // Check if username already exists (excluding current user)
-    if (users.some(u => 
-      u.username.toLowerCase() === formUsername.toLowerCase() && 
-      u.rowIndex !== selectedUser.rowIndex
-    )) {
-      toast.error("Username sudah digunakan");
-      return;
+    // Only check if username was actually changed
+    if (formUsername.toLowerCase() !== selectedUser.username.toLowerCase()) {
+      if (users.some(u => u.username.toLowerCase() === formUsername.toLowerCase())) {
+        toast.error("Username sudah digunakan");
+        return;
+      }
     }
 
     setLoading(true);
