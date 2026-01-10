@@ -23,10 +23,10 @@ interface TimelineEvent {
   timestamp?: string;
   status?: string;
   statusLabel?: string;
-  type: 'submit' | 'approve' | 'reject' | 'pending' | 'complete';
+  type: 'submit' | 'approve' | 'reject' | 'pending' | 'complete' | 'incomplete';
 }
 
-function parseTimelineStatus(status?: string): { type: 'approve' | 'reject' | 'pending', label: string } {
+function parseTimelineStatus(status?: string): { type: 'approve' | 'reject' | 'pending' | 'incomplete', label: string } {
   if (!status) return { type: 'pending', label: 'Menunggu' };
   
   const lowerStatus = status.toLowerCase();
@@ -36,6 +36,9 @@ function parseTimelineStatus(status?: string): { type: 'approve' | 'reject' | 'p
   if (lowerStatus.includes('dikembalikan') || lowerStatus.includes('reject')) {
     return { type: 'reject', label: 'Dikembalikan' };
   }
+  if (lowerStatus.includes('perbaikan') || lowerStatus.includes('incomplete')) {
+    return { type: 'incomplete', label: 'Perlu perbaikan' };
+  }
   return { type: 'pending', label: status };
 }
 
@@ -43,69 +46,106 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
   // Build timeline events from submission data
   const events: TimelineEvent[] = [];
 
-  // Check if status is draft
+  // Check status flags
   const isDraft = submission.status === 'draft';
+  const isIncompleteSm = submission.status === 'incomplete_sm';
+  const isIncompletePpk = submission.status === 'incomplete_ppk';
+  const isIncompletePpspm = submission.status === 'incomplete_ppspm';
+  const isIncompleteBendahara = submission.status === 'incomplete_bendahara';
 
   // 1. SM Submit (Kolom H - waktuPengajuan)
-  if (submission.waktuPengajuan || isDraft) {
+  if (submission.waktuPengajuan || isDraft || isIncompleteSm) {
+    let statusLabel = 'Pengajuan telah dikirim ke PPK';
+    let type: TimelineEvent['type'] = 'submit';
+
+    if (isDraft) {
+      statusLabel = 'Masih dalam proses kelengkapan SM';
+      type = 'pending';
+    } else if (isIncompleteSm) {
+      statusLabel = 'Diperlukan perbaikan oleh SM';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'sm-submit',
       actor: 'SM',
       actorLabel: 'Subject Matter (Fungsi)',
       timestamp: submission.waktuPengajuan || undefined,
-      status: isDraft ? 'Dalam proses' : 'Pengajuan dikirim',
-      statusLabel: isDraft 
-        ? 'Masih dalam proses kelengkapan SM' 
-        : 'Pengajuan telah dikirim ke PPK',
-      type: isDraft ? 'pending' : 'submit',
+      status: isDraft ? 'Dalam proses' : isIncompleteSm ? 'Perlu perbaikan' : 'Pengajuan dikirim',
+      statusLabel,
+      type,
     });
   }
 
   // 2. PPK (Kolom I - waktuPpk, Kolom L - statusPpk)
-  if (submission.waktuPpk || submission.statusPpk) {
+  if (submission.waktuPpk || submission.statusPpk || isIncompletePpk) {
     const ppkStatus = parseTimelineStatus(submission.statusPpk);
+    let statusLabel = submission.statusPpk 
+      ? `PPK: ${submission.statusPpk}`
+      : 'Menunggu verifikasi PPK';
+    let type = ppkStatus.type;
+
+    if (isIncompletePpk) {
+      statusLabel = 'Diperlukan perbaikan oleh PPK';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'ppk',
       actor: 'PPK',
       actorLabel: 'Pejabat Pembuat Komitmen',
       timestamp: submission.waktuPpk,
-      status: submission.statusPpk,
-      statusLabel: submission.statusPpk 
-        ? `PPK: ${submission.statusPpk}`
-        : 'Menunggu verifikasi PPK',
-      type: ppkStatus.type,
+      status: isIncompletePpk ? 'Perlu perbaikan' : submission.statusPpk,
+      statusLabel,
+      type,
     });
   }
 
   // 3. PPSPM (Kolom J - waktuPPSPM, Kolom M - statusPPSPM)
-  if (submission.waktuPPSPM || submission.statusPPSPM) {
+  if (submission.waktuPPSPM || submission.statusPPSPM || isIncompletePpspm) {
     const ppspmStatus = parseTimelineStatus(submission.statusPPSPM);
+    let statusLabel = submission.statusPPSPM 
+      ? `PPSPM: ${submission.statusPPSPM}`
+      : 'Menunggu pemeriksaan PPSPM';
+    let type = ppspmStatus.type;
+
+    if (isIncompletePpspm) {
+      statusLabel = 'Diperlukan perbaikan oleh PPSPM';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'ppspm',
       actor: 'PPSPM',
       actorLabel: 'Pejabat Penandatangan SPM',
       timestamp: submission.waktuPPSPM,
-      status: submission.statusPPSPM,
-      statusLabel: submission.statusPPSPM 
-        ? `PPSPM: ${submission.statusPPSPM}`
-        : 'Menunggu pemeriksaan PPSPM',
-      type: ppspmStatus.type,
+      status: isIncompletePpspm ? 'Perlu perbaikan' : submission.statusPPSPM,
+      statusLabel,
+      type,
     });
   }
 
   // 4. Bendahara (Kolom K - waktuBendahara, Kolom N - statusBendahara)
-  if (submission.waktuBendahara || submission.statusBendahara) {
+  if (submission.waktuBendahara || submission.statusBendahara || isIncompleteBendahara) {
     const bendaharaStatus = parseTimelineStatus(submission.statusBendahara);
+    let statusLabel = submission.statusBendahara 
+      ? `Bendahara: ${submission.statusBendahara}`
+      : 'Menunggu verifikasi Bendahara';
+    let type = bendaharaStatus.type;
+
+    if (isIncompleteBendahara) {
+      statusLabel = 'Diperlukan perbaikan oleh Bendahara';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'bendahara',
       actor: 'Bendahara',
       actorLabel: 'Bendahara Pengeluaran',
       timestamp: submission.waktuBendahara,
-      status: submission.statusBendahara,
-      statusLabel: submission.statusBendahara 
-        ? `Bendahara: ${submission.statusBendahara}`
-        : 'Menunggu verifikasi Bendahara',
-      type: bendaharaStatus.type,
+      status: isIncompleteBendahara ? 'Perlu perbaikan' : submission.statusBendahara,
+      statusLabel,
+      type,
     });
   }
 
@@ -140,6 +180,8 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
         return CheckCircle2;
       case 'reject':
         return XCircle;
+      case 'incomplete':
+        return Clock; // Use Clock icon for incomplete status
       case 'submit':
         return Send;
       default:
@@ -154,6 +196,8 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
         return 'text-green-600 bg-green-100 border-green-300';
       case 'reject':
         return 'text-red-600 bg-red-100 border-red-300';
+      case 'incomplete':
+        return 'text-orange-600 bg-orange-100 border-orange-300';
       case 'submit':
         return 'text-blue-600 bg-blue-100 border-blue-300';
       default:
@@ -168,6 +212,8 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
         return 'bg-green-300';
       case 'reject':
         return 'bg-red-300';
+      case 'incomplete':
+        return 'bg-orange-300';
       case 'submit':
         return 'bg-blue-300';
       default:
@@ -182,6 +228,8 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
         return 'bg-green-500';
       case 'reject':
         return 'bg-red-500';
+      case 'incomplete':
+        return 'bg-orange-500';
       case 'submit':
         return 'bg-blue-500';
       default:
@@ -256,6 +304,8 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
                         ? 'bg-green-50 text-green-700 border border-green-200'
                         : event.type === 'reject'
                         ? 'bg-red-50 text-red-700 border border-red-200'
+                        : event.type === 'incomplete'
+                        ? 'bg-orange-50 text-orange-700 border border-orange-200'
                         : event.type === 'submit'
                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
                         : 'bg-amber-50 text-amber-700 border border-amber-200'
