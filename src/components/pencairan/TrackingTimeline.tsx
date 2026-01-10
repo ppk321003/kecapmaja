@@ -43,16 +43,21 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
   // Build timeline events from submission data
   const events: TimelineEvent[] = [];
 
+  // Check if status is draft
+  const isDraft = submission.status === 'draft';
+
   // 1. SM Submit (Kolom H - waktuPengajuan)
-  if (submission.waktuPengajuan) {
+  if (submission.waktuPengajuan || isDraft) {
     events.push({
       id: 'sm-submit',
       actor: 'SM',
       actorLabel: 'Subject Matter (Fungsi)',
-      timestamp: submission.waktuPengajuan,
-      status: 'Pengajuan dikirim',
-      statusLabel: 'Pengajuan telah dikirim ke PPK',
-      type: 'submit',
+      timestamp: submission.waktuPengajuan || undefined,
+      status: isDraft ? 'Dalam proses' : 'Pengajuan dikirim',
+      statusLabel: isDraft 
+        ? 'Masih dalam proses kelengkapan SM' 
+        : 'Pengajuan telah dikirim ke PPK',
+      type: isDraft ? 'pending' : 'submit',
     });
   }
 
