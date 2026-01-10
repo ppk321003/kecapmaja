@@ -10,6 +10,7 @@ import {
 import { StatusBadge } from './StatusBadge';
 import { WorkflowProgress } from './WorkflowProgress';
 import { DocumentChecklist } from './DocumentChecklist';
+import { TrackingTimeline } from './TrackingTimeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +21,11 @@ import {
   SheetTitle,
   SheetDescription 
 } from '@/components/ui/sheet';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { 
   FileText, 
   Calendar, 
@@ -30,13 +36,16 @@ import {
   ArrowLeft,
   MessageSquare,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  History
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as idLocale } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface SubmissionDetailProps {
   submission: Submission | null;
@@ -58,6 +67,8 @@ export function SubmissionDetail({
   const [notes, setNotes] = useState('');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(true);
+  const [isDocumentsOpen, setIsDocumentsOpen] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -310,7 +321,7 @@ export function SubmissionDetail({
                   <div>
                     <p className="text-xs text-muted-foreground">Tanggal Pengajuan</p>
                     <p className="font-medium">
-                      {format(submission.submittedAt, 'd MMMM yyyy', { locale: id })}
+                      {format(submission.submittedAt, 'd MMMM yyyy', { locale: idLocale })}
                     </p>
                   </div>
                 </div>
@@ -325,26 +336,74 @@ export function SubmissionDetail({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Checklist Kelengkapan Dokumen</CardTitle>
-                {canAction && !allDocsComplete && requiredDocs.length > 0 && (
-                  <span className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Dokumen wajib belum lengkap
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DocumentChecklist 
-                documents={documents} 
-                onToggle={canAction ? handleDocumentToggle : undefined}
-                readOnly={!canAction}
-              />
-            </CardContent>
-          </Card>
+          {/* Tracking Timeline - Collapsible */}
+          <Collapsible open={isTrackingOpen} onOpenChange={setIsTrackingOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Tracking Pengajuan
+                    </CardTitle>
+                    <ChevronDown 
+                      className={cn(
+                        "w-4 h-4 text-muted-foreground transition-transform",
+                        isTrackingOpen && "rotate-180"
+                      )} 
+                    />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <TrackingTimeline submission={submission} />
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          {/* Document Checklist - Collapsible */}
+          <Collapsible open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Checklist Kelengkapan Dokumen
+                      {canAction && !allDocsComplete && requiredDocs.length > 0 && (
+                        <span className="text-xs text-destructive flex items-center gap-1 ml-2">
+                          <AlertCircle className="w-3 h-3" />
+                          Belum lengkap
+                        </span>
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {checkedCount}/{documents.length}
+                      </span>
+                      <ChevronDown 
+                        className={cn(
+                          "w-4 h-4 text-muted-foreground transition-transform",
+                          isDocumentsOpen && "rotate-180"
+                        )} 
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <DocumentChecklist 
+                    documents={documents} 
+                    onToggle={canAction ? handleDocumentToggle : undefined}
+                    readOnly={!canAction}
+                  />
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           {(submission.notes || canAction || canReturn) && (
             <Card>
