@@ -167,14 +167,15 @@ export default function UsulanPencairan() {
           notes: item.notes || undefined,
           waktuPengajuan: item.waktuPengajuan || '',
           waktuPpk: item.waktuPpk || '',
+          waktuPPSPM: item.waktuPPSPM || '',
           waktuBendahara: item.waktuBendahara || '',
           statusPpk: item.statusPpk || '',
+          statusPPSPM: item.statusPPSPM || '',
           statusBendahara: item.statusBendahara || '',
           statusKppn: item.statusKppn || '',
-          updatedAt: typeof item.updatedAt === 'string' ? new Date(item.updatedAt) : new Date(),
-          // Tambahkan properti yang mungkin hilang
-          waktuPPSPM: (item as any).waktuPPSPM || '',
-          statusPPSPM: (item as any).statusPPSPM || '',
+          // Kolom P (Update Terakhir)
+          updatedAt: item.updatedAt instanceof Date && !isNaN(item.updatedAt.getTime()) ? item.updatedAt : undefined,
+          updatedAtString: item.updatedAtString || '',
         };
       });
       converted.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
