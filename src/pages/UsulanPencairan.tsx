@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubmissionTable } from '@/components/pencairan/SubmissionTable';
 import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
 import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis" di sheet
@@ -37,26 +37,37 @@ function parseDocuments(docString: string, jenisBelanjaStr: string) {
   }));
 }
 
-// StatCard Component - Diperbarui untuk tampilan lebih modern
+// StatCard Component - Clickable sebagai filter
 interface StatCardProps {
   title: string;
   value: number;
   icon: React.ElementType;
   variant?: 'default' | 'warning' | 'info' | 'danger' | 'success' | 'secondary';
+  isActive?: boolean;
+  onClick?: () => void;
 }
 
-function StatCard({ title, value, icon: Icon, variant = 'default' }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onClick }: StatCardProps) {
   const variantClasses = {
-    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 hover:shadow-blue-100/50',
-    warning: 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200 hover:shadow-amber-100/50',
-    info: 'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-700 border-cyan-200 hover:shadow-cyan-100/50',
-    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200 hover:shadow-red-100/50',
-    success: 'bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200 hover:shadow-green-100/50',
-    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200 hover:shadow-purple-100/50',
+    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200',
+    warning: 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200',
+    info: 'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-700 border-cyan-200',
+    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200',
+    success: 'bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200',
+    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200',
   };
 
   return (
-    <Card className={`border ${variantClasses[variant]} h-full rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02]`}>
+    <Card 
+      className={cn(
+        `border h-full rounded-xl shadow-sm transition-all duration-200 cursor-pointer`,
+        variantClasses[variant],
+        isActive 
+          ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
+          : 'hover:shadow-md hover:scale-[1.02]'
+      )}
+      onClick={onClick}
+    >
       <CardContent className="p-4 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</p>
@@ -67,46 +78,6 @@ function StatCard({ title, value, icon: Icon, variant = 'default' }: StatCardPro
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// FilterTabs Component - Diubah ke Tabs untuk tampilan lebih modern
-interface FilterTabsProps {
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
-  counts: Record<string, number>;
-}
-
-function FilterTabs({ activeFilter, onFilterChange, counts }: FilterTabsProps) {
-  const filters = [
-    { id: 'all', label: 'Semua', count: counts.all },
-    { id: 'draft', label: 'Draft SM', count: counts.draft },
-    { id: 'pending_ppk', label: 'PPK', count: counts.pending_ppk },
-    { id: 'pending_ppspm', label: 'PPSPM', count: counts.pending_ppspm },
-    { id: 'pending_bendahara', label: 'Bendahara', count: counts.pending_bendahara },
-    { id: 'incomplete_sm', label: 'Ditolak', count: counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara },
-    { id: 'sent_kppn', label: 'KPPN', count: counts.sent_kppn },
-  ];
-
-  return (
-    <Tabs value={activeFilter} onValueChange={onFilterChange}>
-      <TabsList className="bg-muted/50 rounded-xl p-1 flex-wrap h-auto justify-start">
-        {filters.map((filter) => (
-          <TabsTrigger 
-            key={filter.id} 
-            value={filter.id}
-            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-          >
-            {filter.label}
-            {filter.count > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary">
-                {filter.count}
-              </span>
-            )}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
   );
 }
 
@@ -186,7 +157,16 @@ export default function UsulanPencairan() {
   }, [sheetSubmissions]);
 
   const filteredSubmissions = useMemo(() => {
-    return submissions.filter(sub => activeFilter === 'all' || sub.status === activeFilter);
+    if (activeFilter === 'all') return submissions;
+    if (activeFilter === 'rejected') {
+      return submissions.filter(sub => 
+        sub.status === 'incomplete_sm' || 
+        sub.status === 'incomplete_ppk' || 
+        sub.status === 'incomplete_ppspm' || 
+        sub.status === 'incomplete_bendahara'
+      );
+    }
+    return submissions.filter(sub => sub.status === activeFilter);
   }, [submissions, activeFilter]);
 
   const paginatedSubmissions = useMemo(() => {
@@ -255,71 +235,69 @@ export default function UsulanPencairan() {
         </div>
       </div>
 
-      {/* STATISTIC CARDS - SEMUA DALAM 1 BARIS, dengan gap lebih kecil dan responsive */}
+      {/* STATISTIC CARDS - Clickable sebagai filter */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {/* Card 1 - Total */}
         <StatCard 
           title="Total" 
           value={counts.all} 
           icon={FileText} 
+          isActive={activeFilter === 'all'}
+          onClick={() => setActiveFilter('all')}
         />
-        
-        {/* Card 2 - Draft */}
         <StatCard 
           title="Draft SM" 
           value={counts.draft} 
           icon={FileEdit} 
           variant="default"
+          isActive={activeFilter === 'draft'}
+          onClick={() => setActiveFilter('draft')}
         />
-        
-        {/* Card 3 - Menunggu PPK */}
         <StatCard 
           title="Periksa PPK" 
           value={counts.pending_ppk} 
           icon={Clock} 
           variant="warning"
+          isActive={activeFilter === 'pending_ppk'}
+          onClick={() => setActiveFilter('pending_ppk')}
         />
-        
-        {/* Card 4 - Menunggu PPSPM */}
         <StatCard 
           title="Periksa PPSPM" 
           value={counts.pending_ppspm} 
           icon={Clock} 
           variant="secondary"
+          isActive={activeFilter === 'pending_ppspm'}
+          onClick={() => setActiveFilter('pending_ppspm')}
         />
-        
-        {/* Card 5 - Menunggu Bendahara */}
         <StatCard 
           title="Periksa Bendahara" 
           value={counts.pending_bendahara} 
           icon={Clock} 
           variant="info"
+          isActive={activeFilter === 'pending_bendahara'}
+          onClick={() => setActiveFilter('pending_bendahara')}
         />
-        
-        {/* Card 6 - Dikembalikan */}
         <StatCard 
           title="Ditolak" 
           value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara} 
           icon={XCircle} 
           variant="danger"
+          isActive={activeFilter === 'rejected'}
+          onClick={() => setActiveFilter('rejected')}
         />
-        
-        {/* Card 7 - Dikirim KPPN */}
         <StatCard 
           title="Kirim KPPN" 
           value={counts.sent_kppn} 
           icon={CheckCircle2} 
           variant="success"
+          isActive={activeFilter === 'sent_kppn'}
+          onClick={() => setActiveFilter('sent_kppn')}
         />
       </div>
 
-      {/* DAFTAR PENGAJUAN CARD - Diperbarui dengan shadow dan rounded */}
+      {/* DAFTAR PENGAJUAN CARD */}
       <Card className="w-full overflow-hidden rounded-xl shadow-sm">
         <CardHeader className="px-6 py-4 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
-            <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
-          </div>
+          <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
         </CardHeader>
         
         <CardContent className="px-6 py-4">
