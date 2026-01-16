@@ -7,10 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, AlertTriangle, Plus } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatNIP, parseNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { UsulPinjaman as UsulPinjamanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
+import { FormPengajuanPinjaman } from './FormPengajuanPinjaman';
 
 export const UsulPinjaman = () => {
   const { loading, error, fetchUsulPinjaman } = useSikostikData();
@@ -18,6 +19,7 @@ export const UsulPinjaman = () => {
   const [usulData, setUsulData] = useState<UsulPinjamanType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [formOpen, setFormOpen] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -87,6 +89,12 @@ export const UsulPinjaman = () => {
       </CardContent>
     </Card>
   );
+
+  const handleSubmitPinjaman = async (data: any) => {
+    console.log('New loan proposal:', data);
+    // In a real implementation, this would append to the spreadsheet
+    loadData(); // Refresh data
+  };
 
   // Loading skeleton
   if (isLoading && usulData.length === 0) {
@@ -163,7 +171,7 @@ export const UsulPinjaman = () => {
         </Card>
       </div>
 
-      {/* Search & Refresh */}
+      {/* Search, Refresh & Add Button */}
       <div className="flex items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -171,6 +179,10 @@ export const UsulPinjaman = () => {
         </div>
         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+        </Button>
+        <Button className="gap-2" onClick={() => setFormOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Ajukan Pinjaman
         </Button>
       </div>
 
@@ -302,6 +314,13 @@ export const UsulPinjaman = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Form Dialog */}
+      <FormPengajuanPinjaman 
+        open={formOpen} 
+        onOpenChange={setFormOpen} 
+        onSubmit={handleSubmitPinjaman} 
+      />
     </div>
   );
 };

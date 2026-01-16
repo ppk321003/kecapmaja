@@ -7,10 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, Settings, FileText, ArrowRight, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, FileText, ArrowRight, TrendingUp, TrendingDown, AlertTriangle, Plus } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatNIP, parseNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { UsulPerubahan as UsulPerubahanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
+import { FormPengajuanPerubahan } from './FormPengajuanPerubahan';
 
 export const UsulPerubahan = () => {
   const { loading, error, fetchUsulPerubahan } = useSikostikData();
@@ -18,6 +19,7 @@ export const UsulPerubahan = () => {
   const [usulData, setUsulData] = useState<UsulPerubahanType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [formOpen, setFormOpen] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -98,6 +100,12 @@ export const UsulPerubahan = () => {
     </Card>
   );
 
+  const handleSubmitPerubahan = async (data: any) => {
+    console.log('New change proposal:', data);
+    // In a real implementation, this would append to the spreadsheet
+    loadData(); // Refresh data
+  };
+
   // Loading skeleton
   if (isLoading && usulData.length === 0) {
     return (
@@ -162,7 +170,7 @@ export const UsulPerubahan = () => {
         />
       </div>
 
-      {/* Search & Refresh */}
+      {/* Search, Refresh & Add Button */}
       <div className="flex items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -170,6 +178,10 @@ export const UsulPerubahan = () => {
         </div>
         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+        </Button>
+        <Button className="gap-2" onClick={() => setFormOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Ajukan Perubahan
         </Button>
       </div>
 
@@ -318,6 +330,13 @@ export const UsulPerubahan = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Form Dialog */}
+      <FormPengajuanPerubahan 
+        open={formOpen} 
+        onOpenChange={setFormOpen} 
+        onSubmit={handleSubmitPerubahan} 
+      />
     </div>
   );
 };
