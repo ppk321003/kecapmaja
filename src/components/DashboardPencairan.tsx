@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { usePencairanData } from "@/hooks/use-pencairan-data";
 import { Submission, STATUS_LABELS, JENIS_BELANJA_OPTIONS } from "@/types/pencairan";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, TooltipProps, LineChart, Line } from "recharts";
-import { FileText, Clock, CheckCircle2, XCircle, AlertTriangle, TrendingUp, Users, Calendar, FileEdit, ArrowRightCircle, RotateCcw } from "lucide-react";
+import { FileText, Clock, CheckCircle2, XCircle, AlertTriangle, TrendingUp, Users, Calendar, FileEdit, ArrowRightCircle, RotateCcw, Timer } from "lucide-react";
 import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { useMemo } from "react";
 import { format, parseISO, startOfMonth, subMonths, isAfter, isBefore, addDays } from "date-fns";
@@ -233,6 +233,80 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     ];
   }, [stats]);
 
+  // Average processing time between stages
+  const processingTimeData = useMemo(() => {
+    const timeDiffs = {
+      smToPpk: [] as number[],
+      ppkToPpspm: [] as number[],
+      ppspmToBendahara: [] as number[],
+      bendaharaToKppn: [] as number[],
+    };
+
+    filteredSubmissions.forEach(sub => {
+      const waktuSM = parseCustomDate(sub.waktuPengajuan || '');
+      const waktuPPK = parseCustomDate(sub.waktuPpk || '');
+      const waktuPPSPM = parseCustomDate(sub.waktuPPSPM || '');
+      const waktuBendahara = parseCustomDate(sub.waktuBendahara || '');
+
+      // SM → PPK (jika ada waktu PPK)
+      if (waktuSM && waktuPPK) {
+        const diffHours = (waktuPPK.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.smToPpk.push(diffHours);
+      }
+
+      // PPK → PPSPM (jika ada waktu PPSPM)
+      if (waktuPPK && waktuPPSPM) {
+        const diffHours = (waktuPPSPM.getTime() - waktuPPK.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.ppkToPpspm.push(diffHours);
+      }
+
+      // PPSPM → Bendahara (jika ada waktu Bendahara)
+      if (waktuPPSPM && waktuBendahara) {
+        const diffHours = (waktuBendahara.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.ppspmToBendahara.push(diffHours);
+      }
+
+      // Bendahara → KPPN (jika sudah sent_kppn, gunakan statusKppn sebagai proxy atau updatedAt)
+      // Untuk sementara skip karena tidak ada kolom waktu KPPN yang jelas
+    });
+
+    const calcAvg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    const formatTime = (hours: number) => {
+      if (hours < 1) return `${Math.round(hours * 60)} menit`;
+      if (hours < 24) return `${hours.toFixed(1)} jam`;
+      return `${(hours / 24).toFixed(1)} hari`;
+    };
+
+    const avgSmToPpk = calcAvg(timeDiffs.smToPpk);
+    const avgPpkToPpspm = calcAvg(timeDiffs.ppkToPpspm);
+    const avgPpspmToBendahara = calcAvg(timeDiffs.ppspmToBendahara);
+
+    return [
+      { 
+        stage: 'SM → PPK', 
+        hours: parseFloat(avgSmToPpk.toFixed(1)),
+        displayTime: formatTime(avgSmToPpk),
+        count: timeDiffs.smToPpk.length,
+        color: '#f59e0b'
+      },
+      { 
+        stage: 'PPK → PPSPM', 
+        hours: parseFloat(avgPpkToPpspm.toFixed(1)),
+        displayTime: formatTime(avgPpkToPpspm),
+        count: timeDiffs.ppkToPpspm.length,
+        color: '#8b5cf6'
+      },
+      { 
+        stage: 'PPSPM → Bendahara', 
+        hours: parseFloat(avgPpspmToBendahara.toFixed(1)),
+        displayTime: formatTime(avgPpspmToBendahara),
+        count: timeDiffs.ppspmToBendahara.length,
+        color: '#06b6d4'
+      },
+    ];
+  }, [filteredSubmissions]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -394,6 +468,81 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
               />
             </LineChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Processing Time Comparison Chart */}
+      <Card className="rounded-xl shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Timer className="w-5 h-5" />
+            Rata-rata Waktu Proses Antar Tahap
+          </CardTitle>
+          <CardDescription>Perbandingan durasi rata-rata dari satu tahap ke tahap berikutnya</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {processingTimeData.every(d => d.count === 0) ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+              Tidak ada data waktu proses
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Bar Chart */}
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={processingTimeData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" tickFormatter={(val) => `${val} jam`} />
+                  <YAxis type="category" dataKey="stage" width={130} fontSize={12} />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-background p-3 border rounded-lg shadow-lg">
+                            <p className="font-semibold text-foreground">{data.stage}</p>
+                            <p className="text-sm text-muted-foreground">Rata-rata: <span className="font-medium text-foreground">{data.displayTime}</span></p>
+                            <p className="text-sm text-muted-foreground">Dari {data.count} pengajuan</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar 
+                    dataKey="hours" 
+                    name="Waktu (jam)" 
+                    radius={[0, 4, 4, 0]}
+                  >
+                    {processingTimeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {processingTimeData.map((item) => (
+                  <div 
+                    key={item.stage}
+                    className="p-4 rounded-lg border"
+                    style={{ borderColor: `${item.color}40`, backgroundColor: `${item.color}10` }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="text-sm font-medium">{item.stage}</span>
+                    </div>
+                    <p className="text-2xl font-bold" style={{ color: item.color }}>
+                      {item.displayTime}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Berdasarkan {item.count} pengajuan
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
