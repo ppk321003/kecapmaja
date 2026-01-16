@@ -1,0 +1,430 @@
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  User, CreditCard, Wallet, Clock, AlertTriangle, CheckCircle, Calendar, Building2, 
+  PiggyBank, HandCoins, Receipt, Target, Award, BarChart3, RefreshCw 
+} from 'lucide-react';
+import { 
+  useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, 
+  getCurrentPeriod, parseNIP, formatNIP, getRetirementStatusText 
+} from '@/hooks/use-sikostik-data';
+import { AnggotaMaster, LimitAnggota, RekapDashboard } from '@/types/sikostik';
+import { cn } from '@/lib/utils';
+
+export const RekapIndividu = () => {
+  const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
+  const currentPeriod = getCurrentPeriod();
+  
+  const [anggotaList, setAnggotaList] = useState<AnggotaMaster[]>([]);
+  const [limitList, setLimitList] = useState<LimitAnggota[]>([]);
+  const [rekapList, setRekapList] = useState<RekapDashboard[]>([]);
+  
+  const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
+  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get all active members
+  const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [anggota, limit, rekap] = await Promise.all([
+        fetchAnggotaMaster(),
+        fetchLimitAnggota(),
+        fetchRekapDashboard(selectedBulan, selectedTahun),
+      ]);
+      
+      setAnggotaList(anggota);
+      setLimitList(limit);
+      setRekapList(rekap);
+      
+      // Auto-select first active member
+      const activeMembersList = anggota.filter(m => m.status === 'Aktif');
+      if (!selectedAnggotaId && activeMembersList.length > 0) {
+        setSelectedAnggotaId(activeMembersList[0].id || activeMembersList[0].kodeAnggota);
+      }
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedBulan, selectedTahun]);
+
+  const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
+
+  // Get selected member data
+  const memberData = useMemo(() => {
+    const member = anggotaList.find(m => m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId);
+    const limit = limitList.find(l => l.anggotaId === selectedAnggotaId);
+    const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
+    const nipInfo = member ? parseNIP(member.nip) : null;
+    
+    return { member, limit, rekap, nipInfo };
+  }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
+
+  // Calculate financial analysis
+  const financialAnalysis = useMemo(() => {
+    const { limit, rekap, nipInfo } = memberData;
+    if (!limit || !rekap) return null;
+
+    const limitUtilization = (limit.sisaLimit + limit.saldoPiutang) > 0 
+      ? (limit.saldoPiutang / (limit.sisaLimit + limit.saldoPiutang)) * 100 : 0;
+    
+    const totalPotonganBulanan = 
+      (rekap.cicilanPokok || 0) + (rekap.biayaOperasional || 0) + rekap.totalSimpanan;
+    
+    // Health score
+    let healthScore = 100;
+    if (limitUtilization > 80) healthScore -= 20;
+    else if (limitUtilization > 50) healthScore -= 10;
+    if (limit.totalSimpanan < limit.saldoPiutang) healthScore -= 25;
+    if (nipInfo?.isNearRetirement && limit.saldoPiutang > 0) healthScore -= 15;
+    if (limit.sisaLimit === 0) healthScore -= 10;
+    
+    return { limitUtilization, totalPotonganBulanan, healthScore: Math.max(0, healthScore) };
+  }, [memberData]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={loadData}><RefreshCw className="h-4 w-4 mr-2" />Coba Lagi</Button>
+      </div>
+    );
+  }
+
+  if (anggotaList.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Belum ada data anggota. Pastikan data sudah diisi di sheet anggota_master.</AlertDescription>
+        </Alert>
+        <Button onClick={loadData} variant="outline"><RefreshCw className="h-4 w-4 mr-2" />Refresh Data</Button>
+      </div>
+    );
+  }
+
+  const { member, limit, rekap, nipInfo } = memberData;
+  
+  // Default values
+  const safeLimit = limit || { totalSimpanan: 0, saldoPiutang: 0, limitPinjaman: 0, sisaLimit: 0 };
+  const safeRekap = rekap || { 
+    simpananPokok: 0, simpananWajib: 0, simpananSukarela: 0, simpananLebaran: 0, 
+    simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Filters */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan periode {periodeLabel}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedBulan.toString()} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
+            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {bulanOptions.map((b) => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={selectedTahun.toString()} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
+            <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {getTahunOptions().map((t) => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Separator orientation="vertical" className="h-6 mx-2 hidden lg:block" />
+          <Select value={selectedAnggotaId} onValueChange={setSelectedAnggotaId}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Pilih Anggota" />
+            </SelectTrigger>
+            <SelectContent>
+              {activeMembers.map((m) => (
+                <SelectItem key={m.id || m.kodeAnggota} value={m.id || m.kodeAnggota}>
+                  {m.nama} - {formatNIP(m.nip)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={loadData} variant="outline" size="icon" disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+
+      {!member ? (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Pilih anggota untuk melihat data rekap individu.</AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          {/* Profile Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary text-2xl font-bold">
+                    {member.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">{member.nama}</CardTitle>
+                    <CardDescription className="font-mono">{formatNIP(member.nip)}</CardDescription>
+                  </div>
+                </div>
+                <Badge variant={member.status === 'Aktif' ? 'default' : 'secondary'}>{member.status}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-muted-foreground">Kode Anggota</p>
+                    <p className="font-semibold">{member.kodeAnggota}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-muted-foreground">Bergabung</p>
+                    <p className="font-semibold">{member.tanggalBergabung ? new Date(member.tanggalBergabung).toLocaleDateString('id-ID') : '-'}</p>
+                  </div>
+                </div>
+                {nipInfo && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground">Sisa Masa Kerja</p>
+                        <p className={cn("font-semibold", nipInfo.isNearRetirement && "text-destructive")}>
+                          {getRetirementStatusText(nipInfo.remainingWorkMonths)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-muted-foreground">Pensiun</p>
+                        <p className="font-semibold">{nipInfo.retirementDate.toLocaleDateString('id-ID')}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {nipInfo?.isNearRetirement && (
+                <Alert className="mt-4 bg-destructive/10 border-destructive/30">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
+                    Anda mendekati masa pensiun. Jangka waktu pinjaman maksimal adalah {nipInfo.remainingWorkMonths} bulan.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Health Score */}
+          {financialAnalysis && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-primary" />
+                    <CardTitle>Skor Kesehatan Keuangan</CardTitle>
+                  </div>
+                  <Badge variant={
+                    financialAnalysis.healthScore >= 80 ? 'default' :
+                    financialAnalysis.healthScore >= 60 ? 'secondary' : 'destructive'
+                  } className="text-lg px-4 py-1">
+                    {financialAnalysis.healthScore}/100
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Progress value={financialAnalysis.healthScore} className="h-3" />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main Financial Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <PiggyBank className="h-4 w-4" />Total Simpanan
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(safeLimit.totalSimpanan)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <HandCoins className="h-4 w-4" />Saldo Piutang
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={cn("text-2xl font-bold", safeLimit.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
+                  {formatCurrency(safeLimit.saldoPiutang)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />Limit Pinjaman
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{formatCurrency(safeLimit.limitPinjaman)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />Sisa Limit Tersedia
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={cn("text-2xl font-bold", safeLimit.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
+                  {formatCurrency(safeLimit.sisaLimit)}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <PiggyBank className="h-5 w-5 text-primary" />
+                  <CardTitle>Detail Simpanan Bulanan</CardTitle>
+                </div>
+                <CardDescription>Simpanan yang dipotong setiap bulan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Pokok</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananPokok)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Wajib</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananWajib)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Sukarela</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananSukarela)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Lebaran</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananLebaran)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Lain-lain</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananLainnya)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center py-2 text-lg font-bold">
+                    <span>Total Simpanan/Bulan</span>
+                    <span className="text-primary">{formatCurrency(safeRekap.totalSimpanan)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-accent" />
+                  <CardTitle>Total Potongan Bulanan</CardTitle>
+                </div>
+                <CardDescription>Ringkasan kewajiban per bulan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Cicilan Pinjaman</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.cicilanPokok)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Total Simpanan</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.totalSimpanan)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Biaya Operasional</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.biayaOperasional)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center py-2 text-lg font-bold">
+                    <span>Total Potongan/Bulan</span>
+                    <span className="text-accent">
+                      {formatCurrency(safeRekap.cicilanPokok + safeRekap.totalSimpanan + safeRekap.biayaOperasional)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Limit Utilization */}
+          {financialAnalysis && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <CardTitle>Penggunaan Limit</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Limit Terpakai</span>
+                    <span className="font-medium">{financialAnalysis.limitUtilization.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={financialAnalysis.limitUtilization} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(safeLimit.saldoPiutang)} dari {formatCurrency(safeLimit.limitPinjaman)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
