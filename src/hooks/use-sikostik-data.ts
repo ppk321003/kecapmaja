@@ -8,8 +8,15 @@ import {
   UsulPerubahan,
   NIPInfo
 } from '@/types/sikostik';
+import { parseIndonesianNumber, roundToThousand } from '@/lib/parseNumber';
+
+// Re-export for convenience
+export { roundToThousand };
 
 const SIKOSTIK_SPREADSHEET_ID = "1cBuo9tAtpGvKuThvotIQqd9HDvJfF2Hun61oGYhRtHk";
+
+// Helper to parse numbers from spreadsheet
+const parseNum = (value: any): number => parseIndonesianNumber(value);
 
 // Utility: parse NIP untuk menghitung masa pensiun
 export const parseNIP = (nip: string): NIPInfo | null => {
@@ -188,22 +195,22 @@ export const useSikostikData = () => {
           status: row.status === 'Aktif' ? 'Aktif' : 'Tidak Aktif',
           periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
           periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
-          saldoPiutang: parseFloat(row.saldoPiutang) || 0,
-          simpananPokok: parseFloat(row.simpananPokok) || 0,
-          simpananWajib: parseFloat(row.simpananWajib) || 0,
-          simpananSukarela: parseFloat(row.simpananSukarela) || 0,
-          simpananLebaran: parseFloat(row.simpananLebaran) || 0,
-          simpananLainnya: parseFloat(row.simpananLainnya) || 0,
-          totalSimpanan: parseFloat(row.totalSimpanan) || 0,
-          pinjamanBulanIni: parseFloat(row.pinjamanBulanIni) || 0,
-          pengambilanPokok: parseFloat(row.pengambilanPokok) || 0,
-          pengambilanWajib: parseFloat(row.pengambilanWajib) || 0,
-          pengambilanSukarela: parseFloat(row.pengambilanSukarela) || 0,
-          pengambilanLebaran: parseFloat(row.pengambilanLebaran) || 0,
-          pengambilanLainnya: parseFloat(row.pengambilanLainnya) || 0,
-          totalPengambilan: parseFloat(row.totalPengambilan) || 0,
-          biayaOperasional: parseFloat(row.biayaOperasional) || 0,
-          cicilanPokok: parseFloat(row.cicilanPokok) || 0,
+          saldoPiutang: parseNum(row.saldoPiutang),
+          simpananPokok: parseNum(row.simpananPokok),
+          simpananWajib: parseNum(row.simpananWajib),
+          simpananSukarela: parseNum(row.simpananSukarela),
+          simpananLebaran: parseNum(row.simpananLebaran),
+          simpananLainnya: parseNum(row.simpananLainnya),
+          totalSimpanan: parseNum(row.totalSimpanan),
+          pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
+          pengambilanPokok: parseNum(row.pengambilanPokok),
+          pengambilanWajib: parseNum(row.pengambilanWajib),
+          pengambilanSukarela: parseNum(row.pengambilanSukarela),
+          pengambilanLebaran: parseNum(row.pengambilanLebaran),
+          pengambilanLainnya: parseNum(row.pengambilanLainnya),
+          totalPengambilan: parseNum(row.totalPengambilan),
+          biayaOperasional: parseNum(row.biayaOperasional),
+          cicilanPokok: parseNum(row.cicilanPokok),
           createdAt: row.createdAt || '',
           updatedAt: row.updatedAt || ''
         }));
@@ -228,8 +235,8 @@ export const useSikostikData = () => {
         const anggotaId = row.anggotaId || row.id || '';
         if (!anggotaId) return;
         
-        const totalSimpanan = parseFloat(row.totalSimpanan) || 0;
-        const saldoPiutang = parseFloat(row.saldoPiutang) || 0;
+        const totalSimpanan = parseNum(row.totalSimpanan);
+        const saldoPiutang = parseNum(row.saldoPiutang);
         
         // Limit = 1.5 × (Total Simpanan - Saldo Piutang)
         const limitPinjaman = Math.max(0, 1.5 * (totalSimpanan - saldoPiutang));
@@ -244,7 +251,7 @@ export const useSikostikData = () => {
           saldoPiutang,
           limitPinjaman,
           sisaLimit,
-          cicilanPokok: parseFloat(row.cicilanPokok) || 0
+          cicilanPokok: parseNum(row.cicilanPokok)
         });
       });
       
@@ -267,9 +274,9 @@ export const useSikostikData = () => {
         anggotaId: row.anggotaId || '',
         nama: row.nama || '',
         nip: row.nip || '',
-        jumlahPinjaman: parseFloat(row.jumlahPinjaman) || 0,
+        jumlahPinjaman: parseNum(row.jumlahPinjaman),
         jangkaWaktu: parseInt(row.jangkaWaktu) || 0,
-        cicilanPokok: parseFloat(row.cicilanPokok) || 0,
+        cicilanPokok: parseNum(row.cicilanPokok),
         tujuanPinjaman: row.tujuanPinjaman || '',
         tanggalUsul: row.tanggalUsul || '',
         status: row.status || 'Proses',
@@ -294,8 +301,8 @@ export const useSikostikData = () => {
         nama: row.nama || '',
         nip: row.nip || '',
         jenisPerubahan: row.jenisPerubahan || '',
-        nilaiLama: parseFloat(row.nilaiLama) || 0,
-        nilaiBaru: parseFloat(row.nilaiBaru) || 0,
+        nilaiLama: parseNum(row.nilaiLama),
+        nilaiBaru: parseNum(row.nilaiBaru),
         alasanPerubahan: row.alasanPerubahan || '',
         tanggalUsul: row.tanggalUsul || '',
         status: row.status || 'Menunggu',

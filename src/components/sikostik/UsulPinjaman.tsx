@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, Users } from 'lucide-react';
-import { useSikostikData, formatCurrency, formatNIP } from '@/hooks/use-sikostik-data';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, AlertTriangle } from 'lucide-react';
+import { useSikostikData, formatCurrency, formatNIP, parseNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { UsulPinjaman as UsulPinjamanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
@@ -91,8 +92,8 @@ export const UsulPinjaman = () => {
   if (isLoading && usulData.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
+        <div className="grid gap-4 md:grid-cols-5">
+          {[1, 2, 3, 4, 5].map(i => (
             <Card key={i}>
               <CardContent className="p-5">
                 <Skeleton className="h-12 w-full" />
@@ -202,26 +203,100 @@ export const UsulPinjaman = () => {
                   <TableHead className="font-semibold">Tujuan</TableHead>
                   <TableHead className="font-semibold">Tanggal Usul</TableHead>
                   <TableHead className="font-semibold text-center">Status</TableHead>
+                  <TableHead className="font-semibold text-center">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((item, index) => (
-                  <TableRow key={item.id} className={cn(index % 2 === 1 && 'bg-muted/30')}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{item.nama}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{formatNIP(item.nip)}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-primary">{formatCurrency(item.jumlahPinjaman)}</TableCell>
-                    <TableCell className="text-center">{item.jangkaWaktu} bulan</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.cicilanPokok)}</TableCell>
-                    <TableCell className="max-w-[200px] truncate" title={item.tujuanPinjaman}>{item.tujuanPinjaman}</TableCell>
-                    <TableCell>{item.tanggalUsul ? new Date(item.tanggalUsul).toLocaleDateString('id-ID') : '-'}</TableCell>
-                    <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
-                  </TableRow>
-                ))}
+                {filteredData.map((item, index) => {
+                  const nipInfo = parseNIP(item.nip);
+                  return (
+                    <TableRow key={item.id} className={cn(index % 2 === 1 && 'bg-muted/30')}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{item.nama}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{formatNIP(item.nip)}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{formatCurrency(item.jumlahPinjaman)}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>{item.jangkaWaktu} bulan</span>
+                          {nipInfo?.isNearRetirement && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.cicilanPokok)}</TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={item.tujuanPinjaman}>{item.tujuanPinjaman}</TableCell>
+                      <TableCell>{item.tanggalUsul ? new Date(item.tanggalUsul).toLocaleDateString('id-ID') : '-'}</TableCell>
+                      <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
+                      <TableCell className="text-center">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                              <DialogTitle>Detail Usul Pinjaman</DialogTitle>
+                              <DialogDescription>ID: {item.id}</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Pengusul</p>
+                                  <p className="font-medium">{item.nama}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">NIP</p>
+                                  <p className="font-mono text-sm">{formatNIP(item.nip)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Jumlah Pinjaman</p>
+                                  <p className="font-bold text-lg text-primary">{formatCurrency(item.jumlahPinjaman)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Cicilan/Bulan</p>
+                                  <p className="font-bold">{formatCurrency(item.cicilanPokok)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Jangka Waktu</p>
+                                  <p className="font-medium">{item.jangkaWaktu} bulan</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Status</p>
+                                  {getStatusBadge(item.status)}
+                                </div>
+                              </div>
+                              
+                              {nipInfo?.isNearRetirement && (
+                                <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                                  <div className="flex items-center gap-2 text-yellow-600">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Mendekati Pensiun</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Sisa masa kerja: {getRetirementStatusText(nipInfo.remainingWorkMonths)}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div>
+                                <p className="text-sm text-muted-foreground">Tujuan Pinjaman</p>
+                                <p className="font-medium">{item.tujuanPinjaman}</p>
+                              </div>
+                              
+                              {item.keterangan && (
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Keterangan</p>
+                                  <p className="font-medium">{item.keterangan}</p>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
