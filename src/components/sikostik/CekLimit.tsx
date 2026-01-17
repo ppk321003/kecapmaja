@@ -87,15 +87,14 @@ export const CekLimit = () => {
         </Alert>
       )}
 
-      {/* Formula Card */}
+      {/* Formula Card - DIUBAH: Hapus rumus cicilan */}
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-primary/10"><Calculator className="h-5 w-5 text-primary" /></div>
             <div className="space-y-1">
-              <h3 className="font-semibold text-foreground">Rumus Limit & Cicilan</h3>
+              <h3 className="font-semibold text-foreground">Rumus Limit</h3>
               <p className="text-sm text-muted-foreground"><code className="px-2 py-1 rounded bg-muted font-mono">Limit = 1.5 × (Total Simpanan - Total Pinjaman)</code></p>
-              <p className="text-sm text-muted-foreground"><code className="px-2 py-1 rounded bg-muted font-mono">Cicilan Pokok = Hutang ÷ min(36, Sisa Masa Kerja)</code></p>
               <p className="text-sm text-muted-foreground mt-2">⚠️ Anggota mendekati pensiun (sisa &lt;36 bulan) wajib melunasi sebelum pensiun.</p>
             </div>
           </div>
@@ -168,7 +167,7 @@ export const CekLimit = () => {
                   <TableHead className="font-semibold text-right">Saldo Piutang</TableHead>
                   <TableHead className="font-semibold text-right">Sisa Limit Tersedia</TableHead>
                   <TableHead className="font-semibold text-center">Sisa Masa Kerja</TableHead>
-                  <TableHead className="font-semibold text-right">Cicilan Saat Ini</TableHead>
+                  {/* HAPUS: <TableHead className="font-semibold text-right">Cicilan Saat Ini</TableHead> */}
                   <TableHead className="font-semibold text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -196,7 +195,7 @@ export const CekLimit = () => {
                         </div>
                       ) : '-'}
                     </TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(member.cicilanPokok)}</TableCell>
+                    {/* HAPUS: <TableCell className="text-right font-medium">{formatCurrency(member.cicilanPokok)}</TableCell> */}
                     <TableCell className="text-center">
                       {getStatusBadge(member.sisaLimit, member.nipInfo?.isNearRetirement)}
                     </TableCell>
