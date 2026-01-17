@@ -34,24 +34,26 @@ export const RekapIndividu = () => {
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
 
-  const loadData = async () => {
+  const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [anggota, limit, rekap] = await Promise.all([
+      // Load data yang tidak tergantung periode
+      const [anggota, limit] = await Promise.all([
         fetchAnggotaMaster(),
         fetchLimitAnggota(),
-        fetchRekapDashboard(selectedBulan, selectedTahun),
       ]);
       
       setAnggotaList(anggota);
       setLimitList(limit);
-      setRekapList(rekap);
       
       // Auto-select first active member
       const activeMembersList = anggota.filter(m => m.status === 'Aktif');
       if (!selectedAnggotaId && activeMembersList.length > 0) {
         setSelectedAnggotaId(activeMembersList[0].id || activeMembersList[0].kodeAnggota);
       }
+      
+      // Load data rekap berdasarkan periode awal
+      await loadRekapData();
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -59,8 +61,24 @@ export const RekapIndividu = () => {
     }
   };
 
+  const loadRekapData = async () => {
+    try {
+      const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      setRekapList(rekap);
+    } catch (err) {
+      console.error('Failed to load rekap data:', err);
+    }
+  };
+
   useEffect(() => {
-    loadData();
+    loadInitialData();
+  }, []);
+
+  // Load rekap data ketika periode berubah
+  useEffect(() => {
+    if (selectedBulan && selectedTahun) {
+      loadRekapData();
+    }
   }, [selectedBulan, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
@@ -75,9 +93,9 @@ export const RekapIndividu = () => {
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
 
-  // Calculate financial analysis
+  // Calculate financial analysis (simplified, tanpa health score)
   const financialAnalysis = useMemo(() => {
-    const { limit, rekap, nipInfo } = memberData;
+    const { limit, rekap } = memberData;
     if (!limit || !rekap) return null;
 
     const limitUtilization = (limit.sisaLimit + limit.saldoPiutang) > 0 
@@ -91,15 +109,7 @@ export const RekapIndividu = () => {
     // Total Potongan/Bulan = simpanan bulanan + cicilan_pokok + biaya_operasional
     const totalPotonganBulanan = simpananBulanan + (rekap.cicilanPokok || 0) + (rekap.biayaOperasional || 0);
     
-    // Health score
-    let healthScore = 100;
-    if (limitUtilization > 80) healthScore -= 20;
-    else if (limitUtilization > 50) healthScore -= 10;
-    if (limit.totalSimpanan < limit.saldoPiutang) healthScore -= 25;
-    if (nipInfo?.isNearRetirement && limit.saldoPiutang > 0) healthScore -= 15;
-    if (limit.sisaLimit === 0) healthScore -= 10;
-    
-    return { limitUtilization, totalPotonganBulanan, simpananBulanan, healthScore: Math.max(0, healthScore) };
+    return { limitUtilization, totalPotonganBulanan, simpananBulanan };
   }, [memberData]);
 
   if (isLoading) {
@@ -121,7 +131,7 @@ export const RekapIndividu = () => {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-        <Button onClick={loadData}><RefreshCw className="h-4 w-4 mr-2" />Coba Lagi</Button>
+        <Button onClick={loadInitialData}><RefreshCw className="h-4 w-4 mr-2" />Coba Lagi</Button>
       </div>
     );
   }
@@ -133,7 +143,7 @@ export const RekapIndividu = () => {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>Belum ada data anggota. Pastikan data sudah diisi di sheet anggota_master.</AlertDescription>
         </Alert>
-        <Button onClick={loadData} variant="outline"><RefreshCw className="h-4 w-4 mr-2" />Refresh Data</Button>
+        <Button onClick={loadInitialData} variant="outline"><RefreshCw className="h-4 w-4 mr-2" />Refresh Data</Button>
       </div>
     );
   }
@@ -152,6 +162,7 @@ export const RekapIndividu = () => {
       {/* Header with Filters */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold">Rekap Individu</h1>
           <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan periode {periodeLabel}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -181,7 +192,7 @@ export const RekapIndividu = () => {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={loadData} variant="outline" size="icon" disabled={loading}>
+          <Button onClick={loadInitialData} variant="outline" size="icon" disabled={loading}>
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
           </Button>
         </div>
@@ -258,29 +269,6 @@ export const RekapIndividu = () => {
               )}
             </CardContent>
           </Card>
-
-          {/* Health Score */}
-          {financialAnalysis && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-primary" />
-                    <CardTitle>Skor Kesehatan Keuangan</CardTitle>
-                  </div>
-                  <Badge variant={
-                    financialAnalysis.healthScore >= 80 ? 'default' :
-                    financialAnalysis.healthScore >= 60 ? 'secondary' : 'destructive'
-                  } className="text-lg px-4 py-1">
-                    {financialAnalysis.healthScore}/100
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Progress value={financialAnalysis.healthScore} className="h-3" />
-              </CardContent>
-            </Card>
-          )}
 
           {/* Main Financial Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
