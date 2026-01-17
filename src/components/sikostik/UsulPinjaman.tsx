@@ -209,7 +209,6 @@ export const UsulPinjaman = () => {
                   <TableHead className="font-semibold">No</TableHead>
                   <TableHead className="font-semibold">Nama / NIP</TableHead>
                   <TableHead className="font-semibold text-right">Jumlah Pinjaman</TableHead>
-                  <TableHead className="font-semibold text-center">Jangka Waktu</TableHead>
                   <TableHead className="font-semibold text-right">Cicilan Pokok</TableHead>
                   <TableHead className="font-semibold">Tujuan</TableHead>
                   <TableHead className="font-semibold">Tanggal Usul</TableHead>
@@ -227,13 +226,6 @@ export const UsulPinjaman = () => {
                         <div>
                           <p className="font-medium">{item.nama}</p>
                           <p className="text-xs text-muted-foreground font-mono">{formatNIP(item.nip)}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-primary">{formatCurrency(item.jumlahPinjaman)}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <span>{item.jangkaWaktu} bulan</span>
-                          {nipInfo?.isNearRetirement && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(item.cicilanPokok)}</TableCell>
@@ -267,10 +259,6 @@ export const UsulPinjaman = () => {
                                 <div>
                                   <p className="text-sm text-muted-foreground">Cicilan/Bulan</p>
                                   <p className="font-bold">{formatCurrency(item.cicilanPokok)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Jangka Waktu</p>
-                                  <p className="font-medium">{item.jangkaWaktu} bulan</p>
                                 </div>
                                 <div>
                                   <p className="text-sm text-muted-foreground">Status</p>
