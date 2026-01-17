@@ -10,6 +10,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,12 +65,14 @@ interface Props {
 
 export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
   const { user } = useAuth();
-  const { fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
+  const { fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard, submitUsulPinjaman } = useSikostikData();
   
   const [anggotaList, setAnggotaList] = useState<AnggotaMaster[]>([]);
   const [limitList, setLimitList] = useState<LimitAnggota[]>([]);
   const [rekapList, setRekapList] = useState<RekapDashboard[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState<FormValues | null>(null);
 
   // Fetch data when dialog opens
   useEffect(() => {
@@ -77,16 +89,6 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
       });
     }
   }, [open, dataLoaded, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard]);
-
-  // Find member matching user's anggotaId
-  const findUserMember = (anggota: AnggotaMaster[], userAnggotaId: string) => {
-    return anggota.find(m => 
-      m.id === userAnggotaId || 
-      m.kodeAnggota === userAnggotaId ||
-      m.id?.toLowerCase() === userAnggotaId?.toLowerCase() ||
-      m.kodeAnggota?.toLowerCase() === userAnggotaId?.toLowerCase()
-    );
-  };
 
   // Filter active members
   const activeMembers = useMemo(() => {
@@ -131,7 +133,8 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
     );
     
     const nipInfo = parseNIP(member.nip);
-    const cicilanSaatIni = limit?.cicilanPokok || 0;
+    // Cicilan Saat Ini = cicilan_pokok (kolom R) from rekap data
+    const cicilanSaatIni = rekap?.cicilanPokok || limit?.cicilanPokok || 0;
     
     return {
       member,
@@ -176,7 +179,7 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
   // Validate cicilan baru
   const cicilanValidation = useMemo(() => {
     if (!installmentCalc || !watchCicilanBaru) {
-      return { valid: true, warnings: [] as string[] };
+      return { valid: true, warnings: [] as string[], hasWarnings: false };
     }
     
     const warnings: string[] = [];
@@ -199,7 +202,7 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
       }
     }
     
-    return { valid, warnings };
+    return { valid, warnings, hasWarnings: warnings.length > 0 };
   }, [watchCicilanBaru, installmentCalc, memberInfo]);
 
   // Calculate total deductions
@@ -237,17 +240,18 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
 
   // Validate loan against limit
   const loanValidation = useMemo(() => {
-    if (!memberInfo?.limit || !watchJumlahPinjaman) return { valid: true, message: '' };
+    if (!memberInfo?.limit || !watchJumlahPinjaman) return { valid: true, message: '', hasWarning: false };
     
     const sisaLimit = memberInfo.limit.sisaLimit;
     if (watchJumlahPinjaman > sisaLimit) {
       return {
         valid: false,
         message: `Jumlah pinjaman melebihi sisa limit (${formatCurrency(sisaLimit)})`,
+        hasWarning: true,
       };
     }
     
-    return { valid: true, message: '' };
+    return { valid: true, message: '', hasWarning: false };
   }, [memberInfo, watchJumlahPinjaman]);
 
   const handleSetMinimumCicilan = () => {
@@ -256,346 +260,419 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
     }
   };
 
-  const handleSubmit = (data: FormValues) => {
+  const hasValidationWarnings = !loanValidation.valid || !cicilanValidation.valid;
+
+  const handleFormSubmit = (data: FormValues) => {
+    if (hasValidationWarnings) {
+      setPendingSubmit(data);
+      setShowWarningDialog(true);
+    } else {
+      executeSubmit(data);
+    }
+  };
+
+  const executeSubmit = async (data: FormValues) => {
     if (!memberInfo || !installmentCalc || !simpatik28Calc) return;
     
-    onSubmit({
-      ...data,
+    // Submit to Google Sheets
+    const result = await submitUsulPinjaman({
+      anggotaId: memberInfo.member.id || memberInfo.member.kodeAnggota,
+      nama: memberInfo.member.nama,
+      nip: memberInfo.member.nip,
+      jumlahPinjaman: data.jumlahPinjaman,
       jangkaWaktu: installmentCalc.actualMonths,
       cicilanPokok: data.cicilanBaru,
-      nip: memberInfo.member.nip,
-      nama: memberInfo.member.nama,
-      totalPotongan: simpatik28Calc.totalPotongan,
+      tujuanPinjaman: data.alasan,
     });
-    
-    toast.success('Pengajuan pinjaman berhasil disubmit!');
-    form.reset();
-    onOpenChange(false);
+
+    if (result.success) {
+      onSubmit({
+        ...data,
+        jangkaWaktu: installmentCalc.actualMonths,
+        cicilanPokok: data.cicilanBaru,
+        nip: memberInfo.member.nip,
+        nama: memberInfo.member.nama,
+        totalPotongan: simpatik28Calc.totalPotongan,
+      });
+      
+      toast.success('Pengajuan pinjaman berhasil disubmit!');
+      form.reset();
+      onOpenChange(false);
+    } else {
+      toast.error('Gagal menyimpan pengajuan: ' + result.error);
+    }
+  };
+
+  const handleConfirmWarning = () => {
+    if (pendingSubmit) {
+      executeSubmit(pendingSubmit);
+    }
+    setShowWarningDialog(false);
+    setPendingSubmit(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Form Pengajuan Pinjaman</DialogTitle>
-          <DialogDescription>
-            Ajukan pinjaman baru ke koperasi. Persetujuan memerlukan approval dari Sekretaris, Bendahara, dan Ketua.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Form Pengajuan Pinjaman</DialogTitle>
+            <DialogDescription>
+              Ajukan pinjaman baru ke koperasi. Persetujuan memerlukan approval dari Sekretaris, Bendahara, dan Ketua.
+            </DialogDescription>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {/* Anggota Selection */}
-            <FormField
-              control={form.control}
-              name="anggotaId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pilih Anggota</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih anggota..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {activeMembers.map((member) => (
-                        <SelectItem key={member.id || member.kodeAnggota} value={member.id || member.kodeAnggota}>
-                          {member.nama} - {formatNIP(member.nip)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+              {/* Anggota Selection */}
+              <FormField
+                control={form.control}
+                name="anggotaId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pilih Anggota</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih anggota..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {activeMembers.map((member) => (
+                          <SelectItem key={member.id || member.kodeAnggota} value={member.id || member.kodeAnggota}>
+                            {member.nama} - {formatNIP(member.nip)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Member Info Card */}
-            {memberInfo && (
-              <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-                <h4 className="font-semibold text-sm">Informasi Anggota</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">NIP</p>
-                    <p className="font-mono">{formatNIP(memberInfo.member.nip)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Sisa Limit Pinjaman</p>
-                    <p className="font-semibold text-primary">
-                      {memberInfo.limit ? formatCurrency(memberInfo.limit.sisaLimit) : '-'}
-                    </p>
-                  </div>
-                  {memberInfo.nipInfo && (
-                    <>
-                      <div>
-                        <p className="text-muted-foreground">Masa Kerja Tersisa</p>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{getRetirementStatusText(memberInfo.nipInfo.remainingWorkMonths)}</span>
+              {/* Member Info Card */}
+              {memberInfo && (
+                <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                  <h4 className="font-semibold text-sm">Informasi Anggota</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">NIP</p>
+                      <p className="font-mono">{formatNIP(memberInfo.member.nip)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Sisa Limit Pinjaman</p>
+                      <p className="font-semibold text-primary">
+                        {memberInfo.limit ? formatCurrency(memberInfo.limit.sisaLimit) : '-'}
+                      </p>
+                    </div>
+                    {memberInfo.nipInfo && (
+                      <>
+                        <div>
+                          <p className="text-muted-foreground">Masa Kerja Tersisa</p>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span>{getRetirementStatusText(memberInfo.nipInfo.remainingWorkMonths)}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Maks Jangka Waktu</p>
-                        <Badge variant={memberInfo.nipInfo.isNearRetirement ? 'destructive' : 'secondary'}>
-                          {Math.min(36, memberInfo.nipInfo.remainingWorkMonths)} bulan
-                        </Badge>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {memberInfo.nipInfo?.isNearRetirement && (
-                  <Alert className="bg-yellow-50 border-yellow-200">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-700">
-                      Anggota mendekati masa pensiun. Jangka waktu pinjaman disesuaikan ke sisa masa kerja.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            )}
-
-            {/* Jumlah Pinjaman */}
-            <FormField
-              control={form.control}
-              name="jumlahPinjaman"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Jumlah Pinjaman</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="Masukkan jumlah pinjaman"
-                      value={formatNumberWithSeparator(field.value)}
-                      onChange={(e) => {
-                        const parsed = parseFormattedNumberToInt(e.target.value);
-                        field.onChange(parsed);
-                      }}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {memberInfo?.limit && `Sisa limit: ${formatCurrency(memberInfo.limit.sisaLimit)}`}
-                  </FormDescription>
-                  <FormMessage />
-                  {!loanValidation.valid && (
-                    <p className="text-sm text-destructive">{loanValidation.message}</p>
-                  )}
-                </FormItem>
-              )}
-            />
-
-            {/* Jangka Waktu */}
-            <FormField
-              control={form.control}
-              name="jangkaWaktu"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Jangka Waktu (Bulan)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={installmentCalc?.maxMonths || 36}
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {installmentCalc?.isAdjusted
-                      ? `Maksimal ${installmentCalc.maxMonths} bulan (disesuaikan dengan sisa masa kerja)`
-                      : 'Maksimal 36 bulan'}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Installment Calculation */}
-            {installmentCalc && (
-              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Kalkulasi Cicilan</h4>
-                </div>
-                
-                <div className="p-3 rounded-lg bg-muted/30 border">
-                  <p className="text-sm text-muted-foreground mb-3 text-center">Perbandingan Cicilan</p>
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Cicilan Saat Ini</p>
-                      <p className="text-xl font-bold">{formatCurrency(installmentCalc.cicilanSaatIni)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        (Hutang: {formatCurrency(installmentCalc.existingDebt)})
-                      </p>
-                    </div>
-                    <ArrowRight className="h-6 w-6 text-muted-foreground" />
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Cicilan Minimal Baru</p>
-                      <p className="text-xl font-bold text-primary">{formatCurrency(installmentCalc.minCicilanBaru)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        (Total Hutang: {formatCurrency(installmentCalc.newTotalDebt)})
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {watchJumlahPinjaman > 0 && (
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pinjaman Baru</p>
-                      <p className="font-bold text-lg">{formatCurrency(watchJumlahPinjaman)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Jangka Waktu</p>
-                      <p className="font-bold text-lg">{installmentCalc.actualMonths} bulan</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Cicilan Pinjaman Baru</p>
-                      <p className="font-bold text-lg text-accent">{formatCurrency(installmentCalc.cicilanPinjamanBaru)}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {installmentCalc.isAdjusted && (
-                  <p className="text-xs text-yellow-600 text-center">
-                    * Jangka waktu disesuaikan dengan sisa masa kerja ({installmentCalc.maxMonths} bulan)
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Cicilan Baru Input */}
-            <FormField
-              control={form.control}
-              name="cicilanBaru"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Cicilan Pinjaman Baru (per bulan)</FormLabel>
-                    {installmentCalc && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSetMinimumCicilan}
-                      >
-                        Set Minimal
-                      </Button>
+                        <div>
+                          <p className="text-muted-foreground">Maks Jangka Waktu</p>
+                          <Badge variant={memberInfo.nipInfo.isNearRetirement ? 'destructive' : 'secondary'}>
+                            {Math.min(36, memberInfo.nipInfo.remainingWorkMonths)} bulan
+                          </Badge>
+                        </div>
+                      </>
                     )}
                   </div>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="Masukkan cicilan yang diinginkan"
-                      value={formatNumberWithSeparator(field.value)}
-                      onChange={(e) => {
-                        const parsed = parseFormattedNumberToInt(e.target.value);
-                        field.onChange(parsed);
-                      }}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Minimal: {installmentCalc ? formatCurrency(installmentCalc.minCicilanBaru) : '-'}
-                  </FormDescription>
-                  <FormMessage />
-                  {cicilanValidation.warnings.length > 0 && (
-                    <div className="space-y-1">
-                      {cicilanValidation.warnings.map((warning, idx) => (
-                        <Alert key={idx} variant="destructive" className="py-2">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertDescription className="text-sm">{warning}</AlertDescription>
-                        </Alert>
-                      ))}
+                  
+                  {memberInfo.nipInfo?.isNearRetirement && (
+                    <Alert className="bg-yellow-50 border-yellow-200">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-700">
+                        Anggota mendekati masa pensiun. Jangka waktu pinjaman disesuaikan ke sisa masa kerja.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+              {/* Jumlah Pinjaman */}
+              <FormField
+                control={form.control}
+                name="jumlahPinjaman"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jumlah Pinjaman</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Masukkan jumlah pinjaman"
+                        value={formatNumberWithSeparator(field.value)}
+                        onChange={(e) => {
+                          const parsed = parseFormattedNumberToInt(e.target.value);
+                          field.onChange(parsed);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {memberInfo?.limit && `Sisa limit: ${formatCurrency(memberInfo.limit.sisaLimit)}`}
+                    </FormDescription>
+                    <FormMessage />
+                    {!loanValidation.valid && (
+                      <Alert className="bg-yellow-50 border-yellow-200 py-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-700">{loanValidation.message}</AlertDescription>
+                      </Alert>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {/* Jangka Waktu */}
+              <FormField
+                control={form.control}
+                name="jangkaWaktu"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jangka Waktu (Bulan)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={installmentCalc?.maxMonths || 36}
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {installmentCalc?.isAdjusted
+                        ? `Maksimal ${installmentCalc.maxMonths} bulan (disesuaikan dengan sisa masa kerja)`
+                        : 'Maksimal 36 bulan'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Installment Calculation */}
+              {installmentCalc && (
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5 text-primary" />
+                    <h4 className="font-semibold">Kalkulasi Cicilan</h4>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-muted/30 border">
+                    <p className="text-sm text-muted-foreground mb-3 text-center">Perbandingan Cicilan</p>
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Cicilan Saat Ini</p>
+                        <p className="text-xl font-bold">{formatCurrency(installmentCalc.cicilanSaatIni)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          (Hutang: {formatCurrency(installmentCalc.existingDebt)})
+                        </p>
+                      </div>
+                      <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Cicilan Minimal Baru</p>
+                        <p className="text-xl font-bold text-primary">{formatCurrency(installmentCalc.minCicilanBaru)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          (Total Hutang: {formatCurrency(installmentCalc.newTotalDebt)})
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {watchJumlahPinjaman > 0 && (
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Pinjaman Baru</p>
+                        <p className="font-bold text-lg">{formatCurrency(watchJumlahPinjaman)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Jangka Waktu</p>
+                        <p className="font-bold text-lg">{installmentCalc.actualMonths} bulan</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Cicilan Pinjaman Baru</p>
+                        <p className="font-bold text-lg text-accent">{formatCurrency(installmentCalc.cicilanPinjamanBaru)}</p>
+                      </div>
                     </div>
                   )}
-                </FormItem>
+                  
+                  {installmentCalc.isAdjusted && (
+                    <p className="text-xs text-yellow-600 text-center">
+                      * Jangka waktu disesuaikan dengan sisa masa kerja ({installmentCalc.maxMonths} bulan)
+                    </p>
+                  )}
+                </div>
               )}
-            />
 
-            {/* Total Deduction Summary */}
-            {simpatik28Calc && watchCicilanBaru > 0 && (
-              <div className="p-4 rounded-lg bg-accent/10 border border-accent/30 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-accent" />
-                  <h4 className="font-semibold">Total Potongan Sikostik28</h4>
+              {/* Cicilan Baru Input */}
+              <FormField
+                control={form.control}
+                name="cicilanBaru"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Cicilan Pinjaman Baru (per bulan)</FormLabel>
+                      {installmentCalc && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSetMinimumCicilan}
+                        >
+                          Set Minimal
+                        </Button>
+                      )}
+                    </div>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Masukkan cicilan yang diinginkan"
+                        value={formatNumberWithSeparator(field.value)}
+                        onChange={(e) => {
+                          const parsed = parseFormattedNumberToInt(e.target.value);
+                          field.onChange(parsed);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Minimal: {installmentCalc ? formatCurrency(installmentCalc.minCicilanBaru) : '-'}
+                    </FormDescription>
+                    <FormMessage />
+                    {cicilanValidation.warnings.length > 0 && (
+                      <div className="space-y-1">
+                        {cicilanValidation.warnings.map((warning, idx) => (
+                          <Alert key={idx} className="bg-yellow-50 border-yellow-200 py-2">
+                            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-sm text-yellow-700">{warning}</AlertDescription>
+                          </Alert>
+                        ))}
+                      </div>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {/* Total Deduction Summary */}
+              {simpatik28Calc && watchCicilanBaru > 0 && (
+                <div className="p-4 rounded-lg bg-accent/10 border border-accent/30 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5 text-accent" />
+                    <h4 className="font-semibold">Total Potongan Sikostik28</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cicilan Pokok</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.cicilanPokok)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Simpanan Pokok</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananPokok)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Simpanan Wajib</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananWajib)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Simpanan Sukarela</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananSukarela)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Simpanan Lebaran</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananLebaran)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Simpanan Lain-lain</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananLainnya)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Biaya Operasional</span>
+                      <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.biayaOperasional)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-3 border-t border-accent/30">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-lg">Total Potongan/Bulan</span>
+                      <span className="font-bold text-xl text-accent">{formatCurrency(simpatik28Calc.totalPotongan)}</span>
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cicilan Pokok</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.cicilanPokok)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simpanan Pokok</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananPokok)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simpanan Wajib</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananWajib)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simpanan Sukarela</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananSukarela)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simpanan Lebaran</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananLebaran)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simpanan Lain-lain</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.simpananLainnya)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Biaya Operasional</span>
-                    <span className="font-medium">{formatCurrency(simpatik28Calc.breakdown.biayaOperasional)}</span>
-                  </div>
-                </div>
-                
-                <div className="pt-3 border-t border-accent/30">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-lg">Total Potongan/Bulan</span>
-                    <span className="font-bold text-xl text-accent">{formatCurrency(simpatik28Calc.totalPotongan)}</span>
-                  </div>
-                </div>
+              )}
+
+              {/* Alasan */}
+              <FormField
+                control={form.control}
+                name="alasan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Alasan Pengajuan</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Jelaskan alasan pengajuan pinjaman..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Batal
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={!memberInfo || watchCicilanBaru === 0}
+                >
+                  Ajukan Pinjaman
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warning Confirmation Dialog */}
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-600">
+              <AlertTriangle className="h-5 w-5" />
+              Perhatian - Pengajuan Diluar Ketentuan
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Pengajuan Anda dibawah limit ketentuan. Diperlukan persetujuan dari Pembina dan Ketua Simpatik 28.
+              </p>
+              <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 space-y-1">
+                {!loanValidation.valid && (
+                  <p className="text-sm text-yellow-700">• {loanValidation.message}</p>
+                )}
+                {cicilanValidation.warnings.map((warning, idx) => (
+                  <p key={idx} className="text-sm text-yellow-700">• {warning}</p>
+                ))}
               </div>
-            )}
-
-            {/* Alasan */}
-            <FormField
-              control={form.control}
-              name="alasan"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Alasan Pengajuan</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Jelaskan alasan pengajuan pinjaman..."
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Batal
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={!loanValidation.valid || !cicilanValidation.valid || !memberInfo || watchCicilanBaru === 0}
-              >
-                Ajukan Pinjaman
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <p className="text-sm">
+                Apakah Anda yakin ingin melanjutkan pengajuan ini?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingSubmit(null)}>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWarning} className="bg-yellow-600 hover:bg-yellow-700">
+              Ya, Lanjutkan Pengajuan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

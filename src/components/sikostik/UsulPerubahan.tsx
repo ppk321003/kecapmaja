@@ -101,9 +101,8 @@ export const UsulPerubahan = () => {
   );
 
   const handleSubmitPerubahan = async (data: any) => {
-    console.log('New change proposal:', data);
-    // In a real implementation, this would append to the spreadsheet
-    loadData(); // Refresh data
+    console.log('New change proposal submitted:', data);
+    loadData(); // Refresh data after submission
   };
 
   // Loading skeleton

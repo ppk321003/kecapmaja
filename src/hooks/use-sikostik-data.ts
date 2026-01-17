@@ -337,6 +337,99 @@ export const useSikostikData = () => {
     }
   }, [fetchSheet]);
 
+  const appendToSheet = useCallback(async (sheetName: string, values: any[][]) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SIKOSTIK_SPREADSHEET_ID,
+          operation: "append",
+          range: sheetName,
+          values
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (err: any) {
+      console.error(`Error appending to ${sheetName}:`, err);
+      throw err;
+    }
+  }, []);
+
+  const submitUsulPinjaman = useCallback(async (data: {
+    anggotaId: string;
+    nama: string;
+    nip: string;
+    jumlahPinjaman: number;
+    jangkaWaktu: number;
+    cicilanPokok: number;
+    tujuanPinjaman: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const id = `UP-${Date.now()}`;
+      const tanggalUsul = new Date().toISOString().split('T')[0];
+      const values = [[
+        id,
+        data.anggotaId,
+        data.nama,
+        data.nip,
+        data.jumlahPinjaman,
+        data.jangkaWaktu,
+        data.cicilanPokok,
+        data.tujuanPinjaman,
+        tanggalUsul,
+        'Proses',
+        ''
+      ]];
+      await appendToSheet('usul_pinjaman', values);
+      return { success: true, id };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  }, [appendToSheet]);
+
+  const submitUsulPerubahan = useCallback(async (data: {
+    anggotaId: string;
+    nama: string;
+    nip: string;
+    jenisPerubahan: string;
+    nilaiLama: number;
+    nilaiBaru: number;
+    alasanPerubahan: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const id = `UB-${Date.now()}`;
+      const tanggalUsul = new Date().toISOString().split('T')[0];
+      const values = [[
+        id,
+        data.anggotaId,
+        data.nama,
+        data.nip,
+        data.jenisPerubahan,
+        data.nilaiLama,
+        data.nilaiBaru,
+        data.alasanPerubahan,
+        tanggalUsul,
+        'Menunggu',
+        ''
+      ]];
+      await appendToSheet('usul_perubahan', values);
+      return { success: true, id };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  }, [appendToSheet]);
+
   return {
     loading,
     error,
@@ -344,6 +437,8 @@ export const useSikostikData = () => {
     fetchRekapDashboard,
     fetchLimitAnggota,
     fetchUsulPinjaman,
-    fetchUsulPerubahan
+    fetchUsulPerubahan,
+    submitUsulPinjaman,
+    submitUsulPerubahan
   };
 };

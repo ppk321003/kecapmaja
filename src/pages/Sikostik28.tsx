@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, User, Calculator, HandCoins, Settings } from 'lucide-react';
 import { RekapAnggota } from '@/components/sikostik/RekapAnggota';
@@ -10,13 +8,7 @@ import { UsulPinjaman } from '@/components/sikostik/UsulPinjaman';
 import { UsulPerubahan } from '@/components/sikostik/UsulPerubahan';
 
 const Sikostik28 = () => {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('rekap-anggota');
-
-  // Only accessible to 'Pejabat Pembuat Komitmen' role
-  if (user?.role !== 'Pejabat Pembuat Komitmen') {
-    return <Navigate to="/" replace />;
-  }
 
   return (
     <div className="p-6 space-y-6">
