@@ -83,8 +83,13 @@ export const RekapIndividu = () => {
     const limitUtilization = (limit.sisaLimit + limit.saldoPiutang) > 0 
       ? (limit.saldoPiutang / (limit.sisaLimit + limit.saldoPiutang)) * 100 : 0;
     
-    const totalPotonganBulanan = 
-      (rekap.cicilanPokok || 0) + (rekap.biayaOperasional || 0) + rekap.totalSimpanan;
+    // Total Simpanan Bulanan = sum(K:O) = simpanan_pokok + wajib + sukarela + lebaran + lainlain (per bulan)
+    const simpananBulanan = (rekap.totalSimpananBulanan || 0) || 
+      ((rekap.simpananPokok || 0) + (rekap.simpananWajib || 0) + (rekap.simpananSukarela || 0) + 
+       (rekap.simpananLebaran || 0) + (rekap.simpananLainnya || 0));
+    
+    // Total Potongan/Bulan = simpanan bulanan + cicilan_pokok + biaya_operasional
+    const totalPotonganBulanan = simpananBulanan + (rekap.cicilanPokok || 0) + (rekap.biayaOperasional || 0);
     
     // Health score
     let healthScore = 100;
@@ -94,7 +99,7 @@ export const RekapIndividu = () => {
     if (nipInfo?.isNearRetirement && limit.saldoPiutang > 0) healthScore -= 15;
     if (limit.sisaLimit === 0) healthScore -= 10;
     
-    return { limitUtilization, totalPotonganBulanan, healthScore: Math.max(0, healthScore) };
+    return { limitUtilization, totalPotonganBulanan, simpananBulanan, healthScore: Math.max(0, healthScore) };
   }, [memberData]);
 
   if (isLoading) {
@@ -360,7 +365,13 @@ export const RekapIndividu = () => {
                   <Separator />
                   <div className="flex justify-between items-center py-2 text-lg font-bold">
                     <span>Total Simpanan/Bulan</span>
-                    <span className="text-primary">{formatCurrency(safeRekap.totalSimpanan)}</span>
+                    <span className="text-primary">
+                      {formatCurrency(
+                        (safeRekap.simpananPokok || 0) + (safeRekap.simpananWajib || 0) + 
+                        (safeRekap.simpananSukarela || 0) + (safeRekap.simpananLebaran || 0) + 
+                        (safeRekap.simpananLainnya || 0)
+                      )}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -377,12 +388,28 @@ export const RekapIndividu = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b">
-                    <span>Cicilan Pinjaman</span>
-                    <span className="font-semibold">{formatCurrency(safeRekap.cicilanPokok)}</span>
+                    <span>Simpanan Pokok</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananPokok)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b">
-                    <span>Total Simpanan</span>
-                    <span className="font-semibold">{formatCurrency(safeRekap.totalSimpanan)}</span>
+                    <span>Simpanan Wajib</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananWajib)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Sukarela</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananSukarela)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Lebaran</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananLebaran)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Simpanan Lain-lain</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.simpananLainnya)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span>Cicilan Pinjaman</span>
+                    <span className="font-semibold">{formatCurrency(safeRekap.cicilanPokok)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b">
                     <span>Biaya Operasional</span>
@@ -392,7 +419,12 @@ export const RekapIndividu = () => {
                   <div className="flex justify-between items-center py-2 text-lg font-bold">
                     <span>Total Potongan/Bulan</span>
                     <span className="text-accent">
-                      {formatCurrency(safeRekap.cicilanPokok + safeRekap.totalSimpanan + safeRekap.biayaOperasional)}
+                      {formatCurrency(
+                        (safeRekap.simpananPokok || 0) + (safeRekap.simpananWajib || 0) + 
+                        (safeRekap.simpananSukarela || 0) + (safeRekap.simpananLebaran || 0) + 
+                        (safeRekap.simpananLainnya || 0) + (safeRekap.cicilanPokok || 0) + 
+                        (safeRekap.biayaOperasional || 0)
+                      )}
                     </span>
                   </div>
                 </div>
