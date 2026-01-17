@@ -49,6 +49,7 @@ const mainMenuItems = [
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
   { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank },
 ];
 
 const additionalMenuItems = [
