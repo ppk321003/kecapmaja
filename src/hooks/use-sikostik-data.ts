@@ -202,8 +202,12 @@ export const useSikostikData = () => {
           simpananSukarela: parseNum(row.saldoAkhirbulanSukarela),
           simpananLebaran: parseNum(row.saldoAkhirbulanLebaran),
           simpananLainnya: parseNum(row.saldoAkhirbulanLainlain),
-          // Total Simpanan dari kolom P (total_simpanan)
-          totalSimpanan: parseNum(row.totalSimpanan),
+          // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
+          totalSimpanan: parseNum(row.saldoAkhirbulanPokok) +
+                         parseNum(row.saldoAkhirbulanWajib) +
+                         parseNum(row.saldoAkhirbulanSukarela) +
+                         parseNum(row.saldoAkhirbulanLebaran) +
+                         parseNum(row.saldoAkhirbulanLainlain),
           pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
           pengambilanPokok: parseNum(row.pengambilanPokok),
           pengambilanWajib: parseNum(row.pengambilanWajib),
@@ -238,8 +242,12 @@ export const useSikostikData = () => {
         const anggotaId = row.anggotaId || row.id || '';
         if (!anggotaId) return;
         
-        // Total Simpanan dari kolom P (total_simpanan)
-        const totalSimpanan = parseNum(row.totalSimpanan);
+        // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
+        const totalSimpanan = parseNum(row.saldoAkhirbulanPokok) +
+                              parseNum(row.saldoAkhirbulanWajib) +
+                              parseNum(row.saldoAkhirbulanSukarela) +
+                              parseNum(row.saldoAkhirbulanLebaran) +
+                              parseNum(row.saldoAkhirbulanLainlain);
         // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
         

@@ -1488,7 +1488,7 @@ export default function Dashboard() {
           <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28')}>
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
-              <TabsTrigger value="perjadin">Perjalanan Dinas</TabsTrigger>
+              <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
               <TabsTrigger value="kinerja">Kinerja</TabsTrigger>
               <TabsTrigger value="pencairan">Pencairan</TabsTrigger>
               <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>
