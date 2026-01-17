@@ -196,12 +196,18 @@ export const useSikostikData = () => {
           periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
           periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
           saldoPiutang: parseNum(row.saldoPiutang),
-          simpananPokok: parseNum(row.simpananPokok),
-          simpananWajib: parseNum(row.simpananWajib),
-          simpananSukarela: parseNum(row.simpananSukarela),
-          simpananLebaran: parseNum(row.simpananLebaran),
-          simpananLainnya: parseNum(row.simpananLainnya),
-          totalSimpanan: parseNum(row.totalSimpanan),
+          // Simpanan dari kolom saldo_akhirbulan (Z, AA, AB, AC, AD)
+          simpananPokok: parseNum(row.saldoAkhirbulanPokok),
+          simpananWajib: parseNum(row.saldoAkhirbulanWajib),
+          simpananSukarela: parseNum(row.saldoAkhirbulanSukarela),
+          simpananLebaran: parseNum(row.saldoAkhirbulanLebaran),
+          simpananLainnya: parseNum(row.saldoAkhirbulanLainlain),
+          // Total simpanan = jumlah semua saldo akhir bulan
+          totalSimpanan: parseNum(row.saldoAkhirbulanPokok) + 
+                         parseNum(row.saldoAkhirbulanWajib) + 
+                         parseNum(row.saldoAkhirbulanSukarela) + 
+                         parseNum(row.saldoAkhirbulanLebaran) + 
+                         parseNum(row.saldoAkhirbulanLainlain),
           pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
           pengambilanPokok: parseNum(row.pengambilanPokok),
           pengambilanWajib: parseNum(row.pengambilanWajib),
@@ -210,6 +216,7 @@ export const useSikostikData = () => {
           pengambilanLainnya: parseNum(row.pengambilanLainnya),
           totalPengambilan: parseNum(row.totalPengambilan),
           biayaOperasional: parseNum(row.biayaOperasional),
+          // Cicilan Pokok dari kolom R (cicilan_pokok)
           cicilanPokok: parseNum(row.cicilanPokok),
           createdAt: row.createdAt || '',
           updatedAt: row.updatedAt || ''
@@ -235,7 +242,12 @@ export const useSikostikData = () => {
         const anggotaId = row.anggotaId || row.id || '';
         if (!anggotaId) return;
         
-        const totalSimpanan = parseNum(row.totalSimpanan);
+        // Total Simpanan dari kolom saldo_akhirbulan (Z, AA, AB, AC, AD)
+        const totalSimpanan = parseNum(row.saldoAkhirbulanPokok) + 
+                              parseNum(row.saldoAkhirbulanWajib) + 
+                              parseNum(row.saldoAkhirbulanSukarela) + 
+                              parseNum(row.saldoAkhirbulanLebaran) + 
+                              parseNum(row.saldoAkhirbulanLainlain);
         const saldoPiutang = parseNum(row.saldoPiutang);
         
         // Limit = 1.5 × (Total Simpanan - Saldo Piutang)
@@ -251,6 +263,7 @@ export const useSikostikData = () => {
           saldoPiutang,
           limitPinjaman,
           sisaLimit,
+          // Cicilan Saat Ini dari kolom R (cicilan_pokok)
           cicilanPokok: parseNum(row.cicilanPokok)
         });
       });
