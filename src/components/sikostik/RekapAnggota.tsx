@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, RefreshCw, AlertCircle, CheckCircle2, Users, PiggyBank, HandCoins, Receipt } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
@@ -46,14 +46,6 @@ export const RekapAnggota = () => {
     );
   }, [activeMembers, searchQuery]);
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    const totalSimpanan = activeMembers.reduce((sum, m) => sum + m.totalSimpanan, 0);
-    const totalPiutang = activeMembers.reduce((sum, m) => sum + m.saldoPiutang, 0);
-    const totalCicilan = activeMembers.reduce((sum, m) => sum + m.cicilanPokok, 0);
-    return { totalSimpanan, totalPiutang, totalCicilan, totalAnggota: activeMembers.length };
-  }, [activeMembers]);
-
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
 
   // Loading skeleton
@@ -61,15 +53,6 @@ export const RekapAnggota = () => {
     return (
       <div className="space-y-6">
         <Skeleton className="h-16 w-full" />
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i}>
-              <CardContent className="p-5">
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
         <Skeleton className="h-[400px] w-full" />
       </div>
     );
@@ -127,54 +110,6 @@ export const RekapAnggota = () => {
         </Button>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Anggota Aktif</p>
-              <p className="text-xl font-bold">{stats.totalAnggota}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-success/10">
-              <PiggyBank className="h-5 w-5 text-success" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Simpanan</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(stats.totalSimpanan)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-destructive/10">
-              <HandCoins className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Piutang</p>
-              <p className="text-xl font-bold text-destructive">{formatCurrency(stats.totalPiutang)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-accent/10">
-              <Receipt className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Cicilan/Bulan</p>
-              <p className="text-xl font-bold text-accent">{formatCurrency(stats.totalCicilan)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Empty State */}
       {!isLoading && rekapData.length === 0 && !error && (
         <Alert>
@@ -205,7 +140,6 @@ export const RekapAnggota = () => {
                   <TableHead className="font-semibold text-right">Simpanan Lainnya</TableHead>
                   <TableHead className="font-semibold text-right">Total Simpanan</TableHead>
                   <TableHead className="font-semibold text-right">Saldo Piutang</TableHead>
-                  <TableHead className="font-semibold text-right">Cicilan Pokok</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -229,7 +163,6 @@ export const RekapAnggota = () => {
                         {formatCurrency(member.saldoPiutang)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(member.cicilanPokok)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
