@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import DashboardPerjadin from "@/components/DashboardPerjadin";
 import LKKinerja from "@/components/LK-Kinerja";
 import DashboardPencairan from "@/components/DashboardPencairan";
+import DashboardSikostik28 from "@/components/DashboardSikostik28";
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_MITRA_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -646,7 +647,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan'>('honorarium');
+  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const [stats, setStats] = useState<DashboardStats>({
@@ -1484,12 +1485,13 @@ export default function Dashboard() {
         
         <div className="flex items-center gap-4">
           {/* Tabs Utama */}
-          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan')}>
+          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28')}>
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjalanan Dinas</TabsTrigger>
               <TabsTrigger value="kinerja">Kinerja</TabsTrigger>
               <TabsTrigger value="pencairan">Pencairan</TabsTrigger>
+              <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -1803,8 +1805,12 @@ export default function Dashboard() {
             viewMode={viewMode}
             filterTahun={filterTahun}
           />
-        ) : (
+        ) : mainTab === 'pencairan' ? (
           <DashboardPencairan 
+            filterTahun={filterTahun}
+          />
+        ) : (
+          <DashboardSikostik28 
             filterTahun={filterTahun}
           />
         )}
