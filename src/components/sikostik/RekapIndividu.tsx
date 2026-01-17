@@ -9,7 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   User, CreditCard, Wallet, Clock, AlertTriangle, CheckCircle, Calendar, Building2, 
-  PiggyBank, HandCoins, Receipt, Target, Award, BarChart3, RefreshCw 
+  PiggyBank, HandCoins, Receipt, Target, Award, BarChart3, RefreshCw, ChevronDown, ChevronUp,
+  Banknote, PieChart, Info
 } from 'lucide-react';
 import { 
   useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, 
@@ -30,6 +31,7 @@ export const RekapIndividu = () => {
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDetail, setShowDetail] = useState(false);
 
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
@@ -93,7 +95,7 @@ export const RekapIndividu = () => {
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
 
-  // Calculate financial analysis (simplified, tanpa health score)
+  // Calculate financial analysis
   const financialAnalysis = useMemo(() => {
     const { limit, rekap } = memberData;
     if (!limit || !rekap) return null;
@@ -205,8 +207,8 @@ export const RekapIndividu = () => {
         </Alert>
       ) : (
         <>
-          {/* Profile Card */}
-          <Card>
+          {/* Profile Card dengan Accordion */}
+          <Card className="overflow-hidden">
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
@@ -215,108 +217,147 @@ export const RekapIndividu = () => {
                   </div>
                   <div>
                     <CardTitle className="text-xl">{member.nama}</CardTitle>
-                    <CardDescription className="font-mono">{formatNIP(member.nip)}</CardDescription>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={member.status === 'Aktif' ? 'default' : 'secondary'}>
+                        {member.status}
+                      </Badge>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary" />
+                    </div>
                   </div>
                 </div>
-                <Badge variant={member.status === 'Aktif' ? 'default' : 'secondary'}>{member.status}</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetail(!showDetail)}
+                  className="h-8 px-3"
+                >
+                  {showDetail ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-2" />
+                      Sembunyikan Detail
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      Lihat Detail
+                    </>
+                  )}
+                </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-muted-foreground">Kode Anggota</p>
-                    <p className="font-semibold">{member.kodeAnggota}</p>
+            
+            {/* Summary Stats Grid */}
+            <CardContent className="pb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <PiggyBank className="h-4 w-4" />
+                    <span>Total Simpanan</span>
                   </div>
+                  <p className="text-xl font-bold text-primary">
+                    {formatCurrency(safeLimit.totalSimpanan)}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-muted-foreground">Bergabung</p>
-                    <p className="font-semibold">{member.tanggalBergabung ? new Date(member.tanggalBergabung).toLocaleDateString('id-ID') : '-'}</p>
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <HandCoins className="h-4 w-4" />
+                    <span>Saldo Piutang</span>
                   </div>
+                  <p className={cn("text-xl font-bold", safeLimit.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
+                    {formatCurrency(safeLimit.saldoPiutang)}
+                  </p>
                 </div>
-                {nipInfo && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground">Sisa Masa Kerja</p>
-                        <p className={cn("font-semibold", nipInfo.isNearRetirement && "text-destructive")}>
-                          {getRetirementStatusText(nipInfo.remainingWorkMonths)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-muted-foreground">Pensiun</p>
-                        <p className="font-semibold">{nipInfo.retirementDate.toLocaleDateString('id-ID')}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Limit Pinjaman</span>
+                  </div>
+                  <p className="text-xl font-bold">
+                    {formatCurrency(safeLimit.limitPinjaman)}
+                  </p>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Wallet className="h-4 w-4" />
+                    <span>Sisa Limit</span>
+                  </div>
+                  <p className={cn("text-xl font-bold", safeLimit.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
+                    {formatCurrency(safeLimit.sisaLimit)}
+                  </p>
+                </div>
               </div>
-              
-              {nipInfo?.isNearRetirement && (
-                <Alert className="mt-4 bg-destructive/10 border-destructive/30">
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  <AlertDescription className="text-destructive">
-                    Anda mendekati masa pensiun. Jangka waktu pinjaman maksimal adalah {nipInfo.remainingWorkMonths} bulan.
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
+            
+            {/* Accordion Detail Section */}
+            {showDetail && (
+              <>
+                <Separator />
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Kode Anggota</span>
+                      </div>
+                      <p className="font-semibold">{member.kodeAnggota}</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Bergabung</span>
+                      </div>
+                      <p className="font-semibold">
+                        {member.tanggalBergabung ? new Date(member.tanggalBergabung).toLocaleDateString('id-ID') : '-'}
+                      </p>
+                    </div>
+                    
+                    {nipInfo && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">Sisa Masa Kerja</span>
+                          </div>
+                          <p className={cn("font-semibold", nipInfo.isNearRetirement && "text-destructive")}>
+                            {getRetirementStatusText(nipInfo.remainingWorkMonths)}
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Target className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">Pensiun</span>
+                          </div>
+                          <p className="font-semibold">
+                            {nipInfo.retirementDate.toLocaleDateString('id-ID')}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {nipInfo?.isNearRetirement && (
+                    <Alert className="mt-4 bg-destructive/10 border-destructive/30">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <AlertDescription className="text-destructive">
+                        Anda mendekati masa pensiun. Jangka waktu pinjaman maksimal adalah {nipInfo.remainingWorkMonths} bulan.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {/* NIP Display */}
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground font-medium">NIP</p>
+                    <p className="font-mono text-sm">{formatNIP(member.nip)}</p>
+                  </div>
+                </CardContent>
+              </>
+            )}
           </Card>
-
-          {/* Main Financial Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <PiggyBank className="h-4 w-4" />Total Simpanan
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(safeLimit.totalSimpanan)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <HandCoins className="h-4 w-4" />Saldo Piutang
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className={cn("text-2xl font-bold", safeLimit.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
-                  {formatCurrency(safeLimit.saldoPiutang)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />Limit Pinjaman
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(safeLimit.limitPinjaman)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />Sisa Limit Tersedia
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className={cn("text-2xl font-bold", safeLimit.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
-                  {formatCurrency(safeLimit.sisaLimit)}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Detailed Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
