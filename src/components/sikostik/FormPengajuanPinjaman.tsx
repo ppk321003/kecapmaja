@@ -650,7 +650,7 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                Pengajuan Anda dibawah cicilan minimal. Diperlukan persetujuan khusus dari Pembina dan Ketua Simpatik 28.
+                Pengajuan Anda tidak sesuai dengan ketentuan Simpatik 28. Diperlukan persetujuan khusus dari Ketua dan Pembina Simpatik 28.
               </p>
               <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 space-y-1">
                 {!loanValidation.valid && (
