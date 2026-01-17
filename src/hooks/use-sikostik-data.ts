@@ -196,18 +196,24 @@ export const useSikostikData = () => {
           periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
           periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
           saldoPiutang: parseNum(row.saldoPiutang),
-          // Simpanan dari kolom saldo_akhirbulan (Z, AA, AB, AC, AD)
-          simpananPokok: parseNum(row.saldoAkhirbulanPokok),
-          simpananWajib: parseNum(row.saldoAkhirbulanWajib),
-          simpananSukarela: parseNum(row.saldoAkhirbulanSukarela),
-          simpananLebaran: parseNum(row.saldoAkhirbulanLebaran),
-          simpananLainnya: parseNum(row.saldoAkhirbulanLainlain),
-          // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
+          // Simpanan BULANAN dari kolom K-O (simpanan_pokok, simpanan_wajib, etc.) - potongan per bulan
+          simpananPokok: parseNum(row.simpananPokok),
+          simpananWajib: parseNum(row.simpananWajib),
+          simpananSukarela: parseNum(row.simpananSukarela),
+          simpananLebaran: parseNum(row.simpananLebaran),
+          simpananLainnya: parseNum(row.simpananLainnya),
+          // Total Simpanan KUMULATIF = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
           totalSimpanan: parseNum(row.saldoAkhirbulanPokok) +
                          parseNum(row.saldoAkhirbulanWajib) +
                          parseNum(row.saldoAkhirbulanSukarela) +
                          parseNum(row.saldoAkhirbulanLebaran) +
                          parseNum(row.saldoAkhirbulanLainlain),
+          // Total Simpanan Bulanan = sum(K:O) - potongan simpanan per bulan
+          totalSimpananBulanan: parseNum(row.simpananPokok) +
+                                parseNum(row.simpananWajib) +
+                                parseNum(row.simpananSukarela) +
+                                parseNum(row.simpananLebaran) +
+                                parseNum(row.simpananLainnya),
           pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
           pengambilanPokok: parseNum(row.pengambilanPokok),
           pengambilanWajib: parseNum(row.pengambilanWajib),

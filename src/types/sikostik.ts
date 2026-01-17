@@ -25,6 +25,7 @@ export interface RekapDashboard {
   simpananLebaran: number;
   simpananLainnya: number;
   totalSimpanan: number;
+  totalSimpananBulanan: number;
   pinjamanBulanIni: number;
   pengambilanPokok: number;
   pengambilanWajib: number;
