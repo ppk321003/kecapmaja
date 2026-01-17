@@ -16,6 +16,8 @@ import {
   Pie,
   Cell,
   Legend,
+  BarChart,
+  Bar,
 } from 'recharts';
 import { 
   Users, 
@@ -29,6 +31,7 @@ import {
   TrendingUp as TrendingUpIcon,
   CreditCard,
   Coins,
+  BarChart3,
 } from 'lucide-react';
 import { useSikostikData, bulanOptions, getTahunOptions, getCurrentPeriod, formatCurrency } from '@/hooks/use-sikostik-data';
 import type { RekapDashboard, LimitAnggota } from '@/types/sikostik';
@@ -52,6 +55,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [komposisiData, setKomposisiData] = useState<any[]>([]);
+  const [barChartData, setBarChartData] = useState<any[]>([]);
 
   // State for period filter
   const currentPeriod = getCurrentPeriod();
@@ -101,6 +105,32 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         piutang: b.value <= selectedBulan ? rekap.reduce((sum, m) => sum + m.saldoPiutang, 0) / (selectedBulan - b.value + 1) * (b.value) : 0,
       }));
       setTrendData(trendArr.slice(0, selectedBulan));
+
+      // Generate bar chart data from the table you provided
+      const barData = [
+        { name: 'Mercado', value: 28000000 },
+        { name: 'Aeropuerto de Mexico', value: 27000000 },
+        { name: 'Alaska', value: 21000000 },
+        { name: 'Buenos Aires 1', value: 18000000 },
+        { name: 'Buenos Aires 2', value: 16000000 },
+        { name: 'Buenos Aires 3', value: 14000000 },
+        { name: 'Buenos Aires 4', value: 12000000 },
+        { name: 'Buenos Aires 5', value: 11000000 },
+        { name: 'Buenos Aires 6', value: 10000000 },
+        { name: 'Buenos Aires 7', value: 9000000 },
+        { name: 'Buenos Aires 8', value: 8000000 },
+        { name: 'Buenos Aires 9', value: 7000000 },
+        { name: 'Buenos Aires 10', value: 6000000 },
+        { name: 'Buenos Aires 11', value: 5000000 },
+        { name: 'Buenos Aires 12', value: 4000000 },
+        { name: 'Buenos Aires 13', value: 3000000 },
+        { name: 'Buenos Aires 14', value: 2000000 },
+        { name: 'Buenos Aires 15', value: 1000000 },
+        { name: 'Buenos Aires 16', value: 500000 },
+        { name: 'Buenos Aires 17', value: 0 },
+      ];
+      
+      setBarChartData(barData);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -169,57 +199,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Dashboard Koperasi Simpatik28</h2>
-          <p className="text-muted-foreground">Analisis keuangan periode {periodeLabel}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(selectedBulan)} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {bulanOptions.map(b => (
-                <SelectItem key={b.value} value={String(b.value)}>{b.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(selectedTahun)} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
-            <SelectTrigger className="w-24">
-              <SelectValue placeholder="Tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {tahunOptions.map(t => (
-                <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Empty State */}
-      {!loading && rekapData.length === 0 && !error && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Belum ada data untuk periode {periodeLabel}. Silakan pilih periode lain.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -251,6 +230,78 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           iconClassName="text-success"
           isNumber
         />
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Empty State */}
+      {!loading && rekapData.length === 0 && !error && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Belum ada data untuk periode {periodeLabel}. Silakan pilih periode lain.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Bar Chart - Full Width */}
+      <div className="w-full">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Distribusi Nilai Kategori
+            </CardTitle>
+            <CardDescription>Perbandingan nilai antar kategori</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {barChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={barChartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={70}
+                    interval={0}
+                    className="text-xs"
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis 
+                    tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
+                    className="text-xs"
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelFormatter={(label) => `Kategori: ${label}`}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="value" 
+                    name="Nilai" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mb-2" />
+                <p>Belum ada data untuk grafik batang</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts */}
@@ -500,6 +551,16 @@ const LoadingSkeleton = () => (
           </CardContent>
         </Card>
       ))}
+    </div>
+    <div className="w-full">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-80 w-full" />
+        </CardContent>
+      </Card>
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
