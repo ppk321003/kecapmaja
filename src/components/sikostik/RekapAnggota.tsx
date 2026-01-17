@@ -50,6 +50,7 @@ export const RekapAnggota = () => {
   const stats = useMemo(() => {
     const totalSimpanan = activeMembers.reduce((sum, m) => sum + m.totalSimpanan, 0);
     const totalPiutang = activeMembers.reduce((sum, m) => sum + m.saldoPiutang, 0);
+    const totalCicilan = activeMembers.reduce((sum, m) => sum + m.cicilanPokok, 0);
     return { totalSimpanan, totalPiutang, totalCicilan, totalAnggota: activeMembers.length };
   }, [activeMembers]);
 
@@ -166,6 +167,10 @@ export const RekapAnggota = () => {
             <div className="p-3 rounded-lg bg-accent/10">
               <Receipt className="h-5 w-5 text-accent" />
             </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Cicilan/Bulan</p>
+              <p className="text-xl font-bold text-accent">{formatCurrency(stats.totalCicilan)}</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -200,6 +205,7 @@ export const RekapAnggota = () => {
                   <TableHead className="font-semibold text-right">Simpanan Lainnya</TableHead>
                   <TableHead className="font-semibold text-right">Total Simpanan</TableHead>
                   <TableHead className="font-semibold text-right">Saldo Piutang</TableHead>
+                  <TableHead className="font-semibold text-right">Cicilan Pokok</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -223,6 +229,7 @@ export const RekapAnggota = () => {
                         {formatCurrency(member.saldoPiutang)}
                       </span>
                     </TableCell>
+                    <TableCell className="text-right">{formatCurrency(member.cicilanPokok)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
