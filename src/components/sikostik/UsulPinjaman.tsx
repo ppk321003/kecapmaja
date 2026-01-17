@@ -226,8 +226,15 @@ export const UsulPinjaman = () => {
                         <div>
                           <p className="font-medium">{item.nama}</p>
                           <p className="text-xs text-muted-foreground font-mono">{formatNIP(item.nip)}</p>
+                          {nipInfo?.isNearRetirement && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                              <span className="text-xs text-yellow-600">Mendekati pensiun</span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{formatCurrency(item.jumlahPinjaman)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.cicilanPokok)}</TableCell>
                       <TableCell className="max-w-[200px] truncate" title={item.tujuanPinjaman}>{item.tujuanPinjaman}</TableCell>
                       <TableCell>{item.tanggalUsul ? new Date(item.tanggalUsul).toLocaleDateString('id-ID') : '-'}</TableCell>
@@ -259,6 +266,10 @@ export const UsulPinjaman = () => {
                                 <div>
                                   <p className="text-sm text-muted-foreground">Cicilan/Bulan</p>
                                   <p className="font-bold">{formatCurrency(item.cicilanPokok)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Jangka Waktu</p>
+                                  <p className="font-medium">{item.jangkaWaktu} bulan</p>
                                 </div>
                                 <div>
                                   <p className="text-sm text-muted-foreground">Status</p>
