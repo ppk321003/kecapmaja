@@ -11,98 +11,73 @@ import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
-
 export const RekapAnggota = () => {
-  const { loading, error, fetchRekapDashboard } = useSikostikData();
+  const {
+    loading,
+    error,
+    fetchRekapDashboard
+  } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const loadData = async () => {
     setIsLoading(true);
     const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
     setRekapData(data);
     setIsLoading(false);
   };
-
   useEffect(() => {
     loadData();
   }, [selectedBulan, selectedTahun]);
 
   // Filter only active members
   const activeMembers = useMemo(() => {
-    return rekapData.filter((member) => member.status === 'Aktif');
+    return rekapData.filter(member => member.status === 'Aktif');
   }, [rekapData]);
 
   // Filter by search query
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return activeMembers;
-    return activeMembers.filter((member) =>
-      member.nama.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return activeMembers.filter(member => member.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [activeMembers, searchQuery]);
-
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
 
   // Loading skeleton
   if (isLoading && rekapData.length === 0) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-[400px] w-full" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive">
+      {error && <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+        </Alert>}
 
       {/* Info Banner */}
-      {rekapData.length > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm">
-          <CheckCircle2 className="h-5 w-5 text-accent" />
-          <span className="text-foreground">
-            Menampilkan data anggota periode <strong>{periodeLabel}</strong> dengan status{' '}
-            <Badge variant="outline" className="ml-1 border-accent text-accent">Aktif</Badge>
-          </span>
-          <span className="ml-auto text-muted-foreground text-xs">
-            Data dari Google Spreadsheet
-          </span>
-        </div>
-      )}
+      {rekapData.length > 0}
 
       {/* Filter Controls */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Cari nama anggota..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            className="pl-9" 
-          />
+          <Input placeholder="Cari nama anggota..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
         </div>
-        <Select value={selectedBulan.toString()} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
+        <Select value={selectedBulan.toString()} onValueChange={v => setSelectedBulan(parseInt(v))}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {bulanOptions.map((b) => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
+            {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={selectedTahun.toString()} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
+        <Select value={selectedTahun.toString()} onValueChange={v => setSelectedTahun(parseInt(v))}>
           <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {getTahunOptions().map((t) => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
+            {getTahunOptions().map(t => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
@@ -111,14 +86,12 @@ export const RekapAnggota = () => {
       </div>
 
       {/* Empty State */}
-      {!isLoading && rekapData.length === 0 && !error && (
-        <Alert>
+      {!isLoading && rekapData.length === 0 && !error && <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Belum ada data untuk periode {periodeLabel}. Silakan isi data di Google Spreadsheet.
           </AlertDescription>
-        </Alert>
-      )}
+        </Alert>}
 
       {/* Data Table */}
       <Card>
@@ -143,8 +116,7 @@ export const RekapAnggota = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((member, index) => (
-                  <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
+                {filteredData.map((member, index) => <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
                       <div>
@@ -163,13 +135,11 @@ export const RekapAnggota = () => {
                         {formatCurrency(member.saldoPiutang)}
                       </span>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
