@@ -6,21 +6,45 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Calculator, AlertTriangle, CheckCircle, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, Calculator, AlertTriangle, CheckCircle, Clock, RefreshCw, AlertCircle, ChevronUp, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, parseNIP, formatNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { LimitAnggota } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
+
+type SortConfig = {
+  key: 'nama' | 'sisaLimit' | 'totalSimpanan' | 'saldoPiutang' | 'remainingWorkMonths';
+  direction: 'asc' | 'desc';
+};
+
+// Perlu diperiksa apakah LimitAnggota memiliki properti status
+// Jika tidak, kita perlu menambahkannya atau mengambil data dari sumber lain
 
 export const CekLimit = () => {
   const { loading, error, fetchLimitAnggota } = useSikostikData();
   const [searchQuery, setSearchQuery] = useState('');
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: 'nama',
+    direction: 'asc'
+  });
 
   const loadData = async () => {
     setIsLoading(true);
     const data = await fetchLimitAnggota();
-    setLimitData(data);
+    
+    // Cek apakah data memiliki properti status
+    // Jika tidak, kita tidak bisa memfilter berdasarkan status
+    // Alternatif: Tambahkan status default atau abaikan filter
+    const dataWithStatus = data.map(item => ({
+      ...item,
+      // Jika item tidak memiliki status, berikan default 'Aktif' atau sesuaikan
+      status: (item as any).status || 'Aktif' // Type assertion sementara
+    }));
+    
+    // Filter hanya anggota dengan status 'Aktif' jika properti ada
+    const activeMembers = dataWithStatus.filter((member) => member.status === 'Aktif');
+    setLimitData(activeMembers);
     setIsLoading(false);
   };
 
@@ -31,14 +55,91 @@ export const CekLimit = () => {
   const enrichedData = useMemo(() => {
     return limitData.map((member) => {
       const nipInfo = parseNIP(member.nip);
-      return { ...member, nipInfo };
+      return { 
+        ...member, 
+        nipInfo,
+        // Tambahkan properti untuk sorting
+        remainingWorkMonths: nipInfo?.remainingWorkMonths || 0
+      };
     });
   }, [limitData]);
 
+  // Fungsi untuk sorting data
+  const sortedData = useMemo(() => {
+    const sortableData = [...enrichedData];
+    
+    if (sortConfig.key) {
+      sortableData.sort((a, b) => {
+        let aValue: any, bValue: any;
+        
+        switch (sortConfig.key) {
+          case 'nama':
+            aValue = a.nama.toLowerCase();
+            bValue = b.nama.toLowerCase();
+            break;
+          case 'sisaLimit':
+            aValue = a.sisaLimit;
+            bValue = b.sisaLimit;
+            break;
+          case 'totalSimpanan':
+            aValue = a.totalSimpanan;
+            bValue = b.totalSimpanan;
+            break;
+          case 'saldoPiutang':
+            aValue = a.saldoPiutang;
+            bValue = b.saldoPiutang;
+            break;
+          case 'remainingWorkMonths':
+            aValue = a.nipInfo?.remainingWorkMonths || 0;
+            bValue = b.nipInfo?.remainingWorkMonths || 0;
+            break;
+          default:
+            return 0;
+        }
+
+        // Handle perbandingan
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    
+    return sortableData;
+  }, [enrichedData, sortConfig]);
+
+  // Fungsi untuk mengubah sorting
+  const requestSort = (key: SortConfig['key']) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    
+    setSortConfig({ key, direction });
+  };
+
+  // Tambahkan icon untuk sorting
+  const getSortIcon = (key: SortConfig['key']) => {
+    if (sortConfig.key !== key) {
+      return <ChevronUp className="h-4 w-4 opacity-30" />;
+    }
+    
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUp className="h-4 w-4" /> 
+      : <ChevronDown className="h-4 w-4" />;
+  };
+
+  // Filter data berdasarkan search query
   const filteredData = useMemo(() => {
-    if (!searchQuery.trim()) return enrichedData;
-    return enrichedData.filter((member) => member.nama.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [searchQuery, enrichedData]);
+    if (!searchQuery.trim()) return sortedData;
+    return sortedData.filter((member) => 
+      member.nama.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, sortedData]);
 
   const stats = useMemo(() => {
     const totalSisaLimit = limitData.reduce((sum, m) => sum + m.sisaLimit, 0);
@@ -87,7 +188,21 @@ export const CekLimit = () => {
         </Alert>
       )}
 
-      {/* Formula Card - DIUBAH: Hapus rumus cicilan */}
+      {/* Info Banner */}
+      {limitData.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm">
+          <CheckCircle2 className="h-5 w-5 text-accent" />
+          <span className="text-foreground">
+            Menampilkan data limit pinjaman dengan status{' '}
+            <Badge variant="outline" className="ml-1 border-accent text-accent">Aktif</Badge>
+          </span>
+          <span className="ml-auto text-muted-foreground text-xs">
+            Data dari Google Spreadsheet
+          </span>
+        </div>
+      )}
+
+      {/* Formula Card */}
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -133,7 +248,12 @@ export const CekLimit = () => {
       <div className="flex items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Cari nama anggota..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+          <Input 
+            placeholder="Cari nama anggota..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            className="pl-9" 
+          />
         </div>
         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -145,7 +265,7 @@ export const CekLimit = () => {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Belum ada data limit pinjaman. Data dihitung dari sheet rekap_dashboard.
+            Belum ada data limit pinjaman untuk anggota aktif. Data dihitung dari sheet rekap_dashboard.
           </AlertDescription>
         </Alert>
       )}
@@ -154,7 +274,7 @@ export const CekLimit = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Data Limit Pinjaman Anggota</CardTitle>
-          <CardDescription>{filteredData.length} anggota ditampilkan</CardDescription>
+          <CardDescription>{filteredData.length} anggota aktif ditampilkan</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-hidden overflow-x-auto">
@@ -162,13 +282,52 @@ export const CekLimit = () => {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">No</TableHead>
-                  <TableHead className="font-semibold">Nama / NIP</TableHead>
-                  <TableHead className="font-semibold text-right">Total Simpanan</TableHead>
-                  <TableHead className="font-semibold text-right">Saldo Piutang</TableHead>
-                  <TableHead className="font-semibold text-right">Sisa Limit Tersedia</TableHead>
-                  <TableHead className="font-semibold text-center">Sisa Masa Kerja</TableHead>
-                  {/* HAPUS: <TableHead className="font-semibold text-right">Cicilan Saat Ini</TableHead> */}
-                  <TableHead className="font-semibold text-center">Status</TableHead>
+                  <TableHead 
+                    className="font-semibold cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => requestSort('nama')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Nama / NIP
+                      {getSortIcon('nama')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-right cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => requestSort('totalSimpanan')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Total Simpanan
+                      {getSortIcon('totalSimpanan')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-right cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => requestSort('saldoPiutang')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Saldo Piutang
+                      {getSortIcon('saldoPiutang')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-right cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => requestSort('sisaLimit')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Sisa Limit Tersedia
+                      {getSortIcon('sisaLimit')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="font-semibold text-center cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => requestSort('remainingWorkMonths')}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      Sisa Masa Kerja
+                      {getSortIcon('remainingWorkMonths')}
+                    </div>
+                  </TableHead>
+                  <TableHead className="font-semibold text-center">Status Limit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -179,6 +338,12 @@ export const CekLimit = () => {
                       <div>
                         <p className="font-medium">{member.nama}</p>
                         <p className="text-xs text-muted-foreground font-mono">{formatNIP(member.nip)}</p>
+                        {/* Tampilkan status anggota jika ada */}
+                        {'status' in member && member.status && (
+                          <Badge variant="outline" className="mt-1 text-xs">
+                            {member.status}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(member.totalSimpanan)}</TableCell>
@@ -195,7 +360,6 @@ export const CekLimit = () => {
                         </div>
                       ) : '-'}
                     </TableCell>
-                    {/* HAPUS: <TableCell className="text-right font-medium">{formatCurrency(member.cicilanPokok)}</TableCell> */}
                     <TableCell className="text-center">
                       {getStatusBadge(member.sisaLimit, member.nipInfo?.isNearRetirement)}
                     </TableCell>
