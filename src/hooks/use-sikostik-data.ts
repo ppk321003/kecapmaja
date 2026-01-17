@@ -203,6 +203,11 @@ export const useSikostikData = () => {
           simpananLebaran: parseNum(row.simpananLebaran),
           simpananLainnya: parseNum(row.simpananLainnya),
           // Total Simpanan KUMULATIF = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
+          saldoAkhirbulanPokok: parseNum(row.saldoAkhirbulanPokok),
+          saldoAkhirbulanWajib: parseNum(row.saldoAkhirbulanWajib),
+          saldoAkhirbulanSukarela: parseNum(row.saldoAkhirbulanSukarela),
+          saldoAkhirbulanLebaran: parseNum(row.saldoAkhirbulanLebaran),
+          saldoAkhirbulanLainlain: parseNum(row.saldoAkhirbulanLainlain),
           totalSimpanan: parseNum(row.saldoAkhirbulanPokok) +
                          parseNum(row.saldoAkhirbulanWajib) +
                          parseNum(row.saldoAkhirbulanSukarela) +
