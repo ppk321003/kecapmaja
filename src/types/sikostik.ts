@@ -35,6 +35,11 @@ export interface RekapDashboard {
   totalPengambilan: number;
   biayaOperasional: number;
   cicilanPokok: number;
+  saldoAkhirbulanPokok: number;
+  saldoAkhirbulanWajib: number;
+  saldoAkhirbulanSukarela: number;
+  saldoAkhirbulanLebaran: number;
+  saldoAkhirbulanLainlain: number;
   createdAt: string;
   updatedAt: string;
 }
