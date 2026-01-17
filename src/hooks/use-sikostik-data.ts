@@ -202,12 +202,8 @@ export const useSikostikData = () => {
           simpananSukarela: parseNum(row.saldoAkhirbulanSukarela),
           simpananLebaran: parseNum(row.saldoAkhirbulanLebaran),
           simpananLainnya: parseNum(row.saldoAkhirbulanLainlain),
-          // Total simpanan = jumlah semua saldo akhir bulan
-          totalSimpanan: parseNum(row.saldoAkhirbulanPokok) + 
-                         parseNum(row.saldoAkhirbulanWajib) + 
-                         parseNum(row.saldoAkhirbulanSukarela) + 
-                         parseNum(row.saldoAkhirbulanLebaran) + 
-                         parseNum(row.saldoAkhirbulanLainlain),
+          // Total Simpanan dari kolom P (total_simpanan)
+          totalSimpanan: parseNum(row.totalSimpanan),
           pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
           pengambilanPokok: parseNum(row.pengambilanPokok),
           pengambilanWajib: parseNum(row.pengambilanWajib),
@@ -242,16 +238,14 @@ export const useSikostikData = () => {
         const anggotaId = row.anggotaId || row.id || '';
         if (!anggotaId) return;
         
-        // Total Simpanan dari kolom saldo_akhirbulan (Z, AA, AB, AC, AD)
-        const totalSimpanan = parseNum(row.saldoAkhirbulanPokok) + 
-                              parseNum(row.saldoAkhirbulanWajib) + 
-                              parseNum(row.saldoAkhirbulanSukarela) + 
-                              parseNum(row.saldoAkhirbulanLebaran) + 
-                              parseNum(row.saldoAkhirbulanLainlain);
+        // Total Simpanan dari kolom P (total_simpanan)
+        const totalSimpanan = parseNum(row.totalSimpanan);
+        // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
         
-        // Limit = 1.5 × (Total Simpanan - Saldo Piutang)
-        const limitPinjaman = Math.max(0, 1.5 * (totalSimpanan - saldoPiutang));
+        // Limit Pinjaman = Total Simpanan × 1.5
+        const limitPinjaman = Math.max(0, totalSimpanan * 1.5);
+        // Sisa Limit = (Total Simpanan × 1.5) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
         
         limitMap.set(anggotaId, {
