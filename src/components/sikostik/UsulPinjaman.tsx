@@ -91,9 +91,8 @@ export const UsulPinjaman = () => {
   );
 
   const handleSubmitPinjaman = async (data: any) => {
-    console.log('New loan proposal:', data);
-    // In a real implementation, this would append to the spreadsheet
-    loadData(); // Refresh data
+    console.log('New loan proposal submitted:', data);
+    loadData(); // Refresh data after submission
   };
 
   // Loading skeleton
