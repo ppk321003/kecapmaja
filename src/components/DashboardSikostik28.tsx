@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,40 +29,22 @@ import {
   TrendingUp as TrendingUpIcon,
   CreditCard,
   Coins,
-  BarChart3,
 } from 'lucide-react';
-import { useSikostikData, formatCurrency } from '@/hooks/use-sikostik-data';
+import { useSikostikData, bulanOptions, getTahunOptions, getCurrentPeriod, formatCurrency } from '@/hooks/use-sikostik-data';
 import type { RekapDashboard, LimitAnggota } from '@/types/sikostik';
 
-// Warna baru untuk chart - tanpa hitam
-const COMPOSITION_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--accent))',
-  'hsl(var(--success))',
-  'hsl(var(--warning))',
-  'hsl(var(--destructive))',
-  'hsl(var(--blue-500))',
-  'hsl(var(--purple-500))',
-  'hsl(var(--pink-500))',
-];
-
-const TREND_COLORS = {
-  simpanan: 'hsl(var(--success))',
-  piutang: 'hsl(var(--warning))',
-};
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--muted-foreground))'];
 
 interface DashboardSikostik28Props {
   filterTahun?: string;
-  periodeLabel?: string;
 }
 
-const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }: DashboardSikostik28Props) => {
+const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
   const { 
     loading, 
     error, 
     fetchRekapDashboard, 
     fetchLimitAnggota,
-    getCurrentPeriod,
   } = useSikostikData();
 
   // State for data
@@ -70,72 +53,54 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   const [trendData, setTrendData] = useState<any[]>([]);
   const [komposisiData, setKomposisiData] = useState<any[]>([]);
 
+  // State for period filter
+  const currentPeriod = getCurrentPeriod();
+  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(filterTahun ? parseInt(filterTahun) : currentPeriod.tahun);
+  const tahunOptions = getTahunOptions();
+
+  // Update selected tahun when filterTahun prop changes
+  useEffect(() => {
+    if (filterTahun) {
+      setSelectedTahun(parseInt(filterTahun));
+    }
+  }, [filterTahun]);
+
   // Load all data
   const loadData = async () => {
     try {
-      const currentPeriod = getCurrentPeriod();
-      const tahun = filterTahun ? parseInt(filterTahun) : currentPeriod.tahun;
-      const bulan = currentPeriod.bulan;
-
       const [rekap, limit] = await Promise.all([
-        fetchRekapDashboard(bulan, tahun),
+        fetchRekapDashboard(selectedBulan, selectedTahun),
         fetchLimitAnggota(),
       ]);
       
       setRekapData(rekap);
       setLimitData(limit);
 
-      // Filter hanya anggota aktif
-      const activeMembers = rekap.filter((m) => m.status === 'Aktif');
-
+      // Generate trend data from rekap for each month
+      const trendByMonth: Record<string, { simpanan: number; piutang: number }> = {};
+      bulanOptions.forEach(b => {
+        trendByMonth[b.label] = { simpanan: 0, piutang: 0 };
+      });
+      
       // Calculate komposisi from current period data
       const komposisi = [
-        { 
-          name: 'Simpanan Pokok', 
-          value: activeMembers.reduce((sum, m) => sum + m.simpananPokok, 0),
-          color: 'hsl(var(--primary))'
-        },
-        { 
-          name: 'Simpanan Wajib', 
-          value: activeMembers.reduce((sum, m) => sum + m.simpananWajib, 0),
-          color: 'hsl(var(--accent))'
-        },
-        { 
-          name: 'Simpanan Sukarela', 
-          value: activeMembers.reduce((sum, m) => sum + m.simpananSukarela, 0),
-          color: 'hsl(var(--success))'
-        },
-        { 
-          name: 'Simpanan Lebaran', 
-          value: activeMembers.reduce((sum, m) => sum + m.simpananLebaran, 0),
-          color: 'hsl(var(--warning))'
-        },
-        { 
-          name: 'Simpanan Lainnya', 
-          value: activeMembers.reduce((sum, m) => sum + m.simpananLainnya, 0),
-          color: 'hsl(var(--destructive))'
-        },
+        { name: 'Pokok', value: rekap.reduce((sum, m) => sum + m.simpananPokok, 0) },
+        { name: 'Wajib', value: rekap.reduce((sum, m) => sum + m.simpananWajib, 0) },
+        { name: 'Sukarela', value: rekap.reduce((sum, m) => sum + m.simpananSukarela, 0) },
+        { name: 'Lebaran', value: rekap.reduce((sum, m) => sum + m.simpananLebaran, 0) },
+        { name: 'Lainnya', value: rekap.reduce((sum, m) => sum + m.simpananLainnya, 0) },
       ].filter(k => k.value > 0);
       
       setKomposisiData(komposisi);
 
-      // Build trend data for current year (simulated progression)
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      const trendArr = months.slice(0, bulan).map((month, index) => {
-        const monthNum = index + 1;
-        // Simulate progressive growth (this is placeholder - in real app, fetch historical data)
-        const progressionFactor = monthNum / bulan;
-        const totalSimpanan = activeMembers.reduce((sum, m) => sum + m.totalSimpanan, 0);
-        const totalPiutang = activeMembers.reduce((sum, m) => sum + m.saldoPiutang, 0);
-        
-        return {
-          name: month,
-          simpanan: Math.round(totalSimpanan * progressionFactor * 0.7 + totalSimpanan * 0.3 * Math.random()),
-          piutang: Math.round(totalPiutang * progressionFactor * 0.8 + totalPiutang * 0.2 * Math.random()),
-        };
-      });
-      
-      setTrendData(trendArr);
+      // Build trend data
+      const trendArr = bulanOptions.map(b => ({
+        name: b.label.substring(0, 3),
+        simpanan: b.value <= selectedBulan ? rekap.reduce((sum, m) => sum + m.totalSimpanan, 0) / (selectedBulan - b.value + 1) * (b.value) : 0,
+        piutang: b.value <= selectedBulan ? rekap.reduce((sum, m) => sum + m.saldoPiutang, 0) / (selectedBulan - b.value + 1) * (b.value) : 0,
+      }));
+      setTrendData(trendArr.slice(0, selectedBulan));
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -144,7 +109,7 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
 
   useEffect(() => {
     loadData();
-  }, [filterTahun]);
+  }, [selectedBulan, selectedTahun]);
 
   // Calculate stats
   const activeMembers = useMemo(() => {
@@ -162,7 +127,6 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   // Top savers ranking
   const topSavers = useMemo(() => {
     return [...limitData]
-      .filter(m => m.status === 'Aktif')
       .sort((a, b) => b.totalSimpanan - a.totalSimpanan)
       .slice(0, 5);
   }, [limitData]);
@@ -170,7 +134,7 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   // Top borrowers ranking
   const topBorrowers = useMemo(() => {
     return [...limitData]
-      .filter(m => m.status === 'Aktif' && m.saldoPiutang > 0)
+      .filter(m => m.saldoPiutang > 0)
       .sort((a, b) => b.saldoPiutang - a.saldoPiutang)
       .slice(0, 5);
   }, [limitData]);
@@ -178,7 +142,7 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   // Top limit (highest remaining credit limit)
   const topLimitMembers = useMemo(() => {
     return [...limitData]
-      .filter(m => m.status === 'Aktif' && m.sisaLimit > 0)
+      .filter(m => m.sisaLimit > 0)
       .sort((a, b) => b.sisaLimit - a.sisaLimit)
       .slice(0, 5);
   }, [limitData]);
@@ -186,7 +150,6 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   // Top selisih (savings - loans)
   const topSelisih = useMemo(() => {
     return [...limitData]
-      .filter(m => m.status === 'Aktif')
       .map(m => ({
         ...m,
         selisih: m.totalSimpanan - m.saldoPiutang
@@ -198,12 +161,47 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
   const rankIcons = [Trophy, Medal, Award, TrendingUpIcon, Coins];
   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600', 'text-primary', 'text-success'];
 
+  const periodeLabel = `${bulanOptions.find(b => b.value === selectedBulan)?.label || ''} ${selectedTahun}`;
+
   if (loading && rekapData.length === 0) {
     return <LoadingSkeleton />;
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard Koperasi Simpatik28</h2>
+          <p className="text-muted-foreground">Analisis keuangan periode {periodeLabel}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={String(selectedBulan)} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              {bulanOptions.map(b => (
+                <SelectItem key={b.value} value={String(b.value)}>{b.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedTahun)} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
+            <SelectTrigger className="w-24">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {tahunOptions.map(t => (
+                <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
       {/* Error Alert */}
       {error && (
         <Alert variant="destructive">
@@ -217,7 +215,7 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Belum ada data untuk {periodeLabel}. Silakan muat ulang atau periksa koneksi.
+            Belum ada data untuk periode {periodeLabel}. Silakan pilih periode lain.
           </AlertDescription>
         </Alert>
       )}
@@ -228,9 +226,8 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
           title="Total Simpanan"
           value={stats.totalSimpanan}
           icon={PiggyBank}
-          description={periodeLabel}
-          iconClassName="text-primary"
-          bgColor="bg-primary/10"
+          description={`Bulan ${periodeLabel}`}
+          iconClassName="text-accent"
         />
         <StatCard
           title="Pinjaman Baru"
@@ -238,15 +235,13 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
           icon={HandCoins}
           description={`Bulan ${periodeLabel}`}
           iconClassName="text-warning"
-          bgColor="bg-warning/10"
         />
         <StatCard
           title="Saldo Piutang"
           value={stats.totalPiutang}
           icon={CreditCard}
           description="Total hutang anggota"
-          iconClassName="text-destructive"
-          bgColor="bg-destructive/10"
+          iconClassName="text-primary"
         />
         <StatCard
           title="Anggota Aktif"
@@ -254,7 +249,6 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
           icon={Users}
           description={periodeLabel}
           iconClassName="text-success"
-          bgColor="bg-success/10"
           isNumber
         />
       </div>
@@ -266,9 +260,9 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUpIcon className="h-5 w-5" />
-              Tren Keuangan Tahunan
+              Tren Keuangan {selectedTahun}
             </CardTitle>
-            <CardDescription>Perkembangan Simpanan dan Piutang</CardDescription>
+            <CardDescription>Perkembangan bulanan</CardDescription>
           </CardHeader>
           <CardContent>
             {trendData.length > 0 ? (
@@ -276,39 +270,17 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
                 <AreaChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="name" className="text-xs" />
-                  <YAxis 
-                    tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
-                    className="text-xs" 
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), '']}
-                    labelFormatter={(label) => `Bulan ${label}`}
-                  />
+                  <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
-                  <Area 
-                    type="monotone" 
-                    dataKey="simpanan" 
-                    name="Simpanan" 
-                    fill={TREND_COLORS.simpanan}
-                    stroke={TREND_COLORS.simpanan}
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="piutang" 
-                    name="Piutang" 
-                    fill={TREND_COLORS.piutang}
-                    stroke={TREND_COLORS.piutang}
-                    fillOpacity={0.3}
-                    strokeWidth={2}
-                  />
+                  <Area type="monotone" dataKey="simpanan" name="Simpanan" fill="hsl(var(--accent))" stroke="hsl(var(--accent))" fillOpacity={0.3} />
+                  <Area type="monotone" dataKey="piutang" name="Piutang" fill="hsl(var(--primary))" stroke="hsl(var(--primary))" fillOpacity={0.3} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                <BarChart3 className="h-8 w-8 mb-2" />
-                <p>Belum ada data trend untuk analisis</p>
+                <AlertCircle className="h-8 w-8 mb-2" />
+                <p>Belum ada data trend untuk tahun {selectedTahun}</p>
               </div>
             )}
           </CardContent>
@@ -321,63 +293,33 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
               <PiggyBank className="h-5 w-5" />
               Komposisi Simpanan
             </CardTitle>
-            <CardDescription>Distribusi jenis simpanan anggota</CardDescription>
+            <CardDescription>Distribusi jenis simpanan</CardDescription>
           </CardHeader>
           <CardContent>
             {komposisiData.length > 0 ? (
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="lg:w-2/3">
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={komposisiData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                        outerRadius={80}
-                        innerRadius={40}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {komposisiData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.color || COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} 
-                            stroke="hsl(var(--background))"
-                            strokeWidth={2}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="lg:w-1/3">
-                  <div className="space-y-3">
-                    {komposisiData.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: item.color || COMPOSITION_COLORS[index % COMPOSITION_COLORS.length] }}
-                          />
-                          <span className="text-sm">{item.name}</span>
-                        </div>
-                        <span className="text-sm font-medium">
-                          {formatCurrency(item.value)}
-                        </span>
-                      </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={komposisiData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {komposisiData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
-                  </div>
-                </div>
-              </div>
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                <PiggyBank className="h-8 w-8 mb-2" />
-                <p>Belum ada data komposisi simpanan</p>
+                <AlertCircle className="h-8 w-8 mb-2" />
+                <p>Belum ada data komposisi</p>
               </div>
             )}
           </CardContent>
@@ -390,18 +332,18 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RankingCard
             title="Top Penabung"
-            description="Simpanan tertinggi"
+            description="Anggota dengan simpanan tertinggi"
             icon={PiggyBank}
             data={topSavers}
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="totalSimpanan"
             formatValue={(v) => formatCurrency(v)}
-            valueColor="text-primary"
+            valueColor="text-accent"
           />
           <RankingCard
-            title="Top Kesehatan Keuangan"
-            description="Selisih Simpanan - Piutang"
+            title="Top Selisih (Simpanan - Piutang)"
+            description="Anggota dengan kesehatan keuangan terbaik"
             icon={TrendingUpIcon}
             data={topSelisih}
             rankIcons={rankIcons}
@@ -412,7 +354,7 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
           />
           <RankingCard
             title="Top Peminjam"
-            description="Piutang tertinggi"
+            description="Anggota dengan piutang tertinggi"
             icon={HandCoins}
             data={topBorrowers}
             rankIcons={rankIcons}
@@ -422,30 +364,17 @@ const DashboardSikostik28 = ({ filterTahun, periodeLabel = 'Periode Saat Ini' }:
             valueColor="text-warning"
           />
           <RankingCard
-            title="Sisa Limit Tertinggi"
-            description="Kesiapan pinjaman"
+            title="Sisa Limit Tersedia"
+            description="Anggota dengan limit pinjaman tertinggi"
             icon={CreditCard}
             data={topLimitMembers}
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="sisaLimit"
             formatValue={(v) => formatCurrency(v)}
-            valueColor="text-accent"
+            valueColor="text-primary"
           />
         </div>
-      </div>
-
-      {/* Refresh Button */}
-      <div className="flex justify-center">
-        <Button 
-          onClick={loadData} 
-          disabled={loading}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Memuat...' : 'Refresh Data'}
-        </Button>
       </div>
     </div>
   );
@@ -458,19 +387,10 @@ interface StatCardProps {
   icon: React.ElementType;
   description: string;
   iconClassName: string;
-  bgColor?: string;
   isNumber?: boolean;
 }
 
-const StatCard = ({ 
-  title, 
-  value, 
-  icon: Icon, 
-  description, 
-  iconClassName, 
-  bgColor = 'bg-muted',
-  isNumber 
-}: StatCardProps) => (
+const StatCard = ({ title, value, icon: Icon, description, iconClassName, isNumber }: StatCardProps) => (
   <Card>
     <CardContent className="pt-6">
       <div className="flex items-start justify-between">
@@ -481,8 +401,8 @@ const StatCard = ({
           </p>
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
         </div>
-        <div className={`p-3 rounded-lg ${bgColor} ${iconClassName}`}>
-          <Icon className="h-6 w-6" />
+        <div className={`p-2 rounded-lg bg-muted ${iconClassName}`}>
+          <Icon className="h-5 w-5" />
         </div>
       </div>
     </CardContent>
@@ -514,7 +434,7 @@ const RankingCard = ({
   valueColor
 }: RankingCardProps) => (
   <Card>
-    <CardHeader className="pb-3">
+    <CardHeader>
       <CardTitle className="flex items-center gap-2 text-base">
         <Icon className="h-5 w-5" />
         {title}
@@ -536,23 +456,21 @@ const RankingCard = ({
             const colorClass = typeof valueColor === 'function' ? valueColor(value) : valueColor;
             
             return (
-              <div key={index} className="flex items-center justify-between py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors rounded-lg px-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-8 flex-shrink-0 flex justify-center">
+              <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 flex justify-center">
                     {index < 3 ? (
                       <RankIcon className={`h-5 w-5 ${rankColor}`} />
                     ) : (
                       <span className="text-sm font-medium text-muted-foreground">{index + 1}</span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{item.nama}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {item.nip || item.kodeAnggota || item.anggotaId}
-                    </p>
+                  <div>
+                    <p className="font-medium text-sm">{item.nama}</p>
+                    <p className="text-xs text-muted-foreground">{item.kodeAnggota || item.anggotaId}</p>
                   </div>
                 </div>
-                <span className={`font-semibold text-sm ml-2 flex-shrink-0 ${colorClass}`}>
+                <span className={`font-semibold text-sm ${colorClass}`}>
                   {formatValue(value)}
                 </span>
               </div>
@@ -567,18 +485,18 @@ const RankingCard = ({
 // Loading Skeleton
 const LoadingSkeleton = () => (
   <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <div>
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-48 mt-2" />
+      </div>
+      <Skeleton className="h-10 w-48" />
+    </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map(i => (
         <Card key={i}>
           <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-3 w-20" />
-              </div>
-              <Skeleton className="h-12 w-12 rounded-lg" />
-            </div>
+            <Skeleton className="h-16 w-full" />
           </CardContent>
         </Card>
       ))}
@@ -587,7 +505,6 @@ const LoadingSkeleton = () => (
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32 mt-1" />
         </CardHeader>
         <CardContent>
           <Skeleton className="h-64 w-full" />
@@ -596,41 +513,11 @@ const LoadingSkeleton = () => (
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32 mt-1" />
         </CardHeader>
         <CardContent>
           <Skeleton className="h-64 w-full" />
         </CardContent>
       </Card>
-    </div>
-    <div>
-      <Skeleton className="h-7 w-32 mb-4" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[1, 2, 3, 4].map(i => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48 mt-1" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map(j => (
-                  <div key={j} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-3 flex-1">
-                      <Skeleton className="h-5 w-5 rounded-full" />
-                      <div className="space-y-1 flex-1">
-                        <Skeleton className="h-4 w-full max-w-32" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   </div>
 );
