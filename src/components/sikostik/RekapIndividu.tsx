@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Local interface extension untuk menambahkan bulanNama
+// Local extended type for riwayat with bulanNama
 interface RiwayatItem extends RekapDashboard {
   bulanNama: string;
 }
@@ -98,11 +98,12 @@ export const RekapIndividu = () => {
         if (memberRekap) {
           allRekap.push({
             ...memberRekap,
+            periodeBulan: bulan,
             bulanNama: bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`,
           });
         }
       }
-      // Sort descending by periodeBulan (terbaru dulu)
+      // Sort descending by bulan (terbaru dulu)
       setRiwayatTahunan(allRekap.sort((a, b) => b.periodeBulan - a.periodeBulan));
     } catch (err) {
       console.error('Failed to load riwayat tahunan:', err);
@@ -170,13 +171,7 @@ export const RekapIndividu = () => {
         sukarela: acc.sukarela + (item.pengambilanSukarela || 0),
         lebaran: acc.lebaran + (item.pengambilanLebaran || 0),
         lainnya: acc.lainnya + (item.pengambilanLainnya || 0),
-        totalPengambilan:
-          acc.totalPengambilan +
-          (item.pengambilanPokok || 0) +
-          (item.pengambilanWajib || 0) +
-          (item.pengambilanSukarela || 0) +
-          (item.pengambilanLebaran || 0) +
-          (item.pengambilanLainnya || 0),
+        totalPengambilan: acc.totalPengambilan + (item.totalPengambilan || 0),
       }),
       {
         pinjaman: 0,
