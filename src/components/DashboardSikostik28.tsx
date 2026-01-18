@@ -237,7 +237,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
                 <Legend />
                 <Bar dataKey="selisih" name="Selisih Simpanan dengan Hutang">
                   {selisihData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.selisih > 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} />
+                    <Cell key={`cell-${index}`} fill={entry.selisih > 0 ? '#22c55e' : '#ef4444'} />
                   ))}
                 </Bar>
               </BarChart>
