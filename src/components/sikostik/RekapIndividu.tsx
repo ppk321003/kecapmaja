@@ -18,6 +18,20 @@ import {
 } from '@/hooks/use-sikostik-data';
 import { AnggotaMaster, LimitAnggota, RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+// Local interface extension untuk menambahkan bulanNama
+interface RiwayatItem extends RekapDashboard {
+  bulanNama: string;
+}
 
 export const RekapIndividu = () => {
   const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
@@ -32,6 +46,8 @@ export const RekapIndividu = () => {
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
   const [showDetail, setShowDetail] = useState(false);
+  const [riwayatTahunan, setRiwayatTahunan] = useState<RiwayatItem[]>([]);
+  const [isLoadingRiwayat, setIsLoadingRiwayat] = useState(false);
 
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
@@ -72,6 +88,29 @@ export const RekapIndividu = () => {
     }
   };
 
+  const loadRiwayatTahunan = async () => {
+    setIsLoadingRiwayat(true);
+    try {
+      const allRekap: RiwayatItem[] = [];
+      for (let bulan = 1; bulan <= 12; bulan++) {
+        const rekap = await fetchRekapDashboard(bulan, selectedTahun);
+        const memberRekap = rekap.find(r => r.anggotaId === selectedAnggotaId);
+        if (memberRekap) {
+          allRekap.push({
+            ...memberRekap,
+            bulanNama: bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`,
+          });
+        }
+      }
+      // Sort descending by periodeBulan (terbaru dulu)
+      setRiwayatTahunan(allRekap.sort((a, b) => b.periodeBulan - a.periodeBulan));
+    } catch (err) {
+      console.error('Failed to load riwayat tahunan:', err);
+    } finally {
+      setIsLoadingRiwayat(false);
+    }
+  };
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -82,6 +121,13 @@ export const RekapIndividu = () => {
       loadRekapData();
     }
   }, [selectedBulan, selectedTahun]);
+
+  // Load riwayat tahunan ketika tahun atau anggota berubah (abaikan bulan)
+  useEffect(() => {
+    if (selectedTahun && selectedAnggotaId) {
+      loadRiwayatTahunan();
+    }
+  }, [selectedTahun, selectedAnggotaId]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
@@ -105,16 +151,44 @@ export const RekapIndividu = () => {
     const limitUtilization = (limit.sisaLimit + limit.saldoPiutang) > 0 
       ? (limit.saldoPiutang / (limit.sisaLimit + limit.saldoPiutang)) * 100 : 0;
     
-    // Total Simpanan Bulanan = sum(K:O) = simpanan_pokok + wajib + sukarela + lebaran + lainlain (per bulan)
-    const simpananBulanan = (rekap.totalSimpananBulanan || 0) || 
+    const simpananBulanan = rekap.totalSimpananBulanan || 
       ((rekap.simpananPokok || 0) + (rekap.simpananWajib || 0) + (rekap.simpananSukarela || 0) + 
        (rekap.simpananLebaran || 0) + (rekap.simpananLainnya || 0));
     
-    // Total Potongan/Bulan = simpanan bulanan + cicilan_pokok + biaya_operasional
     const totalPotonganBulanan = simpananBulanan + (rekap.cicilanPokok || 0) + (rekap.biayaOperasional || 0);
     
     return { limitUtilization, totalPotonganBulanan, simpananBulanan };
   }, [memberData]);
+
+  // Calculate totals for riwayat tahunan
+  const riwayatTotals = useMemo(() => {
+    return riwayatTahunan.reduce(
+      (acc, item) => ({
+        pinjaman: acc.pinjaman + (item.pinjamanBulanIni || 0),
+        pokok: acc.pokok + (item.pengambilanPokok || 0),
+        wajib: acc.wajib + (item.pengambilanWajib || 0),
+        sukarela: acc.sukarela + (item.pengambilanSukarela || 0),
+        lebaran: acc.lebaran + (item.pengambilanLebaran || 0),
+        lainnya: acc.lainnya + (item.pengambilanLainnya || 0),
+        totalPengambilan:
+          acc.totalPengambilan +
+          (item.pengambilanPokok || 0) +
+          (item.pengambilanWajib || 0) +
+          (item.pengambilanSukarela || 0) +
+          (item.pengambilanLebaran || 0) +
+          (item.pengambilanLainnya || 0),
+      }),
+      {
+        pinjaman: 0,
+        pokok: 0,
+        wajib: 0,
+        sukarela: 0,
+        lebaran: 0,
+        lainnya: 0,
+        totalPengambilan: 0,
+      }
+    );
+  }, [riwayatTahunan]);
 
   if (isLoading) {
     return (
@@ -154,11 +228,52 @@ export const RekapIndividu = () => {
 
   const { member, limit, rekap, nipInfo } = memberData;
   
-  // Default values
-  const safeLimit = limit || { totalSimpanan: 0, saldoPiutang: 0, limitPinjaman: 0, sisaLimit: 0 };
+  // Default values sesuai referensi types
+  const safeLimit = limit || { 
+    anggotaId: '', 
+    nama: '', 
+    nip: '', 
+    totalSimpanan: 0, 
+    totalPinjamanKumulatif: 0, 
+    saldoPiutang: 0, 
+    limitPinjaman: 0, 
+    sisaLimit: 0, 
+    cicilanPokok: 0,
+    totalSimpananKumulatif: 0 
+  };
   const safeRekap = rekap || { 
-    simpananPokok: 0, simpananWajib: 0, simpananSukarela: 0, simpananLebaran: 0, 
-    simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
+    no: 0,
+    anggotaId: '',
+    kodeAnggota: '',
+    nama: '',
+    nip: '',
+    status: 'Aktif',
+    periodeBulan: 0,
+    periodeTahun: 0,
+    saldoPiutang: 0,
+    simpananPokok: 0, 
+    simpananWajib: 0, 
+    simpananSukarela: 0, 
+    simpananLebaran: 0, 
+    simpananLainnya: 0, 
+    totalSimpanan: 0, 
+    totalSimpananBulanan: 0,
+    pinjamanBulanIni: 0,
+    pengambilanPokok: 0,
+    pengambilanWajib: 0,
+    pengambilanSukarela: 0,
+    pengambilanLebaran: 0,
+    pengambilanLainnya: 0,
+    totalPengambilan: 0,
+    biayaOperasional: 0, 
+    cicilanPokok: 0,
+    saldoAkhirbulanPokok: 0,
+    saldoAkhirbulanWajib: 0,
+    saldoAkhirbulanSukarela: 0,
+    saldoAkhirbulanLebaran: 0,
+    saldoAkhirbulanLainlain: 0,
+    createdAt: '',
+    updatedAt: ''
   };
 
   return (
@@ -401,11 +516,7 @@ export const RekapIndividu = () => {
                   <div className="flex justify-between items-center py-2 text-lg font-bold">
                     <span>Total Simpanan/Bulan</span>
                     <span className="text-primary">
-                      {formatCurrency(
-                        (safeRekap.simpananPokok || 0) + (safeRekap.simpananWajib || 0) + 
-                        (safeRekap.simpananSukarela || 0) + (safeRekap.simpananLebaran || 0) + 
-                        (safeRekap.simpananLainnya || 0)
-                      )}
+                      {formatCurrency(safeRekap.totalSimpananBulanan)}
                     </span>
                   </div>
                 </div>
@@ -455,10 +566,7 @@ export const RekapIndividu = () => {
                     <span>Total Potongan/Bulan</span>
                     <span className="text-accent">
                       {formatCurrency(
-                        (safeRekap.simpananPokok || 0) + (safeRekap.simpananWajib || 0) + 
-                        (safeRekap.simpananSukarela || 0) + (safeRekap.simpananLebaran || 0) + 
-                        (safeRekap.simpananLainnya || 0) + (safeRekap.cicilanPokok || 0) + 
-                        (safeRekap.biayaOperasional || 0)
+                        safeRekap.totalSimpananBulanan + safeRekap.cicilanPokok + safeRekap.biayaOperasional
                       )}
                     </span>
                   </div>
@@ -490,6 +598,70 @@ export const RekapIndividu = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* New Card: Riwayat Peminjaman dan Pengambilan Simpanan */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-primary" />
+                <CardTitle>Riwayat Peminjaman dan Pengambilan Simpanan {tahunLabel}</CardTitle>
+              </div>
+              <CardDescription>Ringkasan aktivitas per bulan dalam tahun yang dipilih</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingRiwayat ? (
+                <Skeleton className="h-64 w-full" />
+              ) : riwayatTahunan.length === 0 ? (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>Tidak ada data riwayat untuk tahun ini.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Bulan</TableHead>
+                        <TableHead>Pinjaman</TableHead>
+                        <TableHead>Pengambilan Pokok</TableHead>
+                        <TableHead>Pengambilan Wajib</TableHead>
+                        <TableHead>Pengambilan Sukarela</TableHead>
+                        <TableHead>Pengambilan Lebaran</TableHead>
+                        <TableHead>Pengambilan Lainnya</TableHead>
+                        <TableHead>Total Pengambilan</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {riwayatTahunan.map((item) => (
+                        <TableRow key={item.periodeBulan}>
+                          <TableCell>{item.bulanNama}</TableCell>
+                          <TableCell>{formatCurrency(item.pinjamanBulanIni || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.pengambilanPokok || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.pengambilanWajib || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.pengambilanSukarela || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.pengambilanLebaran || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.pengambilanLainnya || 0)}</TableCell>
+                          <TableCell>{formatCurrency(item.totalPengambilan || 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableFooter>
+                      <TableRow>
+                        <TableCell className="font-medium">Total</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.pinjaman)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.pokok)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.wajib)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.sukarela)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.lebaran)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.lainnya)}</TableCell>
+                        <TableCell>{formatCurrency(riwayatTotals.totalPengambilan)}</TableCell>
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
