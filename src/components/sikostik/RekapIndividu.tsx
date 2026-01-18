@@ -27,6 +27,21 @@ import {
 import { AnggotaMaster, LimitAnggota, RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
+// Interface untuk data historis
+interface HistoryData {
+  id: string;
+  bulan: number;
+  bulanNama: string;
+  tahun: number;
+  pinjamanBulanIni: number;
+  pengambilanPokok: number;
+  pengambilanWajib: number;
+  pengambilanSukarela: number;
+  pengambilanLebaran: number;
+  pengambilanLainnya: number;
+  totalPengambilan: number;
+}
+
 export const RekapIndividu = () => {
   const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
@@ -34,7 +49,8 @@ export const RekapIndividu = () => {
   const [anggotaList, setAnggotaList] = useState<AnggotaMaster[]>([]);
   const [limitList, setLimitList] = useState<LimitAnggota[]>([]);
   const [rekapList, setRekapList] = useState<RekapDashboard[]>([]);
-  const [rekapHistoryList, setRekapHistoryList] = useState<RekapDashboard[]>([]);
+  const [historyData, setHistoryData] = useState<HistoryData[]>([]); // Untuk data historis
+  
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
@@ -66,8 +82,6 @@ export const RekapIndividu = () => {
       
       // Load data rekap berdasarkan periode awal
       await loadRekapData();
-      // Load data historis untuk tahun yang dipilih
-      await loadHistoryData();
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -84,6 +98,7 @@ export const RekapIndividu = () => {
     }
   };
 
+  // Fungsi untuk mengambil data historis berdasarkan tahun
   const loadHistoryData = async () => {
     if (!selectedAnggotaId || !selectedTahunHistory) return;
     
@@ -91,11 +106,6 @@ export const RekapIndividu = () => {
     try {
       // Karena fetchRekapDashboard mengambil data untuk bulan tertentu,
       // kita perlu mengambil data untuk semua bulan dalam tahun tersebut
-      // Namun kita tidak bisa langsung karena API hanya menerima bulan spesifik
-      // Alternatif: Simpan semua data ketika pertama kali load, atau buat fungsi baru
-      
-      // Untuk sementara, kita akan menggunakan data yang sudah ada dari rekapList
-      // dan memfilter berdasarkan tahun
       const allMonthsData: RekapDashboard[] = [];
       
       // Fetch data untuk semua bulan dalam tahun yang dipilih
@@ -109,12 +119,64 @@ export const RekapIndividu = () => {
         allMonthsData.push(...monthData);
       });
       
-      // Filter untuk anggota yang dipilih
-      const anggotaData = allMonthsData.filter(item => 
-        item.anggotaId === selectedAnggotaId
-      );
+      // Filter untuk anggota yang dipilih dan transform ke format HistoryData
+      const anggotaHistoryData = allMonthsData
+        .filter(item => item.anggotaId === selectedAnggotaId)
+        .map((item, index) => {
+          // Asumsi: data RekapDashboard memiliki properti berikut:
+          // - pinjaman_bulan_ini (atau pinjamanBulanIni)
+          // - pengambilan_pokok, pengambilan_wajib, dll
+          // Jika nama properti berbeda, sesuaikan di sini
+          
+          const bulanNama = bulanOptions.find(b => b.value === (item.bulan || selectedBulan))?.label || `Bulan ${selectedBulan}`;
+          
+          // Sesuaikan dengan properti aktual di RekapDashboard
+          const pinjamanBulanIni = item.pinjaman_bulan_ini || item.pinjamanBulanIni || 0;
+          const pengambilanPokok = item.pengambilan_pokok || item.pengambilanPokok || 0;
+          const pengambilanWajib = item.pengambilan_wajib || item.pengambilanWajib || 0;
+          const pengambilanSukarela = item.pengambilan_sukarela || item.pengambilanSukarela || 0;
+          const pengambilanLebaran = item.pengambilan_lebaran || item.pengambilanLebaran || 0;
+          const pengambilanLainnya = item.pengambilan_lainnya || item.pengambilanLainnya || 0;
+          
+          const totalPengambilan = pengambilanPokok + pengambilanWajib + 
+                                 pengambilanSukarela + pengambilanLebaran + 
+                                 pengambilanLainnya;
+          
+          return {
+            id: `history-${selectedTahunHistory}-${item.bulan || month}-${index}`,
+            bulan: item.bulan || (index % 12) + 1,
+            bulanNama,
+            tahun: selectedTahunHistory,
+            pinjamanBulanIni,
+            pengambilanPokok,
+            pengambilanWajib,
+            pengambilanSukarela,
+            pengambilanLebaran,
+            pengambilanLainnya,
+            totalPengambilan
+          };
+        })
+        .sort((a, b) => a.bulan - b.bulan); // Sort by bulan
       
-      setRekapHistoryList(anggotaData);
+      setHistoryData(anggotaHistoryData);
+    } catch (err) {
+      console.error('Failed to load history data:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Optimized version - fetch only once per tahun
+  const loadHistoryDataOptimized = async () => {
+    if (!selectedAnggotaId || !selectedTahunHistory) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      // Alternatif: Jika fetchRekapDashboard bisa mengambil semua data tahunan sekaligus
+      // Atau kita cache data per tahun untuk mengurangi jumlah fetch
+      
+      // Untuk sekarang, kita akan fetch semua bulan
+      await loadHistoryData();
     } catch (err) {
       console.error('Failed to load history data:', err);
     } finally {
@@ -135,8 +197,8 @@ export const RekapIndividu = () => {
 
   // Load history data ketika anggota atau tahun history berubah
   useEffect(() => {
-    if (selectedAnggotaId) {
-      loadHistoryData();
+    if (selectedAnggotaId && selectedTahunHistory) {
+      loadHistoryDataOptimized();
     }
   }, [selectedAnggotaId, selectedTahunHistory]);
 
@@ -173,63 +235,35 @@ export const RekapIndividu = () => {
     return { limitUtilization, totalPotonganBulanan, simpananBulanan };
   }, [memberData]);
 
-  // Prepare history data for display dari rekapHistoryList
+  // Prepare history data for display
   const historyDisplayData = useMemo(() => {
-    // Filter data hanya untuk tahun yang dipilih dan anggota yang dipilih
-    const filteredData = rekapHistoryList.filter(item => {
-      // Asumsi: data RekapDashboard memiliki properti periode atau tahun
-      // Kita perlu memeriksa struktur data RekapDashboard
-      // Untuk sementara, kita asumsikan data sudah difilter oleh loadHistoryData
-      return true;
-    });
+    // Filter data hanya untuk tahun yang dipilih
+    const filteredData = historyData.filter(h => h.tahun === selectedTahunHistory);
     
-    // Sort by bulan (asumsi data memiliki properti bulan)
-    const sortedData = [...filteredData].sort((a, b) => {
-      // Jika ada properti bulan, sort berdasarkan itu
-      // Jika tidak, gunakan index atau id
-      return (a.bulan || 0) - (b.bulan || 0);
-    });
+    // Jika data kosong, buat array kosong untuk semua bulan
+    if (filteredData.length === 0) {
+      return Array.from({ length: 12 }, (_, i) => {
+        const bulan = i + 1;
+        const bulanNama = bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`;
+        
+        return {
+          id: `empty-${bulan}-${selectedTahunHistory}`,
+          bulan,
+          bulanNama,
+          tahun: selectedTahunHistory,
+          pinjamanBulanIni: 0,
+          pengambilanPokok: 0,
+          pengambilanWajib: 0,
+          pengambilanSukarela: 0,
+          pengambilanLebaran: 0,
+          pengambilanLainnya: 0,
+          totalPengambilan: 0
+        };
+      });
+    }
     
-    // Map data ke format yang dibutuhkan
-    return sortedData.map(item => {
-      const bulan = item.bulan || 1;
-      const bulanNama = bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`;
-      
-      // Data yang dibutuhkan:
-      // - pinjamanBulanIni (kolom Q) - dalam RekapDashboard mungkin sebagai pinjamanBulanIni atau properti lain
-      // - pengambilanPokok (kolom S)
-      // - pengambilanWajib (kolom T)
-      // - pengambilanSukarela (kolom U)
-      // - pengambilanLebaran (kolom V)
-      // - pengambilanLainnya (kolom W)
-      
-      // Perlu menyesuaikan dengan properti yang ada di RekapDashboard
-      const pinjamanBulanIni = item.pinjamanBulanIni || 0;
-      const pengambilanPokok = item.pengambilanPokok || 0;
-      const pengambilanWajib = item.pengambilanWajib || 0;
-      const pengambilanSukarela = item.pengambilanSukarela || 0;
-      const pengambilanLebaran = item.pengambilanLebaran || 0;
-      const pengambilanLainnya = item.pengambilanLainnya || 0;
-      
-      const totalPengambilan = pengambilanPokok + pengambilanWajib + 
-                               pengambilanSukarela + pengambilanLebaran + 
-                               pengambilanLainnya;
-      
-      return {
-        id: item.id || `${bulan}-${selectedTahunHistory}`,
-        bulan,
-        bulanNama,
-        tahun: selectedTahunHistory,
-        pinjamanBulanIni,
-        pengambilanPokok,
-        pengambilanWajib,
-        pengambilanSukarela,
-        pengambilanLebaran,
-        pengambilanLainnya,
-        totalPengambilan
-      };
-    });
-  }, [rekapHistoryList, selectedTahunHistory]);
+    return filteredData.sort((a, b) => a.bulan - b.bulan);
+  }, [historyData, selectedTahunHistory]);
 
   // Calculate yearly totals
   const yearlyTotals = useMemo(() => {
