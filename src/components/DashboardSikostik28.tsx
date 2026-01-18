@@ -157,7 +157,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       return (
         <div className="bg-background p-2 border rounded shadow">
           <p className="font-medium">{label}</p>
-          <p>{`Selisih: ${formatCurrency(value)}`}</p>
+          <p>{`Selisih: ${value.toLocaleString('id-ID')}`}</p>
         </div>
       );
     }
@@ -185,28 +185,28 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Simpanan"
-          value={stats.totalSimpanan}
+          value={stats.totalSimpanan.toLocaleString('id-ID')}
           subtitle={`Akhir ${periodeLabel}`}
           icon={PiggyBank}
           variant="default"
         />
         <StatCard
           title="Pinjaman Baru"
-          value={stats.totalPinjaman}
+          value={stats.totalPinjaman.toLocaleString('id-ID')}
           subtitle={`Terakhir di ${periodeLabel}`}
           icon={HandCoins}
           variant="warning"
         />
         <StatCard
           title="Saldo Piutang"
-          value={stats.totalPiutang}
+          value={stats.totalPiutang.toLocaleString('id-ID')}
           subtitle="Total hutang anggota"
           icon={CreditCard}
           variant="info"
         />
         <StatCard
           title="Anggota Aktif"
-          value={activeMembers.length}
+          value={activeMembers.length.toLocaleString('id-ID')}
           subtitle={periodeLabel}
           icon={Users}
           variant="success"
@@ -264,7 +264,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="name" className="text-xs" />
                   <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('id-ID')} />
                   <Legend />
                   <Area type="monotone" dataKey="simpanan" name="Simpanan" fill="hsl(var(--accent))" stroke="hsl(var(--accent))" fillOpacity={0.3} />
                   <Area type="monotone" dataKey="piutang" name="Piutang" fill="hsl(var(--primary))" stroke="hsl(var(--primary))" fillOpacity={0.3} />
@@ -304,7 +304,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => value.toLocaleString('id-ID')} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -329,7 +329,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="totalSimpanan"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-accent"
           />
           <RankingCard
@@ -340,7 +340,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="selisih"
-            formatValue={(v) => `${v >= 0 ? '+' : ''}${formatCurrency(v)}`}
+            formatValue={(v) => `${v >= 0 ? '+' : ''}${v.toLocaleString('id-ID')}`}
             valueColor={(v: number) => v >= 0 ? 'text-success' : 'text-destructive'}
           />
           <RankingCard
@@ -351,7 +351,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="saldoPiutang"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-warning"
           />
           <RankingCard
@@ -362,7 +362,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="sisaLimit"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-primary"
           />
         </div>
@@ -379,7 +379,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="totalSimpanan"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-accent"
           />
           <RankingCard
@@ -390,7 +390,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="selisih"
-            formatValue={(v) => `${v >= 0 ? '+' : ''}${formatCurrency(v)}`}
+            formatValue={(v) => `${v >= 0 ? '+' : ''}${v.toLocaleString('id-ID')}`}
             valueColor={(v: number) => v >= 0 ? 'text-success' : 'text-destructive'}
           />
           <RankingCard
@@ -401,7 +401,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="saldoPiutang"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-warning"
           />
           <RankingCard
@@ -412,7 +412,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             rankIcons={rankIcons}
             rankColors={rankColors}
             valueKey="sisaLimit"
-            formatValue={(v) => formatCurrency(v)}
+            formatValue={(v) => v.toLocaleString('id-ID')}
             valueColor="text-primary"
           />
         </div>
