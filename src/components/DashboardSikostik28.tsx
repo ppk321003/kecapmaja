@@ -230,7 +230,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
                 <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} className="text-xs" height={80} />
                 <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
                 <Bar dataKey="selisih" name="Selisih Simpanan dengan Hutang">
                   {selisihData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.selisih > 0 ? '#22c55e' : '#ef4444'} />
