@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useSikostikData, bulanOptions, getTahunOptions, getCurrentPeriod, formatCurrency } from '@/hooks/use-sikostik-data';
 import type { RekapDashboard, LimitAnggota } from '@/types/sikostik';
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--secondary))'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 interface DashboardSikostik28Props {
   filterTahun?: string;
 }
@@ -44,8 +44,8 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
   } = useSikostikData();
   // State for data
   const [rekapPerBulan, setRekapPerBulan] = useState<RekapDashboard[][]>([]);
-  const [limitData, setLimitData] = useState<LimitAnggota[]>([]); // Current
-  const [pastLimitData, setPastLimitData] = useState<LimitAnggota[]>([]); // Past year end
+  const [limitData, setLimitData] = useState<LimitAnggota[]>([]); // Filtered year
+  const [pastLimitData, setPastLimitData] = useState<LimitAnggota[]>([]); // Filtered year -1
   const [trendData, setTrendData] = useState<any[]>([]);
   const [komposisiData, setKomposisiData] = useState<any[]>([]);
   const [selisihData, setSelisihData] = useState<any[]>([]);
@@ -65,10 +65,10 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       const rekapPromises = Array.from({ length: maxBulan }, (_, i) => fetchRekapDashboard(i + 1, selectedTahun));
       const rekap = await Promise.all(rekapPromises);
       setRekapPerBulan(rekap);
-      // Fetch limit data for current and past
-      const currentLimit = await fetchLimitAnggota(currentPeriod.bulan, currentPeriod.tahun);
-      const pastLimit = await fetchLimitAnggota(12, currentPeriod.tahun - 1);
-      setLimitData(currentLimit);
+      // Fetch limit data for filtered and past
+      const filteredLimit = await fetchLimitAnggota(maxBulan, selectedTahun);
+      const pastLimit = await fetchLimitAnggota(12, selectedTahun - 1);
+      setLimitData(filteredLimit);
       setPastLimitData(pastLimit);
       // Calculate komposisi from all period data
       const allRekap = rekap.flat();
@@ -87,8 +87,8 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         piutang: rekap[index].reduce((sum, m) => sum + m.saldoPiutang, 0),
       }));
       setTrendData(trendArr);
-      // Calculate selisih data for bar chart from current limit
-      const selisihArr = currentLimit
+      // Calculate selisih data for bar chart from filtered limit
+      const selisihArr = filteredLimit
         .map(m => ({
           name: m.nama,
           selisih: m.totalSimpanan - m.saldoPiutang,
@@ -113,7 +113,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
     const totalPiutang = activeMembers.reduce((sum, m) => sum + (Number(m.saldoPiutang) || 0), 0);
     return { totalSimpanan, totalPinjaman, totalPiutang };
   }, [activeMembers]);
-  // Current rankings
+  // Filtered rankings
   const topSavers = useMemo(() => {
     return [...limitData].sort((a, b) => b.totalSimpanan - a.totalSimpanan).slice(0, 5);
   }, [limitData]);
@@ -186,34 +186,30 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         <StatCard
           title="Total Simpanan"
           value={stats.totalSimpanan}
+          subtitle={`Akhir ${periodeLabel}`}
           icon={PiggyBank}
-          description={`Akhir ${periodeLabel}`}
-          iconClassName="text-accent"
-          cardClassName="border-l-4 border-accent rounded-xl shadow-md"
+          variant="default"
         />
         <StatCard
           title="Pinjaman Baru"
           value={stats.totalPinjaman}
+          subtitle={`Terakhir di ${periodeLabel}`}
           icon={HandCoins}
-          description={`Terakhir di ${periodeLabel}`}
-          iconClassName="text-warning"
-          cardClassName="border-l-4 border-warning rounded-xl shadow-md"
+          variant="warning"
         />
         <StatCard
           title="Saldo Piutang"
           value={stats.totalPiutang}
+          subtitle="Total hutang anggota"
           icon={CreditCard}
-          description="Total hutang anggota"
-          iconClassName="text-primary"
-          cardClassName="border-l-4 border-primary rounded-xl shadow-md"
+          variant="info"
         />
         <StatCard
           title="Anggota Aktif"
           value={activeMembers.length}
+          subtitle={periodeLabel}
           icon={Users}
-          description={periodeLabel}
-          iconClassName="text-success"
-          cardClassName="border-l-4 border-success rounded-xl shadow-md"
+          variant="success"
           isNumber
         />
       </div>
@@ -427,31 +423,45 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
 // Stat Card Component
 interface StatCardProps {
   title: string;
-  value: number;
+  value: number | string;
+  subtitle?: string;
   icon: React.ElementType;
-  description: string;
-  iconClassName: string;
-  cardClassName?: string;
-  isNumber?: boolean;
+  variant?: 'default' | 'warning' | 'info' | 'danger' | 'success' | 'secondary';
+  trend?: { value: number; label: string };
 }
-const StatCard = ({ title, value, icon: Icon, description, iconClassName, cardClassName = '', isNumber }: StatCardProps) => (
-  <Card className={cardClassName}>
-    <CardContent className="pt-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold mt-1">
-            {isNumber ? value : formatCurrency(value)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', trend }: StatCardProps) {
+  const variantClasses = {
+    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 dark:text-blue-300 dark:border-blue-800',
+    warning: 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200 dark:from-amber-950/50 dark:to-amber-900/50 dark:text-amber-300 dark:border-amber-800',
+    info: 'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-700 border-cyan-200 dark:from-cyan-950/50 dark:to-cyan-900/50 dark:text-cyan-300 dark:border-cyan-800',
+    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200 dark:from-red-950/50 dark:to-red-900/50 dark:text-red-300 dark:border-red-800',
+    success: 'bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200 dark:from-green-950/50 dark:to-green-900/50 dark:text-green-300 dark:border-green-800',
+    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 dark:text-purple-300 dark:border-purple-800',
+  };
+
+  return (
+    <Card className={`border ${variantClasses[variant]} rounded-xl shadow-sm hover:shadow-md transition-all duration-200`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</p>
+            <p className="text-2xl font-bold">{value}</p>
+            {subtitle && <p className="text-xs opacity-70">{subtitle}</p>}
+            {trend && (
+              <div className={`flex items-center gap-1 text-xs ${trend.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <TrendingUp className={`w-3 h-3 ${trend.value < 0 ? 'rotate-180' : ''}`} />
+                <span>{Math.abs(trend.value)}% {trend.label}</span>
+              </div>
+            )}
+          </div>
+          <div className={`p-3 rounded-full bg-current/10`}>
+            <Icon className="w-6 h-6" strokeWidth={1.5} />
+          </div>
         </div>
-        <div className={`p-2 rounded-lg bg-muted ${iconClassName}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+}
 // Ranking Card Component
 interface RankingCardProps {
   title: string;
