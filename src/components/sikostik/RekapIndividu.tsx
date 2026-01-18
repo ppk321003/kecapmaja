@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Local extended type for riwayat with bulanNama
+// Local interface extension untuk menambahkan bulanNama
 interface RiwayatItem extends RekapDashboard {
   bulanNama: string;
 }
@@ -98,12 +98,11 @@ export const RekapIndividu = () => {
         if (memberRekap) {
           allRekap.push({
             ...memberRekap,
-            periodeBulan: bulan,
             bulanNama: bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`,
           });
         }
       }
-      // Sort descending by bulan (terbaru dulu)
+      // Sort descending by periodeBulan (terbaru dulu)
       setRiwayatTahunan(allRekap.sort((a, b) => b.periodeBulan - a.periodeBulan));
     } catch (err) {
       console.error('Failed to load riwayat tahunan:', err);
@@ -171,7 +170,13 @@ export const RekapIndividu = () => {
         sukarela: acc.sukarela + (item.pengambilanSukarela || 0),
         lebaran: acc.lebaran + (item.pengambilanLebaran || 0),
         lainnya: acc.lainnya + (item.pengambilanLainnya || 0),
-        totalPengambilan: acc.totalPengambilan + (item.totalPengambilan || 0),
+        totalPengambilan:
+          acc.totalPengambilan +
+          (item.pengambilanPokok || 0) +
+          (item.pengambilanWajib || 0) +
+          (item.pengambilanSukarela || 0) +
+          (item.pengambilanLebaran || 0) +
+          (item.pengambilanLainnya || 0),
       }),
       {
         pinjaman: 0,
@@ -616,40 +621,43 @@ export const RekapIndividu = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Bulan</TableHead>
-                        <TableHead>Pinjaman</TableHead>
-                        <TableHead>Pengambilan Pokok</TableHead>
-                        <TableHead>Pengambilan Wajib</TableHead>
-                        <TableHead>Pengambilan Sukarela</TableHead>
-                        <TableHead>Pengambilan Lebaran</TableHead>
-                        <TableHead>Pengambilan Lainnya</TableHead>
-                        <TableHead>Total Pengambilan</TableHead>
+                        <TableHead rowSpan={2} className="align-middle">Bulan</TableHead>
+                        <TableHead rowSpan={2} className="align-middle bg-blue-50 border-r-2 border-blue-200">Pinjaman</TableHead>
+                        <TableHead colSpan={5} className="text-center bg-green-50">Pengambilan</TableHead>
+                        <TableHead rowSpan={2} className="align-middle bg-green-50">Total Pengambilan</TableHead>
+                      </TableRow>
+                      <TableRow>
+                        <TableHead className="bg-green-50 border-l-2 border-green-200">Pokok</TableHead>
+                        <TableHead className="bg-green-50">Wajib</TableHead>
+                        <TableHead className="bg-green-50">Sukarela</TableHead>
+                        <TableHead className="bg-green-50">Lebaran</TableHead>
+                        <TableHead className="bg-green-50 border-r-2 border-green-200">Lainnya</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {riwayatTahunan.map((item) => (
                         <TableRow key={item.periodeBulan}>
                           <TableCell>{item.bulanNama}</TableCell>
-                          <TableCell>{formatCurrency(item.pinjamanBulanIni || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.pengambilanPokok || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.pengambilanWajib || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.pengambilanSukarela || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.pengambilanLebaran || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.pengambilanLainnya || 0)}</TableCell>
-                          <TableCell>{formatCurrency(item.totalPengambilan || 0)}</TableCell>
+                          <TableCell className="bg-blue-50 border-r-2 border-blue-200">{formatCurrency(item.pinjamanBulanIni || 0)}</TableCell>
+                          <TableCell className="bg-green-50 border-l-2 border-green-200">{formatCurrency(item.pengambilanPokok || 0)}</TableCell>
+                          <TableCell className="bg-green-50">{formatCurrency(item.pengambilanWajib || 0)}</TableCell>
+                          <TableCell className="bg-green-50">{formatCurrency(item.pengambilanSukarela || 0)}</TableCell>
+                          <TableCell className="bg-green-50">{formatCurrency(item.pengambilanLebaran || 0)}</TableCell>
+                          <TableCell className="bg-green-50 border-r-2 border-green-200">{formatCurrency(item.pengambilanLainnya || 0)}</TableCell>
+                          <TableCell className="bg-green-50">{formatCurrency(item.totalPengambilan || 0)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                     <TableFooter>
                       <TableRow>
                         <TableCell className="font-medium">Total</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.pinjaman)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.pokok)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.wajib)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.sukarela)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.lebaran)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.lainnya)}</TableCell>
-                        <TableCell>{formatCurrency(riwayatTotals.totalPengambilan)}</TableCell>
+                        <TableCell className="bg-blue-50 border-r-2 border-blue-200">{formatCurrency(riwayatTotals.pinjaman)}</TableCell>
+                        <TableCell className="bg-green-50 border-l-2 border-green-200">{formatCurrency(riwayatTotals.pokok)}</TableCell>
+                        <TableCell className="bg-green-50">{formatCurrency(riwayatTotals.wajib)}</TableCell>
+                        <TableCell className="bg-green-50">{formatCurrency(riwayatTotals.sukarela)}</TableCell>
+                        <TableCell className="bg-green-50">{formatCurrency(riwayatTotals.lebaran)}</TableCell>
+                        <TableCell className="bg-green-50 border-r-2 border-green-200">{formatCurrency(riwayatTotals.lainnya)}</TableCell>
+                        <TableCell className="bg-green-50">{formatCurrency(riwayatTotals.totalPengambilan)}</TableCell>
                       </TableRow>
                     </TableFooter>
                   </Table>
