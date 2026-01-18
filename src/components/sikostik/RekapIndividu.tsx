@@ -54,7 +54,6 @@ export const RekapIndividu = () => {
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
-  const [selectedTahunHistory, setSelectedTahunHistory] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -96,7 +95,7 @@ export const RekapIndividu = () => {
   };
 
   const loadHistoryData = async () => {
-    if (!selectedAnggotaId || !selectedTahunHistory) return;
+    if (!selectedAnggotaId || !selectedTahun) return;
     
     setIsLoadingHistory(true);
     try {
@@ -104,7 +103,7 @@ export const RekapIndividu = () => {
       
       const fetchPromises = [];
       for (let month = 1; month <= 12; month++) {
-        fetchPromises.push(fetchRekapDashboard(month, selectedTahunHistory));
+        fetchPromises.push(fetchRekapDashboard(month, selectedTahun));
       }
       
       const results = await Promise.all(fetchPromises);
@@ -130,33 +129,23 @@ export const RekapIndividu = () => {
                                  pengambilanSukarela + pengambilanLebaran + 
                                  pengambilanLainnya;
           
-          allMonthsData.push({
-            id: `history-${selectedTahunHistory}-${bulan}-${anggotaData.anggotaId}`,
-            bulan: anggotaData.periodeBulan || bulan,
-            bulanNama,
-            tahun: anggotaData.periodeTahun || selectedTahunHistory,
-            pinjamanBulanIni,
-            pengambilanPokok,
-            pengambilanWajib,
-            pengambilanSukarela,
-            pengambilanLebaran,
-            pengambilanLainnya,
-            totalPengambilan
-          });
-        } else {
-          allMonthsData.push({
-            id: `empty-${selectedTahunHistory}-${bulan}`,
-            bulan,
-            bulanNama,
-            tahun: selectedTahunHistory,
-            pinjamanBulanIni: 0,
-            pengambilanPokok: 0,
-            pengambilanWajib: 0,
-            pengambilanSukarela: 0,
-            pengambilanLebaran: 0,
-            pengambilanLainnya: 0,
-            totalPengambilan: 0
-          });
+          const hasActivity = pinjamanBulanIni > 0 || totalPengambilan > 0;
+
+          if (hasActivity) {
+            allMonthsData.push({
+              id: `history-${selectedTahun}-${bulan}-${anggotaData.anggotaId}`,
+              bulan: anggotaData.periodeBulan || bulan,
+              bulanNama,
+              tahun: anggotaData.periodeTahun || selectedTahun,
+              pinjamanBulanIni,
+              pengambilanPokok,
+              pengambilanWajib,
+              pengambilanSukarela,
+              pengambilanLebaran,
+              pengambilanLainnya,
+              totalPengambilan
+            });
+          }
         }
       });
       
@@ -180,10 +169,10 @@ export const RekapIndividu = () => {
   }, [selectedBulan, selectedTahun]);
 
   useEffect(() => {
-    if (selectedAnggotaId && selectedTahunHistory) {
+    if (selectedAnggotaId && selectedTahun) {
       loadHistoryData();
     }
-  }, [selectedAnggotaId, selectedTahunHistory]);
+  }, [selectedAnggotaId, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
@@ -214,8 +203,8 @@ export const RekapIndividu = () => {
   }, [memberData]);
 
   const historyDisplayData = useMemo(() => {
-    return historyData.filter(h => h.tahun === selectedTahunHistory);
-  }, [historyData, selectedTahunHistory]);
+    return historyData.filter(h => h.tahun === selectedTahun);
+  }, [historyData, selectedTahun]);
 
   const yearlyTotals = useMemo(() => {
     return historyDisplayData.reduce((acc, month) => ({
@@ -238,15 +227,10 @@ export const RekapIndividu = () => {
   }, [historyDisplayData]);
 
   const activeMonthsCount = useMemo(() => {
-    return historyDisplayData.filter(m => 
-      m.pinjamanBulanIni > 0 || 
-      m.pengambilanPokok > 0 || 
-      m.pengambilanWajib > 0 ||
-      m.pengambilanSukarela > 0 ||
-      m.pengambilanLebaran > 0 ||
-      m.pengambilanLainnya > 0
-    ).length;
+    return historyDisplayData.length;
   }, [historyDisplayData]);
+
+  const grandTotal = yearlyTotals.pinjamanBulanIni + yearlyTotals.totalPengambilan;
 
   if (isLoading) {
     return (
@@ -621,29 +605,9 @@ export const RekapIndividu = () => {
                   <History className="h-5 w-5 text-primary" />
                   <CardTitle>Riwayat Peminjaman & Pengambilan Simpanan</CardTitle>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Tahun:</span>
-                  <Select 
-                    value={selectedTahunHistory.toString()} 
-                    onValueChange={(v) => setSelectedTahunHistory(parseInt(v))}
-                    disabled={!selectedAnggotaId || isLoadingHistory}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getTahunOptions().map((t) => (
-                        <SelectItem key={t.value} value={t.value.toString()}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <CardDescription>
-                Data peminjaman dan pengambilan simpanan untuk tahun {selectedTahunHistory}
+                Data peminjaman dan pengambilan simpanan untuk tahun {selectedTahun}
               </CardDescription>
             </CardHeader>
             
@@ -686,48 +650,9 @@ export const RekapIndividu = () => {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {historyDisplayData.length > 0 
-                      ? `${activeMonthsCount} dari ${historyDisplayData.length} bulan ada transaksi`
+                      ? `${activeMonthsCount} dari 12 bulan ada transaksi`
                       : 'Tidak ada data transaksi'}
                   </p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Detail Pengambilan Simpanan per Kategori
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <p className="text-sm font-medium">Pokok</p>
-                    <p className="text-lg font-bold">
-                      {formatCurrency(yearlyTotals.pengambilanPokok)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <p className="text-sm font-medium">Wajib</p>
-                    <p className="text-lg font-bold">
-                      {formatCurrency(yearlyTotals.pengambilanWajib)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <p className="text-sm font-medium">Sukarela</p>
-                    <p className="text-lg font-bold">
-                      {formatCurrency(yearlyTotals.pengambilanSukarela)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <p className="text-sm font-medium">Lebaran</p>
-                    <p className="text-lg font-bold">
-                      {formatCurrency(yearlyTotals.pengambilanLebaran)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <p className="text-sm font-medium">Lainnya</p>
-                    <p className="text-lg font-bold">
-                      {formatCurrency(yearlyTotals.pengambilanLainnya)}
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -741,7 +666,7 @@ export const RekapIndividu = () => {
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Tidak ada data riwayat untuk tahun {selectedTahunHistory}
+                    Tidak ada data riwayat untuk tahun {selectedTahun}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -801,10 +726,7 @@ export const RekapIndividu = () => {
                           )}
                         >
                           <TableCell className="font-medium border-r">
-                            <div className="flex flex-col">
-                              <span className="font-semibold">{item.bulanNama}</span>
-                              <span className="text-xs text-muted-foreground">{item.tahun}</span>
-                            </div>
+                            {`${item.bulanNama} ${item.tahun}`}
                           </TableCell>
                           
                           <TableCell className={cn(
@@ -818,9 +740,7 @@ export const RekapIndividu = () => {
                           
                           <TableCell className="text-right border-r">
                             {item.pengambilanPokok > 0 ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{formatCurrency(item.pengambilanPokok)}</span>
-                              </div>
+                              formatCurrency(item.pengambilanPokok)
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -828,9 +748,7 @@ export const RekapIndividu = () => {
                           
                           <TableCell className="text-right border-r">
                             {item.pengambilanWajib > 0 ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{formatCurrency(item.pengambilanWajib)}</span>
-                              </div>
+                              formatCurrency(item.pengambilanWajib)
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -838,9 +756,7 @@ export const RekapIndividu = () => {
                           
                           <TableCell className="text-right border-r">
                             {item.pengambilanSukarela > 0 ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{formatCurrency(item.pengambilanSukarela)}</span>
-                              </div>
+                              formatCurrency(item.pengambilanSukarela)
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -848,9 +764,7 @@ export const RekapIndividu = () => {
                           
                           <TableCell className="text-right border-r">
                             {item.pengambilanLebaran > 0 ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{formatCurrency(item.pengambilanLebaran)}</span>
-                              </div>
+                              formatCurrency(item.pengambilanLebaran)
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -858,9 +772,7 @@ export const RekapIndividu = () => {
                           
                           <TableCell className="text-right">
                             {item.pengambilanLainnya > 0 ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{formatCurrency(item.pengambilanLainnya)}</span>
-                              </div>
+                              formatCurrency(item.pengambilanLainnya)
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -870,9 +782,7 @@ export const RekapIndividu = () => {
                       
                       <TableRow className="bg-muted/50 font-bold border-t-2">
                         <TableCell className="font-bold">
-                          <div className="flex flex-col">
-                            <span>TOTAL {selectedTahunHistory}</span>
-                          </div>
+                          TOTAL {selectedTahun}
                         </TableCell>
                         
                         <TableCell className={cn(
@@ -908,6 +818,15 @@ export const RekapIndividu = () => {
                           {yearlyTotals.pengambilanLainnya > 0 
                             ? formatCurrency(yearlyTotals.pengambilanLainnya) 
                             : "-"}
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow className="bg-muted font-bold border-t">
+                        <TableCell colSpan={6} className="font-bold text-right">
+                          Grand Total (Pinjaman + Pengambilan Simpanan)
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          {formatCurrency(grandTotal)}
                         </TableCell>
                       </TableRow>
                     </TableBody>
