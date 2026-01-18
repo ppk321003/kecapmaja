@@ -31,10 +31,13 @@ import {
 } from 'lucide-react';
 import { useSikostikData, bulanOptions, getTahunOptions, getCurrentPeriod, formatCurrency } from '@/hooks/use-sikostik-data';
 import type { RekapDashboard, LimitAnggota } from '@/types/sikostik';
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+
 interface DashboardSikostik28Props {
   filterTahun?: string;
 }
+
 const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
   const {
     loading,
@@ -42,22 +45,25 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
     fetchRekapDashboard,
     fetchLimitAnggota,
   } = useSikostikData();
+
   // State for data
   const [rekapPerBulan, setRekapPerBulan] = useState<RekapDashboard[][]>([]);
-  const [limitData, setLimitData] = useState<LimitAnggota[]>([]); // Filtered year
-  const [pastLimitData, setPastLimitData] = useState<LimitAnggota[]>([]); // Filtered year -1
+  const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [komposisiData, setKomposisiData] = useState<any[]>([]);
   const [selisihData, setSelisihData] = useState<any[]>([]);
+
   // State for period filter
   const currentPeriod = getCurrentPeriod();
   const [selectedTahun, setSelectedTahun] = useState(filterTahun ? parseInt(filterTahun) : currentPeriod.tahun);
+
   // Update selected tahun when filterTahun prop changes
   useEffect(() => {
     if (filterTahun) {
       setSelectedTahun(parseInt(filterTahun));
     }
   }, [filterTahun]);
+
   // Load all data
   const loadData = async () => {
     try {
@@ -65,11 +71,11 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       const rekapPromises = Array.from({ length: maxBulan }, (_, i) => fetchRekapDashboard(i + 1, selectedTahun));
       const rekap = await Promise.all(rekapPromises);
       setRekapPerBulan(rekap);
-      // Fetch limit data for filtered and past
+
+      // Fetch limit data for current year
       const filteredLimit = await fetchLimitAnggota(maxBulan, selectedTahun);
-      const pastLimit = await fetchLimitAnggota(12, selectedTahun - 1);
       setLimitData(filteredLimit);
-      setPastLimitData(pastLimit);
+
       // Calculate komposisi from all period data
       const allRekap = rekap.flat();
       const komposisi = [
@@ -80,6 +86,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         { name: 'Lainnya', value: allRekap.reduce((sum, m) => sum + m.simpananLainnya, 0) },
       ].filter(k => k.value > 0);
       setKomposisiData(komposisi);
+
       // Build trend data
       const trendArr = bulanOptions.slice(0, maxBulan).map((b, index) => ({
         name: b.label.substring(0, 3),
@@ -87,6 +94,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         piutang: rekap[index].reduce((sum, m) => sum + m.saldoPiutang, 0),
       }));
       setTrendData(trendArr);
+
       // Calculate selisih data for bar chart from filtered limit
       const selisihArr = filteredLimit
         .map(m => ({
@@ -99,58 +107,53 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       console.error('Error loading dashboard data:', error);
     }
   };
+
   useEffect(() => {
     loadData();
   }, [selectedTahun]);
+
   // Calculate stats from last month
   const lastRekap = rekapPerBulan[rekapPerBulan.length - 1] || [];
   const activeMembers = useMemo(() => {
     return lastRekap.filter((m) => m.status === 'Aktif');
   }, [lastRekap]);
+
   const stats = useMemo(() => {
     const totalSimpanan = activeMembers.reduce((sum, m) => sum + (Number(m.totalSimpanan) || 0), 0);
     const totalPinjaman = activeMembers.reduce((sum, m) => sum + (Number(m.pinjamanBulanIni) || 0), 0);
     const totalPiutang = activeMembers.reduce((sum, m) => sum + (Number(m.saldoPiutang) || 0), 0);
     return { totalSimpanan, totalPinjaman, totalPiutang };
   }, [activeMembers]);
-  // Filtered rankings
+
+  // Filtered rankings for current year
   const topSavers = useMemo(() => {
     return [...limitData].sort((a, b) => b.totalSimpanan - a.totalSimpanan).slice(0, 5);
   }, [limitData]);
+
   const topBorrowers = useMemo(() => {
     return [...limitData].filter(m => m.saldoPiutang > 0).sort((a, b) => b.saldoPiutang - a.saldoPiutang).slice(0, 5);
   }, [limitData]);
+
   const topLimitMembers = useMemo(() => {
     return [...limitData].filter(m => m.sisaLimit > 0).sort((a, b) => b.sisaLimit - a.sisaLimit).slice(0, 5);
   }, [limitData]);
+
   const topSelisih = useMemo(() => {
     return [...limitData]
       .map(m => ({ ...m, selisih: m.totalSimpanan - m.saldoPiutang }))
       .sort((a, b) => b.selisih - a.selisih)
       .slice(0, 5);
   }, [limitData]);
-  // Past rankings
-  const pastTopSavers = useMemo(() => {
-    return [...pastLimitData].sort((a, b) => b.totalSimpanan - a.totalSimpanan).slice(0, 5);
-  }, [pastLimitData]);
-  const pastTopBorrowers = useMemo(() => {
-    return [...pastLimitData].filter(m => m.saldoPiutang > 0).sort((a, b) => b.saldoPiutang - a.saldoPiutang).slice(0, 5);
-  }, [pastLimitData]);
-  const pastTopLimitMembers = useMemo(() => {
-    return [...pastLimitData].filter(m => m.sisaLimit > 0).sort((a, b) => b.sisaLimit - a.sisaLimit).slice(0, 5);
-  }, [pastLimitData]);
-  const pastTopSelisih = useMemo(() => {
-    return [...pastLimitData]
-      .map(m => ({ ...m, selisih: m.totalSimpanan - m.saldoPiutang }))
-      .sort((a, b) => b.selisih - a.selisih)
-      .slice(0, 5);
-  }, [pastLimitData]);
+
   const rankIcons = [Trophy, Medal, Award, TrendingUpIcon, Coins];
   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600', 'text-primary', 'text-success'];
+
   const periodeLabel = `${selectedTahun}`;
+
   if (loading && rekapPerBulan.length === 0) {
     return <LoadingSkeleton />;
   }
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const value = payload[0].value;
@@ -163,6 +166,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
     }
     return null;
   };
+
   return (
     <div className="space-y-6">
       {/* Error Alert */}
@@ -172,6 +176,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
       {/* Empty State */}
       {!loading && rekapPerBulan.length === 0 && !error && (
         <Alert>
@@ -181,6 +186,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </AlertDescription>
         </Alert>
       )}
+
       {/* Stat Cards with variations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -213,6 +219,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           isNumber
         />
       </div>
+
       {/* New Selisih Chart - Moved to top */}
       <Card>
         <CardHeader>
@@ -245,6 +252,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           )}
         </CardContent>
       </Card>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trend Chart */}
@@ -277,6 +285,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             )}
           </CardContent>
         </Card>
+
         {/* Komposisi Chart */}
         <Card>
           <CardHeader>
@@ -316,9 +325,10 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </CardContent>
         </Card>
       </div>
+
       {/* Rankings Tahun Berjalan */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Ranking Anggota - Bulan Berjalan Tahun Berjalan</h3>
+        <h3 className="text-lg font-semibold mb-4">Ranking Anggota - {periodeLabel}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RankingCard
             title="Top Penabung"
@@ -366,59 +376,10 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           />
         </div>
       </div>
-      {/* Rankings Tahun Berlalu */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Ranking Anggota - Bulan Terakhir Tahun Berlalu</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RankingCard
-            title="Top Penabung"
-            description="Anggota dengan simpanan tertinggi"
-            icon={PiggyBank}
-            data={pastTopSavers}
-            rankIcons={rankIcons}
-            rankColors={rankColors}
-            valueKey="totalSimpanan"
-            formatValue={(v) => v.toLocaleString('id-ID')}
-            valueColor="text-accent"
-          />
-          <RankingCard
-            title="Top Selisih (Simpanan - Piutang)"
-            description="Anggota dengan kesehatan keuangan terbaik"
-            icon={TrendingUpIcon}
-            data={pastTopSelisih}
-            rankIcons={rankIcons}
-            rankColors={rankColors}
-            valueKey="selisih"
-            formatValue={(v) => `${v >= 0 ? '+' : ''}${v.toLocaleString('id-ID')}`}
-            valueColor={(v: number) => v >= 0 ? 'text-success' : 'text-destructive'}
-          />
-          <RankingCard
-            title="Top Peminjam"
-            description="Anggota dengan piutang tertinggi"
-            icon={HandCoins}
-            data={pastTopBorrowers}
-            rankIcons={rankIcons}
-            rankColors={rankColors}
-            valueKey="saldoPiutang"
-            formatValue={(v) => v.toLocaleString('id-ID')}
-            valueColor="text-warning"
-          />
-          <RankingCard
-            title="Sisa Limit Tersedia"
-            description="Anggota dengan limit pinjaman tertinggi"
-            icon={CreditCard}
-            data={pastTopLimitMembers}
-            rankIcons={rankIcons}
-            rankColors={rankColors}
-            valueKey="sisaLimit"
-            formatValue={(v) => v.toLocaleString('id-ID')}
-            valueColor="text-primary"
-          />
-        </div>
-      </div>
     </div>
   );
 };
+
 // Stat Card Component
 interface StatCardProps {
   title: string;
@@ -426,9 +387,10 @@ interface StatCardProps {
   subtitle?: string;
   icon: React.ElementType;
   variant?: 'default' | 'warning' | 'info' | 'danger' | 'success' | 'secondary';
-  trend?: { value: number; label: string };
+  isNumber?: boolean;
 }
-function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', trend }: StatCardProps) {
+
+function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', isNumber }: StatCardProps) {
   const variantClasses = {
     default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 dark:text-blue-300 dark:border-blue-800',
     warning: 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200 dark:from-amber-950/50 dark:to-amber-900/50 dark:text-amber-300 dark:border-amber-800',
@@ -444,14 +406,8 @@ function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', tre
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className={`text-2xl font-bold ${isNumber ? '' : ''}`}>{value}</p>
             {subtitle && <p className="text-xs opacity-70">{subtitle}</p>}
-            {trend && (
-              <div className={`flex items-center gap-1 text-xs ${trend.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                <TrendingUp className={`w-3 h-3 ${trend.value < 0 ? 'rotate-180' : ''}`} />
-                <span>{Math.abs(trend.value)}% {trend.label}</span>
-              </div>
-            )}
           </div>
           <div className={`p-3 rounded-full bg-current/10`}>
             <Icon className="w-6 h-6" strokeWidth={1.5} />
@@ -461,6 +417,7 @@ function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', tre
     </Card>
   );
 }
+
 // Ranking Card Component
 interface RankingCardProps {
   title: string;
@@ -473,6 +430,7 @@ interface RankingCardProps {
   formatValue: (value: number) => string;
   valueColor: string | ((value: number) => string);
 }
+
 const RankingCard = ({
   title,
   description,
@@ -531,6 +489,7 @@ const RankingCard = ({
     </CardContent>
   </Card>
 );
+
 // Loading Skeleton
 const LoadingSkeleton = () => (
   <div className="space-y-6">
@@ -563,4 +522,5 @@ const LoadingSkeleton = () => (
     </div>
   </div>
 );
+
 export default DashboardSikostik28;
