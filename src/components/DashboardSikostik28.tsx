@@ -181,7 +181,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </AlertDescription>
         </Alert>
       )}
-      {/* Stat Cards */}
+      {/* Stat Cards with variations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Simpanan"
@@ -189,6 +189,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           icon={PiggyBank}
           description={`Akhir ${periodeLabel}`}
           iconClassName="text-accent"
+          cardClassName="border-l-4 border-accent rounded-xl shadow-md"
         />
         <StatCard
           title="Pinjaman Baru"
@@ -196,6 +197,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           icon={HandCoins}
           description={`Terakhir di ${periodeLabel}`}
           iconClassName="text-warning"
+          cardClassName="border-l-4 border-warning rounded-xl shadow-md"
         />
         <StatCard
           title="Saldo Piutang"
@@ -203,6 +205,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           icon={CreditCard}
           description="Total hutang anggota"
           iconClassName="text-primary"
+          cardClassName="border-l-4 border-primary rounded-xl shadow-md"
         />
         <StatCard
           title="Anggota Aktif"
@@ -210,6 +213,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           icon={Users}
           description={periodeLabel}
           iconClassName="text-success"
+          cardClassName="border-l-4 border-success rounded-xl shadow-md"
           isNumber
         />
       </div>
@@ -427,10 +431,11 @@ interface StatCardProps {
   icon: React.ElementType;
   description: string;
   iconClassName: string;
+  cardClassName?: string;
   isNumber?: boolean;
 }
-const StatCard = ({ title, value, icon: Icon, description, iconClassName, isNumber }: StatCardProps) => (
-  <Card>
+const StatCard = ({ title, value, icon: Icon, description, iconClassName, cardClassName = '', isNumber }: StatCardProps) => (
+  <Card className={cardClassName}>
     <CardContent className="pt-6">
       <div className="flex items-start justify-between">
         <div>
