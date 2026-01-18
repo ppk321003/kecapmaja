@@ -4,22 +4,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  AreaChart, 
+import {
+  AreaChart,
   Area,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   Legend,
 } from 'recharts';
-import { 
-  Users, 
-  PiggyBank, 
+import {
+  Users,
+  PiggyBank,
   HandCoins,
   RefreshCw,
   AlertCircle,
@@ -32,40 +32,33 @@ import {
 } from 'lucide-react';
 import { useSikostikData, bulanOptions, getTahunOptions, getCurrentPeriod, formatCurrency } from '@/hooks/use-sikostik-data';
 import type { RekapDashboard, LimitAnggota } from '@/types/sikostik';
-
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--muted-foreground))'];
-
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--secondary))'];
 interface DashboardSikostik28Props {
   filterTahun?: string;
 }
-
 const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
-  const { 
-    loading, 
-    error, 
-    fetchRekapDashboard, 
+  const {
+    loading,
+    error,
+    fetchRekapDashboard,
     fetchLimitAnggota,
   } = useSikostikData();
-
   // State for data
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [komposisiData, setKomposisiData] = useState<any[]>([]);
-
   // State for period filter
   const currentPeriod = getCurrentPeriod();
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(filterTahun ? parseInt(filterTahun) : currentPeriod.tahun);
   const tahunOptions = getTahunOptions();
-
   // Update selected tahun when filterTahun prop changes
   useEffect(() => {
     if (filterTahun) {
       setSelectedTahun(parseInt(filterTahun));
     }
   }, [filterTahun]);
-
   // Load all data
   const loadData = async () => {
     try {
@@ -73,16 +66,15 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         fetchRekapDashboard(selectedBulan, selectedTahun),
         fetchLimitAnggota(),
       ]);
-      
+     
       setRekapData(rekap);
       setLimitData(limit);
-
       // Generate trend data from rekap for each month
       const trendByMonth: Record<string, { simpanan: number; piutang: number }> = {};
       bulanOptions.forEach(b => {
         trendByMonth[b.label] = { simpanan: 0, piutang: 0 };
       });
-      
+     
       // Calculate komposisi from current period data
       const komposisi = [
         { name: 'Pokok', value: rekap.reduce((sum, m) => sum + m.simpananPokok, 0) },
@@ -91,9 +83,8 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         { name: 'Lebaran', value: rekap.reduce((sum, m) => sum + m.simpananLebaran, 0) },
         { name: 'Lainnya', value: rekap.reduce((sum, m) => sum + m.simpananLainnya, 0) },
       ].filter(k => k.value > 0);
-      
+     
       setKomposisiData(komposisi);
-
       // Build trend data
       const trendArr = bulanOptions.map(b => ({
         name: b.label.substring(0, 3),
@@ -101,36 +92,30 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
         piutang: b.value <= selectedBulan ? rekap.reduce((sum, m) => sum + m.saldoPiutang, 0) / (selectedBulan - b.value + 1) * (b.value) : 0,
       }));
       setTrendData(trendArr.slice(0, selectedBulan));
-
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
   };
-
   useEffect(() => {
     loadData();
   }, [selectedBulan, selectedTahun]);
-
   // Calculate stats
   const activeMembers = useMemo(() => {
     return rekapData.filter((m) => m.status === 'Aktif');
   }, [rekapData]);
-
   const stats = useMemo(() => {
     const totalSimpanan = activeMembers.reduce((sum, m) => sum + (Number(m.totalSimpanan) || 0), 0);
     const totalPinjaman = activeMembers.reduce((sum, m) => sum + (Number(m.pinjamanBulanIni) || 0), 0);
     const totalPiutang = activeMembers.reduce((sum, m) => sum + (Number(m.saldoPiutang) || 0), 0);
-    
+   
     return { totalSimpanan, totalPinjaman, totalPiutang };
   }, [activeMembers]);
-
   // Top savers ranking
   const topSavers = useMemo(() => {
     return [...limitData]
       .sort((a, b) => b.totalSimpanan - a.totalSimpanan)
       .slice(0, 5);
   }, [limitData]);
-
   // Top borrowers ranking
   const topBorrowers = useMemo(() => {
     return [...limitData]
@@ -138,7 +123,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       .sort((a, b) => b.saldoPiutang - a.saldoPiutang)
       .slice(0, 5);
   }, [limitData]);
-
   // Top limit (highest remaining credit limit)
   const topLimitMembers = useMemo(() => {
     return [...limitData]
@@ -146,7 +130,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       .sort((a, b) => b.sisaLimit - a.sisaLimit)
       .slice(0, 5);
   }, [limitData]);
-
   // Top selisih (savings - loans)
   const topSelisih = useMemo(() => {
     return [...limitData]
@@ -157,51 +140,14 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       .sort((a, b) => b.selisih - a.selisih)
       .slice(0, 5);
   }, [limitData]);
-
   const rankIcons = [Trophy, Medal, Award, TrendingUpIcon, Coins];
   const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600', 'text-primary', 'text-success'];
-
   const periodeLabel = `${bulanOptions.find(b => b.value === selectedBulan)?.label || ''} ${selectedTahun}`;
-
   if (loading && rekapData.length === 0) {
     return <LoadingSkeleton />;
   }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Dashboard Koperasi Simpatik28</h2>
-          <p className="text-muted-foreground">Analisis keuangan periode {periodeLabel}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(selectedBulan)} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              {bulanOptions.map(b => (
-                <SelectItem key={b.value} value={String(b.value)}>{b.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(selectedTahun)} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
-            <SelectTrigger className="w-24">
-              <SelectValue placeholder="Tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              {tahunOptions.map(t => (
-                <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
-
       {/* Error Alert */}
       {error && (
         <Alert variant="destructive">
@@ -209,7 +155,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-
       {/* Empty State */}
       {!loading && rekapData.length === 0 && !error && (
         <Alert>
@@ -219,7 +164,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </AlertDescription>
         </Alert>
       )}
-
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -252,7 +196,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           isNumber
         />
       </div>
-
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trend Chart */}
@@ -285,7 +228,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
             )}
           </CardContent>
         </Card>
-
         {/* Komposisi Chart */}
         <Card>
           <CardHeader>
@@ -325,7 +267,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </CardContent>
         </Card>
       </div>
-
       {/* Rankings */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Ranking Anggota</h3>
@@ -379,7 +320,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
     </div>
   );
 };
-
 // Stat Card Component
 interface StatCardProps {
   title: string;
@@ -389,7 +329,6 @@ interface StatCardProps {
   iconClassName: string;
   isNumber?: boolean;
 }
-
 const StatCard = ({ title, value, icon: Icon, description, iconClassName, isNumber }: StatCardProps) => (
   <Card>
     <CardContent className="pt-6">
@@ -408,7 +347,6 @@ const StatCard = ({ title, value, icon: Icon, description, iconClassName, isNumb
     </CardContent>
   </Card>
 );
-
 // Ranking Card Component
 interface RankingCardProps {
   title: string;
@@ -421,13 +359,12 @@ interface RankingCardProps {
   formatValue: (value: number) => string;
   valueColor: string | ((value: number) => string);
 }
-
-const RankingCard = ({ 
-  title, 
-  description, 
-  icon: Icon, 
-  data, 
-  rankIcons, 
+const RankingCard = ({
+  title,
+  description,
+  icon: Icon,
+  data,
+  rankIcons,
   rankColors,
   valueKey,
   formatValue,
@@ -454,7 +391,7 @@ const RankingCard = ({
             const rankColor = rankColors[index] || 'text-muted-foreground';
             const value = item[valueKey] || 0;
             const colorClass = typeof valueColor === 'function' ? valueColor(value) : valueColor;
-            
+           
             return (
               <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
                 <div className="flex items-center gap-3">
@@ -481,7 +418,6 @@ const RankingCard = ({
     </CardContent>
   </Card>
 );
-
 // Loading Skeleton
 const LoadingSkeleton = () => (
   <div className="space-y-6">
@@ -521,5 +457,4 @@ const LoadingSkeleton = () => (
     </div>
   </div>
 );
-
 export default DashboardSikostik28;
