@@ -201,6 +201,39 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           isNumber
         />
       </div>
+      {/* New Selisih Chart - Moved to top */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUpIcon className="h-5 w-5" />
+            Selisih Simpanan dengan Hutang
+          </CardTitle>
+          <CardDescription>Per anggota, diurutkan dari tertinggi ke terendah</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {selisihData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={500}>
+              <BarChart data={selisihData} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} className="text-xs" height={80} />
+                <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="selisih" name="Selisih Simpanan dengan Hutang">
+                  {selisihData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.selisih > 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mb-2" />
+              <p>Belum ada data selisih</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trend Chart */}
@@ -272,35 +305,6 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
           </CardContent>
         </Card>
       </div>
-      {/* New Selisih Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUpIcon className="h-5 w-5" />
-            Selisih Simpanan dengan Hutang
-          </CardTitle>
-          <CardDescription>Per anggota, diurutkan dari tertinggi ke terendah</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {selisihData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={selisihData} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} className="text-xs" height={80} />
-                <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Legend />
-                <Bar dataKey="selisih" name="Selisih Simpanan dengan Hutang" fill="hsl(var(--accent))" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mb-2" />
-              <p>Belum ada data selisih</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
       {/* Rankings Tahun Berjalan */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Ranking Anggota - Bulan Berjalan Tahun Berjalan</h3>
