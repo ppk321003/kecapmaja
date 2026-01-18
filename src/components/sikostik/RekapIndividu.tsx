@@ -84,6 +84,8 @@ export const RekapIndividu = () => {
   }, [selectedBulan, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
+  const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
+  const tahunLabel = selectedTahun.toString();
 
   // Get selected member data
   const memberData = useMemo(() => {
@@ -161,27 +163,13 @@ export const RekapIndividu = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Filters */}
+      {/* Header dengan Filter Anggota */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Rekap Individu</h1>
-          <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan periode {periodeLabel}</p>
+          <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedBulan.toString()} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {bulanOptions.map((b) => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={selectedTahun.toString()} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
-            <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {getTahunOptions().map((t) => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Separator orientation="vertical" className="h-6 mx-2 hidden lg:block" />
           <Select value={selectedAnggotaId} onValueChange={setSelectedAnggotaId}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Pilih Anggota" />
@@ -359,13 +347,31 @@ export const RekapIndividu = () => {
             )}
           </Card>
 
+          {/* Filter Periode setelah Card Detail Individu */}
+          <div className="flex items-center gap-2 bg-card p-4 rounded-lg border">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium">Periode:</span>
+            <Select value={selectedBulan.toString()} onValueChange={(v) => setSelectedBulan(parseInt(v))}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {bulanOptions.map((b) => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={selectedTahun.toString()} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectValue>
+              <SelectContent>
+                {getTahunOptions().map((t) => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Detailed Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <PiggyBank className="h-5 w-5 text-primary" />
-                  <CardTitle>Detail Simpanan Bulanan</CardTitle>
+                  <CardTitle>Detail Simpanan {bulanNama} {tahunLabel}</CardTitle>
                 </div>
                 <CardDescription>Simpanan yang dipotong setiap bulan</CardDescription>
               </CardHeader>
@@ -410,7 +416,7 @@ export const RekapIndividu = () => {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-accent" />
-                  <CardTitle>Total Potongan Bulanan</CardTitle>
+                  <CardTitle>Total Potongan {bulanNama} {tahunLabel}</CardTitle>
                 </div>
                 <CardDescription>Ringkasan kewajiban per bulan</CardDescription>
               </CardHeader>
