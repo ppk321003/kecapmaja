@@ -151,6 +151,18 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
   if (loading && rekapPerBulan.length === 0) {
     return <LoadingSkeleton />;
   }
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const value = payload[0].value;
+      return (
+        <div className="bg-background p-2 border rounded shadow">
+          <p className="font-medium">{label}</p>
+          <p>{`Selisih: ${formatCurrency(value)}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
   return (
     <div className="space-y-6">
       {/* Error Alert */}
@@ -217,7 +229,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} className="text-xs" height={80} />
                 <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} className="text-xs" />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Bar dataKey="selisih" name="Selisih Simpanan dengan Hutang">
                   {selisihData.map((entry, index) => (
