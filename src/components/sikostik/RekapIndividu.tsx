@@ -358,7 +358,7 @@ export const RekapIndividu = () => {
               </SelectContent>
             </Select>
             <Select value={selectedTahun.toString()} onValueChange={(v) => setSelectedTahun(parseInt(v))}>
-              <SelectTrigger className="w-[100px]"><SelectValue /></SelectValue>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {getTahunOptions().map((t) => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
               </SelectContent>
