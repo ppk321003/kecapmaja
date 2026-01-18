@@ -8,9 +8,17 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { 
   User, CreditCard, Wallet, Clock, AlertTriangle, CheckCircle, Calendar, Building2, 
   PiggyBank, HandCoins, Receipt, Target, Award, BarChart3, RefreshCw, ChevronDown, ChevronUp,
-  Banknote, PieChart, Info
+  Banknote, PieChart, Info, History, TrendingUp, FileText
 } from 'lucide-react';
 import { 
   useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, 
@@ -26,11 +34,13 @@ export const RekapIndividu = () => {
   const [anggotaList, setAnggotaList] = useState<AnggotaMaster[]>([]);
   const [limitList, setLimitList] = useState<LimitAnggota[]>([]);
   const [rekapList, setRekapList] = useState<RekapDashboard[]>([]);
-  
+  const [rekapHistoryList, setRekapHistoryList] = useState<RekapDashboard[]>([]);
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
+  const [selectedTahunHistory, setSelectedTahunHistory] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
 
   // Get all active members
@@ -56,6 +66,8 @@ export const RekapIndividu = () => {
       
       // Load data rekap berdasarkan periode awal
       await loadRekapData();
+      // Load data historis untuk tahun yang dipilih
+      await loadHistoryData();
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -72,6 +84,44 @@ export const RekapIndividu = () => {
     }
   };
 
+  const loadHistoryData = async () => {
+    if (!selectedAnggotaId || !selectedTahunHistory) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      // Karena fetchRekapDashboard mengambil data untuk bulan tertentu,
+      // kita perlu mengambil data untuk semua bulan dalam tahun tersebut
+      // Namun kita tidak bisa langsung karena API hanya menerima bulan spesifik
+      // Alternatif: Simpan semua data ketika pertama kali load, atau buat fungsi baru
+      
+      // Untuk sementara, kita akan menggunakan data yang sudah ada dari rekapList
+      // dan memfilter berdasarkan tahun
+      const allMonthsData: RekapDashboard[] = [];
+      
+      // Fetch data untuk semua bulan dalam tahun yang dipilih
+      const fetchPromises = [];
+      for (let month = 1; month <= 12; month++) {
+        fetchPromises.push(fetchRekapDashboard(month, selectedTahunHistory));
+      }
+      
+      const results = await Promise.all(fetchPromises);
+      results.forEach((monthData) => {
+        allMonthsData.push(...monthData);
+      });
+      
+      // Filter untuk anggota yang dipilih
+      const anggotaData = allMonthsData.filter(item => 
+        item.anggotaId === selectedAnggotaId
+      );
+      
+      setRekapHistoryList(anggotaData);
+    } catch (err) {
+      console.error('Failed to load history data:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -82,6 +132,13 @@ export const RekapIndividu = () => {
       loadRekapData();
     }
   }, [selectedBulan, selectedTahun]);
+
+  // Load history data ketika anggota atau tahun history berubah
+  useEffect(() => {
+    if (selectedAnggotaId) {
+      loadHistoryData();
+    }
+  }, [selectedAnggotaId, selectedTahunHistory]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
@@ -115,6 +172,97 @@ export const RekapIndividu = () => {
     
     return { limitUtilization, totalPotonganBulanan, simpananBulanan };
   }, [memberData]);
+
+  // Prepare history data for display dari rekapHistoryList
+  const historyDisplayData = useMemo(() => {
+    // Filter data hanya untuk tahun yang dipilih dan anggota yang dipilih
+    const filteredData = rekapHistoryList.filter(item => {
+      // Asumsi: data RekapDashboard memiliki properti periode atau tahun
+      // Kita perlu memeriksa struktur data RekapDashboard
+      // Untuk sementara, kita asumsikan data sudah difilter oleh loadHistoryData
+      return true;
+    });
+    
+    // Sort by bulan (asumsi data memiliki properti bulan)
+    const sortedData = [...filteredData].sort((a, b) => {
+      // Jika ada properti bulan, sort berdasarkan itu
+      // Jika tidak, gunakan index atau id
+      return (a.bulan || 0) - (b.bulan || 0);
+    });
+    
+    // Map data ke format yang dibutuhkan
+    return sortedData.map(item => {
+      const bulan = item.bulan || 1;
+      const bulanNama = bulanOptions.find(b => b.value === bulan)?.label || `Bulan ${bulan}`;
+      
+      // Data yang dibutuhkan:
+      // - pinjamanBulanIni (kolom Q) - dalam RekapDashboard mungkin sebagai pinjamanBulanIni atau properti lain
+      // - pengambilanPokok (kolom S)
+      // - pengambilanWajib (kolom T)
+      // - pengambilanSukarela (kolom U)
+      // - pengambilanLebaran (kolom V)
+      // - pengambilanLainnya (kolom W)
+      
+      // Perlu menyesuaikan dengan properti yang ada di RekapDashboard
+      const pinjamanBulanIni = item.pinjamanBulanIni || 0;
+      const pengambilanPokok = item.pengambilanPokok || 0;
+      const pengambilanWajib = item.pengambilanWajib || 0;
+      const pengambilanSukarela = item.pengambilanSukarela || 0;
+      const pengambilanLebaran = item.pengambilanLebaran || 0;
+      const pengambilanLainnya = item.pengambilanLainnya || 0;
+      
+      const totalPengambilan = pengambilanPokok + pengambilanWajib + 
+                               pengambilanSukarela + pengambilanLebaran + 
+                               pengambilanLainnya;
+      
+      return {
+        id: item.id || `${bulan}-${selectedTahunHistory}`,
+        bulan,
+        bulanNama,
+        tahun: selectedTahunHistory,
+        pinjamanBulanIni,
+        pengambilanPokok,
+        pengambilanWajib,
+        pengambilanSukarela,
+        pengambilanLebaran,
+        pengambilanLainnya,
+        totalPengambilan
+      };
+    });
+  }, [rekapHistoryList, selectedTahunHistory]);
+
+  // Calculate yearly totals
+  const yearlyTotals = useMemo(() => {
+    return historyDisplayData.reduce((acc, month) => ({
+      pinjamanBulanIni: acc.pinjamanBulanIni + month.pinjamanBulanIni,
+      pengambilanPokok: acc.pengambilanPokok + month.pengambilanPokok,
+      pengambilanWajib: acc.pengambilanWajib + month.pengambilanWajib,
+      pengambilanSukarela: acc.pengambilanSukarela + month.pengambilanSukarela,
+      pengambilanLebaran: acc.pengambilanLebaran + month.pengambilanLebaran,
+      pengambilanLainnya: acc.pengambilanLainnya + month.pengambilanLainnya,
+      totalPengambilan: acc.totalPengambilan + month.totalPengambilan,
+    }), {
+      pinjamanBulanIni: 0,
+      pengambilanPokok: 0,
+      pengambilanWajib: 0,
+      pengambilanSukarela: 0,
+      pengambilanLebaran: 0,
+      pengambilanLainnya: 0,
+      totalPengambilan: 0,
+    });
+  }, [historyDisplayData]);
+
+  // Calculate active months (months with transactions)
+  const activeMonthsCount = useMemo(() => {
+    return historyDisplayData.filter(m => 
+      m.pinjamanBulanIni > 0 || 
+      m.pengambilanPokok > 0 || 
+      m.pengambilanWajib > 0 ||
+      m.pengambilanSukarela > 0 ||
+      m.pengambilanLebaran > 0 ||
+      m.pengambilanLainnya > 0
+    ).length;
+  }, [historyDisplayData]);
 
   if (isLoading) {
     return (
@@ -490,6 +638,239 @@ export const RekapIndividu = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Card Riwayat Peminjaman dan Pengambilan Simpanan - Opsi 3 */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-primary" />
+                  <CardTitle>Riwayat Peminjaman & Pengambilan Simpanan</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Tahun:</span>
+                  <Select 
+                    value={selectedTahunHistory.toString()} 
+                    onValueChange={(v) => setSelectedTahunHistory(parseInt(v))}
+                    disabled={!selectedAnggotaId || isLoadingHistory}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getTahunOptions().map((t) => (
+                        <SelectItem key={t.value} value={t.value.toString()}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <CardDescription>
+                Data peminjaman dan pengambilan simpanan untuk tahun {selectedTahunHistory}
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              {/* Bagian 1: Ringkasan Tahun */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Banknote className="h-5 w-5 text-destructive" />
+                    <span className="font-semibold">Total Peminjaman</span>
+                  </div>
+                  <p className="text-2xl font-bold text-destructive">
+                    {formatCurrency(yearlyTotals.pinjamanBulanIni)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {activeMonthsCount} bulan dengan peminjaman
+                  </p>
+                </div>
+                
+                <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PiggyBank className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Total Pengambilan Simpanan</span>
+                  </div>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(yearlyTotals.totalPengambilan)}
+                  </p>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Pokok: {formatCurrency(yearlyTotals.pengambilanPokok)}</span>
+                    <span>Wajib: {formatCurrency(yearlyTotals.pengambilanWajib)}</span>
+                  </div>
+                </div>
+                
+                <div className="bg-accent/10 p-4 rounded-lg border border-accent/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-5 w-5 text-accent" />
+                    <span className="font-semibold">Aktivitas</span>
+                  </div>
+                  <p className="text-2xl font-bold text-accent">
+                    {activeMonthsCount} bulan
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {historyDisplayData.length > 0 
+                      ? `${activeMonthsCount} dari ${historyDisplayData.length} bulan ada transaksi`
+                      : 'Tidak ada data transaksi'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bagian 2: Detail Pengambilan per Kategori */}
+              <div>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Detail Pengambilan Simpanan per Kategori
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-sm font-medium">Pokok</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(yearlyTotals.pengambilanPokok)}
+                    </p>
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-sm font-medium">Wajib</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(yearlyTotals.pengambilanWajib)}
+                    </p>
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-sm font-medium">Sukarela</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(yearlyTotals.pengambilanSukarela)}
+                    </p>
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-sm font-medium">Lebaran</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(yearlyTotals.pengambilanLebaran)}
+                    </p>
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <p className="text-sm font-medium">Lainnya</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(yearlyTotals.pengambilanLainnya)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bagian 3: Tabel Detail per Bulan */}
+              {isLoadingHistory ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : historyDisplayData.length === 0 ? (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Tidak ada data riwayat untuk tahun {selectedTahunHistory}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-bold">Bulan</TableHead>
+                        <TableHead className="text-right font-bold">Peminjaman</TableHead>
+                        <TableHead className="text-right font-bold">Total Pengambilan</TableHead>
+                        <TableHead className="text-right font-bold">Detail Pengambilan</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyDisplayData.map((item) => (
+                        <TableRow key={item.id} 
+                          className={cn(
+                            "hover:bg-muted/50",
+                            item.pinjamanBulanIni > 0 || item.totalPengambilan > 0 
+                              ? "bg-muted/20" 
+                              : ""
+                          )}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "h-2 w-2 rounded-full",
+                                item.pinjamanBulanIni > 0 ? "bg-destructive" : "bg-muted"
+                              )} />
+                              {item.bulanNama}
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className={cn(
+                            "text-right font-semibold",
+                            item.pinjamanBulanIni > 0 ? "text-destructive" : "text-muted-foreground"
+                          )}>
+                            {item.pinjamanBulanIni > 0 
+                              ? formatCurrency(item.pinjamanBulanIni) 
+                              : "-"}
+                          </TableCell>
+                          
+                          <TableCell className={cn(
+                            "text-right font-semibold",
+                            item.totalPengambilan > 0 ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {item.totalPengambilan > 0 
+                              ? formatCurrency(item.totalPengambilan) 
+                              : "-"}
+                          </TableCell>
+                          
+                          <TableCell className="text-right text-sm">
+                            <div className="space-y-1">
+                              {item.pengambilanPokok > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Pokok:</span>
+                                  <span>{formatCurrency(item.pengambilanPokok)}</span>
+                                </div>
+                              )}
+                              {item.pengambilanWajib > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Wajib:</span>
+                                  <span>{formatCurrency(item.pengambilanWajib)}</span>
+                                </div>
+                              )}
+                              {item.pengambilanSukarela > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Sukarela:</span>
+                                  <span>{formatCurrency(item.pengambilanSukarela)}</span>
+                                </div>
+                              )}
+                              {item.pengambilanLebaran > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Lebaran:</span>
+                                  <span>{formatCurrency(item.pengambilanLebaran)}</span>
+                                </div>
+                              )}
+                              {item.pengambilanLainnya > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Lainnya:</span>
+                                  <span>{formatCurrency(item.pengambilanLainnya)}</span>
+                                </div>
+                              )}
+                              {(item.pengambilanPokok === 0 && 
+                                item.pengambilanWajib === 0 && 
+                                item.pengambilanSukarela === 0 && 
+                                item.pengambilanLebaran === 0 && 
+                                item.pengambilanLainnya === 0) && (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
