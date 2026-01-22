@@ -28,7 +28,6 @@ const linksData = [
   { title: "Rencana Penarikan Dana (RPD)", url: "https://docs.google.com/spreadsheets/d/1aG743mQVL7iR6NDbulDBPsFAQJCMGZH0nj9RLWTtPvE/edit?usp=sharing", description: "Rencana Penarikan Dana Kegiatan", icon: FileText },
   { title: "Standar Biaya Masukan (SBM)", url: "https://drive.google.com/drive/folders/1FnIe4PIb3jGwvJ5okQOXNxv13XR15Egb?usp=drive_link", description: "Kumpulan file Standar Biaya Masukan (SBM) tahun anggaran Tahunan", icon: FileText },
   { title: "SK Transport Lokal", url: "https://drive.google.com/file/d/1LCuubDY1R0gSDLoW9ihu3GN93hwuW-Sq/view", description: "Surat Keputusan tentang transportasi lokal BPS Kabupaten Majalengka", icon: FileText },
-  { title: "Sikostik28", url: "https://www.appsheet.com/start/c2a1181e-6f01-4763-ab5f-a34607e25b9d?platform=desktop#appName=2024ofSiKostik28-964413536-25-01-07&vss=H4sIAAAAAAAAA6XOsQrCMBgE4He5OU-QrYgUEetgcWkcYvMXgm1SmlQtIe9uqhXn4pgL3_0XcNf0OHlZ38Cr8HvtaQJHECinngS4wMYaP9hWgAkUsvuEWZHnxzITiIgX9uWeHHhYpflftxm0IuN1o2mYq2aYKhaWvmeUgoUgMnSjl9eW3msTiTFlja1HR-qchqwf4HZm--ylUQerUmMjW0fxBWjph9RgAQAA&view=ANGGOTA", description: "Aplikasi Simpan Pinjam Koperasi Simpatik 28", icon: DollarSignIcon },
 ];
 
 export default function Linkers() {
