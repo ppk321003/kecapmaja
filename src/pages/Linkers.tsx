@@ -17,7 +17,7 @@ const accentColors = [
 ];
 
 const linksData = [
-  { title: "Photo of The Days", url: "https://photos.google.com/partner/AF1QipNBMKtls9CcwOVDb-rvy0RmNSSO", description: "Kumpulan foto yang dibagikan melalui grup Photo of the Day. Apabila foto tidak dapat ditampilkan, silakan menghubungi Admin Kecap Maja untuk proses pendaftaran akses.", icon: Image },   
+  { title: "Photo of The Days", url: "https://photos.google.com/partner/AF1QipNBMKtls9CcwOVDb-rvy0RmNSSO", description: "Apabila foto tidak dapat ditampilkan, silakan menghubungi Admin Kecap Maja untuk proses pendaftaran akses.", icon: Image },   
   { title: "Bahan Revisi 3210 (Excel)", url: "https://drive.google.com/drive/folders/1vnf0jN9YFL5GqjxJqdycHa0lPCvVrB8A?usp=sharing", description: "Bahan revisi untuk kegiatan BPS 3210", icon: Archive },
   { title: "DIPA (Daftar Isian Pelaksanaan Anggaran)", url: "https://drive.google.com/drive/folders/1V5XvCBWtXVMvcqkUICA2igmmPYQJ8BcP?usp=sharing", description: "Dokumen anggaran resmi yang digunakan oleh BPS sebagai dasar pelaksanaan kegiatan dan penggunaan anggaran", icon: Archive },
   { title: "Kecap Maja (OLD)", url: "https://kecapmaja-old.vercel.app/", description: "Versi lama dari aplikasi Kecap Maja untuk referensi historis", icon: Database },
