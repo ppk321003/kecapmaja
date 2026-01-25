@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Pastikan variabel CSS bisa dibaca di Tailwind */
+@layer utilities {
+  .gradient-header {
+    background: var(--gradient-header);
+  }
+  .gradient-sidebar {
+    background: var(--sidebar-background);
+  }
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .bg-primary\/90 {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+  .ring-primary {
+    --tw-ring-color: hsl(var(--primary));
+  }
+  .shadow-primary {
+    box-shadow: 0 10px 30px -5px hsl(var(--primary) / 0.3);
+  }
+}
+/* =====================================================
+   DESIGN SYSTEM - THEME VARIABLES (HSL based)
+   ===================================================== */
+
+@layer base {
+  /* =========================
+     BLUE THEME (DEFAULT)
+     ========================= */
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --primary: 210 80% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 60% 92%;
+    --secondary-foreground: 215 25% 15%;
+
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 15% 45%;
+
+    --accent: 195 70% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 25% 88%;
+    --input: 210 25% 88%;
+    --ring: 210 80% 42%;
+
+    /* Sidebar with gradient colors - GRADASI LEBIH TERLIHAT */
+    --sidebar-background: linear-gradient(
+      135deg,
+      hsl(210 100% 15%) 0%,
+      hsl(210 95% 25%) 30%,
+      hsl(210 90% 35%) 70%,
+      hsl(195 85% 45%) 100%
+    );
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 195 70% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 80% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 70% 40%;
+    --sidebar-ring: 195 70% 48%;
+
+    /* Custom gradients - GRADASI LEBIH KONTRAST */
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(210 100% 12%) 0%,
+      hsl(210 95% 28%) 40%,
+      hsl(195 90% 42%) 100%
+    );
+    --gradient-header: linear-gradient(
+      to right,
+      hsl(210 100% 12%) 0%,
+      hsl(210 95% 25%) 50%,
+      hsl(195 85% 38%) 100%
+    );
+    --gradient-menu-hover: linear-gradient(
+      90deg,
+      hsl(210 90% 35% / 0.8),
+      hsl(210 90% 35% / 0.4)
+    );
+
+    /* Shadows */
+    --shadow-sidebar: 0 4px 20px -4px hsl(210 100% 15% / 0.4);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(195 70% 48%);
+    --shadow-glass: 0 8px 32px 0 hsl(210 100% 15% / 0.45);
+  }
+
+  /* =========================
+     GREEN THEME
+     ========================= */
+  [data-theme="green"] {
+    --background: 140 20% 98%;
+    --foreground: 140 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 140 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 25% 15%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 60% 92%;
+    --secondary-foreground: 140 25% 15%;
+
+    --muted: 140 30% 94%;
+    --muted-foreground: 140 15% 45%;
+
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 140 25% 88%;
+    --ring: 142 76% 36%;
+
+    /* Sidebar dengan gradasi lebih terlihat */
+    --sidebar-background: linear-gradient(
+      135deg,
+      hsl(142 65% 15%) 0%,
+      hsl(142 65% 22%) 30%,
+      hsl(142 60% 32%) 70%,
+      hsl(158 55% 42%) 100%
+    );
+    --sidebar-foreground: 140 20% 98%;
+    --sidebar-primary: 158 64% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 70% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 142 60% 40%;
+    --sidebar-ring: 158 64% 52%;
+
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(142 65% 12%) 0%,
+      hsl(142 65% 25%) 40%,
+      hsl(158 60% 38%) 100%
+    );
+    --gradient-header: linear-gradient(
+      to right,
+      hsl(142 65% 12%) 0%,
+      hsl(142 65% 22%) 50%,
+      hsl(158 60% 35%) 100%
+    );
+    --gradient-menu-hover: linear-gradient(
+      90deg,
+      hsl(142 76% 35% / 0.8),
+      hsl(142 76% 35% / 0.4)
+    );
+
+    --shadow-sidebar: 0 4px 20px -4px hsl(142 70% 18% / 0.4);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(158 64% 52%);
+  }
+
+  /* =========================
+     ORANGE THEME
+     ========================= */
+  [data-theme="orange"] {
+    --background: 30 20% 98%;
+    --foreground: 24 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 24 25% 15%;
+    --primary: 28 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --border: 30 25% 88%;
+    --ring: 28 100% 42%;
+
+    /* Sidebar dengan gradasi lebih terlihat */
+    --sidebar-background: linear-gradient(
+      135deg,
+      hsl(28 100% 15%) 0%,
+      hsl(28 100% 25%) 30%,
+      hsl(28 100% 35%) 70%,
+      hsl(25 100% 45%) 100%
+    );
+    --sidebar-foreground: 30 20% 98%;
+    --sidebar-primary: 25 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 28 100% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 28 90% 45%;
+    --sidebar-ring: 25 100% 50%;
+
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(28 100% 12%) 0%,
+      hsl(28 100% 28%) 40%,
+      hsl(25 100% 45%) 100%
+    );
+    --gradient-header: linear-gradient(
+      to right,
+      hsl(28 100% 12%) 0%,
+      hsl(28 100% 22%) 50%,
+      hsl(25 100% 38%) 100%
+    );
+    --gradient-menu-hover: linear-gradient(
+      90deg,
+      hsl(28 100% 40% / 0.8),
+      hsl(28 100% 40% / 0.4)
+    );
+
+    --shadow-sidebar: 0 4px 20px -4px hsl(28 100% 25% / 0.4);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(25 100% 50%);
+  }
+
+  /* =========================
+     DARK THEME (Hanya warna primer/accent jadi hitam)
+     ========================= */
+  [data-theme="black"] {
+    /* Background & text TETAP TERANG seperti tema lainnya */
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --secondary: 210 60% 92%;
+    --secondary-foreground: 215 25% 15%;
+
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 15% 45%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 25% 88%;
+    --input: 210 25% 88%;
+
+    /* HANYA warna primer & accent yang jadi HITAM */
+    --primary: 0 0% 15%;
+    --primary-foreground: 0 0% 100%;
+
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
+
+    --ring: 0 0% 15%;
+
+    /* Sidebar & Header dengan gradasi hitam yang lebih terlihat */
+    --sidebar-background: linear-gradient(
+      135deg,
+      hsl(0 0% 8%) 0%,
+      hsl(0 0% 12%) 30%,
+      hsl(0 0% 18%) 70%,
+      hsl(0 0% 22%) 100%
+    );
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 25%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 0 0% 25%;
+
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(0 0% 8%) 0%,
+      hsl(0 0% 15%) 40%,
+      hsl(0 0% 22%) 100%
+    );
+    --gradient-header: linear-gradient(
+      to right,
+      hsl(0 0% 8%) 0%,
+      hsl(0 0% 14%) 50%,
+      hsl(0 0% 20%) 100%
+    );
+    --gradient-menu-hover: linear-gradient(
+      90deg,
+      hsl(0 0% 25% / 0.8),
+      hsl(0 0% 25% / 0.4)
+    );
+
+    --shadow-sidebar: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+    --shadow-menu-active: inset 3px 0 0 0 hsl(0 0% 100%);
+  }
+
+  /* =========================
+     BASE STYLES & TRANSITIONS
+     ========================= */
+  html,
+  body,
+  [data-theme] * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,10 @@
+project_id = "yudlciokearepqzvgzxx"
+
+[functions.google-sheets]
+verify_jwt = false
+
+[functions.pencairan-save]
+verify_jwt = false
+
+[functions.pencairan-update]
+verify_jwt = false

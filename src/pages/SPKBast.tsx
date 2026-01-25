@@ -1,0 +1,211 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, ClipboardCheck, FileText, BarChart3, DollarSign } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+export default function SPKBast() {
+  const navigate = useNavigate();
+
+  // Warna dan style untuk setiap kartu
+  const cardColors = [
+  // Blue untuk Entri Kegiatan
+  {
+    bg: "bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950",
+    hover: "hover:from-blue-100 hover:via-blue-50 hover:to-blue-100 dark:hover:from-blue-800 dark:hover:via-blue-700 dark:hover:to-blue-800",
+    icon: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800",
+    button: "bg-blue-600 hover:bg-blue-700 text-white",
+  },
+  // Green untuk Download SPK & BAST
+  {
+    bg: "bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
+    hover: "hover:from-emerald-100 hover:via-emerald-50 hover:to-emerald-100 dark:hover:from-emerald-800 dark:hover:via-emerald-700 dark:hover:to-emerald-800",
+    icon: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-800",
+    button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  },
+  // Orange/Yellow untuk Cek limit SBML
+  {
+    bg: "bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-amber-950 dark:via-amber-900 dark:to-amber-950",
+    hover: "hover:from-amber-100 hover:via-amber-50 hover:to-amber-100 dark:hover:from-amber-800 dark:hover:via-amber-700 dark:hover:to-amber-800",
+    icon: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200 dark:border-amber-800",
+    button: "bg-amber-600 hover:bg-amber-700 text-white",
+  },
+  // Pink/Red untuk SBML Tahunan
+  {
+    bg: "bg-gradient-to-br from-pink-50 via-white to-pink-50 dark:from-pink-950 dark:via-pink-900 dark:to-pink-950",
+    hover: "hover:from-pink-100 hover:via-pink-50 hover:to-pink-100 dark:hover:from-pink-800 dark:hover:via-pink-700 dark:hover:to-pink-800",
+    icon: "text-pink-600 dark:text-pink-400",
+    border: "border-pink-200 dark:border-pink-800",
+    button: "bg-pink-600 hover:bg-pink-700 text-white",
+  },
+];
+
+  // Data menu SPK & BAST
+  const spkBastMenuItems = [
+    {
+      title: "Entri Kegiatan",
+      url: "/spk-bast/entri-target",
+      icon: ClipboardCheck,
+      description:
+        "Input target dan kegiatan yang akan dilaksanakan sesuai rencana kerja",
+    },
+    {
+      title: "Download SPK & BAST",
+      url: "/spk-bast/download-spk-bast",
+      icon: FileText,
+      description:
+        "Unduh dokumen Surat Perjanjian Kerja dan Berita Acara Serah Terima",
+    },
+    {
+      title: "Cek limit SBML",
+      url: "/spk-bast/rekap-spk",
+      icon: BarChart3,
+      description:
+        "Lihat rekapitulasi dan laporan data SPK & BAST yang telah dibuat",
+    },
+    {
+      title: "SBML Tahunan",
+      url: "/spk-bast/entri-sbml",
+      icon: DollarSign,
+      description:
+        "Riwayat Standar Biaya Masukan Lainnya (SBML) BPS Kabupaten Majalengka",
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      {/* Custom animation keyframes */}
+      <style>
+        {`
+          @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fadeUp {
+            animation: fadeUp 0.7s ease-out forwards;
+          }
+        `}
+      </style>
+
+      {/* Header */}
+      <div className="text-center space-y-4 pb-2 animate-fadeUp">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-red-50 dark:bg-red-950 rounded-full mb-2">
+          <FileText className="h-8 w-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-800 dark:from-red-400 dark:to-red-600 bg-clip-text text-transparent">
+          SPK dan BAST
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          Kelola Surat Perjanjian Kerja (SPK) dan Berita Acara Serah Terima (BAST)
+          dengan sistem terintegrasi dan efisien
+        </p>
+      </div>
+
+      {/* Grid Cards - proporsional dan fade-up */}
+      <div className="grid gap-8 max-w-6xl mx-auto sm:grid-cols-2 lg:grid-cols-4 px-4 py-6 auto-rows-fr">
+        {spkBastMenuItems.map((item, index) => {
+          const colors = cardColors[index % cardColors.length];
+          const Icon = item.icon;
+
+          return (
+            <div
+              key={item.title}
+              className="animate-fadeUp"
+              style={{ animationDelay: `${index * 0.2}s` }}
+            >
+              <Card
+                className={`
+                  group relative overflow-hidden border-2 transition-all duration-300 
+                  hover:scale-[1.03] hover:shadow-xl 
+                  ${colors.bg} ${colors.border} ${colors.hover}
+                  flex flex-col
+                `}
+              >
+                {/* Decorative Element */}
+                <div
+                  className={`absolute top-0 right-0 w-20 h-20 -translate-y-8 translate-x-8 rounded-full opacity-10 ${colors.icon.replace(
+                    "text-",
+                    "bg-"
+                  )}`}
+                ></div>
+
+                <CardHeader className="relative z-10 pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div
+                      className={`p-3 rounded-xl bg-white dark:bg-gray-800 shadow-md ${colors.border}`}
+                    >
+                      <Icon className={`h-6 w-6 ${colors.icon}`} />
+                    </div>
+                    <div className="text-xs font-medium px-2 py-1 rounded-full bg-white dark:bg-gray-800 text-muted-foreground border">
+                      {index + 1}/{spkBastMenuItems.length}
+                    </div>
+                  </div>
+
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors">
+                    {item.title}
+                  </CardTitle>
+
+                  <CardDescription className="text-sm leading-relaxed mt-2 text-gray-600 dark:text-gray-300">
+                    {item.description}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="pt-0 mt-auto relative z-10">
+                  <Button
+                    onClick={() => navigate(item.url)}
+                    className={`w-full transition-all duration-300 shadow-md hover:shadow-lg ${colors.button}`}
+                    size="lg"
+                  >
+                    <span className="font-medium">Buka Menu</span>
+                    <svg
+                      className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Button>
+                </CardContent>
+
+                {/* Overlay efek hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white dark:to-gray-800 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              </Card>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Info tambahan */}
+      <div className="max-w-6xl mx-auto mt-12 animate-fadeUp" style={{ animationDelay: "0.8s" }}>
+        <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+                  Sistem Terintegrasi SPK & BAST
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Kelola seluruh proses administrasi kontrak kerja mulai dari
+                  perencanaan, verifikasi, hingga serah terima dokumen dalam satu
+                  platform yang terintegrasi. Sekarang dengan fitur rekapitulasi
+                  data SPK & BAST untuk analisis yang lebih komprehensif.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
