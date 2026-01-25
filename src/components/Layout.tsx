@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,9 +28,20 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex items-center gap-4">
               <ThemeSelector />
-              <div className="flex items-center gap-2 text-primary-foreground">
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.role}</span>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-primary-foreground">{user?.username}</p>
+                  <p className="text-xs text-primary-foreground/70">{user?.role}</p>
+                </div>
+                <div className="relative">
+                  <Avatar className="h-10 w-10 border-2 border-primary-foreground">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {user?.username?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+                </div>
               </div>
               <Button
                 variant="ghost"
