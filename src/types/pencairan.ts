@@ -5,7 +5,6 @@ export type SubmissionStatus =
   | 'pending_bendahara'
   | 'pending_ppk'
   | 'pending_ppspm'  
-  | 'pending_kppn'
   | 'pending_arsip'
   | 'incomplete_sm'
   | 'incomplete_bendahara'
@@ -81,7 +80,6 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending_bendahara: 'Menunggu Verifikasi Bendahara',
   pending_ppk: 'Menunggu Verifikasi PPK',
   pending_ppspm: 'Menunggu Pemeriksaan PPSPM', 
-  pending_kppn: 'Menunggu Pemrosesan KPPN',
   pending_arsip: 'Menunggu Pencatatan Arsip',
   incomplete_sm: 'Dikembalikan ke SM',
   incomplete_bendahara: 'Dikembalikan ke Bendahara',
@@ -314,13 +312,8 @@ export function canTakeAction(role: UserRole, status: SubmissionStatus): boolean
   if (role === 'Bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
   if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
   if (role === 'Pejabat Penandatangan Surat Perintah Membayar' && (status === 'pending_ppspm' || status === 'incomplete_ppspm')) return true;
-  if (role === 'KPPN' && (status === 'pending_kppn' || status === 'incomplete_kppn')) return true;
   if (role === 'Arsip' && status === 'pending_arsip') return true;
   return false;
-}
-
-export function canReturnFromKppn(role: UserRole, status: SubmissionStatus): boolean {
-  return (role === 'KPPN' || role === 'admin') && status === 'pending_kppn';
 }
 
 export function canReturnFromArsip(role: UserRole, status: SubmissionStatus): boolean {
@@ -344,9 +337,6 @@ export function getRelevantTimestamp(submission: Submission): string | null {
   }
   if (['pending_arsip'].includes(submission.status) && submission.waktuKppn) {
     return submission.waktuKppn;
-  }
-  if (['pending_kppn', 'incomplete_kppn'].includes(submission.status) && submission.waktuPPSPM) {
-    return submission.waktuPPSPM;
   }
   if (['pending_ppspm', 'incomplete_ppspm'].includes(submission.status) && submission.waktuPpk) {
     return submission.waktuPpk;

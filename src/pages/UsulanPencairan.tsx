@@ -184,7 +184,6 @@ export default function UsulanPencairan() {
       pending_bendahara: 0,
       pending_ppk: 0,
       pending_ppspm: 0,
-      pending_kppn: 0,
       pending_arsip: 0,
       incomplete_sm: 0,
       incomplete_bendahara: 0,
@@ -280,15 +279,7 @@ export default function UsulanPencairan() {
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        <StatCard 
-          title="Periksa KPPN" 
-          value={counts.pending_kppn} 
-          icon={Clock} 
-          variant="info"
-          isActive={activeFilter === 'pending_kppn'}
-          onClick={() => setActiveFilter('pending_kppn')}
-        />
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
         <StatCard 
           title="Catat Arsip" 
           value={counts.pending_arsip} 

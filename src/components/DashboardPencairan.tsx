@@ -120,7 +120,6 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       pending_ppk: 0,
       pending_ppspm: 0,
       pending_bendahara: 0,
-      pending_kppn: 0,
       pending_arsip: 0,
       incomplete_sm: 0,
       incomplete_ppk: 0,
@@ -135,7 +134,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       }
     });
 
-    const inProcess = counts.pending_ppk + counts.pending_ppspm + counts.pending_bendahara + counts.pending_kppn + counts.pending_arsip;
+    const inProcess = counts.pending_ppk + counts.pending_ppspm + counts.pending_bendahara + counts.pending_arsip;
     const rejected = counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara;
     const successRate = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
     const completionPercentage = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
@@ -232,7 +231,6 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       { name: 'Menunggu Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
       { name: 'Menunggu PPK', value: stats.pending_ppk, color: '#f59e0b' },
       { name: 'Menunggu PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
-      { name: 'Menunggu KPPN', value: stats.pending_kppn, color: '#4f46e5' },
       { name: 'Menunggu Arsip', value: stats.pending_arsip, color: '#06b6d4' },
       { name: 'Selesai (Arsip)', value: stats.sent_arsip, color: '#10b981' },
     ];
@@ -244,8 +242,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       smToBendahara: [] as number[],
       bendaharaToPpk: [] as number[],
       ppkToPpspm: [] as number[],
-      ppspmToKppn: [] as number[],
-      kppnToArsip: [] as number[],
+      ppspmToArsip: [] as number[],
     };
 
     filteredSubmissions.forEach(sub => {
@@ -253,7 +250,6 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       const waktuBendahara = parseCustomDate(sub.waktuBendahara || '');
       const waktuPPK = parseCustomDate(sub.waktuPpk || '');
       const waktuPPSPM = parseCustomDate(sub.waktuPPSPM || '');
-      const waktuKppn = parseCustomDate(sub.waktuKppn || '');
       const waktuArsip = parseCustomDate(sub.waktuArsip || '');
 
       // SM → Bendahara
@@ -274,16 +270,10 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         if (diffHours > 0) timeDiffs.ppkToPpspm.push(diffHours);
       }
 
-      // PPSPM → KPPN
-      if (waktuPPSPM && waktuKppn) {
-        const diffHours = (waktuKppn.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
-        if (diffHours > 0) timeDiffs.ppspmToKppn.push(diffHours);
-      }
-
-      // KPPN → Arsip
-      if (waktuKppn && waktuArsip) {
-        const diffHours = (waktuArsip.getTime() - waktuKppn.getTime()) / (1000 * 60 * 60);
-        if (diffHours > 0) timeDiffs.kppnToArsip.push(diffHours);
+      // PPSPM → Arsip
+      if (waktuPPSPM && waktuArsip) {
+        const diffHours = (waktuArsip.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.ppspmToArsip.push(diffHours);
       }
     });
 
@@ -298,8 +288,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     const avgSmToBendahara = calcAvg(timeDiffs.smToBendahara);
     const avgBendaharaToPpk = calcAvg(timeDiffs.bendaharaToPpk);
     const avgPpkToPpspm = calcAvg(timeDiffs.ppkToPpspm);
-    const avgPpspmToKppn = calcAvg(timeDiffs.ppspmToKppn);
-    const avgKppnToArsip = calcAvg(timeDiffs.kppnToArsip);
+    const avgPpspmToArsip = calcAvg(timeDiffs.ppspmToArsip);
 
     return [
       { 
@@ -324,17 +313,10 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         color: '#f59e0b',
       },
       { 
-        stage: 'PPSPM → KPPN', 
-        hours: parseFloat(avgPpspmToKppn.toFixed(1)),
-        displayTime: formatTime(avgPpspmToKppn),
-        count: timeDiffs.ppspmToKppn.length,
-        color: '#8b5cf6',
-      },
-      { 
-        stage: 'KPPN → Arsip', 
-        hours: parseFloat(avgKppnToArsip.toFixed(1)),
-        displayTime: formatTime(avgKppnToArsip),
-        count: timeDiffs.kppnToArsip.length,
+        stage: 'PPSPM → Arsip', 
+        hours: parseFloat(avgPpspmToArsip.toFixed(1)),
+        displayTime: formatTime(avgPpspmToArsip),
+        count: timeDiffs.ppspmToArsip.length,
         color: '#10b981',
       },
     ];

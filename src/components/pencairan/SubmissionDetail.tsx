@@ -3,7 +3,6 @@ import {
   STATUS_LABELS, 
   UserRole, 
   canTakeAction, 
-  canReturnFromKppn,
   canReturnFromArsip,
   getDocumentsByJenisBelanja,
   Document
@@ -121,7 +120,7 @@ export function SubmissionDetail({
   const updateStatusInSheet = async (
     newStatus: string, 
     newNotes?: string, 
-    actor: 'ppk' | 'ppspm' | 'bendahara' | 'kppn' = 'ppk',
+    actor: 'ppk' | 'ppspm' | 'bendahara' | 'arsip' = 'ppk',
     action: 'approve' | 'reject' | 'return' = 'approve'
   ) => {
     setIsUpdating(true);
@@ -161,9 +160,9 @@ export function SubmissionDetail({
 
   const handleApprove = async () => {
     let newStatus: string;
-    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'kppn' | 'arsip';
+    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
     
-    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > KPPN > ARSIP
+    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > ARSIP (after sent_kppn)
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
       newStatus = 'pending_ppk'; // Setelah Bendahara approve, ke PPK
       actor = 'bendahara';
@@ -171,11 +170,8 @@ export function SubmissionDetail({
       newStatus = 'pending_ppspm'; // Setelah PPK approve, ke PPSPM
       actor = 'ppk';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
-      newStatus = 'pending_kppn'; // Setelah PPSPM approve, ke KPPN
+      newStatus = 'pending_arsip'; // Setelah PPSPM approve, langsung ke Arsip (sent_kppn handled separately)
       actor = 'ppspm';
-    } else if (submission.status === 'pending_kppn' || submission.status === 'incomplete_kppn') {
-      newStatus = 'pending_arsip'; // Setelah KPPN approve, ke Arsip
-      actor = 'kppn';
     } else if (submission.status === 'pending_arsip') {
       newStatus = 'sent_arsip'; // Setelah Arsip approve, selesai
       actor = 'arsip';
@@ -191,7 +187,6 @@ export function SubmissionDetail({
       ...(actor === 'bendahara' && { bendaharaCheckedAt: new Date() }),
       ...(actor === 'ppk' && { ppkCheckedAt: new Date() }),
       ...(actor === 'ppspm' && { ppspmCheckedAt: new Date() }),
-      ...(actor === 'kppn' && { kppnCheckedAt: new Date() }),
       ...(actor === 'arsip' && { arsipCheckedAt: new Date() }),
     });
     onClose();
@@ -211,11 +206,8 @@ export function SubmissionDetail({
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
       newStatus = 'incomplete_ppk'; // PPSPM reject, kembali ke PPK
       actor = 'ppspm';
-    } else if (submission.status === 'pending_kppn' || submission.status === 'incomplete_kppn') {
-      newStatus = 'incomplete_ppspm'; // KPPN reject, kembali ke PPSPM
-      actor = 'kppn';
     } else if (submission.status === 'pending_arsip') {
-      newStatus = 'incomplete_kppn'; // Arsip reject, kembali ke KPPN
+      newStatus = 'incomplete_ppspm'; // Arsip reject, kembali ke PPSPM
       actor = 'arsip';
     } else {
       return;
@@ -231,19 +223,8 @@ export function SubmissionDetail({
     onClose();
   };
 
-  const handleReturnFromKppn = async () => {
-    const newStatus = 'incomplete_ppspm';
-    await updateStatusInSheet(newStatus, notes, 'kppn', 'return');
-
-    onUpdateSubmission(submission.id, {
-      status: newStatus,
-      notes: notes || submission.notes,
-    });
-    onClose();
-  };
-
   const handleReturnFromArsip = async () => {
-    const newStatus = 'incomplete_kppn';
+    const newStatus = 'incomplete_ppspm';
     await updateStatusInSheet(newStatus, notes, 'arsip', 'return');
 
     onUpdateSubmission(submission.id, {
@@ -254,7 +235,6 @@ export function SubmissionDetail({
   };
 
   const canAction = canTakeAction(userRole, submission.status);
-  const canReturn = canReturnFromKppn(userRole, submission.status);
   const canReturnArsip = canReturnFromArsip(userRole, submission.status);
 
   const getApproveButtonLabel = () => {
@@ -263,8 +243,6 @@ export function SubmissionDetail({
     } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
       return 'Setujui dan Kirim ke PPSPM';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
-      return 'Setujui dan Kirim ke KPPN';
-    } else if (submission.status === 'pending_kppn' || submission.status === 'incomplete_kppn') {
       return 'Setujui dan Kirim ke Arsip';
     } else if (submission.status === 'pending_arsip') {
       return 'Catat dan Arsip';
@@ -279,10 +257,8 @@ export function SubmissionDetail({
       return 'Kembalikan ke Bendahara';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
       return 'Kembalikan ke PPK';
-    } else if (submission.status === 'pending_kppn' || submission.status === 'incomplete_kppn') {
-      return 'Kembalikan ke PPSPM';
     } else if (submission.status === 'pending_arsip') {
-      return 'Kembalikan ke KPPN';
+      return 'Kembalikan ke PPSPM';
     }
     return 'Tolak';
   };
@@ -438,7 +414,7 @@ export function SubmissionDetail({
             </Card>
           </Collapsible>
 
-          {(submission.notes || canAction || canReturn || canReturnArsip) && (
+          {(submission.notes || canAction || canReturnArsip) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -447,7 +423,7 @@ export function SubmissionDetail({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {(canAction || canReturn || canReturnArsip) ? (
+                {(canAction || canReturnArsip) ? (
                   <div className="space-y-2">
                     <Textarea
                       placeholder={submission.status === 'pending_arsip' ? "Catatan wajib diisi..." : "Tambahkan catatan..."}
@@ -499,24 +475,6 @@ export function SubmissionDetail({
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                 )}
                 {getApproveButtonLabel()}
-              </Button>
-            </div>
-          )}
-
-          {canReturn && (
-            <div className="flex gap-3 pt-4">
-              <Button 
-                variant="destructive" 
-                className="flex-1"
-                onClick={handleReturnToBendahara}
-                disabled={isUpdating}
-              >
-                {isUpdating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                )}
-                Kembalikan ke Bendahara
               </Button>
             </div>
           )}
