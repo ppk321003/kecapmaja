@@ -238,8 +238,9 @@ export default function UsulanPencairan() {
       </div>
 
       {/* STATISTIC CARDS - Clickable sebagai filter - 1 BARIS HORIZONTAL */}
-      <div className="w-full flex flex-nowrap gap-3 overflow-x-auto pb-2">
-        <StatCard 
+      <div className="flex justify-center">
+        <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2">
+          <StatCard 
           title="Total" 
           value={counts.all} 
           icon={FileText} 
@@ -305,24 +306,25 @@ export default function UsulanPencairan() {
       </div>
 
       {/* DAFTAR PENGAJUAN CARD */}
-      <Card className="w-full overflow-hidden rounded-xl shadow-sm">
-        <CardHeader className="px-4 sm:px-6 py-4 border-b">
-          <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
-        </CardHeader>
-        
-        <CardContent className="px-4 sm:px-6 py-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground mb-4">
-                Menampilkan {paginatedSubmissions.length} dari {filteredSubmissions.length} pengajuan
-              </p>
-              
-              <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
-                <SubmissionTable 
+      <div className="flex justify-center">
+        <Card className="w-full overflow-hidden rounded-xl shadow-sm">
+          <CardHeader className="px-4 sm:px-6 py-4 border-b">
+            <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
+          </CardHeader>
+          
+          <CardContent className="px-4 sm:px-6 py-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Menampilkan {paginatedSubmissions.length} dari {filteredSubmissions.length} pengajuan
+                </p>
+                
+                <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
+                  <SubmissionTable 
                   submissions={paginatedSubmissions} 
                   onView={setSelectedSubmission} 
                   onEdit={(sub) => { 
@@ -331,55 +333,56 @@ export default function UsulanPencairan() {
                   }} 
                   userRole={userRole} 
                 />
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handlePageChange(1)} 
-                    disabled={currentPage === 1}
-                    className="rounded-lg"
-                  >
-                    Awal
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handlePageChange(currentPage - 1)} 
-                    disabled={currentPage === 1}
-                    className="rounded-lg"
-                  >
-                    Sebelumnya
-                  </Button>
-                  <span className="text-sm text-muted-foreground px-4">
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handlePageChange(currentPage + 1)} 
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg"
-                  >
-                    Selanjutnya
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handlePageChange(totalPages)} 
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg"
-                  >
-                    Akhir
-                  </Button>
                 </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handlePageChange(1)} 
+                      disabled={currentPage === 1}
+                      className="rounded-lg"
+                    >
+                      Awal
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handlePageChange(currentPage - 1)} 
+                      disabled={currentPage === 1}
+                      className="rounded-lg"
+                    >
+                      Sebelumnya
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-4">
+                      Halaman {currentPage} dari {totalPages}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handlePageChange(currentPage + 1)} 
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg"
+                    >
+                      Selanjutnya
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handlePageChange(totalPages)} 
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg"
+                    >
+                      Akhir
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* MODALS */}
       <SubmissionForm 

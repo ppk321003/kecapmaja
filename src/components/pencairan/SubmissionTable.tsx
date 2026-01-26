@@ -391,21 +391,25 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                     <TableCell className="text-sm">
                       {submission.submitterName}
                     </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                        {submission.jenisBelanja}
+                    <TableCell className="max-w-[140px]">
+                      <div className="space-y-1">
+                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary break-words">
+                          {submission.jenisBelanja}
+                        </span>
                         {submission.subJenisBelanja && (
-                          <span className="ml-1 text-xs">
-                            • {submission.subJenisBelanja}
-                          </span>
+                          <div className="text-xs text-muted-foreground break-words">
+                            {submission.subJenisBelanja}
+                          </div>
                         )}
-                      </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={submission.status} size="sm" />
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">
-                      {timestamp}
+                    <TableCell className="text-xs font-semibold text-foreground font-mono">
+                      <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md inline-block whitespace-nowrap">
+                        {timestamp}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
