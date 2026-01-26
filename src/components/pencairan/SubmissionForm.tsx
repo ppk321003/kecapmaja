@@ -249,7 +249,10 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         description: editData ? 'Draft berhasil diperbarui' : 'Draft berhasil disimpan',
       });
       
-      // Tidak menutup dialog agar bisa lanjut edit
+      // Close dialog after successful save
+      setTimeout(() => {
+        onClose();
+      }, 1000);
     } catch (error) {
       console.error('Error saving draft:', error);
       toast({

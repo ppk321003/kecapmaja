@@ -125,6 +125,10 @@ export function SubmissionDetail({
   ) => {
     setIsUpdating(true);
     try {
+      // Get checked documents
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+
       const { data, error } = await supabase.functions.invoke('pencairan-update', {
         body: {
           id: submission.id,
@@ -132,6 +136,7 @@ export function SubmissionDetail({
           notes: newNotes || notes || undefined,
           actor,
           action,
+          kelengkapan, // Include checked documents
         },
       });
 

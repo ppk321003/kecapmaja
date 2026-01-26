@@ -154,7 +154,11 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
     const waktuPengajuan = formatDateTime();
 
-    // PERBAIKAN: Sesuaikan dengan 16 kolom (A:P) seperti di skrip 1
+    // Struktur kolom sesuai request:
+    // A: ID, B: Uraian Pengajuan, C: Nama Pengaju, D: Jenis Pengajuan, E: Kelengkapan
+    // F: Catatan, G: Status Pengajuan, H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK
+    // K: Waktu PPSPM, L: Status Bendahara, M: Status PPK, N: Status PPSPM, O: Status Arsip
+    // P: Update terakhir
     const rowData = [
       id || '',                                        // A: ID
       uraianPengajuan || title || '',                 // B: Uraian Pengajuan
@@ -162,16 +166,16 @@ serve(async (req) => {
       jenisPengajuan || jenisBelanja || '',           // D: Jenis Pengajuan
       kelengkapan || documents || '',                 // E: Kelengkapan
       catatan || notes || '',                         // F: Catatan
-      statusPengajuan || status || 'pending_ppk',    // G: Status Pengajuan
+      statusPengajuan || status || 'draft',          // G: Status Pengajuan (draft for new submissions)
       waktuPengajuan,                                 // H: Waktu Pengajuan dari SM
-      '',                                             // I: Waktu PPK
-      '',                                             // J: Waktu PPSPM
-      '',                                             // K: Waktu Bendahara
-      '',                                             // L: Status PPK
-      '',                                             // M: Status PPSPM
-      '',                                             // N: Status Bendahara
-      '',                                             // O: Status KPPN
-      waktuPengajuan,                                 // P: update terakhir
+      '',                                             // I: Waktu Bendahara
+      '',                                             // J: Waktu PPK
+      '',                                             // K: Waktu PPSPM
+      '',                                             // L: Status Bendahara
+      '',                                             // M: Status PPK
+      '',                                             // N: Status PPSPM
+      '',                                             // O: Status Arsip
+      waktuPengajuan,                                 // P: Update terakhir
     ];
 
     console.log('Appending row with 16 columns:', rowData);
