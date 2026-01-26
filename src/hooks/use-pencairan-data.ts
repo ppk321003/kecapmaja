@@ -140,13 +140,14 @@ export function usePencairanData() {
 
       // Skip header row dan map ke Submission[]
       const submissions: Submission[] = rows.slice(1).map((row: string[]) => {
-        // Deteksi struktur: jika row < 17 kolom, gunakan mapping lama (A-P, 16 kolom)
-        // Jika row >= 17, gunakan mapping baru (A-Q, 17 kolom dengan Waktu Arsip)
+        // Deteksi struktur: 
+        // OLD: Tanpa Waktu Bendahara (A-P, 16 kolom): H=Pengajuan, I=PPK, J=PPSPM, K=Arsip, L=StatusBendahara
+        // NEW: Dengan Waktu Bendahara (A-Q, 17 kolom): H=Pengajuan, I=Bendahara, J=PPK, K=PPSPM, L=Arsip, M=StatusBendahara
         let rawData: PencairanRawData;
         
         if (row.length < 17) {
-          // OLD STRUCTURE (A-P, 16 kolom) - tanpa Waktu Arsip
-          // H=7, I=8, J=9, K=10, L=11(StatusBendahara), M=12(StatusPPK), N=13(StatusPPSPM), O=14(StatusArsip)
+          // OLD STRUCTURE (A-P, 16 kolom) - TANPA Waktu Bendahara
+          // H=7(Pengajuan), I=8(PPK), J=9(PPSPM), K=10(Arsip), L=11(StatusBendahara), M=12(StatusPPK), N=13(StatusPPSPM), O=14(StatusArsip), P=15(Update)
           rawData = {
             id: row[0] || '',
             title: row[1] || '',
@@ -156,10 +157,10 @@ export function usePencairanData() {
             notes: row[5] || '',
             status: row[6] || 'pending_ppk',
             waktuPengajuan: row[7] || '',
-            waktuBendahara: row[8] || '',
-            waktuPpk: row[9] || '',
-            waktuPPSPM: row[10] || '',
-            waktuArsip: '', // Kosong di struktur lama
+            waktuBendahara: '', // Tidak ada di struktur lama!
+            waktuPpk: row[8] || '', // Indeks bergeser ke atas (sebelumnya I, sekarang hanya 8)
+            waktuPPSPM: row[9] || '',
+            waktuArsip: row[10] || '',
             statusBendahara: row[11] || '',
             statusPpk: row[12] || '',
             statusPPSPM: row[13] || '',
@@ -167,8 +168,8 @@ export function usePencairanData() {
             updatedAt: row[15] || '',
           };
         } else {
-          // NEW STRUCTURE (A-Q, 17 kolom) - dengan Waktu Arsip di L
-          // H=7, I=8, J=9, K=10, L=11(WaktuArsip), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip)
+          // NEW STRUCTURE (A-Q, 17 kolom) - DENGAN Waktu Bendahara
+          // H=7(Pengajuan), I=8(Bendahara), J=9(PPK), K=10(PPSPM), L=11(Arsip), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip), Q=16(Update)
           rawData = {
             id: row[0] || '',
             title: row[1] || '',
@@ -192,7 +193,7 @@ export function usePencairanData() {
         
         // Debug: Log struktur dan waktu columns
         if (row[0]) {
-          console.log(`Row ${row[0]} (len=${row.length}): ppk=${rawData.waktuPpk}, ppspm=${rawData.waktuPPSPM}, arsip=${rawData.waktuArsip}`);
+          console.log(`Row ${row[0]} (len=${row.length}): pengajuan=${rawData.waktuPengajuan}, bendahara=${rawData.waktuBendahara}, ppk=${rawData.waktuPpk}, ppspm=${rawData.waktuPPSPM}, arsip=${rawData.waktuArsip}`);
         }
         
         return mapRawToSubmission(rawData);
