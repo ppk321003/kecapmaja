@@ -154,11 +154,11 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
     const waktuPengajuan = formatDateTime();
 
-    // Struktur kolom sesuai request:
+    // Struktur kolom sesuai request (17 kolom A:Q):
     // A: ID, B: Uraian Pengajuan, C: Nama Pengaju, D: Jenis Pengajuan, E: Kelengkapan
     // F: Catatan, G: Status Pengajuan, H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK
-    // K: Waktu PPSPM, L: Status Bendahara, M: Status PPK, N: Status PPSPM, O: Status Arsip
-    // P: Update terakhir
+    // K: Waktu PPSPM, L: Waktu Arsip, M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip
+    // Q: Update terakhir
     const rowData = [
       id || '',                                        // A: ID
       uraianPengajuan || title || '',                 // B: Uraian Pengajuan
@@ -171,19 +171,20 @@ serve(async (req) => {
       '',                                             // I: Waktu Bendahara
       '',                                             // J: Waktu PPK
       '',                                             // K: Waktu PPSPM
-      '',                                             // L: Status Bendahara
-      '',                                             // M: Status PPK
-      '',                                             // N: Status PPSPM
-      '',                                             // O: Status Arsip
-      waktuPengajuan,                                 // P: Update terakhir
+      '',                                             // L: Waktu Arsip
+      '',                                             // M: Status Bendahara
+      '',                                             // N: Status PPK
+      '',                                             // O: Status PPSPM
+      '',                                             // P: Status Arsip
+      waktuPengajuan,                                 // Q: Update terakhir
     ];
 
-    console.log('Appending row with 16 columns:', rowData);
+    console.log('Appending row with 17 columns:', rowData);
     console.log('Row length:', rowData.length);
 
-    // PERBAIKAN: Ganti menjadi A:P untuk 16 kolom
+    // Append dengan range A:Q untuk 17 kolom
     const response = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A:P:append?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A:Q:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {

@@ -140,8 +140,8 @@ serve(async (req) => {
     const accessToken = await getAccessToken();
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
     
-    // Baca 16 kolom (A:P)
-    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:P`, {
+    // Baca 17 kolom (A:Q) - dengan Waktu Arsip
+    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:Q`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const readData = await readResponse.json();
@@ -165,8 +165,8 @@ serve(async (req) => {
     
     // Default values from current row - Struktur kolom yang benar:
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status Pengajuan
-    // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM
-    // L: Status Bendahara, M: Status PPK, N: Status PPSPM, O: Status Arsip, P: Update terakhir
+    // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
+    // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
     let newTitle = currentRow[1] || '';           // B: Uraian Pengajuan
     let newSubmitterName = currentRow[2] || '';   // C: Nama Pengaju
     let newJenisBelanja = currentRow[3] || '';    // D: Jenis Pengajuan
@@ -179,10 +179,11 @@ serve(async (req) => {
     const waktuBendahara = currentRow.length > 8 ? currentRow[8] || '' : ''; // I: Waktu Bendahara
     const waktuPpk = currentRow.length > 9 ? currentRow[9] || '' : '';       // J: Waktu PPK
     const waktuPPSPM = currentRow.length > 10 ? currentRow[10] || '' : '';   // K: Waktu PPSPM
-    const statusBendahara = currentRow.length > 11 ? currentRow[11] || '' : ''; // L: Status Bendahara
-    const statusPpk = currentRow.length > 12 ? currentRow[12] || '' : '';    // M: Status PPK
-    const statusPPSPM = currentRow.length > 13 ? currentRow[13] || '' : '';  // N: Status PPSPM
-    const statusArsip = currentRow.length > 14 ? currentRow[14] || '' : '';  // O: Status Arsip
+    const waktuArsip = currentRow.length > 11 ? currentRow[11] || '' : '';   // L: Waktu Arsip
+    const statusBendahara = currentRow.length > 12 ? currentRow[12] || '' : ''; // M: Status Bendahara
+    const statusPpk = currentRow.length > 13 ? currentRow[13] || '' : '';    // N: Status PPK
+    const statusPPSPM = currentRow.length > 14 ? currentRow[14] || '' : '';  // O: Status PPSPM
+    const statusArsip = currentRow.length > 15 ? currentRow[15] || '' : '';  // P: Status Arsip
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
@@ -198,13 +199,20 @@ serve(async (req) => {
     let updatedWaktuBendahara = waktuBendahara;
     let updatedWaktuPpk = waktuPpk;
     let updatedWaktuPPSPM = waktuPPSPM;
+    let updatedWaktuArsip = waktuArsip;
     let updatedStatusBendahara = statusBendahara;
     let updatedStatusPpk = statusPpk;
     let updatedStatusPPSPM = statusPPSPM;
     let updatedStatusArsip = statusArsip;
     
+    // Handle checklist-only save (no status change)
+    if (action === 'checklist') {
+      // Just update the documents, status stays the same
+      if (kelengkapan !== undefined) newDocuments = kelengkapan;
+      // Don't change any status or waktu
+    }
     // Handle approval/rejection actions sesuai alur baru: SM > BENDAHARA > PPK > PPSPM > ARSIP
-    if (actor === 'bendahara') {
+    else if (actor === 'bendahara') {
       updatedWaktuBendahara = updatedAt;
       updatedStatusBendahara = action === 'approve' ? 'Disetujui' : 'Ditolak';
       
@@ -235,6 +243,7 @@ serve(async (req) => {
       }
       
     } else if (actor === 'arsip') {
+      updatedWaktuArsip = updatedAt;
       updatedStatusArsip = action === 'approve' ? 'Disetujui' : 'Ditolak';
       
       if (action === 'approve') {
@@ -244,10 +253,10 @@ serve(async (req) => {
       }
     }
 
-    // Build updated row sesuai struktur: A-P (16 kolom)
+    // Build updated row sesuai struktur: A-Q (17 kolom)
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status
-    // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM
-    // L: Status Bendahara, M: Status PPK, N: Status PPSPM, O: Status Arsip, P: Update terakhir
+    // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
+    // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
     const updatedRow = [
       currentRow[0] || '', // A: ID
       newTitle,            // B: Uraian Pengajuan
@@ -260,19 +269,20 @@ serve(async (req) => {
       updatedWaktuBendahara, // I: Waktu Bendahara
       updatedWaktuPpk,     // J: Waktu PPK
       updatedWaktuPPSPM,   // K: Waktu PPSPM
-      updatedStatusBendahara, // L: Status Bendahara
-      updatedStatusPpk,    // M: Status PPK
-      updatedStatusPPSPM,  // N: Status PPSPM
-      updatedStatusArsip,  // O: Status Arsip
-      updatedAt,           // P: Update terakhir
+      updatedWaktuArsip,   // L: Waktu Arsip
+      updatedStatusBendahara, // M: Status Bendahara
+      updatedStatusPpk,    // N: Status PPK
+      updatedStatusPPSPM,  // O: Status PPSPM
+      updatedStatusArsip,  // P: Status Arsip
+      updatedAt,           // Q: Update terakhir
     ];
 
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
 
-    // Update dengan range A:P untuk 16 kolom
+    // Update dengan range A:Q untuk 17 kolom
     const updateResponse = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:P${rowIndex}?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:Q${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {

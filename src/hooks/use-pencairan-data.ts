@@ -18,13 +18,14 @@ export interface PencairanRawData {
   notes: string;
   status: string;
   waktuPengajuan: string;
+  waktuBendahara: string;
   waktuPpk: string;
   waktuPPSPM: string;
-  waktuBendahara: string;
+  waktuArsip: string;
+  statusBendahara: string;
   statusPpk: string;
   statusPPSPM: string;
-  statusBendahara: string;
-  statusKppn: string;
+  statusArsip: string;
   updatedAt: string;
 }
 
@@ -101,18 +102,19 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     subJenisBelanja: jenisParts[1] || '',
     status,
     submittedAt: parseCustomDate(raw.waktuPengajuan),
-    updatedAt: raw.updatedAt ? parseCustomDate(raw.updatedAt) : undefined, // ✅ PERBAIKAN DI SINI
-    updatedAtString: raw.updatedAt, // ✅ TAMBAH INI - string asli dari kolom P
+    updatedAt: raw.updatedAt ? parseCustomDate(raw.updatedAt) : undefined,
+    updatedAtString: raw.updatedAt,
     documents: parseDocuments(raw.documents),
     notes: raw.notes,
     waktuPengajuan: raw.waktuPengajuan,
+    waktuBendahara: raw.waktuBendahara,
     waktuPpk: raw.waktuPpk,
     waktuPPSPM: raw.waktuPPSPM,
-    waktuBendahara: raw.waktuBendahara,
+    waktuArsip: raw.waktuArsip,
+    statusBendahara: raw.statusBendahara,
     statusPpk: raw.statusPpk,
     statusPPSPM: raw.statusPPSPM,
-    statusBendahara: raw.statusBendahara,
-    statusKppn: raw.statusKppn,
+    statusArsip: raw.statusArsip,
   };
 }
 
@@ -124,7 +126,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: 'read',
-          range: `${SHEET_NAME}!A:P`, // 16 kolom
+          range: `${SHEET_NAME}!A:Q`, // 17 kolom
         },
       });
 
@@ -147,14 +149,15 @@ export function usePencairanData() {
           notes: row[5] || '',
           status: row[6] || 'pending_ppk',
           waktuPengajuan: row[7] || '',
-          waktuPpk: row[8] || '',
-          waktuPPSPM: row[9] || '',
-          waktuBendahara: row[10] || '',
-          statusPpk: row[11] || '',
-          statusPPSPM: row[12] || '',
-          statusBendahara: row[13] || '',
-          statusKppn: row[14] || '',
-          updatedAt: row[15] || '',
+          waktuBendahara: row[8] || '',
+          waktuPpk: row[9] || '',
+          waktuPPSPM: row[10] || '',
+          waktuArsip: row[11] || '',
+          statusBendahara: row[12] || '',
+          statusPpk: row[13] || '',
+          statusPPSPM: row[14] || '',
+          statusArsip: row[15] || '',
+          updatedAt: row[16] || '',
         };
         
         return mapRawToSubmission(rawData);

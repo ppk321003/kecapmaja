@@ -132,7 +132,7 @@ export function SubmissionDetail({
           actor: userRole === 'Bendahara' ? 'bendahara' : 
                  userRole === 'Pejabat Pembuat Komitmen' ? 'ppk' :
                  userRole === 'Pejabat Penandatangan Surat Perintah Membayar' ? 'ppspm' : 'arsip',
-          action: 'approve', // Default action for just saving checklist
+          action: 'checklist', // Special action for just saving checklist
           kelengkapan, // Include checked documents
         },
       });

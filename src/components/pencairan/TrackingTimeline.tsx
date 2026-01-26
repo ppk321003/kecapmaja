@@ -182,7 +182,7 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
       id: 'sent_kppn',
       actor: 'Arsip',
       actorLabel: 'Arsip (Pencatatan)',
-      timestamp: submission.waktuKppn || undefined,
+      timestamp: submission.waktuArsip || undefined,
       status: submission.status === 'complete_arsip' ? 'Selesai' : 'Menunggu',
       statusLabel,
       type,
