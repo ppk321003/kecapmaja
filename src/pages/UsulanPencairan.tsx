@@ -60,7 +60,7 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
   return (
     <Card 
       className={cn(
-        `border min-h-[120px] rounded-lg shadow-sm transition-all duration-200 cursor-pointer min-w-[160px]`,
+        `border min-h-[120px] rounded-lg shadow-sm transition-all duration-200 cursor-pointer flex-shrink-0 w-[140px] sm:w-[160px]`,
         variantClasses[variant],
         isActive 
           ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
@@ -68,13 +68,13 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3 flex items-center justify-between h-full">
-        <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
+      <CardContent className="p-3 flex items-center justify-between h-full flex-col">
+        <div className="flex-1 w-full">
+          <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight line-clamp-2">{title}</p>
+          <p className="text-xl font-bold mt-2">{value}</p>
         </div>
-        <div className={`p-2 rounded-full bg-current/10`}>
-          <Icon className="w-5 h-5" strokeWidth={1.5} />
+        <div className={`p-2 rounded-full bg-current/10 mt-2`}>
+          <Icon className="w-4 h-4" strokeWidth={1.5} />
         </div>
       </CardContent>
     </Card>
@@ -238,7 +238,7 @@ export default function UsulanPencairan() {
       </div>
 
       {/* STATISTIC CARDS - Clickable sebagai filter - 1 BARIS HORIZONTAL */}
-      <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2">
+      <div className="w-full flex flex-nowrap gap-3 overflow-x-auto pb-2">
         <StatCard 
           title="Total" 
           value={counts.all} 
@@ -306,11 +306,11 @@ export default function UsulanPencairan() {
 
       {/* DAFTAR PENGAJUAN CARD */}
       <Card className="w-full overflow-hidden rounded-xl shadow-sm">
-        <CardHeader className="px-6 py-4 border-b">
+        <CardHeader className="px-4 sm:px-6 py-4 border-b">
           <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
         </CardHeader>
         
-        <CardContent className="px-6 py-4">
+        <CardContent className="px-4 sm:px-6 py-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -321,7 +321,7 @@ export default function UsulanPencairan() {
                 Menampilkan {paginatedSubmissions.length} dari {filteredSubmissions.length} pengajuan
               </p>
               
-              <div className="w-full overflow-x-auto rounded-lg border">
+              <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
                 <SubmissionTable 
                   submissions={paginatedSubmissions} 
                   onView={setSelectedSubmission} 

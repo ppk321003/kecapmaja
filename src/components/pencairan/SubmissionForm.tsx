@@ -12,6 +12,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -78,6 +88,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   const [notes, setNotes] = useState(editData?.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [documents, setDocuments] = useState<Document[]>(editData?.documents || []);
+  const [showDraftConfirmation, setShowDraftConfirmation] = useState(false);
 
   const availableSubTypes = jenisBelanja ? SUB_JENIS_BELANJA[jenisBelanja] || [] : [];
 
@@ -161,12 +172,17 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     return true;
   };
 
-  const handleSaveAsDraft = async () => {
-    // Draft bisa disimpan tanpa validasi wajib - hanya perlu title minimal
+  const handleSaveAsDraft = () => {
+    // Show confirmation dialog before saving draft
     if (!title.trim()) {
       toast({ title: 'Error', description: 'Uraian pengajuan harus diisi minimal', variant: 'destructive' });
       return;
     }
+    setShowDraftConfirmation(true);
+  };
+
+  const confirmSaveAsDraft = async () => {
+    setShowDraftConfirmation(false);
     setIsSubmitting(true);
     try {
       const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
@@ -273,7 +289,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const { data, error } = await supabase.functions.invoke('pencairan-update', {
           body: {
             id: editData.id,
-            status: 'pending_ppk', // Submit to PPK
+            status: 'pending_bendahara', // Submit to Bendahara
             notes: notes.trim() || undefined,
             actor: 'sm',
             action: 'edit',
@@ -298,7 +314,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
             catatan: notes.trim() || '',
-            statusPengajuan: 'pending_ppk',
+            statusPengajuan: 'pending_bendahara',
             waktuPengajuan: waktuPengajuan,
             statusPpk: '',
             waktuPpk: '',
@@ -331,7 +347,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
       onClose();
       toast({
         title: 'Berhasil',
-        description: editData ? 'Pengajuan berhasil diperbarui dan dikirim ke PPK' : 'Pengajuan berhasil dikirim ke PPK',
+        description: editData ? 'Pengajuan berhasil diperbarui dan dikirim ke Bendahara' : 'Pengajuan berhasil dikirim ke Bendahara',
       });
     } catch (error) {
       console.error('Error submitting:', error);
@@ -375,7 +391,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
                 {editData ? 'Edit Pengajuan' : 'Buat Pengajuan Baru'}
               </DialogTitle>
               <DialogDescription>
-                Lengkapi formulir berikut untuk mengajukan dokumen ke PPK
+                Lengkapi formulir berikut untuk mengajukan dokumen ke Bendahara
               </DialogDescription>
             </div>
           </div>
@@ -558,10 +574,35 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               ) : (
                 <Send className="w-4 h-4 mr-2" />
               )}
-              {editData ? 'Simpan dan Kirim' : 'Kirim ke PPK'}
+              {editData ? 'Simpan dan Kirim ke Bendahara' : 'Kirim ke Bendahara'}
             </Button>
           </div>
         </DialogFooter>
+
+        {/* Draft Confirmation Dialog */}
+        <AlertDialog open={showDraftConfirmation} onOpenChange={setShowDraftConfirmation}>
+          <AlertDialogContent className="rounded-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Simpan Sebagai Draft?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Usulan akan disimpan sebagai draft dan dapat diubah kembali di kemudian hari. Anda bisa menyelesaikan pengajuan nanti.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-lg">Batal</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmSaveAsDraft}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Ya, Simpan Draft
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
