@@ -118,43 +118,34 @@ export default function UsulanPencairan() {
         
         // Parse documents - item.documents bisa berupa array Document[] atau string
         const docsInput = Array.isArray(item.documents) 
-          ? item.documents.map(d => d.name).join('|') 
-          : (typeof item.documents === 'string' ? item.documents : '');
-        
-        // Rebuild jenisBelanja string untuk parseDocuments
-        const fullJenisBelanja = item.subJenisBelanja 
-          ? `${item.jenisBelanja} - ${item.subJenisBelanja}` 
-          : item.jenisBelanja;
+          ? item.documents 
+          : typeof item.documents === 'string' 
+            ? item.documents.split('|').map(name => ({
+                type: name.toLowerCase().replace(/\s+/g, '_'),
+                name: name.trim(),
+                isRequired: true,
+                isChecked: true,
+              }))
+            : [];
         
         return {
-          id: item.id || generateSubmissionId([]),
-          title: item.title || 'Pengajuan Baru',
-          submitterName: item.submitterName || '',
-          jenisBelanja: item.jenisBelanja,
-          subJenisBelanja: item.subJenisBelanja || '',
+          ...item,
           submittedAt: submittedDate,
-          status: (item.status || 'draft') as SubmissionStatus,
-          documents: parseDocuments(docsInput, fullJenisBelanja),
-          notes: item.notes || undefined,
-          waktuPengajuan: item.waktuPengajuan || '',
-          waktuPpk: item.waktuPpk || '',
-          waktuPPSPM: item.waktuPPSPM || '',
-          waktuBendahara: item.waktuBendahara || '',
-          statusPpk: item.statusPpk || '',
-          statusPPSPM: item.statusPPSPM || '',
-          statusBendahara: item.statusBendahara || '',
-          statusKppn: item.statusKppn || '',
-          // Kolom P (Update Terakhir)
-          updatedAt: item.updatedAt instanceof Date && !isNaN(item.updatedAt.getTime()) ? item.updatedAt : undefined,
-          updatedAtString: item.updatedAtString || '',
+          documents: docsInput,
         };
       });
-      converted.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+      
       setSubmissions(converted);
-    } else {
-      setSubmissions([]);
+      
+      // UPDATE selectedSubmission jika ada yang terbuka, agar dapatkan data fresh
+      if (selectedSubmission) {
+        const updatedSubmission = converted.find(s => s.id === selectedSubmission.id);
+        if (updatedSubmission) {
+          setSelectedSubmission(updatedSubmission);
+        }
+      }
     }
-  }, [sheetSubmissions]);
+  }, [sheetSubmissions, selectedSubmission?.id]);
 
   const filteredSubmissions = useMemo(() => {
     if (activeFilter === 'all') return submissions;
