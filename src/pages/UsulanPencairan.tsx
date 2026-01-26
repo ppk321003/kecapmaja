@@ -60,7 +60,7 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
   return (
     <Card 
       className={cn(
-        `border h-full rounded-xl shadow-sm transition-all duration-200 cursor-pointer min-w-fit`,
+        `border h-full rounded-xl shadow-sm transition-all duration-200 cursor-pointer min-w-[180px]`,
         variantClasses[variant],
         isActive 
           ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
@@ -69,8 +69,8 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
       onClick={onClick}
     >
       <CardContent className="p-4 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</p>
+        <div className="flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wider opacity-80 whitespace-normal leading-tight">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
         </div>
         <div className={`p-3 rounded-full ${variantClasses[variant].split(' ')[0]}`}>
@@ -133,7 +133,7 @@ export default function UsulanPencairan() {
           jenisBelanja: item.jenisBelanja,
           subJenisBelanja: item.subJenisBelanja || '',
           submittedAt: submittedDate,
-          status: (item.status || 'pending_ppk') as SubmissionStatus,
+          status: (item.status || 'draft') as SubmissionStatus,
           documents: parseDocuments(docsInput, fullJenisBelanja),
           notes: item.notes || undefined,
           waktuPengajuan: item.waktuPengajuan || '',
@@ -287,7 +287,7 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('pending_ppspm')}
         />
         <StatCard 
-          title="Catat Arsip" 
+          title="Kirim KPPN / Catat Arsip" 
           value={counts.sent_kppn} 
           icon={Clock} 
           variant="warning"

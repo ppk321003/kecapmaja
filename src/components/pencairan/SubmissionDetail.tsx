@@ -221,7 +221,7 @@ export function SubmissionDetail({
       notes: notes || submission.notes,
     });
     onClose();
-  };kppn
+  };
 
   const handleReturnFromArsip = async () => {
     const newStatus = 'incomplete_ppspm';
@@ -460,7 +460,7 @@ export function SubmissionDetail({
                 ) : (
                   <XCircle className="w-4 h-4 mr-2" />
                 )}
-                {canReturnArsip ? 'Kembalikan ke KPPN' : getRejectButtonLabel()}
+                {canReturnArsip ? 'Kembalikan ke PPSPM' : getRejectButtonLabel()}
               </Button>
               <Button 
                 className="flex-1"
