@@ -234,7 +234,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       { name: 'Menunggu PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
       { name: 'Menunggu KPPN', value: stats.pending_kppn, color: '#4f46e5' },
       { name: 'Menunggu Arsip', value: stats.pending_arsip, color: '#06b6d4' },
-      { name: 'Selesai (Arsip)', value: stats.sent_arsip, color: '#10b981' },
+      { name: 'Selesai (Arsip)', value: stats.sent_arsip, color: '#10b935' },
     ];
   }, [stats]);
 
