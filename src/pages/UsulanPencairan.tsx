@@ -117,11 +117,13 @@ export default function UsulanPencairan() {
   }, [sheetSubmissions, selectedSubmission?.id]);
 
   const filteredSubmissions = useMemo(() => {
-    let result = submissions;
+    // Start dengan copy dari submissions agar tidak mutasi original array
+    let result = [...submissions];
     
+    // Filter berdasarkan activeFilter
     if (activeFilter !== 'all') {
       if (activeFilter === 'rejected') {
-        result = submissions.filter(sub => 
+        result = result.filter(sub => 
           sub.status === 'incomplete_sm' || 
           sub.status === 'incomplete_bendahara' || 
           sub.status === 'incomplete_ppk' || 
@@ -129,12 +131,12 @@ export default function UsulanPencairan() {
           sub.status === 'incomplete_kppn'
         );
       } else {
-        result = submissions.filter(sub => sub.status === activeFilter);
+        result = result.filter(sub => sub.status === activeFilter);
       }
     }
     
     // Sort by ID descending (format: SUBYYMMXXX, highest XXX first = newest first)
-    // Extract nomor urut (3 digit terakhir setelah MM)
+    // Nomor urut yang lebih besar = lebih baru (025 > 010)
     result.sort((a, b) => {
       // Extract: SUB + YY + MM + XXX
       const aMatch = a.id.match(/^SUB(\d{2})(\d{2})(\d{3})$/);
@@ -150,15 +152,20 @@ export default function UsulanPencairan() {
       const bMonth = parseInt(bMatch[2]);
       const bSeq = parseInt(bMatch[3]);
       
-      // Compare year first (descending)
+      // Compare year first (descending - newer year first)
       if (aYear !== bYear) return bYear - aYear;
       
-      // Then month (descending)
+      // Then month (descending - newer month first)
       if (aMonth !== bMonth) return bMonth - aMonth;
       
-      // Finally sequence number (descending)
+      // Finally sequence number (descending - higher seq first)
       return bSeq - aSeq;
     });
+    
+    // Debug log untuk verifikasi sorting
+    if (result.length > 0) {
+      console.log(`Sorted submissions (first 3): ${result.slice(0, 3).map(s => s.id).join(', ')}`);
+    }
     
     return result;
   }, [submissions, activeFilter]);

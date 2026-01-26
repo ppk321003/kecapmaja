@@ -3,9 +3,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeSelector";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,18 +27,10 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex items-center gap-4">
               <ThemeSelector />
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-sm font-medium text-primary-foreground">{user?.username}</p>
                   <p className="text-xs text-primary-foreground/70">{user?.role}</p>
-                </div>
-                <div className="relative">
-                  <Avatar className="h-10 w-10 border-2 border-primary-foreground bg-primary">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-primary-foreground font-semibold text-sm flex items-center justify-center">
-                      {user?.username?.charAt(0).toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background shadow-md"></div>
                 </div>
               </div>
               <Button
