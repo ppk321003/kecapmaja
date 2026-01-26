@@ -234,7 +234,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       { name: 'Periksa Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
       { name: 'Periksa PPK', value: stats.pending_ppk, color: '#f59e0b' },
       { name: 'Periksa PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
-      { name: 'Catat Arsip', value: stats.sent_kppn, color: '#14b8a6' },
+      { name: 'Kirim KPPN', value: stats.sent_kppn, color: '#14b8a6' },
       { name: 'Selesai Arsip', value: stats.complete_arsip, color: '#10b981' },
     ];
   }, [stats]);
@@ -366,7 +366,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
           variant="danger"
         />
         <StatCard
-          title="Catat Arsip"
+          title="Kirim KPPN"
           value={stats.sent_kppn}
           subtitle="Siap dicatat"
           icon={AlertTriangle}
