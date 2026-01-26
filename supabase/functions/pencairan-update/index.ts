@@ -230,7 +230,7 @@ serve(async (req) => {
       updatedStatusPPSPM = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'pending_kppn'; // PPSPM approve → ke KPPN
+        newStatus = 'sent_kppn'; // PPSPM approve → ke KPPN
       } else if (action === 'reject') {
         newStatus = 'incomplete_ppk'; // PPSPM reject → kembali ke PPK
       }
@@ -250,7 +250,7 @@ serve(async (req) => {
       updatedStatusArsip = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'sent_arsip'; // Arsip approve → selesai
+        newStatus = 'complete_arsip'; // Arsip approve → selesai
       } else if (action === 'reject') {
         newStatus = 'incomplete_kppn'; // Arsip reject → kembali ke KPPN
       }

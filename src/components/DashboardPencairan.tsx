@@ -12,14 +12,17 @@ import { id } from "date-fns/locale";
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 const STATUS_COLORS: Record<string, string> = {
   draft: '#6366f1',
+  pending_bendahara: '#06b6d4',
   pending_ppk: '#f59e0b',
   pending_ppspm: '#8b5cf6',
-  pending_bendahara: '#06b6d4',
+  sent_kppn: '#14b8a6',
+  pending_arsip: '#a855f7',
+  complete_arsip: '#10b981',
   incomplete_sm: '#ef4444',
+  incomplete_bendahara: '#be123c',
   incomplete_ppk: '#f97316',
   incomplete_ppspm: '#dc2626',
-  incomplete_bendahara: '#be123c',
-  sent_arsip: '#10b981',
+  incomplete_kppn: '#7c3aed',
 };
 
 // Custom tooltip component
@@ -117,15 +120,17 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     const counts = {
       total: filteredSubmissions.length,
       draft: 0,
+      pending_bendahara: 0,
       pending_ppk: 0,
       pending_ppspm: 0,
-      pending_bendahara: 0,
+      sent_kppn: 0,
       pending_arsip: 0,
+      complete_arsip: 0,
       incomplete_sm: 0,
+      incomplete_bendahara: 0,
       incomplete_ppk: 0,
       incomplete_ppspm: 0,
-      incomplete_bendahara: 0,
-      sent_arsip: 0,
+      incomplete_kppn: 0,
     };
 
     filteredSubmissions.forEach(sub => {
@@ -134,10 +139,10 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       }
     });
 
-    const inProcess = counts.pending_ppk + counts.pending_ppspm + counts.pending_bendahara + counts.pending_arsip;
-    const rejected = counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara;
-    const successRate = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
-    const completionPercentage = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
+    const inProcess = counts.pending_bendahara + counts.pending_ppk + counts.pending_ppspm + counts.sent_kppn + counts.pending_arsip;
+    const rejected = counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn;
+    const successRate = counts.total > 0 ? Math.round((counts.complete_arsip / counts.total) * 100) : 0;
+    const completionPercentage = counts.total > 0 ? Math.round((counts.complete_arsip / counts.total) * 100) : 0;
 
     return { ...counts, inProcess, rejected, successRate, completionPercentage };
   }, [filteredSubmissions]);
@@ -182,9 +187,9 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       if (date) {
         const monthIndex = date.getMonth();
         data[monthIndex].pengajuan++;
-        if (sub.status === 'sent_arsip') {
+        if (sub.status === 'complete_arsip') {
           data[monthIndex].selesai++;
-        } else if (['incomplete_sm', 'incomplete_ppk', 'incomplete_ppspm', 'incomplete_bendahara'].includes(sub.status)) {
+        } else if (['incomplete_sm', 'incomplete_bendahara', 'incomplete_ppk', 'incomplete_ppspm', 'incomplete_kppn'].includes(sub.status)) {
           data[monthIndex].ditolak++;
         }
       }
@@ -202,7 +207,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         submitterCounts[submitter] = { total: 0, completed: 0 };
       }
       submitterCounts[submitter].total++;
-      if (sub.status === 'sent_arsip') {
+      if (sub.status === 'complete_arsip') {
         submitterCounts[submitter].completed++;
       }
     });
@@ -228,11 +233,12 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
   const workflowFunnel = useMemo(() => {
     return [
       { name: 'Draft', value: stats.draft, color: '#6366f1' },
-      { name: 'Menunggu Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
-      { name: 'Menunggu PPK', value: stats.pending_ppk, color: '#f59e0b' },
-      { name: 'Menunggu PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
-      { name: 'Menunggu Arsip', value: stats.pending_arsip, color: '#06b6d4' },
-      { name: 'Selesai (Arsip)', value: stats.sent_arsip, color: '#10b935' },
+      { name: 'Periksa Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
+      { name: 'Periksa PPK', value: stats.pending_ppk, color: '#f59e0b' },
+      { name: 'Periksa PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
+      { name: 'KPPN', value: stats.sent_kppn, color: '#14b8a6' },
+      { name: 'Catat Arsip', value: stats.pending_arsip, color: '#a855f7' },
+      { name: 'Selesai Arsip', value: stats.complete_arsip, color: '#10b981' },
     ];
   }, [stats]);
 

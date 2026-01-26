@@ -50,7 +50,7 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
       if (stepKey === 'sm' || stepKey === 'bendahara' || stepKey === 'ppk') return 'complete';
       if (stepKey === 'ppspm') return 'error';
       return 'pending';
-    case 'pending_kppn':
+    case 'sent_kppn':
       if (stepKey === 'sm' || stepKey === 'bendahara' || stepKey === 'ppk' || stepKey === 'ppspm') return 'complete';
       if (stepKey === 'kppn') return 'current';
       return 'pending';
@@ -62,7 +62,7 @@ function getStepStatus(stepKey: string, submissionStatus: SubmissionStatus | und
       if (stepKey === 'sm' || stepKey === 'bendahara' || stepKey === 'ppk' || stepKey === 'ppspm' || stepKey === 'kppn') return 'complete';
       if (stepKey === 'arsip') return 'current';
       return 'pending';
-    case 'sent_arsip':
+    case 'complete_arsip':
       return 'complete';
     default:
       return 'pending';
@@ -73,11 +73,11 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
   // Determine colors based on status
   const getProgressColor = () => {
     if (status === 'draft') return 'bg-gray-500';
-    if (status === 'sent_arsip') return 'bg-green-500';
+    if (status === 'complete_arsip') return 'bg-green-500';
     if (['pending_bendahara', 'incomplete_bendahara'].includes(status)) return 'bg-blue-500';
     if (['pending_ppk', 'incomplete_ppk'].includes(status)) return 'bg-yellow-500';
     if (['pending_ppspm', 'incomplete_ppspm'].includes(status)) return 'bg-purple-500';
-    if (['pending_kppn', 'incomplete_kppn'].includes(status)) return 'bg-indigo-500';
+    if (['sent_kppn', 'incomplete_kppn'].includes(status)) return 'bg-indigo-500';
     if (status === 'pending_arsip') return 'bg-cyan-500';
     if (status === 'incomplete_sm') return 'bg-red-500';
     return 'bg-primary';
@@ -92,11 +92,11 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
       case 'incomplete_ppk': return 'bg-orange-500 text-white ring-4 ring-orange-200';
       case 'pending_ppspm': return 'bg-purple-500 text-white ring-4 ring-purple-200';
       case 'incomplete_ppspm': return 'bg-fuchsia-500 text-white ring-4 ring-fuchsia-200';
-      case 'pending_kppn': return 'bg-indigo-500 text-white ring-4 ring-indigo-200';
+      case 'sent_kppn': return 'bg-indigo-500 text-white ring-4 ring-indigo-200';
       case 'incomplete_kppn': return 'bg-violet-500 text-white ring-4 ring-violet-200';
       case 'pending_arsip': return 'bg-cyan-500 text-white ring-4 ring-cyan-200';
       case 'incomplete_sm': return 'bg-red-500 text-white ring-4 ring-red-200';
-      case 'sent_arsip': return 'bg-green-500 text-white ring-4 ring-green-200';
+      case 'complete_arsip': return 'bg-green-500 text-white ring-4 ring-green-200';
       default: return 'bg-primary text-primary-foreground ring-4 ring-primary/20';
     }
   };
@@ -114,9 +114,9 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
             getProgressColor()
           )}
           style={{
-            width: status === 'sent_arsip' ? '100%' : 
+            width: status === 'complete_arsip' ? '100%' : 
                    status === 'pending_arsip' ? '83%' :
-                   ['pending_kppn', 'incomplete_kppn'].includes(status) ? '67%' :
+                   ['sent_kppn', 'incomplete_kppn'].includes(status) ? '67%' :
                    ['pending_ppspm', 'incomplete_ppspm'].includes(status) ? '50%' :
                    ['pending_ppk', 'incomplete_ppk'].includes(status) ? '33%' :
                    ['pending_bendahara', 'incomplete_bendahara'].includes(status) ? '17%' : '0%'

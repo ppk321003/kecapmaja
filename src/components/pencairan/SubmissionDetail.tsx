@@ -160,9 +160,9 @@ export function SubmissionDetail({
 
   const handleApprove = async () => {
     let newStatus: string;
-    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
+    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'kppn' | 'arsip';
     
-    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > ARSIP (after sent_kppn)
+    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > KPPN > ARSIP
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
       newStatus = 'pending_ppk'; // Setelah Bendahara approve, ke PPK
       actor = 'bendahara';
@@ -170,10 +170,13 @@ export function SubmissionDetail({
       newStatus = 'pending_ppspm'; // Setelah PPK approve, ke PPSPM
       actor = 'ppk';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
-      newStatus = 'pending_arsip'; // Setelah PPSPM approve, langsung ke Arsip (sent_kppn handled separately)
+      newStatus = 'sent_kppn'; // Setelah PPSPM approve, ke KPPN
       actor = 'ppspm';
+    } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+      newStatus = 'pending_arsip'; // Setelah KPPN approve, ke Arsip
+      actor = 'kppn';
     } else if (submission.status === 'pending_arsip') {
-      newStatus = 'sent_arsip'; // Setelah Arsip approve, selesai
+      newStatus = 'complete_arsip'; // Setelah Arsip approve, selesai
       actor = 'arsip';
     } else {
       return;
@@ -187,6 +190,7 @@ export function SubmissionDetail({
       ...(actor === 'bendahara' && { bendaharaCheckedAt: new Date() }),
       ...(actor === 'ppk' && { ppkCheckedAt: new Date() }),
       ...(actor === 'ppspm' && { ppspmCheckedAt: new Date() }),
+      ...(actor === 'kppn' && { kppnCheckedAt: new Date() }),
       ...(actor === 'arsip' && { arsipCheckedAt: new Date() }),
     });
     onClose();
@@ -206,8 +210,11 @@ export function SubmissionDetail({
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
       newStatus = 'incomplete_ppk'; // PPSPM reject, kembali ke PPK
       actor = 'ppspm';
+    } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+      newStatus = 'incomplete_ppspm'; // KPPN reject, kembali ke PPSPM
+      actor = 'kppn';
     } else if (submission.status === 'pending_arsip') {
-      newStatus = 'incomplete_ppspm'; // Arsip reject, kembali ke PPSPM
+      newStatus = 'incomplete_kppn'; // Arsip reject, kembali ke KPPN
       actor = 'arsip';
     } else {
       return;
@@ -221,7 +228,7 @@ export function SubmissionDetail({
       notes: notes || submission.notes,
     });
     onClose();
-  };
+  };kppn
 
   const handleReturnFromArsip = async () => {
     const newStatus = 'incomplete_ppspm';
@@ -240,9 +247,11 @@ export function SubmissionDetail({
   const getApproveButtonLabel = () => {
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
       return 'Setujui dan Kirim ke PPK';
-    } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
-      return 'Setujui dan Kirim ke PPSPM';
-    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+    } else if (submission.status ==KPPN';
+    } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+      return 'Setujui dan Kirim ke Arsip';
+    } else if (submission.status === 'pending_arsip') {
+      return 'Catat dan Selesaikantus === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
       return 'Setujui dan Kirim ke Arsip';
     } else if (submission.status === 'pending_arsip') {
       return 'Catat dan Arsip';

@@ -60,7 +60,7 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
   return (
     <Card 
       className={cn(
-        `border h-full rounded-xl shadow-sm transition-all duration-200 cursor-pointer`,
+        `border h-full rounded-xl shadow-sm transition-all duration-200 cursor-pointer min-w-fit`,
         variantClasses[variant],
         isActive 
           ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
@@ -161,9 +161,10 @@ export default function UsulanPencairan() {
     if (activeFilter === 'rejected') {
       return submissions.filter(sub => 
         sub.status === 'incomplete_sm' || 
+        sub.status === 'incomplete_bendahara' || 
         sub.status === 'incomplete_ppk' || 
-        sub.status === 'incomplete_ppspm' || 
-        sub.status === 'incomplete_bendahara'
+        sub.status === 'incomplete_ppspm' ||
+        sub.status === 'incomplete_kppn'
       );
     }
     return submissions.filter(sub => sub.status === activeFilter);
@@ -184,13 +185,14 @@ export default function UsulanPencairan() {
       pending_bendahara: 0,
       pending_ppk: 0,
       pending_ppspm: 0,
+      sent_kppn: 0,
       pending_arsip: 0,
+      complete_arsip: 0,
       incomplete_sm: 0,
       incomplete_bendahara: 0,
       incomplete_ppk: 0,
       incomplete_ppspm: 0,
       incomplete_kppn: 0,
-      sent_arsip: 0
     };
     
     // Hitung setiap status
@@ -236,8 +238,8 @@ export default function UsulanPencairan() {
         </div>
       </div>
 
-      {/* STATISTIC CARDS - Clickable sebagai filter */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      {/* STATISTIC CARDS - Clickable sebagai filter - 1 BARIS HORIZONTAL */}
+      <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2">
         <StatCard 
           title="Total" 
           value={counts.all} 
@@ -246,12 +248,20 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('all')}
         />
         <StatCard 
-          title="Draft SM" 
+          title="Draft" 
           value={counts.draft} 
           icon={FileEdit} 
           variant="default"
           isActive={activeFilter === 'draft'}
           onClick={() => setActiveFilter('draft')}
+        />
+        <StatCard 
+          title="Ditolak" 
+          value={counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn} 
+          icon={XCircle} 
+          variant="danger"
+          isActive={activeFilter === 'rejected'}
+          onClick={() => setActiveFilter('rejected')}
         />
         <StatCard 
           title="Periksa Bendahara" 
@@ -277,9 +287,14 @@ export default function UsulanPencairan() {
           isActive={activeFilter === 'pending_ppspm'}
           onClick={() => setActiveFilter('pending_ppspm')}
         />
-      </div>
-
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        <StatCard 
+          title="KPPN" 
+          value={counts.sent_kppn} 
+          icon={CheckCircle2} 
+          variant="success"
+          isActive={activeFilter === 'sent_kppn'}
+          onClick={() => setActiveFilter('sent_kppn')}
+        />
         <StatCard 
           title="Catat Arsip" 
           value={counts.pending_arsip} 
@@ -289,20 +304,12 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('pending_arsip')}
         />
         <StatCard 
-          title="Selesai (Arsip)" 
-          value={counts.sent_arsip} 
+          title="Selesai Arsip" 
+          value={counts.complete_arsip} 
           icon={CheckCircle2} 
           variant="success"
-          isActive={activeFilter === 'sent_arsip'}
-          onClick={() => setActiveFilter('sent_arsip')}
-        />
-        <StatCard 
-          title="Ditolak" 
-          value={counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn} 
-          icon={XCircle} 
-          variant="danger"
-          isActive={activeFilter === 'rejected'}
-          onClick={() => setActiveFilter('rejected')}
+          isActive={activeFilter === 'complete_arsip'}
+          onClick={() => setActiveFilter('complete_arsip')}
         />
       </div>
 

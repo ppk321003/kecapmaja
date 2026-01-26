@@ -79,17 +79,20 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
   // Konversi status string ke SubmissionStatus
   const statusMap: Record<string, SubmissionStatus> = {
     'draft': 'draft',
+    'pending_bendahara': 'pending_bendahara',
     'pending_ppk': 'pending_ppk',
     'pending_ppspm': 'pending_ppspm',
-    'pending_bendahara': 'pending_bendahara',
+    'sent_kppn': 'sent_kppn',
+    'pending_arsip': 'pending_arsip',
+    'complete_arsip': 'complete_arsip',
     'incomplete_sm': 'incomplete_sm',
+    'incomplete_bendahara': 'incomplete_bendahara',
     'incomplete_ppk': 'incomplete_ppk',
     'incomplete_ppspm': 'incomplete_ppspm',
-    'incomplete_bendahara': 'incomplete_bendahara',
-    'sent_kppn': 'sent_kppn',
+    'incomplete_kppn': 'incomplete_kppn',
   };
   
-  const status: SubmissionStatus = statusMap[raw.status] || 'pending_ppk';
+  const status: SubmissionStatus = statusMap[raw.status] || 'draft';
 
   return {
     id: raw.id,

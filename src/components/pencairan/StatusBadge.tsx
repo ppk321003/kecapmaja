@@ -58,9 +58,15 @@ const statusConfig: Record<SubmissionStatus, {
   },
   pending_kppn: {
     icon: Clock,
-    bgClass: 'bg-indigo-100 dark:bg-indigo-900/30',
-    textClass: 'text-indigo-700 dark:text-indigo-400',
-    borderClass: 'border-indigo-300 dark:border-indigo-700',
+    bgClass: 'bg-teal-100 dark:bg-teal-900/30',
+    textClass: 'text-teal-700 dark:text-teal-400',
+    borderClass: 'border-teal-300 dark:border-teal-700',
+  },
+  sent_kppn: {
+    icon: Clock,
+    bgClass: 'bg-teal-100 dark:bg-teal-900/30',
+    textClass: 'text-teal-700 dark:text-teal-400',
+    borderClass: 'border-teal-300 dark:border-teal-700',
   },
   incomplete_kppn: {
     icon: XCircle,
@@ -74,7 +80,7 @@ const statusConfig: Record<SubmissionStatus, {
     textClass: 'text-cyan-700 dark:text-cyan-400',
     borderClass: 'border-cyan-300 dark:border-cyan-700',
   },
-  sent_arsip: {
+  complete_arsip: {
     icon: CheckCircle2,
     bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
     textClass: 'text-emerald-700 dark:text-emerald-400',
