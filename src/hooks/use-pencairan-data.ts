@@ -140,25 +140,60 @@ export function usePencairanData() {
 
       // Skip header row dan map ke Submission[]
       const submissions: Submission[] = rows.slice(1).map((row: string[]) => {
-        const rawData: PencairanRawData = {
-          id: row[0] || '',
-          title: row[1] || '',
-          submitterName: row[2] || '',
-          jenisBelanja: row[3] || '',
-          documents: row[4] || '',
-          notes: row[5] || '',
-          status: row[6] || 'pending_ppk',
-          waktuPengajuan: row[7] || '',
-          waktuBendahara: row[8] || '',
-          waktuPpk: row[9] || '',
-          waktuPPSPM: row[10] || '',
-          waktuArsip: row[11] || '',
-          statusBendahara: row[12] || '',
-          statusPpk: row[13] || '',
-          statusPPSPM: row[14] || '',
-          statusArsip: row[15] || '',
-          updatedAt: row[16] || '',
-        };
+        // Deteksi struktur: jika row < 17 kolom, gunakan mapping lama (A-P, 16 kolom)
+        // Jika row >= 17, gunakan mapping baru (A-Q, 17 kolom dengan Waktu Arsip)
+        let rawData: PencairanRawData;
+        
+        if (row.length < 17) {
+          // OLD STRUCTURE (A-P, 16 kolom) - tanpa Waktu Arsip
+          // H=7, I=8, J=9, K=10, L=11(StatusBendahara), M=12(StatusPPK), N=13(StatusPPSPM), O=14(StatusArsip)
+          rawData = {
+            id: row[0] || '',
+            title: row[1] || '',
+            submitterName: row[2] || '',
+            jenisBelanja: row[3] || '',
+            documents: row[4] || '',
+            notes: row[5] || '',
+            status: row[6] || 'pending_ppk',
+            waktuPengajuan: row[7] || '',
+            waktuBendahara: row[8] || '',
+            waktuPpk: row[9] || '',
+            waktuPPSPM: row[10] || '',
+            waktuArsip: '', // Kosong di struktur lama
+            statusBendahara: row[11] || '',
+            statusPpk: row[12] || '',
+            statusPPSPM: row[13] || '',
+            statusArsip: row[14] || '',
+            updatedAt: row[15] || '',
+          };
+        } else {
+          // NEW STRUCTURE (A-Q, 17 kolom) - dengan Waktu Arsip di L
+          // H=7, I=8, J=9, K=10, L=11(WaktuArsip), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip)
+          rawData = {
+            id: row[0] || '',
+            title: row[1] || '',
+            submitterName: row[2] || '',
+            jenisBelanja: row[3] || '',
+            documents: row[4] || '',
+            notes: row[5] || '',
+            status: row[6] || 'pending_ppk',
+            waktuPengajuan: row[7] || '',
+            waktuBendahara: row[8] || '',
+            waktuPpk: row[9] || '',
+            waktuPPSPM: row[10] || '',
+            waktuArsip: row[11] || '',
+            statusBendahara: row[12] || '',
+            statusPpk: row[13] || '',
+            statusPPSPM: row[14] || '',
+            statusArsip: row[15] || '',
+            updatedAt: row[16] || '',
+          };
+        }
+        
+        // Debug: Log struktur dan waktu columns
+        if (row[0]) {
+          console.log(`Row ${row[0]} (len=${row.length}): ppk=${rawData.waktuPpk}, ppspm=${rawData.waktuPPSPM}, arsip=${rawData.waktuArsip}`);
+        }
         
         return mapRawToSubmission(rawData);
       });
