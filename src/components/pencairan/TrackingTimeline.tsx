@@ -165,44 +165,29 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     }
   }
 
-  // 5. Sent to Arsip (status is sent_kppn = waiting for Arsip to process)
-  if (submission.status === 'sent_kppn' || submission.status === 'complete_arsip' || isIncompleteKppn) {
+  // 5. Arsip - Show final status when Arsip has acted or status is sent_kppn/complete_arsip
+  if (submission.status === 'sent_kppn' || submission.status === 'complete_arsip' || submission.statusArsip || submission.waktuArsip || isIncompleteKppn) {
+    const arsipStatus = submission.statusArsip ? parseTimelineStatus(submission.statusArsip) : { type: 'pending', label: 'Menunggu' };
     let statusLabel = 'Menunggu pencatatan Arsip';
     let type: TimelineEvent['type'] = 'pending';
 
     if (submission.status === 'complete_arsip') {
       statusLabel = 'Selesai dicatat Arsip';
       type = 'complete';
+    } else if (submission.statusArsip) {
+      statusLabel = `Arsip: ${submission.statusArsip}`;
+      type = arsipStatus.type;
     } else if (isIncompleteKppn) {
       statusLabel = 'Dikembalikan oleh Arsip';
       type = 'incomplete';
     }
 
     events.push({
-      id: 'sent_kppn',
+      id: 'arsip',
       actor: 'Arsip',
       actorLabel: 'Arsip (Pencatatan)',
       timestamp: submission.waktuArsip || undefined,
-      status: submission.status === 'complete_arsip' ? 'Selesai' : 'Menunggu',
-      statusLabel,
-      type,
-    });
-  }
-
-  // 6. Arsip detailed status - only show if arsip has a specific status
-  if (submission.statusArsip || submission.waktuArsip) {
-    const arsipStatus = parseTimelineStatus(submission.statusArsip);
-    let statusLabel = submission.statusArsip 
-      ? `Arsip: ${submission.statusArsip}`
-      : 'Menunggu pencatatan Arsip';
-    let type = arsipStatus.type;
-
-    events.push({
-      id: 'arsip-detail',
-      actor: 'Arsip',
-      actorLabel: 'Arsip',
-      timestamp: submission.waktuArsip,
-      status: submission.statusArsip,
+      status: submission.statusArsip || (submission.status === 'complete_arsip' ? 'Selesai' : 'Menunggu'),
       statusLabel,
       type,
     });
