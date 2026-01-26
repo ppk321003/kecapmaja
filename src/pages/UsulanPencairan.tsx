@@ -60,7 +60,7 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
   return (
     <Card 
       className={cn(
-        `border min-h-[120px] rounded-lg shadow-sm transition-all duration-200 cursor-pointer flex-shrink-0 w-[140px] sm:w-[160px]`,
+        `border min-h-[120px] rounded-3xl shadow-sm transition-all duration-200 cursor-pointer flex-shrink-0 w-[140px] sm:w-[160px]`,
         variantClasses[variant],
         isActive 
           ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
@@ -68,8 +68,8 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3 flex items-center justify-between h-full flex-col">
-        <div className="flex-1 w-full">
+      <CardContent className="p-3 flex items-center justify-center h-full flex-col text-center">
+        <div className="flex-1 w-full flex flex-col items-center justify-center">
           <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight line-clamp-2">{title}</p>
           <p className="text-xl font-bold mt-2">{value}</p>
         </div>

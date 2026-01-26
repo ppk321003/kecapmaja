@@ -54,7 +54,7 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
   const isIncompletePpspm = submission.status === 'incomplete_ppspm';
   const isIncompleteKppn = submission.status === 'incomplete_kppn';
 
-  // 1. SM Submit (Kolom H - waktuPengajuan)
+  // 1. SM Submit (always show if waktu pengajuan exists or in draft/incomplete_sm)
   if (submission.waktuPengajuan || isDraft || isIncompleteSm) {
     let statusLabel = 'Pengajuan telah dikirim ke Bendahara';
     let type: TimelineEvent['type'] = 'submit';
@@ -78,112 +78,119 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     });
   }
 
-  // 2. Bendahara (Kolom I - waktuBendahara, Kolom J - statusBendahara)
-  if (submission.waktuBendahara || submission.statusBendahara || isIncompleteBendahara) {
+  // 2. Bendahara - only show if bendahara has acted (has status) or currently pending for bendahara
+  if (submission.statusBendahara || submission.waktuBendahara || submission.status === 'pending_bendahara' || isIncompleteBendahara) {
     const bendaharaStatus = parseTimelineStatus(submission.statusBendahara);
     let statusLabel = submission.statusBendahara 
       ? `Bendahara: ${submission.statusBendahara}`
-      : 'Menunggu verifikasi Bendahara';
+      : (submission.status === 'pending_bendahara' ? 'Menunggu verifikasi Bendahara' : '');
     let type = bendaharaStatus.type;
 
     if (isIncompleteBendahara) {
       statusLabel = 'Diperlukan perbaikan oleh Bendahara';
       type = 'incomplete';
+    } else if (!submission.statusBendahara && submission.status === 'pending_bendahara') {
+      type = 'pending';
     }
 
-    events.push({
-      id: 'bendahara',
-      actor: 'Bendahara',
-      actorLabel: 'Bendahara Pengeluaran',
-      timestamp: submission.waktuBendahara,
-      status: isIncompleteBendahara ? 'Perlu perbaikan' : submission.statusBendahara,
-      statusLabel,
-      type,
-    });
+    // Only add if bendahara has status or currently pending
+    if (submission.statusBendahara || submission.status === 'pending_bendahara' || isIncompleteBendahara || submission.waktuBendahara) {
+      events.push({
+        id: 'bendahara',
+        actor: 'Bendahara',
+        actorLabel: 'Bendahara Pengeluaran',
+        timestamp: submission.waktuBendahara,
+        status: isIncompleteBendahara ? 'Perlu perbaikan' : submission.statusBendahara,
+        statusLabel,
+        type,
+      });
+    }
   }
 
-  // 3. PPK (Kolom K - waktuPpk, Kolom L - statusPpk)
-  if (submission.waktuPpk || submission.statusPpk || isIncompletePpk) {
+  // 3. PPK - only show if ppk has acted (has status) or currently pending for ppk
+  if (submission.statusPpk || submission.waktuPpk || submission.status === 'pending_ppk' || isIncompletePpk) {
     const ppkStatus = parseTimelineStatus(submission.statusPpk);
     let statusLabel = submission.statusPpk 
       ? `PPK: ${submission.statusPpk}`
-      : 'Menunggu verifikasi PPK';
+      : (submission.status === 'pending_ppk' ? 'Menunggu verifikasi PPK' : '');
     let type = ppkStatus.type;
 
     if (isIncompletePpk) {
       statusLabel = 'Diperlukan perbaikan oleh PPK';
       type = 'incomplete';
+    } else if (!submission.statusPpk && submission.status === 'pending_ppk') {
+      type = 'pending';
     }
 
-    events.push({
-      id: 'ppk',
-      actor: 'PPK',
-      actorLabel: 'Pejabat Pembuat Komitmen',
-      timestamp: submission.waktuPpk,
-      status: isIncompletePpk ? 'Perlu perbaikan' : submission.statusPpk,
-      statusLabel,
-      type,
-    });
+    // Only add if ppk has status or currently pending
+    if (submission.statusPpk || submission.status === 'pending_ppk' || isIncompletePpk || submission.waktuPpk) {
+      events.push({
+        id: 'ppk',
+        actor: 'PPK',
+        actorLabel: 'Pejabat Pembuat Komitmen',
+        timestamp: submission.waktuPpk,
+        status: isIncompletePpk ? 'Perlu perbaikan' : submission.statusPpk,
+        statusLabel,
+        type,
+      });
+    }
   }
 
-  // 4. PPSPM (Kolom M - waktuPPSPM, Kolom N - statusPPSPM)
-  if (submission.waktuPPSPM || submission.statusPPSPM || isIncompletePpspm) {
+  // 4. PPSPM - only show if ppspm has acted (has status) or currently pending for ppspm
+  if (submission.statusPPSPM || submission.waktuPPSPM || submission.status === 'pending_ppspm' || isIncompletePpspm) {
     const ppspmStatus = parseTimelineStatus(submission.statusPPSPM);
     let statusLabel = submission.statusPPSPM 
       ? `PPSPM: ${submission.statusPPSPM}`
-      : 'Menunggu pemeriksaan PPSPM';
+      : (submission.status === 'pending_ppspm' ? 'Menunggu pemeriksaan PPSPM' : '');
     let type = ppspmStatus.type;
 
     if (isIncompletePpspm) {
       statusLabel = 'Diperlukan perbaikan oleh PPSPM';
       type = 'incomplete';
+    } else if (!submission.statusPPSPM && submission.status === 'pending_ppspm') {
+      type = 'pending';
     }
 
-    events.push({
-      id: 'ppspm',
-      actor: 'PPSPM',
-      actorLabel: 'Pejabat Penandatangan SPM',
-      timestamp: submission.waktuPPSPM,
-      status: isIncompletePpspm ? 'Perlu perbaikan' : submission.statusPPSPM,
-      statusLabel,
-      type,
-    });
+    // Only add if ppspm has status or currently pending
+    if (submission.statusPPSPM || submission.status === 'pending_ppspm' || isIncompletePpspm || submission.waktuPPSPM) {
+      events.push({
+        id: 'ppspm',
+        actor: 'PPSPM',
+        actorLabel: 'Pejabat Penandatangan SPM',
+        timestamp: submission.waktuPPSPM,
+        status: isIncompletePpspm ? 'Perlu perbaikan' : submission.statusPPSPM,
+        statusLabel,
+        type,
+      });
+    }
   }
 
-  // 5. Sent to KPPN (Kolom O - waktuKppn, for reference only, status is sent_kppn)
-  if (submission.status === 'sent_kppn' || submission.waktuKppn) {
+  // 5. Sent to Arsip (status is sent_kppn = waiting for Arsip to process)
+  if (submission.status === 'sent_kppn' || submission.status === 'complete_arsip' || isIncompleteKppn) {
     let statusLabel = 'Menunggu pencatatan Arsip';
     let type: TimelineEvent['type'] = 'pending';
 
+    if (submission.status === 'complete_arsip') {
+      statusLabel = 'Selesai dicatat Arsip';
+      type = 'complete';
+    } else if (isIncompleteKppn) {
+      statusLabel = 'Dikembalikan oleh Arsip';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'sent_kppn',
-      actor: 'KPPN',
-      actorLabel: 'Dokumen dikirim ke KPPN',
-      timestamp: submission.waktuKppn || undefined,
-      status: 'Pengajuan dikirim',
-      statusLabel,
-      type,
-    });
-  }
-
-  // 6. Incomplete KPPN (Rejection from Arsip)
-  if (isIncompleteKppn) {
-    let statusLabel = 'Dikembalikan oleh Arsip';
-    let type: TimelineEvent['type'] = 'incomplete';
-
-    events.push({
-      id: 'incomplete_kppn',
       actor: 'Arsip',
-      actorLabel: 'Pengembalian dari Arsip',
-      timestamp: undefined,
-      status: 'Perlu perbaikan',
+      actorLabel: 'Arsip (Pencatatan)',
+      timestamp: submission.waktuKppn || undefined,
+      status: submission.status === 'complete_arsip' ? 'Selesai' : 'Menunggu',
       statusLabel,
       type,
     });
   }
 
-  // 7. Arsip (Kolom Q - waktuArsip, Kolom R - statusArsip)
-  if (submission.waktuArsip || submission.statusArsip) {
+  // 6. Arsip detailed status - only show if arsip has a specific status
+  if (submission.statusArsip || submission.waktuArsip) {
     const arsipStatus = parseTimelineStatus(submission.statusArsip);
     let statusLabel = submission.statusArsip 
       ? `Arsip: ${submission.statusArsip}`
@@ -191,7 +198,7 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     let type = arsipStatus.type;
 
     events.push({
-      id: 'arsip',
+      id: 'arsip-detail',
       actor: 'Arsip',
       actorLabel: 'Arsip',
       timestamp: submission.waktuArsip,

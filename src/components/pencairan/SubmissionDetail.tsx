@@ -38,7 +38,8 @@ import {
   Loader2,
   AlertCircle,
   ChevronDown,
-  History
+  History,
+  Save
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -116,6 +117,48 @@ export function SubmissionDetail({
   const requiredDocs = documents.filter(d => d.isRequired);
   const checkedCount = documents.filter(d => d.isChecked).length;
   const requiredCheckedCount = requiredDocs.filter(d => d.isChecked).length;
+
+  const saveChecklistOnly = async () => {
+    setIsUpdating(true);
+    try {
+      // Get checked documents
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+
+      const { data, error } = await supabase.functions.invoke('pencairan-update', {
+        body: {
+          id: submission.id,
+          status: submission.status, // Keep same status, just update documents
+          actor: userRole === 'Bendahara' ? 'bendahara' : 
+                 userRole === 'Pejabat Pembuat Komitmen' ? 'ppk' :
+                 userRole === 'Pejabat Penandatangan Surat Perintah Membayar' ? 'ppspm' : 'arsip',
+          action: 'approve', // Default action for just saving checklist
+          kelengkapan, // Include checked documents
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: 'Berhasil',
+          description: 'Checklist kelengkapan dokumen telah disimpan',
+        });
+        onRefresh();
+      } else {
+        throw new Error(data?.error || 'Failed to save checklist');
+      }
+    } catch (err) {
+      console.error('Error saving checklist:', err);
+      toast({
+        title: 'Gagal menyimpan checklist',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const updateStatusInSheet = async (
     newStatus: string, 
@@ -408,12 +451,28 @@ export function SubmissionDetail({
                 </CardHeader>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 space-y-3">
                   <DocumentChecklist 
                     documents={documents} 
                     onToggle={canAction ? handleDocumentToggle : undefined}
                     readOnly={!canAction}
                   />
+                  {canAction && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full text-xs"
+                      onClick={saveChecklistOnly}
+                      disabled={isUpdating}
+                      size="sm"
+                    >
+                      {isUpdating ? (
+                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="w-3 h-3 mr-2" />
+                      )}
+                      Simpan Checklist
+                    </Button>
+                  )}
                 </CardContent>
               </CollapsibleContent>
             </Card>
