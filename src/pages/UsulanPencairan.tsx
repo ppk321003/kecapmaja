@@ -49,12 +49,12 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onClick }: StatCardProps) {
   const variantClasses = {
-    default: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-700',
-    warning: 'bg-gradient-to-br from-orange-500 to-orange-600 text-white border-orange-700',
-    info: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-700',
-    danger: 'bg-gradient-to-br from-red-500 to-red-600 text-white border-red-700',
-    success: 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-700',
-    secondary: 'bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 text-white border-fuchsia-700',
+    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200',
+    warning: 'bg-gradient-to-br from-orange-50 to-orange-100 text-orange-700 border-orange-200',
+    info: 'bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-700 border-indigo-200',
+    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200',
+    success: 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200',
+    secondary: 'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
   };
 
   return (
@@ -63,18 +63,18 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
         `border min-h-[120px] rounded-lg shadow-sm transition-all duration-200 cursor-pointer min-w-[160px]`,
         variantClasses[variant],
         isActive 
-          ? 'ring-2 ring-white ring-offset-2 scale-[1.02] shadow-lg' 
+          ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
           : 'hover:shadow-md hover:scale-[1.02]'
       )}
       onClick={onClick}
     >
       <CardContent className="p-3 flex items-center justify-between h-full">
         <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-white/90 whitespace-normal leading-tight">{title}</p>
-          <p className="text-2xl font-bold mt-1 text-white">{value}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight">{title}</p>
+          <p className="text-2xl font-bold mt-1">{value}</p>
         </div>
-        <div className={`p-2 rounded-full bg-white/20`}>
-          <Icon className="w-5 h-5 text-white" strokeWidth={1.5} />
+        <div className={`p-2 rounded-full bg-current/10`}>
+          <Icon className="w-5 h-5" strokeWidth={1.5} />
         </div>
       </CardContent>
     </Card>
