@@ -117,17 +117,50 @@ export default function UsulanPencairan() {
   }, [sheetSubmissions, selectedSubmission?.id]);
 
   const filteredSubmissions = useMemo(() => {
-    if (activeFilter === 'all') return submissions;
-    if (activeFilter === 'rejected') {
-      return submissions.filter(sub => 
-        sub.status === 'incomplete_sm' || 
-        sub.status === 'incomplete_bendahara' || 
-        sub.status === 'incomplete_ppk' || 
-        sub.status === 'incomplete_ppspm' ||
-        sub.status === 'incomplete_kppn'
-      );
+    let result = submissions;
+    
+    if (activeFilter !== 'all') {
+      if (activeFilter === 'rejected') {
+        result = submissions.filter(sub => 
+          sub.status === 'incomplete_sm' || 
+          sub.status === 'incomplete_bendahara' || 
+          sub.status === 'incomplete_ppk' || 
+          sub.status === 'incomplete_ppspm' ||
+          sub.status === 'incomplete_kppn'
+        );
+      } else {
+        result = submissions.filter(sub => sub.status === activeFilter);
+      }
     }
-    return submissions.filter(sub => sub.status === activeFilter);
+    
+    // Sort by ID descending (format: SUBYYMMXXX, highest XXX first = newest first)
+    // Extract nomor urut (3 digit terakhir setelah MM)
+    result.sort((a, b) => {
+      // Extract: SUB + YY + MM + XXX
+      const aMatch = a.id.match(/^SUB(\d{2})(\d{2})(\d{3})$/);
+      const bMatch = b.id.match(/^SUB(\d{2})(\d{2})(\d{3})$/);
+      
+      if (!aMatch || !bMatch) return 0;
+      
+      const aYear = parseInt(aMatch[1]);
+      const aMonth = parseInt(aMatch[2]);
+      const aSeq = parseInt(aMatch[3]);
+      
+      const bYear = parseInt(bMatch[1]);
+      const bMonth = parseInt(bMatch[2]);
+      const bSeq = parseInt(bMatch[3]);
+      
+      // Compare year first (descending)
+      if (aYear !== bYear) return bYear - aYear;
+      
+      // Then month (descending)
+      if (aMonth !== bMonth) return bMonth - aMonth;
+      
+      // Finally sequence number (descending)
+      return bSeq - aSeq;
+    });
+    
+    return result;
   }, [submissions, activeFilter]);
 
   const paginatedSubmissions = useMemo(() => {
