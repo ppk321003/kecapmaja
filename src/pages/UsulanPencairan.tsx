@@ -1,14 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubmissionTable } from '@/components/pencairan/SubmissionTable';
 import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Filter configuration untuk Tabs
+const filterConfig = [
+  { value: 'all', label: 'Total', icon: FileText, color: 'text-blue-500' },
+  { value: 'draft', label: 'Draft', icon: FileEdit, color: 'text-gray-500' },
+  { value: 'rejected', label: 'Ditolak', icon: XCircle, color: 'text-red-500' },
+  { value: 'pending_bendahara', label: 'Bendahara', icon: Clock, color: 'text-indigo-500' },
+  { value: 'pending_ppk', label: 'PPK', icon: Clock, color: 'text-orange-500' },
+  { value: 'pending_ppspm', label: 'PPSPM', icon: Clock, color: 'text-pink-500' },
+  { value: 'sent_kppn', label: 'KPPN', icon: Send, color: 'text-purple-500' },
+  { value: 'complete_arsip', label: 'Arsip', icon: Archive, color: 'text-emerald-500' },
+];
 
 // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis" di sheet
 function parseJenisBelanja(jenisBelanjaStr: string): { jenis: string; subJenis: string } {
@@ -35,50 +48,6 @@ function parseDocuments(docString: string, jenisBelanjaStr: string) {
       name.includes(doc.name.toLowerCase().split(' ')[0].toLowerCase())
     )
   }));
-}
-
-// StatCard Component - Clickable sebagai filter
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  variant?: 'default' | 'warning' | 'info' | 'danger' | 'success' | 'secondary';
-  isActive?: boolean;
-  onClick?: () => void;
-}
-
-function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onClick }: StatCardProps) {
-  const variantClasses = {
-    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200',
-    warning: 'bg-gradient-to-br from-orange-50 to-orange-100 text-orange-700 border-orange-200',
-    info: 'bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-700 border-indigo-200',
-    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200',
-    success: 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200',
-    secondary: 'bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
-  };
-
-  return (
-    <Card 
-      className={cn(
-        `border min-h-[100px] rounded-xl shadow-sm transition-all duration-200 cursor-pointer w-full`,
-        variantClasses[variant],
-        isActive 
-          ? 'bg-opacity-100 border-2 border-primary shadow-md scale-[1.02]' 
-          : 'hover:shadow-md hover:scale-[1.02] border-opacity-60'
-      )}
-      onClick={onClick}
-    >
-      <CardContent className="p-2 sm:p-3 flex items-center justify-center h-full flex-col text-center">
-        <div className="flex-1 w-full flex flex-col items-center justify-center">
-          <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight line-clamp-2">{title}</p>
-          <p className="text-lg sm:text-xl font-bold mt-2">{value}</p>
-        </div>
-        <div className={`p-2 rounded-full bg-current/10 mt-2`}>
-          <Icon className="w-4 h-4" strokeWidth={1.5} />
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default function UsulanPencairan() {
@@ -228,74 +197,41 @@ export default function UsulanPencairan() {
         </div>
       </div>
 
-      {/* STATISTIC CARDS - Clickable sebagai filter - RESPONSIVE GRID */}
-      <div className="w-full flex justify-center">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full max-w-6xl">
-          <StatCard 
-          title="Total" 
-          value={counts.all} 
-          icon={FileText} 
-          isActive={activeFilter === 'all'}
-          onClick={() => setActiveFilter('all')}
-        />
-        <StatCard 
-          title="Draft" 
-          value={counts.draft} 
-          icon={FileEdit} 
-          variant="default"
-          isActive={activeFilter === 'draft'}
-          onClick={() => setActiveFilter('draft')}
-        />
-        <StatCard 
-          title="Ditolak" 
-          value={counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn} 
-          icon={XCircle} 
-          variant="danger"
-          isActive={activeFilter === 'rejected'}
-          onClick={() => setActiveFilter('rejected')}
-        />
-        <StatCard 
-          title="Periksa Bendahara" 
-          value={counts.pending_bendahara} 
-          icon={Clock} 
-          variant="info"
-          isActive={activeFilter === 'pending_bendahara'}
-          onClick={() => setActiveFilter('pending_bendahara')}
-        />
-        <StatCard 
-          title="Periksa PPK" 
-          value={counts.pending_ppk} 
-          icon={Clock} 
-          variant="warning"
-          isActive={activeFilter === 'pending_ppk'}
-          onClick={() => setActiveFilter('pending_ppk')}
-        />
-        <StatCard 
-          title="Periksa PPSPM" 
-          value={counts.pending_ppspm} 
-          icon={Clock} 
-          variant="secondary"
-          isActive={activeFilter === 'pending_ppspm'}
-          onClick={() => setActiveFilter('pending_ppspm')}
-        />
-        <StatCard 
-          title="Kirim KPPN / Catat Arsip" 
-          value={counts.sent_kppn} 
-          icon={Clock} 
-          variant="warning"
-          isActive={activeFilter === 'sent_kppn'}
-          onClick={() => setActiveFilter('sent_kppn')}
-        />
-        <StatCard 
-          title="Selesai Arsip" 
-          value={counts.complete_arsip} 
-          icon={CheckCircle2} 
-          variant="success"
-          isActive={activeFilter === 'complete_arsip'}
-          onClick={() => setActiveFilter('complete_arsip')}
-        />
-      </div>
-      </div>
+      {/* FILTER TABS - Clean & Modern Style */}
+      <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full">
+        <div className="w-full flex justify-center">
+          <TabsList className="flex flex-wrap w-full max-w-5xl bg-muted/60 p-1 rounded-xl shadow-inner justify-center gap-1 h-auto">
+            {filterConfig.map((filter) => {
+              const Icon = filter.icon;
+              const countValue = filter.value === 'all' ? counts.all
+                : filter.value === 'draft' ? counts.draft
+                : filter.value === 'rejected' ? counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn
+                : filter.value === 'pending_bendahara' ? counts.pending_bendahara
+                : filter.value === 'pending_ppk' ? counts.pending_ppk
+                : filter.value === 'pending_ppspm' ? counts.pending_ppspm
+                : filter.value === 'sent_kppn' ? counts.sent_kppn
+                : counts.complete_arsip;
+
+              return (
+                <TabsTrigger
+                  key={filter.value}
+                  value={filter.value}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary hover:bg-background/50"
+                >
+                  <Icon className={`h-4 w-4 ${filter.color}`} />
+                  <span className="hidden sm:inline">{filter.label}</span>
+                  <span className="inline sm:hidden text-xs font-bold bg-primary/10 px-1.5 py-0.5 rounded-full text-primary">
+                    {countValue}
+                  </span>
+                  <span className="hidden sm:inline text-xs font-bold bg-primary/10 px-1.5 py-0.5 rounded-full text-primary ml-1">
+                    {countValue}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+      </Tabs>
 
       {/* DAFTAR PENGAJUAN CARD */}
       <div className="flex justify-center">
