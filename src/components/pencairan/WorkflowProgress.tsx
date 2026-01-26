@@ -109,7 +109,10 @@ export function WorkflowProgress({ status, className }: WorkflowProgressProps) {
           )}
           style={{
             width: status === 'complete_arsip' ? '100%' : 
-                   ['sent_kppn', 'incomplete_kppn'].includes(status) ? '83%' :\n                   ['pending_ppspm', 'incomplete_ppspm'].includes(status) ? '67%' :\n                   ['pending_ppk', 'incomplete_ppk'].includes(status) ? '50%' :\n                   ['pending_bendahara', 'incomplete_bendahara'].includes(status) ? '33%' : '0%'
+                   ['sent_kppn', 'incomplete_kppn'].includes(status) ? '83%' :
+                   ['pending_ppspm', 'incomplete_ppspm'].includes(status) ? '67%' :
+                   ['pending_ppk', 'incomplete_ppk'].includes(status) ? '50%' :
+                   ['pending_bendahara', 'incomplete_bendahara'].includes(status) ? '33%' : '0%'
           }}
         />
         

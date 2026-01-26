@@ -465,7 +465,7 @@ export function SubmissionDetail({
               <Button 
                 className="flex-1"
                 onClick={handleApprove}
-                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'sent_kppn' && !notes)}}
+                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'sent_kppn' && !notes)}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
