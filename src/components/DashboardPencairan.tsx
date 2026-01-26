@@ -52,17 +52,17 @@ interface StatCardProps {
 
 function StatCard({ title, value, subtitle, icon: Icon, variant = 'default', trend }: StatCardProps) {
   const variantClasses = {
-    default: 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 dark:text-blue-300 dark:border-blue-800',
-    warning: 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700 border-amber-200 dark:from-amber-950/50 dark:to-amber-900/50 dark:text-amber-300 dark:border-amber-800',
-    info: 'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-700 border-cyan-200 dark:from-cyan-950/50 dark:to-cyan-900/50 dark:text-cyan-300 dark:border-cyan-800',
-    danger: 'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border-red-200 dark:from-red-950/50 dark:to-red-900/50 dark:text-red-300 dark:border-red-800',
-    success: 'bg-gradient-to-br from-green-50 to-green-100 text-green-700 border-green-200 dark:from-green-950/50 dark:to-green-900/50 dark:text-green-300 dark:border-green-800',
-    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 dark:text-purple-300 dark:border-purple-800',
+    default: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-700 dark:from-blue-700 dark:to-blue-800 dark:text-white dark:border-blue-900',
+    warning: 'bg-gradient-to-br from-orange-500 to-orange-600 text-white border-orange-700 dark:from-orange-700 dark:to-orange-800 dark:text-white dark:border-orange-900',
+    info: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-700 dark:from-indigo-700 dark:to-indigo-800 dark:text-white dark:border-indigo-900',
+    danger: 'bg-gradient-to-br from-red-500 to-red-600 text-white border-red-700 dark:from-red-700 dark:to-red-800 dark:text-white dark:border-red-900',
+    success: 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-700 dark:from-emerald-700 dark:to-emerald-800 dark:text-white dark:border-emerald-900',
+    secondary: 'bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 text-white border-fuchsia-700 dark:from-fuchsia-700 dark:to-fuchsia-800 dark:text-white dark:border-fuchsia-900',
   };
 
   return (
-    <Card className={`border ${variantClasses[variant]} rounded-xl shadow-sm hover:shadow-md transition-all duration-200`}>
-      <CardContent className="p-4">
+    <Card className={`border ${variantClasses[variant]} rounded-lg shadow-sm hover:shadow-md transition-all duration-200 min-h-[140px]`}>
+      <CardContent className="p-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</p>
@@ -336,7 +336,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="Total Pengajuan"
           value={stats.total}
