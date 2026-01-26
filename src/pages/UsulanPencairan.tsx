@@ -60,18 +60,18 @@ function StatCard({ title, value, icon: Icon, variant = 'default', isActive, onC
   return (
     <Card 
       className={cn(
-        `border min-h-[120px] rounded-3xl shadow-sm transition-all duration-200 cursor-pointer flex-shrink-0 w-[140px] sm:w-[160px]`,
+        `border min-h-[100px] rounded-xl shadow-sm transition-all duration-200 cursor-pointer w-full`,
         variantClasses[variant],
         isActive 
-          ? 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-lg' 
-          : 'hover:shadow-md hover:scale-[1.02]'
+          ? 'bg-opacity-100 border-2 border-primary shadow-md scale-[1.02]' 
+          : 'hover:shadow-md hover:scale-[1.02] border-opacity-60'
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3 flex items-center justify-center h-full flex-col text-center">
+      <CardContent className="p-2 sm:p-3 flex items-center justify-center h-full flex-col text-center">
         <div className="flex-1 w-full flex flex-col items-center justify-center">
           <p className="text-xs font-semibold uppercase tracking-wider whitespace-normal leading-tight line-clamp-2">{title}</p>
-          <p className="text-xl font-bold mt-2">{value}</p>
+          <p className="text-lg sm:text-xl font-bold mt-2">{value}</p>
         </div>
         <div className={`p-2 rounded-full bg-current/10 mt-2`}>
           <Icon className="w-4 h-4" strokeWidth={1.5} />
@@ -228,9 +228,9 @@ export default function UsulanPencairan() {
         </div>
       </div>
 
-      {/* STATISTIC CARDS - Clickable sebagai filter - 1 BARIS HORIZONTAL */}
-      <div className="flex justify-center">
-        <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2">
+      {/* STATISTIC CARDS - Clickable sebagai filter - RESPONSIVE GRID */}
+      <div className="w-full flex justify-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full max-w-6xl">
           <StatCard 
           title="Total" 
           value={counts.all} 
