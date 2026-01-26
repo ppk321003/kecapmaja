@@ -12,7 +12,7 @@ interface StatCardProps {
 
 const variantStyles = {
   default: 'bg-card border-border',
-  warning: 'bg-amber-50 border-amber-300',
+  warning: 'bg-amber-50 border-amber-200',
   success: 'bg-green-50 border-green-200',
   danger: 'bg-red-50 border-red-200',
   info: 'bg-blue-50 border-blue-200',
