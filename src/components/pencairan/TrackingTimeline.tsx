@@ -150,31 +150,39 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     });
   }
 
-  // 5. KPPN (Kolom O - waktuKppn, Kolom P - statusKppn)
-  if (submission.waktuKppn || submission.statusKppn || isIncompleteKppn) {
-    const kppnStatus = parseTimelineStatus(submission.statusKppn);
-    let statusLabel = submission.statusKppn 
-      ? `KPPN: ${submission.statusKppn}`
-      : 'Menunggu pemrosesan KPPN';
-    let type = kppnStatus.type;
-
-    if (isIncompleteKppn) {
-      statusLabel = 'Dikembalikan oleh KPPN';
-      type = 'incomplete';
-    }
+  // 5. Sent to KPPN (Kolom O - waktuKppn, for reference only, status is sent_kppn)
+  if (submission.status === 'sent_kppn' || submission.waktuKppn) {
+    let statusLabel = 'Menunggu pencatatan Arsip';
+    let type: TimelineEvent['type'] = 'pending';
 
     events.push({
-      id: 'kppn',
+      id: 'sent_kppn',
       actor: 'KPPN',
-      actorLabel: 'Kantor Pelayanan Perbendaharaan Negara',
-      timestamp: submission.waktuKppn,
-      status: isIncompleteKppn ? 'Dikembalikan' : submission.statusKppn,
+      actorLabel: 'Dokumen dikirim ke KPPN',
+      timestamp: submission.waktuKppn || undefined,
+      status: 'Pengajuan dikirim',
       statusLabel,
       type,
     });
   }
 
-  // 6. Arsip (Kolom Q - waktuArsip, Kolom R - statusArsip)
+  // 6. Incomplete KPPN (Rejection from Arsip)
+  if (isIncompleteKppn) {
+    let statusLabel = 'Dikembalikan oleh Arsip';
+    let type: TimelineEvent['type'] = 'incomplete';
+
+    events.push({
+      id: 'incomplete_kppn',
+      actor: 'Arsip',
+      actorLabel: 'Pengembalian dari Arsip',
+      timestamp: undefined,
+      status: 'Perlu perbaikan',
+      statusLabel,
+      type,
+    });
+  }
+
+  // 7. Arsip (Kolom Q - waktuArsip, Kolom R - statusArsip)
   if (submission.waktuArsip || submission.statusArsip) {
     const arsipStatus = parseTimelineStatus(submission.statusArsip);
     let statusLabel = submission.statusArsip 
