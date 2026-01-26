@@ -186,7 +186,6 @@ export default function UsulanPencairan() {
       pending_ppk: 0,
       pending_ppspm: 0,
       sent_kppn: 0,
-      pending_arsip: 0,
       complete_arsip: 0,
       incomplete_sm: 0,
       incomplete_bendahara: 0,
@@ -288,20 +287,12 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('pending_ppspm')}
         />
         <StatCard 
-          title="KPPN" 
-          value={counts.sent_kppn} 
-          icon={CheckCircle2} 
-          variant="success"
-          isActive={activeFilter === 'sent_kppn'}
-          onClick={() => setActiveFilter('sent_kppn')}
-        />
-        <StatCard 
           title="Catat Arsip" 
-          value={counts.pending_arsip} 
+          value={counts.sent_kppn} 
           icon={Clock} 
           variant="warning"
-          isActive={activeFilter === 'pending_arsip'}
-          onClick={() => setActiveFilter('pending_arsip')}
+          isActive={activeFilter === 'sent_kppn'}
+          onClick={() => setActiveFilter('sent_kppn')}
         />
         <StatCard 
           title="Selesai Arsip" 

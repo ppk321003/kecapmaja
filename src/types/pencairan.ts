@@ -6,7 +6,6 @@ export type SubmissionStatus =
   | 'pending_ppk'
   | 'pending_ppspm'  
   | 'sent_kppn'
-  | 'pending_arsip'
   | 'complete_arsip'
   | 'incomplete_sm'
   | 'incomplete_bendahara'
@@ -81,8 +80,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending_bendahara: 'Periksa Bendahara',
   pending_ppk: 'Periksa PPK',
   pending_ppspm: 'Periksa PPSPM', 
-  sent_kppn: 'KPPN',
-  pending_arsip: 'Catat Arsip',
+  sent_kppn: 'Catat Arsip',
   complete_arsip: 'Selesai Arsip',
   incomplete_sm: 'Dikembalikan ke SM',
   incomplete_bendahara: 'Dikembalikan ke Bendahara',
@@ -314,13 +312,12 @@ export function canTakeAction(role: UserRole, status: SubmissionStatus): boolean
   if (role === 'Bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
   if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
   if (role === 'Pejabat Penandatangan Surat Perintah Membayar' && (status === 'pending_ppspm' || status === 'incomplete_ppspm')) return true;
-  if (role === 'KPPN' && (status === 'sent_kppn' || status === 'incomplete_kppn')) return true;
-  if (role === 'Arsip' && (status === 'pending_arsip' || status === 'complete_arsip')) return true;
+  if (role === 'Arsip' && (status === 'sent_kppn' || status === 'incomplete_kppn')) return true;
   return false;
 }
 
 export function canReturnFromArsip(role: UserRole, status: SubmissionStatus): boolean {
-  return (role === 'Arsip' || role === 'admin') && status === 'pending_arsip';
+  return (role === 'Arsip' || role === 'admin') && status === 'sent_kppn';
 }
 
 export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean {
@@ -335,7 +332,7 @@ export function canEdit(role: UserRole, status: SubmissionStatus): boolean {
 }
 
 export function getRelevantTimestamp(submission: Submission): string | null {
-  if ((submission.status === 'complete_arsip' || submission.status === 'pending_arsip') && submission.waktuArsip) {
+  if (submission.status === 'complete_arsip' && submission.waktuArsip) {
     return submission.waktuArsip;
   }
   if ((submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') && submission.waktuKppn) {

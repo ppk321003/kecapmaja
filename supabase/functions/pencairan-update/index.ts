@@ -230,19 +230,9 @@ serve(async (req) => {
       updatedStatusPPSPM = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'sent_kppn'; // PPSPM approve → ke KPPN
+        newStatus = 'sent_kppn'; // PPSPM approve → Arsip catat
       } else if (action === 'reject') {
         newStatus = 'incomplete_ppk'; // PPSPM reject → kembali ke PPK
-      }
-      
-    } else if (actor === 'kppn') {
-      updatedWaktuKppn = updatedAt;
-      updatedStatusKppn = action === 'approve' ? 'approved' : 'rejected';
-      
-      if (action === 'approve') {
-        newStatus = 'pending_arsip'; // KPPN approve → ke Arsip
-      } else if (action === 'reject') {
-        newStatus = 'incomplete_ppspm'; // KPPN reject → kembali ke PPSPM
       }
       
     } else if (actor === 'arsip') {
@@ -250,9 +240,9 @@ serve(async (req) => {
       updatedStatusArsip = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'complete_arsip'; // Arsip approve → selesai
+        newStatus = 'complete_arsip'; // Arsip catat → selesai
       } else if (action === 'reject') {
-        newStatus = 'incomplete_kppn'; // Arsip reject → kembali ke KPPN
+        newStatus = 'incomplete_ppspm'; // Arsip reject → kembali ke PPSPM
       }
     }
 

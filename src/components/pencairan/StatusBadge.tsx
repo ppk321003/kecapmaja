@@ -74,12 +74,6 @@ const statusConfig: Record<SubmissionStatus, {
     textClass: 'text-violet-700 dark:text-violet-400',
     borderClass: 'border-violet-300 dark:border-violet-700',
   },
-  pending_arsip: {
-    icon: Clock,
-    bgClass: 'bg-cyan-100 dark:bg-cyan-900/30',
-    textClass: 'text-cyan-700 dark:text-cyan-400',
-    borderClass: 'border-cyan-300 dark:border-cyan-700',
-  },
   complete_arsip: {
     icon: CheckCircle2,
     bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',

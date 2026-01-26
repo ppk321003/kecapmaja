@@ -160,9 +160,9 @@ export function SubmissionDetail({
 
   const handleApprove = async () => {
     let newStatus: string;
-    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'kppn' | 'arsip';
+    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
     
-    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > KPPN > ARSIP
+    // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > sent_kppn (Arsip catat) > complete_arsip
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
       newStatus = 'pending_ppk'; // Setelah Bendahara approve, ke PPK
       actor = 'bendahara';
@@ -170,13 +170,10 @@ export function SubmissionDetail({
       newStatus = 'pending_ppspm'; // Setelah PPK approve, ke PPSPM
       actor = 'ppk';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
-      newStatus = 'sent_kppn'; // Setelah PPSPM approve, ke KPPN
+      newStatus = 'sent_kppn'; // Setelah PPSPM approve, ke Arsip (sent_kppn)
       actor = 'ppspm';
     } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
-      newStatus = 'pending_arsip'; // Setelah KPPN approve, ke Arsip
-      actor = 'kppn';
-    } else if (submission.status === 'pending_arsip') {
-      newStatus = 'complete_arsip'; // Setelah Arsip approve, selesai
+      newStatus = 'complete_arsip'; // Setelah Arsip catat, selesai
       actor = 'arsip';
     } else {
       return;
@@ -190,7 +187,6 @@ export function SubmissionDetail({
       ...(actor === 'bendahara' && { bendaharaCheckedAt: new Date() }),
       ...(actor === 'ppk' && { ppkCheckedAt: new Date() }),
       ...(actor === 'ppspm' && { ppspmCheckedAt: new Date() }),
-      ...(actor === 'kppn' && { kppnCheckedAt: new Date() }),
       ...(actor === 'arsip' && { arsipCheckedAt: new Date() }),
     });
     onClose();
@@ -198,7 +194,7 @@ export function SubmissionDetail({
 
   const handleReject = async () => {
     let newStatus: string;
-    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'kppn' | 'arsip';
+    let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
     
     // Alur pengembalian sesuai alur baru
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
@@ -211,10 +207,7 @@ export function SubmissionDetail({
       newStatus = 'incomplete_ppk'; // PPSPM reject, kembali ke PPK
       actor = 'ppspm';
     } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
-      newStatus = 'incomplete_ppspm'; // KPPN reject, kembali ke PPSPM
-      actor = 'kppn';
-    } else if (submission.status === 'pending_arsip') {
-      newStatus = 'incomplete_kppn'; // Arsip reject, kembali ke KPPN
+      newStatus = 'incomplete_ppspm'; // Arsip reject, kembali ke PPSPM
       actor = 'arsip';
     } else {
       return;
@@ -247,14 +240,12 @@ export function SubmissionDetail({
   const getApproveButtonLabel = () => {
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
       return 'Setujui dan Kirim ke PPK';
-    } else if (submission.status ==KPPN';
+    } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
+      return 'Setujui dan Kirim ke PPSPM';
+    } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+      return 'Setujui dan Kirim ke Arsip';
     } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
-      return 'Setujui dan Kirim ke Arsip';
-    } else if (submission.status === 'pending_arsip') {
-      return 'Catat dan Selesaikantus === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
-      return 'Setujui dan Kirim ke Arsip';
-    } else if (submission.status === 'pending_arsip') {
-      return 'Catat dan Arsip';
+      return 'Catat dan Selesaikan';
     }
     return 'Setujui';
   };
@@ -266,7 +257,7 @@ export function SubmissionDetail({
       return 'Kembalikan ke Bendahara';
     } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
       return 'Kembalikan ke PPK';
-    } else if (submission.status === 'pending_arsip') {
+    } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
       return 'Kembalikan ke PPSPM';
     }
     return 'Tolak';
@@ -428,20 +419,20 @@ export function SubmissionDetail({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
-                  Catatan {submission.status === 'pending_arsip' && <span className="text-red-500">*</span>}
+                  Catatan {submission.status === 'sent_kppn' && <span className="text-red-500">*</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {(canAction || canReturnArsip) ? (
                   <div className="space-y-2">
                     <Textarea
-                      placeholder={submission.status === 'pending_arsip' ? "Catatan wajib diisi..." : "Tambahkan catatan..."}
+                      placeholder={submission.status === 'sent_kppn' ? "Catatan wajib diisi..." : "Tambahkan catatan..."}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="resize-none"
                       rows={3}
                     />
-                    {submission.status === 'pending_arsip' && !notes && (
+                    {submission.status === 'sent_kppn' && !notes && (
                       <p className="text-xs text-red-500">Catatan wajib diisi sebelum submit</p>
                     )}
                   </div>
@@ -474,7 +465,7 @@ export function SubmissionDetail({
               <Button 
                 className="flex-1"
                 onClick={handleApprove}
-                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'pending_arsip' && !notes)}
+                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'sent_kppn' && !notes)}}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

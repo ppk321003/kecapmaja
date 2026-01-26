@@ -16,7 +16,6 @@ const STATUS_COLORS: Record<string, string> = {
   pending_ppk: '#f59e0b',
   pending_ppspm: '#8b5cf6',
   sent_kppn: '#14b8a6',
-  pending_arsip: '#a855f7',
   complete_arsip: '#10b981',
   incomplete_sm: '#ef4444',
   incomplete_bendahara: '#be123c',
@@ -124,7 +123,6 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       pending_ppk: 0,
       pending_ppspm: 0,
       sent_kppn: 0,
-      pending_arsip: 0,
       complete_arsip: 0,
       incomplete_sm: 0,
       incomplete_bendahara: 0,
@@ -139,7 +137,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       }
     });
 
-    const inProcess = counts.pending_bendahara + counts.pending_ppk + counts.pending_ppspm + counts.sent_kppn + counts.pending_arsip;
+    const inProcess = counts.pending_bendahara + counts.pending_ppk + counts.pending_ppspm + counts.sent_kppn;
     const rejected = counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn;
     const successRate = counts.total > 0 ? Math.round((counts.complete_arsip / counts.total) * 100) : 0;
     const completionPercentage = counts.total > 0 ? Math.round((counts.complete_arsip / counts.total) * 100) : 0;
@@ -236,8 +234,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       { name: 'Periksa Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
       { name: 'Periksa PPK', value: stats.pending_ppk, color: '#f59e0b' },
       { name: 'Periksa PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
-      { name: 'KPPN', value: stats.sent_kppn, color: '#14b8a6' },
-      { name: 'Catat Arsip', value: stats.pending_arsip, color: '#a855f7' },
+      { name: 'Catat Arsip', value: stats.sent_kppn, color: '#14b8a6' },
       { name: 'Selesai Arsip', value: stats.complete_arsip, color: '#10b981' },
     ];
   }, [stats]);
@@ -369,8 +366,8 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
           variant="danger"
         />
         <StatCard
-          title="Menunggu Arsip"
-          value={stats.pending_arsip}
+          title="Catat Arsip"
+          value={stats.sent_kppn}
           subtitle="Siap dicatat"
           icon={AlertTriangle}
           variant="info"

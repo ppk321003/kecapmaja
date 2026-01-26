@@ -83,7 +83,6 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     'pending_ppk': 'pending_ppk',
     'pending_ppspm': 'pending_ppspm',
     'sent_kppn': 'sent_kppn',
-    'pending_arsip': 'pending_arsip',
     'complete_arsip': 'complete_arsip',
     'incomplete_sm': 'incomplete_sm',
     'incomplete_bendahara': 'incomplete_bendahara',
