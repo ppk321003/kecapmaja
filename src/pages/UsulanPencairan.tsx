@@ -304,6 +304,7 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('complete_arsip')}
         />
       </div>
+      </div>
 
       {/* DAFTAR PENGAJUAN CARD */}
       <div className="flex justify-center">
