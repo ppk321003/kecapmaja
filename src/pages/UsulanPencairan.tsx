@@ -238,7 +238,7 @@ export default function UsulanPencairan() {
       </div>
 
       {/* STATISTIC CARDS - Clickable sebagai filter */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <StatCard 
           title="Total" 
           value={counts.all} 
@@ -277,6 +277,33 @@ export default function UsulanPencairan() {
           variant="secondary"
           isActive={activeFilter === 'pending_ppspm'}
           onClick={() => setActiveFilter('pending_ppspm')}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <StatCard 
+          title="Periksa KPPN" 
+          value={counts.pending_kppn} 
+          icon={Clock} 
+          variant="info"
+          isActive={activeFilter === 'pending_kppn'}
+          onClick={() => setActiveFilter('pending_kppn')}
+        />
+        <StatCard 
+          title="Catat Arsip" 
+          value={counts.pending_arsip} 
+          icon={Clock} 
+          variant="warning"
+          isActive={activeFilter === 'pending_arsip'}
+          onClick={() => setActiveFilter('pending_arsip')}
+        />
+        <StatCard 
+          title="Selesai (Arsip)" 
+          value={counts.sent_arsip} 
+          icon={CheckCircle2} 
+          variant="success"
+          isActive={activeFilter === 'sent_arsip'}
+          onClick={() => setActiveFilter('sent_arsip')}
         />
         <StatCard 
           title="Ditolak" 

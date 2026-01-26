@@ -19,7 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
   incomplete_ppk: '#f97316',
   incomplete_ppspm: '#dc2626',
   incomplete_bendahara: '#be123c',
-  sent_kppn: '#10b981',
+  sent_arsip: '#10b981',
 };
 
 // Custom tooltip component
@@ -120,11 +120,13 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       pending_ppk: 0,
       pending_ppspm: 0,
       pending_bendahara: 0,
+      pending_kppn: 0,
+      pending_arsip: 0,
       incomplete_sm: 0,
       incomplete_ppk: 0,
       incomplete_ppspm: 0,
       incomplete_bendahara: 0,
-      sent_kppn: 0,
+      sent_arsip: 0,
     };
 
     filteredSubmissions.forEach(sub => {
@@ -133,11 +135,12 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       }
     });
 
-    const inProcess = counts.pending_ppk + counts.pending_ppspm + counts.pending_bendahara;
+    const inProcess = counts.pending_ppk + counts.pending_ppspm + counts.pending_bendahara + counts.pending_kppn + counts.pending_arsip;
     const rejected = counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara;
-    const successRate = counts.total > 0 ? Math.round((counts.sent_kppn / counts.total) * 100) : 0;
+    const successRate = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
+    const completionPercentage = counts.total > 0 ? Math.round((counts.sent_arsip / counts.total) * 100) : 0;
 
-    return { ...counts, inProcess, rejected, successRate };
+    return { ...counts, inProcess, rejected, successRate, completionPercentage };
   }, [filteredSubmissions]);
 
   // Status distribution for pie chart
@@ -180,7 +183,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       if (date) {
         const monthIndex = date.getMonth();
         data[monthIndex].pengajuan++;
-        if (sub.status === 'sent_kppn') {
+        if (sub.status === 'sent_arsip') {
           data[monthIndex].selesai++;
         } else if (['incomplete_sm', 'incomplete_ppk', 'incomplete_ppspm', 'incomplete_bendahara'].includes(sub.status)) {
           data[monthIndex].ditolak++;
@@ -200,7 +203,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         submitterCounts[submitter] = { total: 0, completed: 0 };
       }
       submitterCounts[submitter].total++;
-      if (sub.status === 'sent_kppn') {
+      if (sub.status === 'sent_arsip') {
         submitterCounts[submitter].completed++;
       }
     });
@@ -236,7 +239,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
   }, [stats]);
 
   // Average processing time between stages
-  const processingTimeData = useMemo(() => {
+  const processingTimeData: Array<{ stage: string; hours: number; displayTime: string; count: number; color: string }> = useMemo(() => {
     const timeDiffs = {
       smToBendahara: [] as number[],
       bendaharaToPpk: [] as number[],
@@ -304,30 +307,35 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         hours: parseFloat(avgSmToBendahara.toFixed(1)),
         displayTime: formatTime(avgSmToBendahara),
         count: timeDiffs.smToBendahara.length,
+        color: '#3b82f6',
       },
       { 
         stage: 'Bendahara → PPK', 
         hours: parseFloat(avgBendaharaToPpk.toFixed(1)),
         displayTime: formatTime(avgBendaharaToPpk),
         count: timeDiffs.bendaharaToPpk.length,
+        color: '#06b6d4',
       },
       { 
         stage: 'PPK → PPSPM', 
         hours: parseFloat(avgPpkToPpspm.toFixed(1)),
         displayTime: formatTime(avgPpkToPpspm),
         count: timeDiffs.ppkToPpspm.length,
+        color: '#f59e0b',
       },
       { 
         stage: 'PPSPM → KPPN', 
         hours: parseFloat(avgPpspmToKppn.toFixed(1)),
         displayTime: formatTime(avgPpspmToKppn),
         count: timeDiffs.ppspmToKppn.length,
+        color: '#8b5cf6',
       },
       { 
         stage: 'KPPN → Arsip', 
         hours: parseFloat(avgKppnToArsip.toFixed(1)),
         displayTime: formatTime(avgKppnToArsip),
         count: timeDiffs.kppnToArsip.length,
+        color: '#10b981',
       },
     ];
   }, [filteredSubmissions]);
@@ -361,7 +369,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         <StatCard
           title="Sedang Diproses"
           value={stats.inProcess}
-          subtitle="PPK/PPSPM/Bendahara"
+          subtitle="PPK/PPSPM/Bendahara/KPPN/Arsip"
           icon={Clock}
           variant="warning"
         />
@@ -373,18 +381,18 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
           variant="danger"
         />
         <StatCard
-          title="Dikirim KPPN"
-          value={stats.sent_kppn}
-          subtitle="Selesai"
-          icon={CheckCircle2}
-          variant="success"
+          title="Menunggu Arsip"
+          value={stats.pending_arsip}
+          subtitle="Siap dicatat"
+          icon={AlertTriangle}
+          variant="info"
         />
         <StatCard
-          title="Tingkat Sukses"
-          value={`${stats.successRate}%`}
-          subtitle="Ke KPPN"
-          icon={TrendingUp}
-          variant="info"
+          title="Tingkat Selesai"
+          value={`${stats.completionPercentage}%`}
+          subtitle="Sudah dicatat Arsip"
+          icon={CheckCircle2}
+          variant="success"
         />
       </div>
 

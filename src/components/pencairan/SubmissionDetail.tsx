@@ -438,23 +438,28 @@ export function SubmissionDetail({
             </Card>
           </Collapsible>
 
-          {(submission.notes || canAction || canReturn) && (
+          {(submission.notes || canAction || canReturn || canReturnArsip) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
-                  Catatan
+                  Catatan {submission.status === 'pending_arsip' && <span className="text-red-500">*</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {(canAction || canReturn) ? (
-                  <Textarea
-                    placeholder="Tambahkan catatan..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="resize-none"
-                    rows={3}
-                  />
+                {(canAction || canReturn || canReturnArsip) ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder={submission.status === 'pending_arsip' ? "Catatan wajib diisi..." : "Tambahkan catatan..."}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="resize-none"
+                      rows={3}
+                    />
+                    {submission.status === 'pending_arsip' && !notes && (
+                      <p className="text-xs text-red-500">Catatan wajib diisi sebelum submit</p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
                     {submission.notes || 'Tidak ada catatan'}
@@ -464,25 +469,27 @@ export function SubmissionDetail({
             </Card>
           )}
 
-          {canAction && (
+          {(canAction || canReturnArsip) && (
             <div className="flex gap-3 pt-4">
               <Button 
                 variant="destructive" 
                 className="flex-1"
-                onClick={handleReject}
+                onClick={canReturnArsip ? handleReturnFromArsip : handleReject}
                 disabled={isUpdating}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : canReturnArsip ? (
+                  <ArrowLeft className="w-4 h-4 mr-2" />
                 ) : (
                   <XCircle className="w-4 h-4 mr-2" />
                 )}
-                {getRejectButtonLabel()}
+                {canReturnArsip ? 'Kembalikan ke KPPN' : getRejectButtonLabel()}
               </Button>
               <Button 
                 className="flex-1"
                 onClick={handleApprove}
-                disabled={!allDocsComplete || isUpdating}
+                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'pending_arsip' && !notes)}
               >
                 {isUpdating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
