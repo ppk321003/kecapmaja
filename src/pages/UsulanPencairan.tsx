@@ -117,7 +117,7 @@ export default function UsulanPencairan() {
   }, [sheetSubmissions, selectedSubmission?.id]);
 
   const filteredSubmissions = useMemo(() => {
-    // Start dengan copy dari submissions agar tidak mutasi original array
+    // Start dengan copy dari submissions
     let result = [...submissions];
     
     // Filter berdasarkan activeFilter
@@ -135,37 +135,20 @@ export default function UsulanPencairan() {
       }
     }
     
-    // Sort by ID descending (format: SUBYYMMXXX, highest XXX first = newest first)
-    // Nomor urut yang lebih besar = lebih baru (025 > 010)
-    result.sort((a, b) => {
-      // Extract: SUB + YY + MM + XXX
-      const aMatch = a.id.match(/^SUB(\d{2})(\d{2})(\d{3})$/);
-      const bMatch = b.id.match(/^SUB(\d{2})(\d{2})(\d{3})$/);
-      
-      if (!aMatch || !bMatch) return 0;
-      
-      const aYear = parseInt(aMatch[1]);
-      const aMonth = parseInt(aMatch[2]);
-      const aSeq = parseInt(aMatch[3]);
-      
-      const bYear = parseInt(bMatch[1]);
-      const bMonth = parseInt(bMatch[2]);
-      const bSeq = parseInt(bMatch[3]);
-      
-      // Compare year first (descending - newer year first)
-      if (aYear !== bYear) return bYear - aYear;
-      
-      // Then month (descending - newer month first)
-      if (aMonth !== bMonth) return bMonth - aMonth;
-      
-      // Finally sequence number (descending - higher seq first)
-      return bSeq - aSeq;
+    // Sort by ID - extract nomor urut (3 digit terakhir) dan sort descending
+    // Format ID: SUBYYMMXXX (XX = tahun, MM = bulan, XXX = nomor urut)
+    result = result.sort((a, b) => {
+      try {
+        // Extract tahun, bulan, dan nomor urut
+        const aNum = parseInt(a.id.substring(5)); // SUB + 2 digit tahun + 2 digit bulan + 3 digit nomor = ambil dari index 5
+        const bNum = parseInt(b.id.substring(5));
+        
+        // Descending order (terbaru dulu)
+        return bNum - aNum;
+      } catch (e) {
+        return 0;
+      }
     });
-    
-    // Debug log untuk verifikasi sorting
-    if (result.length > 0) {
-      console.log(`Sorted submissions (first 3): ${result.slice(0, 3).map(s => s.id).join(', ')}`);
-    }
     
     return result;
   }, [submissions, activeFilter]);

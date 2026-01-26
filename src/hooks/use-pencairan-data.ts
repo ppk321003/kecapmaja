@@ -199,7 +199,15 @@ export function usePencairanData() {
         return mapRawToSubmission(rawData);
       });
 
-      return submissions;
+      // Sort submissions by full ID descending (newest first)
+      // Format: SUBYYMMXXX - higher numbers = newer
+      const sortedSubmissions = submissions.sort((a, b) => {
+        const aNum = parseInt(a.id.substring(5)); // SUBYYMMXXX - ambil dari index 5 (YYMMXXX = 5 digit)
+        const bNum = parseInt(b.id.substring(5));
+        return bNum - aNum; // Descending
+      });
+
+      return sortedSubmissions;
     },
     refetchInterval: 30000,
   });
