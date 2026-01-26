@@ -56,12 +56,6 @@ const statusConfig: Record<SubmissionStatus, {
     textClass: 'text-fuchsia-700 dark:text-fuchsia-400',
     borderClass: 'border-fuchsia-300 dark:border-fuchsia-700',
   },
-  pending_kppn: {
-    icon: Clock,
-    bgClass: 'bg-teal-100 dark:bg-teal-900/30',
-    textClass: 'text-teal-700 dark:text-teal-400',
-    borderClass: 'border-teal-300 dark:border-teal-700',
-  },
   sent_kppn: {
     icon: Clock,
     bgClass: 'bg-teal-100 dark:bg-teal-900/30',
