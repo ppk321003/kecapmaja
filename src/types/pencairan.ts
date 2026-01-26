@@ -2,14 +2,17 @@
 
 export type SubmissionStatus = 
   | 'draft'
+  | 'pending_bendahara'
   | 'pending_ppk'
   | 'pending_ppspm'  
-  | 'pending_bendahara'
+  | 'pending_kppn'
+  | 'pending_arsip'
   | 'incomplete_sm'
+  | 'incomplete_bendahara'
   | 'incomplete_ppk'
   | 'incomplete_ppspm'
-  | 'incomplete_bendahara'
-  | 'sent_kppn';
+  | 'incomplete_kppn'
+  | 'sent_arsip';
 
 export type UserRole = 
   | 'Fungsi Sosial'
@@ -17,9 +20,11 @@ export type UserRole =
   | 'Fungsi Produksi'
   | 'Fungsi Distribusi'
   | 'Fungsi IPDS'
+  | 'Bendahara'
   | 'Pejabat Pembuat Komitmen'
   | 'Pejabat Penandatangan Surat Perintah Membayar'
-  | 'Bendahara'
+  | 'KPPN'
+  | 'Arsip'
   | 'admin';
 
 // Roles yang bisa mengajukan
@@ -54,28 +59,36 @@ export interface Submission {
   documents: Document[];
   notes?: string;
   waktuPengajuan?: string;
-  waktuPpk?: string;
-  waktuPPSPM?: string; // ✅ TAMBAH ini untuk konsistensi dengan pencairan-fetch.ts
   waktuBendahara?: string;
-  statusPpk?: string;
-  statusPPSPM?: string; // ✅ TAMBAH ini untuk konsistensi dengan pencairan-fetch.ts
+  waktuPpk?: string;
+  waktuPPSPM?: string;
+  waktuKppn?: string;
+  waktuArsip?: string; // ✅ TAMBAH untuk waktu input arsip
   statusBendahara?: string;
+  statusPpk?: string;
+  statusPPSPM?: string;
   statusKppn?: string;
-  ppkCheckedAt?: Date;
+  statusArsip?: string; // ✅ TAMBAH untuk status arsip
   bendaharaCheckedAt?: Date;
-  sentToKppnAt?: Date;
+  ppkCheckedAt?: Date;
+  ppspmCheckedAt?: Date;
+  kppnCheckedAt?: Date;
+  arsipCheckedAt?: Date; // ✅ TAMBAH untuk waktu record arsip
 }
 
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   draft: 'Sedang disiapkan SM',
+  pending_bendahara: 'Menunggu Verifikasi Bendahara',
   pending_ppk: 'Menunggu Verifikasi PPK',
   pending_ppspm: 'Menunggu Pemeriksaan PPSPM', 
-  pending_bendahara: 'Menunggu Verifikasi Bendahara',
+  pending_kppn: 'Menunggu Pemrosesan KPPN',
+  pending_arsip: 'Menunggu Pencatatan Arsip',
   incomplete_sm: 'Dikembalikan ke SM',
+  incomplete_bendahara: 'Dikembalikan ke Bendahara',
   incomplete_ppk: 'Dikembalikan ke PPK',
   incomplete_ppspm: 'Dikembalikan ke PPSPM', 
-  incomplete_bendahara: 'Dikembalikan ke Bendahara',
-  sent_kppn: 'Dikirim ke KPPN',
+  incomplete_kppn: 'Dikembalikan ke KPPN',
+  sent_arsip: 'Sudah Dicatat di Arsip',
 };
 
 // Jenis Belanja Options (main categories)
@@ -298,14 +311,20 @@ export function canCreateSubmission(role: UserRole): boolean {
 
 export function canTakeAction(role: UserRole, status: SubmissionStatus): boolean {
   if (role === 'admin') return true;
-  if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
-  if (role === 'Pejabat Penandatangan Surat Perintah Membayar' &&  (status === 'pending_ppspm' || status === 'incomplete_ppspm')) return true;
   if (role === 'Bendahara' && (status === 'pending_bendahara' || status === 'incomplete_bendahara')) return true;
+  if (role === 'Pejabat Pembuat Komitmen' && (status === 'pending_ppk' || status === 'incomplete_ppk')) return true;
+  if (role === 'Pejabat Penandatangan Surat Perintah Membayar' && (status === 'pending_ppspm' || status === 'incomplete_ppspm')) return true;
+  if (role === 'KPPN' && (status === 'pending_kppn' || status === 'incomplete_kppn')) return true;
+  if (role === 'Arsip' && status === 'pending_arsip') return true;
   return false;
 }
 
 export function canReturnFromKppn(role: UserRole, status: SubmissionStatus): boolean {
-  return (role === 'Pejabat Pembuat Komitmen' || role === 'admin') && status === 'sent_kppn';
+  return (role === 'KPPN' || role === 'admin') && status === 'pending_kppn';
+}
+
+export function canReturnFromArsip(role: UserRole, status: SubmissionStatus): boolean {
+  return (role === 'Arsip' || role === 'admin') && status === 'pending_arsip';
 }
 
 export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean {
@@ -320,11 +339,23 @@ export function canEdit(role: UserRole, status: SubmissionStatus): boolean {
 }
 
 export function getRelevantTimestamp(submission: Submission): string | null {
-  if (submission.status === 'sent_kppn' && submission.waktuBendahara) {
+  if (submission.status === 'sent_arsip' && submission.waktuArsip) {
+    return submission.waktuArsip;
+  }
+  if (['pending_arsip'].includes(submission.status) && submission.waktuKppn) {
+    return submission.waktuKppn;
+  }
+  if (['pending_kppn', 'incomplete_kppn'].includes(submission.status) && submission.waktuPPSPM) {
+    return submission.waktuPPSPM;
+  }
+  if (['pending_ppspm', 'incomplete_ppspm'].includes(submission.status) && submission.waktuPpk) {
+    return submission.waktuPpk;
+  }
+  if (['pending_ppk', 'incomplete_ppk'].includes(submission.status) && submission.waktuBendahara) {
     return submission.waktuBendahara;
   }
-  if (['pending_bendahara', 'incomplete_bendahara'].includes(submission.status) && submission.waktuPpk) {
-    return submission.waktuPpk;
+  if (['pending_bendahara', 'incomplete_bendahara'].includes(submission.status)) {
+    return submission.waktuPengajuan || null;
   }
   return submission.waktuPengajuan || null;
 }

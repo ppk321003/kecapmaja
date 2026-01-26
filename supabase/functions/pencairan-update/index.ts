@@ -171,14 +171,17 @@ serve(async (req) => {
     let newNotes = notes !== undefined ? notes : (currentRow[5] || ''); // F: Catatan
     let newStatus = status || currentRow[6] || ''; // G: Status Pengajuan
     
-    // PERBAIKAN: Ambil nilai sesuai struktur spreadsheet yang benar
-    const waktuPpk = currentRow.length > 8 ? currentRow[8] || '' : '';       // I: Waktu PPK
-    const waktuPPSPM = currentRow.length > 9 ? currentRow[9] || '' : '';     // J: Waktu PPSPM
-    const waktuBendahara = currentRow.length > 10 ? currentRow[10] || '' : ''; // K: Waktu Bendahara
-    const statusPpk = currentRow.length > 11 ? currentRow[11] || '' : '';    // L: Status PPK
-    const statusPPSPM = currentRow.length > 12 ? currentRow[12] || '' : '';  // M: Status PPSPM
+    // Ambil nilai sesuai struktur spreadsheet alur baru: SM > BENDAHARA > PPK > PPSPM > KPPN > ARSIP
+    const waktuBendahara = currentRow.length > 8 ? currentRow[8] || '' : '';   // I: Waktu Bendahara
+    const waktuPpk = currentRow.length > 9 ? currentRow[9] || '' : '';         // J: Waktu PPK
+    const waktuPPSPM = currentRow.length > 10 ? currentRow[10] || '' : '';     // K: Waktu PPSPM
+    const waktuKppn = currentRow.length > 11 ? currentRow[11] || '' : '';      // L: Waktu KPPN
+    const waktuArsip = currentRow.length > 12 ? currentRow[12] || '' : '';     // M: Waktu Arsip
     const statusBendahara = currentRow.length > 13 ? currentRow[13] || '' : ''; // N: Status Bendahara
-    const statusKppn = currentRow.length > 14 ? currentRow[14] || '' : '';   // O: Status KPPN
+    const statusPpk = currentRow.length > 14 ? currentRow[14] || '' : '';      // O: Status PPK
+    const statusPPSPM = currentRow.length > 15 ? currentRow[15] || '' : '';    // P: Status PPSPM
+    const statusKppn = currentRow.length > 16 ? currentRow[16] || '' : '';     // Q: Status KPPN
+    const statusArsip = currentRow.length > 17 ? currentRow[17] || '' : '';    // R: Status Arsip
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
@@ -190,50 +193,70 @@ serve(async (req) => {
     }
     
     // Variables untuk update
+    let updatedWaktuBendahara = waktuBendahara;
     let updatedWaktuPpk = waktuPpk;
     let updatedWaktuPPSPM = waktuPPSPM;
-    let updatedWaktuBendahara = waktuBendahara;
+    let updatedWaktuKppn = waktuKppn;
+    let updatedWaktuArsip = waktuArsip;
+    let updatedStatusBendahara = statusBendahara;
     let updatedStatusPpk = statusPpk;
     let updatedStatusPPSPM = statusPPSPM;
-    let updatedStatusBendahara = statusBendahara;
     let updatedStatusKppn = statusKppn;
+    let updatedStatusArsip = statusArsip;
     
-    // Handle approval/rejection actions - PERBAIKAN: tambah PPSPM
-    if (actor === 'ppk') {
+    // Handle approval/rejection actions sesuai alur baru: SM > BENDAHARA > PPK > PPSPM > KPPN > ARSIP
+    if (actor === 'bendahara') {
+      updatedWaktuBendahara = updatedAt;
+      updatedStatusBendahara = action === 'approve' ? 'approved' : 'rejected';
+      
+      if (action === 'approve') {
+        newStatus = 'pending_ppk'; // Bendahara approve → ke PPK
+      } else if (action === 'reject') {
+        newStatus = 'incomplete_sm'; // Bendahara reject → kembali ke SM
+      }
+      
+    } else if (actor === 'ppk') {
       updatedWaktuPpk = updatedAt;
       updatedStatusPpk = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
         newStatus = 'pending_ppspm'; // PPK approve → ke PPSPM
       } else if (action === 'reject') {
-        newStatus = 'incomplete_sm'; // PPK reject → kembali ke SM
+        newStatus = 'incomplete_bendahara'; // PPK reject → kembali ke Bendahara
       }
       
-    } else if (actor === 'ppspm') { // PERBAIKAN: tambah handle PPSPM
+    } else if (actor === 'ppspm') {
       updatedWaktuPPSPM = updatedAt;
       updatedStatusPPSPM = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'pending_bendahara'; // PPSPM approve → ke Bendahara
+        newStatus = 'pending_kppn'; // PPSPM approve → ke KPPN
       } else if (action === 'reject') {
         newStatus = 'incomplete_ppk'; // PPSPM reject → kembali ke PPK
       }
       
-    } else if (actor === 'bendahara') {
-      updatedWaktuBendahara = updatedAt;
-      updatedStatusBendahara = action === 'approve' ? 'approved' : 'rejected';
+    } else if (actor === 'kppn') {
+      updatedWaktuKppn = updatedAt;
+      updatedStatusKppn = action === 'approve' ? 'approved' : 'rejected';
       
       if (action === 'approve') {
-        newStatus = 'sent_kppn'; // Bendahara approve → ke KPPN
+        newStatus = 'pending_arsip'; // KPPN approve → ke Arsip
       } else if (action === 'reject') {
-        newStatus = 'incomplete_ppspm'; // Bendahara reject → kembali ke PPSPM
+        newStatus = 'incomplete_ppspm'; // KPPN reject → kembali ke PPSPM
       }
       
-    } else if (actor === 'kppn') {
-      updatedStatusKppn = action === 'return' ? 'returned' : 'processed';
+    } else if (actor === 'arsip') {
+      updatedWaktuArsip = updatedAt;
+      updatedStatusArsip = action === 'approve' ? 'approved' : 'rejected';
+      
+      if (action === 'approve') {
+        newStatus = 'sent_arsip'; // Arsip approve → selesai
+      } else if (action === 'reject') {
+        newStatus = 'incomplete_kppn'; // Arsip reject → kembali ke KPPN
+      }
     }
 
-    // PERBAIKAN: Build updated row dengan 16 kolom sesuai struktur
+    // Build updated row sesuai struktur alur baru (18 kolom)
     const updatedRow = [
       currentRow[0] || '', // A: ID
       newTitle,            // B: Uraian Pengajuan
@@ -243,22 +266,24 @@ serve(async (req) => {
       newNotes,            // F: Catatan
       newStatus,           // G: Status Pengajuan
       currentRow[7] || '', // H: Waktu Pengajuan dari SM
-      updatedWaktuPpk,     // I: Waktu PPK
-      updatedWaktuPPSPM,   // J: Waktu PPSPM
-      updatedWaktuBendahara, // K: Waktu Bendahara
-      updatedStatusPpk,    // L: Status PPK
-      updatedStatusPPSPM,  // M: Status PPSPM
+      updatedWaktuBendahara, // I: Waktu Bendahara
+      updatedWaktuPpk,     // J: Waktu PPK
+      updatedWaktuPPSPM,   // K: Waktu PPSPM
+      updatedWaktuKppn,    // L: Waktu KPPN
+      updatedWaktuArsip,   // M: Waktu Arsip
       updatedStatusBendahara, // N: Status Bendahara
-      updatedStatusKppn,   // O: Status KPPN
-      updatedAt,           // P: update terakhir
+      updatedStatusPpk,    // O: Status PPK
+      updatedStatusPPSPM,  // P: Status PPSPM
+      updatedStatusKppn,   // Q: Status KPPN
+      updatedStatusArsip,  // R: Status Arsip
     ];
 
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
 
-    // PERBAIKAN: Update dengan range A:P untuk 16 kolom
+    // Update dengan range A:R untuk 18 kolom
     const updateResponse = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:P${rowIndex}?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:R${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {

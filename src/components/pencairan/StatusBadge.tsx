@@ -20,36 +20,6 @@ const statusConfig: Record<SubmissionStatus, {
     textClass: 'text-slate-700 dark:text-slate-400',
     borderClass: 'border-slate-300 dark:border-slate-700',
   },
-  pending_ppk: {
-    icon: Clock,
-    bgClass: 'bg-amber-100 dark:bg-amber-900/30',
-    textClass: 'text-amber-700 dark:text-amber-400',
-    borderClass: 'border-amber-300 dark:border-amber-700',
-  },
-  pending_ppspm: {
-    icon: Clock,
-    bgClass: 'bg-violet-100 dark:bg-violet-900/30',
-    textClass: 'text-violet-700 dark:text-violet-400',
-    borderClass: 'border-violet-300 dark:border-violet-700',
-  },
-  incomplete_sm: {
-    icon: ArrowLeft,
-    bgClass: 'bg-rose-100 dark:bg-rose-900/30',
-    textClass: 'text-rose-700 dark:text-rose-400',
-    borderClass: 'border-rose-300 dark:border-rose-700',
-  },
-  incomplete_ppk: {
-    icon: XCircle,
-    bgClass: 'bg-orange-100 dark:bg-orange-900/30',
-    textClass: 'text-orange-700 dark:text-orange-400',
-    borderClass: 'border-orange-300 dark:border-orange-700',
-  },
-  incomplete_ppspm: {
-    icon: XCircle,
-    bgClass: 'bg-fuchsia-100 dark:bg-fuchsia-900/30',
-    textClass: 'text-fuchsia-700 dark:text-fuchsia-400',
-    borderClass: 'border-fuchsia-300 dark:border-fuchsia-700',
-  },
   pending_bendahara: {
     icon: Clock,
     bgClass: 'bg-sky-100 dark:bg-sky-900/30',
@@ -62,11 +32,59 @@ const statusConfig: Record<SubmissionStatus, {
     textClass: 'text-purple-700 dark:text-purple-400',
     borderClass: 'border-purple-300 dark:border-purple-700',
   },
-  sent_kppn: {
+  pending_ppk: {
+    icon: Clock,
+    bgClass: 'bg-amber-100 dark:bg-amber-900/30',
+    textClass: 'text-amber-700 dark:text-amber-400',
+    borderClass: 'border-amber-300 dark:border-amber-700',
+  },
+  incomplete_ppk: {
+    icon: XCircle,
+    bgClass: 'bg-orange-100 dark:bg-orange-900/30',
+    textClass: 'text-orange-700 dark:text-orange-400',
+    borderClass: 'border-orange-300 dark:border-orange-700',
+  },
+  pending_ppspm: {
+    icon: Clock,
+    bgClass: 'bg-violet-100 dark:bg-violet-900/30',
+    textClass: 'text-violet-700 dark:text-violet-400',
+    borderClass: 'border-violet-300 dark:border-violet-700',
+  },
+  incomplete_ppspm: {
+    icon: XCircle,
+    bgClass: 'bg-fuchsia-100 dark:bg-fuchsia-900/30',
+    textClass: 'text-fuchsia-700 dark:text-fuchsia-400',
+    borderClass: 'border-fuchsia-300 dark:border-fuchsia-700',
+  },
+  pending_kppn: {
+    icon: Clock,
+    bgClass: 'bg-indigo-100 dark:bg-indigo-900/30',
+    textClass: 'text-indigo-700 dark:text-indigo-400',
+    borderClass: 'border-indigo-300 dark:border-indigo-700',
+  },
+  incomplete_kppn: {
+    icon: XCircle,
+    bgClass: 'bg-violet-100 dark:bg-violet-900/30',
+    textClass: 'text-violet-700 dark:text-violet-400',
+    borderClass: 'border-violet-300 dark:border-violet-700',
+  },
+  pending_arsip: {
+    icon: Clock,
+    bgClass: 'bg-cyan-100 dark:bg-cyan-900/30',
+    textClass: 'text-cyan-700 dark:text-cyan-400',
+    borderClass: 'border-cyan-300 dark:border-cyan-700',
+  },
+  sent_arsip: {
     icon: CheckCircle2,
     bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
     textClass: 'text-emerald-700 dark:text-emerald-400',
     borderClass: 'border-emerald-300 dark:border-emerald-700',
+  },
+  incomplete_sm: {
+    icon: ArrowLeft,
+    bgClass: 'bg-rose-100 dark:bg-rose-900/30',
+    textClass: 'text-rose-700 dark:text-rose-400',
+    borderClass: 'border-rose-300 dark:border-rose-700',
   },
 };
 

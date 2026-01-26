@@ -49,13 +49,14 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
   // Check status flags
   const isDraft = submission.status === 'draft';
   const isIncompleteSm = submission.status === 'incomplete_sm';
+  const isIncompleteBendahara = submission.status === 'incomplete_bendahara';
   const isIncompletePpk = submission.status === 'incomplete_ppk';
   const isIncompletePpspm = submission.status === 'incomplete_ppspm';
-  const isIncompleteBendahara = submission.status === 'incomplete_bendahara';
+  const isIncompleteKppn = submission.status === 'incomplete_kppn';
 
   // 1. SM Submit (Kolom H - waktuPengajuan)
   if (submission.waktuPengajuan || isDraft || isIncompleteSm) {
-    let statusLabel = 'Pengajuan telah dikirim ke PPK';
+    let statusLabel = 'Pengajuan telah dikirim ke Bendahara';
     let type: TimelineEvent['type'] = 'submit';
 
     if (isDraft) {
@@ -77,55 +78,7 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     });
   }
 
-  // 2. PPK (Kolom I - waktuPpk, Kolom L - statusPpk)
-  if (submission.waktuPpk || submission.statusPpk || isIncompletePpk) {
-    const ppkStatus = parseTimelineStatus(submission.statusPpk);
-    let statusLabel = submission.statusPpk 
-      ? `PPK: ${submission.statusPpk}`
-      : 'Menunggu verifikasi PPK';
-    let type = ppkStatus.type;
-
-    if (isIncompletePpk) {
-      statusLabel = 'Diperlukan perbaikan oleh PPK';
-      type = 'incomplete';
-    }
-
-    events.push({
-      id: 'ppk',
-      actor: 'PPK',
-      actorLabel: 'Pejabat Pembuat Komitmen',
-      timestamp: submission.waktuPpk,
-      status: isIncompletePpk ? 'Perlu perbaikan' : submission.statusPpk,
-      statusLabel,
-      type,
-    });
-  }
-
-  // 3. PPSPM (Kolom J - waktuPPSPM, Kolom M - statusPPSPM)
-  if (submission.waktuPPSPM || submission.statusPPSPM || isIncompletePpspm) {
-    const ppspmStatus = parseTimelineStatus(submission.statusPPSPM);
-    let statusLabel = submission.statusPPSPM 
-      ? `PPSPM: ${submission.statusPPSPM}`
-      : 'Menunggu pemeriksaan PPSPM';
-    let type = ppspmStatus.type;
-
-    if (isIncompletePpspm) {
-      statusLabel = 'Diperlukan perbaikan oleh PPSPM';
-      type = 'incomplete';
-    }
-
-    events.push({
-      id: 'ppspm',
-      actor: 'PPSPM',
-      actorLabel: 'Pejabat Penandatangan SPM',
-      timestamp: submission.waktuPPSPM,
-      status: isIncompletePpspm ? 'Perlu perbaikan' : submission.statusPPSPM,
-      statusLabel,
-      type,
-    });
-  }
-
-  // 4. Bendahara (Kolom K - waktuBendahara, Kolom N - statusBendahara)
+  // 2. Bendahara (Kolom I - waktuBendahara, Kolom J - statusBendahara)
   if (submission.waktuBendahara || submission.statusBendahara || isIncompleteBendahara) {
     const bendaharaStatus = parseTimelineStatus(submission.statusBendahara);
     let statusLabel = submission.statusBendahara 
@@ -149,25 +102,95 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
     });
   }
 
-  // 5. KPPN (Kolom O - statusKppn)
-  if (submission.statusKppn) {
+  // 3. PPK (Kolom K - waktuPpk, Kolom L - statusPpk)
+  if (submission.waktuPpk || submission.statusPpk || isIncompletePpk) {
+    const ppkStatus = parseTimelineStatus(submission.statusPpk);
+    let statusLabel = submission.statusPpk 
+      ? `PPK: ${submission.statusPpk}`
+      : 'Menunggu verifikasi PPK';
+    let type = ppkStatus.type;
+
+    if (isIncompletePpk) {
+      statusLabel = 'Diperlukan perbaikan oleh PPK';
+      type = 'incomplete';
+    }
+
+    events.push({
+      id: 'ppk',
+      actor: 'PPK',
+      actorLabel: 'Pejabat Pembuat Komitmen',
+      timestamp: submission.waktuPpk,
+      status: isIncompletePpk ? 'Perlu perbaikan' : submission.statusPpk,
+      statusLabel,
+      type,
+    });
+  }
+
+  // 4. PPSPM (Kolom M - waktuPPSPM, Kolom N - statusPPSPM)
+  if (submission.waktuPPSPM || submission.statusPPSPM || isIncompletePpspm) {
+    const ppspmStatus = parseTimelineStatus(submission.statusPPSPM);
+    let statusLabel = submission.statusPPSPM 
+      ? `PPSPM: ${submission.statusPPSPM}`
+      : 'Menunggu pemeriksaan PPSPM';
+    let type = ppspmStatus.type;
+
+    if (isIncompletePpspm) {
+      statusLabel = 'Diperlukan perbaikan oleh PPSPM';
+      type = 'incomplete';
+    }
+
+    events.push({
+      id: 'ppspm',
+      actor: 'PPSPM',
+      actorLabel: 'Pejabat Penandatangan SPM',
+      timestamp: submission.waktuPPSPM,
+      status: isIncompletePpspm ? 'Perlu perbaikan' : submission.statusPPSPM,
+      statusLabel,
+      type,
+    });
+  }
+
+  // 5. KPPN (Kolom O - waktuKppn, Kolom P - statusKppn)
+  if (submission.waktuKppn || submission.statusKppn || isIncompleteKppn) {
+    const kppnStatus = parseTimelineStatus(submission.statusKppn);
+    let statusLabel = submission.statusKppn 
+      ? `KPPN: ${submission.statusKppn}`
+      : 'Menunggu pemrosesan KPPN';
+    let type = kppnStatus.type;
+
+    if (isIncompleteKppn) {
+      statusLabel = 'Dikembalikan oleh KPPN';
+      type = 'incomplete';
+    }
+
     events.push({
       id: 'kppn',
       actor: 'KPPN',
       actorLabel: 'Kantor Pelayanan Perbendaharaan Negara',
-      timestamp: undefined,
-      status: submission.statusKppn,
-      statusLabel: `KPPN: ${submission.statusKppn}`,
-      type: 'complete',
+      timestamp: submission.waktuKppn,
+      status: isIncompleteKppn ? 'Dikembalikan' : submission.statusKppn,
+      statusLabel,
+      type,
     });
   }
 
-  // 6. Update Terakhir (Kolom P) - jika ada dan berbeda dari event terakhir
-  if (submission.updatedAtString && events.length > 0) {
-    const lastEventTime = events[events.length - 1]?.timestamp;
-    if (lastEventTime !== submission.updatedAtString) {
-      // Add update event only if it's different from the last timestamp
-    }
+  // 6. Arsip (Kolom Q - waktuArsip, Kolom R - statusArsip)
+  if (submission.waktuArsip || submission.statusArsip) {
+    const arsipStatus = parseTimelineStatus(submission.statusArsip);
+    let statusLabel = submission.statusArsip 
+      ? `Arsip: ${submission.statusArsip}`
+      : 'Menunggu pencatatan Arsip';
+    let type = arsipStatus.type;
+
+    events.push({
+      id: 'arsip',
+      actor: 'Arsip',
+      actorLabel: 'Arsip',
+      timestamp: submission.waktuArsip,
+      status: submission.statusArsip,
+      statusLabel,
+      type,
+    });
   }
 
   // Reverse events so newest is on top (like the reference image)
@@ -312,10 +335,11 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
                     )}
                   >
                     {event.actor === 'SM' && <User className="w-3 h-3" />}
+                    {event.actor === 'Bendahara' && <FileCheck className="w-3 h-3" />}
                     {event.actor === 'PPK' && <FileCheck className="w-3 h-3" />}
                     {event.actor === 'PPSPM' && <FileCheck className="w-3 h-3" />}
-                    {event.actor === 'Bendahara' && <FileCheck className="w-3 h-3" />}
                     {event.actor === 'KPPN' && <Building2 className="w-3 h-3" />}
+                    {event.actor === 'Arsip' && <FileCheck className="w-3 h-3" />}
                     {event.actorLabel}
                   </span>
                 </div>

@@ -181,14 +181,17 @@ export default function UsulanPencairan() {
     const result: Record<string, number> = {
       all: submissions.length,
       draft: 0,
-      pending_ppk: 0,
-      pending_ppspm: 0, // TAMBAH INI
       pending_bendahara: 0,
+      pending_ppk: 0,
+      pending_ppspm: 0,
+      pending_kppn: 0,
+      pending_arsip: 0,
       incomplete_sm: 0,
-      incomplete_ppk: 0,
-      incomplete_ppspm: 0, // TAMBAH INI
       incomplete_bendahara: 0,
-      sent_kppn: 0
+      incomplete_ppk: 0,
+      incomplete_ppspm: 0,
+      incomplete_kppn: 0,
+      sent_arsip: 0
     };
     
     // Hitung setiap status
@@ -197,7 +200,6 @@ export default function UsulanPencairan() {
         result[sub.status]++;
       }
     });
-    
     return result;
   }, [submissions]);
 
@@ -236,7 +238,7 @@ export default function UsulanPencairan() {
       </div>
 
       {/* STATISTIC CARDS - Clickable sebagai filter */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <StatCard 
           title="Total" 
           value={counts.all} 
@@ -251,6 +253,14 @@ export default function UsulanPencairan() {
           variant="default"
           isActive={activeFilter === 'draft'}
           onClick={() => setActiveFilter('draft')}
+        />
+        <StatCard 
+          title="Periksa Bendahara" 
+          value={counts.pending_bendahara} 
+          icon={Clock} 
+          variant="info"
+          isActive={activeFilter === 'pending_bendahara'}
+          onClick={() => setActiveFilter('pending_bendahara')}
         />
         <StatCard 
           title="Periksa PPK" 
@@ -269,28 +279,12 @@ export default function UsulanPencairan() {
           onClick={() => setActiveFilter('pending_ppspm')}
         />
         <StatCard 
-          title="Periksa Bendahara" 
-          value={counts.pending_bendahara} 
-          icon={Clock} 
-          variant="info"
-          isActive={activeFilter === 'pending_bendahara'}
-          onClick={() => setActiveFilter('pending_bendahara')}
-        />
-        <StatCard 
           title="Ditolak" 
-          value={counts.incomplete_sm + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_bendahara} 
+          value={counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn} 
           icon={XCircle} 
           variant="danger"
           isActive={activeFilter === 'rejected'}
           onClick={() => setActiveFilter('rejected')}
-        />
-        <StatCard 
-          title="Kirim KPPN" 
-          value={counts.sent_kppn} 
-          icon={CheckCircle2} 
-          variant="success"
-          isActive={activeFilter === 'sent_kppn'}
-          onClick={() => setActiveFilter('sent_kppn')}
         />
       </div>
 

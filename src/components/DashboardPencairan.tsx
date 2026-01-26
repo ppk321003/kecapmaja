@@ -226,48 +226,62 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
   const workflowFunnel = useMemo(() => {
     return [
       { name: 'Draft', value: stats.draft, color: '#6366f1' },
+      { name: 'Menunggu Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
       { name: 'Menunggu PPK', value: stats.pending_ppk, color: '#f59e0b' },
       { name: 'Menunggu PPSPM', value: stats.pending_ppspm, color: '#8b5cf6' },
-      { name: 'Menunggu Bendahara', value: stats.pending_bendahara, color: '#06b6d4' },
-      { name: 'Dikirim KPPN', value: stats.sent_kppn, color: '#10b981' },
+      { name: 'Menunggu KPPN', value: stats.pending_kppn, color: '#4f46e5' },
+      { name: 'Menunggu Arsip', value: stats.pending_arsip, color: '#06b6d4' },
+      { name: 'Selesai (Arsip)', value: stats.sent_arsip, color: '#10b981' },
     ];
   }, [stats]);
 
   // Average processing time between stages
   const processingTimeData = useMemo(() => {
     const timeDiffs = {
-      smToPpk: [] as number[],
+      smToBendahara: [] as number[],
+      bendaharaToPpk: [] as number[],
       ppkToPpspm: [] as number[],
-      ppspmToBendahara: [] as number[],
-      bendaharaToKppn: [] as number[],
+      ppspmToKppn: [] as number[],
+      kppnToArsip: [] as number[],
     };
 
     filteredSubmissions.forEach(sub => {
       const waktuSM = parseCustomDate(sub.waktuPengajuan || '');
+      const waktuBendahara = parseCustomDate(sub.waktuBendahara || '');
       const waktuPPK = parseCustomDate(sub.waktuPpk || '');
       const waktuPPSPM = parseCustomDate(sub.waktuPPSPM || '');
-      const waktuBendahara = parseCustomDate(sub.waktuBendahara || '');
+      const waktuKppn = parseCustomDate(sub.waktuKppn || '');
+      const waktuArsip = parseCustomDate(sub.waktuArsip || '');
 
-      // SM → PPK (jika ada waktu PPK)
-      if (waktuSM && waktuPPK) {
-        const diffHours = (waktuPPK.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
-        if (diffHours > 0) timeDiffs.smToPpk.push(diffHours);
+      // SM → Bendahara
+      if (waktuSM && waktuBendahara) {
+        const diffHours = (waktuBendahara.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.smToBendahara.push(diffHours);
       }
 
-      // PPK → PPSPM (jika ada waktu PPSPM)
+      // Bendahara → PPK
+      if (waktuBendahara && waktuPPK) {
+        const diffHours = (waktuPPK.getTime() - waktuBendahara.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.bendaharaToPpk.push(diffHours);
+      }
+
+      // PPK → PPSPM
       if (waktuPPK && waktuPPSPM) {
         const diffHours = (waktuPPSPM.getTime() - waktuPPK.getTime()) / (1000 * 60 * 60);
         if (diffHours > 0) timeDiffs.ppkToPpspm.push(diffHours);
       }
 
-      // PPSPM → Bendahara (jika ada waktu Bendahara)
-      if (waktuPPSPM && waktuBendahara) {
-        const diffHours = (waktuBendahara.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
-        if (diffHours > 0) timeDiffs.ppspmToBendahara.push(diffHours);
+      // PPSPM → KPPN
+      if (waktuPPSPM && waktuKppn) {
+        const diffHours = (waktuKppn.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.ppspmToKppn.push(diffHours);
       }
 
-      // Bendahara → KPPN (jika sudah sent_kppn, gunakan statusKppn sebagai proxy atau updatedAt)
-      // Untuk sementara skip karena tidak ada kolom waktu KPPN yang jelas
+      // KPPN → Arsip
+      if (waktuKppn && waktuArsip) {
+        const diffHours = (waktuArsip.getTime() - waktuKppn.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.kppnToArsip.push(diffHours);
+      }
     });
 
     const calcAvg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
@@ -278,31 +292,42 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       return `${(hours / 24).toFixed(1)} hari`;
     };
 
-    const avgSmToPpk = calcAvg(timeDiffs.smToPpk);
+    const avgSmToBendahara = calcAvg(timeDiffs.smToBendahara);
+    const avgBendaharaToPpk = calcAvg(timeDiffs.bendaharaToPpk);
     const avgPpkToPpspm = calcAvg(timeDiffs.ppkToPpspm);
-    const avgPpspmToBendahara = calcAvg(timeDiffs.ppspmToBendahara);
+    const avgPpspmToKppn = calcAvg(timeDiffs.ppspmToKppn);
+    const avgKppnToArsip = calcAvg(timeDiffs.kppnToArsip);
 
     return [
       { 
-        stage: 'SM → PPK', 
-        hours: parseFloat(avgSmToPpk.toFixed(1)),
-        displayTime: formatTime(avgSmToPpk),
-        count: timeDiffs.smToPpk.length,
-        color: '#f59e0b'
+        stage: 'SM → Bendahara', 
+        hours: parseFloat(avgSmToBendahara.toFixed(1)),
+        displayTime: formatTime(avgSmToBendahara),
+        count: timeDiffs.smToBendahara.length,
+      },
+      { 
+        stage: 'Bendahara → PPK', 
+        hours: parseFloat(avgBendaharaToPpk.toFixed(1)),
+        displayTime: formatTime(avgBendaharaToPpk),
+        count: timeDiffs.bendaharaToPpk.length,
       },
       { 
         stage: 'PPK → PPSPM', 
         hours: parseFloat(avgPpkToPpspm.toFixed(1)),
         displayTime: formatTime(avgPpkToPpspm),
         count: timeDiffs.ppkToPpspm.length,
-        color: '#8b5cf6'
       },
       { 
-        stage: 'PPSPM → Bendahara', 
-        hours: parseFloat(avgPpspmToBendahara.toFixed(1)),
-        displayTime: formatTime(avgPpspmToBendahara),
-        count: timeDiffs.ppspmToBendahara.length,
-        color: '#06b6d4'
+        stage: 'PPSPM → KPPN', 
+        hours: parseFloat(avgPpspmToKppn.toFixed(1)),
+        displayTime: formatTime(avgPpspmToKppn),
+        count: timeDiffs.ppspmToKppn.length,
+      },
+      { 
+        stage: 'KPPN → Arsip', 
+        hours: parseFloat(avgKppnToArsip.toFixed(1)),
+        displayTime: formatTime(avgKppnToArsip),
+        count: timeDiffs.kppnToArsip.length,
       },
     ];
   }, [filteredSubmissions]);
