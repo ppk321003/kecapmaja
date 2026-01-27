@@ -754,18 +754,18 @@ export default function EntriPengelola() {
                     {filteredPengelola.map((p, index) => (
                       <TableRow key={p.rowIndex}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell className="w-12">
+                        <TableCell className="w-14">
                           {p.foto ? (
                             <img 
                               src={p.foto} 
                               alt={p.nama}
-                              className="h-8 w-8 rounded-full object-cover border border-primary/20"
+                              className="h-10 w-10 rounded-full object-cover border border-primary/20"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
                           ) : (
-                            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
                               {p.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </div>
                           )}
@@ -838,7 +838,7 @@ export default function EntriPengelola() {
                   <TableBody>
                     {filteredOrganik.map((o, index) => (
                       <TableRow key={o.rowIndex}>
-                        <TableCell>{o.no}</TableCell>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell className="w-12">
                           {o.foto ? (
                             <img 
