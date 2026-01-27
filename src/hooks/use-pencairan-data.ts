@@ -216,6 +216,7 @@ export function usePencairanData() {
             statusArsip: row[16] || '',
             updatedAt: row[17] || '',
           };
+        }
         
         // Debug: Log struktur dan waktu columns
         if (row[0]) {
