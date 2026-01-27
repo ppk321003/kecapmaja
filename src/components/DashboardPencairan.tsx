@@ -252,15 +252,15 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     return stages;
   }, [stats]);
 
-  // Average total processing time
+  // Average total processing time (SM to KPPN)
   const averageTotalTime = useMemo(() => {
     let totalTimes: number[] = [];
     filteredSubmissions.forEach(sub => {
       const waktuSM = parseCustomDate(sub.waktuPengajuan || '');
-      const waktuArsip = parseCustomDate(sub.waktuArsip || '');
+      const waktuKppn = parseCustomDate(sub.waktuKppn || '');
       
-      if (waktuSM && waktuArsip) {
-        const diffHours = (waktuArsip.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
+      if (waktuSM && waktuKppn) {
+        const diffHours = (waktuKppn.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
         if (diffHours > 0) totalTimes.push(diffHours);
       }
     });
@@ -282,7 +282,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       smToBendahara: [] as number[],
       bendaharaToPpk: [] as number[],
       ppkToPpspm: [] as number[],
-      ppspmToArsip: [] as number[],
+      ppspmToKppn: [] as number[],
     };
 
     filteredSubmissions.forEach(sub => {
@@ -290,7 +290,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
       const waktuBendahara = parseCustomDate(sub.waktuBendahara || '');
       const waktuPPK = parseCustomDate(sub.waktuPpk || '');
       const waktuPPSPM = parseCustomDate(sub.waktuPPSPM || '');
-      const waktuArsip = parseCustomDate(sub.waktuArsip || '');
+      const waktuKppn = parseCustomDate(sub.waktuKppn || '');
 
       // SM → Bendahara
       if (waktuSM && waktuBendahara) {
@@ -310,10 +310,10 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         if (diffHours > 0) timeDiffs.ppkToPpspm.push(diffHours);
       }
 
-      // PPSPM → Arsip
-      if (waktuPPSPM && waktuArsip) {
-        const diffHours = (waktuArsip.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
-        if (diffHours > 0) timeDiffs.ppspmToArsip.push(diffHours);
+      // PPSPM → KPPN
+      if (waktuPPSPM && waktuKppn) {
+        const diffHours = (waktuKppn.getTime() - waktuPPSPM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) timeDiffs.ppspmToKppn.push(diffHours);
       }
     });
 
@@ -328,7 +328,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     const avgSmToBendahara = calcAvg(timeDiffs.smToBendahara);
     const avgBendaharaToPpk = calcAvg(timeDiffs.bendaharaToPpk);
     const avgPpkToPpspm = calcAvg(timeDiffs.ppkToPpspm);
-    const avgPpspmToArsip = calcAvg(timeDiffs.ppspmToArsip);
+    const avgPpspmToKppn = calcAvg(timeDiffs.ppspmToKppn);
 
     return [
       { 
@@ -353,11 +353,11 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         color: '#f59e0b',
       },
       { 
-        stage: 'PPSPM → Arsip', 
-        hours: parseFloat(avgPpspmToArsip.toFixed(1)),
-        displayTime: formatTime(avgPpspmToArsip),
-        count: timeDiffs.ppspmToArsip.length,
-        color: '#10b981',
+        stage: 'PPSPM → KPPN', 
+        hours: parseFloat(avgPpspmToKppn.toFixed(1)),
+        displayTime: formatTime(avgPpspmToKppn),
+        count: timeDiffs.ppspmToKppn.length,
+        color: '#14b8a6',
       },
     ];
   }, [filteredSubmissions]);
