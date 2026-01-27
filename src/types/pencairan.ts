@@ -80,7 +80,7 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending_bendahara: 'Periksa Bendahara',
   pending_ppk: 'Periksa PPK',
   pending_ppspm: 'Periksa PPSPM', 
-  sent_kppn: 'Catat Arsip',
+  sent_kppn: 'Kirim KPPN',
   complete_arsip: 'Selesai Arsip',
   incomplete_sm: 'Dikembalikan ke SM',
   incomplete_bendahara: 'Dikembalikan ke Bendahara',
