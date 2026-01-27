@@ -205,6 +205,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
+            satker: user?.satker,
           },
         });
         if (error) throw new Error(error.message || 'Gagal menyimpan draft');
@@ -228,7 +229,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuPpk: '',
             statusBendahara: '',
             waktuBendahara: '',
-            statusKppn: ''
+            statusKppn: '',
+            satker: user?.satker
           },
         });
         
@@ -413,6 +415,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
           <div className="space-y-2">
             <Label>Uraian Pengajuan *</Label>
             <Input
+              autoFocus
               placeholder="Masukkan uraian pengajuan..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
