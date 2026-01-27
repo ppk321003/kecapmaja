@@ -72,6 +72,7 @@ type MitraFormData = z.infer<typeof mitraSchema>;
 
 interface Pengelola extends PengelolaFormData {
   rowIndex: number;
+  foto?: string;
 }
 
 interface Organik {
@@ -83,11 +84,13 @@ interface Organik {
   jabatan: string;
   golAkhir: string;
   pangkat: string;
+  foto?: string;
 }
 
 // UPDATE: Tambah field whatsapp di interface Mitra
 interface Mitra extends MitraFormData {
   rowIndex: number;
+  foto?: string;
 }
 
 export default function EntriPengelola() {
@@ -155,19 +158,30 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1"
+          range: "Sheet1!A:E"
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
-      const pengelolaData = rows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
-        nama: row[1] || "",
-        nip: row[2] || "",
-        jabatan: row[3] || ""
-      }));
+      const pengelolaData = rows.slice(1).map((row: any[], index: number) => {
+        let foto = row[4] || "";
+        // Convert Google Drive URL to viewable format
+        if (foto && foto.includes('drive.google.com/file/d/')) {
+          const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+          if (fileIdMatch) {
+            foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+          }
+        }
+        return {
+          rowIndex: index + 2,
+          nama: row[1] || "",
+          nip: row[2] || "",
+          jabatan: row[3] || "",
+          foto: foto
+        };
+      });
       
       setPengelola(pengelolaData);
     } catch (error: any) {
@@ -189,23 +203,34 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.ORGANIK!A:I"
+          range: "MASTER.ORGANIK!A:J"
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
-      const organikData = rows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
-        no: row[0] || "",
-        nipBps: row[1] || "",
-        nip: row[2] || "",
-        nama: row[3] || "",
-        jabatan: row[4] || "",
-        golAkhir: row[6] || "",
-        pangkat: row[7] || ""
-      }));
+      const organikData = rows.slice(1).map((row: any[], index: number) => {
+        let foto = row[9] || "";
+        // Convert Google Drive URL to viewable format
+        if (foto && foto.includes('drive.google.com/file/d/')) {
+          const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+          if (fileIdMatch) {
+            foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+          }
+        }
+        return {
+          rowIndex: index + 2,
+          no: row[0] || "",
+          nipBps: row[1] || "",
+          nip: row[2] || "",
+          nama: row[3] || "",
+          jabatan: row[4] || "",
+          golAkhir: row[6] || "",
+          pangkat: row[7] || "",
+          foto: foto
+        };
+      });
       
       setOrganik(organikData);
     } catch (error: any) {
@@ -227,25 +252,36 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.MITRA!A:I" // UPDATE: Range diperluas sampai kolom I untuk No. HP
+          range: "MASTER.MITRA!A:J" // UPDATE: Range diperluas sampai kolom J untuk foto
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
-      const mitraData = rows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
-        no: row[0] || "",
-        nik: row[1] || "",
-        nama: row[2] || "",
-        pekerjaan: row[3] || "",
-        alamat: row[4] || "",
-        bank: row[5] || "",
-        rekening: row[6] || "",
-        kecamatan: row[7] || "",
-        whatsapp: row[8] || "" // UPDATE: Tambah field whatsapp dari kolom No. HP
-      }));
+      const mitraData = rows.slice(1).map((row: any[], index: number) => {
+        let foto = row[9] || "";
+        // Convert Google Drive URL to viewable format
+        if (foto && foto.includes('drive.google.com/file/d/')) {
+          const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+          if (fileIdMatch) {
+            foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+          }
+        }
+        return {
+          rowIndex: index + 2,
+          no: row[0] || "",
+          nik: row[1] || "",
+          nama: row[2] || "",
+          pekerjaan: row[3] || "",
+          alamat: row[4] || "",
+          bank: row[5] || "",
+          rekening: row[6] || "",
+          kecamatan: row[7] || "",
+          whatsapp: row[8] || "",
+          foto: foto
+        };
+      });
       
       setMitra(mitraData);
     } catch (error: any) {
@@ -501,16 +537,94 @@ export default function EntriPengelola() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pengelola" className="flex items-center gap-2">
-            <UserCog className="h-4 w-4" />
-            Pengelola Anggaran
+            {pengelola.length > 0 && pengelola[0].foto ? (
+              <div className="flex items-center gap-2">
+                <img 
+                  src={pengelola[0].foto} 
+                  alt={pengelola[0].nama}
+                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span className="hidden sm:inline">Pengelola Anggaran</span>
+                <span className="sm:hidden text-xs">Pengelola</span>
+              </div>
+            ) : pengelola.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                  {pengelola[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <span className="hidden sm:inline">Pengelola Anggaran</span>
+                <span className="sm:hidden text-xs">Pengelola</span>
+              </div>
+            ) : (
+              <>
+                <UserCog className="h-4 w-4" />
+                <span className="hidden sm:inline">Pengelola Anggaran</span>
+                <span className="sm:hidden text-xs">Pengelola</span>
+              </>
+            )}
           </TabsTrigger>
           <TabsTrigger value="organik" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Organik BPS
+            {organik.length > 0 && organik[0].foto ? (
+              <div className="flex items-center gap-2">
+                <img 
+                  src={organik[0].foto} 
+                  alt={organik[0].nama}
+                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span className="hidden sm:inline">Organik BPS</span>
+                <span className="sm:hidden text-xs">Organik</span>
+              </div>
+            ) : organik.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                  {organik[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <span className="hidden sm:inline">Organik BPS</span>
+                <span className="sm:hidden text-xs">Organik</span>
+              </div>
+            ) : (
+              <>
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Organik BPS</span>
+                <span className="sm:hidden text-xs">Organik</span>
+              </>
+            )}
           </TabsTrigger>
           <TabsTrigger value="mitra" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Mitra Kepka
+            {mitra.length > 0 && mitra[0].foto ? (
+              <div className="flex items-center gap-2">
+                <img 
+                  src={mitra[0].foto} 
+                  alt={mitra[0].nama}
+                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span className="hidden sm:inline">Mitra Kepka</span>
+                <span className="sm:hidden text-xs">Mitra</span>
+              </div>
+            ) : mitra.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                  {mitra[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <span className="hidden sm:inline">Mitra Kepka</span>
+                <span className="sm:hidden text-xs">Mitra</span>
+              </div>
+            ) : (
+              <>
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Mitra Kepka</span>
+                <span className="sm:hidden text-xs">Mitra</span>
+              </>
+            )}
           </TabsTrigger>
         </TabsList>
 
