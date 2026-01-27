@@ -754,7 +754,7 @@ export default function EntriPengelola() {
                     {filteredPengelola.map((p, index) => (
                       <TableRow key={p.rowIndex}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell className="w-12">
+                        <TableCell className="w-12 flex items-center justify-center p-2">
                           {p.foto ? (
                             <img 
                               src={p.foto} 
@@ -770,7 +770,7 @@ export default function EntriPengelola() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>{p.nama}</TableCell>
+                        <TableCell className="font-medium">{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
                         {canEditPengelola && (
@@ -839,7 +839,7 @@ export default function EntriPengelola() {
                     {filteredOrganik.map((o, index) => (
                       <TableRow key={o.rowIndex}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell className="w-12">
+                        <TableCell className="w-12 flex items-center justify-center p-2">
                           {o.foto ? (
                             <img 
                               src={o.foto} 
