@@ -239,6 +239,42 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     ];
   }, [stats]);
 
+  // Bottleneck analysis - find which stage has most submissions
+  const bottleneckAnalysis = useMemo(() => {
+    const stages = [
+      { name: 'Bendahara', count: stats.pending_bendahara, color: '#06b6d4' },
+      { name: 'PPK', count: stats.pending_ppk, color: '#f59e0b' },
+      { name: 'PPSPM', count: stats.pending_ppspm, color: '#8b5cf6' },
+      { name: 'KPPN', count: stats.sent_kppn, color: '#14b8a6' },
+    ];
+    const maxStage = stages.reduce((max, stage) => stage.count > max.count ? stage : max);
+    return { maxStage, stages };
+  }, [stats]);
+
+  // Average total processing time
+  const averageTotalTime = useMemo(() => {
+    let totalTimes: number[] = [];
+    filteredSubmissions.forEach(sub => {
+      const waktuSM = parseCustomDate(sub.waktuPengajuan || '');
+      const waktuArsip = parseCustomDate(sub.waktuArsip || '');
+      
+      if (waktuSM && waktuArsip) {
+        const diffHours = (waktuArsip.getTime() - waktuSM.getTime()) / (1000 * 60 * 60);
+        if (diffHours > 0) totalTimes.push(diffHours);
+      }
+    });
+    
+    if (totalTimes.length === 0) return { avg: 0, display: '-', count: 0 };
+    const avg = totalTimes.reduce((a, b) => a + b, 0) / totalTimes.length;
+    
+    const formatTime = (hours: number) => {
+      if (hours < 24) return `${Math.round(hours)} jam`;
+      return `${(hours / 24).toFixed(1)} hari`;
+    };
+    
+    return { avg, display: formatTime(avg), count: totalTimes.length };
+  }, [filteredSubmissions]);
+
   // Average processing time between stages
   const processingTimeData: Array<{ stage: string; hours: number; displayTime: string; count: number; color: string }> = useMemo(() => {
     const timeDiffs = {
@@ -381,6 +417,69 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         />
       </div>
 
+      {/* Processing Efficiency & Bottleneck Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Average Total Time */}
+        <Card className="rounded-xl shadow-sm bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 dark:from-indigo-950/50 dark:to-indigo-900/50 dark:border-indigo-800">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Waktu Total Rata-rata</p>
+                <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{averageTotalTime.display}</p>
+                <p className="text-xs opacity-70">Dari pengajuan hingga arsip ({averageTotalTime.count} pengajuan)</p>
+              </div>
+              <div className="p-3 rounded-full bg-indigo-700/10">
+                <Timer className="w-6 h-6 text-indigo-700 dark:text-indigo-300" strokeWidth={1.5} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bottleneck Stage */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Tahap Mengantri Terbanyak</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: bottleneckAnalysis.maxStage.color }} />
+                  <p className="text-2xl font-bold">{bottleneckAnalysis.maxStage.name}</p>
+                </div>
+                <p className="text-sm font-semibold" style={{ color: bottleneckAnalysis.maxStage.color }}>
+                  {bottleneckAnalysis.maxStage.count} pengajuan
+                </p>
+              </div>
+              <div className="p-3 rounded-full bg-red-500/10">
+                <AlertTriangle className="w-6 h-6 text-red-600" strokeWidth={1.5} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Processing Status */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Ringkasan Proses</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Dalam Antrian</span>
+                  <span className="text-sm font-bold">{stats.inProcess}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Selesai (Arsip)</span>
+                  <span className="text-sm font-bold text-green-600">{stats.complete_arsip}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Dikembalikan</span>
+                  <span className="text-sm font-bold text-red-600">{stats.rejected}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution Pie Chart */}
@@ -489,6 +588,32 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         </CardContent>
       </Card>
 
+      {/* Current Queue by Stage */}
+      <Card className="rounded-xl shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Antrean Saat Ini per Tahap
+          </CardTitle>
+          <CardDescription>Distribusi pengajuan yang sedang dalam proses</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={bottleneckAnalysis.stages}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="Jumlah Pengajuan" radius={[4, 4, 0, 0]}>
+                {bottleneckAnalysis.stages.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
       {/* Processing Time Comparison Chart */}
       <Card className="rounded-xl shadow-sm">
         <CardHeader className="pb-2">
@@ -539,7 +664,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
               </ResponsiveContainer>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 {processingTimeData.map((item) => (
                   <div 
                     key={item.stage}
@@ -548,13 +673,13 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm font-medium">{item.stage}</span>
+                      <span className="text-xs font-medium">{item.stage}</span>
                     </div>
-                    <p className="text-2xl font-bold" style={{ color: item.color }}>
+                    <p className="text-xl font-bold" style={{ color: item.color }}>
                       {item.displayTime}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Berdasarkan {item.count} pengajuan
+                      {item.count} pengajuan
                     </p>
                   </div>
                 ))}
