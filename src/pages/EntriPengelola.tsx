@@ -115,6 +115,10 @@ export default function EntriPengelola() {
   const [sortField, setSortField] = useState<keyof Mitra>("nama");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const itemsPerPage = 20;
+  
+  // State untuk photo viewer
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; nama: string } | null>(null);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -149,6 +153,39 @@ export default function EntriPengelola() {
       whatsapp: ""
     }
   });
+
+  // Handle photo view
+  const handlePhotoClick = (fotoUrl: string, nama: string) => {
+    if (fotoUrl) {
+      setSelectedPhoto({ url: fotoUrl, nama });
+      setPhotoViewerOpen(true);
+    }
+  };
+
+  // Handle photo download
+  const handlePhotoDownload = async () => {
+    if (!selectedPhoto) return;
+    
+    try {
+      const response = await fetch(selectedPhoto.url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${selectedPhoto.nama}-foto.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading photo:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengunduh foto",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Fetch data Pengelola Anggaran
   const fetchPengelola = async () => {
@@ -759,7 +796,8 @@ export default function EntriPengelola() {
                             <img 
                               src={p.foto} 
                               alt={p.nama}
-                              className="h-8 w-8 rounded-full object-cover border border-primary/20"
+                              className="h-8 w-8 rounded-full object-cover border border-primary/20 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => handlePhotoClick(p.foto!, p.nama)}
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
@@ -844,7 +882,8 @@ export default function EntriPengelola() {
                             <img 
                               src={o.foto} 
                               alt={o.nama}
-                              className="h-8 w-8 rounded-full object-cover border border-primary/20"
+                              className="h-8 w-8 rounded-full object-cover border border-primary/20 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => handlePhotoClick(o.foto!, o.nama)}
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
@@ -1213,6 +1252,27 @@ export default function EntriPengelola() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Photo Viewer Dialog */}
+      <Dialog open={photoViewerOpen} onOpenChange={setPhotoViewerOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedPhoto?.nama}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            {selectedPhoto && (
+              <img 
+                src={selectedPhoto.url} 
+                alt={selectedPhoto.nama}
+                className="max-h-96 max-w-full rounded-lg object-contain"
+              />
+            )}
+            <Button onClick={handlePhotoDownload} className="w-full">
+              Download Foto
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
