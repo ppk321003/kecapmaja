@@ -478,26 +478,6 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 ))}
                 
-                {/* Sikostik28 - Only visible for PPK */}
-                {isPPK && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/sikostik28"
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <PiggyBank className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">Sikostik28</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-
                 {/* User Management - Only visible for PPK */}
                 {isPPK && (
                   <SidebarMenuItem>
