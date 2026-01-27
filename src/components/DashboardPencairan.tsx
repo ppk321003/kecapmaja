@@ -524,7 +524,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
               <Line 
                 type="monotone" 
                 dataKey="selesai" 
-                name="Selesai (KPPN)"
+                name="Selesai (Arsip)"
                 stroke="#10b981" 
                 strokeWidth={2}
                 dot={{ r: 4 }}
