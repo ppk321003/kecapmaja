@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "read",
-          range: "user!A:D"
+          range: "user!A:F"
         }
       });
 
