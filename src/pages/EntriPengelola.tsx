@@ -537,94 +537,16 @@ export default function EntriPengelola() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pengelola" className="flex items-center gap-2">
-            {pengelola.length > 0 && pengelola[0].foto ? (
-              <div className="flex items-center gap-2">
-                <img 
-                  src={pengelola[0].foto} 
-                  alt={pengelola[0].nama}
-                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <span className="hidden sm:inline">Pengelola Anggaran</span>
-                <span className="sm:hidden text-xs">Pengelola</span>
-              </div>
-            ) : pengelola.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-                  {pengelola[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <span className="hidden sm:inline">Pengelola Anggaran</span>
-                <span className="sm:hidden text-xs">Pengelola</span>
-              </div>
-            ) : (
-              <>
-                <UserCog className="h-4 w-4" />
-                <span className="hidden sm:inline">Pengelola Anggaran</span>
-                <span className="sm:hidden text-xs">Pengelola</span>
-              </>
-            )}
+            <UserCog className="h-4 w-4" />
+            Pengelola Anggaran
           </TabsTrigger>
           <TabsTrigger value="organik" className="flex items-center gap-2">
-            {organik.length > 0 && organik[0].foto ? (
-              <div className="flex items-center gap-2">
-                <img 
-                  src={organik[0].foto} 
-                  alt={organik[0].nama}
-                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <span className="hidden sm:inline">Organik BPS</span>
-                <span className="sm:hidden text-xs">Organik</span>
-              </div>
-            ) : organik.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-                  {organik[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <span className="hidden sm:inline">Organik BPS</span>
-                <span className="sm:hidden text-xs">Organik</span>
-              </div>
-            ) : (
-              <>
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Organik BPS</span>
-                <span className="sm:hidden text-xs">Organik</span>
-              </>
-            )}
+            <Users className="h-4 w-4" />
+            Organik BPS
           </TabsTrigger>
           <TabsTrigger value="mitra" className="flex items-center gap-2">
-            {mitra.length > 0 && mitra[0].foto ? (
-              <div className="flex items-center gap-2">
-                <img 
-                  src={mitra[0].foto} 
-                  alt={mitra[0].nama}
-                  className="h-6 w-6 rounded-full object-cover border border-primary/20"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <span className="hidden sm:inline">Mitra Kepka</span>
-                <span className="sm:hidden text-xs">Mitra</span>
-              </div>
-            ) : mitra.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-                  {mitra[0].nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <span className="hidden sm:inline">Mitra Kepka</span>
-                <span className="sm:hidden text-xs">Mitra</span>
-              </div>
-            ) : (
-              <>
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Mitra Kepka</span>
-                <span className="sm:hidden text-xs">Mitra</span>
-              </>
-            )}
+            <User className="h-4 w-4" />
+            Mitra Kepka
           </TabsTrigger>
         </TabsList>
 
@@ -730,6 +652,7 @@ export default function EntriPengelola() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>No</TableHead>
+                      <TableHead></TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
                       <TableHead>Jabatan</TableHead>
@@ -742,6 +665,22 @@ export default function EntriPengelola() {
                     {filteredPengelola.map((p, index) => (
                       <TableRow key={p.rowIndex}>
                         <TableCell>{index + 1}</TableCell>
+                        <TableCell className="w-12">
+                          {p.foto ? (
+                            <img 
+                              src={p.foto} 
+                              alt={p.nama}
+                              className="h-8 w-8 rounded-full object-cover border border-primary/20"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                              {p.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
@@ -759,7 +698,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredPengelola.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canEditPengelola ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={canEditPengelola ? 6 : 5} className="text-center py-8 text-muted-foreground">
                           {searchPengelola ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data pengelola anggaran"}
                         </TableCell>
                       </TableRow>
@@ -798,6 +737,7 @@ export default function EntriPengelola() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>No</TableHead>
+                      <TableHead></TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
                       <TableHead>NIP BPS</TableHead>
@@ -810,6 +750,22 @@ export default function EntriPengelola() {
                     {filteredOrganik.map((o, index) => (
                       <TableRow key={o.rowIndex}>
                         <TableCell>{o.no}</TableCell>
+                        <TableCell className="w-12">
+                          {o.foto ? (
+                            <img 
+                              src={o.foto} 
+                              alt={o.nama}
+                              className="h-8 w-8 rounded-full object-cover border border-primary/20"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                              {o.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium">{o.nama}</TableCell>
                         <TableCell>{o.nip}</TableCell>
                         <TableCell>{o.nipBps}</TableCell>
@@ -820,7 +776,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredOrganik.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           {searchOrganik ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data organik"}
                         </TableCell>
                       </TableRow>
