@@ -239,16 +239,17 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     ];
   }, [stats]);
 
-  // Bottleneck analysis - find which stage has most submissions
-  const bottleneckAnalysis = useMemo(() => {
+  // Queue analysis - find which stage has most submissions
+  const queueAnalysis = useMemo(() => {
     const stages = [
+      { name: 'Draft SM', count: stats.draft, color: '#6366f1' },
       { name: 'Bendahara', count: stats.pending_bendahara, color: '#06b6d4' },
       { name: 'PPK', count: stats.pending_ppk, color: '#f59e0b' },
       { name: 'PPSPM', count: stats.pending_ppspm, color: '#8b5cf6' },
       { name: 'KPPN', count: stats.sent_kppn, color: '#14b8a6' },
+      { name: 'Arsip', count: stats.complete_arsip, color: '#10b981' },
     ];
-    const maxStage = stages.reduce((max, stage) => stage.count > max.count ? stage : max);
-    return { maxStage, stages };
+    return stages;
   }, [stats]);
 
   // Average total processing time
@@ -361,6 +362,22 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     ];
   }, [filteredSubmissions]);
 
+  // Processing time data with total average
+  const processingTimeDataWithTotal = useMemo(() => {
+    const baseData = processingTimeData;
+    const totalDays = averageTotalTime.avg / 24;
+    return [
+      ...baseData,
+      {
+        stage: 'Waktu Total Rata-rata',
+        hours: parseFloat(totalDays.toFixed(1)),
+        displayTime: averageTotalTime.display,
+        count: averageTotalTime.count,
+        color: '#8b5cf6',
+      }
+    ];
+  }, [processingTimeData, averageTotalTime]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -415,69 +432,6 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
           icon={CheckCircle2}
           variant="success"
         />
-      </div>
-
-      {/* Processing Efficiency & Bottleneck Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Average Total Time */}
-        <Card className="rounded-xl shadow-sm bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 dark:from-indigo-950/50 dark:to-indigo-900/50 dark:border-indigo-800">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Waktu Total Rata-rata</p>
-                <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{averageTotalTime.display}</p>
-                <p className="text-xs opacity-70">Dari pengajuan hingga arsip ({averageTotalTime.count} pengajuan)</p>
-              </div>
-              <div className="p-3 rounded-full bg-indigo-700/10">
-                <Timer className="w-6 h-6 text-indigo-700 dark:text-indigo-300" strokeWidth={1.5} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bottleneck Stage */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Tahap Mengantri Terbanyak</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: bottleneckAnalysis.maxStage.color }} />
-                  <p className="text-2xl font-bold">{bottleneckAnalysis.maxStage.name}</p>
-                </div>
-                <p className="text-sm font-semibold" style={{ color: bottleneckAnalysis.maxStage.color }}>
-                  {bottleneckAnalysis.maxStage.count} pengajuan
-                </p>
-              </div>
-              <div className="p-3 rounded-full bg-red-500/10">
-                <AlertTriangle className="w-6 h-6 text-red-600" strokeWidth={1.5} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Processing Status */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Ringkasan Proses</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Dalam Antrian</span>
-                  <span className="text-sm font-bold">{stats.inProcess}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Selesai (Arsip)</span>
-                  <span className="text-sm font-bold text-green-600">{stats.complete_arsip}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Dikembalikan</span>
-                  <span className="text-sm font-bold text-red-600">{stats.rejected}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Charts Row 1 */}
@@ -599,13 +553,13 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={bottleneckAnalysis.stages}>
+            <BarChart data={queueAnalysis}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="count" name="Jumlah Pengajuan" radius={[4, 4, 0, 0]}>
-                {bottleneckAnalysis.stages.map((entry, index) => (
+                {queueAnalysis.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Bar>
@@ -634,7 +588,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={processingTimeData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(val) => `${val} jam`} />
+                  <XAxis type="number" tickFormatter={(val) => `${(val / 24).toFixed(1)} hari`} />
                   <YAxis type="category" dataKey="stage" width={130} fontSize={12} />
                   <Tooltip 
                     content={({ active, payload }) => {
@@ -664,8 +618,8 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
               </ResponsiveContainer>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-4 gap-4">
-                {processingTimeData.map((item) => (
+              <div className="grid grid-cols-5 gap-4">
+                {processingTimeDataWithTotal.map((item) => (
                   <div 
                     key={item.stage}
                     className="p-4 rounded-lg border"
