@@ -42,6 +42,7 @@ import { Send, X, FileText, Loader2, AlertCircle, Save } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganikPencairan, usePencairanData } from '@/hooks/use-pencairan-data';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SubmissionFormProps {
   open: boolean;
@@ -78,6 +79,7 @@ function getJakartaTimeString(): string {
 }
 
 export function SubmissionForm({ open, onClose, onSubmit, editData }: SubmissionFormProps) {
+  const { user } = useAuth();
   const { data: organikList = [], isLoading: isLoadingOrganik } = useOrganikPencairan();
   const { data: existingSubmissions = [] } = usePencairanData();
 
@@ -300,6 +302,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
+            satker: user?.satker,
           },
         });
         if (error) throw new Error(error.message || 'Gagal mengirim pengajuan');
@@ -323,7 +326,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuPpk: '',
             statusBendahara: '',
             waktuBendahara: '',
-            statusKppn: ''
+            statusKppn: '',
+            satker: user?.satker,
           },
         });
         

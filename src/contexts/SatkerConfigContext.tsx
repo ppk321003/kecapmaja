@@ -16,7 +16,7 @@ interface SatkerConfigContextType {
   getUserSatkerConfig: () => SatkerConfig | undefined;
 }
 
-const SatkerConfigContext = createContext<SatkerConfigContextType | undefined>(undefined);
+const SatkerConfigContext = createContext<SatkerConfigContextType | null | undefined>(undefined);
 
 export function SatkerConfigProvider({ children }: { children: React.ReactNode }) {
   const { data: configs, isLoading, error } = useSatkerConfig();
@@ -54,10 +54,11 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
   );
 }
 
-export function useSatkerConfigContext() {
+export function useSatkerConfigContext(): SatkerConfigContextType | null {
   const context = useContext(SatkerConfigContext);
   if (context === undefined) {
-    throw new Error('useSatkerConfigContext must be used within a SatkerConfigProvider');
+    console.warn('useSatkerConfigContext: Not within SatkerConfigProvider, returning null context');
+    return null;
   }
   return context;
 }

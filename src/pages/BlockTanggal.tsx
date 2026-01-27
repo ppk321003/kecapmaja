@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar, Plus, Trash2, Building2, MapPin, Edit, Save, Ban, UserCheck, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { isSameMonth, isSameYear } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -56,7 +58,8 @@ interface KegiatanToDelete {
   dates: string[];
 }
 
-const SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
+// Default SPREADSHEET_ID (fallback untuk 3210 - tagging_sheet_id)
+const DEFAULT_SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
 const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -501,6 +504,20 @@ function TambahKegiatanModal({
 }
 
 export default function BlockTanggal() {
+  const { user } = useAuth();
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific sheet ID for tagging
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('tagging') || DEFAULT_SPREADSHEET_ID;
+  
+  console.log('[BlockTanggal] satkerContext:', {
+    isLoading: satkerContext?.isLoading,
+    configsCount: satkerContext?.configs?.length,
+    userSatker: user?.satker,
+    spreadsheetId: spreadsheetId,
+    isDefault: spreadsheetId === DEFAULT_SPREADSHEET_ID
+  });
+  
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
   const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [availableMitra, setAvailableMitra] = useState<Mitra[]>([]);
@@ -617,7 +634,7 @@ export default function BlockTanggal() {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A:DW"
         }
@@ -739,7 +756,7 @@ export default function BlockTanggal() {
 
       const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
         }
@@ -808,21 +825,21 @@ export default function BlockTanggal() {
 
       if (operation === 'create') {
         requestBody = {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "append",
           range: "Sheet1",
           values: [rowData]
         };
       } else if (operation === 'update' && data.spreadsheetRowIndex) {
         requestBody = {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "update",
           rowIndex: data.spreadsheetRowIndex,
           values: [rowData]
         };
       } else if (operation === 'delete' && data.spreadsheetRowIndex) {
         requestBody = {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "delete",
           rowIndex: data.spreadsheetRowIndex
         };
@@ -879,7 +896,7 @@ export default function BlockTanggal() {
 
     const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: spreadsheetId,
         operation: "read",
         range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
       }
@@ -917,7 +934,7 @@ export default function BlockTanggal() {
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
     const requestBody = {
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       operation: "update",
       rowIndex: data.spreadsheetRowIndex,
       values: [rowData]
@@ -940,7 +957,7 @@ export default function BlockTanggal() {
 
     const { data: existingData, error: readError } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: spreadsheetId,
         operation: "read",
         range: `Sheet1!A${data.spreadsheetRowIndex}:DW${data.spreadsheetRowIndex}`
       }
@@ -971,7 +988,7 @@ export default function BlockTanggal() {
     rowData[TOTAL_TANGGAL_COL - 1] = remainingBlocks.toString();
 
     const requestBody = {
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: spreadsheetId,
       operation: "update",
       rowIndex: data.spreadsheetRowIndex,
       values: [rowData]
@@ -992,7 +1009,7 @@ export default function BlockTanggal() {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A:A"
         }

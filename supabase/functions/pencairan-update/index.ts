@@ -5,8 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
+// Default SPREADSHEET_ID (fallback untuk 3210)
+const DEFAULT_SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
 const SHEET_NAME = 'data';
+
+// Master Config Spreadsheet untuk multi-satker
+const MASTER_CONFIG_SPREADSHEET_ID = '1CBpS-rhb5pSSHFoleUoRa8D8CGeMh61tCoF82S0W0cQ';
+const MASTER_CONFIG_SHEET_NAME = 'satker_config';
 
 async function getAccessToken() {
   console.log('Getting access token for pencairan-update...');
@@ -93,6 +98,49 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
+// Fungsi untuk mendapatkan pencairan_sheet_id berdasarkan satker dari Master Config
+async function getPencairanSheetIdBySatker(accessToken: string, satker: string): Promise<string> {
+  try {
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${MASTER_CONFIG_SPREADSHEET_ID}/values/${MASTER_CONFIG_SHEET_NAME}!A:F`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch master config (${response.status}), using default sheet ID`);
+      return DEFAULT_SPREADSHEET_ID;
+    }
+
+    const data = await response.json();
+    const rows = data.values || [];
+
+    if (rows.length <= 1) {
+      console.warn('No config data found, using default sheet ID');
+      return DEFAULT_SPREADSHEET_ID;
+    }
+
+    // Cari row dengan satker_id matching
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row[0]?.trim() === satker?.trim()) {
+        const pencairanSheetId = row[2]?.trim(); // Column C (index 2) = pencairan_sheet_id
+        if (pencairanSheetId) {
+          console.log(`Found pencairan sheet ID for satker ${satker}: ${pencairanSheetId}`);
+          return pencairanSheetId;
+        }
+      }
+    }
+
+    console.warn(`Satker ${satker} not found in master config, using default sheet ID`);
+    return DEFAULT_SPREADSHEET_ID;
+  } catch (error) {
+    console.error('Error fetching pencairan sheet ID by satker:', error);
+    return DEFAULT_SPREADSHEET_ID;
+  }
+}
+
 // Fungsi untuk mendapatkan waktu Jakarta (WIB)
 function formatDateTime(): string {
   const now = new Date();
@@ -131,14 +179,22 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan } = body;
+    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker } = body;
     
     if (!id) {
       throw new Error('ID is required');
     }
 
     const accessToken = await getAccessToken();
-    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
+    
+    // Dapatkan correct spreadsheet ID berdasarkan satker
+    const spreadsheetId = satker 
+      ? await getPencairanSheetIdBySatker(accessToken, satker)
+      : DEFAULT_SPREADSHEET_ID;
+    
+    console.log('[pencairan-update] Using spreadsheetId:', { satker, spreadsheetId, isDefault: spreadsheetId === DEFAULT_SPREADSHEET_ID });
+    
+    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     
     // Baca 17 kolom (A:Q) - dengan Waktu Arsip
     const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:Q`, {
