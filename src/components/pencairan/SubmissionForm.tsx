@@ -312,6 +312,12 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         const existingIds = existingSubmissions.map(s => s.id);
         const newId = generateSubmissionId(existingIds);
 
+        console.log('[SubmissionForm] Creating new pencairan:', {
+          id: newId,
+          userSatker: user?.satker,
+          timestamp: new Date().toISOString()
+        });
+
         const { data, error } = await supabase.functions.invoke('pencairan-save', {
           body: {
             id: newId,

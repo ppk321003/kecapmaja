@@ -101,6 +101,8 @@ async function getAccessToken() {
 // Fungsi untuk mendapatkan pencairan_sheet_id berdasarkan satker dari Master Config
 async function getPencairanSheetIdBySatker(accessToken: string, satker: string): Promise<string> {
   try {
+    console.log(`[getPencairanSheetIdBySatker] Looking up satker: ${satker}`);
+    
     const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${MASTER_CONFIG_SPREADSHEET_ID}/values/${MASTER_CONFIG_SHEET_NAME}!A:F`,
       {
@@ -109,31 +111,38 @@ async function getPencairanSheetIdBySatker(accessToken: string, satker: string):
     );
 
     if (!response.ok) {
-      console.warn(`Failed to fetch master config (${response.status}), using default sheet ID`);
+      console.warn(`[getPencairanSheetIdBySatker] Failed to fetch master config (${response.status}), using default sheet ID`);
       return DEFAULT_SPREADSHEET_ID;
     }
 
     const data = await response.json();
     const rows = data.values || [];
+    
+    console.log(`[getPencairanSheetIdBySatker] Master config loaded, rows count: ${rows.length}`);
 
     if (rows.length <= 1) {
-      console.warn('No config data found, using default sheet ID');
+      console.warn('[getPencairanSheetIdBySatker] No config data found, using default sheet ID');
       return DEFAULT_SPREADSHEET_ID;
     }
 
     // Cari row dengan satker_id matching
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      if (row[0]?.trim() === satker?.trim()) {
+      const rowSatker = row[0]?.trim();
+      console.log(`[getPencairanSheetIdBySatker] Checking row ${i}: satker_id="${rowSatker}"`);
+      
+      if (rowSatker === satker?.trim()) {
         const pencairanSheetId = row[2]?.trim(); // Column C (index 2) = pencairan_sheet_id
         if (pencairanSheetId) {
-          console.log(`Found pencairan sheet ID for satker ${satker}: ${pencairanSheetId}`);
+          console.log(`[getPencairanSheetIdBySatker] ✓ Found pencairan sheet ID for satker ${satker}: ${pencairanSheetId}`);
           return pencairanSheetId;
+        } else {
+          console.warn(`[getPencairanSheetIdBySatker] Row found but pencairan_sheet_id is empty at row ${i}`);
         }
       }
     }
 
-    console.warn(`Satker ${satker} not found in master config, using default sheet ID`);
+    console.warn(`[getPencairanSheetIdBySatker] Satker ${satker} not found in config, using default sheet ID`);
     return DEFAULT_SPREADSHEET_ID;
   } catch (error) {
     console.error('Error fetching pencairan sheet ID by satker:', error);
