@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface User {
   username: string;
   role: string;
+  satker: string;
 }
 
 interface AuthContextType {
@@ -137,18 +138,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           rowIndex: index + 2, // +2 because we skip header and array is 0-indexed
           username: row[0]?.trim() || "",
           password: row[1]?.trim() || "",
-          role: row[2]?.trim() || ""
+          role: row[2]?.trim() || "",
+          satker: row[5]?.trim() || "" // Kolom F = index 5
         }));
 
         // Find matching user (case-insensitive username comparison)
         const foundUser = users.find(
-          (u: { username: string; password: string; role: string }) => 
+          (u: { username: string; password: string; role: string; satker: string }) => 
             u.username.toLowerCase() === username.toLowerCase() && 
             u.password === password
         );
 
         if (foundUser) {
-          setUser({ username: foundUser.username, role: foundUser.role });
+          setUser({ username: foundUser.username, role: foundUser.role, satker: foundUser.satker });
           
           // Record login timestamp to Column D
           const loginTimestamp = new Date().toISOString();

@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Submission, Document, SubmissionStatus } from '@/types/pencairan';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
-const SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
+// Default SPREADSHEET_ID (fallback, biasanya akan diganti dengan context)
+const DEFAULT_SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
 const SHEET_NAME = 'data';
 
 // Master Organik Spreadsheet
@@ -121,12 +123,17 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
 }
 
 export function usePencairanData() {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific sheet ID from context, fallback to default if not available
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pencairan') || DEFAULT_SPREADSHEET_ID;
+  
   return useQuery({
-    queryKey: ['pencairan-data'],
+    queryKey: ['pencairan-data', spreadsheetId],
     queryFn: async (): Promise<Submission[]> => {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: 'read',
           range: `${SHEET_NAME}!A:Q`, // 17 kolom
         },
