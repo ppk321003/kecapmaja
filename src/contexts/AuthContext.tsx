@@ -150,6 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         if (foundUser) {
+          console.log('[AuthContext.login] User found:', { 
+            username: foundUser.username, 
+            role: foundUser.role, 
+            satker: foundUser.satker 
+          });
           setUser({ username: foundUser.username, role: foundUser.role, satker: foundUser.satker });
           
           // Record login timestamp to Column D

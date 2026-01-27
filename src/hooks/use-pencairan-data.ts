@@ -125,12 +125,28 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
 export function usePencairanData() {
   const satkerContext = useSatkerConfigContext();
   
-  // Get satker-specific sheet ID from context, fallback to default if not available
-  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pencairan') || DEFAULT_SPREADSHEET_ID;
+  // Get satker-specific sheet ID from context
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pencairan');
+  const isConfigReady = !satkerContext?.isLoading && satkerContext?.configs;
+  
+  // Log untuk debugging
+  console.log('[usePencairanData] satkerContext:', {
+    spreadsheetId,
+    isConfigReady,
+    isLoading: satkerContext?.isLoading,
+    error: satkerContext?.error,
+    configsCount: satkerContext?.configs?.length,
+  });
   
   return useQuery({
     queryKey: ['pencairan-data', spreadsheetId],
     queryFn: async (): Promise<Submission[]> => {
+      // Jika spreadsheetId tidak tersedia, return empty array (jangan fallback)
+      if (!spreadsheetId) {
+        console.warn('[usePencairanData] No spreadsheetId available, returning empty data');
+        return [];
+      }
+      
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: spreadsheetId,

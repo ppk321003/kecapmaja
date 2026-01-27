@@ -24,9 +24,12 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
 
   const getUserSatkerSheetId = (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging'): string | null => {
     if (!user || !user.satker || !configs) {
+      console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] Missing: user=${!!user}, satker=${user?.satker}, configs=${!!configs}`);
       return null;
     }
-    return getSheetIdBySatkerAndModule(configs, user.satker, module);
+    const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module);
+    console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] user.satker=${user.satker}, sheetId=${sheetId}`);
+    return sheetId;
   };
 
   const getUserSatkerConfig = (): SatkerConfig | undefined => {

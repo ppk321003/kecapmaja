@@ -20,16 +20,32 @@ export function useSatkerConfig() {
   return useQuery({
     queryKey: ['satker-config'],
     queryFn: async (): Promise<SatkerConfig[]> => {
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
-          operation: 'read',
-          range: `${CONFIG_SHEET_NAME}!A:F`, // 6 kolom
-        },
-      });
+      // Coba dua format sheet name: 'satker_config' dan 'Sheet1' (default Google Sheets)
+      const sheetNames = [CONFIG_SHEET_NAME, 'Sheet1'];
+      let data, error;
+      
+      for (const sheetName of sheetNames) {
+        const result = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
+            operation: 'read',
+            range: `${sheetName}!A:F`, // 6 kolom
+          },
+        });
+        
+        if (!result.error && result.data?.values && result.data.values.length > 1) {
+          data = result.data;
+          error = null;
+          console.log(`[useSatkerConfig] Successfully read from sheet: ${sheetName}`);
+          break;
+        } else {
+          console.log(`[useSatkerConfig] Failed to read from ${sheetName}, trying next...`);
+          error = result.error;
+        }
+      }
 
-      if (error) {
-        console.error('Error fetching satker config:', error);
+      if (error && !data) {
+        console.error('Error fetching satker config from all sheets:', error);
         throw error;
       }
 
@@ -40,14 +56,16 @@ export function useSatkerConfig() {
       }
 
       // Skip header row (index 0) dan map ke SatkerConfig[]
-      const configs: SatkerConfig[] = rows.slice(1).map((row: string[]) => ({
-        satker_id: row[0]?.trim() || '',
-        satker_nama: row[1]?.trim() || '',
-        pencairan_sheet_id: row[2]?.trim() || '',
-        pengadaan_sheet_id: row[3]?.trim() || '',
-        entrikegiatan_sheet_id: row[4]?.trim() || '',
-        tagging_sheet_id: row[5]?.trim() || '',
-      }));
+      const configs: SatkerConfig[] = rows.slice(1)
+        .filter((row: string[]) => row[0]?.trim()) // Filter empty rows
+        .map((row: string[]) => ({
+          satker_id: row[0]?.trim() || '',
+          satker_nama: row[1]?.trim() || '',
+          pencairan_sheet_id: row[2]?.trim() || '',
+          pengadaan_sheet_id: row[3]?.trim() || '',
+          entrikegiatan_sheet_id: row[4]?.trim() || '',
+          tagging_sheet_id: row[5]?.trim() || '',
+        }));
 
       console.log('Loaded satker configs:', configs);
       return configs;

@@ -6,11 +6,13 @@ const DEFAULT_PENGADAAN_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_e
 export const useSubmitToPengadaanSheets = (options?: { onSuccess?: () => void }) => {
   const satkerContext = useSatkerConfigContext();
   
-  // Get satker-specific sheet ID from context, fallback to default if not available
-  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pengadaan') || DEFAULT_PENGADAAN_SPREADSHEET_ID;
+  // Get satker-specific sheet ID from context
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pengadaan');
+  
+  console.log('[useSubmitToPengadaanSheets] spreadsheetId:', spreadsheetId, 'satkerContext:', satkerContext);
   
   return useSubmitToSheets({
-    spreadsheetId: spreadsheetId,
+    spreadsheetId: spreadsheetId || DEFAULT_PENGADAAN_SPREADSHEET_ID,
     sheetName: "DokumenPengadaan",
     onSuccess: options?.onSuccess
   });
