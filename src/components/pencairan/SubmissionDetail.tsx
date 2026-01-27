@@ -497,7 +497,7 @@ export function SubmissionDetail({
                       rows={3}
                     />
                     {submission.status === 'sent_kppn' && !notes && (
-                      <p className="text-xs text-red-500">Catatan wajib diisi sebelum submit</p>
+                      <p className="text-xs text-red-500">Isi catatan dengan nomor SPPD dan SPM</p>
                     )}
                   </div>
                 ) : (
