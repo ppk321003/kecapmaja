@@ -162,14 +162,21 @@ export default function EntriPengelola() {
           body: {
             spreadsheetId: MASTER_SPREADSHEET_ID,
             operation: "read",
-            range: "MASTER.ORGANIK!A:J"
+            range: "MASTER.ORGANIK"
           }
         });
         
-        if (!organikError && organikData?.values) {
+        if (!organikError && organikData?.values && organikData.values.length > 0) {
+          const headers = organikData.values[0];
           fotoMap = organikData.values.slice(1).reduce((acc: Record<string, string>, row: any) => {
-            const nip = (row[2] || "").trim(); // NIP is at column C (index 2)
-            let foto = row[9] || ""; // Foto is at column J (index 9)
+            // Create object from headers
+            const rowObj: any = {};
+            headers.forEach((header: string, colIndex: number) => {
+              rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+            });
+            
+            const nip = (rowObj['nip'] || rowObj['NIP'] || "").trim();
+            let foto = rowObj['foto'] || rowObj['Foto'] || "";
             
             // Convert Google Drive URL to viewable format
             if (foto && foto.includes('drive.google.com/file/d/')) {
@@ -181,9 +188,11 @@ export default function EntriPengelola() {
             
             if (nip && foto) {
               acc[nip] = foto;
+              console.log(`[Pengelola] Mapped NIP ${nip} -> foto`, foto.substring(0, 60));
             }
             return acc;
           }, {});
+          console.log(`[Pengelola] Total fotoMap entries: ${Object.keys(fotoMap).length}`, fotoMap);
         }
       } catch (err) {
         console.warn('Could not fetch foto from MASTER.ORGANIK:', err);
@@ -193,24 +202,43 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:D"
+          range: "Sheet1"
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
+      if (rows.length === 0) {
+        setPengelola([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Use first row as headers
+      const headers = rows[0];
       const pengelolaData = rows.slice(1).map((row: any[], index: number) => {
-        const nip = (row[2] || "").trim();
+        // Create object from headers
+        const rowObj: any = {};
+        headers.forEach((header: string, colIndex: number) => {
+          rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+        });
+        
+        const nip = (rowObj['nip'] || rowObj['NIP'] || "").trim();
+        const foto = fotoMap[nip] || "";
+        if (!foto && nip) {
+          console.log(`[Pengelola] No foto found for NIP: ${nip}`);
+        }
         return {
           rowIndex: index + 2,
-          nama: row[1] || "",
+          nama: rowObj['nama'] || rowObj['Nama'] || "",
           nip: nip,
-          jabatan: row[3] || "",
-          foto: fotoMap[nip] || ""
+          jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
+          foto: foto
         };
       });
       
+      console.log(`[Pengelola] Loaded ${pengelolaData.length} entries with photos:`, pengelolaData.filter(p => p.foto).length);
       setPengelola(pengelolaData);
     } catch (error: any) {
       toast({
@@ -231,15 +259,29 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.ORGANIK!A:J"
+          range: "MASTER.ORGANIK"
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
+      if (rows.length === 0) {
+        setOrganik([]);
+        setLoadingOrganik(false);
+        return;
+      }
+      
+      // Use first row as headers
+      const headers = rows[0];
       const organikData = rows.slice(1).map((row: any[], index: number) => {
-        let foto = row[9] || "";
+        // Create object from headers
+        const rowObj: any = {};
+        headers.forEach((header: string, colIndex: number) => {
+          rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+        });
+        
+        let foto = rowObj['foto'] || rowObj['Foto'] || "";
         // Convert Google Drive URL to viewable format
         if (foto && foto.includes('drive.google.com/file/d/')) {
           const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -247,20 +289,24 @@ export default function EntriPengelola() {
             foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
           }
         }
-        const nip = (row[2] || "").trim();
+        const nip = (rowObj['nip'] || rowObj['NIP'] || "").trim();
+        if (foto) {
+          console.log(`[Organik] NIP ${nip} has foto:`, foto.substring(0, 60));
+        }
         return {
           rowIndex: index + 2,
-          no: row[0] || "",
-          nipBps: row[1] || "",
+          no: rowObj['no'] || rowObj['No'] || "",
+          nipBps: rowObj['nipbps'] || rowObj['NIP BPS'] || rowObj['NIPBPS'] || "",
           nip: nip,
-          nama: row[3] || "",
-          jabatan: row[4] || "",
-          golAkhir: row[6] || "",
-          pangkat: row[7] || "",
+          nama: rowObj['nama'] || rowObj['Nama'] || "",
+          jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
+          golAkhir: rowObj['gol. akhir'] || rowObj['Gol. Akhir'] || rowObj['golakhir'] || "",
+          pangkat: rowObj['pangkat'] || rowObj['Pangkat'] || "",
           foto: foto
         };
       });
       
+      console.log(`[Organik] Loaded ${organikData.length} entries with photos:`, organikData.filter(o => o.foto).length);
       setOrganik(organikData);
     } catch (error: any) {
       toast({
@@ -281,15 +327,29 @@ export default function EntriPengelola() {
         body: {
           spreadsheetId: MASTER_SPREADSHEET_ID,
           operation: "read",
-          range: "MASTER.MITRA!A:J" // UPDATE: Range diperluas sampai kolom J untuk foto
+          range: "MASTER.MITRA"
         }
       });
       
       if (error) throw error;
       
       const rows = data.values || [];
+      if (rows.length === 0) {
+        setMitra([]);
+        setLoadingMitra(false);
+        return;
+      }
+      
+      // Use first row as headers
+      const headers = rows[0];
       const mitraData = rows.slice(1).map((row: any[], index: number) => {
-        let foto = row[9] || "";
+        // Create object from headers
+        const rowObj: any = {};
+        headers.forEach((header: string, colIndex: number) => {
+          rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+        });
+        
+        let foto = rowObj['foto'] || rowObj['Foto'] || "";
         // Convert Google Drive URL to viewable format
         if (foto && foto.includes('drive.google.com/file/d/')) {
           const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -299,15 +359,15 @@ export default function EntriPengelola() {
         }
         return {
           rowIndex: index + 2,
-          no: row[0] || "",
-          nik: row[1] || "",
-          nama: row[2] || "",
-          pekerjaan: row[3] || "",
-          alamat: row[4] || "",
-          bank: row[5] || "",
-          rekening: row[6] || "",
-          kecamatan: row[7] || "",
-          whatsapp: row[8] || "",
+          no: rowObj['no'] || rowObj['No'] || "",
+          nik: rowObj['nik'] || rowObj['NIK'] || "",
+          nama: rowObj['nama'] || rowObj['Nama'] || "",
+          pekerjaan: rowObj['pekerjaan'] || rowObj['Pekerjaan'] || "",
+          alamat: rowObj['alamat'] || rowObj['Alamat'] || "",
+          bank: rowObj['bank'] || rowObj['Bank'] || "",
+          rekening: rowObj['rekening'] || rowObj['Rekening'] || "",
+          kecamatan: rowObj['kecamatan'] || rowObj['Kecamatan'] || "",
+          whatsapp: rowObj['whatsapp'] || rowObj['No. HP'] || rowObj['no. hp'] || "",
           foto: foto
         };
       });
