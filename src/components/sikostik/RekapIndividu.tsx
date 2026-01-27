@@ -376,27 +376,29 @@ export const RekapIndividu = () => {
         <>
           <Card className="overflow-hidden">
             <CardHeader className="pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  {member.foto ? (
-                    <img 
-                      src={member.foto} 
-                      alt={member.nama}
-                      className="h-16 w-16 rounded-full object-cover border-2 border-primary/20"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : null}
-                  <div className={cn(
-                    "flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary text-2xl font-bold",
-                    member.foto ? "hidden" : ""
-                  )}>
-                    {member.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-6">
+                  <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                    {member.foto ? (
+                      <img 
+                        src={member.foto} 
+                        alt={member.nama}
+                        className="h-28 w-28 rounded-full object-cover border-2 border-primary/20"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <div className={cn(
+                      "flex h-28 w-28 items-center justify-center rounded-full bg-primary/10 text-primary text-4xl font-bold",
+                      member.foto ? "hidden" : ""
+                    )}>
+                      {member.nama.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">{member.nama}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-col justify-center">
+                    <CardTitle className="text-2xl">{member.nama}</CardTitle>
+                    <div className="flex items-center gap-2 mt-2">
                       <Badge variant={member.status === 'Aktif' ? 'default' : 'secondary'}>
                         {member.status}
                       </Badge>
@@ -408,7 +410,7 @@ export const RekapIndividu = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowDetail(!showDetail)}
-                  className="h-8 px-3"
+                  className="h-8 px-3 flex-shrink-0"
                 >
                   {showDetail ? (
                     <>
