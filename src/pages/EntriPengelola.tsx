@@ -154,11 +154,46 @@ export default function EntriPengelola() {
   const fetchPengelola = async () => {
     try {
       setLoading(true);
+      
+      // Fetch foto mapping dari MASTER.ORGANIK
+      let fotoMap: Record<string, string> = {};
+      try {
+        const { data: organikData, error: organikError } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: MASTER_SPREADSHEET_ID,
+            operation: "read",
+            range: "MASTER.ORGANIK!A:J"
+          }
+        });
+        
+        if (!organikError && organikData?.values) {
+          fotoMap = organikData.values.slice(1).reduce((acc: Record<string, string>, row: any) => {
+            const nip = (row[2] || "").trim(); // NIP is at column C (index 2)
+            let foto = row[9] || ""; // Foto is at column J (index 9)
+            
+            // Convert Google Drive URL to viewable format
+            if (foto && foto.includes('drive.google.com/file/d/')) {
+              const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+              if (fileIdMatch) {
+                foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+              }
+            }
+            
+            if (nip && foto) {
+              acc[nip] = foto;
+            }
+            return acc;
+          }, {});
+        }
+      } catch (err) {
+        console.warn('Could not fetch foto from MASTER.ORGANIK:', err);
+      }
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
           operation: "read",
-          range: "Sheet1!A:E"
+          range: "Sheet1!A:D"
         }
       });
       
@@ -166,20 +201,13 @@ export default function EntriPengelola() {
       
       const rows = data.values || [];
       const pengelolaData = rows.slice(1).map((row: any[], index: number) => {
-        let foto = row[4] || "";
-        // Convert Google Drive URL to viewable format
-        if (foto && foto.includes('drive.google.com/file/d/')) {
-          const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-          if (fileIdMatch) {
-            foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
-          }
-        }
+        const nip = (row[2] || "").trim();
         return {
           rowIndex: index + 2,
           nama: row[1] || "",
-          nip: row[2] || "",
+          nip: nip,
           jabatan: row[3] || "",
-          foto: foto
+          foto: fotoMap[nip] || ""
         };
       });
       
@@ -219,11 +247,12 @@ export default function EntriPengelola() {
             foto = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
           }
         }
+        const nip = (row[2] || "").trim();
         return {
           rowIndex: index + 2,
           no: row[0] || "",
           nipBps: row[1] || "",
-          nip: row[2] || "",
+          nip: nip,
           nama: row[3] || "",
           jabatan: row[4] || "",
           golAkhir: row[6] || "",
