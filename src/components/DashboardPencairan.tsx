@@ -369,7 +369,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
     return [
       ...baseData,
       {
-        stage: 'Waktu Total Rata-rata',
+        stage: 'Waktu Rata-rata (SM → Arsip)',
         hours: parseFloat(totalDays.toFixed(1)),
         displayTime: averageTotalTime.display,
         count: averageTotalTime.count,
