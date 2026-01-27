@@ -1167,7 +1167,7 @@ export default function EntriPengelola() {
                     <TableBody>
                       {paginatedMitra.map((m, index) => (
                         <TableRow key={m.rowIndex} className="h-12 hover:bg-gray-50">
-                          <TableCell className="py-2">{m.no}</TableCell>
+                          <TableCell className="py-2">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                           <TableCell className="py-2 font-medium">{m.nama}</TableCell>
                           <TableCell className="py-2">{m.nik}</TableCell>
                           {/* UPDATE: Hapus tampilan Alamat dari UI tabel */}
