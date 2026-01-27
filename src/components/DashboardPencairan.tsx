@@ -353,7 +353,7 @@ export default function DashboardPencairan({ filterTahun }: DashboardPencairanPr
         color: '#f59e0b',
       },
       { 
-        stage: 'PPSPM → KPPN', 
+        stage: 'PPSPM → Arsip', 
         hours: parseFloat(avgPpspmToKppn.toFixed(1)),
         displayTime: formatTime(avgPpspmToKppn),
         count: timeDiffs.ppspmToKppn.length,
