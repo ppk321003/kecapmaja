@@ -41,6 +41,13 @@ const MitraKepka = () => {
   const satkerContext = useSatkerConfigContext();
   const { toast } = useToast();
   
+  console.log('[MitraKepka] Init - satkerContext:', {
+    satkerContext_exists: !!satkerContext,
+    satkerContext_isLoading: satkerContext?.isLoading,
+    satkerContext_configs_count: satkerContext?.configs?.length,
+    user_satker: user?.satker,
+  });
+  
   // Get satker-specific data using hooks (already satker-aware)
   const {
     data: organikBPSData = [],
@@ -53,11 +60,12 @@ const MitraKepka = () => {
   } = useMitraStatistik();
   
   // Get satker-specific sheet ID for save/delete operations
-  // NOTE: MASTER sheets are shared across all satkers, always stored in satker 3210 sheet
-  const spreadsheetId = MASTER_SHEET_ID;
+  // NOTE: MASTER sheets are satker-specific
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
   
-  console.log('[MitraKepka] Using shared MASTER sheet:', {
-    spreadsheetId: spreadsheetId,
+  console.log('[MitraKepka] spreadsheetId:', {
+    spreadsheetId: spreadsheetId ? spreadsheetId.substring(0, 30) + '...' : 'NULL',
+    is_default: spreadsheetId === DEFAULT_SPREADSHEET_ID,
     user_satker: user?.satker
   });
   

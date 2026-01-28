@@ -29,9 +29,11 @@ interface MitraStatistik {
 }
 
 export const useOrganikBPS = () => {
-  // MASTER.ORGANIK is shared across all satkers (from satker 3210 default sheet)
-  const masterSpreadsheetId = DEFAULT_MASTER_SPREADSHEET_ID;
-  console.log('[useOrganikBPS] masterSpreadsheetId (SHARED):', masterSpreadsheetId);
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific master organik sheet ID
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  console.log('[useOrganikBPS] masterSpreadsheetId:', masterSpreadsheetId, '(satker-specific)');
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
@@ -55,9 +57,11 @@ export const useOrganikBPS = () => {
 };
 
 export const useMitraStatistik = () => {
-  // MASTER.MITRA is shared across all satkers (from satker 3210 default sheet)
-  const masterSpreadsheetId = DEFAULT_MASTER_SPREADSHEET_ID;
-  console.log('[useMitraStatistik] masterSpreadsheetId (SHARED):', masterSpreadsheetId);
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific master organik sheet ID  
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  console.log('[useMitraStatistik] masterSpreadsheetId:', masterSpreadsheetId, '(satker-specific)');
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
