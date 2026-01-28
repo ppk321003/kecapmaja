@@ -400,11 +400,15 @@ export default function EntriTarget() {
   } = useAuth();
   const satkerConfig = useSatkerConfigContext();
   
-  // Dapatkan sheet ID berdasarkan satker user (untuk entrikegiatan)
-  const userDataSheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || DATA_SPREADSHEET_ID;
+  // Dapatkan sheet ID berdasarkan satker user (untuk entrikegiatan) - memoize untuk stabilkan reference
+  const userDataSheetId = useMemo(() => {
+    return satkerConfig?.getUserSatkerSheetId('entrikegiatan') || DATA_SPREADSHEET_ID;
+  }, [satkerConfig?.configs]);
   
-  // Dapatkan sheet ID untuk MASTER.ORGANIK berdasarkan satker user (untuk koordinator dropdown)
-  const masterOrganikSheetId = satkerConfig?.getUserSatkerSheetId('masterorganik') || MASTER_SPREADSHEET_ID;
+  // Dapatkan sheet ID untuk MASTER.ORGANIK berdasarkan satker user (untuk koordinator dropdown) - memoize untuk stabilkan reference
+  const masterOrganikSheetId = useMemo(() => {
+    return satkerConfig?.getUserSatkerSheetId('masterorganik') || MASTER_SPREADSHEET_ID;
+  }, [satkerConfig?.configs]);
   
   // Gunakan hook untuk mengambil data mitra dari MASTER.MITRA (adopsi dari use-database.ts)
   const { data: mitraStatistikData, loading: loadingMitra } = useMitraStatistik();
