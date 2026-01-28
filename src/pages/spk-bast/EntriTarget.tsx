@@ -912,7 +912,7 @@ export default function EntriTarget() {
         body: {
           spreadsheetId: masterOrganikSheetId,
           operation: 'read',
-          range: 'ORGANIK!A:D'
+          range: 'MASTER.ORGANIK!A:D'
         }
       });
       if (error) {
