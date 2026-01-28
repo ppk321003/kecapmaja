@@ -33,6 +33,7 @@ export const useOrganikBPS = () => {
   
   // Get satker-specific master organik sheet ID
   const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  console.log('[useOrganikBPS] masterSpreadsheetId:', masterSpreadsheetId);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
@@ -60,6 +61,7 @@ export const useMitraStatistik = () => {
   
   // Get satker-specific master organik sheet ID  
   const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  console.log('[useMitraStatistik] masterSpreadsheetId:', masterSpreadsheetId);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
