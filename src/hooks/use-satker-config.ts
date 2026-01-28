@@ -71,6 +71,7 @@ export function useSatkerConfig() {
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
         satker_id: c.satker_id,
+        satker_nama: c.satker_nama,
         pencairan_sheet_id: c.pencairan_sheet_id?.substring(0, 15) + '...' 
       })));
       return configs;
@@ -88,11 +89,14 @@ export function getSheetIdBySatkerAndModule(
   satker_id: string,
   module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik'
 ): string | null {
-  if (!configs) return null;
+  if (!configs) {
+    console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
+    return null;
+  }
 
   const config = configs.find(c => c.satker_id === satker_id);
   if (!config) {
-    console.warn(`Config not found for satker: ${satker_id}`);
+    console.warn(`[getSheetIdBySatkerAndModule] Config not found for satker: ${satker_id}. Available satkers: ${configs.map(c => c.satker_id).join(', ')}`);
     return null;
   }
 
@@ -106,7 +110,7 @@ export function getSheetIdBySatkerAndModule(
 
   const sheetId = config[moduleKeyMap[module]];
   if (!sheetId) {
-    console.warn(`Sheet ID not found for satker ${satker_id}, module ${module}`);
+    console.warn(`[getSheetIdBySatkerAndModule] Sheet ID not found for satker ${satker_id}, module ${module}`);
     return null;
   }
 
