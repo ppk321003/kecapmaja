@@ -56,7 +56,7 @@ const pengelolaSchema = z.object({
 });
 
 const mitraSchema = z.object({
-  no: z.string().min(1, "No harus diisi").max(10),
+  no: z.string().optional(), // Optional karena hanya ditampilkan saat add, tidak saat edit
   nik: z.string().min(1, "NIK harus diisi").max(50),
   nama: z.string().min(1, "Nama harus diisi").max(100),
   pekerjaan: z.string().min(1, "Pekerjaan harus diisi").max(100),
@@ -509,8 +509,10 @@ export default function EntriPengelola() {
   const onSubmitMitra = async (values: MitraFormData) => {
     try {
       const operation = editingMitra ? "update" : "append";
+      
+      // Ketika edit, gunakan no dari editingMitra; ketika add, gunakan no dari form
       const rowData = [
-        values.no,
+        editingMitra ? editingMitra.no : (values.no || ''),
         values.nik,
         values.nama,
         values.pekerjaan,
