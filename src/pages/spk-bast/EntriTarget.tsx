@@ -679,17 +679,31 @@ export default function EntriTarget() {
       // Gunakan sheet ID dari satker user, fallback ke MASTER jika tidak ada
       const sheetId = userDataSheetId || MASTER_SPREADSHEET_ID;
       
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: sheetId,
-          operation: 'read',
-          range: 'MASTER.MITRA!A:H'
+      // Coba multiple range: MASTER.MITRA atau Sheet1
+      const rangesToTry = ['MASTER.MITRA!A:H', 'Sheet1!A:H'];
+      let data, error;
+      
+      for (const range of rangesToTry) {
+        const result = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: sheetId,
+            operation: 'read',
+            range: range
+          }
+        });
+        
+        if (!result.error && result.data?.values && result.data.values.length > 1) {
+          data = result.data;
+          error = null;
+          console.log(`✅ Successfully loaded petugas from range: ${range}`);
+          break;
+        } else {
+          console.log(`⚠️ Failed to load from range ${range}, trying next...`);
+          error = result.error;
         }
-      });
-      if (error) {
+      }
+      
+      if (error && !data) {
         console.error('Error loading petugas data:', error);
         toast({
           title: "Error",
@@ -698,10 +712,13 @@ export default function EntriTarget() {
         });
         return;
       }
+      
       if (!data?.values || data.values.length <= 1) {
+        console.warn('No petugas data found in any range');
         setPetugasFromSheet([]);
         return;
       }
+      
       const rows = data.values.slice(1);
       const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
         id: index + 1,
@@ -713,6 +730,8 @@ export default function EntriTarget() {
         rekening: row[6]?.toString().trim() || '',
         kecamatan: row[7]?.toString().trim() || ''
       })).filter((petugas: PetugasFromSheet) => petugas.nama !== '' && petugas.nik !== '');
+      
+      console.log(`Loaded ${petugasData.length} petugas data`);
       setPetugasFromSheet(petugasData);
     } catch (error) {
       console.error('Error loading petugas:', error);
