@@ -2,12 +2,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, TooltipProps } from 'recharts';
 import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { TrendingUp, Calendar, DollarSign, Users, MapPin, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+// Default fallback untuk compatibility
 const PERJADIN_SPREADSHEET_ID = "1JNrpj2Ww42EU3FFBfoAmI6wuWl7l280m62iLXKHFpgQ";
 const SHEET_NAME = "MASTER_VIEW";
 
@@ -366,6 +368,11 @@ interface DashboardPerjadinProps {
 }
 
 export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPerjadinProps) {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Dapatkan sheet ID berdasarkan satker user
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pencairan') || PERJADIN_SPREADSHEET_ID;
+  
   const [loading, setLoading] = useState(true);
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");
   const [filterJenisPegawai, setFilterJenisPegawai] = useState<string>("Semua");
@@ -465,7 +472,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
 
   useEffect(() => {
     fetchPerjadinData();
-  }, [filterTahun, filterJenisPerjalanan, filterJenisPegawai, viewMode]);
+  }, [filterTahun, filterJenisPerjalanan, filterJenisPegawai, viewMode, spreadsheetId]);
 
   const fetchPerjadinData = async () => {
     try {
@@ -473,7 +480,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
       
       const { data: perjadinResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: PERJADIN_SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: SHEET_NAME
         }

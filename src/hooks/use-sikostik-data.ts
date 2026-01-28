@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { 
   AnggotaMaster, 
   RekapDashboard, 
@@ -13,6 +14,7 @@ import { parseIndonesianNumber, roundToThousand } from '@/lib/parseNumber';
 // Re-export for convenience
 export { roundToThousand };
 
+// Default fallback untuk compatibility
 const SIKOSTIK_SPREADSHEET_ID = "1cBuo9tAtpGvKuThvotIQqd9HDvJfF2Hun61oGYhRtHk";
 const ORGANIK_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -119,10 +121,15 @@ export const formatCurrency = (value: number): string => {
 };
 
 export const useSikostikData = () => {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Dapatkan sheet ID berdasarkan satker user
+  const userSheetId = satkerContext?.getUserSatkerSheetId('tagging') || SIKOSTIK_SPREADSHEET_ID;
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSheet = useCallback(async (sheetName: string, spreadsheetId: string = SIKOSTIK_SPREADSHEET_ID) => {
+  const fetchSheet = useCallback(async (sheetName: string, spreadsheetId: string = userSheetId) => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
