@@ -3,6 +3,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useMitraStatistik } from "@/hooks/use-database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, TooltipProps } from 'recharts';
 import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
@@ -13,6 +15,8 @@ import DashboardPerjadin from "@/components/DashboardPerjadin";
 import LKKinerja from "@/components/LK-Kinerja";
 import DashboardPencairan from "@/components/DashboardPencairan";
 import DashboardSikostik28 from "@/components/DashboardSikostik28";
+
+// Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_MITRA_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -607,51 +611,36 @@ const createPetugasIdentifier = (nama: string, nik: string): string => {
   return `${namaTrimmed}|${nikTrimmed}`;
 };
 
-// PERBAIKAN UTAMA: Fungsi untuk load data master mitra
-const loadMasterMitraData = async (): Promise<void> => {
-  try {
-    const {
-      data: masterResponse,
-      error
-    } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: MASTER_MITRA_SPREADSHEET_ID,
-        operation: "read",
-        range: "MASTER.MITRA"
-      }
-    });
-    if (error) throw error;
-    const rows = masterResponse?.values || [];
-    console.log("Total rows from MASTER.MITRA:", rows.length);
-
-    // Skip header row (row 0)
-    const dataRows = rows.slice(1);
-    dataRows.forEach((row: any[]) => {
-      const nik = row[1]?.toString()?.trim() || ''; // Kolom NIK
-      const kecamatan = row[7]?.toString()?.trim() || ''; // Kolom Kecamatan (index 7)
-
-      if (nik && kecamatan) {
-        kecamatanMap.set(nik, kecamatan);
-      }
-    });
-    console.log("Kecamatan map loaded:", kecamatanMap.size, "entries");
-
-    // Log beberapa contoh data
-    Array.from(kecamatanMap.entries()).slice(0, 5).forEach(([nik, kecamatan]) => {
-      console.log(`NIK: ${nik} -> Kecamatan: ${kecamatan}`);
-    });
-  } catch (error) {
-    console.error("Error loading master mitra data:", error);
-  }
-};
 export default function Dashboard() {
+  const { user } = useAuth();
+  const satkerContext = useSatkerConfigContext();
+  const { data: mitraStatistikData } = useMitraStatistik();
+  
+  // Dapatkan sheet ID berdasarkan satker user
+  const userDataSheetId = satkerContext?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
+  
+  // Load kecamatanMap dari mitraStatistikData hook
+  useEffect(() => {
+    if (mitraStatistikData && mitraStatistikData.length > 0) {
+      kecamatanMap.clear();
+      mitraStatistikData.forEach((mitra: any) => {
+        const nik = mitra.nik?.toString()?.trim() || '';
+        const kecamatan = mitra.kecamatan?.toString()?.trim() || '';
+        if (nik && kecamatan) {
+          kecamatanMap.set(nik, kecamatan);
+        }
+      });
+      console.log("Kecamatan map loaded from hook:", kecamatanMap.size, "entries");
+      setMasterDataLoaded(true);
+    }
+  }, [mitraStatistikData]);
+  
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
-  const { user } = useAuth();
   const isSatker3210 = user?.satker === '3210';
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
@@ -941,21 +930,27 @@ export default function Dashboard() {
     return displayName.toLowerCase().includes(riskSearchQuery.toLowerCase()) || displayNameWithKecamatan.toLowerCase().includes(riskSearchQuery.toLowerCase()) || item.name.toLowerCase().includes(riskSearchQuery.toLowerCase());
   }) : riskData; // Gunakan top 10 jika tidak ada search
 
-  // PERBAIKAN UTAMA: Load master data terlebih dahulu
+  // PERBAIKAN UTAMA: Load master data (mitra) dari satker context
   useEffect(() => {
-    const loadData = async () => {
-      await loadMasterMitraData();
+    if (mitraStatistikData && mitraStatistikData.length > 0) {
+      kecamatanMap.clear();
+      mitraStatistikData.forEach((mitra: any) => {
+        const nik = mitra.nik?.toString()?.trim() || '';
+        const kecamatan = mitra.kecamatan?.toString()?.trim() || '';
+        if (nik && kecamatan) {
+          kecamatanMap.set(nik, kecamatan);
+        }
+      });
       setMasterDataLoaded(true);
-    };
-    loadData();
-  }, []);
+    }
+  }, [mitraStatistikData]);
 
   // PERBAIKAN UTAMA: Fetch data dashboard setelah master data loaded
   useEffect(() => {
     if (masterDataLoaded) {
       fetchDashboardData();
     }
-  }, [filterTahun, masterDataLoaded]);
+  }, [filterTahun, masterDataLoaded, userDataSheetId]);
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
@@ -966,7 +961,7 @@ export default function Dashboard() {
         error
       } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: "read",
           range: "Sheet1"
         }
