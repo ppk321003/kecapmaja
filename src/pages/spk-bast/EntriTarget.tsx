@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 
 // =============================================
@@ -402,6 +403,27 @@ export default function EntriTarget() {
   // Dapatkan sheet ID berdasarkan satker user (untuk entrikegiatan)
   const userDataSheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || DATA_SPREADSHEET_ID;
   
+  // Gunakan hook untuk mengambil data mitra dari MASTER.MITRA (adopsi dari use-database.ts)
+  const { data: mitraStatistikData, loading: loadingMitra } = useMitraStatistik();
+  
+  // Convert mitra data ke format PetugasFromSheet
+  useEffect(() => {
+    if (mitraStatistikData && mitraStatistikData.length > 0) {
+      const petugasData: PetugasFromSheet[] = mitraStatistikData.map((mitra: any, index: number) => ({
+        id: index + 1,
+        nama: mitra.name || '',
+        nik: mitra.nik || '',
+        pekerjaan: mitra.pekerjaan || '',
+        alamat: mitra.alamat || '',
+        bank: mitra.bank || '',
+        rekening: mitra.rekening || '',
+        kecamatan: mitra.kecamatan || ''
+      }));
+      setPetugasFromSheet(petugasData);
+      console.log(`✅ Loaded ${petugasData.length} mitra data from hook`);
+    }
+  }, [mitraStatistikData]);
+  
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -427,7 +449,6 @@ export default function EntriTarget() {
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [petugasFromSheet, setPetugasFromSheet] = useState<PetugasFromSheet[]>([]);
-  const [loadingPetugas, setLoadingPetugas] = useState(false);
   const [activityOptions, setActivityOptions] = useState<ActivityOption[]>([]);
   const [loadingActivityOptions, setLoadingActivityOptions] = useState(false);
   const [koordinatorOptions, setKoordinatorOptions] = useState<KoordinatorOption[]>([]);
@@ -671,78 +692,6 @@ export default function EntriTarget() {
       console.warn('Failed to parse as Date object:', str, e);
     }
     return new Date();
-  };
-  const loadPetugasFromSheet = async () => {
-    try {
-      setLoadingPetugas(true);
-      
-      // Gunakan sheet ID dari satker user, fallback ke MASTER jika tidak ada
-      const sheetId = userDataSheetId || MASTER_SPREADSHEET_ID;
-      
-      // Coba multiple range: MASTER.MITRA atau Sheet1
-      const rangesToTry = ['MASTER.MITRA!A:H', 'Sheet1!A:H'];
-      let data, error;
-      
-      for (const range of rangesToTry) {
-        const result = await supabase.functions.invoke('google-sheets', {
-          body: {
-            spreadsheetId: sheetId,
-            operation: 'read',
-            range: range
-          }
-        });
-        
-        if (!result.error && result.data?.values && result.data.values.length > 1) {
-          data = result.data;
-          error = null;
-          console.log(`✅ Successfully loaded petugas from range: ${range}`);
-          break;
-        } else {
-          console.log(`⚠️ Failed to load from range ${range}, trying next...`);
-          error = result.error;
-        }
-      }
-      
-      if (error && !data) {
-        console.error('Error loading petugas data:', error);
-        toast({
-          title: "Error",
-          description: "Gagal memuat data petugas dari spreadsheet",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (!data?.values || data.values.length <= 1) {
-        console.warn('No petugas data found in any range');
-        setPetugasFromSheet([]);
-        return;
-      }
-      
-      const rows = data.values.slice(1);
-      const petugasData: PetugasFromSheet[] = rows.map((row: any[], index: number) => ({
-        id: index + 1,
-        nama: row[2]?.toString().trim() || '',
-        nik: row[1]?.toString().trim() || '',
-        pekerjaan: row[3]?.toString().trim() || '',
-        alamat: row[4]?.toString().trim() || '',
-        bank: row[5]?.toString().trim() || '',
-        rekening: row[6]?.toString().trim() || '',
-        kecamatan: row[7]?.toString().trim() || ''
-      })).filter((petugas: PetugasFromSheet) => petugas.nama !== '' && petugas.nik !== '');
-      
-      console.log(`Loaded ${petugasData.length} petugas data`);
-      setPetugasFromSheet(petugasData);
-    } catch (error) {
-      console.error('Error loading petugas:', error);
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat memuat data petugas",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingPetugas(false);
-    }
   };
   const petugasAsWorkers = useMemo(() => {
     return petugasFromSheet.map((petugas, index) => ({
@@ -1008,7 +957,7 @@ export default function EntriTarget() {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([loadDataFromSpreadsheet(), loadPetugasFromSheet(), loadActivityOptions(), loadKoordinatorOptions()]);
+        await Promise.all([loadDataFromSpreadsheet(), loadActivityOptions(), loadKoordinatorOptions()]);
       } catch (error) {
         console.error('Error loading initial data:', error);
       } finally {
@@ -2244,8 +2193,8 @@ export default function EntriTarget() {
               <Input type="text" placeholder="Cari nama, kecamatan, atau NIK petugas..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
 
-            {loadingPetugas ? <div className="text-center py-8 text-muted-foreground">
-                Memuat data petugas...
+            {loadingMitra ? <div className="text-center py-8 text-muted-foreground">
+                Memuat data mitra...
               </div> : <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
                 <Table>
                   <TableHeader>
