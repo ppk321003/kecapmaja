@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { Users, Plus, Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,15 +39,23 @@ const MitraKepka = () => {
   const satkerContext = useSatkerConfigContext();
   const { toast } = useToast();
   
-  // PERBAIKAN KRITIS: Dapatkan sheet ID berdasarkan satker user (gunakan 'masterorganik' untuk kolom G)
-  const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
+  // Get satker-specific data using hooks (already satker-aware)
+  const {
+    data: organikBPSData = [],
+    loading: organikLoading
+  } = useOrganikBPS();
   
-  // DEBUG: Log spreadsheet ID yang digunakan
-  console.log('[MitraKepka] user.satker:', user?.satker, 'satkerContext:', !!satkerContext, 'spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID);
+  const {
+    data: mitraStatistikData = [],
+    loading: mitraLoading
+  } = useMitraStatistik();
+  
+  // Get satker-specific sheet ID for save/delete operations
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
   
   const [petugas, setPetugas] = useState<Petugas[]>([]);
   const [organik, setOrganik] = useState<Petugas[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPetugas, setEditingPetugas] = useState<Petugas | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,24 +65,38 @@ const MitraKepka = () => {
   const [organikPage, setOrganikPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Fungsi untuk mendapatkan informasi user dari localStorage
-  const getCurrentUser = () => {
-    const userData = localStorage.getItem('simaja_user');
-    if (userData) {
-      try {
-        return JSON.parse(userData);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        return null;
-      }
-    }
-    return null;
-  };
-
-  // Fungsi untuk mengecek apakah user adalah Pejabat Pembuat Komitmen
-  const isPejabatPembuatKomitmen = () => {
-    return user && user.role === "Pejabat Pembuat Komitmen";
-  };
+  // Sync data dari hooks ke state
+  useEffect(() => {
+    // Convert hooks data to Petugas format for MITRA
+    const mitraData = mitraStatistikData.map((m, index) => ({
+      rowIndex: index + 2, // Start from row 2 (header is row 1)
+      no: index + 1,
+      nik: m.nik,
+      nama: m.name,
+      pekerjaan: m.pekerjaan,
+      alamat: m.alamat,
+      bank: m.bank,
+      rekening: m.rekening,
+      kecamatan: m.kecamatan
+    }));
+    setPetugas(mitraData);
+    
+    // Convert hooks data to Petugas format for ORGANIK
+    const organikData = organikBPSData.map((o, index) => ({
+      rowIndex: index + 2,
+      no: index + 1,
+      nik: o.nip,
+      nama: o.name,
+      pekerjaan: o.jabatan,
+      alamat: "",
+      bank: o.bank,
+      rekening: o.rekening,
+      kecamatan: o.kecamatan
+    }));
+    setOrganik(organikData);
+    
+    setLoading(mitraLoading || organikLoading);
+  }, [mitraStatistikData, organikBPSData, mitraLoading, organikLoading]);
   const form = useForm<PetugasFormData>({
     resolver: zodResolver(petugasSchema),
     defaultValues: {
@@ -86,79 +109,6 @@ const MitraKepka = () => {
       kecamatan: ""
     }
   });
-
-  // Fetch data dari Google Sheets (kedua tabel: MASTER.MITRA dan MASTER.ORGANIK)
-  const fetchPetugas = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log('[MitraKepka.fetchPetugas] Fetching from spreadsheetId:', spreadsheetId);
-      
-      // Fetch MASTER.MITRA (Mitra Kepka)
-      const {
-        data: mitraData,
-        error: mitraError
-      } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: spreadsheetId,
-          operation: "read",
-          range: "MASTER.MITRA"
-        }
-      });
-      if (mitraError) throw mitraError;
-      const mitraRows = mitraData?.values || [];
-      const petugasData = mitraRows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
-        no: Number(row[0]) || index + 1,
-        nik: row[1] || "",
-        nama: row[2] || "",
-        pekerjaan: row[3] || "",
-        alamat: row[4] || "",
-        bank: row[5] || "",
-        rekening: row[6] || "",
-        kecamatan: row[7] || ""
-      }));
-      setPetugas(petugasData);
-      
-      // Fetch MASTER.ORGANIK (Organik BPS)
-      const {
-        data: organikData,
-        error: organikError
-      } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: spreadsheetId,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
-      });
-      if (organikError) throw organikError;
-      const organikRows = organikData?.values || [];
-      const organikDataProcessed = organikRows.slice(1).map((row: any[], index: number) => ({
-        rowIndex: index + 2,
-        no: Number(row[0]) || index + 1,
-        nik: row[1] || "",
-        nama: row[2] || "",
-        pekerjaan: row[3] || "",
-        alamat: row[4] || "",
-        bank: row[5] || "",
-        rekening: row[6] || "",
-        kecamatan: row[7] || ""
-      }));
-      setOrganik(organikDataProcessed);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [spreadsheetId, toast]);
-  
-  useEffect(() => {
-    console.log('[MitraKepka] useEffect triggered - about to fetch with spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID, 'user.satker:', user?.satker);
-    fetchPetugas();
-  }, [spreadsheetId, toast, user?.satker]);
 
   // Submit form untuk tambah/edit data
   const onSubmit = useCallback(async (values: PetugasFormData) => {
@@ -187,7 +137,7 @@ const MitraKepka = () => {
       setDialogOpen(false);
       form.reset();
       setEditingPetugas(null);
-      await fetchPetugas();
+      // Data will auto-update from hooks
     } catch (error: any) {
       toast({
         title: "Error",
@@ -195,7 +145,7 @@ const MitraKepka = () => {
         variant: "destructive"
       });
     }
-  }, [spreadsheetId, editingPetugas, petugas, toast, fetchPetugas]);
+  }, [spreadsheetId, editingPetugas, petugas, toast]);
 
   // Handle edit data
   const handleEdit = (pet: Petugas) => {
