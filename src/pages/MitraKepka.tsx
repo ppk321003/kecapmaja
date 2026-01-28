@@ -18,7 +18,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
+// Master data sheets are SHARED across all satkers - use satker 3210 default (column G in satker_config)
 const DEFAULT_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const MASTER_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const kecamatanList = ["Argapura", "Banjaran", "Bantarujeg", "Cigasong", "Cikijing", "Cingambul", "Dawuan", "Jatitujuh", "Jatiwangi", "Kadipaten", "Kasokandel", "Kertajati", "Lemahsugih", "Leuwimunding", "Ligung", "Maja", "Majalengka", "Malausma", "Palasah", "Panyingkiran", "Rajagaluh", "Sindang", "Sindangwangi", "Sukahaji", "Sumberjaya", "Talaga"];
 const petugasSchema = z.object({
   nik: z.string().min(1, "NIK harus diisi").max(50),
@@ -51,7 +53,13 @@ const MitraKepka = () => {
   } = useMitraStatistik();
   
   // Get satker-specific sheet ID for save/delete operations
-  const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
+  // NOTE: MASTER sheets are shared across all satkers, always stored in satker 3210 sheet
+  const spreadsheetId = MASTER_SHEET_ID;
+  
+  console.log('[MitraKepka] Using shared MASTER sheet:', {
+    spreadsheetId: spreadsheetId,
+    user_satker: user?.satker
+  });
   
   const [petugas, setPetugas] = useState<Petugas[]>([]);
   const [organik, setOrganik] = useState<Petugas[]>([]);
