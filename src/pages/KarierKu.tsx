@@ -65,7 +65,7 @@ interface EstimasiKenaikan {
 }
 
 // ==================== GOOGLE SHEETS CONFIG ====================
-const SHEET_NAME = "data";
+const SHEET_NAMES = ["MASTER.ORGANIK", "MASTER.MITRA", "data", "Sheet1", "masterorganik", "Data Karyawan"];
 
 // ==================== UTILITIES - DATE PARSING ====================
 class DateParser {
@@ -2037,18 +2037,46 @@ const KarierKu: React.FC = () => {
     }
     try {
       setLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: spreadsheetId,
-          operation: "read",
-          range: `${SHEET_NAME}!A:O`
+      let data, error;
+      let successfulSheetName = null;
+      
+      // Try multiple sheet names
+      for (const sheetName of SHEET_NAMES) {
+        const result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: spreadsheetId,
+            operation: "read",
+            range: `${sheetName}!A:O`
+          }
+        });
+        
+        if (!result.error && result.data?.values && result.data.values.length > 1) {
+          data = result.data;
+          error = null;
+          successfulSheetName = sheetName;
+          console.log(`[KarierKu] Successfully read from sheet: ${sheetName}`);
+          break;
+        } else {
+          console.log(`[KarierKu] Failed to read from sheet: ${sheetName}, trying next...`);
+          error = result.error;
         }
-      });
-      if (error) throw error;
+      }
+      
+      if (error && !data) {
+        console.error('[KarierKu] Error fetching from Google Sheets - all sheets failed:', error);
+        throw error;
+      }
+      
       const rows = data.values || [];
+      console.log('[KarierKu] Raw data received:', {
+        rowCount: rows.length,
+        spreadsheetId: spreadsheetId,
+        sheetName: successfulSheetName,
+        range: `${successfulSheetName}!A:O`,
+        firstRow: rows[0],
+        sampleRow: rows[1]
+      });
+      
       const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
         let akKumulatifValue = 0;
         if (row[7]) {
@@ -2118,6 +2146,14 @@ const KarierKu: React.FC = () => {
           alamat: ''
         };
       });
+      
+      console.log('[KarierKu] Data mapping complete:', {
+        totalRows: rows.length,
+        filteredRows: rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).length,
+        mappedData: karyawanData.length,
+        satker: user?.satker
+      });
+      
       setKaryawanList(karyawanData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
