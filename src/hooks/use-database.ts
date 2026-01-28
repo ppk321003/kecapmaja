@@ -1,6 +1,7 @@
 export * from './use-google-sheets-data-full';
 import { useGoogleSheetsData } from './use-google-sheets-data';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
+import { useMemo } from 'react';
 
 const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
@@ -31,24 +32,10 @@ interface MitraStatistik {
 export const useOrganikBPS = () => {
   const satkerContext = useSatkerConfigContext();
   
-  // Defensive logging
-  if (!satkerContext) {
-    console.warn('[useOrganikBPS] satkerContext is NULL - context not provided!');
-  } else if (satkerContext.isLoading) {
-    console.log('[useOrganikBPS] satkerContext is LOADING...');
-  } else {
-    console.log('[useOrganikBPS] satkerContext available:', {
-      configs_count: satkerContext.configs?.length,
-      is_error: !!satkerContext.error
-    });
-  }
-  
-  // Get satker-specific master organik sheet ID
-  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
-  console.log('[useOrganikBPS] Final masterSpreadsheetId:', {
-    is_default: masterSpreadsheetId === DEFAULT_MASTER_SPREADSHEET_ID,
-    id_prefix: masterSpreadsheetId.substring(0, 20) + '...'
-  });
+  // Get satker-specific master organik sheet ID - memoized to prevent infinite loops
+  const masterSpreadsheetId = useMemo(() => {
+    return satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  }, [satkerContext?.configs]);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
@@ -74,24 +61,10 @@ export const useOrganikBPS = () => {
 export const useMitraStatistik = () => {
   const satkerContext = useSatkerConfigContext();
   
-  // Defensive logging
-  if (!satkerContext) {
-    console.warn('[useMitraStatistik] satkerContext is NULL - context not provided!');
-  } else if (satkerContext.isLoading) {
-    console.log('[useMitraStatistik] satkerContext is LOADING...');
-  } else {
-    console.log('[useMitraStatistik] satkerContext available:', {
-      configs_count: satkerContext.configs?.length,
-      is_error: !!satkerContext.error
-    });
-  }
-  
-  // Get satker-specific master organik sheet ID  
-  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
-  console.log('[useMitraStatistik] Final masterSpreadsheetId:', {
-    is_default: masterSpreadsheetId === DEFAULT_MASTER_SPREADSHEET_ID,
-    id_prefix: masterSpreadsheetId.substring(0, 20) + '...'
-  });
+  // Get satker-specific master organik sheet ID - memoized to prevent infinite loops
+  const masterSpreadsheetId = useMemo(() => {
+    return satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  }, [satkerContext?.configs]);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
