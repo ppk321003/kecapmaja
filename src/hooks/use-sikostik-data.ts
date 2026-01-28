@@ -351,7 +351,7 @@ export const useSikostikData = () => {
           tujuanPinjaman: row.tujuanPinjaman || '',
           tanggalUsul: row.tanggalUsul || '',
           status: row.status || 'Proses',
-          keterangan: row.keterangan || ''
+          keterangan: '' // Sheet usul_pinjaman doesn't have keterangan column
         }))
         .filter(item => item.nama && item.nip); // Filter out empty rows
     } catch (err: any) {
@@ -428,6 +428,7 @@ export const useSikostikData = () => {
     try {
       const id = `UP-${Date.now()}`;
       const tanggalUsul = new Date().toISOString().split('T')[0];
+      // Sheet usul_pinjaman has 10 columns: id, anggotaId, nama, nip, jumlahPinjaman, jangkaWaktu, cicilanPokok, tujuanPinjaman, tanggalUsul, status
       const values = [[
         id,
         data.anggotaId,
@@ -438,8 +439,7 @@ export const useSikostikData = () => {
         data.cicilanPokok,
         data.tujuanPinjaman,
         tanggalUsul,
-        'Proses',
-        ''
+        'Proses'
       ]];
       
       console.log('submitUsulPinjaman values:', values[0]);
