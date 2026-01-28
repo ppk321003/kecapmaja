@@ -2016,8 +2016,20 @@ const KarierKu: React.FC = () => {
   const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
   
   const fetchKaryawanData = async () => {
+    // Debug logging untuk multi-satker
+    console.log('[KarierKu] Fetching data:', {
+      userSatker: user?.satker,
+      satkerConfig: satkerConfig?.getUserSatkerConfig(),
+      spreadsheetId: spreadsheetId,
+      isLoading: satkerConfig === null,
+      configsCount: satkerConfig?.configs?.length || 0
+    });
+    
     if (!spreadsheetId) {
-      console.log('[KarierKu] spreadsheetId not ready, skipping fetch');
+      console.log('[KarierKu] spreadsheetId not ready, skipping fetch', {
+        satkerConfigNull: satkerConfig === null,
+        userNull: user === null
+      });
       return;
     }
     try {
@@ -2118,10 +2130,40 @@ const KarierKu: React.FC = () => {
   useEffect(() => {
     fetchKaryawanData();
   }, [spreadsheetId]);
+
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
   };
+
+  // Loading state untuk satker config
+  if (satkerConfig === null) {
+    return <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading Configuration...</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Loading satker configuration. Please wait...</p>
+        </CardContent>
+      </Card>
+    </div>;
+  }
+
+  // Check if spreadsheetId is available
+  if (!spreadsheetId) {
+    return <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Not Available</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Cannot find masterorganik_sheet_id for satker {user?.satker}. Please check satker configuration.</p>
+        </CardContent>
+      </Card>
+    </div>;
+  }
+
   return <div className="space-y-6">
       {!selectedKaryawan ? <>
           <Card>
