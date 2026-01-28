@@ -14,9 +14,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const SPREADSHEET_ID = "1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU";
-const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"; // Fallback to satker 3210
 
 // Daftar kecamatan
 const KECAMATAN_LIST = [
@@ -122,6 +123,16 @@ export default function EntriPengelola() {
 
   const { toast } = useToast();
   const { user } = useAuth();
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific MASTER sheet ID
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  
+  console.log('[EntriPengelola] Using satker-specific MASTER sheet:', {
+    user_satker: user?.satker,
+    masterSpreadsheetId: masterSpreadsheetId?.substring(0, 30) + '...',
+    is_default: masterSpreadsheetId === DEFAULT_MASTER_SPREADSHEET_ID
+  });
 
   // Role-based permissions
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
@@ -197,7 +208,7 @@ export default function EntriPengelola() {
       try {
         const { data: organikData, error: organikError } = await supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: MASTER_SPREADSHEET_ID,
+            spreadsheetId: masterSpreadsheetId,
             operation: "read",
             range: "MASTER.ORGANIK"
           }
@@ -294,7 +305,7 @@ export default function EntriPengelola() {
       setLoadingOrganik(true);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation: "read",
           range: "MASTER.ORGANIK"
         }
@@ -362,7 +373,7 @@ export default function EntriPengelola() {
       setLoadingMitra(true);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation: "read",
           range: "MASTER.MITRA"
         }
@@ -423,7 +434,7 @@ export default function EntriPengelola() {
 
   useEffect(() => {
     fetchPengelola();
-  }, []);
+  }, [masterSpreadsheetId]);
 
   // Fetch data when tab is switched
   useEffect(() => {
@@ -432,7 +443,7 @@ export default function EntriPengelola() {
     } else if (activeTab === "mitra" && mitra.length === 0) {
       fetchMitra();
     }
-  }, [activeTab, organik.length, mitra.length]);
+  }, [activeTab, organik.length, mitra.length, masterSpreadsheetId]);
 
   // Pengelola Anggaran CRUD
   const onSubmitPengelola = async (values: PengelolaFormData) => {
@@ -525,7 +536,7 @@ export default function EntriPengelola() {
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation,
           range: "MASTER.MITRA",
           values: [rowData],
@@ -567,7 +578,7 @@ export default function EntriPengelola() {
     try {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation: "delete",
           rowIndex: mitra.rowIndex
         }
