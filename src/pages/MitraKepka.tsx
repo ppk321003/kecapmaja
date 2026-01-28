@@ -156,9 +156,9 @@ const MitraKepka = () => {
   };
   
   useEffect(() => {
-    console.log('[MitraKepka] useEffect triggered - about to fetch with spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID);
+    console.log('[MitraKepka] useEffect triggered - about to fetch with spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID, 'user.satker:', user?.satker);
     fetchPetugas();
-  }, [spreadsheetId, toast]);
+  }, [spreadsheetId, toast, user?.satker]);
 
   // Submit form untuk tambah/edit data
   const onSubmit = async (values: PetugasFormData) => {
