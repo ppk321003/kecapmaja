@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Cake, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import heroBanner from "@/assets/hero-banner.jpg";
+
+const DEFAULT_MASTER_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"; // Fallback satker 3210
 
 interface Pegawai {
   nip: string;
@@ -23,6 +27,11 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific organik sheet ID
+  const masterOrganikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_ORGANIK_SHEET_ID;
 
   // Fungsi untuk extract tanggal lahir dari NIP
   const extractTanggalLahirFromNIP = (nip: string): string | null => {
@@ -69,13 +78,18 @@ export default function Home() {
            today.getDate() === birthDate.getDate();
   };
 
-  // Fetch data pegawai dari Google Sheets
+  // Fetch data pegawai dari Google Sheets (satker-specific)
   const fetchPegawaiBerulangTahun = async () => {
     try {
       setLoading(true);
+      console.log('[Home] Fetching birthday data from satker sheet:', {
+        user_satker: user?.satker,
+        masterOrganikSheetId: masterOrganikSheetId?.substring(0, 30) + '...'
+      });
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+          spreadsheetId: masterOrganikSheetId,
           operation: "read",
           range: "MASTER.ORGANIK"
         }
@@ -134,7 +148,7 @@ export default function Home() {
     }
   };
 
-  // Cek ulang tahun saat component mount
+  // Cek ulang tahun saat component mount atau satker berubah
   useEffect(() => {
     const checkUltahPegawai = async () => {
       const pegawaiUltah = await fetchPegawaiBerulangTahun();
@@ -157,7 +171,7 @@ export default function Home() {
     };
 
     checkUltahPegawai();
-  }, []);
+  }, [masterOrganikSheetId]);
 
   // Fungsi untuk navigasi
   const nextPegawai = () => {
