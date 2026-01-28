@@ -738,7 +738,8 @@ export default function Dashboard() {
   } = useToast();
 
   // PERBAIKAN KRITIS: Dapatkan sheet ID berdasarkan satker user
-  const userDataSheetId = satkerContext?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
+  // PENTING: Gunakan 'entrikegiatan' untuk Dashboard Honorarium, bukan 'pencairan'
+  const userDataSheetId = satkerContext?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
 
   // PERBAIKAN KRITIS: Load master data (mitra) dari satker context
   useEffect(() => {
