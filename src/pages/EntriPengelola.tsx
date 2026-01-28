@@ -326,11 +326,13 @@ export default function EntriPengelola() {
       
       // Use first row as headers
       const headers = rows[0];
+      console.log('[fetchOrganik] Headers from sheet:', headers);
       const organikData = rows.slice(1).map((row: any[], index: number) => {
         // Create object from headers
         const rowObj: any = {};
         headers.forEach((header: string, colIndex: number) => {
           rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+          rowObj[header.trim()] = row[colIndex] || "";  // Also store original case
         });
         
         let foto = rowObj['foto'] || rowObj['Foto'] || "";
@@ -348,11 +350,11 @@ export default function EntriPengelola() {
         return {
           rowIndex: index + 2,
           no: rowObj['no'] || rowObj['No'] || "",
-          nipBps: rowObj['nipbps'] || rowObj['NIP BPS'] || rowObj['NIPBPS'] || "",
+          nipBps: row[1] || rowObj['nipbps'] || rowObj['NIP BPS'] || rowObj['NIPBPS'] || "",  // Kolom B (index 1)
           nip: nip,
           nama: rowObj['nama'] || rowObj['Nama'] || "",
           jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
-          golAkhir: rowObj['gol. akhir'] || rowObj['Gol. Akhir'] || rowObj['golakhir'] || "",
+          golAkhir: row[6] || rowObj['gol. akhir'] || rowObj['Gol. Akhir'] || rowObj['golakhir'] || "",  // Kolom G (index 6)
           pangkat: rowObj['pangkat'] || rowObj['Pangkat'] || "",
           foto: foto
         };
