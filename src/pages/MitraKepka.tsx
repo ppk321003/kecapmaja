@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Users, Plus, Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,11 +34,15 @@ interface Petugas extends PetugasFormData {
   no: number;
 }
 const MitraKepka = () => {
+  const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
   const { toast } = useToast();
   
   // PERBAIKAN KRITIS: Dapatkan sheet ID berdasarkan satker user (gunakan 'masterorganik' untuk kolom G)
   const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
+  
+  // DEBUG: Log spreadsheet ID yang digunakan
+  console.log('[MitraKepka] user.satker:', user?.satker, 'satkerContext:', !!satkerContext, 'spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID);
   
   const [petugas, setPetugas] = useState<Petugas[]>([]);
   const [organik, setOrganik] = useState<Petugas[]>([]);
@@ -67,7 +72,6 @@ const MitraKepka = () => {
 
   // Fungsi untuk mengecek apakah user adalah Pejabat Pembuat Komitmen
   const isPejabatPembuatKomitmen = () => {
-    const user = getCurrentUser();
     return user && user.role === "Pejabat Pembuat Komitmen";
   };
   const form = useForm<PetugasFormData>({
@@ -87,6 +91,7 @@ const MitraKepka = () => {
   const fetchPetugas = async () => {
     try {
       setLoading(true);
+      console.log('[MitraKepka.fetchPetugas] Fetching from spreadsheetId:', spreadsheetId);
       
       // Fetch MASTER.MITRA (Mitra Kepka)
       const {
