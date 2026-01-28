@@ -303,6 +303,8 @@ export default function EntriPengelola() {
   const fetchOrganik = async () => {
     try {
       setLoadingOrganik(true);
+      console.log('[fetchOrganik] Starting with masterSpreadsheetId:', masterSpreadsheetId?.substring(0, 30) + '...');
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: masterSpreadsheetId,
@@ -314,6 +316,8 @@ export default function EntriPengelola() {
       if (error) throw error;
       
       const rows = data.values || [];
+      console.log('[fetchOrganik] Received rows:', rows.length, 'First row:', rows[0]);
+      
       if (rows.length === 0) {
         setOrganik([]);
         setLoadingOrganik(false);
@@ -371,6 +375,8 @@ export default function EntriPengelola() {
   const fetchMitra = async () => {
     try {
       setLoadingMitra(true);
+      console.log('[fetchMitra] Starting with masterSpreadsheetId:', masterSpreadsheetId?.substring(0, 30) + '...');
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: masterSpreadsheetId,
@@ -380,8 +386,9 @@ export default function EntriPengelola() {
       });
       
       if (error) throw error;
-      
+
       const rows = data.values || [];
+      console.log('[fetchMitra] Received rows:', rows.length, 'First row:', rows[0]);
       if (rows.length === 0) {
         setMitra([]);
         setLoadingMitra(false);
