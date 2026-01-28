@@ -9,12 +9,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { Users, Plus, Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-const SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+const DEFAULT_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const kecamatanList = ["Argapura", "Banjaran", "Bantarujeg", "Cigasong", "Cikijing", "Cingambul", "Dawuan", "Jatitujuh", "Jatiwangi", "Kadipaten", "Kasokandel", "Kertajati", "Lemahsugih", "Leuwimunding", "Ligung", "Maja", "Majalengka", "Malausma", "Palasah", "Panyingkiran", "Rajagaluh", "Sindang", "Sindangwangi", "Sukahaji", "Sumberjaya", "Talaga"];
 const petugasSchema = z.object({
   nik: z.string().min(1, "NIK harus diisi").max(50),
@@ -31,7 +33,14 @@ interface Petugas extends PetugasFormData {
   no: number;
 }
 const MitraKepka = () => {
+  const satkerContext = useSatkerConfigContext();
+  const { toast } = useToast();
+  
+  // PERBAIKAN KRITIS: Dapatkan sheet ID berdasarkan satker user (gunakan 'masterorganik' untuk kolom G)
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_SPREADSHEET_ID;
+  
   const [petugas, setPetugas] = useState<Petugas[]>([]);
+  const [organik, setOrganik] = useState<Petugas[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPetugas, setEditingPetugas] = useState<Petugas | null>(null);
@@ -39,10 +48,8 @@ const MitraKepka = () => {
   const [sortField, setSortField] = useState<keyof Petugas>("nama");
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
+  const [organikPage, setOrganikPage] = useState(1);
   const itemsPerPage = 20;
-  const {
-    toast
-  } = useToast();
 
   // Fungsi untuk mendapatkan informasi user dari localStorage
   const getCurrentUser = () => {
@@ -76,23 +83,25 @@ const MitraKepka = () => {
     }
   });
 
-  // Fetch data dari Google Sheets
+  // Fetch data dari Google Sheets (kedua tabel: MASTER.MITRA dan MASTER.ORGANIK)
   const fetchPetugas = async () => {
     try {
       setLoading(true);
+      
+      // Fetch MASTER.MITRA (Mitra Kepka)
       const {
-        data,
-        error
+        data: mitraData,
+        error: mitraError
       } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "MASTER.MITRA"
         }
       });
-      if (error) throw error;
-      const rows = data.values || [];
-      const petugasData = rows.slice(1).map((row: any[], index: number) => ({
+      if (mitraError) throw mitraError;
+      const mitraRows = mitraData?.values || [];
+      const petugasData = mitraRows.slice(1).map((row: any[], index: number) => ({
         rowIndex: index + 2,
         no: Number(row[0]) || index + 1,
         nik: row[1] || "",
@@ -104,6 +113,32 @@ const MitraKepka = () => {
         kecamatan: row[7] || ""
       }));
       setPetugas(petugasData);
+      
+      // Fetch MASTER.ORGANIK (Organik BPS)
+      const {
+        data: organikData,
+        error: organikError
+      } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: spreadsheetId,
+          operation: "read",
+          range: "MASTER.ORGANIK"
+        }
+      });
+      if (organikError) throw organikError;
+      const organikRows = organikData?.values || [];
+      const organikDataProcessed = organikRows.slice(1).map((row: any[], index: number) => ({
+        rowIndex: index + 2,
+        no: Number(row[0]) || index + 1,
+        nik: row[1] || "",
+        nama: row[2] || "",
+        pekerjaan: row[3] || "",
+        alamat: row[4] || "",
+        bank: row[5] || "",
+        rekening: row[6] || "",
+        kecamatan: row[7] || ""
+      }));
+      setOrganik(organikDataProcessed);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -114,9 +149,10 @@ const MitraKepka = () => {
       setLoading(false);
     }
   };
+  
   useEffect(() => {
     fetchPetugas();
-  }, []);
+  }, [spreadsheetId, toast]);
 
   // Submit form untuk tambah/edit data
   const onSubmit = async (values: PetugasFormData) => {
@@ -124,7 +160,7 @@ const MitraKepka = () => {
       const operation = editingPetugas ? "update" : "append";
       const nomorUrut = editingPetugas ? editingPetugas.no : petugas.length > 0 ? Math.max(...petugas.map(p => p.no)) + 1 : 1;
       const bodyData: any = {
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: spreadsheetId,
         operation,
         range: "MASTER.MITRA",
         values: [[nomorUrut.toString(), values.nik, values.nama, values.pekerjaan, values.alamat, values.bank, values.rekening, values.kecamatan]]
@@ -180,7 +216,7 @@ const MitraKepka = () => {
         error
       } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "delete",
           range: "MASTER.MITRA",
           rowIndex: pet.rowIndex
@@ -386,6 +422,69 @@ const MitraKepka = () => {
                       </Button>
                     </div>
                   </div>}
+              </>}
+          </CardContent>
+        </Card>
+
+        {/* Tabel Organik BPS */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-6 w-6 text-primary" />
+                <CardTitle>Daftar Organik BPS</CardTitle>
+              </div>
+              <Input placeholder="Cari organik..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="max-w-xs" />
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {loading ? <div className="text-center py-8">
+                <p className="text-muted-foreground">Memuat data...</p>
+              </div> : <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {["no", "nik", "nama", "pekerjaan", "alamat", "bank", "rekening", "kecamatan"].map(col => <TableHead key={col} className="py-2">
+                            <div className="flex items-center">
+                              {col.charAt(0).toUpperCase() + col.slice(1)}
+                            </div>
+                          </TableHead>)}
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {organik.length === 0 ? <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            Tidak ada data yang ditemukan
+                          </TableCell>
+                        </TableRow> : organik.map(p => <TableRow key={p.rowIndex}>
+                            <TableCell className="py-2">{p.no}</TableCell>
+                            <TableCell className="py-2">{p.nik}</TableCell>
+                            <TableCell className="py-2 font-medium">{p.nama}</TableCell>
+                            <TableCell className="py-2">{p.pekerjaan}</TableCell>
+                            <TableCell className="py-2 max-w-[200px]">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block cursor-pointer truncate">
+                                      {p.alamat.length > 30 ? p.alamat.slice(0, 30) + "..." : p.alamat}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">{p.alamat}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                            <TableCell className="py-2">{p.bank}</TableCell>
+                            <TableCell className="py-2">{p.rekening}</TableCell>
+                            <TableCell className="py-2">{p.kecamatan}</TableCell>
+                          </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </div>
               </>}
           </CardContent>
         </Card>
