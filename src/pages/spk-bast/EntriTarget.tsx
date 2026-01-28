@@ -901,7 +901,11 @@ export default function EntriTarget() {
     }
   };
   const loadKoordinatorOptions = async () => {
-    if (!user?.role) return;
+    console.log('[EntriTarget.loadKoordinatorOptions] Start - user?.role:', user?.role, 'masterOrganikSheetId:', masterOrganikSheetId);
+    if (!user?.role) {
+      console.warn('[EntriTarget.loadKoordinatorOptions] Early return - user?.role not available');
+      return;
+    }
     try {
       setLoadingKoordinatorOptions(true);
       console.log('[EntriTarget] Loading koordinator options from satker sheet:', masterOrganikSheetId);
@@ -915,15 +919,18 @@ export default function EntriTarget() {
           range: 'MASTER.ORGANIK!A:D'
         }
       });
+      console.log('[EntriTarget] Google Sheets response - error:', error, 'data rows:', data?.values?.length);
       if (error) {
         console.error('Error loading koordinator options:', error);
         return;
       }
       if (!data?.values || data.values.length <= 1) {
+        console.warn('[EntriTarget] No data received or only header row');
         setKoordinatorOptions([]);
         return;
       }
       const rows = data.values.slice(1);
+      console.log('[EntriTarget] Raw rows count:', rows.length);
       const options: KoordinatorOption[] = rows
         .map((row: any[]) => ({
           nama: (row[1] || '').toString().trim(),
@@ -935,6 +942,7 @@ export default function EntriTarget() {
           return option.jabatan === user.role;
         });
       console.log(`[EntriTarget] ✅ Loaded ${options.length} koordinator options for role: ${user.role}`);
+      console.log('[EntriTarget] Koordinator options:', options);
       setKoordinatorOptions(options);
     } catch (error) {
       console.error('Error loading koordinator options:', error);
