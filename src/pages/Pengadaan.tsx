@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 interface PengadaanData {
   no: number;
@@ -43,7 +44,7 @@ interface PengadaanData {
   tahunAnggaran: string;
 }
 
-const SPREADSHEET_ID = "1rvJUdX0rc6kEneTUwGK6p-qyPV66PKcYuP5BL58Bc2M";
+const DEFAULT_PENGADAAN_SPREADSHEET_ID = "1rvJUdX0rc6kEneTUwGK6p-qyPV66PKcYuP5BL58Bc2M";
 
 export default function InputPengadaan() {
   const [showForm, setShowForm] = useState(false);
@@ -51,6 +52,12 @@ export default function InputPengadaan() {
   const [pengadaanData, setPengadaanData] = useState<PengadaanData[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Get satker-specific spreadsheet ID from context
+  const satkerContext = useSatkerConfigContext();
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pengadaan') || DEFAULT_PENGADAAN_SPREADSHEET_ID;
+  
+  console.log('[InputPengadaan] Using spreadsheetId:', spreadsheetId);
   
   // Default filter berdasarkan bulan dan tahun berjalan
   const currentDate = new Date();
@@ -174,7 +181,7 @@ export default function InputPengadaan() {
       console.log('🔄 Loading pengadaan data...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A:U"
         }
@@ -443,7 +450,7 @@ export default function InputPengadaan() {
       console.log('🔗 Testing connection...');
       const testResult = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A1:A1"
         }
@@ -457,7 +464,7 @@ export default function InputPengadaan() {
       console.log('✅ Connection OK, sending data...');
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "append",
           range: "Sheet1!A2:U2",
           values: [dataToSave]
@@ -468,7 +475,7 @@ export default function InputPengadaan() {
         console.error('❌ Approach 1 failed:', error);
         const { data: data2, error: error2 } = await supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: SPREADSHEET_ID,
+            spreadsheetId: spreadsheetId,
             operation: "append",
             values: [dataToSave]
           }
@@ -620,7 +627,7 @@ export default function InputPengadaan() {
 
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "update",
           rowIndex: rowNumber,
           values: [dataToUpdate]
@@ -657,7 +664,7 @@ export default function InputPengadaan() {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A:U"
         }
@@ -717,7 +724,7 @@ export default function InputPengadaan() {
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "delete",
           rowIndex: rowNumber
         }
