@@ -675,12 +675,16 @@ export default function EntriTarget() {
   const loadPetugasFromSheet = async () => {
     try {
       setLoadingPetugas(true);
+      
+      // Gunakan sheet ID dari satker user, fallback ke MASTER jika tidak ada
+      const sheetId = userDataSheetId || MASTER_SPREADSHEET_ID;
+      
       const {
         data,
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: sheetId,
           operation: 'read',
           range: 'MASTER.MITRA!A:H'
         }
@@ -993,7 +997,7 @@ export default function EntriTarget() {
       }
     };
     loadInitialData();
-  }, [user?.role]);
+  }, [user?.role, userDataSheetId]);
 
   // =============================================
   // PERBAIKAN 3: LOAD DATA DENGAN PROCESSING KONSISTEN
