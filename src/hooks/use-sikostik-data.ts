@@ -430,24 +430,31 @@ export const useSikostikData = () => {
       const tanggalUsul = new Date().toISOString().split('T')[0];
       // Sheet usul_pinjaman has 10 columns: id, anggotaId, nama, nip, jumlahPinjaman, jangkaWaktu, cicilanPokok, tujuanPinjaman, tanggalUsul, status
       const values = [[
-        id,
-        data.anggotaId,
-        data.nama,
-        data.nip,
-        data.jumlahPinjaman,
-        data.jangkaWaktu,
-        data.cicilanPokok,
-        data.tujuanPinjaman,
-        tanggalUsul,
+        String(id),
+        String(data.anggotaId),
+        String(data.nama),
+        String(data.nip),
+        String(data.jumlahPinjaman),
+        String(data.jangkaWaktu),
+        String(data.cicilanPokok),
+        String(data.tujuanPinjaman),
+        String(tanggalUsul),
         'Proses'
       ]];
       
       console.log('submitUsulPinjaman values:', values[0]);
+      console.log('submitUsulPinjaman values count:', values[0].length);
       
       await appendToSheet('usul_pinjaman', values);
       return { success: true, id };
     } catch (err: any) {
       console.error('submitUsulPinjaman error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  }, [appendToSheet]);
       setError(err.message);
       return { success: false, error: err.message };
     } finally {
@@ -470,21 +477,25 @@ export const useSikostikData = () => {
       const id = `UB-${Date.now()}`;
       const tanggalUsul = new Date().toISOString().split('T')[0];
       const values = [[
-        id,
-        data.anggotaId,
-        data.nama,
-        data.nip,
-        data.jenisPerubahan,
-        data.nilaiLama,
-        data.nilaiBaru,
-        data.alasanPerubahan,
-        tanggalUsul,
+        String(id),
+        String(data.anggotaId),
+        String(data.nama),
+        String(data.nip),
+        String(data.jenisPerubahan),
+        String(data.nilaiLama),
+        String(data.nilaiBaru),
+        String(data.alasanPerubahan),
+        String(tanggalUsul),
         'Menunggu',
         ''
       ]];
+      
+      console.log('submitUsulPerubahan values:', values[0]);
+      
       await appendToSheet('usul_perubahan', values);
       return { success: true, id };
     } catch (err: any) {
+      console.error('submitUsulPerubahan error:', err);
       setError(err.message);
       return { success: false, error: err.message };
     } finally {
