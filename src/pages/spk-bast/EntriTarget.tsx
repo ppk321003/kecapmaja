@@ -2142,9 +2142,7 @@ export default function EntriTarget() {
                         <SelectContent>
                           {koordinatorOptions.length > 0 ? koordinatorOptions.map((option, index) => <SelectItem key={index} value={option.nama}>
                                 {option.nama}
-                              </SelectItem>) : <SelectItem value="" disabled>
-                              {loadingKoordinatorOptions ? "Memuat..." : "Tidak ada koordinator untuk role Anda"}
-                            </SelectItem>}
+                              </SelectItem>) : null}
                         </SelectContent>
                       </Select>
                       <FormMessage />
