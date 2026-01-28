@@ -616,25 +616,7 @@ export default function Dashboard() {
   const satkerContext = useSatkerConfigContext();
   const { data: mitraStatistikData } = useMitraStatistik();
   
-  // Dapatkan sheet ID berdasarkan satker user
-  const userDataSheetId = satkerContext?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
-  
-  // Load kecamatanMap dari mitraStatistikData hook
-  useEffect(() => {
-    if (mitraStatistikData && mitraStatistikData.length > 0) {
-      kecamatanMap.clear();
-      mitraStatistikData.forEach((mitra: any) => {
-        const nik = mitra.nik?.toString()?.trim() || '';
-        const kecamatan = mitra.kecamatan?.toString()?.trim() || '';
-        if (nik && kecamatan) {
-          kecamatanMap.set(nik, kecamatan);
-        }
-      });
-      console.log("Kecamatan map loaded from hook:", kecamatanMap.size, "entries");
-      setMasterDataLoaded(true);
-    }
-  }, [mitraStatistikData]);
-  
+  // PERBAIKAN KRITIS: Deklarasi semua state di awal sebelum useEffect
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
@@ -743,6 +725,25 @@ export default function Dashboard() {
   const {
     toast
   } = useToast();
+
+  // PERBAIKAN KRITIS: Dapatkan sheet ID berdasarkan satker user
+  const userDataSheetId = satkerContext?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
+
+  // PERBAIKAN KRITIS: Load master data (mitra) dari satker context
+  useEffect(() => {
+    if (mitraStatistikData && mitraStatistikData.length > 0) {
+      kecamatanMap.clear();
+      mitraStatistikData.forEach((mitra: any) => {
+        const nik = mitra.nik?.toString()?.trim() || '';
+        const kecamatan = mitra.kecamatan?.toString()?.trim() || '';
+        if (nik && kecamatan) {
+          kecamatanMap.set(nik, kecamatan);
+        }
+      });
+      console.log("Kecamatan map loaded from hook:", kecamatanMap.size, "entries");
+      setMasterDataLoaded(true);
+    }
+  }, [mitraStatistikData]);
 
   // Format currency helper
   const formatRupiah = (amount: number) => {
@@ -945,12 +946,10 @@ export default function Dashboard() {
     }
   }, [mitraStatistikData]);
 
-  // PERBAIKAN UTAMA: Fetch data dashboard setelah master data loaded
+  // PERBAIKAN KRITIS: Fetch data dashboard ketika filterTahun atau userDataSheetId berubah
   useEffect(() => {
-    if (masterDataLoaded) {
-      fetchDashboardData();
-    }
-  }, [filterTahun, masterDataLoaded, userDataSheetId]);
+    fetchDashboardData();
+  }, [filterTahun, userDataSheetId]);
 
   // PERBAIKAN UTAMA: Fetch data dengan perhitungan realisasi yang sama seperti entri target
   const fetchDashboardData = async () => {
