@@ -156,6 +156,7 @@ const MitraKepka = () => {
   };
   
   useEffect(() => {
+    console.log('[MitraKepka] useEffect triggered - about to fetch with spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID);
     fetchPetugas();
   }, [spreadsheetId, toast]);
 
