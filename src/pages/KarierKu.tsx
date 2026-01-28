@@ -2046,7 +2046,7 @@ const KarierKu: React.FC = () => {
           body: {
             spreadsheetId: spreadsheetId,
             operation: "read",
-            range: `${sheetName}!A:O`
+            range: `${sheetName}!A:V`
           }
         });
         
@@ -2072,19 +2072,25 @@ const KarierKu: React.FC = () => {
         rowCount: rows.length,
         spreadsheetId: spreadsheetId,
         sheetName: successfulSheetName,
-        range: `${successfulSheetName}!A:O`,
-        firstRow: rows[0],
+        range: `${successfulSheetName}!A:V`,
+        headerRow: rows[0],
         sampleRow: rows[1]
       });
       
-      const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).map((row: any[]) => {
+      const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[2]).map((row: any[]) => {
+        // Mapping kolom sesuai struktur MASTER.ORGANIK:
+        // A=NO, B=NIP BPS, C=NIP, D=Nama, E=Jabatan, F=Kecamatan, G=Gol.Akhir, H=Pangkat,
+        // I=No.HP, J=Rekening, K=Bank, L=kategori, M=TglPenghitunganAkTerakhir, N=akKumulatif,
+        // O=tempatLahir, P=Karpeg, Q=tmtJabatan, R=tmtPangkat, S=pendidikan, T=Link SK Jabatan, U=Link SK Pangkat, V=Foto
+        
         let akKumulatifValue = 0;
-        if (row[7]) {
-          const akValue = row[7].toString().replace(',', '.');
+        if (row[13]) {
+          const akValue = row[13].toString().replace(',', '.');
           akKumulatifValue = parseFloat(akValue) || 0;
         }
         const jabatan = row[4]?.toString() || '';
-        const kategori = AngkaKreditCalculator.tentukanKategori(jabatan);
+        const kategori = row[11]?.toString() || AngkaKreditCalculator.tentukanKategori(jabatan);
+        
         const parseNIP = (nip: string) => {
           if (!nip || nip.length < 15) return {
             tanggalLahir: '',
@@ -2120,29 +2126,30 @@ const KarierKu: React.FC = () => {
             jenisKelamin
           };
         };
-        const nipData = parseNIP(row[0]?.toString() || '');
+        
+        const nipData = parseNIP(row[2]?.toString() || '');
         return {
-          nip: row[0]?.toString() || '',
-          nama: row[1]?.toString() || '',
-          pangkat: row[2]?.toString() || '',
-          golongan: row[3]?.toString() || '',
+          nip: row[2]?.toString() || '',
+          nama: row[3]?.toString() || '',
+          pangkat: row[7]?.toString() || '',
+          golongan: row[6]?.toString() || '',
           jabatan: jabatan,
-          kategori: kategori,
-          tglPenghitunganAkTerakhir: row[6]?.toString() || '',
+          kategori: kategori as 'Keahlian' | 'Keterampilan' | 'Reguler',
+          tglPenghitunganAkTerakhir: row[12]?.toString() || '',
           akKumulatif: akKumulatifValue,
-          status: row[8]?.toString() as 'Aktif' | 'Pensiun' | 'Mutasi' || 'Aktif',
-          unitKerja: row[9]?.toString() || '',
-          tmtJabatan: row[10]?.toString() || '',
-          tmtPangkat: row[11]?.toString() || '',
-          pendidikan: row[12]?.toString() || '',
-          linkSkJabatan: row[13]?.toString() || '',
-          linkSkPangkat: row[14]?.toString() || '',
+          status: 'Aktif' as 'Aktif' | 'Pensiun' | 'Mutasi',
+          unitKerja: row[5]?.toString() || '',
+          tmtJabatan: row[16]?.toString() || '',
+          tmtPangkat: row[17]?.toString() || '',
+          pendidikan: row[18]?.toString() || '',
+          linkSkJabatan: row[19]?.toString() || '',
+          linkSkPangkat: row[20]?.toString() || '',
           tanggalLahir: nipData.tanggalLahir,
           jenisKelamin: nipData.jenisKelamin,
-          tempatLahir: '',
+          tempatLahir: row[14]?.toString() || '',
           agama: '',
           email: '',
-          telepon: '',
+          telepon: row[8]?.toString() || '',
           alamat: ''
         };
       });
