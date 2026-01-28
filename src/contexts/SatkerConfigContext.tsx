@@ -9,7 +9,7 @@ interface SatkerConfigContextType {
   /**
    * Dapatkan sheet ID untuk user's satker dan specific module
    */
-  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging') => string | null;
+  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik') => string | null;
   /**
    * Dapatkan satker config untuk user
    */
@@ -22,7 +22,7 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
   const { data: configs, isLoading, error } = useSatkerConfig();
   const { user } = useAuth();
 
-  const getUserSatkerSheetId = (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging'): string | null => {
+  const getUserSatkerSheetId = (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik'): string | null => {
     if (!user || !user.satker || !configs) {
       console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] Missing: user=${!!user}, satker=${user?.satker}, configs=${!!configs}`);
       return null;

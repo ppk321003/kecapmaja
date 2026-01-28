@@ -8,7 +8,7 @@ const DEFAULT_SPREADSHEET_ID = '1hnNCHxmQQ5rjVcxIBvJk5lEdZ8aki4YUMBi1s33cnGI';
 const SHEET_NAME = 'data';
 
 // Master Organik Spreadsheet
-const MASTER_SPREADSHEET_ID = '1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM';
+const DEFAULT_MASTER_SPREADSHEET_ID = '1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM';
 const MASTER_SHEET_NAME = 'MASTER.ORGANIK';
 
 export interface PencairanRawData {
@@ -264,12 +264,17 @@ export function usePencairanData() {
 }
 
 export function useOrganikPencairan() {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific master organik sheet ID
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  
   return useQuery({
-    queryKey: ['organik-pencairan-master'],
+    queryKey: ['organik-pencairan-master', masterSpreadsheetId],
     queryFn: async (): Promise<OrganikData[]> => {
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation: 'read',
           range: `${MASTER_SHEET_NAME}!A:G`,
         },

@@ -11,6 +11,7 @@ export interface SatkerConfig {
   pengadaan_sheet_id: string;
   entrikegiatan_sheet_id: string;
   tagging_sheet_id: string;
+  masterorganik_sheet_id: string;
 }
 
 /**
@@ -29,7 +30,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:F`, // 6 kolom
+            range: `${sheetName}!A:G`, // 7 kolom
           },
         });
         
@@ -65,6 +66,7 @@ export function useSatkerConfig() {
           pengadaan_sheet_id: row[3]?.trim() || '',
           entrikegiatan_sheet_id: row[4]?.trim() || '',
           tagging_sheet_id: row[5]?.trim() || '',
+          masterorganik_sheet_id: row[6]?.trim() || '',
         }));
 
       console.log('Loaded satker configs:', configs);
@@ -81,7 +83,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik'
 ): string | null {
   if (!configs) return null;
 
@@ -96,6 +98,7 @@ export function getSheetIdBySatkerAndModule(
     pengadaan: 'pengadaan_sheet_id',
     entrikegiatan: 'entrikegiatan_sheet_id',
     tagging: 'tagging_sheet_id',
+    masterorganik: 'masterorganik_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];

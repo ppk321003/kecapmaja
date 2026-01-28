@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { 
   AnggotaMaster, 
   RekapDashboard, 
@@ -14,7 +15,7 @@ import { parseIndonesianNumber, roundToThousand } from '@/lib/parseNumber';
 export { roundToThousand };
 
 const SIKOSTIK_SPREADSHEET_ID = "1cBuo9tAtpGvKuThvotIQqd9HDvJfF2Hun61oGYhRtHk";
-const ORGANIK_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_ORGANIK_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 // Helper to parse numbers from spreadsheet
 const parseNum = (value: any): number => parseIndonesianNumber(value);
@@ -121,6 +122,7 @@ export const formatCurrency = (value: number): string => {
 export const useSikostikData = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const satkerContext = useSatkerConfigContext();
 
   const fetchSheet = useCallback(async (sheetName: string, spreadsheetId: string = SIKOSTIK_SPREADSHEET_ID) => {
     try {
@@ -163,8 +165,10 @@ export const useSikostikData = () => {
       // Fetch foto data from MASTER.ORGANIK
       let fotoMap: Record<string, string> = {};
       try {
-        console.log('Fetching foto from MASTER.ORGANIK...');
-        const organisasiData = await fetchSheet('MASTER.ORGANIK', ORGANIK_SPREADSHEET_ID);
+        // Get satker-specific organik sheet ID
+        const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SPREADSHEET_ID;
+        console.log('Fetching foto from MASTER.ORGANIK...', 'organikSheetId:', organikSheetId);
+        const organisasiData = await fetchSheet('MASTER.ORGANIK', organikSheetId);
         
         console.log('✓ Successfully fetched MASTER.ORGANIK with', organisasiData.length, 'rows');
         
