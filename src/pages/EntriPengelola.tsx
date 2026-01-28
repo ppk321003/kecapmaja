@@ -956,23 +956,22 @@ export default function EntriPengelola() {
               <Form {...mitraForm}>
                 <form onSubmit={mitraForm.handleSubmit(onSubmitMitra)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField 
-                      control={mitraForm.control} 
-                      name="no" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>No</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              disabled={!!editingMitra}
-                              className={editingMitra ? "bg-gray-100" : ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} 
-                    />
+                    {/* Show No field only when adding new mitra, hide when editing */}
+                    {!editingMitra && (
+                      <FormField 
+                        control={mitraForm.control} 
+                        name="no" 
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>No</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} 
+                      />
+                    )}
                     <FormField 
                       control={mitraForm.control} 
                       name="nik" 

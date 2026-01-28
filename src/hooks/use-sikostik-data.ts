@@ -339,19 +339,21 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('usul_pinjaman');
-      return data.map((row: any) => ({
-        id: row.id || '',
-        anggotaId: row.anggotaId || '',
-        nama: row.nama || '',
-        nip: row.nip || '',
-        jumlahPinjaman: parseNum(row.jumlahPinjaman),
-        jangkaWaktu: parseInt(row.jangkaWaktu) || 0,
-        cicilanPokok: parseNum(row.cicilanPokok),
-        tujuanPinjaman: row.tujuanPinjaman || '',
-        tanggalUsul: row.tanggalUsul || '',
-        status: row.status || 'Proses',
-        keterangan: row.keterangan || ''
-      }));
+      return data
+        .map((row: any) => ({
+          id: row.id || '',
+          anggotaId: row.anggotaId || '',
+          nama: row.nama || '',
+          nip: row.nip || '',
+          jumlahPinjaman: parseNum(row.jumlahPinjaman),
+          jangkaWaktu: parseInt(row.jangkaWaktu) || 0,
+          cicilanPokok: parseNum(row.cicilanPokok),
+          tujuanPinjaman: row.tujuanPinjaman || '',
+          tanggalUsul: row.tanggalUsul || '',
+          status: row.status || 'Proses',
+          keterangan: row.keterangan || ''
+        }))
+        .filter(item => item.nama && item.nip); // Filter out empty rows
     } catch (err: any) {
       setError(err.message);
       return [];

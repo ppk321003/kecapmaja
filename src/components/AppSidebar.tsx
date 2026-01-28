@@ -38,7 +38,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const mainMenuItems = [
+const baseMenuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Usulan Pencairan", url: "/usulan-pencairan", icon: DollarSign },
@@ -49,8 +49,9 @@ const mainMenuItems = [
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
   { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
-  { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank },
 ];
+
+const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
 
 const additionalMenuItems = [
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
@@ -76,6 +77,14 @@ export function AppSidebar() {
   
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  
+  // Check if user is satker 3210 for Sikostik 28 menu
+  const isSatker3210 = user?.satker === '3210';
+  
+  // Conditionally build main menu items based on satker
+  const mainMenuItems = isSatker3210 
+    ? [...baseMenuItems, sikostikMenuItem]
+    : baseMenuItems;
 
   return (
     <Sidebar
