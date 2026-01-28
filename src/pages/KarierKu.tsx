@@ -2019,16 +2019,19 @@ const KarierKu: React.FC = () => {
     // Debug logging untuk multi-satker
     console.log('[KarierKu] Fetching data:', {
       userSatker: user?.satker,
+      satkerConfigLoading: satkerConfig?.isLoading,
       satkerConfig: satkerConfig?.getUserSatkerConfig(),
       spreadsheetId: spreadsheetId,
-      isLoading: satkerConfig === null,
+      configsAvailable: (satkerConfig?.configs?.length ?? 0) > 0,
       configsCount: satkerConfig?.configs?.length || 0
     });
     
     if (!spreadsheetId) {
       console.log('[KarierKu] spreadsheetId not ready, skipping fetch', {
         satkerConfigNull: satkerConfig === null,
-        userNull: user === null
+        satkerConfigLoading: satkerConfig?.isLoading,
+        userNull: user === null,
+        configsEmpty: (satkerConfig?.configs?.length ?? 0) === 0
       });
       return;
     }
@@ -2137,7 +2140,7 @@ const KarierKu: React.FC = () => {
   };
 
   // Loading state untuk satker config
-  if (satkerConfig === null) {
+  if (satkerConfig?.isLoading) {
     return <div className="space-y-6">
       <Card>
         <CardHeader>
@@ -2145,6 +2148,20 @@ const KarierKu: React.FC = () => {
         </CardHeader>
         <CardContent>
           <p>Loading satker configuration. Please wait...</p>
+        </CardContent>
+      </Card>
+    </div>;
+  }
+
+  // Check if configs are empty
+  if (!satkerConfig?.configs || satkerConfig.configs.length === 0) {
+    return <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuration Error</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>No satker configuration found. Please contact administrator.</p>
         </CardContent>
       </Card>
     </div>;
@@ -2159,6 +2176,13 @@ const KarierKu: React.FC = () => {
         </CardHeader>
         <CardContent>
           <p>Cannot find masterorganik_sheet_id for satker {user?.satker}. Please check satker configuration.</p>
+          <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+            {JSON.stringify({
+              userSatker: user?.satker,
+              configCount: satkerConfig?.configs?.length,
+              foundConfig: satkerConfig?.getUserSatkerConfig() ? 'Yes' : 'No'
+            }, null, 2)}
+          </pre>
         </CardContent>
       </Card>
     </div>;
