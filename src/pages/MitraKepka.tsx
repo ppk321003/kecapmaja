@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ const MitraKepka = () => {
   });
 
   // Fetch data dari Google Sheets (kedua tabel: MASTER.MITRA dan MASTER.ORGANIK)
-  const fetchPetugas = async () => {
+  const fetchPetugas = useCallback(async () => {
     try {
       setLoading(true);
       console.log('[MitraKepka.fetchPetugas] Fetching from spreadsheetId:', spreadsheetId);
@@ -153,7 +153,7 @@ const MitraKepka = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [spreadsheetId, toast]);
   
   useEffect(() => {
     console.log('[MitraKepka] useEffect triggered - about to fetch with spreadsheetId:', spreadsheetId, 'is_default:', spreadsheetId === DEFAULT_SPREADSHEET_ID, 'user.satker:', user?.satker);
@@ -161,7 +161,7 @@ const MitraKepka = () => {
   }, [spreadsheetId, toast, user?.satker]);
 
   // Submit form untuk tambah/edit data
-  const onSubmit = async (values: PetugasFormData) => {
+  const onSubmit = useCallback(async (values: PetugasFormData) => {
     try {
       const operation = editingPetugas ? "update" : "append";
       const nomorUrut = editingPetugas ? editingPetugas.no : petugas.length > 0 ? Math.max(...petugas.map(p => p.no)) + 1 : 1;
@@ -195,7 +195,7 @@ const MitraKepka = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [spreadsheetId, editingPetugas, petugas, toast, fetchPetugas]);
 
   // Handle edit data
   const handleEdit = (pet: Petugas) => {
@@ -213,7 +213,7 @@ const MitraKepka = () => {
   };
 
   // Handle delete data
-  const handleDelete = async (pet: Petugas) => {
+  const handleDelete = useCallback(async (pet: Petugas) => {
     const confirmed = window.confirm(`Hapus data ${pet.nama}?`);
     if (!confirmed) return;
     try {
@@ -243,7 +243,7 @@ const MitraKepka = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [spreadsheetId, toast]);
 
   // Filter, sort, dan pagination
   const filteredPetugas = petugas.filter(p => Object.values(p).some(v => v.toString().toLowerCase().includes(searchQuery.toLowerCase()))).sort((a, b) => {
