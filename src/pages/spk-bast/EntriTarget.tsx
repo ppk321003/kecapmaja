@@ -935,6 +935,10 @@ export default function EntriTarget() {
       }
       const rows = data.values.slice(1);
       console.log('[EntriTarget] Raw rows count:', rows.length);
+      console.log('[EntriTarget] Sample first 3 rows:', rows.slice(0, 3).map(row => ({
+        col_B: row[1],
+        col_D: row[3]
+      })));
       const options: KoordinatorOption[] = rows
         .map((row: any[]) => ({
           nama: (row[1] || '').toString().trim(),
@@ -945,6 +949,10 @@ export default function EntriTarget() {
           if (!option.jabatan) return false;
           return option.jabatan === user.role;
         });
+      const allJabatans = rows.map((row: any[]) => (row[3] || '').toString().trim()).filter(Boolean);
+      const uniqueJabatans = Array.from(new Set(allJabatans));
+      console.log('[EntriTarget] All unique jabatans in data:', uniqueJabatans);
+      console.log('[EntriTarget] Looking for role:', user.role);
       console.log(`[EntriTarget] ✅ Loaded ${options.length} koordinator options for role: ${user.role}`);
       console.log('[EntriTarget] Koordinator options:', options);
       setKoordinatorOptions(options);
