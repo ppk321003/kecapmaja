@@ -924,13 +924,16 @@ export default function EntriTarget() {
         return;
       }
       const rows = data.values.slice(1);
-      const options: KoordinatorOption[] = rows.map((row: any[]) => ({
-        nama: row[1] || '',
-        jabatan: row[3] || ''
-      })).filter((option: KoordinatorOption) => {
-        if (!option.nama.trim()) return false;
-        return option.jabatan === user.role;
-      });
+      const options: KoordinatorOption[] = rows
+        .map((row: any[]) => ({
+          nama: (row[1] || '').toString().trim(),
+          jabatan: (row[3] || '').toString().trim()
+        }))
+        .filter((option: KoordinatorOption) => {
+          if (!option.nama) return false;
+          if (!option.jabatan) return false;
+          return option.jabatan === user.role;
+        });
       console.log(`[EntriTarget] ✅ Loaded ${options.length} koordinator options for role: ${user.role}`);
       setKoordinatorOptions(options);
     } catch (error) {
