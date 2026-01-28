@@ -616,6 +616,17 @@ export default function Dashboard() {
   const satkerContext = useSatkerConfigContext();
   const { data: mitraStatistikData } = useMitraStatistik();
   
+  // DEBUG: Log satkerContext dan configs availability
+  useEffect(() => {
+    console.log('[Dashboard] Component mounted/updated:', {
+      user_satker: user?.satker,
+      satkerContext_available: !!satkerContext,
+      satkerContext_configs: satkerContext?.configs ? `${satkerContext.configs.length} configs` : 'undefined/null',
+      satkerContext_isLoading: satkerContext?.isLoading,
+      satkerContext_error: satkerContext?.error?.message,
+    });
+  }, [satkerContext, user]);
+  
   // PERBAIKAN KRITIS: Deklarasi semua state di awal sebelum useEffect
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
@@ -955,6 +966,7 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      console.log(`[Dashboard.fetchDashboardData] user.satker=${user?.satker}, userDataSheetId=${userDataSheetId}, satkerContext=${!!satkerContext}`);
       const {
         data: tugasResponse,
         error

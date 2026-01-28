@@ -69,7 +69,10 @@ export function useSatkerConfig() {
           masterorganik_sheet_id: row[6]?.trim() || '',
         }));
 
-      console.log('Loaded satker configs:', configs);
+      console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
+        satker_id: c.satker_id,
+        pencairan_sheet_id: c.pencairan_sheet_id?.substring(0, 15) + '...' 
+      })));
       return configs;
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
