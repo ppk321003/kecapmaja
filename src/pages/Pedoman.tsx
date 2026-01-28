@@ -61,7 +61,7 @@ interface PedomanItem {
 const pedomanData = {
   utama: [
     {
-      title: "Home",
+      title: "Beranda",
       icon: Home,
       url: "/",
       description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun bagi karyawan BPS Kabupaten Majalengka.",
@@ -74,7 +74,7 @@ const pedomanData = {
         "Ringkasan fitur-fitur yang tersedia di KECAP MAJA",
       ],
       tips: [
-        "Buka halaman Home setiap hari untuk melihat siapa yang berulang tahun",
+        "Buka halaman Beranda setiap hari untuk melihat siapa yang berulang tahun",
         "Sistem akan menampilkan pemberitahuan jika ada pegawai berulang tahun",
       ],
     },
@@ -436,7 +436,7 @@ const pedomanData = {
 };
 
 const tabConfig = [
-  { value: "utama", label: "Home", icon: Home, color: "text-blue-500" },
+  { value: "utama", label: "Beranda", icon: Home, color: "text-blue-500" },
   { value: "spkBast", label: "SPK dan BAST", icon: FileText, color: "text-emerald-500" },
   { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
   { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },

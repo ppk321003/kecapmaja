@@ -39,7 +39,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const baseMenuItems = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Usulan Pencairan", url: "/usulan-pencairan", icon: DollarSign },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
