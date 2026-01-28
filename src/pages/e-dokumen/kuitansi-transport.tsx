@@ -18,6 +18,7 @@ import { id as idLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 

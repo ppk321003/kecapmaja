@@ -23,6 +23,7 @@ import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 // Interface for kecamatan details
@@ -89,7 +90,7 @@ const kecamatanOptions = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "C
 
 // Constants
 const TARGET_SPREADSHEET_ID = "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk";
-const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 // Custom hook untuk submit data
 const useSubmitKuitansiToSheets = () => {

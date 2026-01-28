@@ -1,7 +1,8 @@
 export * from './use-google-sheets-data-full';
 import { useGoogleSheetsData } from './use-google-sheets-data';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
-const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 interface OrganikBPS {
   id: string;
@@ -28,8 +29,13 @@ interface MitraStatistik {
 }
 
 export const useOrganikBPS = () => {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific master organik sheet ID
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  
   const { data: rawData, loading, error } = useGoogleSheetsData({
-    spreadsheetId: MASTER_SPREADSHEET_ID,
+    spreadsheetId: masterSpreadsheetId,
     sheetName: "MASTER.ORGANIK"
   });
 
@@ -50,8 +56,13 @@ export const useOrganikBPS = () => {
 };
 
 export const useMitraStatistik = () => {
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific master organik sheet ID  
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  
   const { data: rawData, loading, error } = useGoogleSheetsData({
-    spreadsheetId: MASTER_SPREADSHEET_ID,
+    spreadsheetId: masterSpreadsheetId,
     sheetName: "MASTER.MITRA"
   });
 

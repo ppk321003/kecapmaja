@@ -15,6 +15,7 @@ import { Calendar as CalendarIcon, Trash, Search, ChevronDown, User, Users, Load
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { ProgramSelect } from "@/components/ProgramSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
@@ -57,10 +58,11 @@ interface AkunOption {
 }
 
 // Constants
+const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const CONSTANTS = {
   SPREADSHEET: {
     TARGET_ID: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
-    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
+    MASTER_ID: DEFAULT_MASTER_SPREADSHEET_ID,
     SOURCE_ID: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8"
   },
   SHEET_NAMES: {
@@ -746,6 +748,9 @@ const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
 // Main Component
 const DaftarHadir = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
@@ -803,7 +808,7 @@ const DaftarHadir = () => {
 
         // Fetch organik
         const organikRows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.MASTER_ID,
+          masterSpreadsheetId,
           `${CONSTANTS.SHEET_NAMES.ORGANIK}!A:E`
         );
         if (organikRows.length > 1) {
@@ -818,7 +823,7 @@ const DaftarHadir = () => {
 
         // Fetch mitra
         const mitraRows = await fetchSheetData(
-          CONSTANTS.SPREADSHEET.MASTER_ID,
+          masterSpreadsheetId,
           `${CONSTANTS.SHEET_NAMES.MITRA}!A:H`
         );
         if (mitraRows.length > 1) {
@@ -843,7 +848,7 @@ const DaftarHadir = () => {
     };
 
     fetchInitialData();
-  }, [fetchSheetData]);
+  }, [fetchSheetData, masterSpreadsheetId]);
 
   // Update selected organik and mitra
   useEffect(() => {

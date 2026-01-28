@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, TooltipProps } from 'recharts';
 import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
@@ -650,6 +651,8 @@ export default function Dashboard() {
   const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
+  const { user } = useAuth();
+  const isSatker3210 = user?.satker === '3210';
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     totalRealisasi: 0,
@@ -1491,7 +1494,7 @@ export default function Dashboard() {
               <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
               <TabsTrigger value="kinerja">Kinerja</TabsTrigger>
               <TabsTrigger value="pencairan">Pencairan</TabsTrigger>
-              <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>
+              {isSatker3210 && <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>}
             </TabsList>
           </Tabs>
 
@@ -1809,10 +1812,14 @@ export default function Dashboard() {
           <DashboardPencairan 
             filterTahun={filterTahun}
           />
-        ) : (
+        ) : isSatker3210 && mainTab === 'sikostik28' ? (
           <DashboardSikostik28 
             filterTahun={filterTahun}
           />
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Tab ini hanya tersedia untuk Satker 3210</p>
+          </div>
         )}
     </div>;
 };

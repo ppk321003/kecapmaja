@@ -19,10 +19,11 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
-const ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 
 interface KegiatanDetail {
@@ -315,6 +316,9 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
 
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
+  const satkerContext = useSatkerConfigContext();
+  const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
+  
   const [organikData, setOrganikData] = useState<OrganikData[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -355,7 +359,7 @@ const KerangkaAcuanKerja = () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: ORGANIK_SHEET_ID,
+          spreadsheetId: organikSheetId,
           operation: "read",
           range: "MASTER.ORGANIK"
         }

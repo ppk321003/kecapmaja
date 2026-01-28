@@ -20,6 +20,7 @@ import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 // Constants
 const CONSTANTS = {
