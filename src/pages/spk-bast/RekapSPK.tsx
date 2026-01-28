@@ -8,10 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+// Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const SBML_SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
@@ -98,6 +100,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function RekapSPKBAST() {
   const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<RekapSPKRow[]>([]);
   const [filterBulan, setFilterBulan] = useState("");
@@ -106,6 +109,9 @@ export default function RekapSPKBAST() {
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
+  
+  // Dapatkan sheet ID berdasarkan satker user
+  const userSheetId = satkerConfig?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingNotif, setUpdatingNotif] = useState<{[key: string]: boolean}>({});
   const [updatingAllNotif, setUpdatingAllNotif] = useState(false);
@@ -324,7 +330,7 @@ export default function RekapSPKBAST() {
 
       const [tugasResult, masterResult] = await Promise.all([
         callEdgeFunction("read", {
-          spreadsheetId: TUGAS_SPREADSHEET_ID,
+          spreadsheetId: userSheetId,
           range: "Sheet1"
         }),
         callEdgeFunction("read", {
@@ -548,7 +554,7 @@ export default function RekapSPKBAST() {
         try {
           // Baca data row yang akan diupdate
           const readResult = await callEdgeFunction("read", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            spreadsheetId: userSheetId,
             range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
           });
           const currentRow = readResult?.values?.[0] || [];
@@ -595,7 +601,7 @@ export default function RekapSPKBAST() {
 
           // Update row menggunakan operasi 'update'
           await callEdgeFunction("update", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            spreadsheetId: userSheetId,
             rowIndex: mapping.rowIndex + 1,
             values: [updatedRow]
           });
@@ -678,7 +684,7 @@ export default function RekapSPKBAST() {
         try {
           // Baca data row yang akan diupdate
           const readResult = await callEdgeFunction("read", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            spreadsheetId: userSheetId,
             range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
           });
           
@@ -723,7 +729,7 @@ export default function RekapSPKBAST() {
 
           // Update row di spreadsheet
           await callEdgeFunction("update", {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            spreadsheetId: userSheetId,
             rowIndex: mapping.rowIndex + 1,
             values: [updatedRow]
           });

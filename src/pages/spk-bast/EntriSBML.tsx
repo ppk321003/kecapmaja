@@ -11,7 +11,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
+// Default fallback untuk compatibility
 const SPREADSHEET_ID = "18EBGBfhlwjZAItLI68LJEDeq-Ct7Qe4udxGKY6KWqXk";
 
 const sbmlSchema = z.object({
@@ -28,12 +31,17 @@ interface SBML extends SBMLFormData {
 }
 
 export default function EntriSBML() {
+  const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
   const [sbmlData, setSbmlData] = useState<SBML[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSBML, setEditingSBML] = useState<SBML | null>(null);
   const [userRole, setUserRole] = useState<string>("");
   const { toast } = useToast();
+  
+  // Dapatkan sheet ID berdasarkan satker user
+  const userSheetId = satkerConfig?.getUserSatkerSheetId('pencairan') || SPREADSHEET_ID;
 
   // Get user role from localStorage
   useEffect(() => {
@@ -60,7 +68,7 @@ export default function EntriSBML() {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: userSheetId,
           operation: "read",
           range: "Sheet1"
         }
@@ -101,7 +109,7 @@ export default function EntriSBML() {
       
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: userSheetId,
           operation,
           range: "Sheet1",
           values: [["", values.tahunAnggaran, values.sbmlPendata, values.sbmlPemeriksa, values.sbmlPengolah]],
@@ -144,7 +152,7 @@ export default function EntriSBML() {
     try {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: userSheetId,
           operation: "delete",
           rowIndex: sbml.rowIndex
         }

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { supabase } from "@/integrations/supabase/client";
 
 // =============================================
@@ -396,6 +397,11 @@ export default function EntriTarget() {
   const {
     user
   } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
+  
+  // Dapatkan sheet ID berdasarkan satker user (untuk entrikegiatan)
+  const userDataSheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || DATA_SPREADSHEET_ID;
+  
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -1000,7 +1006,7 @@ export default function EntriTarget() {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: 'read',
           range: 'Sheet1!A:W'
         }
@@ -1217,7 +1223,7 @@ export default function EntriTarget() {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: 'delete',
           rowIndex: rowIndex
         }
@@ -1444,7 +1450,7 @@ export default function EntriTarget() {
         data: existingData
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: 'read',
           range: 'Sheet1!A:A'
         }
@@ -1514,7 +1520,7 @@ export default function EntriTarget() {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: 'append',
           range: 'Sheet1',
           values: rowData
@@ -1546,7 +1552,7 @@ export default function EntriTarget() {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: DATA_SPREADSHEET_ID,
+          spreadsheetId: userDataSheetId,
           operation: 'update',
           range: 'Sheet1',
           rowIndex: activity.spreadsheetRowIndex,
