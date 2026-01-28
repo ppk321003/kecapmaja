@@ -64,7 +64,7 @@ const pedomanData = {
       title: "Beranda",
       icon: Home,
       url: "/",
-      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun bagi karyawan BPS Kabupaten Majalengka.",
+      description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun bagi karyawan Badan Pusat Statistik.",
       features: [
         "Tampilan selamat datang dengan gambaran umum aplikasi",
         "Otomatis mendeteksi pegawai yang berulang tahun hari ini",
