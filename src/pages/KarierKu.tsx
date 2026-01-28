@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -63,7 +65,6 @@ interface EstimasiKenaikan {
 }
 
 // ==================== GOOGLE SHEETS CONFIG ====================
-const SPREADSHEET_ID = "16bW5Jj-WWQ9hOhhHX96B1a9SSawGJvfgn3SCosWMD80";
 const SHEET_NAME = "data";
 
 // ==================== UTILITIES - DATE PARSING ====================
@@ -2009,6 +2010,11 @@ const KarierKu: React.FC = () => {
   const {
     toast
   } = useToast();
+  const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
+  
+  const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
+  
   const fetchKaryawanData = async () => {
     try {
       setLoading(true);
@@ -2017,7 +2023,7 @@ const KarierKu: React.FC = () => {
         error
       } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: `${SHEET_NAME}!A:O`
         }
@@ -2116,7 +2122,7 @@ const KarierKu: React.FC = () => {
       {!selectedKaryawan ? <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-red-500">KarierKu-3210</CardTitle>
+              <CardTitle className="text-3xl font-bold text-red-500">KarierKu-{user?.satker}</CardTitle>
               <CardDescription>Monitoring dan penghitungan angka kredit berdasarkan Peraturan BKN No. 3 Tahun 2023</CardDescription>
             </CardHeader>
           </Card>
