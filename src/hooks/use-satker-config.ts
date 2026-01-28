@@ -72,7 +72,8 @@ export function useSatkerConfig() {
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
         satker_id: c.satker_id,
         satker_nama: c.satker_nama,
-        pencairan_sheet_id: c.pencairan_sheet_id?.substring(0, 15) + '...' 
+        pencairan_sheet_id: c.pencairan_sheet_id?.substring(0, 15) + '...',
+        masterorganik_sheet_id: c.masterorganik_sheet_id?.substring(0, 15) + '...'
       })));
       console.log('[useSatkerConfig] Available satker IDs:', configs.map(c => c.satker_id).join(', '));
       return configs;
