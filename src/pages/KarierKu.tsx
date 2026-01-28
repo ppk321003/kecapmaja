@@ -2132,12 +2132,26 @@ const KarierKu: React.FC = () => {
   };
   useEffect(() => {
     fetchKaryawanData();
-  }, [spreadsheetId]);
+  }, [spreadsheetId, user?.satker]);
 
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
   };
+
+  // Loading state untuk user auth
+  if (!user) {
+    return <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Authenticating...</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Please wait while we authenticate your session...</p>
+        </CardContent>
+      </Card>
+    </div>;
+  }
 
   // Loading state untuk satker config
   if (satkerConfig?.isLoading) {
@@ -2147,7 +2161,7 @@ const KarierKu: React.FC = () => {
           <CardTitle>Loading Configuration...</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Loading satker configuration. Please wait...</p>
+          <p>Loading satker configuration for satker {user?.satker}. Please wait...</p>
         </CardContent>
       </Card>
     </div>;
