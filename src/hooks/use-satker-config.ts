@@ -74,6 +74,7 @@ export function useSatkerConfig() {
         satker_nama: c.satker_nama,
         pencairan_sheet_id: c.pencairan_sheet_id?.substring(0, 15) + '...' 
       })));
+      console.log('[useSatkerConfig] Available satker IDs:', configs.map(c => c.satker_id).join(', '));
       return configs;
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour

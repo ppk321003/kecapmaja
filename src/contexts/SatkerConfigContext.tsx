@@ -28,7 +28,7 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
       return null;
     }
     const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module);
-    console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] user.satker=${user.satker}, sheetId=${sheetId}`);
+    console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] user.satker=${user.satker}, found_sheetId=${!!sheetId}, sheetId=${sheetId ? sheetId.substring(0, 20) + '...' : 'NOT_FOUND'}`);
     return sheetId;
   };
 
