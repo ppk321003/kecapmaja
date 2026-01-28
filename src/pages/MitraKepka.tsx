@@ -67,6 +67,16 @@ const MitraKepka = () => {
 
   // Sync data dari hooks ke state
   useEffect(() => {
+    console.log('[MitraKepka] Data sync triggered:', {
+      user_satker: user?.satker,
+      mitraStatistikData_length: mitraStatistikData.length,
+      organikBPSData_length: organikBPSData.length,
+      mitraLoading,
+      organikLoading,
+      first_mitra_name: mitraStatistikData[0]?.name,
+      first_organik_name: organikBPSData[0]?.name
+    });
+    
     // Convert hooks data to Petugas format for MITRA
     const mitraData = mitraStatistikData.map((m, index) => ({
       rowIndex: index + 2, // Start from row 2 (header is row 1)
@@ -96,7 +106,7 @@ const MitraKepka = () => {
     setOrganik(organikData);
     
     setLoading(mitraLoading || organikLoading);
-  }, [mitraStatistikData, organikBPSData, mitraLoading, organikLoading]);
+  }, [mitraStatistikData, organikBPSData, mitraLoading, organikLoading, user?.satker]);
   const form = useForm<PetugasFormData>({
     resolver: zodResolver(petugasSchema),
     defaultValues: {
