@@ -933,8 +933,8 @@ export default function EntriTarget() {
       console.log('[EntriTarget] Raw rows count:', rows.length);
       const options: KoordinatorOption[] = rows
         .map((row: any[]) => ({
-          nama: (row[1] || '').toString().trim(),
-          jabatan: (row[3] || '').toString().trim()
+          nama: (row[3] || '').toString().trim(),  // Kolom D (index 3)
+          jabatan: (row[1] || '').toString().trim()  // Kolom B (index 1) - untuk reference saja
         }))
         .filter((option: KoordinatorOption) => {
           // Hanya filter by nama (jangan filter by jabatan/role)
