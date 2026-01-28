@@ -403,6 +403,9 @@ export default function EntriTarget() {
   // Dapatkan sheet ID berdasarkan satker user (untuk entrikegiatan)
   const userDataSheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || DATA_SPREADSHEET_ID;
   
+  // Dapatkan sheet ID untuk MASTER.ORGANIK berdasarkan satker user (untuk koordinator dropdown)
+  const masterOrganikSheetId = satkerConfig?.getUserSatkerSheetId('masterorganik') || MASTER_SPREADSHEET_ID;
+  
   // Gunakan hook untuk mengambil data mitra dari MASTER.MITRA (adopsi dari use-database.ts)
   const { data: mitraStatistikData, loading: loadingMitra } = useMitraStatistik();
   
@@ -901,14 +904,15 @@ export default function EntriTarget() {
     if (!user?.role) return;
     try {
       setLoadingKoordinatorOptions(true);
+      console.log('[EntriTarget] Loading koordinator options from satker sheet:', masterOrganikSheetId);
       const {
         data,
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1x3v4BFYt6NiBq8XGP9Y-MgyD4CZXDhzuCT1eFAhzNxU',
+          spreadsheetId: masterOrganikSheetId,
           operation: 'read',
-          range: 'Sheet1!A:D'
+          range: 'ORGANIK!A:D'
         }
       });
       if (error) {
@@ -927,6 +931,7 @@ export default function EntriTarget() {
         if (!option.nama.trim()) return false;
         return option.jabatan === user.role;
       });
+      console.log(`[EntriTarget] ✅ Loaded ${options.length} koordinator options for role: ${user.role}`);
       setKoordinatorOptions(options);
     } catch (error) {
       console.error('Error loading koordinator options:', error);
@@ -965,7 +970,7 @@ export default function EntriTarget() {
       }
     };
     loadInitialData();
-  }, [user?.role, userDataSheetId]);
+  }, [user?.role, userDataSheetId, masterOrganikSheetId]);
 
   // =============================================
   // PERBAIKAN 3: LOAD DATA DENGAN PROCESSING KONSISTEN
