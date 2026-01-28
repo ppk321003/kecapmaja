@@ -455,12 +455,6 @@ export const useSikostikData = () => {
       setLoading(false);
     }
   }, [appendToSheet]);
-      setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
-  }, [appendToSheet]);
 
   const submitUsulPerubahan = useCallback(async (data: {
     anggotaId: string;
