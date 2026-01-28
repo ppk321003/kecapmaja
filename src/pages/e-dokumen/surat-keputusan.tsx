@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { cn } from "@/lib/utils";
 
 // Type untuk Kegiatan Item
@@ -87,6 +88,7 @@ type MasterKegiatan = {
 const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
+const DEFAULT_MASTER_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"; // Fallback satker 3210
 
 // Default value untuk kegiatan
 const DEFAULT_KEGIATAN: KegiatanItem = {
@@ -102,88 +104,32 @@ const CONTOH_MENIMBANG_KEDUA = "Bahwa dalam upaya meningkatkan kualitas data dan
 const CONTOH_MENIMBANG_KETIGA = "Bahwa untuk memenuhi kebutuhan data yang akurat dan tepat waktu sesuai dengan target yang telah ditetapkan oleh Badan Pusat Statistik Pusat, diperlukan penunjukkan petugas yang kompeten dan berdedikasi;";
 const CONTOH_MENIMBANG_KEEMPAT = "Bahwa segala biaya yang timbul sebagai akibat pelaksanaan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 dibebankan pada DIPA Badan Pusat Statistik Kabupaten Majalengka Tahun Anggaran 2026;";
 
-// Custom hook untuk mengambil data organik DARI GOOGLE SHEETS (bukan database)
+// Custom hook untuk mengambil data organik dari satker-specific GOOGLE SHEETS
 const useOrganikList = () => {
-  const [organikList, setOrganikList] = useState<Person[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const satkerContext = useSatkerConfigContext();
+  const { data: organikBPSData, loading, error } = useOrganikBPS();
+  
+  const organikList = organikBPSData.map((org: any) => ({
+    id: org.nip || "",
+    name: org.name || "",
+    jabatan: org.jabatan || ""
+  })).filter((item: any) => item.id && item.name);
 
-  useEffect(() => {
-    const fetchOrganik = async () => {
-      try {
-        const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.ORGANIK!A:E"
-          }
-        });
-
-        if (fetchError) throw fetchError;
-        
-        if (data?.values && data.values.length > 1) {
-          const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || "",
-            name: row[3] || row[2] || "",
-            jabatan: row[4] || ""
-          })).filter((item: Person) => item.id && item.name);
-          
-          setOrganikList(formattedData);
-        }
-      } catch (err: any) {
-        console.error('Error in useOrganikList:', err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchOrganik();
-  }, []);
-
-  return { data: organikList, isLoading, error };
+  return { data: organikList, isLoading: loading, error };
 };
 
-// Custom hook untuk mengambil data mitra DARI GOOGLE SHEETS (bukan database)
+// Custom hook untuk mengambil data mitra dari satker-specific GOOGLE SHEETS
 const useMitraList = () => {
-  const [mitraList, setMitraList] = useState<Person[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const satkerContext = useSatkerConfigContext();
+  const { data: mitraStatistikData, loading, error } = useMitraStatistik();
+  
+  const mitraList = mitraStatistikData.map((mitra: any) => ({
+    id: mitra.nik || "",
+    name: mitra.name || "",
+    jabatan: mitra.pekerjaan || ""
+  })).filter((item: any) => item.id && item.name);
 
-  useEffect(() => {
-    const fetchMitra = async () => {
-      try {
-        const { data, error: fetchError } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM",
-            operation: "read",
-            range: "MASTER.MITRA!A:H"
-          }
-        });
-
-        if (fetchError) throw fetchError;
-        
-        if (data?.values && data.values.length > 1) {
-          const formattedData: Person[] = data.values.slice(1).map((row: any[]) => ({
-            id: row[1] || row[0] || "",
-            name: row[2] || "",
-            jabatan: row[4] || ""
-          })).filter((item: Person) => item.id && item.name);
-          
-          setMitraList(formattedData);
-        }
-      } catch (err: any) {
-        console.error('Error in useMitraList:', err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMitra();
-  }, []);
-
-  return { data: mitraList, isLoading, error };
+  return { data: mitraList, isLoading: loading, error };
 };
 
 // Komponen Accordion Section - Warna netral untuk merah

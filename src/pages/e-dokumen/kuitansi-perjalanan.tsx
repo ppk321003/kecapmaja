@@ -278,6 +278,10 @@ const KuitansiPerjalananDinas = () => {
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
+  const satkerContext = useSatkerConfigContext();
+  
+  // Get satker-specific organik sheet ID
+  const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
 
   // Fetch data organik
   const fetchOrganikData = async () => {
@@ -285,7 +289,7 @@ const KuitansiPerjalananDinas = () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: ORGANIK_SHEET_ID,
+          spreadsheetId: organikSheetId,
           operation: "read",
           range: "MASTER.ORGANIK"
         }
@@ -327,10 +331,10 @@ const KuitansiPerjalananDinas = () => {
     }
   };
 
-  // Load data organik saat komponen mount
+  // Load data organik saat komponen mount atau organikSheetId berubah
   useEffect(() => {
     fetchOrganikData();
-  }, []);
+  }, [organikSheetId]);
 
 // GANTI bagian name mappings dengan yang ini:
 
