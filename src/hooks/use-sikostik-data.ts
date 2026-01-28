@@ -390,6 +390,8 @@ export const useSikostikData = () => {
 
   const appendToSheet = useCallback(async (sheetName: string, values: any[][]) => {
     try {
+      console.log(`Appending to sheet ${sheetName}:`, values);
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SIKOSTIK_SPREADSHEET_ID,
@@ -399,7 +401,12 @@ export const useSikostikData = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Error response from google-sheets function:`, error);
+        throw new Error(error.message || 'Unknown error from google-sheets function');
+      }
+      
+      console.log(`Successfully appended to sheet ${sheetName}:`, data);
       return data;
     } catch (err: any) {
       console.error(`Error appending to ${sheetName}:`, err);
@@ -434,9 +441,13 @@ export const useSikostikData = () => {
         'Proses',
         ''
       ]];
+      
+      console.log('submitUsulPinjaman values:', values[0]);
+      
       await appendToSheet('usul_pinjaman', values);
       return { success: true, id };
     } catch (err: any) {
+      console.error('submitUsulPinjaman error:', err);
       setError(err.message);
       return { success: false, error: err.message };
     } finally {
