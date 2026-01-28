@@ -2016,6 +2016,10 @@ const KarierKu: React.FC = () => {
   const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
   
   const fetchKaryawanData = async () => {
+    if (!spreadsheetId) {
+      console.log('[KarierKu] spreadsheetId not ready, skipping fetch');
+      return;
+    }
     try {
       setLoading(true);
       const {
@@ -2113,7 +2117,7 @@ const KarierKu: React.FC = () => {
   };
   useEffect(() => {
     fetchKaryawanData();
-  }, []);
+  }, [spreadsheetId]);
   const handleSelectKaryawan = (karyawan: Karyawan) => {
     setSelectedKaryawan(karyawan);
     setMainTab('tabelIndividu');
