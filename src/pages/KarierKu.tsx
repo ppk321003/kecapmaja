@@ -2079,9 +2079,9 @@ const KarierKu: React.FC = () => {
       
       const karyawanData: Karyawan[] = rows.slice(1).filter((row: any[]) => row.length > 0 && row[2]).map((row: any[]) => {
         // Mapping kolom sesuai struktur MASTER.ORGANIK:
-        // A=NO, B=NIP BPS, C=NIP, D=Nama, E=Jabatan, F=Kecamatan, G=Gol.Akhir, H=Pangkat,
-        // I=No.HP, J=Rekening, K=Bank, L=kategori, M=TglPenghitunganAkTerakhir, N=akKumulatif,
-        // O=tempatLahir, P=Karpeg, Q=tmtJabatan, R=tmtPangkat, S=pendidikan, T=Link SK Jabatan, U=Link SK Pangkat, V=Foto
+        // A(0)=NO, B(1)=NIP BPS, C(2)=NIP, D(3)=Nama, E(4)=Jabatan, F(5)=Kecamatan, G(6)=Gol.Akhir, H(7)=Pangkat,
+        // I(8)=No.HP, J(9)=Rekening, K(10)=Bank, L(11)=kategori, M(12)=TglPenghitunganAkTerakhir, N(13)=akKumulatif,
+        // O(14)=tempatLahir, P(15)=Karpeg, Q(16)=tmtJabatan, R(17)=tmtPangkat, S(18)=pendidikan, T(19)=Link SK Jabatan, U(20)=Link SK Pangkat, V(21)=Foto
         
         let akKumulatifValue = 0;
         if (row[13]) {
