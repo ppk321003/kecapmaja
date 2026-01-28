@@ -16,15 +16,9 @@ import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
-import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
-import { useAuth } from "@/contexts/AuthContext";
-
-const DEFAULT_SPREADSHEET_ID = "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8";
 
 const TandaTerima = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const satkerContext = useSatkerConfigContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get data from hooks
@@ -35,8 +29,8 @@ const TandaTerima = () => {
     data: mitraStatistikList = []
   } = useMitraStatistik();
 
-  // Get satker-specific sheet ID
-  const TARGET_SPREADSHEET_ID = satkerContext?.getUserSatkerSheetId('pencairan') || DEFAULT_SPREADSHEET_ID;
+  // Constants
+  const TARGET_SPREADSHEET_ID = "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8";
   const SHEET_NAME = "TandaTerima";
 
   // Custom hook untuk submit data
