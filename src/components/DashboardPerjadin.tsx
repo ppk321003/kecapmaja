@@ -370,8 +370,8 @@ interface DashboardPerjadinProps {
 export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPerjadinProps) {
   const satkerContext = useSatkerConfigContext();
   
-  // Dapatkan sheet ID berdasarkan satker user
-  const spreadsheetId = satkerContext?.getUserSatkerSheetId('pencairan') || PERJADIN_SPREADSHEET_ID;
+  // Dapatkan sheet ID perjalanan berdasarkan satker user (kolom H di satker_config)
+  const spreadsheetId = satkerContext?.getUserSatkerSheetId('perjalanan') || PERJADIN_SPREADSHEET_ID;
   
   const [loading, setLoading] = useState(true);
   const [filterJenisPerjalanan, setFilterJenisPerjalanan] = useState<string>("Semua");

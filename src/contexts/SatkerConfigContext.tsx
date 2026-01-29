@@ -9,7 +9,7 @@ interface SatkerConfigContextType {
   /**
    * Dapatkan sheet ID untuk user's satker dan specific module
    */
-  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik') => string | null;
+  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan') => string | null;
   /**
    * Dapatkan satker config untuk user
    */
@@ -22,12 +22,12 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
   const { data: configs, isLoading, error } = useSatkerConfig();
   const { user } = useAuth();
 
-  const getUserSatkerSheetId = useCallback((module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik'): string | null => {
+  const getUserSatkerSheetId = useCallback((module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan'): string | null => {
     if (!user || !user.satker || !configs) {
       console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] Missing: user=${!!user}, satker=${user?.satker}, configs=${!!configs}`);
       return null;
     }
-    const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module);
+    const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module as any);
     console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] user.satker=${user.satker}, found_sheetId=${!!sheetId}, sheetId=${sheetId ? sheetId.substring(0, 20) + '...' : 'NOT_FOUND'}`);
     return sheetId;
   }, [user, configs]);

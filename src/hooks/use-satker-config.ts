@@ -12,6 +12,7 @@ export interface SatkerConfig {
   entrikegiatan_sheet_id: string;
   tagging_sheet_id: string;
   masterorganik_sheet_id: string;
+  perjalanan_sheet_id?: string;
 }
 
 /**
@@ -30,7 +31,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:G`, // 7 kolom
+            range: `${sheetName}!A:H`, // 8 kolom (include perjalanan_sheet_id)
           },
         });
         
@@ -67,6 +68,7 @@ export function useSatkerConfig() {
           entrikegiatan_sheet_id: row[4]?.trim() || '',
           tagging_sheet_id: row[5]?.trim() || '',
           masterorganik_sheet_id: row[6]?.trim() || '',
+          perjalanan_sheet_id: row[7]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -108,6 +110,7 @@ export function getSheetIdBySatkerAndModule(
     entrikegiatan: 'entrikegiatan_sheet_id',
     tagging: 'tagging_sheet_id',
     masterorganik: 'masterorganik_sheet_id',
+    perjalanan: 'perjalanan_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];
