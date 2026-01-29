@@ -251,6 +251,10 @@ export default function CekSBML() {
       });
       return;
     }
+    if (!sbmlSheetId) {
+      console.warn('[CekSBML] sbmlSheetId not ready, skipping fetch');
+      return;
+    }
     try {
       setLoading(true);
       const periodeFilter = `${filterBulan} ${filterTahun}`;
