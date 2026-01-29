@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Search, Filter, Loader2, X, RefreshCw, ExternalLink, Download } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,9 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { utils, writeFile } from 'xlsx';
-import { useMemo } from "react";
-import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
-import { useMemo } from "react";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 interface DataRow {
