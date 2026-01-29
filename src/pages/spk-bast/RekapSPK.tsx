@@ -124,6 +124,13 @@ export default function RekapSPKBAST() {
     return sheetId;
   }, [satkerConfig?.configs]);
   
+  // Dapatkan sheet ID untuk MASTER.SBML berdasarkan satker user (dari masterorganik sheet)
+  const sbmlSheetId = useMemo(() => {
+    const sheetId = satkerConfig?.getUserSatkerSheetId('masterorganik') || SBML_SPREADSHEET_ID;
+    console.log('[RekapSPK] sbmlSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === SBML_SPREADSHEET_ID);
+    return sheetId;
+  }, [satkerConfig?.configs]);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingNotif, setUpdatingNotif] = useState<{[key: string]: boolean}>({});
   const [updatingAllNotif, setUpdatingAllNotif] = useState(false);
@@ -159,11 +166,20 @@ export default function RekapSPKBAST() {
 
   const fetchSBMLData = useCallback(async (tahun: string) => {
     try {
+      // Guard: tunggu sampai satkerConfig ready dan sbmlSheetId tersedia
+      if (!satkerConfig?.configs || satkerConfig.configs.length === 0) {
+        console.log('[RekapSPK.fetchSBMLData] Waiting for satkerConfig.configs');
+        return;
+      }
+      if (!sbmlSheetId || sbmlSheetId === SBML_SPREADSHEET_ID) {
+        console.log('[RekapSPK.fetchSBMLData] sbmlSheetId not ready, using fallback');
+      }
+
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SBML_SPREADSHEET_ID,
+          spreadsheetId: sbmlSheetId,
           operation: "read",
-          range: "Sheet1"
+          range: "MASTER.SBML"
         }
       });
       if (error) throw error;
@@ -191,7 +207,7 @@ export default function RekapSPKBAST() {
     } catch (error: any) {
       console.error("Error fetching SBML data:", error);
     }
-  }, [parseHonor]);
+  }, [parseHonor, satkerConfig?.configs, sbmlSheetId]);
 
   const validateRow = useCallback((item: RekapSPKRow, sbml: SBMLData) => {
     const warnings: string[] = [];
