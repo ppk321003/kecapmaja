@@ -128,11 +128,10 @@ export default function EntriPengelola() {
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; nama: string } | null>(null);
 
   const { toast } = useToast();
-  const { user } = useAuth();
-  const satkerContext = useSatkerConfigContext();
+  const satkerContext2 = useSatkerConfigContext();
   
   // Get satker-specific MASTER sheet ID
-  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  const masterSpreadsheetId = satkerContext2?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
   
   console.log('[EntriPengelola] Using satker-specific MASTER sheet:', {
     user_satker: user?.satker,
