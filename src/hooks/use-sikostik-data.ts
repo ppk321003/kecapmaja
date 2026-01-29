@@ -317,9 +317,9 @@ export const useSikostikData = () => {
         // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
         
-        // Limit Pinjaman = Total Simpanan × 1.5
-        const limitPinjaman = Math.max(0, totalSimpanan * 1.5);
-        // Sisa Limit = (Total Simpanan × 1.5) - Saldo Piutang
+        // Limit Pinjaman = Total Simpanan × 1.3 (updated policy)
+        const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
+        // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
         
         limitMap.set(anggotaId, {

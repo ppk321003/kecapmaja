@@ -152,7 +152,7 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
             <div className="p-2 rounded-lg bg-primary/10"><Calculator className="h-5 w-5 text-primary" /></div>
             <div className="space-y-1">
               <h3 className="font-semibold text-foreground">Rumus Limit</h3>
-              <p className="text-sm text-muted-foreground"><code className="px-2 py-1 rounded bg-muted font-mono">Limit = 1.5 × (Total Simpanan - Total Pinjaman)</code></p>
+              <p className="text-sm text-muted-foreground"><code className="px-2 py-1 rounded bg-muted font-mono">Limit = 1.3 × (Total Simpanan - Total Pinjaman)</code></p>
               <p className="text-sm text-muted-foreground mt-2">⚠️ Anggota mendekati pensiun (sisa &lt;36 bulan) wajib melunasi sebelum pensiun.</p>
             </div>
           </div>
