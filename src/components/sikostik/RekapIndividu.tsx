@@ -46,6 +46,8 @@ interface HistoryData {
   simpananLebaran: number;
   simpananLainnya: number;
   totalSimpanan: number;
+  cicilanPokok: number;
+  saldoPiutang: number;
 }
 
 export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { selectedAnggotaId?: string }) => {
@@ -146,6 +148,9 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
           const simpananLebaran = anggotaData.simpananLebaran || 0;
           const simpananLainnya = anggotaData.simpananLainnya || 0;
           
+            const cicilanPokok = anggotaData.cicilanPokok || 0;
+            const saldoPiutang = anggotaData.saldoPiutang || 0;
+          
           const totalPengambilan = pengambilanPokok + pengambilanWajib + 
                                  pengambilanSukarela + pengambilanLebaran + 
                                  pengambilanLainnya;
@@ -172,6 +177,9 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             simpananLebaran,
             simpananLainnya,
             totalSimpanan
+              ,
+              cicilanPokok,
+              saldoPiutang
           });
         } else {
           allMonthsData.push({
@@ -192,6 +200,9 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             simpananLebaran: 0,
             simpananLainnya: 0,
             totalSimpanan: 0
+              ,
+              cicilanPokok: 0,
+              saldoPiutang: 0
           });
         }
       });
