@@ -48,7 +48,7 @@ interface HistoryData {
   totalSimpanan: number;
 }
 
-export const RekapIndividu = () => {
+export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { selectedAnggotaId?: string }) => {
   const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
   
@@ -57,7 +57,7 @@ export const RekapIndividu = () => {
   const [rekapList, setRekapList] = useState<RekapDashboard[]>([]);
   const [historyData, setHistoryData] = useState<HistoryData[]>([]);
   
-  const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
+  const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>(propSelectedAnggotaId || '');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +66,13 @@ export const RekapIndividu = () => {
 
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
+
+  // Update selectedAnggotaId when propSelectedAnggotaId changes
+  useEffect(() => {
+    if (propSelectedAnggotaId) {
+      setSelectedAnggotaId(propSelectedAnggotaId);
+    }
+  }, [propSelectedAnggotaId]);
 
   const loadInitialData = async () => {
     setIsLoading(true);
@@ -79,8 +86,10 @@ export const RekapIndividu = () => {
       setLimitList(limit);
       
       const activeMembersList = anggota.filter(m => m.status === 'Aktif');
-      if (!selectedAnggotaId && activeMembersList.length > 0) {
-        setSelectedAnggotaId(activeMembersList[0].id || activeMembersList[0].kodeAnggota);
+      // If propSelectedAnggotaId is provided, use it; otherwise use first active member
+      const anggotaToSelect = propSelectedAnggotaId || (!selectedAnggotaId && activeMembersList.length > 0 ? (activeMembersList[0].id || activeMembersList[0].kodeAnggota) : selectedAnggotaId);
+      if (anggotaToSelect) {
+        setSelectedAnggotaId(anggotaToSelect);
       }
       
       await loadRekapData();

@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Sikostik28 = () => {
   const [activeTab, setActiveTab] = useState('rekap-anggota');
+  const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -22,6 +23,11 @@ const Sikostik28 = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  const handleSelectMember = (anggotaId: string) => {
+    setSelectedAnggotaId(anggotaId);
+    setActiveTab('rekap-individu');
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -59,15 +65,15 @@ const Sikostik28 = () => {
         </TabsList>
 
         <TabsContent value="rekap-anggota">
-          <RekapAnggota />
+          <RekapAnggota onSelectMember={handleSelectMember} />
         </TabsContent>
 
         <TabsContent value="rekap-individu">
-          <RekapIndividu />
+          <RekapIndividu selectedAnggotaId={selectedAnggotaId} />
         </TabsContent>
 
         <TabsContent value="cek-limit">
-          <CekLimit />
+          <CekLimit onSelectMember={handleSelectMember} />
         </TabsContent>
 
         <TabsContent value="usul-pinjaman">

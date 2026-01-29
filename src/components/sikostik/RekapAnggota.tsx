@@ -11,7 +11,7 @@ import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
-export const RekapAnggota = () => {
+export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const {
     loading,
     error,
@@ -120,8 +120,11 @@ export const RekapAnggota = () => {
                 {filteredData.map((member, index) => <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{member.nama}</p>
+                      <div 
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onSelectMember?.(member.anggotaId)}
+                      >
+                        <p className="font-medium hover:underline">{member.nama}</p>
                         <p className="text-xs text-muted-foreground font-mono">{formatNIP(member.nip)}</p>
                       </div>
                     </TableCell>

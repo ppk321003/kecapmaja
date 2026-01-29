@@ -11,7 +11,7 @@ import { useSikostikData, formatCurrency, parseNIP, formatNIP, getRetirementStat
 import { LimitAnggota } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
-export const CekLimit = () => {
+export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const { loading, error, fetchLimitAnggota } = useSikostikData();
   const [searchQuery, setSearchQuery] = useState('');
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
@@ -285,8 +285,11 @@ export const CekLimit = () => {
                   <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{member.nama}</p>
+                      <div 
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onSelectMember?.(member.anggotaId)}
+                      >
+                        <p className="font-medium hover:underline">{member.nama}</p>
                         <p className="text-xs text-muted-foreground font-mono">{formatNIP(member.nip)}</p>
                       </div>
                     </TableCell>

@@ -348,19 +348,19 @@ export const useSikostikData = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchSheet('usul_pinjaman');
+      const data = await fetchSheet('usul_pinjaman', SIKOSTIK_SPREADSHEET_ID);
       return data
         .map((row: any) => ({
-          id: row.id || '',
-          anggotaId: row.anggotaId || '',
-          nama: row.nama || '',
-          nip: row.nip || '',
-          jumlahPinjaman: parseNum(row.jumlahPinjaman),
-          jangkaWaktu: parseInt(row.jangkaWaktu) || 0,
-          cicilanPokok: parseNum(row.cicilanPokok),
-          tujuanPinjaman: row.tujuanPinjaman || '',
-          tanggalUsul: row.tanggalUsul || '',
-          status: row.status || 'Proses',
+          id: row.id || row['ID'] || '',
+          anggotaId: row.anggotaId || row['anggota_id'] || row['Anggota ID'] || '',
+          nama: row.nama || row['Nama'] || '',
+          nip: row.nip || row['NIP'] || '',
+          jumlahPinjaman: parseNum(row.jumlahPinjaman || row['jumlah_pinjaman'] || row['Jumlah Pinjaman']),
+          jangkaWaktu: parseInt(row.jangkaWaktu || row['jangka_waktu'] || row['Jangka Waktu'] || 0),
+          cicilanPokok: parseNum(row.cicilanPokok || row['cicilan_pokok'] || row['Cicilan Pokok']),
+          tujuanPinjaman: row.tujuanPinjaman || row['tujuan_pinjaman'] || row['Tujuan Pinjaman'] || '',
+          tanggalUsul: row.tanggalUsul || row['tanggal_usul'] || row['Tanggal Usul'] || '',
+          status: row.status || row['Status'] || 'Proses',
           keterangan: '' // Sheet usul_pinjaman doesn't have keterangan column
         }))
         .filter(item => item.nama && item.nip); // Filter out empty rows
