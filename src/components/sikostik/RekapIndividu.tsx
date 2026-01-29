@@ -1254,45 +1254,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                         );
                       })}
                       
-                      <TableRow className="bg-muted/50 font-bold border-t-2">
-                        <TableCell className="font-bold">
-                          TOTAL {selectedTahun}
-                        </TableCell>
-                        
-                        <TableCell className="text-right font-bold border-r">
-                          {formatCurrency(
-                            visibleCicilanMonths.length > 0 
-                              ? visibleCicilanMonths[0].saldoPiutang 
-                              : 0
-                          )}
-                        </TableCell>
-                        
-                        <TableCell className={cn(
-                          "text-right font-bold border-r",
-                          yearlyTotalsCicilan.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
-                        )}>
-                          {visibleTotalsCicilan.pinjamanBulanIni > 0 
-                            ? formatCurrency(visibleTotalsCicilan.pinjamanBulanIni) 
-                            : "-"}
-                        </TableCell>
-                        
-                        <TableCell className={cn(
-                          "text-right font-bold border-r",
-                          yearlyTotalsCicilan.cicilanPokok > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                        )}>
-                          {visibleTotalsCicilan.cicilanPokok > 0 
-                            ? formatCurrency(visibleTotalsCicilan.cicilanPokok) 
-                            : "-"}
-                        </TableCell>
-                        
-                        <TableCell className="text-right font-bold">
-                          {formatCurrency(
-                            visibleCicilanMonths.length > 0 
-                              ? visibleCicilanMonths[visibleCicilanMonths.length - 1].saldoPiutang + visibleTotalsCicilan.pinjamanBulanIni - visibleTotalsCicilan.cicilanPokok
-                              : 0
-                          )}
-                        </TableCell>
-                      </TableRow>
+                      
                     </TableBody>
                   </Table>
                 </div>
