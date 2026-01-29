@@ -42,7 +42,6 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
   const filteredData = useMemo(() => {
     let filtered = enrichedData;
     
-    // Filter berdasarkan search query
     if (searchQuery.trim()) {
       filtered = filtered.filter((member) => 
         member.nama.toLowerCase().includes(searchQuery.toLowerCase())
