@@ -110,8 +110,20 @@ export default function RekapSPKBAST() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   
-  // Dapatkan sheet ID berdasarkan satker user
-  const userSheetId = satkerConfig?.getUserSatkerSheetId('pencairan') || TUGAS_SPREADSHEET_ID;
+  // Dapatkan sheet ID berdasarkan satker user untuk entrikegiatan
+  const userSheetId = useMemo(() => {
+    const sheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
+    console.log('[RekapSPK] userSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === TUGAS_SPREADSHEET_ID);
+    return sheetId;
+  }, [satkerConfig?.configs]);
+  
+  // Dapatkan sheet ID untuk MASTER.MITRA berdasarkan satker user
+  const masterMitraSheetId = useMemo(() => {
+    const sheetId = satkerConfig?.getUserSatkerSheetId('masterorganik') || MASTER_SPREADSHEET_ID;
+    console.log('[RekapSPK] masterMitraSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === MASTER_SPREADSHEET_ID);
+    return sheetId;
+  }, [satkerConfig?.configs]);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingNotif, setUpdatingNotif] = useState<{[key: string]: boolean}>({});
   const [updatingAllNotif, setUpdatingAllNotif] = useState(false);
@@ -334,7 +346,7 @@ export default function RekapSPKBAST() {
           range: "Sheet1"
         }),
         callEdgeFunction("read", {
-          spreadsheetId: MASTER_SPREADSHEET_ID,
+          spreadsheetId: masterMitraSheetId,
           range: "MASTER.MITRA"
         })
       ]);
@@ -507,7 +519,7 @@ export default function RekapSPKBAST() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow]);
+  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow, userSheetId, masterMitraSheetId]);
 
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string, isBulkUpdate = false) => {
     if (!isPPK) return;
