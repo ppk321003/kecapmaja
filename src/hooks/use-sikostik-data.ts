@@ -514,18 +514,27 @@ export const useSikostikData = () => {
     try {
       const data = await fetchSheet('usul_pengambilan', SIKOSTIK_SPREADSHEET_ID);
       return data
-        .map((row: any) => ({
-          id: row.id || row['ID'] || '',
-          anggotaId: row.anggotaId || row['anggota_id'] || row['Anggota ID'] || '',
-          nama: row.nama || row['Nama'] || '',
-          nip: row.nip || row['NIP'] || '',
-          jenisPengambilan: row.jenisPengambilan || row['jenis_pengambilan'] || row['Jenis Pengambilan'] || 'Sukarela',
-          jumlahPengambilan: parseNum(row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan']),
-          alasanPengambilan: row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '',
-          tanggalUsul: row.tanggalUsul || row['tanggal_usul'] || row['Tanggal Usul'] || '',
-          status: row.status || row['Status'] || 'Proses',
-          keterangan: row.keterangan || row['Keterangan'] || ''
-        }))
+        .map((row: any) => {
+          // Handle different column name variations
+          const jumlahRaw = row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan'] || 0;
+          const jumlahNum = typeof jumlahRaw === 'string' ? parseNum(jumlahRaw) : jumlahRaw;
+          
+          const tanggalRaw = row.tanggalUsul || row['tanggal_usul'] || row['Tanggal Usul'] || '';
+          const tanggalFormatted = tanggalRaw ? new Date(tanggalRaw).toISOString().split('T')[0] : '';
+          
+          return {
+            id: row.id || row['ID'] || '',
+            anggotaId: row.anggotaId || row['anggota_id'] || row['Anggota ID'] || '',
+            nama: row.nama || row['Nama'] || '',
+            nip: row.nip || row['NIP'] || '',
+            jenisPengambilan: row.jenisPengambilan || row['jenis_pengambilan'] || row['Jenis Pengambilan'] || 'Sukarela',
+            jumlahPengambilan: jumlahNum,
+            alasanPengambilan: row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '',
+            tanggalUsul: tanggalFormatted,
+            status: row.status || row['Status'] || 'Proses',
+            keterangan: row.keterangan || row['Keterangan'] || ''
+          };
+        })
         .filter(item => item.nama && item.nip);
     } catch (err: any) {
       setError(err.message);

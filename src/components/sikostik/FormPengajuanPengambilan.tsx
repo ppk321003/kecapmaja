@@ -95,7 +95,7 @@ export const FormPengajuanPengambilan = ({
     setJumlahPengambilan(formatted);
   };
 
-  const requestedAmount = parseFloat(jumlahPengambilan) || 0;
+  const requestedAmount = parseFloat(jumlahPengambilan.replace(/\./g, '')) || 0;
   const isAmountValid = requestedAmount > 0 && requestedAmount <= availableAmount;
 
   const handleSubmit = async () => {
