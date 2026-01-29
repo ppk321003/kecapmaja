@@ -34,7 +34,7 @@ const linksData = [
 
 export default function Linkers() {
   const satkerContext = useSatkerConfigContext();
-  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
+  const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
   const localLinks = linksData.map(l => ({ ...l, description: l.description.replace(/BPS Kabupaten Majalengka/g, satkerNama) }));
   const handleOpenLink = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");

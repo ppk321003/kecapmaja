@@ -506,6 +506,7 @@ function TambahKegiatanModal({
 export default function BlockTanggal() {
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
+  const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
   
   // Get satker-specific sheet ID for tagging
   const spreadsheetId = satkerContext?.getUserSatkerSheetId('tagging') || DEFAULT_SPREADSHEET_ID;
@@ -1589,7 +1590,7 @@ export default function BlockTanggal() {
         <div>
           <h1 className="text-3xl font-bold text-red-500">Block Tanggal Perjalanan Dinas</h1>
           <p className="text-muted-foreground mt-2">
-            Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik Kabupaten Majalengka
+            Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik {satkerNama}
           </p>
           <div className="flex items-center gap-2 mt-2">
             <UserCheck className="h-4 w-4 text-primary" />

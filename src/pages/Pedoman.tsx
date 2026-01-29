@@ -449,7 +449,7 @@ export default function Pedoman() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("utama");
   const satkerContext = useSatkerConfigContext();
-  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
+  const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
 
   const applySatker = (text: string | undefined) => {
     if (!text) return text || "";

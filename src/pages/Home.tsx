@@ -29,7 +29,7 @@ export default function Home() {
   const { toast } = useToast();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
-  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
+  const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
   
   // Get satker-specific organik sheet ID
   const masterOrganikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_ORGANIK_SHEET_ID;
@@ -442,7 +442,7 @@ export default function Home() {
       {/* Footer Info */}
       <section className="text-center py-6">
         <p className="text-sm text-muted-foreground">
-          © 2025 Badan Pusat Statistik Kabupaten Majalengka. All rights reserved.
+          © 2025 Badan Pusat Statistik {satkerNama}. All rights reserved.
         </p>
       </section>
     </div>

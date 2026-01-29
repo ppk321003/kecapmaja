@@ -83,10 +83,10 @@ export function AppSidebar() {
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
   
-  // Get satker_nama from satker config (column B)
+  // Get satker_nama from satker config (column B) - current logged-in user's satker
   const satkerNama = useMemo(() => {
-    return satkerContext?.configs?.[0]?.satker_nama || 'BPS';
-  }, [satkerContext?.configs]);
+    return satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS';
+  }, [satkerContext]);
   
   // Conditionally build main menu items based on satker
   const mainMenuItems = isSatker3210 

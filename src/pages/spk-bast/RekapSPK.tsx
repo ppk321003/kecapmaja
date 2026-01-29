@@ -110,10 +110,10 @@ export default function RekapSPKBAST() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   
-  // Dapatkan satker_nama dari satker config (column B)
+  // Dapatkan satker_nama dari satker config (column B) - current logged-in user's satker
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
-  }, [satkerConfig?.configs]);
+    return satkerConfig?.getUserSatkerConfig()?.satker_nama || 'BPS';
+  }, [satkerConfig]);
   
   // Dapatkan sheet ID berdasarkan satker user untuk entrikegiatan
   const userSheetId = useMemo(() => {

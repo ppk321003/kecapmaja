@@ -28,8 +28,8 @@ const SPREADSHEET_ID = "1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
 export default function AkiToBendahara() {
   const satkerConfig = useSatkerConfigContext();
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
-  }, [satkerConfig?.configs]);
+    return satkerConfig?.getUserSatkerConfig()?.satker_nama || 'BPS';
+  }, [satkerConfig]);
   
   const [data, setData] = useState<DataRow[]>([]);
   const [filteredData, setFilteredData] = useState<DataRow[]>([]);

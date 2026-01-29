@@ -98,8 +98,8 @@ export default function EntriPengelola() {
   const { user } = useAuth();
   const satkerConfig = useSatkerConfigContext();
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
-  }, [satkerConfig?.configs]);
+    return satkerConfig?.getUserSatkerConfig()?.satker_nama || 'BPS';
+  }, [satkerConfig]);
   
   // State untuk semua data
   const [pengelola, setPengelola] = useState<Pengelola[]>([]);

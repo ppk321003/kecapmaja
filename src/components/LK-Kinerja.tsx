@@ -81,7 +81,7 @@ export default function LKKinerja({ viewMode, filterTahun }: LKKinerjaProps) {
   const { toast } = useToast();
 
   const satkerContext = useSatkerConfigContext();
-  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
+  const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
 
   const loadKinerjaData = async () => {
     try {
