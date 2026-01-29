@@ -630,7 +630,7 @@ export function FormPengajuanPinjaman({ open, onOpenChange, onSubmit }: Props) {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={!memberInfo || watchCicilanBaru === 0}
+                  disabled={!memberInfo || (watchJumlahPinjaman > 0 && watchCicilanBaru === 0)}
                 >
                   Ajukan Pinjaman
                 </Button>

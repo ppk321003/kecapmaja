@@ -376,7 +376,7 @@ export const useSikostikData = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchSheet('usul_perubahan');
+      const data = await fetchSheet('usul_perubahan', SIKOSTIK_SPREADSHEET_ID);
       return data.map((row: any) => ({
         id: row.id || '',
         anggotaId: row.anggotaId || '',

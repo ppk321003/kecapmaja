@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, User, Calculator, HandCoins, Settings } from 'lucide-react';
 import { RekapAnggota } from '@/components/sikostik/RekapAnggota';
@@ -7,8 +7,21 @@ import { CekLimit } from '@/components/sikostik/CekLimit';
 import { UsulPinjaman } from '@/components/sikostik/UsulPinjaman';
 import { UsulPerubahan } from '@/components/sikostik/UsulPerubahan';
 
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
 const Sikostik28 = () => {
   const [activeTab, setActiveTab] = useState('rekap-anggota');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Guard: only allow satker 3210
+  useEffect(() => {
+    if (!user) return; // allow auth to resolve elsewhere
+    if (user.satker !== '3210') {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   return (
     <div className="p-6 space-y-6">
