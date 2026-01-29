@@ -91,7 +91,9 @@ export default function CekSBML() {
   
   // Get satker-specific entrikegiatan sheet ID for SBML data
   const sbmlSheetId = useMemo(() => {
-    return satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
+    const sheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
+    console.log('[CekSBML] sbmlSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === TUGAS_SPREADSHEET_ID);
+    return sheetId;
   }, [satkerConfig?.configs]);
 
   const formatRupiah = useCallback((amount: number) => {
@@ -246,6 +248,8 @@ export default function CekSBML() {
       setLoading(true);
       const periodeFilter = `${filterBulan} ${filterTahun}`;
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
+      console.log('[CekSBML] fetchData - Using sbmlSheetId:', sbmlSheetId.substring(0, 30) + '...');
+      console.log('[CekSBML] fetchData - Looking for periode:', cleanedPeriodeFilter);
       
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
@@ -269,6 +273,7 @@ export default function CekSBML() {
 
       const tugasRows = tugasResult.data?.values || [];
       const masterRows = masterResult.data?.values || [];
+      console.log('[CekSBML] Loaded tugasRows:', tugasRows.length, 'masterRows:', masterRows.length);
       const petugasTugas: PetugasTugas[] = [];
       const masterPetugas: Map<string, MasterPetugas> = new Map();
 
