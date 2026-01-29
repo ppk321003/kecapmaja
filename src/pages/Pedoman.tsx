@@ -454,7 +454,7 @@ export default function Pedoman() {
   const applySatker = (text: string | undefined) => {
     if (!text) return text || "";
     return text.replace(/BPS Kabupaten Majalengka|BPS Kab\. Majalengka|BPS Majalengka/g, satkerNama);
-  }
+  };
 
   const renderPedomanCard = (item: PedomanItem) => {
     const features = (item.features || []).map(f => applySatker(f));
@@ -462,7 +462,7 @@ export default function Pedoman() {
     const accessInfo = item.accessInfo ? applySatker(item.accessInfo) : undefined;
     const description = applySatker(item.description);
     return (
-    <Card
+      <Card
       key={item.title}
       className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card/50 backdrop-blur-sm"
     >
@@ -532,7 +532,8 @@ export default function Pedoman() {
         </Button>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
