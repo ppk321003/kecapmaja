@@ -91,7 +91,7 @@ export interface UsulPengambilan {
   anggotaId: string;
   nama: string;
   nip: string;
-  jenisPengambilan: 'Pokok' | 'Sukarela' | 'Lebaran' | 'Lainnya';
+  jenisPengambilan: 'Wajib' | 'Sukarela' | 'Lebaran' | 'Lainnya';
   jumlahPengambilan: number;
   alasanPengambilan: string;
   tanggalUsul: string;

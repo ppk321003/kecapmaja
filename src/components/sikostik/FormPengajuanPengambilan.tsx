@@ -40,7 +40,7 @@ export const FormPengajuanPengambilan = ({
 }: FormPengajuanPengambilanProps) => {
   const { loading, submitUsulPengambilan } = useSikostikData();
   const [selectedAnggotaId, setSelectedAnggotaId] = useState('');
-  const [jenisPengambilan, setJenisPengambilan] = useState<'Pokok' | 'Sukarela' | 'Lebaran' | 'Lainnya'>('Sukarela');
+  const [jenisPengambilan, setJenisPengambilan] = useState<'Wajib' | 'Sukarela' | 'Lebaran' | 'Lainnya'>('Sukarela');
   const [jumlahPengambilan, setJumlahPengambilan] = useState('');
   const [alasanPengambilan, setAlasanPengambilan] = useState('');
   const [error, setError] = useState('');
@@ -66,18 +66,17 @@ export const FormPengajuanPengambilan = ({
   const simpananBreakdown = useMemo(() => {
     if (!currentSimpananData) return null;
     return {
-      pokok: currentSimpananData.simpananPokok,
-      wajib: currentSimpananData.simpananWajib,
-      sukarela: currentSimpananData.simpananSukarela,
-      lebaran: currentSimpananData.simpananLebaran,
-      lainnya: currentSimpananData.simpananLainnya,
+      wajib: currentSimpananData.saldoAkhirbulanWajib,
+      sukarela: currentSimpananData.saldoAkhirbulanSukarela,
+      lebaran: currentSimpananData.saldoAkhirbulanLebaran,
+      lainnya: currentSimpananData.saldoAkhirbulanLainlain,
       total: currentSimpananData.totalSimpanan,
     };
   }, [currentSimpananData]);
 
   const availableAmount = useMemo(() => {
-    if (jenisPengambilan === 'Pokok' && simpananBreakdown) {
-      return simpananBreakdown.pokok;
+    if (jenisPengambilan === 'Wajib' && simpananBreakdown) {
+      return simpananBreakdown.wajib;
     } else if (jenisPengambilan === 'Sukarela' && simpananBreakdown) {
       return simpananBreakdown.sukarela;
     } else if (jenisPengambilan === 'Lebaran' && simpananBreakdown) {
@@ -216,7 +215,7 @@ export const FormPengajuanPengambilan = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Pokok">Pokok</SelectItem>
+                <SelectItem value="Wajib">Wajib</SelectItem>
                 <SelectItem value="Sukarela">Sukarela</SelectItem>
                 <SelectItem value="Lebaran">Lebaran</SelectItem>
                 <SelectItem value="Lainnya">Lainnya</SelectItem>
@@ -226,13 +225,13 @@ export const FormPengajuanPengambilan = ({
 
           {/* Simpanan Info */}
           {simpananBreakdown && (
-            <div className="bg-muted/50 p-3 rounded-lg space-y-1 text-sm">
+            <div className="bg-muted/50 p-3 rounded-lg space-y-1 text-sm border border-muted">
               <div className="flex justify-between">
-                <span>Saldo {jenisPengambilan}:</span>
-                <span className="font-semibold">{formatCurrency(availableAmount)}</span>
+                <span>Total Simpanan {jenisPengambilan}:</span>
+                <span className="font-semibold text-primary">{formatCurrency(availableAmount)}</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Total Simpanan:</span>
+                <span>Total Semua Simpanan:</span>
                 <span>{formatCurrency(simpananBreakdown.total)}</span>
               </div>
             </div>
