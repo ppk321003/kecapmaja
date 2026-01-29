@@ -105,6 +105,7 @@ class DateParser {
       'december': 11
     };
     const cleanedDate = tanggal.toLowerCase().trim();
+
     const parts = cleanedDate.split(' ');
     if (parts.length === 3) {
       const day = parseInt(parts[0]);
