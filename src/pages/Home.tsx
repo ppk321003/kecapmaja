@@ -337,7 +337,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-accent/80 flex items-center">
           <div className="px-8 text-primary-foreground">
             <h1 className="text-4xl font-bold mb-2">KECAP MAJA</h1>
-            <p className="text-xl">Kerja Efisien, Cepat, Akurat, Profesional - Maju Aman Jeung Amanah</p>
+            <p className="text-xl">Kerja Efisien, Cepat, Akurat, Profesional - Maju, Aman Jeung Amanah</p>
           </div>
         </div>
       </section>
