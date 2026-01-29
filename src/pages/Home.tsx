@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, BarChart3, Users, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,6 +29,7 @@ export default function Home() {
   const { toast } = useToast();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
+  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
   
   // Get satker-specific organik sheet ID
   const masterOrganikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_ORGANIK_SHEET_ID;
@@ -186,20 +187,20 @@ export default function Home() {
   const getUcapanUltah = (umur: number, nama: string, jabatan: string) => {
     const ucapanUmum = [
       `Selamat ulang tahun yang ke-${umur} tahun, ${nama}! Semoga senantiasa diberikan kesehatan, kebahagiaan, dan kesuksesan dalam menjalankan tugas sebagai ${jabatan}.`,
-      `Di usia yang ke-${umur} tahun ini, semoga ${nama} semakin bijaksana dan inspiratif bagi rekan-rekan di BPS Majalengka.`,
+      `Di usia yang ke-${umur} tahun ini, semoga ${nama} semakin bijaksana dan inspiratif bagi rekan-rekan di ${satkerNama}.`,
       `Semoga di usia ${umur} tahun ini, ${nama} menjadi pribadi yang lebih baik dan profesional dalam mengabdi untuk negara.`
     ];
 
     if (umur >= 50) {
       return [
-        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki ${nama} semakin membawa manfaat bagi BPS Majalengka.`,
+        `Selamat ulang tahun ke-${umur} tahun! Semoga pengalaman dan kebijaksanaan yang dimiliki ${nama} semakin membawa manfaat bagi ${satkerNama}.`,
         `Di usia emas ${umur} tahun, semoga ${nama} senantiasa diberikan kesehatan dan semangat dalam mengabdi untuk statistik Indonesia.`,
         `Terima kasih atas dedikasi dan pengabdian selama ini. Selamat merayakan ${umur} tahun kehidupan yang penuh makna, ${nama}.`
       ];
     } else if (umur >= 40) {
       return [
         `Selamat ulang tahun ke-${umur} tahun! Semoga di usia yang penuh kematangan ini, ${nama} semakin banyak kontribusi berharga untuk BPS.`,
-        `Di usia ${umur} tahun, semoga ${nama} semakin produktif dan inspiratif dalam memajukan statistik di Kabupaten Majalengka.`,
+        `Di usia ${umur} tahun, semoga ${nama} semakin produktif dan inspiratif dalam memajukan statistik di ${satkerNama}.`,
         `Semoga di usia yang semakin dewasa ini, ${nama} senantiasa diberikan kemudahan dalam setiap tugas dan tanggung jawab.`
       ];
     } else {
@@ -294,7 +295,7 @@ export default function Home() {
 
                 <div className="flex flex-col space-y-2 text-xs text-gray-500">
                   <p>💝 Semoga hari ini penuh kebahagiaan dan keceriaan</p>
-                  <p>🌟 Terus berkarya untuk BPS Majalengka</p>
+                  <p>🌟 Terus berkarya untuk {satkerNama}</p>
                   <p>🎂 Panjang umur dan sehat selalu</p>
                 </div>
 
@@ -353,7 +354,7 @@ export default function Home() {
               💡 KECAP MAJA adalah sistem administrasi digital terpadu yang dirancang untuk mentransformasi pengelolaan kegiatan menjadi lebih efisien, transparan, dan andal. Sistem ini menghadirkan beragam fitur canggih, seperti pembuatan dokumen otomatis, entri data mitra statistik, rekap honorarium yang terintegrasi, serta pemantauan batas SBML secara real-time. Dengan dukungan teknologi ini, proses administrasi tidak hanya menjadi lebih cepat dan terukur, tetapi juga meminimalisir kesalahan, sehingga menciptakan standar kerja yang lebih profesional.
             </p>
             <p className="text-justify leading-relaxed">
-              Berdiri di atas semangat Maju Aman jeung Amanah, KECAP MAJA tidak sekadar menjadi alat bantu, melainkan juga pendorong terwujudnya budaya kerja yang unggul di lingkungan BPS Kabupaten Majalengka. Setiap aktivitas administrasi kini dapat dijalankan dengan prinsip efisiensi, ketepatan, kecepatan, dan profesionalisme, mendukung terciptanya tata kelola yang akuntabel dan berorientasi pada kualitas.
+              Berdiri di atas semangat Maju Aman jeung Amanah, KECAP MAJA tidak sekadar menjadi alat bantu, melainkan juga pendorong terwujudnya budaya kerja yang unggul di lingkungan {satkerNama}. Setiap aktivitas administrasi kini dapat dijalankan dengan prinsip efisiensi, ketepatan, kecepatan, dan profesionalisme, mendukung terciptanya tata kelola yang akuntabel dan berorientasi pada kualitas.
             </p>
           </CardContent>
         </Card>

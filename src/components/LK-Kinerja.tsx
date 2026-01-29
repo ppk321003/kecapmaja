@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Table as TableIcon, User, Search, Eye, TrendingUp, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Award, BarChart3, Crown, Star, Trophy, Medal } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -78,6 +79,9 @@ export default function LKKinerja({ viewMode, filterTahun }: LKKinerjaProps) {
   const [itemsPerPage] = useState(15);
 
   const { toast } = useToast();
+
+  const satkerContext = useSatkerConfigContext();
+  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
 
   const loadKinerjaData = async () => {
     try {
@@ -373,7 +377,7 @@ export default function LKKinerja({ viewMode, filterTahun }: LKKinerjaProps) {
             LK Reward and Punishment 2025
           </h1>
           <p className="text-muted-foreground mt-2">
-            Dashboard Monitoring Kinerja Karyawan BPS Kabupaten Majalengka
+            Dashboard Monitoring Kinerja Karyawan {satkerNama}
           </p>
         </div>
         <Button variant="outline" onClick={loadKinerjaData} disabled={loading} className="flex items-center gap-2">

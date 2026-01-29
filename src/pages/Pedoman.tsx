@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,7 @@ import {
   Briefcase,
   GraduationCap,
 } from "lucide-react";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 interface PedomanItem {
   title: string;
@@ -447,8 +448,20 @@ const tabConfig = [
 export default function Pedoman() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("utama");
+  const satkerContext = useSatkerConfigContext();
+  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
 
-  const renderPedomanCard = (item: PedomanItem) => (
+  const applySatker = (text: string | undefined) => {
+    if (!text) return text || "";
+    return text.replace(/BPS Kabupaten Majalengka|BPS Kab\. Majalengka|BPS Majalengka/g, satkerNama);
+  }
+
+  const renderPedomanCard = (item: PedomanItem) => {
+    const features = (item.features || []).map(f => applySatker(f));
+    const tips = (item.tips || []).map(t => applySatker(t));
+    const accessInfo = item.accessInfo ? applySatker(item.accessInfo) : undefined;
+    const description = applySatker(item.description);
+    return (
     <Card
       key={item.title}
       className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card/50 backdrop-blur-sm"
@@ -461,17 +474,17 @@ export default function Pedoman() {
             </div>
             <div>
               <CardTitle className="text-lg">{item.title}</CardTitle>
-              {item.accessInfo && (
+              {accessInfo && (
                 <Badge variant="outline" className="mt-1 text-xs">
                   <Lock className="h-3 w-3 mr-1" />
-                  {item.accessInfo}
+                  {accessInfo}
                 </Badge>
               )}
             </div>
           </div>
         </div>
         <CardDescription className="mt-3 text-sm leading-relaxed">
-          {item.description}
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -481,7 +494,7 @@ export default function Pedoman() {
             Fitur Utama
           </h4>
           <ul className="space-y-1.5">
-            {item.features.slice(0, 6).map((feature, idx) => (
+            {features.slice(0, 6).map((feature, idx) => (
               <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                 <span>{feature}</span>
@@ -501,11 +514,11 @@ export default function Pedoman() {
               Tips
             </h4>
             <ul className="space-y-1 list-disc pl-5">
-              {item.tips.map((tip, idx) => (
-                <li key={idx} className="text-xs text-muted-foreground">
-                  {tip}
-                </li>
-              ))}
+              {tips.map((tip, idx) => (
+                  <li key={idx} className="text-xs text-muted-foreground">
+                    {tip}
+                  </li>
+                ))}
             </ul>
           </div>
         )}
@@ -594,7 +607,7 @@ export default function Pedoman() {
       {/* Footer Info */}
       <div className="text-center pt-4 border-t border-border/50">
         <p className="text-xs text-muted-foreground">
-          Butuh bantuan lebih lanjut? Hubungi Tim IT BPS Kabupaten Majalengka
+          Butuh bantuan lebih lanjut? Hubungi Tim IT {satkerNama}
         </p>
       </div>
     </div>

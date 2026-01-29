@@ -1,5 +1,7 @@
 import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon, Image } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo } from "react";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const accentColors = [
   "from-blue-500 to-blue-600",
@@ -31,6 +33,9 @@ const linksData = [
 ];
 
 export default function Linkers() {
+  const satkerContext = useSatkerConfigContext();
+  const satkerNama = useMemo(() => satkerContext?.configs?.[0]?.satker_nama || 'BPS', [satkerContext?.configs]);
+  const localLinks = linksData.map(l => ({ ...l, description: l.description.replace(/BPS Kabupaten Majalengka/g, satkerNama) }));
   const handleOpenLink = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -48,7 +53,7 @@ export default function Linkers() {
               Linkers
             </h1>
             <p className="mt-1.5 text-lg text-muted-foreground">
-              Kumpulan tautan penting dokumen dan aplikasi BPS Kabupaten Majalengka
+              Kumpulan tautan penting dokumen dan aplikasi {satkerNama}
             </p>
           </div>
         </div>
@@ -56,7 +61,7 @@ export default function Linkers() {
 
       {/* Grid Cards - Optimized for ultra-wide screens */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 gap-6 max-w-[2400px] mx-auto">
-        {linksData.map((link, index) => {
+        {localLinks.map((link, index) => {
           const Icon = link.icon;
           const accent = accentColors[index % accentColors.length];
           const lighterBg = accent.replace("500", "100").replace("600", "200");
