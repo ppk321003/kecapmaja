@@ -233,6 +233,15 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
+      // Debug: log data summary to help troubleshoot missing RekapIndividu data
+      try {
+        console.log(`fetchRekapDashboard: fetched ${data.length} rows for sheet rekap_dashboard (bulan=${bulan}, tahun=${tahun})`);
+        if (data.length > 0) {
+          console.log('fetchRekapDashboard: sample row keys ->', Object.keys(data[0]).slice(0, 20));
+        }
+      } catch (e) {
+        /* ignore logging errors */
+      }
       const period = { bulan: bulan || getCurrentPeriod().bulan, tahun: tahun || getCurrentPeriod().tahun };
       
       return data
