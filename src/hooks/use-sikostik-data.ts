@@ -167,8 +167,8 @@ export const useSikostikData = () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch anggota data from anggota_master
-      const anggotaData = await fetchSheet('anggota_master');
+      // Fetch anggota data from anggota_master (central SIKOSTIK spreadsheet)
+      const anggotaData = await fetchSheet('anggota_master', SIKOSTIK_SPREADSHEET_ID);
       
       // Fetch foto data from MASTER.ORGANIK
       let fotoMap: Record<string, string> = {};
