@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { 
@@ -123,13 +123,16 @@ export const formatCurrency = (value: number): string => {
 export const useSikostikData = () => {
   const satkerContext = useSatkerConfigContext();
   
-  // Dapatkan sheet ID berdasarkan satker user
-  const userSheetId = satkerContext?.getUserSatkerSheetId('tagging') || SIKOSTIK_SPREADSHEET_ID;
+  // Dapatkan sheet ID berdasarkan satker user (reactive setelah satkerConfig dimuat)
+  const userSheetId = useMemo(() => {
+    return satkerContext?.getUserSatkerSheetId('tagging') || SIKOSTIK_SPREADSHEET_ID;
+  }, [satkerContext?.configs]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSheet = useCallback(async (sheetName: string, spreadsheetId: string = userSheetId) => {
+  const fetchSheet = useCallback(async (sheetName: string, spreadsheetId?: string) => {
+    spreadsheetId = spreadsheetId || userSheetId;
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -158,7 +161,7 @@ export const useSikostikData = () => {
       console.error(`Error fetching ${sheetName}:`, err);
       throw err;
     }
-  }, []);
+  }, [userSheetId]);
 
   const fetchAnggotaMaster = useCallback(async (): Promise<AnggotaMaster[]> => {
     setLoading(true);
@@ -228,7 +231,7 @@ export const useSikostikData = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchSheet('rekap_dashboard');
+      const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
       const period = { bulan: bulan || getCurrentPeriod().bulan, tahun: tahun || getCurrentPeriod().tahun };
       
       return data
@@ -295,7 +298,7 @@ export const useSikostikData = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchSheet('rekap_dashboard');
+      const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
       
       // Group by anggotaId and calculate limit
       const limitMap = new Map<string, LimitAnggota>();
@@ -514,5 +517,8 @@ export const useSikostikData = () => {
     fetchUsulPerubahan,
     submitUsulPinjaman,
     submitUsulPerubahan
+    ,
+    userSheetId
   };
+  
 };

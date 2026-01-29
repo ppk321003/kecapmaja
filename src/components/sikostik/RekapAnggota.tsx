@@ -15,7 +15,8 @@ export const RekapAnggota = () => {
   const {
     loading,
     error,
-    fetchRekapDashboard
+    fetchRekapDashboard,
+    userSheetId
   } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +32,7 @@ export const RekapAnggota = () => {
   };
   useEffect(() => {
     loadData();
-  }, [selectedBulan, selectedTahun]);
+  }, [selectedBulan, selectedTahun, userSheetId]);
 
   // Filter only active members
   const activeMembers = useMemo(() => {
