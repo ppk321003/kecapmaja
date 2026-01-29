@@ -95,6 +95,13 @@ export default function CekSBML() {
     console.log('[CekSBML] sbmlSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === TUGAS_SPREADSHEET_ID);
     return sheetId;
   }, [satkerConfig?.configs]);
+  
+  // Get satker-specific masterorganik sheet ID for MASTER.MITRA data
+  const masterMitraSheetId = useMemo(() => {
+    const sheetId = satkerConfig?.getUserSatkerSheetId('masterorganik') || MASTER_SPREADSHEET_ID;
+    console.log('[CekSBML] masterMitraSheetId:', sheetId.substring(0, 30) + '...', 'using fallback:', sheetId === MASTER_SPREADSHEET_ID);
+    return sheetId;
+  }, [satkerConfig?.configs]);
 
   const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -261,7 +268,7 @@ export default function CekSBML() {
         }),
         supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: MASTER_SPREADSHEET_ID,
+            spreadsheetId: masterMitraSheetId,
             operation: "read",
             range: "MASTER.MITRA"
           }
@@ -412,7 +419,7 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast, sbmlSheetId]);
+  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast, sbmlSheetId, masterMitraSheetId]);
 
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
     // Hanya ambil angka saja dan konversi ke number
