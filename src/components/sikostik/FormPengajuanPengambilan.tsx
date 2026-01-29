@@ -40,7 +40,7 @@ export const FormPengajuanPengambilan = ({
 }: FormPengajuanPengambilanProps) => {
   const { loading, submitUsulPengambilan } = useSikostikData();
   const [selectedAnggotaId, setSelectedAnggotaId] = useState('');
-  const [jenisPengambilan, setJenisPengambilan] = useState<'Sukarela' | 'Lebaran' | 'Lainnya'>('Sukarela');
+  const [jenisPengambilan, setJenisPengambilan] = useState<'Pokok' | 'Sukarela' | 'Lebaran' | 'Lainnya'>('Sukarela');
   const [jumlahPengambilan, setJumlahPengambilan] = useState('');
   const [alasanPengambilan, setAlasanPengambilan] = useState('');
   const [error, setError] = useState('');
@@ -76,7 +76,9 @@ export const FormPengajuanPengambilan = ({
   }, [currentSimpananData]);
 
   const availableAmount = useMemo(() => {
-    if (jenisPengambilan === 'Sukarela' && simpananBreakdown) {
+    if (jenisPengambilan === 'Pokok' && simpananBreakdown) {
+      return simpananBreakdown.pokok;
+    } else if (jenisPengambilan === 'Sukarela' && simpananBreakdown) {
       return simpananBreakdown.sukarela;
     } else if (jenisPengambilan === 'Lebaran' && simpananBreakdown) {
       return simpananBreakdown.lebaran;
@@ -85,6 +87,14 @@ export const FormPengajuanPengambilan = ({
     }
     return 0;
   }, [jenisPengambilan, simpananBreakdown]);
+
+  const handleJumlahChange = (value: string) => {
+    // Remove non-digit characters
+    const numericValue = value.replace(/\D/g, '');
+    // Format with thousand separator
+    const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    setJumlahPengambilan(formatted);
+  };
 
   const requestedAmount = parseFloat(jumlahPengambilan) || 0;
   const isAmountValid = requestedAmount > 0 && requestedAmount <= availableAmount;
@@ -206,6 +216,7 @@ export const FormPengajuanPengambilan = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="Pokok">Pokok</SelectItem>
                 <SelectItem value="Sukarela">Sukarela</SelectItem>
                 <SelectItem value="Lebaran">Lebaran</SelectItem>
                 <SelectItem value="Lainnya">Lainnya</SelectItem>
@@ -232,10 +243,10 @@ export const FormPengajuanPengambilan = ({
             <Label htmlFor="jumlah">Jumlah Pengambilan</Label>
             <Input
               id="jumlah"
-              type="number"
+              type="text"
               placeholder="0"
               value={jumlahPengambilan}
-              onChange={(e) => setJumlahPengambilan(e.target.value)}
+              onChange={(e) => handleJumlahChange(e.target.value)}
               className={cn(
                 !isAmountValid && jumlahPengambilan && 'border-red-500'
               )}

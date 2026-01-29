@@ -539,7 +539,7 @@ export const useSikostikData = () => {
     anggotaId: string;
     nama: string;
     nip: string;
-    jenisPengambilan: 'Sukarela' | 'Lebaran' | 'Lainnya';
+    jenisPengambilan: 'Pokok' | 'Sukarela' | 'Lebaran' | 'Lainnya';
     jumlahPengambilan: number;
     alasanPengambilan: string;
   }) => {
