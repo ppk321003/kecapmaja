@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
 const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
@@ -86,6 +87,12 @@ export default function CekSBML() {
   const [sortField, setSortField] = useState<SortField>('namaMitra');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { toast } = useToast();
+  const satkerConfig = useSatkerConfigContext();
+  
+  // Get satker-specific entrikegiatan sheet ID for SBML data
+  const sbmlSheetId = useMemo(() => {
+    return satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
+  }, [satkerConfig?.configs]);
 
   const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -116,7 +123,7 @@ export default function CekSBML() {
     try {
       const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SBML_SPREADSHEET_ID,
+          spreadsheetId: sbmlSheetId,
           operation: "read",
           range: "Sheet1"
         }
@@ -145,7 +152,7 @@ export default function CekSBML() {
     } catch (error: any) {
       console.error("Error fetching SBML data:", error);
     }
-  }, [parseHonor]);
+  }, [parseHonor, sbmlSheetId]);
 
   const validateRow = useCallback((item: CekSBMLRow, sbml: SBMLData) => {
     const warnings: string[] = [];
@@ -243,7 +250,7 @@ export default function CekSBML() {
       const [tugasResult, masterResult] = await Promise.all([
         supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: TUGAS_SPREADSHEET_ID,
+            spreadsheetId: sbmlSheetId,
             operation: "read",
             range: "Sheet1"
           }
@@ -400,7 +407,7 @@ export default function CekSBML() {
     } finally {
       setLoading(false);
     }
-  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast]);
+  }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, validateRow, sbmlData, toast, sbmlSheetId]);
 
   const handlePekerjaanProvinsiChange = useCallback((index: number, value: string) => {
     // Hanya ambil angka saja dan konversi ke number
