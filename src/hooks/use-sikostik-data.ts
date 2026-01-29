@@ -513,35 +513,127 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('usul_pengambilan', SIKOSTIK_SPREADSHEET_ID);
-      console.log('Raw usul_pengambilan data:', data);
+      console.log('Raw usul_pengambilan data from sheet:', data);
+      
+      if (data && data.length > 0) {
+        console.log('First row object:', data[0]);
+        console.log('First row keys:', Object.keys(data[0]));
+      }
       
       const mapped = data
-        .map((row: any) => {
-          // Handle different column name variations - try shorter names first
-          const jumlahRaw = row.Jumlah || row['Jumlah'] || row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan'] || 0;
-          const jumlahNum = typeof jumlahRaw === 'string' ? parseNum(jumlahRaw) : (typeof jumlahRaw === 'number' ? jumlahRaw : parseNum(String(jumlahRaw)));
+        .map((row: any, idx: number) => {
+          // Create a normalized version of the row object
+          // Google Sheets might use lowercase keys, so try multiple formats
+          const normalizedRow: any = {};
           
-          const alasanRaw = row.Alasan || row['Alasan'] || row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '';
-          const tanggalRaw = row['Tanggal Usul'] || row.tanggalUsul || row['tanggal_usul'] || '';
+          // Try to find and map each field from various possible key formats
+          for (const [key, value] of Object.entries(row)) {
+            const lowerKey = String(key).toLowerCase().trim();
+            normalizedRow[lowerKey] = value;
+          }
           
-          return {
-            id: row.ID || row.id || row['ID'] || '',
-            anggotaId: row['Anggota ID'] || row.anggotaId || row['anggota_id'] || '',
-            nama: row.Nama || row.nama || row['Nama'] || '',
-            nip: row.NIP || row.nip || row['NIP'] || '',
-            jenisPengambilan: row['Jenis Pengambilan'] || row.jenisPengambilan || row['jenis_pengambilan'] || 'Sukarela',
-            jumlahPengambilan: jumlahNum,
-            alasanPengambilan: String(alasanRaw),
-            tanggalUsul: String(tanggalRaw),
-            status: row.Status || row.status || row['Status'] || 'Proses',
-            keterangan: row.Keterangan || row.keterangan || row['Keterangan'] || ''
+          if (idx === 0) {
+            console.log('Normalized row 0:', normalizedRow);
+          }
+          
+          // Extract values with multiple fallback attempts
+          const getId = () => row.ID || row.id || normalizedRow['id'] || '';
+          const getAnggotaId = () => row['Anggota ID'] || row['anggota id'] || row.anggotaId || normalizedRow['anggota id'] || '';
+          const getNama = () => row.Nama || row.nama || normalizedRow['nama'] || '';
+          const getNip = () => row.NIP || row.nip || normalizedRow['nip'] || '';
+          const getJenisPengambilan = () => row['Jenis Pengambilan'] || row['jenis pengambilan'] || row.jenisPengambilan || normalizedRow['jenis pengambilan'] || 'Sukarela';
+          
+          // Critical: Jumlah field
+          const getJumlah = () => {
+            const candidates = [
+              row.Jumlah,
+              row.jumlah,
+              row['Jumlah'],
+              normalizedRow['jumlah'],
+              normalizedRow['jumlah pengambilan']
+            ];
+            for (const val of candidates) {
+              if (val !== undefined && val !== null && val !== '') {
+                const parsed = typeof val === 'string' ? parseNum(val) : val;
+                if (parsed > 0 || val !== '') {
+                  if (idx === 0) console.log('Found Jumlah:', val, '→', parsed);
+                  return parsed;
+                }
+              }
+            }
+            if (idx === 0) console.log('No Jumlah found in candidates');
+            return 0;
           };
+          
+          // Critical: Alasan field
+          const getAlasan = () => {
+            const candidates = [
+              row.Alasan,
+              row.alasan,
+              row['Alasan'],
+              normalizedRow['alasan'],
+              normalizedRow['alasan pengambilan']
+            ];
+            for (const val of candidates) {
+              if (val !== undefined && val !== null && val !== '') {
+                if (idx === 0) console.log('Found Alasan:', val);
+                return String(val);
+              }
+            }
+            if (idx === 0) console.log('No Alasan found');
+            return '';
+          };
+          
+          // Critical: Tanggal Usul field
+          const getTanggal = () => {
+            const candidates = [
+              row['Tanggal Usul'],
+              row['tanggal usul'],
+              row.tanggalUsul,
+              row['Tanggal'],
+              normalizedRow['tanggal usul']
+            ];
+            for (const val of candidates) {
+              if (val !== undefined && val !== null && val !== '') {
+                if (idx === 0) console.log('Found Tanggal:', val);
+                return String(val);
+              }
+            }
+            if (idx === 0) console.log('No Tanggal found');
+            return '';
+          };
+          
+          const getStatus = () => row.Status || row.status || normalizedRow['status'] || 'Proses';
+          const getKeterangan = () => row.Keterangan || row.keterangan || normalizedRow['keterangan'] || '';
+          
+          const result = {
+            id: getId(),
+            anggotaId: getAnggotaId(),
+            nama: getNama(),
+            nip: getNip(),
+            jenisPengambilan: getJenisPengambilan(),
+            jumlahPengambilan: getJumlah(),
+            alasanPengambilan: getAlasan(),
+            tanggalUsul: getTanggal(),
+            status: getStatus(),
+            keterangan: getKeterangan()
+          };
+          
+          if (idx === 0) {
+            console.log('Final mapped result row 0:', result);
+          }
+          
+          return result;
         })
-        .filter(item => item.nama && item.nip);
+        .filter(item => {
+          const valid = item.nama && item.nip;
+          return valid;
+        });
       
-      console.log('Mapped usul_pengambilan:', mapped);
+      console.log('Total mapped items:', mapped.length, 'Final data:', mapped);
       return mapped;
     } catch (err: any) {
+      console.error('fetchUsulPengambilan error:', err);
       setError(err.message);
       return [];
     } finally {
