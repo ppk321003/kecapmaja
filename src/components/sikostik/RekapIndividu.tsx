@@ -1157,61 +1157,82 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                       <TableRow className="bg-muted/50">
                         <TableHead className="font-semibold" style={{ minWidth: '120px' }}>Bulan</TableHead>
                         <TableHead className="text-right font-semibold border-r" style={{ minWidth: '130px' }}>
-                          Pinjaman Bulan Ini
+                          Piutang Awal
                         </TableHead>
                         <TableHead className="text-right font-semibold border-r" style={{ minWidth: '130px' }}>
-                          Cicilan Pokok
+                          Pinjaman Baru
+                        </TableHead>
+                        <TableHead className="text-right font-semibold border-r" style={{ minWidth: '130px' }}>
+                          Cicilan
                         </TableHead>
                         <TableHead className="text-right font-semibold" style={{ minWidth: '130px' }}>
-                          Saldo Piutang
+                          Sisa Hutang
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     
                     <TableBody>
-                      {historyDisplayData.filter(m => m.pinjamanBulanIni > 0 || m.cicilanPokok > 0).map((item) => (
-                        <TableRow key={item.id} 
-                          className={cn(
-                            "hover:bg-muted/30",
-                            item.pinjamanBulanIni > 0 || item.cicilanPokok > 0 
-                              ? "bg-orange-50 dark:bg-orange-950/20" 
-                              : ""
-                          )}
-                        >
-                          <TableCell className="font-medium border-r">
-                            {`${item.bulanNama} ${item.tahun}`}
-                          </TableCell>
-                          
-                          <TableCell className={cn(
-                            "text-right font-semibold border-r",
-                            item.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
-                          )}>
-                            {item.pinjamanBulanIni > 0 
-                              ? formatCurrency(item.pinjamanBulanIni) 
-                              : "-"}
-                          </TableCell>
-                          
-                          <TableCell className={cn(
-                            "text-right font-semibold border-r",
-                            item.cicilanPokok > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                          )}>
-                            {item.cicilanPokok > 0 
-                              ? formatCurrency(item.cicilanPokok) 
-                              : "-"}
-                          </TableCell>
-                          
-                          <TableCell className={cn(
-                            "text-right font-semibold",
-                            item.saldoPiutang > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
-                          )}>
-                            {formatCurrency(item.saldoPiutang)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {historyDisplayData.map((item) => {
+                        const sisaHutang = item.saldoPiutang + item.pinjamanBulanIni - item.cicilanPokok;
+                        return (
+                          <TableRow key={item.id} 
+                            className={cn(
+                              "hover:bg-muted/30",
+                              item.pinjamanBulanIni > 0 || item.cicilanPokok > 0 || item.saldoPiutang > 0
+                                ? "bg-orange-50 dark:bg-orange-950/20" 
+                                : ""
+                            )}
+                          >
+                            <TableCell className="font-medium border-r">
+                              {`${item.bulanNama} ${item.tahun}`}
+                            </TableCell>
+                            
+                            <TableCell className={cn(
+                              "text-right",
+                              item.saldoPiutang > 0 ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {formatCurrency(item.saldoPiutang)}
+                            </TableCell>
+                            
+                            <TableCell className={cn(
+                              "text-right border-r",
+                              item.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {item.pinjamanBulanIni > 0 
+                                ? formatCurrency(item.pinjamanBulanIni) 
+                                : "-"}
+                            </TableCell>
+                            
+                            <TableCell className={cn(
+                              "text-right border-r",
+                              item.cicilanPokok > 0 ? "text-green-600 dark:text-green-400 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {item.cicilanPokok > 0 
+                                ? formatCurrency(item.cicilanPokok) 
+                                : "-"}
+                            </TableCell>
+                            
+                            <TableCell className={cn(
+                              "text-right font-semibold",
+                              sisaHutang > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
+                            )}>
+                              {formatCurrency(sisaHutang)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                       
                       <TableRow className="bg-muted/50 font-bold border-t-2">
                         <TableCell className="font-bold">
                           TOTAL {selectedTahun}
+                        </TableCell>
+                        
+                        <TableCell className="text-right font-bold border-r">
+                          {formatCurrency(
+                            historyDisplayData.length > 0 
+                              ? historyDisplayData[0].saldoPiutang 
+                              : 0
+                          )}
                         </TableCell>
                         
                         <TableCell className={cn(
@@ -1235,7 +1256,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                         <TableCell className="text-right font-bold">
                           {formatCurrency(
                             historyDisplayData.length > 0 
-                              ? historyDisplayData[historyDisplayData.length - 1].saldoPiutang 
+                              ? historyDisplayData[historyDisplayData.length - 1].saldoPiutang + yearlyTotalsCicilan.pinjamanBulanIni - yearlyTotalsCicilan.cicilanPokok
                               : 0
                           )}
                         </TableCell>
