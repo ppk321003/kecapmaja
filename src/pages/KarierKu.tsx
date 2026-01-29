@@ -78,7 +78,6 @@ class DateParser {
       if (!isNaN(date.getTime())) return date;
     }
 
-    // Mapping nama bulan Indonesia ke angka
     const bulanMap: {
       [key: string]: number;
     } = {
