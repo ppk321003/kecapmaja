@@ -105,8 +105,6 @@ class DateParser {
       'december': 11
     };
     const cleanedDate = tanggal.toLowerCase().trim();
-
-    // Format: "11 April 2023"
     const parts = cleanedDate.split(' ');
     if (parts.length === 3) {
       const day = parseInt(parts[0]);
