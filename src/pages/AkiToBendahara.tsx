@@ -11,6 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { utils, writeFile } from 'xlsx';
+import { useMemo } from "react";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useMemo } from "react";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 interface DataRow {
   no: number;
@@ -25,6 +29,11 @@ interface DataRow {
 const SPREADSHEET_ID = "1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
 
 export default function AkiToBendahara() {
+  const satkerConfig = useSatkerConfigContext();
+  const satkerNama = useMemo(() => {
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+  }, [satkerConfig?.configs]);
+  
   const [data, setData] = useState<DataRow[]>([]);
   const [filteredData, setFilteredData] = useState<DataRow[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -558,7 +567,7 @@ export default function AkiToBendahara() {
         <div>
           <h1 className="text-3xl font-bold text-red-500">Kecap to Bendahara</h1>
           <p className="text-muted-foreground mt-2">
-            Rekap Honor Bulanan Mitra Statistik BPS Kabupaten Majalengka
+            Rekap Honor Bulanan Mitra Statistik {satkerNama}
           </p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
@@ -753,7 +762,7 @@ export default function AkiToBendahara() {
             </div>
           </div>
           <CardDescription>
-            Data rekap honor bulanan mitra statistik BPS Kabupaten Majalengka
+            Data rekap honor bulanan mitra statistik {satkerNama}
           </CardDescription>
         </CardHeader>
         <CardContent>

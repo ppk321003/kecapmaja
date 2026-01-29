@@ -10,7 +10,7 @@ import { UserCog, Plus, Pencil, Trash2, Users, Search, ArrowUpDown, ChevronLeft,
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -95,6 +95,12 @@ interface Mitra extends MitraFormData {
 }
 
 export default function EntriPengelola() {
+  const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
+  const satkerNama = useMemo(() => {
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+  }, [satkerConfig?.configs]);
+  
   // State untuk semua data
   const [pengelola, setPengelola] = useState<Pengelola[]>([]);
   const [organik, setOrganik] = useState<Organik[]>([]);
@@ -875,7 +881,7 @@ export default function EntriPengelola() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Users className="h-6 w-6 text-primary" />
-                <CardTitle>Organik BPS Kabupaten Majalengka</CardTitle>
+                <CardTitle>Organik {satkerNama}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>

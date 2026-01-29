@@ -110,6 +110,11 @@ export default function RekapSPKBAST() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   
+  // Dapatkan satker_nama dari satker config (column B)
+  const satkerNama = useMemo(() => {
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kab. Majalengka';
+  }, [satkerConfig?.configs]);
+  
   // Dapatkan sheet ID berdasarkan satker user untuk entrikegiatan
   const userSheetId = useMemo(() => {
     const sheetId = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
@@ -1047,7 +1052,7 @@ export default function RekapSPKBAST() {
       <div>
         <h1 className="text-3xl font-bold text-red-500">Cek SBML & Rekap SPK-BAST</h1>
         <p className="text-muted-foreground mt-2">
-          Monitoring Cek SBML dan Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor BPS Kab. Majalengka
+          Monitoring Cek SBML dan Rekapitulasi Surat Perintah Kerja dan Berita Acara Serah Terima yang sudah diserahkan ke Kantor {satkerNama}
         </p>
       </div>
 

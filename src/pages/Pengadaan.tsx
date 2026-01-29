@@ -14,7 +14,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -56,6 +56,9 @@ export default function InputPengadaan() {
   // Get satker-specific spreadsheet ID from context
   const satkerContext = useSatkerConfigContext();
   const spreadsheetId = satkerContext?.getUserSatkerSheetId('pengadaan') || DEFAULT_PENGADAAN_SPREADSHEET_ID;
+  const satkerNama = useMemo(() => {
+    return satkerContext?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+  }, [satkerContext?.configs]);
   
   console.log('[InputPengadaan] Using spreadsheetId:', spreadsheetId);
   
@@ -911,7 +914,7 @@ export default function InputPengadaan() {
             Input Data Pengadaan
           </h1>
           <p className="text-muted-foreground mt-2">
-            Sistem rekam data pengadaan barang/jasa BPS Kabupaten Majalengka
+            Sistem rekam data pengadaan barang/jasa {satkerNama}
             {currentUser && (
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
                 Login sebagai: {currentUser.role}

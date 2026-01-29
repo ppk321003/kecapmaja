@@ -35,8 +35,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const baseMenuItems = [
   { title: "Beranda", url: "/", icon: Home },
@@ -71,6 +72,7 @@ const eDokumenSubItems = [
 export function AppSidebar() {
   const { open } = useSidebar();
   const { user } = useAuth();
+  const satkerContext = useSatkerConfigContext();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
   const isEDokumenActive = currentPath.startsWith("/e-dokumen");
   const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
@@ -80,6 +82,11 @@ export function AppSidebar() {
   
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
+  
+  // Get satker_nama from satker config (column B)
+  const satkerNama = useMemo(() => {
+    return satkerContext?.configs?.[0]?.satker_nama || 'BPS Kab. Majalengka';
+  }, [satkerContext?.configs]);
   
   // Conditionally build main menu items based on satker
   const mainMenuItems = isSatker3210 
@@ -517,7 +524,7 @@ export function AppSidebar() {
             <Database className="h-4 w-4 text-white" />
             {open && (
               <div className="text-xs font-light">
-                <p className="font-medium text-white">BPS Kab. Majalengka</p>
+                <p className="font-medium text-white">{satkerNama}</p>
                 <p className="text-[10px] opacity-70 text-white/80">v1.0.0</p>
               </div>
             )}
