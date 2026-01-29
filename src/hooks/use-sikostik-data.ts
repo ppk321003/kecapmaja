@@ -513,29 +513,34 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('usul_pengambilan', SIKOSTIK_SPREADSHEET_ID);
-      return data
+      console.log('Raw usul_pengambilan data:', data);
+      
+      const mapped = data
         .map((row: any) => {
-          // Handle different column name variations
-          const jumlahRaw = row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan'] || 0;
-          const jumlahNum = typeof jumlahRaw === 'string' ? parseNum(jumlahRaw) : jumlahRaw;
+          // Handle different column name variations - try shorter names first
+          const jumlahRaw = row.Jumlah || row['Jumlah'] || row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan'] || 0;
+          const jumlahNum = typeof jumlahRaw === 'string' ? parseNum(jumlahRaw) : (typeof jumlahRaw === 'number' ? jumlahRaw : parseNum(String(jumlahRaw)));
           
-          const tanggalRaw = row.tanggalUsul || row['tanggal_usul'] || row['Tanggal Usul'] || '';
-          const tanggalFormatted = tanggalRaw ? new Date(tanggalRaw).toISOString().split('T')[0] : '';
+          const alasanRaw = row.Alasan || row['Alasan'] || row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '';
+          const tanggalRaw = row['Tanggal Usul'] || row.tanggalUsul || row['tanggal_usul'] || '';
           
           return {
-            id: row.id || row['ID'] || '',
-            anggotaId: row.anggotaId || row['anggota_id'] || row['Anggota ID'] || '',
-            nama: row.nama || row['Nama'] || '',
-            nip: row.nip || row['NIP'] || '',
-            jenisPengambilan: row.jenisPengambilan || row['jenis_pengambilan'] || row['Jenis Pengambilan'] || 'Sukarela',
+            id: row.ID || row.id || row['ID'] || '',
+            anggotaId: row['Anggota ID'] || row.anggotaId || row['anggota_id'] || '',
+            nama: row.Nama || row.nama || row['Nama'] || '',
+            nip: row.NIP || row.nip || row['NIP'] || '',
+            jenisPengambilan: row['Jenis Pengambilan'] || row.jenisPengambilan || row['jenis_pengambilan'] || 'Sukarela',
             jumlahPengambilan: jumlahNum,
-            alasanPengambilan: row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '',
-            tanggalUsul: tanggalFormatted,
-            status: row.status || row['Status'] || 'Proses',
-            keterangan: row.keterangan || row['Keterangan'] || ''
+            alasanPengambilan: String(alasanRaw),
+            tanggalUsul: String(tanggalRaw),
+            status: row.Status || row.status || row['Status'] || 'Proses',
+            keterangan: row.Keterangan || row.keterangan || row['Keterangan'] || ''
           };
         })
         .filter(item => item.nama && item.nip);
+      
+      console.log('Mapped usul_pengambilan:', mapped);
+      return mapped;
     } catch (err: any) {
       setError(err.message);
       return [];

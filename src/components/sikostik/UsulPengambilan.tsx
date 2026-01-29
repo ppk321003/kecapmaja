@@ -272,7 +272,13 @@ export const UsulPengambilan = () => {
                         {item.alasanPengambilan || '-'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(item.tanggalUsul).toLocaleDateString('id-ID')}
+                        {item.tanggalUsul 
+                          ? new Date(item.tanggalUsul).toLocaleDateString('id-ID', { 
+                              year: 'numeric', 
+                              month: '2-digit', 
+                              day: '2-digit' 
+                            })
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <span className={cn('px-2 py-1 rounded-md text-sm font-medium inline-block', getStatusColor(item.status))}>
