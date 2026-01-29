@@ -302,6 +302,22 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     return historyDisplayData.filter(m => m.totalSimpanan > 0).length;
   }, [historyDisplayData]);
 
+  const yearlyTotalsCicilan = useMemo(() => {
+    return historyDisplayData.reduce((acc, month) => ({
+      pinjamanBulanIni: acc.pinjamanBulanIni + month.pinjamanBulanIni,
+      cicilanPokok: acc.cicilanPokok + month.cicilanPokok,
+    }), {
+      pinjamanBulanIni: 0,
+      cicilanPokok: 0,
+    });
+  }, [historyDisplayData]);
+
+  const activeMonthsCountCicilan = useMemo(() => {
+    return historyDisplayData.filter(m => 
+      m.pinjamanBulanIni > 0 || m.cicilanPokok > 0
+    ).length;
+  }, [historyDisplayData]);
+
   const grandTotalPeminjamanPengambilan = yearlyTotalsPeminjamanPengambilan.pinjamanBulanIni + yearlyTotalsPeminjamanPengambilan.totalPengambilan;
 
   const grandTotalSimpanan = yearlyTotalsSimpanan.totalSimpanan;
@@ -1118,6 +1134,118 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
               )}
             </CardContent>
           </Card>
+
+          {/* Riwayat Cicilan Card */}
+          {activeMonthsCountCicilan > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <HandCoins className="h-5 w-5 text-orange-600" />
+                    <CardTitle>Riwayat Cicilan</CardTitle>
+                  </div>
+                </div>
+                <CardDescription>
+                  Data cicilan pinjaman untuk tahun {selectedTahun}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="rounded-lg border overflow-hidden overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold" style={{ minWidth: '120px' }}>Bulan</TableHead>
+                        <TableHead className="text-right font-semibold border-r" style={{ minWidth: '130px' }}>
+                          Pinjaman Bulan Ini
+                        </TableHead>
+                        <TableHead className="text-right font-semibold border-r" style={{ minWidth: '130px' }}>
+                          Cicilan Pokok
+                        </TableHead>
+                        <TableHead className="text-right font-semibold" style={{ minWidth: '130px' }}>
+                          Saldo Piutang
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    
+                    <TableBody>
+                      {historyDisplayData.filter(m => m.pinjamanBulanIni > 0 || m.cicilanPokok > 0).map((item) => (
+                        <TableRow key={item.id} 
+                          className={cn(
+                            "hover:bg-muted/30",
+                            item.pinjamanBulanIni > 0 || item.cicilanPokok > 0 
+                              ? "bg-orange-50 dark:bg-orange-950/20" 
+                              : ""
+                          )}
+                        >
+                          <TableCell className="font-medium border-r">
+                            {`${item.bulanNama} ${item.tahun}`}
+                          </TableCell>
+                          
+                          <TableCell className={cn(
+                            "text-right font-semibold border-r",
+                            item.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
+                          )}>
+                            {item.pinjamanBulanIni > 0 
+                              ? formatCurrency(item.pinjamanBulanIni) 
+                              : "-"}
+                          </TableCell>
+                          
+                          <TableCell className={cn(
+                            "text-right font-semibold border-r",
+                            item.cicilanPokok > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                          )}>
+                            {item.cicilanPokok > 0 
+                              ? formatCurrency(item.cicilanPokok) 
+                              : "-"}
+                          </TableCell>
+                          
+                          <TableCell className={cn(
+                            "text-right font-semibold",
+                            item.saldoPiutang > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                          )}>
+                            {formatCurrency(item.saldoPiutang)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="bg-muted/50 font-bold border-t-2">
+                        <TableCell className="font-bold">
+                          TOTAL {selectedTahun}
+                        </TableCell>
+                        
+                        <TableCell className={cn(
+                          "text-right font-bold border-r",
+                          yearlyTotalsCicilan.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
+                        )}>
+                          {yearlyTotalsCicilan.pinjamanBulanIni > 0 
+                            ? formatCurrency(yearlyTotalsCicilan.pinjamanBulanIni) 
+                            : "-"}
+                        </TableCell>
+                        
+                        <TableCell className={cn(
+                          "text-right font-bold border-r",
+                          yearlyTotalsCicilan.cicilanPokok > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )}>
+                          {yearlyTotalsCicilan.cicilanPokok > 0 
+                            ? formatCurrency(yearlyTotalsCicilan.cicilanPokok) 
+                            : "-"}
+                        </TableCell>
+                        
+                        <TableCell className="text-right font-bold">
+                          {formatCurrency(
+                            historyDisplayData.length > 0 
+                              ? historyDisplayData[historyDisplayData.length - 1].saldoPiutang 
+                              : 0
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>
