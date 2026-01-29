@@ -28,7 +28,7 @@ const SPREADSHEET_ID = "1XtWKO61yo5WhtsisPUNO-xsT3z1CfUF2C7B0Kbpnj88";
 export default function AkiToBendahara() {
   const satkerConfig = useSatkerConfigContext();
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
   }, [satkerConfig?.configs]);
   
   const [data, setData] = useState<DataRow[]>([]);

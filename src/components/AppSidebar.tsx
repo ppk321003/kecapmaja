@@ -85,7 +85,7 @@ export function AppSidebar() {
   
   // Get satker_nama from satker config (column B)
   const satkerNama = useMemo(() => {
-    return satkerContext?.configs?.[0]?.satker_nama || 'BPS Kab. Majalengka';
+    return satkerContext?.configs?.[0]?.satker_nama || 'BPS';
   }, [satkerContext?.configs]);
   
   // Conditionally build main menu items based on satker

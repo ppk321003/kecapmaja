@@ -70,7 +70,7 @@ export default function SPKBast() {
       url: "/spk-bast/entri-sbml",
       icon: DollarSign,
       description:
-        "Riwayat Standar Biaya Masukan Lainnya (SBML) BPS Kabupaten Majalengka",
+        "Riwayat Standar Biaya Masukan Lainnya (SBML)",
     },
   ];
 

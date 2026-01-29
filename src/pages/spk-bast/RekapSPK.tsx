@@ -112,7 +112,7 @@ export default function RekapSPKBAST() {
   
   // Dapatkan satker_nama dari satker config (column B)
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kab. Majalengka';
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
   }, [satkerConfig?.configs]);
   
   // Dapatkan sheet ID berdasarkan satker user untuk entrikegiatan

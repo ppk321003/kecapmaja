@@ -98,7 +98,7 @@ export default function EntriPengelola() {
   const { user } = useAuth();
   const satkerConfig = useSatkerConfigContext();
   const satkerNama = useMemo(() => {
-    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+    return satkerConfig?.configs?.[0]?.satker_nama || 'BPS';
   }, [satkerConfig?.configs]);
   
   // State untuk semua data

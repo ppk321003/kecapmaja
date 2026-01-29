@@ -57,7 +57,7 @@ export default function InputPengadaan() {
   const satkerContext = useSatkerConfigContext();
   const spreadsheetId = satkerContext?.getUserSatkerSheetId('pengadaan') || DEFAULT_PENGADAAN_SPREADSHEET_ID;
   const satkerNama = useMemo(() => {
-    return satkerContext?.configs?.[0]?.satker_nama || 'BPS Kabupaten Majalengka';
+    return satkerContext?.configs?.[0]?.satker_nama || 'BPS';
   }, [satkerContext?.configs]);
   
   console.log('[InputPengadaan] Using spreadsheetId:', spreadsheetId);
