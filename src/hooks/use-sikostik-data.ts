@@ -7,6 +7,7 @@ import {
   LimitAnggota, 
   UsulPinjaman, 
   UsulPerubahan,
+  UsulPengambilan,
   NIPInfo
 } from '@/types/sikostik';
 import { parseIndonesianNumber, roundToThousand } from '@/lib/parseNumber';
@@ -507,6 +508,70 @@ export const useSikostikData = () => {
     }
   }, [appendToSheet]);
 
+  const fetchUsulPengambilan = useCallback(async (): Promise<UsulPengambilan[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchSheet('usul_pengambilan', SIKOSTIK_SPREADSHEET_ID);
+      return data
+        .map((row: any) => ({
+          id: row.id || row['ID'] || '',
+          anggotaId: row.anggotaId || row['anggota_id'] || row['Anggota ID'] || '',
+          nama: row.nama || row['Nama'] || '',
+          nip: row.nip || row['NIP'] || '',
+          jenisPengambilan: row.jenisPengambilan || row['jenis_pengambilan'] || row['Jenis Pengambilan'] || 'Sukarela',
+          jumlahPengambilan: parseNum(row.jumlahPengambilan || row['jumlah_pengambilan'] || row['Jumlah Pengambilan']),
+          alasanPengambilan: row.alasanPengambilan || row['alasan_pengambilan'] || row['Alasan Pengambilan'] || '',
+          tanggalUsul: row.tanggalUsul || row['tanggal_usul'] || row['Tanggal Usul'] || '',
+          status: row.status || row['Status'] || 'Proses',
+          keterangan: row.keterangan || row['Keterangan'] || ''
+        }))
+        .filter(item => item.nama && item.nip);
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSheet]);
+
+  const submitUsulPengambilan = useCallback(async (data: {
+    anggotaId: string;
+    nama: string;
+    nip: string;
+    jenisPengambilan: 'Sukarela' | 'Lebaran' | 'Lainnya';
+    jumlahPengambilan: number;
+    alasanPengambilan: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const id = `UPG-${Date.now()}`;
+      const tanggalUsul = new Date().toISOString().split('T')[0];
+      const values = [[
+        String(id),
+        String(data.anggotaId),
+        String(data.nama),
+        String(data.nip),
+        String(data.jenisPengambilan),
+        String(data.jumlahPengambilan),
+        String(data.alasanPengambilan),
+        String(tanggalUsul),
+        'Proses'
+      ]];
+      
+      console.log('submitUsulPengambilan values:', values[0]);
+      await appendToSheet('usul_pengambilan', values);
+      return { success: true, id };
+    } catch (err: any) {
+      console.error('submitUsulPengambilan error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  }, [appendToSheet]);
+
   return {
     loading,
     error,
@@ -515,9 +580,10 @@ export const useSikostikData = () => {
     fetchLimitAnggota,
     fetchUsulPinjaman,
     fetchUsulPerubahan,
+    fetchUsulPengambilan,
     submitUsulPinjaman,
-    submitUsulPerubahan
-    ,
+    submitUsulPerubahan,
+    submitUsulPengambilan,
     userSheetId
   };
   

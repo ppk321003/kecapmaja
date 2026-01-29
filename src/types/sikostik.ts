@@ -86,6 +86,19 @@ export interface UsulPerubahan {
   keterangan: string;
 }
 
+export interface UsulPengambilan {
+  id: string;
+  anggotaId: string;
+  nama: string;
+  nip: string;
+  jenisPengambilan: 'Sukarela' | 'Lebaran' | 'Lainnya';
+  jumlahPengambilan: number;
+  alasanPengambilan: string;
+  tanggalUsul: string;
+  status: 'Proses' | 'Disetujui' | 'Ditolak';
+  keterangan: string;
+}
+
 export interface RiwayatTransaksi {
   id: string;
   anggotaId: string;
