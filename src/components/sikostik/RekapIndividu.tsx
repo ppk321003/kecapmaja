@@ -329,6 +329,27 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     ).length;
   }, [historyDisplayData]);
 
+  // Visible cicilan months follow current time: if selected year is current year,
+  // only include months up to current month. If selected year is in the past, include all months.
+  const visibleCicilanMonths = useMemo(() => {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    return historyDisplayData.filter(m => {
+      if (m.tahun !== selectedTahun) return false;
+      if (selectedTahun < curYear) return true;
+      // selectedTahun === curYear
+      return m.bulan <= curMonth;
+    });
+  }, [historyDisplayData, selectedTahun]);
+
+  const visibleTotalsCicilan = useMemo(() => {
+    return visibleCicilanMonths.reduce((acc, m) => ({
+      pinjamanBulanIni: acc.pinjamanBulanIni + (m.pinjamanBulanIni || 0),
+      cicilanPokok: acc.cicilanPokok + (m.cicilanPokok || 0)
+    }), { pinjamanBulanIni: 0, cicilanPokok: 0 });
+  }, [visibleCicilanMonths]);
+
   const grandTotalPeminjamanPengambilan = yearlyTotalsPeminjamanPengambilan.pinjamanBulanIni + yearlyTotalsPeminjamanPengambilan.totalPengambilan;
 
   const grandTotalSimpanan = yearlyTotalsSimpanan.totalSimpanan;
@@ -1183,7 +1204,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                     </TableHeader>
                     
                     <TableBody>
-                      {historyDisplayData.map((item) => {
+                      {visibleCicilanMonths.map((item) => {
                         const sisaHutang = item.saldoPiutang + item.pinjamanBulanIni - item.cicilanPokok;
                         return (
                           <TableRow key={item.id} 
@@ -1240,8 +1261,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                         
                         <TableCell className="text-right font-bold border-r">
                           {formatCurrency(
-                            historyDisplayData.length > 0 
-                              ? historyDisplayData[0].saldoPiutang 
+                            visibleCicilanMonths.length > 0 
+                              ? visibleCicilanMonths[0].saldoPiutang 
                               : 0
                           )}
                         </TableCell>
@@ -1250,8 +1271,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                           "text-right font-bold border-r",
                           yearlyTotalsCicilan.pinjamanBulanIni > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"
                         )}>
-                          {yearlyTotalsCicilan.pinjamanBulanIni > 0 
-                            ? formatCurrency(yearlyTotalsCicilan.pinjamanBulanIni) 
+                          {visibleTotalsCicilan.pinjamanBulanIni > 0 
+                            ? formatCurrency(visibleTotalsCicilan.pinjamanBulanIni) 
                             : "-"}
                         </TableCell>
                         
@@ -1259,15 +1280,15 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                           "text-right font-bold border-r",
                           yearlyTotalsCicilan.cicilanPokok > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                         )}>
-                          {yearlyTotalsCicilan.cicilanPokok > 0 
-                            ? formatCurrency(yearlyTotalsCicilan.cicilanPokok) 
+                          {visibleTotalsCicilan.cicilanPokok > 0 
+                            ? formatCurrency(visibleTotalsCicilan.cicilanPokok) 
                             : "-"}
                         </TableCell>
                         
                         <TableCell className="text-right font-bold">
                           {formatCurrency(
-                            historyDisplayData.length > 0 
-                              ? historyDisplayData[historyDisplayData.length - 1].saldoPiutang + yearlyTotalsCicilan.pinjamanBulanIni - yearlyTotalsCicilan.cicilanPokok
+                            visibleCicilanMonths.length > 0 
+                              ? visibleCicilanMonths[visibleCicilanMonths.length - 1].saldoPiutang + visibleTotalsCicilan.pinjamanBulanIni - visibleTotalsCicilan.cicilanPokok
                               : 0
                           )}
                         </TableCell>
