@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, RefreshCw, AlertCircle, Plus } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Plus, FileText, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatNIP } from '@/hooks/use-sikostik-data';
 import { UsulPengambilan as UsulPengambilanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
@@ -90,6 +90,26 @@ export const UsulPengambilan = () => {
     }
   };
 
+  const StatCard = ({ label, value, icon: Icon, color, onClick, isActive }: any) => (
+    <Card 
+      className={cn(
+        "cursor-pointer transition-all hover:shadow-md",
+        isActive && "ring-2 ring-primary"
+      )}
+      onClick={onClick}
+    >
+      <CardContent className="p-5 flex items-center gap-4">
+        <div className={cn("p-3 rounded-lg", color)}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -140,95 +160,56 @@ export const UsulPengambilan = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Pengajuan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Dalam Proses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.proses}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Disetujui
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.disetujui}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Ditolak
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.ditolak}</div>
-          </CardContent>
-        </Card>
+      {/* Stats - Clickable Filter Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard 
+          label="Total Pengajuan" 
+          value={stats.total} 
+          icon={FileText} 
+          color="bg-primary/10 text-primary"
+          onClick={() => setStatusFilter('all')}
+          isActive={statusFilter === 'all'}
+        />
+        <StatCard 
+          label="Proses" 
+          value={stats.proses} 
+          icon={Clock} 
+          color="bg-yellow-100 text-yellow-600"
+          onClick={() => setStatusFilter('Proses')}
+          isActive={statusFilter === 'Proses'}
+        />
+        <StatCard 
+          label="Disetujui" 
+          value={stats.disetujui} 
+          icon={CheckCircle} 
+          color="bg-green-100 text-green-600"
+          onClick={() => setStatusFilter('Disetujui')}
+          isActive={statusFilter === 'Disetujui'}
+        />
+        <StatCard 
+          label="Ditolak" 
+          value={stats.ditolak} 
+          icon={XCircle} 
+          color="bg-destructive/10 text-destructive"
+          onClick={() => setStatusFilter('Ditolak')}
+          isActive={statusFilter === 'Ditolak'}
+        />
       </div>
 
-      {/* Search dan Filter */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama atau NIP..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadData}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Segarkan
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Status Filter */}
-      <div className="flex gap-2">
-        {['all', 'Proses', 'Disetujui', 'Ditolak'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={cn(
-              'px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer',
-              statusFilter === status
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            {status === 'all' ? 'Semua Status' : status}
-          </button>
-        ))}
+      {/* Search dan Refresh */}
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cari nama atau NIP..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+        </Button>
       </div>
 
       {/* Table */}
