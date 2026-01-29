@@ -346,7 +346,7 @@ export default function Home() {
       <section className="prose max-w-none">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Tentang KECAP MAJA</CardTitle>
+            <CardTitle className="text-2xl">Tentang Kecap Maja</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-foreground">
             <p className="text-justify leading-relaxed">
