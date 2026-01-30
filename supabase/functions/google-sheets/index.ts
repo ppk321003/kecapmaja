@@ -1,20 +1,5 @@
-import { createServer } from 'http';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const googlePrivateKeyEnv = process.env.GOOGLE_PRIVATE_KEY;
-const googleServiceAccountEmailEnv = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-
-if (!googlePrivateKeyEnv || !googleServiceAccountEmailEnv) {
-  throw new Error('Environment variables GOOGLE_PRIVATE_KEY and GOOGLE_SERVICE_ACCOUNT_EMAIL must be set');
-}
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_ANON_KEY || ''
-);
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +8,7 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete' | 'aggregate';
+  operation: 'read' | 'append' | 'update' | 'delete';
   range?: string;
   values?: any[][];
   rowIndex?: number;
@@ -36,8 +21,8 @@ async function getAccessToken() {
   let serviceAccountEmail: string;
   
   // Try to parse as JSON first (if full service account JSON is provided)
-  const googlePrivateKeyEnv = process.env.GOOGLE_PRIVATE_KEY;
-  const googleServiceAccountEmailEnv = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
+  const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   
   try {
     // Check if GOOGLE_PRIVATE_KEY contains full JSON
@@ -159,216 +144,144 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
-// Dummy cache functions (replace with actual implementation)
-const cache = new Map<string, { data: any, expiry: number }>();
-
-async function getCachedData(key: string) {
-  const cached = cache.get(key);
-  if (cached && cached.expiry > Date.now()) {
-    return cached.data;
-  }
-  return null;
-}
-
-async function setCachedData(key: string, data: any, ttl: number) {
-  const expiry = Date.now() + ttl * 1000;
-  cache.set(key, { data, expiry });
-}
-
-function aggregateData(values: any[][]) {
-  // Simple aggregation: sum up the first column
-  const sum = values.reduce((acc, row) => acc + (row[0] || 0), 0);
-  return { sum };
-}
-
-const server = createServer(async (req, res) => {
+serve(async (req) => {
   console.log('Google Sheets function invoked');
   
   if (req.method === 'OPTIONS') {
-    res.writeHead(200, corsHeaders);
-    res.end('ok');
-    return;
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  if (req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
+  try {
+    const body = await req.json();
+    console.log('Request body:', JSON.stringify(body));
+    
+    const { spreadsheetId, operation, range, values, rowIndex }: SheetOperation = body;
+    
+    console.log('Getting access token...');
+    const accessToken = await getAccessToken();
 
-    req.on('end', async () => {
-      try {
-        const data = JSON.parse(body);
-        console.log('Request body:', JSON.stringify(data));
-        
-        const { spreadsheetId, operation, range, values, rowIndex }: SheetOperation = data;
-        
-        console.log('Getting access token...');
-        const accessToken = await getAccessToken();
+    const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 
-        const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
+    if (operation === 'read') {
+      console.log(`Reading range: ${range || 'Sheet1'}`);
+      const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json();
+      console.log('Read response:', JSON.stringify(data));
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-        if (operation === 'read') {
-          console.log(`Reading range: ${range || 'Sheet1'}`);
-          const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const data = await response.json();
-          console.log('Read response:', JSON.stringify(data));
-          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(data));
-          return;
+    if (operation === 'append') {
+      console.log(`Appending to range: ${range || 'Sheet1'}`);
+      console.log('Values to append:', JSON.stringify(values));
+      const response = await fetch(
+        `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values }),
         }
-
-        if (operation === 'append') {
-          console.log(`Appending to range: ${range || 'Sheet1'}`);
-          console.log('Values to append:', JSON.stringify(values));
-          const response = await fetch(
-            `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ values }),
-            }
-          );
-          const data = await response.json();
-          console.log('Append response:', JSON.stringify(data));
-          
-          if (!response.ok) {
-            console.error('Append failed:', data);
-            throw new Error(`Append failed: ${JSON.stringify(data)}`);
-          }
-          
-          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(data));
-          return;
-        }
-
-        if (operation === 'update') {
-          // Support both rowIndex-based update and direct range update
-          let updateRange = range || 'Sheet1';
-          
-          if (rowIndex !== undefined) {
-            // Legacy support: if rowIndex is provided, use it with Sheet name
-            const sheetName = range?.split('!')[0] || 'Sheet1';
-            updateRange = `${sheetName}!A${rowIndex}`;
-          }
-          
-          console.log(`Updating range: ${updateRange}`);
-          console.log('Values to update:', JSON.stringify(values));
-          
-          const response = await fetch(
-            `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
-            {
-              method: 'PUT',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ values }),
-            }
-          );
-          const data = await response.json();
-          console.log('Update response:', JSON.stringify(data));
-          
-          if (!response.ok) {
-            console.error('Update failed:', data);
-            throw new Error(`Update failed: ${JSON.stringify(data)}`);
-          }
-          
-          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(data));
-          return;
-        }
-
-        if (operation === 'delete' && rowIndex !== undefined) {
-          console.log(`Deleting row ${rowIndex}`);
-          const sheetId = 0; // Default sheet ID
-          const response = await fetch(
-            `${baseUrl}:batchUpdate`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                requests: [{
-                  deleteDimension: {
-                    range: {
-                      sheetId: sheetId,
-                      dimension: 'ROWS',
-                      startIndex: rowIndex - 1,
-                      endIndex: rowIndex,
-                    },
-                  },
-                }],
-              }),
-            }
-          );
-          const data = await response.json();
-          console.log('Delete response:', JSON.stringify(data));
-          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(data));
-          return;
-        }
-
-        if (operation === 'aggregate') {
-          console.log(`Aggregating data for range: ${range || 'Sheet1'}`);
-
-          // Check cache (if implemented)
-          const cacheKey = `${spreadsheetId}-${range}`;
-          const cachedData = await getCachedData(cacheKey);
-          if (cachedData) {
-            console.log('Cache hit for:', cacheKey);
-            res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(cachedData));
-            return;
-          }
-
-          // Fetch data from Google Sheets
-          const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const data = await response.json();
-
-          if (!response.ok) {
-            console.error('Aggregation failed:', data);
-            throw new Error(`Aggregation failed: ${JSON.stringify(data)}`);
-          }
-
-          // Perform aggregation logic here
-          const aggregatedData = aggregateData(data.values);
-
-          // Cache the result (if caching is implemented)
-          await setCachedData(cacheKey, aggregatedData, 600); // Cache for 10 minutes
-
-          res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(aggregatedData));
-          return;
-        }
-
-        console.error('Invalid operation:', operation);
-        res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid operation' }));
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        console.error('Error in google-sheets function:', errorMessage);
-        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-        res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: errorMessage }));
+      );
+      const data = await response.json();
+      console.log('Append response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        console.error('Append failed:', data);
+        throw new Error(`Append failed: ${JSON.stringify(data)}`);
       }
-    });
-  } else {
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not Found' }));
-  }
-});
+      
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    if (operation === 'update') {
+      // Support both rowIndex-based update and direct range update
+      let updateRange = range || 'Sheet1';
+      
+      if (rowIndex !== undefined) {
+        // Legacy support: if rowIndex is provided, use it with Sheet name
+        const sheetName = range?.split('!')[0] || 'Sheet1';
+        updateRange = `${sheetName}!A${rowIndex}`;
+      }
+      
+      console.log(`Updating range: ${updateRange}`);
+      console.log('Values to update:', JSON.stringify(values));
+      
+      const response = await fetch(
+        `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values }),
+        }
+      );
+      const data = await response.json();
+      console.log('Update response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        console.error('Update failed:', data);
+        throw new Error(`Update failed: ${JSON.stringify(data)}`);
+      }
+      
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (operation === 'delete' && rowIndex !== undefined) {
+      console.log(`Deleting row ${rowIndex}`);
+      const sheetId = 0; // Default sheet ID
+      const response = await fetch(
+        `${baseUrl}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [{
+              deleteDimension: {
+                range: {
+                  sheetId: sheetId,
+                  dimension: 'ROWS',
+                  startIndex: rowIndex - 1,
+                  endIndex: rowIndex,
+                },
+              },
+            }],
+          }),
+        }
+      );
+      const data = await response.json();
+      console.log('Delete response:', JSON.stringify(data));
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.error('Invalid operation:', operation);
+    return new Response(JSON.stringify({ error: 'Invalid operation' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Error in google-sheets function:', errorMessage);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 });

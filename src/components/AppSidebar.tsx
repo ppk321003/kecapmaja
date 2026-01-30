@@ -99,8 +99,8 @@ export function AppSidebar() {
         };
       }
       return item;
-    }).concat(isSatker3210 ? [sikostikMenuItem] : []);
-  }, [satkerContext, isSatker3210]);
+    });
+  }, [satkerContext]);
 
   return (
     <Sidebar
