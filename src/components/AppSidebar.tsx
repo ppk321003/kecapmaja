@@ -42,8 +42,8 @@ import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 const baseMenuItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Usulan Pencairan", url: "/usulan-pencairan", icon: DollarSign },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
+  { title: "Usulan Pencairan", url: "/usulan-pencairan", icon: DollarSign },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
@@ -412,62 +412,9 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
 
-
-          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {additionalMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-                
-                {/* User Management - Only visible for PPK */}
-                {isPPK && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/user-management"
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <UsersRound className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">User Management</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
-          {isSatker3210 && (
-            <SidebarGroup className="px-3 py-2">
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
+                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
+                {isSatker3210 && (
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                       <NavLink
@@ -484,15 +431,9 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
+                )}
 
-          {/* MENU E-DOKUMEN */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+                {/* MENU E-DOKUMEN */}
                 <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
@@ -551,6 +492,52 @@ export function AppSidebar() {
                     </CollapsibleContent>
                   </SidebarMenuItem>
                 </Collapsible>
+
+                {/* User Management - Only visible for PPK */}
+                {isPPK && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/user-management"
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <UsersRound className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">User Management</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
+          <SidebarGroup className="px-3 py-2">
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {additionalMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
