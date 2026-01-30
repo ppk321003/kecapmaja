@@ -48,7 +48,6 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
       );
     }
     
-    // Sorting berdasarkan konfigurasi
     filtered = [...filtered].sort((a, b) => {
       let aValue, bValue;
       
