@@ -62,7 +62,7 @@ interface PedomanItem {
 const pedomanData = (satkerContext) => ({
   utama: [
     {
-      title: "Beranda",
+      title: "Home",
       icon: Home,
       url: "/",
       description: "Halaman utama KECAP MAJA yang menampilkan informasi umum dan ucapan ulang tahun bagi karyawan Badan Pusat Statistik.",
