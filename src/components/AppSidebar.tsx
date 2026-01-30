@@ -525,6 +525,32 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
+          {isSatker3210 && (
+            <SidebarGroup className="px-3 py-2">
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={sikostikMenuItem.url}
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </div>
 
         {/* FOOTER */}
