@@ -102,6 +102,9 @@ export function AppSidebar() {
     });
   }, [satkerContext]);
 
+  console.log("Logged-in user:", user);
+  console.log("isSatker3210:", isSatker3210);
+
   return (
     <Sidebar
       className="border-r border-sidebar-border backdrop-blur-sm"
