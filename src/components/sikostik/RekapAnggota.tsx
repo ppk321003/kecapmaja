@@ -26,9 +26,20 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
   const [isLoading, setIsLoading] = useState(true);
   const loadData = async () => {
     setIsLoading(true);
-    const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
-    setRekapData(data);
-    setIsLoading(false);
+    try {
+      const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      if (Array.isArray(data)) {
+        setRekapData(data);
+      } else {
+        console.error('Invalid data format received from fetchRekapDashboard:', data);
+        setRekapData([]); // Fallback to an empty array
+      }
+    } catch (error) {
+      console.error('Error fetching rekap data:', error);
+      setRekapData([]); // Fallback to an empty array in case of error
+    } finally {
+      setIsLoading(false);
+    }
   };
   useEffect(() => {
     loadData();
