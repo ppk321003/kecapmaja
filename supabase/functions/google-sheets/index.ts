@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete';
+  operation: 'read' | 'append' | 'update' | 'delete' | 'aggregate';
   range?: string;
   values?: any[][];
   rowIndex?: number;
@@ -144,7 +144,29 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
-serve(async (req) => {
+// Dummy cache functions (replace with actual implementation)
+const cache = new Map<string, { data: any, expiry: number }>();
+
+async function getCachedData(key: string) {
+  const cached = cache.get(key);
+  if (cached && cached.expiry > Date.now()) {
+    return cached.data;
+  }
+  return null;
+}
+
+async function setCachedData(key: string, data: any, ttl: number) {
+  const expiry = Date.now() + ttl * 1000;
+  cache.set(key, { data, expiry });
+}
+
+function aggregateData(values: any[][]) {
+  // Simple aggregation: sum up the first column
+  const sum = values.reduce((acc, row) => acc + (row[0] || 0), 0);
+  return { sum };
+}
+
+serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
   if (req.method === 'OPTIONS') {
@@ -266,6 +288,41 @@ serve(async (req) => {
       const data = await response.json();
       console.log('Delete response:', JSON.stringify(data));
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (operation === 'aggregate') {
+      console.log(`Aggregating data for range: ${range || 'Sheet1'}`);
+
+      // Check cache (if implemented)
+      const cacheKey = `${spreadsheetId}-${range}`;
+      const cachedData = await getCachedData(cacheKey);
+      if (cachedData) {
+        console.log('Cache hit for:', cacheKey);
+        return new Response(JSON.stringify(cachedData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Fetch data from Google Sheets
+      const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Aggregation failed:', data);
+        throw new Error(`Aggregation failed: ${JSON.stringify(data)}`);
+      }
+
+      // Perform aggregation logic here
+      const aggregatedData = aggregateData(data.values);
+
+      // Cache the result (if caching is implemented)
+      await setCachedData(cacheKey, aggregatedData, 600); // Cache for 10 minutes
+
+      return new Response(JSON.stringify(aggregatedData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
