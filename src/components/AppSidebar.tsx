@@ -89,9 +89,18 @@ export function AppSidebar() {
   }, [satkerContext]);
   
   // Conditionally build main menu items based on satker
-  const mainMenuItems = isSatker3210 
-    ? [...baseMenuItems, sikostikMenuItem]
-    : baseMenuItems;
+  const mainMenuItems = useMemo(() => {
+    return baseMenuItems.map((item) => {
+      if (item.title.startsWith("Padamel-3210")) {
+        const satkerId = satkerContext?.getUserSatkerConfig()?.satker_id || "3210";
+        return {
+          ...item,
+          title: `Padamel-${satkerId} | Mitra Kepka`,
+        };
+      }
+      return item;
+    });
+  }, [satkerContext]);
 
   return (
     <Sidebar
