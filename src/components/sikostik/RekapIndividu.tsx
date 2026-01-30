@@ -105,9 +105,15 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
   const loadRekapData = async () => {
     try {
       const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
-      setRekapList(rekap);
+      if (Array.isArray(rekap)) {
+        setRekapList(rekap);
+      } else {
+        console.error('Invalid data format received from fetchRekapDashboard:', rekap);
+        setRekapList([]); // Fallback to an empty array
+      }
     } catch (err) {
       console.error('Failed to load rekap data:', err);
+      setRekapList([]); // Fallback to an empty array in case of error
     }
   };
 
