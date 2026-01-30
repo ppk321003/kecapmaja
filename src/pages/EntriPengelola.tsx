@@ -128,10 +128,10 @@ export default function EntriPengelola() {
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; nama: string } | null>(null);
 
   const { toast } = useToast();
-  const satkerContext2 = useSatkerConfigContext();
+  const satkerContext = useSatkerConfigContext();
   
   // Get satker-specific MASTER sheet ID
-  const masterSpreadsheetId = satkerContext2?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
   
   console.log('[EntriPengelola] Using satker-specific MASTER sheet:', {
     user_satker: user?.satker,
@@ -675,7 +675,7 @@ export default function EntriPengelola() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Padamel-3210 | Mitra Kepka</h1>
+          <h1 className="text-3xl font-bold text-red-500">{`Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'} | Mitra Kepka`}</h1>
           <p className="text-muted-foreground mt-2">
             Kelola data pengelola anggaran, organik BPS, dan mitra Kepka
           </p>

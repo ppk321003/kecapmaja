@@ -59,7 +59,7 @@ interface PedomanItem {
   accessInfo?: string;
 }
 
-const pedomanData = {
+const pedomanData = (satkerContext) => ({
   utama: [
     {
       title: "Beranda",
@@ -415,12 +415,12 @@ const pedomanData = {
       accessInfo: "Akses khusus untuk Bendahara dan Admin",
     },
     {
-      title: "Padamel-3210 | Mitra Kepka",
+      title: `Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'} | Mitra Kepka`,
       icon: Users,
       url: "/entri-pengelola",
-      description: "Kelola data Pengelola Anggaran (Padamel-3210) dan Pegawai Organik BPS Kabupaten Majalengka.",
+      description: `Kelola data Pengelola Anggaran (Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'}) dan Pegawai Organik BPS Kabupaten Majalengka.`,
       features: [
-        "Tab Padamel-3210: Data pengelola anggaran (PPK, PPSPM, Bendahara)",
+        `Tab Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'}: Data pengelola anggaran (PPK, PPSPM, Bendahara)`,
         "Tab Organik: Data pegawai BPS",
         "Tambah, lihat, edit, dan hapus data",
         "Validasi NIP dan data pegawai",
@@ -434,7 +434,7 @@ const pedomanData = {
       ],
     },
   ],
-};
+});
 
 const tabConfig = [
   { value: "utama", label: "Beranda", icon: Home, color: "text-blue-500" },
@@ -449,6 +449,7 @@ export default function Pedoman() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("utama");
   const satkerContext = useSatkerConfigContext();
+  const pedoman = pedomanData(satkerContext);
   const satkerNama = useMemo(() => satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS', [satkerContext]);
 
   const applySatker = (text: string | undefined) => {
@@ -570,37 +571,37 @@ export default function Pedoman() {
         {/* Konten Tab - Tanpa ScrollArea yang membatasi tinggi */}
         <TabsContent value="utama" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.utama.map(renderPedomanCard)}
+            {pedoman.utama.map(renderPedomanCard)}
           </div>
         </TabsContent>
 
         <TabsContent value="spkBast" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.spkBast.map(renderPedomanCard)}
+            {pedoman.spkBast.map(renderPedomanCard)}
           </div>
         </TabsContent>
 
         <TabsContent value="eDokumen" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.eDokumen.map(renderPedomanCard)}
+            {pedoman.eDokumen.map(renderPedomanCard)}
           </div>
         </TabsContent>
 
         <TabsContent value="karirJadwal" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.karirJadwal.map(renderPedomanCard)}
+            {pedoman.karirJadwal.map(renderPedomanCard)}
           </div>
         </TabsContent>
 
         <TabsContent value="linkersPengadaan" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.linkersPengadaan.map(renderPedomanCard)}
+            {pedoman.linkersPengadaan.map(renderPedomanCard)}
           </div>
         </TabsContent>
 
         <TabsContent value="lainnya" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-            {pedomanData.lainnya.map(renderPedomanCard)}
+            {pedoman.lainnya.map(renderPedomanCard)}
           </div>
         </TabsContent>
       </Tabs>
