@@ -88,9 +88,7 @@ export const FormPengajuanPengambilan = ({
   }, [jenisPengambilan, simpananBreakdown]);
 
   const handleJumlahChange = (value: string) => {
-    // Remove non-digit characters
     const numericValue = value.replace(/\D/g, '');
-    // Format with thousand separator
     const formatted = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     setJumlahPengambilan(formatted);
   };
