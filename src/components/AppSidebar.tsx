@@ -417,72 +417,6 @@ export function AppSidebar() {
           </SidebarGroup>
 
 
-          {/* MENU E-DOKUMEN */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        className={
-                          isEDokumenActive
-                            ? "relative text-white font-semibold transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-white before:rounded-r-md"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <FolderOpen className="h-4 w-4 text-white transition-transform duration-200" />
-                        {open && <span className="font-medium">e-Dokumen</span>}
-                        {open && (
-                          <ChevronDown
-                            className="ml-auto h-4 w-4 text-white transition-transform duration-300"
-                            style={{
-                              transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)",
-                            }}
-                          />
-                        )}
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent className="mt-1">
-                      <SidebarMenuSub className="ml-4 border-l border-white/20 pl-2 space-y-1">
-                        {eDokumenSubItems.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild>
-                              {subItem.external ? (
-                                <a
-                                  href={subItem.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-white/80 hover:text-white transition-all duration-200 flex items-center gap-2 group"
-                                >
-                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
-                                  <span className="text-sm font-light">{subItem.title}</span>
-                                </a>
-                              ) : (
-                                <NavLink
-                                  to={subItem.url}
-                                  className={({ isActive }) =>
-                                    isActive
-                                      ? "text-white font-medium transition-all duration-200"
-                                      : "text-white/80 hover:text-white transition-all duration-200"
-                                  }
-                                >
-                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
-                                  <span className="text-sm font-light">{subItem.title}</span>
-                                </NavLink>
-                              )}
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
           {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
           <SidebarGroup className="px-3 py-2">
             <SidebarGroupContent>
@@ -554,18 +488,84 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           )}
-        </div>
 
-        {/* FOOTER */}
-        <div className="mt-auto px-5 py-4 border-t border-white/20">
-          <div className="flex items-center gap-2 text-white/70">
-            <Database className="h-4 w-4 text-white" />
-            {open && (
-              <div className="text-xs font-light">
-                <p className="font-medium text-white">{satkerNama}</p>
-                <p className="text-[10px] opacity-70 text-white/80">v1.0.0</p>
-              </div>
-            )}
+          {/* MENU E-DOKUMEN */}
+          <SidebarGroup className="px-3 py-2">
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        className={
+                          isEDokumenActive
+                            ? "relative text-white font-semibold transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-white before:rounded-r-md"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <FolderOpen className="h-4 w-4 text-white transition-transform duration-200" />
+                        {open && <span className="font-medium">e-Dokumen</span>}
+                        {open && (
+                          <ChevronDown
+                            className="ml-auto h-4 w-4 text-white transition-transform duration-300"
+                            style={{
+                              transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        )}
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent className="mt-1">
+                      <SidebarMenuSub className="ml-4 border-l border-white/20 pl-2 space-y-1">
+                        {eDokumenSubItems.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton asChild>
+                              {subItem.external ? (
+                                <a
+                                  href={subItem.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-white/80 hover:text-white transition-all duration-200 flex items-center gap-2 group"
+                                >
+                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
+                                  <span className="text-sm font-light">{subItem.title}</span>
+                                </a>
+                              ) : (
+                                <NavLink
+                                  to={subItem.url}
+                                  className={({ isActive }) =>
+                                    isActive
+                                      ? "text-white font-medium transition-all duration-200"
+                                      : "text-white/80 hover:text-white transition-all duration-200"
+                                  }
+                                >
+                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
+                                  <span className="text-sm font-light">{subItem.title}</span>
+                                </NavLink>
+                              )}
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* FOOTER */}
+          <div className="mt-auto px-5 py-4 border-t border-white/20">
+            <div className="flex items-center gap-2 text-white/70">
+              <Database className="h-4 w-4 text-white" />
+              {open && (
+                <div className="text-xs font-light">
+                  <p className="font-medium text-white">{satkerNama}</p>
+                  <p className="text-[10px] opacity-70 text-white/80">v1.0.0</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </SidebarContent>
