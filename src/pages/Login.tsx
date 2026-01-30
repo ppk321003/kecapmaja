@@ -24,7 +24,7 @@ export default function Login() {
     if (success) {
       toast({
         title: "Login berhasil",
-        description: "Selamat datang di aplikasi KECAP MAJA BPS3210"
+        description: "Selamat datang di aplikasi KECAP MAJA..."
       });
       navigate('/');
     } else {
