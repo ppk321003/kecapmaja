@@ -437,7 +437,7 @@ const pedomanData = (satkerContext) => ({
 });
 
 const tabConfig = [
-  { value: "utama", label: "Beranda", icon: Home, color: "text-blue-500" },
+  { value: "utama", label: "Home", icon: Home, color: "text-blue-500" },
   { value: "spkBast", label: "SPK dan BAST", icon: FileText, color: "text-emerald-500" },
   { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
   { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },
