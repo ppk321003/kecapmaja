@@ -1,12 +1,12 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon, Image, Plus, Edit2, Trash2, X, Check } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon, Image, Plus, Edit2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -38,7 +38,7 @@ const iconOptions = [
 
 export default function Linkers() {
   const satkerContext = useSatkerConfigContext();
-  const authContext = useAuthContext();
+  const authContext = useAuth();
   const [linksData, setLinksData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
