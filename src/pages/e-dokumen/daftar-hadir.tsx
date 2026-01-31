@@ -294,9 +294,9 @@ const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
+          spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
           operation: "read",
-          range: CONSTANTS.SHEET_NAMES.AKUN
+          range: "akun"
         }
       });
 
