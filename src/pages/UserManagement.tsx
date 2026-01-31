@@ -119,6 +119,13 @@ export default function UserManagement() {
     }
   }, [isPPK]);
 
+  // Auto-fill satker when role is PPK and user is not super admin
+  useEffect(() => {
+    if (formRole === "Pejabat Pembuat Komitmen" && !isSuperAdmin) {
+      setFormSatker(userSatker);
+    }
+  }, [formRole, isSuperAdmin, userSatker]);
+
   // Fungsi untuk mengelompokkan user berdasarkan role dan satker
   const groupUsersByRole = (usersData: UserData[]): GroupedUserData[] => {
     const roleMap = new Map<string, GroupedUserData>();
