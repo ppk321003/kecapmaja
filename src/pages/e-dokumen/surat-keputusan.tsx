@@ -85,10 +85,14 @@ type MasterKegiatan = {
 };
 
 // Constants
-const TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
+const DEFAULT_TARGET_SPREADSHEET_ID = "11gtkh70Qg1ggvDNl1uXtjlh051eJ3KLe4YkCODr6TPo";
 const SHEET_NAME = "SuratKeputusan";
 const MASTER_SPREADSHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
 const DEFAULT_MASTER_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"; // Fallback satker 3210
+
+const getTargetSheetId = (contextValue?: string): string => {
+  return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+};
 
 // Default value untuk kegiatan
 const DEFAULT_KEGIATAN: KegiatanItem = {
@@ -711,7 +715,7 @@ const useMasterKegiatan = () => {
 };
 
 // Custom hook untuk submit data
-const useSubmitSKToSheets = () => {
+const useSubmitSKToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_ID) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -719,7 +723,7 @@ const useSubmitSKToSheets = () => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:P`,
           values: [data]
@@ -899,6 +903,7 @@ const generateMemutuskanKesatu = (tentang: string): string => {
 
 const SuratKeputusan = () => {
   const { toast } = useToast();
+  const satkerContext = useSatkerConfigContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganikDetails, setSelectedOrganikDetails] = useState<Person[]>([]);
   const [selectedMitraDetails, setSelectedMitraDetails] = useState<Person[]>([]);
@@ -911,7 +916,8 @@ const SuratKeputusan = () => {
   const { data: mitraList, isLoading: isLoadingMitra } = useMitraList();
   const { masterData, isLoading: isLoadingMaster } = useMasterKegiatan();
   
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('sk'));
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSKToSheets(targetSheetId);
 
   const form = useForm<SuratKeputusanFormData>({
     resolver: zodResolver(suratKeputusanSchema),

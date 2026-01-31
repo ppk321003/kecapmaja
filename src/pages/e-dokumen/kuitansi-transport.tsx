@@ -23,17 +23,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 // Constants
-const CONSTANTS = {
+const DEFAULT_TARGET_ID = "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI"; // Fallback for satker 3210
+const MASTER_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+const getConstantsWithDynamicTarget = (targetId: string) => ({
   SPREADSHEET: {
-    TARGET_ID: "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI",
-    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"
+    TARGET_ID: targetId,
+    MASTER_ID: MASTER_ID
   },
   SHEET_NAMES: {
     KUITANSI: "KuitansiTransportLokal",
     ORGANIK: "MASTER.ORGANIK",
     MITRA: "MASTER.MITRA"
   }
-} as const;
+} as const);
 
 // Komponen Select dengan Search - VERSI DIPERBAIKI
 interface SearchableSelectProps {
@@ -609,6 +612,9 @@ const extractDisplayName = (fullText: string) => {
 // Main Component
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const targetSheetId = satkerContext?.getUserSatkerSheetId('kuitranport') || DEFAULT_TARGET_ID;
+  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
   const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
   const [duplicateErrors, setDuplicateErrors] = useState<{[key: string]: string}>({});

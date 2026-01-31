@@ -71,11 +71,13 @@ const CONTOH_OUTPUT = [
 ];
 
 // Constants
-const TARGET_SPREADSHEET_ID = "1gOIlK84nhv9Hwy_3HGyR7JwD-CXEZ-iXaM5imTgtT3o";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1gOIlK84nhv9Hwy_3HGyR7JwD-CXEZ-iXaM5imTgtT3o"; // Fallback for satker 3210
 const SHEET_NAME = "Lembur";
 
+const getTargetSheetId = (dynamicId: string | null) => dynamicId || DEFAULT_TARGET_SPREADSHEET_ID;
+
 // Custom hook untuk submit data
-const useSubmitLemburToSheets = () => {
+const useSubmitLemburToSheets = (targetSheetId: string) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -85,7 +87,7 @@ const useSubmitLemburToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:J`,
           values: [data]
@@ -111,11 +113,11 @@ const useSubmitLemburToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A`
       }
@@ -166,7 +168,7 @@ const generateLemburId = async (): Promise<string> => {
     // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B`
       }
@@ -209,6 +211,7 @@ const generateLemburId = async (): Promise<string> => {
 
 const LemburLaporan = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -218,7 +221,8 @@ const LemburLaporan = () => {
   });
 
   const { data: organikList = [] } = useOrganikBPS();
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitLemburToSheets();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('lembur'));
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitLemburToSheets(targetSheetId);
 
   const handleAddOrganik = (organikId: string) => {
     if (organikId && !selectedOrganik.includes(organikId)) {

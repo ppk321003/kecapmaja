@@ -22,9 +22,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
-const TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1B2EBK1JY92us3IycEJNxDla3gxJu_GjeQsz_ef8YJdc"; // Fallback for satker 3210
 const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 const DATABASE_SHEET_ID = "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8";
+
+const getTargetSheetId = (dynamicId: string | null) => dynamicId || DEFAULT_TARGET_SPREADSHEET_ID;
 
 interface KegiatanDetail {
   id: string;
@@ -120,12 +122,12 @@ const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' 
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string): Promise<number> => {
   try {
     // Baca kolom A (nomor urut) dari spreadsheet
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: "KerangkaAcuanKerja!A:A"
       }
@@ -168,12 +170,12 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk mendapatkan ID KAK berikutnya
-const getNextKakId = async (): Promise<string> => {
+const getNextKakId = async (targetId: string): Promise<string> => {
   try {
     // Baca data terakhir dari spreadsheet untuk mendapatkan nomor urut terakhir
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: "KerangkaAcuanKerja!B:B" // Sekarang ID KAK ada di kolom B
       }
@@ -318,6 +320,7 @@ const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
   const satkerContext = useSatkerConfigContext();
   const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
+  const kakSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('kak'));
   
   const [organikData, setOrganikData] = useState<OrganikData[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(false);
@@ -483,14 +486,14 @@ const KerangkaAcuanKerja = () => {
   };
 
   // Fungsi submit menggunakan Supabase function
-  const submitToSpreadsheet = async (rowData: any[]) => {
+  const submitToSpreadsheet = async (rowData: any[], targetId: string) => {
     try {
       console.log("📤 Submitting data to spreadsheet...");
       console.log("📊 Data length:", rowData.length);
 
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetId,
           operation: "append",
           range: "KerangkaAcuanKerja",
           values: [rowData]
@@ -714,8 +717,8 @@ const KerangkaAcuanKerja = () => {
     try {
       // Generate nomor urut dan ID KAK baru
       const [sequenceNumber, kakId] = await Promise.all([
-        getNextSequenceNumber(),
-        getNextKakId()
+        getNextSequenceNumber(kakSheetId),
+        getNextKakId(kakSheetId)
       ]);
       
       // Dapatkan nama dari kode untuk setiap field
@@ -803,7 +806,7 @@ const KerangkaAcuanKerja = () => {
       console.log("🔢 Total columns:", rowData.length);
 
       // Submit menggunakan Supabase function
-      await submitToSpreadsheet(rowData);
+      await submitToSpreadsheet(rowData, kakSheetId);
 
       toast({
         title: "Sukses!",

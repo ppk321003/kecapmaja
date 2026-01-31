@@ -23,17 +23,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 // Constants
-const CONSTANTS = {
+const DEFAULT_TARGET_SPREADSHEET_ID = "1rGIK4xt2CiKyfuJaZe0rhyz57j_8iFDlzwRBbXnW4xo";
+const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+
+const getTargetSheetId = (contextValue?: string): string => {
+  return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+};
+
+const getConstantsWithDynamicTarget = (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID) => ({
   SPREADSHEET: {
-    TARGET_ID: "1rGIK4xt2CiKyfuJaZe0rhyz57j_8iFDlzwRBbXnW4xo",
-    MASTER_ID: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM"
+    TARGET_ID: targetId,
+    MASTER_ID: MASTER_SPREADSHEET_ID
   },
   SHEET_NAMES: {
     SURAT_PERNYATAAN: "SuratPernyataan",
     ORGANIK: "MASTER.ORGANIK",
     MITRA: "MASTER.MITRA"
   }
-} as const;
+} as const);
 
 // Form Schema
 const formSchema = z.object({
@@ -193,8 +200,12 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 // Main Component
 const SuratPernyataan = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('super'));
+  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

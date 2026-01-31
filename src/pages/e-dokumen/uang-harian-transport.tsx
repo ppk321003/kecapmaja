@@ -22,6 +22,7 @@ import { AkunSelect } from "@/components/AkunSelect";
 import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumberWithSeparator } from "@/lib/formatNumber";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
@@ -70,14 +71,18 @@ const defaultValues: Partial<FormValues> = {
 };
 
 // Constants
-const TARGET_SPREADSHEET_ID = "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1-cJGkEqcBDzQ1n8RgdxByEHRk3ZG9Iax8YDhwi3kPIg";
 const SHEET_NAME = "UangHarianTransport";
+
+const getTargetSheetId = (contextValue?: string): string => {
+  return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+};
 
 const trainingCenterOptions = ["BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", "Garden Hotel", "Horison Ultima", "Achiera Hotel"];
 const jenisOptions = ["Fullday", "Fullboard"];
 
 // Custom hook untuk submit data
-const useSubmitUangHarianTransportToSheets = () => {
+const useSubmitUangHarianTransportToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_ID) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -87,7 +92,7 @@ const useSubmitUangHarianTransportToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:Q`,
           values: [data]
@@ -113,11 +118,11 @@ const useSubmitUangHarianTransportToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A`
       }
@@ -158,7 +163,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk generate ID uang harian transport (uht-yymmxxx)
-const generateUangHarianTransportId = async (): Promise<string> => {
+const generateUangHarianTransportId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -168,7 +173,7 @@ const generateUangHarianTransportId = async (): Promise<string> => {
     // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B`
       }
@@ -221,6 +226,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const UangHarianTransport = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<any[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<any[]>([]);
@@ -256,7 +262,8 @@ const UangHarianTransport = () => {
     data: mitraList = []
   } = useMitraStatistik();
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitUangHarianTransportToSheets();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('uh'));
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitUangHarianTransportToSheets(targetSheetId);
 
   // Effect untuk update selected organik dan mitra
   useEffect(() => {
@@ -280,8 +287,8 @@ const UangHarianTransport = () => {
     setIsSubmitting(true);
     try {
       // Generate nomor urut baru dan ID uang harian transport
-      const sequenceNumber = await getNextSequenceNumber();
-      const uangHarianTransportId = await generateUangHarianTransportId();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
+      const uangHarianTransportId = await generateUangHarianTransportId(targetSheetId);
 
       // Get names for display
       const programName = programs.find(p => p.id === data.program)?.name.split(' - ')[1] || data.program;

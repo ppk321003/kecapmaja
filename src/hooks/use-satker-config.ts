@@ -13,6 +13,18 @@ export interface SatkerConfig {
   tagging_sheet_id: string;
   masterorganik_sheet_id: string;
   perjalanan_sheet_id?: string;
+  daftarhadir_sheet_id?: string;
+  dokpengadaan_sheet_id?: string;
+  kak_sheet_id?: string;
+  kuiperjadin_sheet_id?: string;
+  kuitranport_sheet_id?: string;
+  lembur_sheet_id?: string;
+  spjhonor_sheet_id?: string;
+  sk_sheet_id?: string;
+  super_sheet_id?: string;
+  tandaterima_sheet_id?: string;
+  spjtranslok_sheet_id?: string;
+  uh_sheet_id?: string;
 }
 
 /**
@@ -31,7 +43,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:H`, // 8 kolom (include perjalanan_sheet_id)
+            range: `${sheetName}!A:T`, // 20 kolom (semua sheet IDs untuk dokumen)
           },
         });
         
@@ -69,6 +81,18 @@ export function useSatkerConfig() {
           tagging_sheet_id: row[5]?.trim() || '',
           masterorganik_sheet_id: row[6]?.trim() || '',
           perjalanan_sheet_id: row[7]?.trim() || '',
+          daftarhadir_sheet_id: row[8]?.trim() || '',
+          dokpengadaan_sheet_id: row[9]?.trim() || '',
+          kak_sheet_id: row[10]?.trim() || '',
+          kuiperjadin_sheet_id: row[11]?.trim() || '',
+          kuitranport_sheet_id: row[12]?.trim() || '',
+          lembur_sheet_id: row[13]?.trim() || '',
+          spjhonor_sheet_id: row[14]?.trim() || '',
+          sk_sheet_id: row[15]?.trim() || '',
+          super_sheet_id: row[16]?.trim() || '',
+          tandaterima_sheet_id: row[17]?.trim() || '',
+          spjtranslok_sheet_id: row[18]?.trim() || '',
+          uh_sheet_id: row[19]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -91,7 +115,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -104,13 +128,25 @@ export function getSheetIdBySatkerAndModule(
     return null;
   }
 
-  const moduleKeyMap = {
+  const moduleKeyMap: Record<string, keyof SatkerConfig> = {
     pencairan: 'pencairan_sheet_id',
     pengadaan: 'pengadaan_sheet_id',
     entrikegiatan: 'entrikegiatan_sheet_id',
     tagging: 'tagging_sheet_id',
     masterorganik: 'masterorganik_sheet_id',
     perjalanan: 'perjalanan_sheet_id',
+    daftarhadir: 'daftarhadir_sheet_id',
+    dokpengadaan: 'dokpengadaan_sheet_id',
+    kak: 'kak_sheet_id',
+    kuiperjadin: 'kuiperjadin_sheet_id',
+    kuitranport: 'kuitranport_sheet_id',
+    lembur: 'lembur_sheet_id',
+    spjhonor: 'spjhonor_sheet_id',
+    sk: 'sk_sheet_id',
+    super: 'super_sheet_id',
+    tandaterima: 'tandaterima_sheet_id',
+    spjtranslok: 'spjtranslok_sheet_id',
+    uh: 'uh_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];

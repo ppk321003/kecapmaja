@@ -89,11 +89,13 @@ const DEFAULT_VALUES: Partial<FormValues> = {
 const kecamatanOptions = ["Lemahsugih", "Bantarujeg", "Malausma", "Cikijing", "Cingambul", "Talaga", "Banjaran", "Argapura", "Maja", "Majalengka", "Cigasong", "Sukahaji", "Sindang", "Rajagaluh", "Sindangwangi", "Leuwimunding", "Palasah", "Jatiwangi", "Dawuan", "Kasokandel", "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"];
 
 // Constants
-const TARGET_SPREADSHEET_ID = "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1o1lRjKm8-9KtAyx7eHTNUUZxGMtVi_jJ97rcFfrJOjk"; // Fallback for satker 3210
 const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
+const getTargetSheetId = (dynamicId: string | null) => dynamicId || DEFAULT_TARGET_SPREADSHEET_ID;
+
 // Custom hook untuk submit data
-const useSubmitKuitansiToSheets = () => {
+const useSubmitKuitansiToSheets = (targetSheetId: string) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -103,7 +105,7 @@ const useSubmitKuitansiToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: "KuitansiPerjalananDinas!A:AZ",
           values: [data]
@@ -140,11 +142,11 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: "KuitansiPerjalananDinas!A:A"
       }
@@ -238,6 +240,8 @@ const generateKuitansiId = async (): Promise<string> => {
 
 const KuitansiPerjalananDinas = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('kuiperjadin'));
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
   const [isLuarKota, setIsLuarKota] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -245,7 +249,7 @@ const KuitansiPerjalananDinas = () => {
   const [loadingOrganik, setLoadingOrganik] = useState(false);
 
   // Gunakan hook untuk submit data
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitKuitansiToSheets();
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitKuitansiToSheets(targetSheetId);
 
   // Initialize form
   const form = useForm<FormValues>({
@@ -495,7 +499,7 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
       }
 
       // Generate nomor urut baru dan ID kuitansi
-      const sequenceNumber = await getNextSequenceNumber();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
       const kuitansiId = await generateKuitansiId();
       
       // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET

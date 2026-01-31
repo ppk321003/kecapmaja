@@ -16,9 +16,11 @@ import { TandaTerimaData, TandaTerimaItem } from "@/types";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { PersonMultiSelect, PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const TandaTerima = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get data from hooks
@@ -30,8 +32,14 @@ const TandaTerima = () => {
   } = useMitraStatistik();
 
   // Constants
-  const TARGET_SPREADSHEET_ID = "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8";
+  const DEFAULT_TARGET_SPREADSHEET_ID = "1TbViG1lxButPEZ9rgU0aWBXWYN_8fyj3DRUqDyXawx8";
   const SHEET_NAME = "TandaTerima";
+
+  const getTargetSheetId = (contextValue?: string): string => {
+    return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+  };
+
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('tandaterima'));
 
   // Custom hook untuk submit data
   const useSubmitTandaTerimaToSheets = () => {
@@ -44,7 +52,7 @@ const TandaTerima = () => {
         
         const { data: result, error } = await supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: TARGET_SPREADSHEET_ID,
+            spreadsheetId: targetSheetId,
             operation: "append",
             range: `${SHEET_NAME}!A:AQ`,
             values: [data]
@@ -74,7 +82,7 @@ const TandaTerima = () => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "read",
           range: `${SHEET_NAME}!A:A`
         }
@@ -125,7 +133,7 @@ const TandaTerima = () => {
       // Ambil semua data untuk mencari nomor terakhir di bulan ini
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "read",
           range: `${SHEET_NAME}!B:B`
         }

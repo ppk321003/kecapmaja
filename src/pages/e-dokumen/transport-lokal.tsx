@@ -22,6 +22,7 @@ import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 const formSchema = z.object({
   namaKegiatan: z.string().min(1, "Nama kegiatan harus diisi"),
@@ -65,11 +66,15 @@ const defaultValues: Partial<FormValues> = {
 };
 
 // Constants
-const TARGET_SPREADSHEET_ID = "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc";
 const SHEET_NAME = "TransportLokal";
 
+const getTargetSheetId = (contextValue?: string): string => {
+  return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+};
+
 // Custom hook untuk submit data
-const useSubmitTransportLokalToSheets = () => {
+const useSubmitTransportLokalToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_ID) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -79,7 +84,7 @@ const useSubmitTransportLokalToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:M`,
           values: [data]
@@ -105,11 +110,11 @@ const useSubmitTransportLokalToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A`
       }
@@ -150,7 +155,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk generate ID transport lokal (trl-yymmxxx)
-const generateTransportLokalId = async (): Promise<string> => {
+const generateTransportLokalId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -160,7 +165,7 @@ const generateTransportLokalId = async (): Promise<string> => {
     // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B`
       }
@@ -213,6 +218,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const TransportLokal = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [transportOrganik, setTransportOrganik] = useState<any[]>([]);
   const [transportMitra, setTransportMitra] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -248,7 +254,8 @@ const TransportLokal = () => {
     data: mitraList = []
   } = useMitraStatistik();
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitTransportLokalToSheets();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('spjtranslok'));
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitTransportLokalToSheets(targetSheetId);
 
   // Create name-to-object mappings for display purposes
   const programsMap = Object.fromEntries((programs || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
@@ -353,8 +360,8 @@ const TransportLokal = () => {
     setIsSubmitting(true);
     try {
       // Generate nomor urut baru dan ID transport lokal
-      const sequenceNumber = await getNextSequenceNumber();
-      const transportLokalId = await generateTransportLokalId();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
+      const transportLokalId = await generateTransportLokalId(targetSheetId);
 
       // Tambahkan nama ke setiap transportDetail
       const transportDetailsWithNames = data.transportDetails.map(detail => {

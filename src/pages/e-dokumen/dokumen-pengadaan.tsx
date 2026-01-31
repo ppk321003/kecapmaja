@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
 const metodePengadaanOptions = ["Pengadaan Langsung", "Penunjukan Langsung", "E-Purchasing"];
@@ -54,11 +55,13 @@ const defaultValues = {
 };
 
 // Constants
-const TARGET_SPREADSHEET_ID = "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1Paf4pvIXyJnCGcl21XunXIGdSafhN-0Apz9aE3bOXhg"; // Fallback for satker 3210
 const SHEET_NAME = "DokumenPengadaan";
 
+const getTargetSheetId = (dynamicId: string | null) => dynamicId || DEFAULT_TARGET_SPREADSHEET_ID;
+
 // Custom hook untuk submit data
-const useSubmitPengadaanToSheets = () => {
+const useSubmitPengadaanToSheets = (targetSheetId: string) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
@@ -68,7 +71,7 @@ const useSubmitPengadaanToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:AC`,
           values: [data]
@@ -94,11 +97,11 @@ const useSubmitPengadaanToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A`
       }
@@ -139,7 +142,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk generate ID pengadaan (pbj-yymmxxx)
-const generatePengadaanId = async (): Promise<string> => {
+const generatePengadaanId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -149,7 +152,7 @@ const generatePengadaanId = async (): Promise<string> => {
     // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B`
       }
@@ -202,10 +205,12 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const DokumenPengadaan = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('dokpengadaan'));
   const [formValues, setFormValues] = useState(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitPengadaanToSheets();
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitPengadaanToSheets(targetSheetId);
 
   const handleChange = (field: string, value: any) => {
     setFormValues(prev => ({
@@ -227,8 +232,8 @@ const DokumenPengadaan = () => {
       console.log("Submitting form data:", formValues);
 
       // Generate nomor urut baru dan ID pengadaan
-      const sequenceNumber = await getNextSequenceNumber();
-      const pengadaanId = await generatePengadaanId();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
+      const pengadaanId = await generatePengadaanId(targetSheetId);
 
       // Format data sesuai dengan header spreadsheet
       const rowData = [

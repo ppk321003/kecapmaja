@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
@@ -53,8 +54,12 @@ interface HonorDetail {
 }
 
 // Constants - DIPERBAHARUI!
-const TARGET_SPREADSHEET_ID = "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM";
+const DEFAULT_TARGET_SPREADSHEET_ID = "1rsHaC6FPCJd-VHWmV3AGGJTxDSB03xOw8jqFqzBtHXM";
 const SHEET_NAME = "SPJHonor";
+
+const getTargetSheetId = (contextValue?: string): string => {
+  return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
+};
 
 // Custom searchable select component
 interface SearchableSelectProps {
@@ -180,14 +185,14 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 };
 
 // Custom hook untuk submit data
-const useSubmitSPJHonorToSheets = () => {
+const useSubmitSPJHonorToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_ID) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submitData = async (data: any[]) => {
     setIsSubmitting(true);
     try {
       console.log('📤 [SPJHonor] Submitting to Google Sheets:', {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetSheetId,
         sheetName: SHEET_NAME,
         range: `${SHEET_NAME}!A:R`,
         valuesLength: data.length,
@@ -196,7 +201,7 @@ const useSubmitSPJHonorToSheets = () => {
       
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: TARGET_SPREADSHEET_ID,
+          spreadsheetId: targetSheetId,
           operation: "append",
           range: `${SHEET_NAME}!A:R`, // A:R = 18 kolom sesuai header
           values: [data]
@@ -222,11 +227,11 @@ const useSubmitSPJHonorToSheets = () => {
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B` // Kolom B untuk nomor urut
       }
@@ -267,7 +272,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // Fungsi untuk generate ID SPJ (spj-yymmxxx)
-const generateSPJId = async (): Promise<string> => {
+const generateSPJId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -276,7 +281,7 @@ const generateSPJId = async (): Promise<string> => {
 
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A` // Kolom A untuk ID
       }
@@ -329,6 +334,7 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 
 const SPJHonor = () => {
   const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
   const [honorOrganik, setHonorOrganik] = useState<HonorDetail[]>([]);
   const [honorMitra, setHonorMitra] = useState<HonorDetail[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -362,7 +368,8 @@ const SPJHonor = () => {
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
 
-  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSPJHonorToSheets();
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('spjhonor'));
+  const { submitData, isSubmitting: isSubmitLoading } = useSubmitSPJHonorToSheets(targetSheetId);
 
   // Create name mappings
   const jenisMap = Object.fromEntries((jenisList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
@@ -533,8 +540,8 @@ const SPJHonor = () => {
 
       // 2. Generate IDs
       console.log('📊 [SPJHonor] Generating ID...');
-      const spjId = await generateSPJId();
-      const sequenceNumber = await getNextSequenceNumber();
+      const spjId = await generateSPJId(targetSheetId);
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
       console.log(`✅ [SPJHonor] Generated: ID=${spjId}, No=${sequenceNumber}`);
 
       // 3. Prepare data

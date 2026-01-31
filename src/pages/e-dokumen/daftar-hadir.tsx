@@ -59,9 +59,11 @@ interface AkunOption {
 
 // Constants
 const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
-const CONSTANTS = {
+const DEFAULT_TARGET_SPREADSHEET_ID = "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0"; // Fallback for satker 3210
+
+const getConstantsWithDynamicTarget = (targetSheetId: string | null) => ({
   SPREADSHEET: {
-    TARGET_ID: "11a8c8cBJrgqS4ZKKvClvq_6DYsFI8R22Aka1NTxYkF0",
+    TARGET_ID: targetSheetId || DEFAULT_TARGET_SPREADSHEET_ID,
     MASTER_ID: DEFAULT_MASTER_SPREADSHEET_ID,
     SOURCE_ID: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8"
   },
@@ -71,7 +73,7 @@ const CONSTANTS = {
     MITRA: "MASTER.MITRA",
     AKUN: "akun"
   }
-} as const;
+} as const);
 
 const TRAINING_CENTER_OPTIONS = [
   "BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", 
@@ -750,6 +752,8 @@ const DaftarHadir = () => {
   const navigate = useNavigate();
   const satkerContext = useSatkerConfigContext();
   const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+  const daftarHadirSheetId = satkerContext?.getUserSatkerSheetId('daftarhadir') || DEFAULT_TARGET_SPREADSHEET_ID;
+  const CONSTANTS = getConstantsWithDynamicTarget(daftarHadirSheetId);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
