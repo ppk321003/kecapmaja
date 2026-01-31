@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -51,6 +58,19 @@ import {
 } from "lucide-react";
 
 const USERS_SPREADSHEET_ID = "1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938";
+
+const ROLE_OPTIONS = [
+  { value: "Pejabat Pembuat Komitmen", label: "Pejabat Pembuat Komitmen" },
+  { value: "Pejabat Penandatangan Surat Perintah Membayar", label: "Pejabat Penandatangan Surat Perintah Membayar" },
+  { value: "Pejabat Pengadaan", label: "Pejabat Pengadaan" },
+  { value: "Bendahara", label: "Bendahara" },
+  { value: "Fungsi Sosial", label: "Fungsi Sosial" },
+  { value: "Fungsi Neraca", label: "Fungsi Neraca" },
+  { value: "Fungsi Produksi", label: "Fungsi Produksi" },
+  { value: "Fungsi Distribusi", label: "Fungsi Distribusi" },
+  { value: "Fungsi IPDS", label: "Fungsi IPDS" },
+  { value: "Organik BPS", label: "Organik BPS" },
+];
 
 interface UserData {
   rowIndex: number;
@@ -496,12 +516,18 @@ export default function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-role">Role</Label>
-                <Input
-                  id="add-role"
-                  placeholder="Masukkan role (contoh: Fungsi Sosial)"
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                />
+                <Select value={formRole} onValueChange={setFormRole}>
+                  <SelectTrigger id="add-role">
+                    <SelectValue placeholder="Pilih role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-satker">Satker</Label>
@@ -802,12 +828,18 @@ export default function UserManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-role">Role</Label>
-              <Input
-                id="edit-role"
-                placeholder="Masukkan role"
-                value={formRole}
-                onChange={(e) => setFormRole(e.target.value)}
-              />
+              <Select value={formRole} onValueChange={setFormRole}>
+                <SelectTrigger id="edit-role">
+                  <SelectValue placeholder="Pilih role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-satker">Satker</Label>
