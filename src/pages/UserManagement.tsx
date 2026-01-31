@@ -58,11 +58,13 @@ interface UserData {
   password: string;
   role: string;
   lastLogin: string;
+  satker: string;
 }
 
 interface GroupedUserData {
   role: string;
   usernames: string[];
+  satkers: string[];
   lastLogin: string;
   isOnline: boolean;
   allRows: UserData[]; // Menyimpan semua user dalam group ini
@@ -82,11 +84,16 @@ export default function UserManagement() {
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState("");
+  const [formSatker, setFormSatker] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
   
   // Check if current user is PPK
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
+  const userSatker = user?.satker || "";
+  const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
+  const userSatker = user?.satker || "";
 
   useEffect(() => {
     if (isPPK) {
@@ -105,6 +112,7 @@ export default function UserManagement() {
         roleMap.set(roleKey, {
           role: roleKey,
           usernames: [user.username],
+          satkers: [user.satker],
           lastLogin: user.lastLogin,
           isOnline: isUserOnline(user.lastLogin),
           allRows: [user]
@@ -115,6 +123,11 @@ export default function UserManagement() {
         // Tambahkan username jika belum ada
         if (!existing.usernames.includes(user.username)) {
           existing.usernames.push(user.username);
+        }
+        
+        // Tambahkan satker jika belum ada
+        if (!existing.satkers.includes(user.satker)) {
+          existing.satkers.push(user.satker);
         }
         
         // Update lastLogin ke yang paling baru
@@ -146,7 +159,7 @@ export default function UserManagement() {
         body: {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "read",
-          range: "user!A:D"
+          range: "user!A:F"
         }
       });
 
@@ -162,7 +175,8 @@ export default function UserManagement() {
           username: row[0]?.trim() || "",
           password: row[1]?.trim() || "",
           role: row[2]?.trim() || "",
-          lastLogin: row[3]?.trim() || ""
+          lastLogin: row[3]?.trim() || "",
+          satker: row[5]?.trim() || ""
         })).filter((u: UserData) => u.username && u.role); // Filter baris kosong
 
         setUsers(usersData);
@@ -229,12 +243,13 @@ export default function UserManagement() {
     setFormUsername("");
     setFormPassword("");
     setFormRole("");
+    setFormSatker("");
     setShowPassword(false);
     setShowAddPassword(false);
   };
 
   const handleAddUser = async () => {
-    if (!formUsername || !formPassword || !formRole) {
+    if (!formUsername || !formPassword || !formRole || !formSatker) {
       toast.error("Semua field harus diisi");
       return;
     }
@@ -245,14 +260,20 @@ export default function UserManagement() {
       return;
     }
 
+    // Prevent PPK non-admin from adding users to other satkers
+    if (!isSuperAdmin && formSatker !== userSatker) {
+      toast.error(`Anda hanya bisa menambahkan user untuk satker ${userSatker}`);
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "append",
-          range: "user!A:D",
-          values: [[formUsername, formPassword, formRole, ""]]
+          range: "user!A:F",
+          values: [[formUsername, formPassword, formRole, "", "", formSatker]]
         }
       });
 
@@ -274,8 +295,14 @@ export default function UserManagement() {
   };
 
   const handleEditUser = async () => {
-    if (!selectedUser || !formUsername || !formPassword || !formRole) {
+    if (!selectedUser || !formUsername || !formPassword || !formRole || !formSatker) {
       toast.error("Semua field harus diisi");
+      return;
+    }
+
+    // Prevent PPK non-admin from editing users from other satkers
+    if (!isSuperAdmin && selectedUser.satker !== userSatker) {
+      toast.error(`Anda hanya bisa mengedit user dari satker ${userSatker}`);
       return;
     }
 
@@ -294,8 +321,8 @@ export default function UserManagement() {
         body: {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "update",
-          range: `user!A${selectedUser.rowIndex}:D${selectedUser.rowIndex}`,
-          values: [[formUsername, formPassword, formRole, selectedUser.lastLogin]]
+          range: `user!A${selectedUser.rowIndex}:F${selectedUser.rowIndex}`,
+          values: [[formUsername, formPassword, formRole, selectedUser.lastLogin, "", formSatker]]
         }
       });
 
@@ -321,6 +348,12 @@ export default function UserManagement() {
     // Mencegah penghapusan akun sendiri
     if (userData.username.toLowerCase() === user?.username.toLowerCase()) {
       toast.error("Tidak dapat menghapus akun Anda sendiri");
+      return;
+    }
+
+    // Prevent PPK non-admin from deleting users from other satkers
+    if (!isSuperAdmin && userData.satker !== userSatker) {
+      toast.error(`Anda hanya bisa menghapus user dari satker ${userSatker}`);
       return;
     }
 
@@ -355,16 +388,25 @@ export default function UserManagement() {
     setFormUsername(userData.username);
     setFormPassword(userData.password);
     setFormRole(userData.role);
+    setFormSatker(userData.satker);
     setIsEditDialogOpen(true);
   };
 
-  // Filter grouped users berdasarkan search term
-  const filteredGroupedUsers = groupedUsers.filter(group => 
-    group.usernames.some(username => 
-      username.toLowerCase().includes(searchTerm.toLowerCase())
-    ) ||
-    group.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter grouped users berdasarkan search term dan satker
+  const filteredGroupedUsers = groupedUsers
+    .map(group => ({
+      ...group,
+      allRows: isSuperAdmin 
+        ? group.allRows 
+        : group.allRows.filter(row => row.satker === userSatker)
+    }))
+    .filter(group => group.allRows.length > 0) // Remove groups with no visible rows
+    .filter(group => 
+      group.usernames.some(username => 
+        username.toLowerCase().includes(searchTerm.toLowerCase())
+      ) ||
+      group.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   // Hitung total user dan online count dari data asli
   const onlineCount = users.filter(u => isUserOnline(u.lastLogin)).length;
@@ -454,6 +496,22 @@ export default function UserManagement() {
                   onChange={(e) => setFormRole(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-satker">Satker</Label>
+                <Input
+                  id="add-satker"
+                  placeholder="Masukkan satker (contoh: 3210)"
+                  value={formSatker}
+                  onChange={(e) => setFormSatker(e.target.value)}
+                  disabled={!isSuperAdmin}
+                  title={!isSuperAdmin ? `Anda hanya bisa menambahkan user untuk satker ${userSatker}` : ""}
+                />
+                {!isSuperAdmin && (
+                  <p className="text-xs text-muted-foreground">
+                    Anda hanya bisa menambahkan user untuk satker {userSatker}
+                  </p>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -533,6 +591,7 @@ export default function UserManagement() {
                   <TableHead className="w-[50px]">No</TableHead>
                   <TableHead>Username</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Satker</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Terakhir Login</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
@@ -541,14 +600,14 @@ export default function UserManagement() {
               <TableBody>
                 {loading && groupedUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                       <p className="text-muted-foreground">Memuat data...</p>
                     </TableCell>
                   </TableRow>
                 ) : filteredGroupedUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-muted-foreground">
                         {searchTerm ? "Tidak ada pengguna yang cocok" : "Belum ada pengguna"}
@@ -584,6 +643,15 @@ export default function UserManagement() {
                           <Badge variant="outline" className="font-medium">
                             {group.role}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {group.satkers.map(satker => (
+                              <Badge key={satker} variant="secondary" className="text-xs">
+                                {satker}
+                              </Badge>
+                            ))}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -733,6 +801,22 @@ export default function UserManagement() {
                 value={formRole}
                 onChange={(e) => setFormRole(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-satker">Satker</Label>
+              <Input
+                id="edit-satker"
+                placeholder="Masukkan satker"
+                value={formSatker}
+                onChange={(e) => setFormSatker(e.target.value)}
+                disabled={!isSuperAdmin}
+                title={!isSuperAdmin ? `Anda hanya bisa mengedit satker sendiri` : ""}
+              />
+              {!isSuperAdmin && (
+                <p className="text-xs text-muted-foreground">
+                  Anda hanya bisa mengedit user dari satker {userSatker}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
