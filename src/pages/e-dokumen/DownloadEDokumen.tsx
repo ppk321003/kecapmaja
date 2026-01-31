@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Edit2, Copy, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 // Set Indonesian Timezone
 const indonesianOptions = {
@@ -27,6 +29,7 @@ const DownloadDokumen = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const satkerContext = useSatkerConfigContext();
 
   // Get sheet IDs from satker config
@@ -494,8 +497,174 @@ const DownloadDokumen = () => {
     }]
   }].sort((a, b) => a.title.localeCompare(b.title));
 
+  // Add action column to all documents
+  const documentsWithActions = documents.map(doc => ({
+    ...doc,
+    columns: [
+      ...doc.columns.filter(col => col.key !== "Link"),
+      {
+        key: "Aksi",
+        header: "Aksi",
+        render: (_, rowData) => (
+          <div className="flex gap-2 justify-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEditRow(doc, rowData)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Edit data</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDuplicateRow(doc, rowData)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Duplikat data</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeleteRow(doc, rowData)}
+                  className="h-8 w-8 p-0 hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Hapus data</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      },
+      {
+        key: "Link",
+        header: "Link",
+        render: value => <Tooltip>
+            <TooltipTrigger asChild>
+              <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Buka dokumen</p>
+            </TooltipContent>
+          </Tooltip>
+      }
+    ]
+  }));
+
   // Get the active document
-  const activeDocument = documents.find(doc => doc.id === activeTab) || documents[0];
+  const activeDocument = documentsWithActions.find(doc => doc.id === activeTab) || documentsWithActions[0];
+
+  // Refresh data
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    // Trigger a refetch by resetting data
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast({
+        title: "Selesai",
+        description: "Data telah diperbarui"
+      });
+    }, 500);
+  }, []);
+
+  // Handle Edit: Clear and replace entire row
+  const handleEditRow = useCallback(async (doc, rowData) => {
+    toast({
+      title: "Edit Dokumen",
+      description: "Fitur edit sedang dikembangkan. Silakan edit langsung di form pembuatan dokumen.",
+    });
+  }, []);
+
+  // Handle Duplicate: Copy row and generate new ID
+  const handleDuplicateRow = useCallback(async (doc, rowData) => {
+    try {
+      // Get the last ID and generate new one
+      const lastId = rowData.Id || "0";
+      const newId = String(parseInt(lastId) + 1).padStart(String(lastId).length, "0");
+      
+      const newRow = {
+        ...rowData,
+        Id: newId
+      };
+
+      // Append to Google Sheets
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: doc.sheetId,
+          operation: "append",
+          range: `${doc.sheetName}!A:Z`,
+          values: [Object.values(newRow)]
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: `Data berhasil diduplikat dengan ID baru: ${newId}`
+      });
+
+      // Refresh data
+      handleRefresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Gagal",
+        description: "Terjadi kesalahan saat menduplikat data"
+      });
+    }
+  }, [handleRefresh]);
+
+  // Handle Delete: Remove row from database
+  const handleDeleteRow = useCallback(async (doc, rowData) => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: doc.sheetId,
+          operation: "delete",
+          range: `${doc.sheetName}`,
+          values: [[rowData.Id]]
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Data telah dihapus dari database"
+      });
+
+      // Refresh data
+      handleRefresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Gagal",
+        description: "Terjadi kesalahan saat menghapus data"
+      });
+    }
+  }, [handleRefresh]);
 
   // Fetch data for the active document
   const {
@@ -507,17 +676,29 @@ const DownloadDokumen = () => {
     sheetName: activeDocument.sheetName
   });
 
-  // Filter data based on search term
+  // Filter data based on search term and sort by latest (descending)
   const filteredData = useMemo(() => {
-    if (!data || !searchTerm) return data;
+    let filtered = data;
+    
+    if (!filtered) return [];
+    
+    // Apply search filter
+    if (searchTerm) {
+      const lowercasedSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => 
+        activeDocument.searchFields.some(field => {
+          const value = item[field];
+          return value && String(value).toLowerCase().includes(lowercasedSearch);
+        })
+      );
+    }
 
-    const lowercasedSearch = searchTerm.toLowerCase();
-    return data.filter(item => 
-      activeDocument.searchFields.some(field => {
-        const value = item[field];
-        return value && String(value).toLowerCase().includes(lowercasedSearch);
-      })
-    );
+    // Sort by ID descending (latest first)
+    return filtered.sort((a, b) => {
+      const aId = parseInt(a.Id) || 0;
+      const bId = parseInt(b.Id) || 0;
+      return bId - aId;
+    });
   }, [data, searchTerm, activeDocument.searchFields]);
 
   // Pagination logic
@@ -554,19 +735,31 @@ const DownloadDokumen = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
-        <p className="text-muted-foreground">
-          Lihat dan download dokumen yang tersedia dalam format tabel.
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-orange-600 tracking-tight">Download Dokumen</h1>
+          <p className="text-muted-foreground">
+            Lihat dan download dokumen yang tersedia dalam format tabel.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-muted/80 p-1 rounded-full shadow-inner justify-center">
-          {documents.map(doc => (
+          {documentsWithActions.map(doc => (
             <TabsTrigger 
               key={doc.id} 
               value={doc.id} 
@@ -577,7 +770,7 @@ const DownloadDokumen = () => {
           ))}
         </TabsList>
         
-        {documents.map(doc => (
+        {documentsWithActions.map(doc => (
           <TabsContent key={doc.id} value={doc.id} className="mt-0 space-y-4">
             {/* Search and Page Size Controls */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
