@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -91,6 +91,15 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Reset filters when submissions prop changes (e.g., when switching tabs in parent)
+  // This prevents "ghost data" from previous tabs bleeding into current tab
+  useEffect(() => {
+    setSearchQuery('');
+    setSelectedMonth('all');
+    setSelectedYear('all');
+    setCurrentPage(1);
+  }, [submissions]);
 
 
   // Helper function to get timestamp for sorting
