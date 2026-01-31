@@ -154,7 +154,7 @@ const generatePengadaanId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET
       body: {
         spreadsheetId: targetId,
         operation: "read",
-        range: `${SHEET_NAME}!B:B`
+        range: `${SHEET_NAME}!A:A`
       }
     });
 
@@ -172,8 +172,12 @@ const generatePengadaanId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET
     // Filter ID yang sesuai dengan prefix bulan ini
     const currentMonthIds = values
       .slice(1)
-      .map((row: any[]) => row[1]) // Kolom B adalah ID
-      .filter((id: string) => id && id.startsWith(prefix))
+      .map((row: any[]) => {
+        const id = row[0];
+        if (!id || typeof id !== 'string') return null;
+        return id;
+      })
+      .filter((id: string | null) => id && id.startsWith(prefix))
       .map((id: string) => {
         const numStr = id.replace(prefix, '');
         const num = parseInt(numStr);

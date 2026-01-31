@@ -797,14 +797,14 @@ const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): P
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `SK-${year}${month}`;
+    const prefix = `sk-${year}${month}`;
 
     // Ambil semua ID yang sudah ada
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
         spreadsheetId: targetId,
         operation: "read",
-        range: `${SHEET_NAME}!B:B` // Kolom B adalah ID
+        range: `${SHEET_NAME}!A:A` // Kolom A adalah ID
       }
     });
 
@@ -813,7 +813,7 @@ const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): P
     const values = data?.values || [];
     
     // Jika hanya header atau kosong
-    if (values.length <= 1) return `${prefix}-001`;
+    if (values.length <= 1) return `${prefix}001`;
 
     // Ambil semua ID dari bulan ini
     const currentMonthIds = values
@@ -824,27 +824,24 @@ const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): P
         
         // Cek apakah ID sesuai dengan pattern bulan ini
         if (id.startsWith(prefix)) {
-          // Ekstrak angka dari format SK-YYMM-XXX
-          const parts = id.split('-');
-          if (parts.length >= 2) {
-            const numPart = parts[parts.length - 1];
-            const num = parseInt(numPart);
-            return isNaN(num) ? 0 : num;
-          }
+          // Ekstrak angka dari format sk-yymmxxx
+          const numStr = id.replace(prefix, '');
+          const num = parseInt(numStr);
+          return isNaN(num) ? 0 : num;
         }
         return null;
       })
       .filter((num): num is number => num !== null && num > 0);
 
     // Jika tidak ada ID untuk bulan ini
-    if (currentMonthIds.length === 0) return `${prefix}-001`;
+    if (currentMonthIds.length === 0) return `${prefix}001`;
 
     // Cari nilai maksimum dan tambah 1
     const maxNumber = Math.max(...currentMonthIds);
     const nextNumber = maxNumber + 1;
     
     // Format dengan leading zeros
-    return `${prefix}-${nextNumber.toString().padStart(3, '0')}`;
+    return `${prefix}${nextNumber.toString().padStart(3, '0')}`;
   } catch (error) {
     console.error("Error generating SK ID:", error);
     throw error;
