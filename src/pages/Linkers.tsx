@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon, Image, Plus, Edit2, Trash2 } from "lucide-react";
+import { ExternalLink, Archive, Database, FileText, Link2, DollarSignIcon, Image, Plus, Edit2, Trash2, Globe, Download, Upload, Settings, Bell, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,11 @@ const iconOptions = [
   { name: "DollarSign", icon: DollarSignIcon },
   { name: "Link2", icon: Link2 },
   { name: "ExternalLink", icon: ExternalLink },
+  { name: "Globe", icon: Globe },
+  { name: "Download", icon: Download },
+  { name: "Upload", icon: Upload },
+  { name: "Settings", icon: Settings },
+  { name: "Bell", icon: Bell },
 ];
 
 export default function Linkers() {
@@ -48,7 +53,7 @@ export default function Linkers() {
   const [formData, setFormData] = useState({ judul: "", deskripsi: "", link: "", icon: "FileText" });
 
   const satkerConfig = satkerContext?.getUserSatkerConfig() || {};
-  const linkersSheetId = satkerConfig.linkers_sheet_id || "1x-xxxxxxxxxxxxxxxxxx";
+  const linkersSheetId = (satkerConfig as any)?.linkers_sheet_id || "1x-xxxxxxxxxxxxxxxxxx";
   const sheetName = "Linkers";
   const userRole = authContext?.user?.role || "";
   const canEdit = userRole === "Pejabat Pembuat Komitmen";
@@ -57,6 +62,13 @@ export default function Linkers() {
   const fetchLinkers = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (!linkersSheetId || linkersSheetId === "1x-xxxxxxxxxxxxxxxxxx") {
+        console.warn("Linkers sheet ID not configured");
+        setLinksData([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: linkersSheetId,
@@ -65,25 +77,35 @@ export default function Linkers() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Google Sheets error:", error);
+        throw error;
+      }
 
       const rows = data?.values || [];
+      console.log("Fetched rows:", rows);
+      
       if (rows.length > 1) {
-        const parsed = rows.slice(1).map((row: any[], idx: number) => ({
-          id: idx.toString(),
-          judul: row[0] || "",
-          deskripsi: row[1] || "",
-          link: row[2] || "",
-          icon: row[3] || "FileText"
-        }));
+        const parsed = rows.slice(1)
+          .filter((row: any[]) => row[0]) // Filter out empty rows
+          .map((row: any[], idx: number) => ({
+            id: idx.toString(),
+            judul: row[0] || "",
+            deskripsi: row[1] || "",
+            link: row[2] || "",
+            icon: row[3] || "FileText"
+          }));
         setLinksData(parsed.sort((a, b) => a.judul.localeCompare(b.judul)));
+      } else {
+        setLinksData([]);
       }
     } catch (error) {
       console.error("Error fetching linkers:", error);
+      setLinksData([]);
       toast({
         variant: "destructive",
         title: "Gagal",
-        description: "Gagal memuat data linkers"
+        description: "Gagal memuat data linkers. Periksa konfigurasi sheet ID."
       });
     } finally {
       setIsLoading(false);
@@ -126,21 +148,23 @@ export default function Linkers() {
         // Update existing
         const updateIndex = linksData.findIndex(l => l.id === editingId);
         if (updateIndex >= 0) {
-          const newData = [...linksData];
-          newData[updateIndex] = { ...newData[updateIndex], ...formData };
-          newData.sort((a, b) => a.judul.localeCompare(b.judul));
-          
+          const rowNumber = updateIndex + 2; // +2 because of header row
           const { error } = await supabase.functions.invoke("google-sheets", {
             body: {
               spreadsheetId: linkersSheetId,
               operation: "update",
-              range: `${sheetName}!A${updateIndex + 2}:D${updateIndex + 2}`,
+              range: `${sheetName}!A${rowNumber}:D${rowNumber}`,
               values: [[formData.judul, formData.deskripsi, formData.link, formData.icon]]
             }
           });
 
           if (error) throw error;
+          
+          const newData = [...linksData];
+          newData[updateIndex] = { ...newData[updateIndex], ...formData };
+          newData.sort((a, b) => a.judul.localeCompare(b.judul));
           setLinksData(newData);
+          
           toast({ title: "Berhasil", description: "Data linker berhasil diperbarui" });
         }
       } else {
@@ -155,9 +179,11 @@ export default function Linkers() {
         });
 
         if (error) throw error;
+        
         const newData = [...linksData, { id: linksData.length.toString(), ...formData }];
         newData.sort((a, b) => a.judul.localeCompare(b.judul));
         setLinksData(newData);
+        
         toast({ title: "Berhasil", description: "Data linker berhasil ditambahkan" });
       }
       setDialogOpen(false);
@@ -166,7 +192,7 @@ export default function Linkers() {
       toast({
         variant: "destructive",
         title: "Gagal",
-        description: "Gagal menyimpan data linker"
+        description: editingId ? "Gagal memperbarui data linker" : "Gagal menambahkan data linker"
       });
     }
   };
@@ -175,12 +201,12 @@ export default function Linkers() {
     try {
       const deleteIndex = linksData.findIndex(l => l.id === deletingData.id);
       if (deleteIndex >= 0) {
+        const rowNumber = deleteIndex + 2; // +2 because of header row
         const { error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: linkersSheetId,
             operation: "delete",
-            range: `${sheetName}!A${deleteIndex + 2}:D${deleteIndex + 2}`,
-            values: []
+            range: `${sheetName}!A${rowNumber}:D${rowNumber}`
           }
         });
 
@@ -369,22 +395,22 @@ export default function Linkers() {
             </div>
 
             <div className="space-y-2">
-              <Label>Pilih Icon</Label>
-              <div className="grid grid-cols-4 gap-2">
+              <Label>Pilih Icon (12 pilihan tersedia)</Label>
+              <div className="grid grid-cols-6 gap-2">
                 {iconOptions.map((opt) => {
                   const Icon = opt.icon;
                   return (
                     <button
                       key={opt.name}
                       onClick={() => setFormData({ ...formData, icon: opt.name })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
+                      className={`p-2 rounded-lg border-2 transition-all flex items-center justify-center h-10 ${
                         formData.icon === opt.name
                           ? "border-primary bg-primary/10"
                           : "border-border hover:border-primary/50"
                       }`}
                       title={opt.name}
                     >
-                      <Icon className="h-5 w-5 mx-auto" />
+                      <Icon className="h-5 w-5" />
                     </button>
                   );
                 })}
