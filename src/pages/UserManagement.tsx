@@ -92,8 +92,6 @@ export default function UserManagement() {
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
   const userSatker = user?.satker || "";
-  const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
-  const userSatker = user?.satker || "";
 
   useEffect(() => {
     if (isPPK) {
