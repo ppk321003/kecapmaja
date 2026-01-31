@@ -108,6 +108,12 @@ export default function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
   
+  // Pagination and filter states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterRole, setFilterRole] = useState<string>("");
+  const [filterSatker, setFilterSatker] = useState<string>("");
+  const itemsPerPage = 10;
+  
   // Check if current user is PPK
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
@@ -419,7 +425,7 @@ export default function UserManagement() {
     setIsEditDialogOpen(true);
   };
 
-  // Filter grouped users berdasarkan search term dan satker
+  // Filter grouped users berdasarkan search term, satker, dan role filter
   const filteredGroupedUsers = groupedUsers
     .map(group => ({
       ...group,
@@ -428,12 +434,29 @@ export default function UserManagement() {
         : group.allRows.filter(row => row.satker === userSatker)
     }))
     .filter(group => group.allRows.length > 0) // Remove groups with no visible rows
-    .filter(group => 
-      group.usernames.some(username => 
-        username.toLowerCase().includes(searchTerm.toLowerCase())
-      ) ||
-      group.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    .filter(group => {
+      // Apply role filter
+      if (filterRole && group.role !== filterRole) return false;
+      // Apply satker filter
+      if (filterSatker && !group.satkers.includes(filterSatker)) return false;
+      // Apply search term
+      return (
+        group.usernames.some(username => 
+          username.toLowerCase().includes(searchTerm.toLowerCase())
+        ) ||
+        group.role.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredGroupedUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedGroupedUsers = filteredGroupedUsers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to first page when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
 
   // Filter users berdasarkan satker (kecuali super admin)
   const visibleUsers = isSuperAdmin 
@@ -445,6 +468,12 @@ export default function UserManagement() {
 
   // Hitung total role dari visible users
   const totalRoles = new Set(visibleUsers.map(u => u.role.trim())).size;
+
+  // Get unique roles and satkers for filters
+  const uniqueRoles = Array.from(new Set(filteredGroupedUsers.map(g => g.role))).sort();
+  const uniqueSatkers = Array.from(
+    new Set(filteredGroupedUsers.flatMap(g => g.satkers))
+  ).sort();
 
   if (!isPPK) {
     return (
@@ -603,24 +632,68 @@ export default function UserManagement() {
       {/* User Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Daftar Pengguna (Dikelompokkan per Role)</CardTitle>
-              <CardDescription>Setiap baris menampilkan semua username dengan role yang sama</CardDescription>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Daftar Pengguna (Dikelompokkan per Role)</CardTitle>
+                <CardDescription>Menampilkan {paginatedGroupedUsers.length} dari {filteredGroupedUsers.length} baris (halaman {currentPage} dari {totalPages})</CardDescription>
+              </div>
+              <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            
+            {/* Minimalist Filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Cari username atau role..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-[300px]"
+                  className="pl-9"
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              </Button>
+              <Select value={filterRole} onValueChange={(value) => { setFilterRole(value); handleFilterChange(); }}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Semua Role</SelectItem>
+                  {uniqueRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterSatker} onValueChange={(value) => { setFilterSatker(value); handleFilterChange(); }}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter Satker" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Semua Satker</SelectItem>
+                  {uniqueSatkers.map((satker) => (
+                    <SelectItem key={satker} value={satker}>
+                      {satker}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(filterRole || filterSatker || searchTerm) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterRole("");
+                    setFilterSatker("");
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                >
+                  Reset Filter
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -651,12 +724,12 @@ export default function UserManagement() {
                     <TableCell colSpan={7} className="text-center py-8">
                       <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-muted-foreground">
-                        {searchTerm ? "Tidak ada pengguna yang cocok" : "Belum ada pengguna"}
+                        {searchTerm || filterRole || filterSatker ? "Tidak ada pengguna yang cocok dengan filter" : "Belum ada pengguna"}
                       </p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredGroupedUsers.map((group, index) => {
+                  paginatedGroupedUsers.map((group, index) => {
                     // Cek apakah current user ada dalam group ini
                     const isCurrentUserInGroup = group.allRows.some(
                       userData => userData.username.toLowerCase() === user?.username.toLowerCase()
@@ -664,7 +737,7 @@ export default function UserManagement() {
                     
                     return (
                       <TableRow key={group.role} className={isCurrentUserInGroup ? "bg-primary/5" : ""}>
-                        <TableCell className="font-medium">{index + 1}</TableCell>
+                        <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <span className="font-medium block">
@@ -786,6 +859,46 @@ export default function UserManagement() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Halaman {currentPage} dari {totalPages} ({filteredGroupedUsers.length} total baris)
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Sebelumnya
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Selanjutnya
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
