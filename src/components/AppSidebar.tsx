@@ -495,8 +495,8 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 </Collapsible>
 
-                {/* User Management - Only visible for PPK */}
-                {isPPK && (
+                {/* User Management - Only visible for PPK and Satker 3210 */}
+                {isPPK && isSatker3210 && (
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                       <NavLink
