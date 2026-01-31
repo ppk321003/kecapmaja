@@ -51,7 +51,7 @@ const DownloadDokumen = () => {
     id: "daftar-hadir",
     title: "Daftar Hadir",
     sheetId: sheetIds.daftarhadir_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "DaftarHadir",
     searchFields: ["Jenis", "Nama Kegiatan", "Pembuat Daftar"],
     columns: [{
       key: "Id",
@@ -83,7 +83,7 @@ const DownloadDokumen = () => {
     id: "dokumen-pengadaan",
     title: "Dokumen Pengadaan",
     sheetId: sheetIds.dokpengadaan_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "OlahDokumenPengadaan",
     searchFields: ["Nama Paket Pengadaan", "Kode Kegiatan", "Penyedia Barang/Jasa"],
     columns: [{
       key: "Id",
@@ -115,7 +115,7 @@ const DownloadDokumen = () => {
     id: "kerangka-acuan-kerja",
     title: "Kerangka Acuan Kerja",
     sheetId: sheetIds.kak_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "KerangkaAcuanKerja",
     searchFields: ["Jenis Kerangka Acuan Kerja", "Nama Kegiatan-1", "Nama Pembuat Daftar"],
     columns: [{
       key: "Id",
@@ -147,7 +147,7 @@ const DownloadDokumen = () => {
     id: "kuitansi-perjalanan-dinas",
     title: "Kuitansi Perjalanan Dinas",
     sheetId: sheetIds.kuiperjadin_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "KuitansiPerjalananDinas",
     searchFields: ["Pelaksana Perjalanan Dinas", "Tujuan Pelaksanaan Perjalanan Dinas", "Jenis Perjalanan Dinas"],
     columns: [{
       key: "Id",
@@ -237,7 +237,7 @@ const DownloadDokumen = () => {
     id: "lembur-laporan",
     title: "Lembur & Laporan",
     sheetId: sheetIds.lembur_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "Lembur",
     searchFields: ["Kegiatan", "Pembuat daftar"],
     columns: [{
       key: "Id",
@@ -292,7 +292,7 @@ const DownloadDokumen = () => {
     id: "spj-honor",
     title: "SPJ Honor",
     sheetId: sheetIds.spjhonor_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "SPJHonor",
     searchFields: ["Nama Kegiatan", "Jenis", "Detil", "Pembuat Daftar"],
     columns: [{
       key: "Id",
@@ -327,7 +327,7 @@ const DownloadDokumen = () => {
     id: "SuratKeputusan", 
     title: "Surat Keputusan",
     sheetId: sheetIds.sk_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "SuratKeputusan",
     searchFields: ["no_sk", "tentang", "Pembuat daftar"],
     columns: [{
       key: "Id",
@@ -397,7 +397,7 @@ const DownloadDokumen = () => {
     id: "tanda-terima",
     title: "Tanda Terima",
     sheetId: sheetIds.tandaterima_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "TandaTerima",
     searchFields: ["Nama Kegiatan", "Detail Kegiatan", "Pembuat Daftar"],
     columns: [{
       key: "Id",
@@ -429,7 +429,7 @@ const DownloadDokumen = () => {
     id: "transport-lokal",
     title: "Transport Lokal",
     sheetId: sheetIds.spjtranslok_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "TransportLokal",
     searchFields: ["Nama Kegiatan", "Detil", "Pembuat Daftar"],
     columns: [{
       key: "Id",
@@ -461,7 +461,7 @@ const DownloadDokumen = () => {
     id: "uang-harian-transport",
     title: "Uang Harian dan Transport Lokal",
     sheetId: sheetIds.uh_sheet_id,
-    sheetName: "Sheet1",
+    sheetName: "UangHarianTransport",
     searchFields: ["Nama Kegiatan", "Detil", "Jenis", "Pembuat Daftar"],
     columns: [{
       key: "Id",
