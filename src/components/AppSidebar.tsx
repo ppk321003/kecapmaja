@@ -115,7 +115,7 @@ export function AppSidebar() {
     >
 
       <SidebarContent
-        className="font-['Inter',_sans-serif] flex-1 overflow-y-auto text-white relative z-10"
+        className="font-['Inter',_sans-serif] flex flex-col text-white relative z-10"
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
@@ -371,24 +371,26 @@ export function AppSidebar() {
           <div className="sparkle sparkle-6"></div>
         </div>
 
-        <div className="flex-1 sidebar-content-hidden relative z-10">
-          {/* HEADER LOGO */}
-          <div className="px-5 py-7 border-b border-white/20">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <LayoutDashboard className="h-5 w-5 text-white" />
+        <div className="flex flex-col flex-1 relative z-10 min-h-0">
+          {/* Scrollable Content */}
+          <div className="flex-1 sidebar-content-hidden overflow-y-auto">
+            {/* HEADER LOGO */}
+            <div className="px-5 py-7 border-b border-white/20">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <LayoutDashboard className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-white">
+                  KECAP MAJA
+                </h2>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-white">
-                KECAP MAJA
-              </h2>
+              <p className="text-xs text-white/80 mt-1 ml-13 font-light">
+                Kerja Efisien, Cepat, Akurat, Profesional
+              </p>
             </div>
-            <p className="text-xs text-white/80 mt-1 ml-13 font-light">
-              Kerja Efisien, Cepat, Akurat, Profesional
-            </p>
-          </div>
 
-          {/* MENU UTAMA */}
-          <SidebarGroup className="px-3 py-4">
+            {/* MENU UTAMA */}
+            <SidebarGroup className="px-3 py-4">
             <SidebarGroupLabel className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
               Menu Utama
             </SidebarGroupLabel>
@@ -541,9 +543,10 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          </div>
 
-          {/* FOOTER */}
-          <div className="mt-auto px-5 py-4 border-t border-white/20">
+          {/* FOOTER - Fixed at bottom */}
+          <div className="px-5 py-4 border-t border-white/20 flex-shrink-0">
             <div className="flex items-center gap-2 text-white/70">
               <Database className="h-4 w-4 text-white" />
               {open && (
