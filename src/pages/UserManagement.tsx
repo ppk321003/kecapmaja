@@ -99,16 +99,17 @@ export default function UserManagement() {
     }
   }, [isPPK]);
 
-  // Fungsi untuk mengelompokkan user berdasarkan role
+  // Fungsi untuk mengelompokkan user berdasarkan role dan satker
   const groupUsersByRole = (usersData: UserData[]): GroupedUserData[] => {
     const roleMap = new Map<string, GroupedUserData>();
     
     usersData.forEach(user => {
-      const roleKey = user.role.trim();
+      // Gunakan kombinasi role + satker sebagai key untuk memisahkan per satker
+      const roleKey = `${user.role.trim()}|${user.satker.trim()}`;
       
       if (!roleMap.has(roleKey)) {
         roleMap.set(roleKey, {
-          role: roleKey,
+          role: user.role.trim(),
           usernames: [user.username],
           satkers: [user.satker],
           lastLogin: user.lastLogin,
