@@ -1247,7 +1247,7 @@ const BiodataCard: React.FC<{
               <p className="font-semibold">{karyawan.tmtPangkat}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-bold">Angka Kredit Terakhir</div>
+              <div className="font-bold">Angka Kredit Awal</div>
               <p className="font-semibold">{karyawan.akKumulatif}</p>
             </div>
           </div>
