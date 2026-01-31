@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Edit2, Copy, Trash2 } from "lucide-react";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Pencil, Plus, Trash } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -506,52 +506,34 @@ const DownloadDokumen = () => {
         key: "Aksi",
         header: "Aksi",
         render: (_, rowData) => (
-          <div className="flex gap-2 justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditRow(doc, rowData)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Edit data</p>
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDuplicateRow(doc, rowData)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Duplikat data</p>
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteRow(doc, rowData)}
-                  className="h-8 w-8 p-0 hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Hapus data</p>
-              </TooltipContent>
-            </Tooltip>
+          <div className="flex gap-1 justify-center items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Edit"
+              onClick={() => handleEditRow(doc, rowData)}
+              className="h-7 w-7 p-0 hover:bg-blue-100"
+            >
+              <Pencil className="h-3.5 w-3.5 text-blue-600" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Duplikat"
+              onClick={() => handleDuplicateRow(doc, rowData)}
+              className="h-7 w-7 p-0 hover:bg-green-100"
+            >
+              <Plus className="h-3.5 w-3.5 text-green-600" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Hapus"
+              onClick={() => handleDeleteRow(doc, rowData)}
+              className="h-7 w-7 p-0 hover:bg-red-100"
+            >
+              <Trash className="h-3.5 w-3.5 text-red-600" />
+            </Button>
           </div>
         )
       },
@@ -599,9 +581,28 @@ const DownloadDokumen = () => {
   // Handle Duplicate: Copy row and generate new ID
   const handleDuplicateRow = useCallback(async (doc, rowData) => {
     try {
-      // Get the last ID and generate new one
-      const lastId = rowData.Id || "0";
-      const newId = String(parseInt(lastId) + 1).padStart(String(lastId).length, "0");
+      const currentId = rowData.Id || "0";
+      // Parse ID format: prefix-yymmxxx
+      const idParts = currentId.split('-');
+      const prefix = idParts[0] || '';
+      let numericPart = idParts[1] || currentId;
+      
+      // Extract year-month and sequence
+      const dateMatch = numericPart.match(/^(\d{4})(\d{2})(.{3})$/);
+      let newId = currentId;
+      
+      if (dateMatch) {
+        const yymm = dateMatch[1] + dateMatch[2]; // e.g., "202501"
+        const seqStr = dateMatch[3]; // e.g., "001"
+        let seq = parseInt(seqStr) || 0;
+        seq += 1;
+        const newSeqStr = String(seq).padStart(3, '0');
+        newId = `${prefix}-${yymm}${newSeqStr}`;
+      } else {
+        // Fallback: just increment the whole thing
+        const numVal = parseInt(numericPart) || 0;
+        newId = `${prefix}-${String(numVal + 1).padStart(numericPart.length, '0')}`;
+      }
       
       const newRow = {
         ...rowData,
@@ -628,6 +629,7 @@ const DownloadDokumen = () => {
       // Refresh data
       handleRefresh();
     } catch (error) {
+      console.error('Duplicate error:', error);
       toast({
         variant: "destructive",
         title: "Gagal",
@@ -658,6 +660,7 @@ const DownloadDokumen = () => {
       // Refresh data
       handleRefresh();
     } catch (error) {
+      console.error('Delete error:', error);
       toast({
         variant: "destructive",
         title: "Gagal",
@@ -694,10 +697,17 @@ const DownloadDokumen = () => {
     }
 
     // Sort by ID descending (latest first)
+    // Extract sequence number from formatted IDs (e.g., dh-2501001 -> 001)
     return filtered.sort((a, b) => {
-      const aId = parseInt(a.Id) || 0;
-      const bId = parseInt(b.Id) || 0;
-      return bId - aId;
+      const extractSequence = (id: string) => {
+        if (!id) return 0;
+        // Extract last 3 digits for sequence number
+        const match = id.match(/\d{3}$/);
+        return match ? parseInt(match[0]) : 0;
+      };
+      const aSeq = extractSequence(a.Id);
+      const bSeq = extractSequence(b.Id);
+      return bSeq - aSeq;
     });
   }, [data, searchTerm, activeDocument.searchFields]);
 
