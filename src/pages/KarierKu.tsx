@@ -42,6 +42,8 @@ interface Karyawan {
   telepon: string;
   alamat: string;
   foto?: string;
+  tmtPns?: string;
+  masaKerja?: string;
 }
 interface EstimasiKenaikan {
   kebutuhanAKPangkat: number;
@@ -740,8 +742,6 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan pangkat</CardDescription>
         </CardHeader>
         <CardContent>
-          {sudahMemenuhiPangkat.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-              Belum ada pegawai yang memenuhi syarat kenaikan pangkat
             </div> : <Table>
               <TableHeader>
                 <TableRow>
@@ -1224,7 +1224,7 @@ const BiodataCard: React.FC<{
             </div>
             <div className="space-y-2">
               <div className="font-bold">TMT PNS</div>
-              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
+              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtPns)}</p>
             </div>
             <div className="space-y-2">
               <div className="font-bold">Jabatan</div>
@@ -1244,7 +1244,7 @@ const BiodataCard: React.FC<{
             </div>
             <div className="space-y-2">
               <div className="font-bold">Masa Kerja</div>
-              <p className="font-semibold">{karyawan.tmtPangkat}</p>
+              <p className="font-semibold">{karyawan.masaKerja}</p>
             </div>
             <div className="space-y-2">
               <div className="font-bold">Angka Kredit Awal</div>
@@ -1669,7 +1669,6 @@ const DokumenSKCard: React.FC<{
         <CardContent className="pt-0">
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">Belum ada dokumen SK yang tersedia</p>
             <p className="text-sm">Dokumen akan ditampilkan di sini ketika tersedia</p>
           </div>
         </CardContent>
