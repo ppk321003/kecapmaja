@@ -1207,47 +1207,47 @@ const BiodataCard: React.FC<{
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div className="space-y-2">
-              <div className="font-medium">NIP</div>
+              <div className="font-bold">NIP</div>
               <p className="font-semibold">{karyawan.nip}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Jenis Kelamin</div>
+              <div className="font-bold">Jenis Kelamin</div>
               <p className="font-semibold">{karyawan.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Pangkat / Golongan</div>
+              <div className="font-bold">Pangkat / Golongan</div>
               <p className="font-semibold">{karyawan.pangkat} ({karyawan.golongan})</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">TMT Pangkat</div>
+              <div className="font-bold">TMT Pangkat</div>
               <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtPangkat)}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">TMT PNS</div>
+              <div className="font-bold">TMT PNS</div>
               <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Jabatan</div>
+              <div className="font-bold">Jabatan</div>
               <p className="font-semibold">{karyawan.jabatan}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">TMT Jabatan</div>
+              <div className="font-bold">TMT Jabatan</div>
               <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Tanggal Penghitungan AK Terakhir</div>
+              <div className="font-bold">Tanggal Penghitungan AK Terakhir</div>
               <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir)}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Pendidikan Terakhir</div>
+              <div className="font-bold">Pendidikan Terakhir</div>
               <p className="font-semibold">{karyawan.pendidikan}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Masa Kerja</div>
+              <div className="font-bold">Masa Kerja</div>
               <p className="font-semibold">{karyawan.tmtPangkat}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Angka Kredit Saat Ini</div>
+              <div className="font-bold">Angka Kredit Saat Ini</div>
               <p className="font-semibold">{karyawan.akKumulatif}</p>
             </div>
           </div>
