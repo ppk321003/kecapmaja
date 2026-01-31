@@ -324,26 +324,24 @@ export default function Linkers() {
                 </button>
                 
                 {canEdit && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 h-8"
+                  <div className="flex gap-1.5 justify-end">
+                    <button
                       onClick={() => handleEditClick(link)}
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted"
+                      title="Edit"
                     >
-                      <Edit2 className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="flex-1 h-8"
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => {
                         setDeletingData(link);
                         setDeleteDialogOpen(true);
                       }}
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded hover:bg-muted"
+                      title="Delete"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 )}
               </CardContent>
