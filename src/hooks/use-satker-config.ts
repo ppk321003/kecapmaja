@@ -25,6 +25,7 @@ export interface SatkerConfig {
   tandaterima_sheet_id?: string;
   spjtranslok_sheet_id?: string;
   uh_sheet_id?: string;
+  linkers_sheet_id?: string;
 }
 
 /**
@@ -43,7 +44,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:T`, // 20 kolom (semua sheet IDs untuk dokumen)
+            range: `${sheetName}!A:U`, // 21 kolom (semua sheet IDs untuk dokumen termasuk linkers)
           },
         });
         
@@ -93,6 +94,7 @@ export function useSatkerConfig() {
           tandaterima_sheet_id: row[17]?.trim() || '',
           spjtranslok_sheet_id: row[18]?.trim() || '',
           uh_sheet_id: row[19]?.trim() || '',
+          linkers_sheet_id: row[20]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -115,7 +117,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -147,6 +149,7 @@ export function getSheetIdBySatkerAndModule(
     tandaterima: 'tandaterima_sheet_id',
     spjtranslok: 'spjtranslok_sheet_id',
     uh: 'uh_sheet_id',
+    linkers: 'linkers_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];

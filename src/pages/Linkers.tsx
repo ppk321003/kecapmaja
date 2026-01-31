@@ -53,7 +53,7 @@ export default function Linkers() {
   const [formData, setFormData] = useState({ judul: "", deskripsi: "", link: "", icon: "FileText" });
 
   const satkerConfig = satkerContext?.getUserSatkerConfig() || {};
-  const linkersSheetId = (satkerConfig as any)?.linkers_sheet_id || "1x-xxxxxxxxxxxxxxxxxx";
+  const linkersSheetId = satkerContext?.getUserSatkerSheetId('linkers') || "";
   const sheetName = "Linkers";
   const userRole = authContext?.user?.role || "";
   const canEdit = userRole === "Pejabat Pembuat Komitmen";
@@ -62,8 +62,8 @@ export default function Linkers() {
   const fetchLinkers = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (!linkersSheetId || linkersSheetId === "1x-xxxxxxxxxxxxxxxxxx") {
-        console.warn("Linkers sheet ID not configured");
+      if (!linkersSheetId) {
+        console.warn("Linkers sheet ID not configured for this satker");
         setLinksData([]);
         setIsLoading(false);
         return;
