@@ -515,6 +515,11 @@ const DownloadDokumen = () => {
         key: "Aksi",
         header: "Aksi",
         render: (_, rowData) => {
+          // Guard against undefined rowData
+          if (!rowData || !rowData.Id) {
+            return <span className="text-xs text-muted-foreground">-</span>;
+          }
+          
           const rowId = rowData.Id || '';
           const isExpanded = expandedActionRow === rowId;
           
@@ -586,16 +591,23 @@ const DownloadDokumen = () => {
       {
         key: "Link",
         header: "Link",
-        render: value => <Tooltip>
-            <TooltipTrigger asChild>
-              <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-              </a>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Buka dokumen</p>
-            </TooltipContent>
-          </Tooltip>
+        render: value => {
+          if (!value || value.trim() === '') {
+            return <span className="text-xs text-muted-foreground">Link belum tersedia</span>;
+          }
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Buka dokumen</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
       }
     ]
   }));
