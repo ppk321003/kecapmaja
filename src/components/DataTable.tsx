@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 interface Column {
   key: string;
   header: string;
-  render?: (value: any) => React.ReactNode;
+  render?: (value: any, row?: any) => React.ReactNode;
 }
 
 interface DataTableProps {
@@ -41,7 +41,7 @@ export function DataTable({ title, columns, data }: DataTableProps) {
                   <TableRow key={rowIndex}>
                     {columns.map((column) => (
                       <TableCell key={column.key}>
-                        {column.render ? column.render(row[column.key]) : row[column.key]}
+                        {column.render ? column.render(row[column.key], row) : row[column.key]}
                       </TableCell>
                     ))}
                   </TableRow>

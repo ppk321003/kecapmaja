@@ -516,12 +516,15 @@ const DownloadDokumen = () => {
         header: "Aksi",
         render: (_, rowData) => {
           // Guard against undefined rowData
-          if (!rowData || !rowData.Id) {
+          if (!rowData || typeof rowData !== 'object') {
             return <span className="text-xs text-muted-foreground">-</span>;
           }
           
-          // Clean the row ID by trimming whitespace
           const rowId = (rowData.Id || '').toString().trim();
+          if (!rowId) {
+            return <span className="text-xs text-muted-foreground">-</span>;
+          }
+          
           const isExpanded = expandedActionRow === rowId;
           
           return (
