@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink, HelpCircle, Mail, Phone, MessageCircle, BookOpen } from 'lucide-react';
+import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink, HelpCircle, Mail, Phone, MessageCircle, BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
 import LayananKarir from "@/components/LayananKarir";
 
 // ==================== TYPES ====================
@@ -41,6 +41,7 @@ interface Karyawan {
   email: string;
   telepon: string;
   alamat: string;
+  foto?: string;
 }
 interface EstimasiKenaikan {
   kebutuhanAKPangkat: number;
@@ -1147,6 +1148,7 @@ const BiodataCard: React.FC<{
   akRealSaatIni,
   akTambahan
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const parseNIP = (nip: string) => {
     if (!nip || nip.length < 15) return {
       tanggalLahir: '',
@@ -1200,80 +1202,45 @@ const BiodataCard: React.FC<{
   const nipData = parseNIP(karyawan.nip);
   return <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <User className="h-5 w-5" />
-          Informasi Karyawan
-        </CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Informasi Karyawan
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1"
+          >
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isExpanded ? "Collapse" : "Expand"}
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-2">
+      {isExpanded && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-4">
+            <img
+              src={karyawan.foto || "/default-avatar.png"}
+              alt="Foto Karyawan"
+              className="w-24 h-24 rounded-full object-cover border"
+            />
             <div>
               <Label className="text-xs text-muted-foreground">Nama</Label>
               <p className="font-semibold text-sm">{karyawan.nama}</p>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">NIP</Label>
-              <p className="font-medium text-xs">{karyawan.nip}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Jenis Kelamin</Label>
-              <p className="font-medium text-sm">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
-            </div>
           </div>
-          
-          <div className="space-y-2">
-            <div>
-              <Label className="text-xs text-muted-foreground">Pangkat / Golongan</Label>
-              <p className="font-semibold text-sm">{karyawan.pangkat} ({karyawan.golongan})</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">TMT Pangkat</Label>
-              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tmtPangkat)}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">TMT PNS</Label>
-              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(nipData.tahunMasuk)}</p>
-            </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">NIP</Label>
+            <p className="font-medium text-xs">{karyawan.nip}</p>
           </div>
-          
-          <div className="space-y-2">
-            <div>
-              <Label className="text-xs text-muted-foreground">Jabatan</Label>
-              <p className="font-medium text-sm">{karyawan.jabatan}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">TMT Jabatan</Label>
-              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Tanggal Penghitungan AK Terakhir</Label>
-              <p className="font-medium text-sm">{DateParser.formatTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir)}</p>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <div>
-              <Label className="text-xs text-muted-foreground">Pendidikan Terakhir</Label>
-              <p className="font-medium text-sm">{karyawan.pendidikan}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Masa Kerja</Label>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className="font-semibold text-sm">{hitungMasaKerja(nipData.tahunMasuk)}</span>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Angka Kredit Saat Ini</Label>
-              <p className="text-lg font-bold text-blue-600">{akRealSaatIni.toFixed(3)}</p>
-              {karyawan.kategori !== 'Reguler' && <p className="text-xs text-muted-foreground">
-                  AK Awal: {karyawan.akKumulatif.toFixed(3)} + AK Tambahan: {akTambahan.toFixed(3)}
-                </p>}
-            </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Jenis Kelamin</Label>
+            <p className="font-medium text-sm">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
           </div>
         </div>
-      </CardContent>
+      )}
     </Card>;
 };
 const PredikatKinerjaRadio: React.FC<{
@@ -1398,7 +1365,7 @@ const EmployeeTable: React.FC<{
             <p className="text-muted-foreground">Sedang mengambil data dari Google Sheets</p>
           </div>
         </CardContent>
-      </Card>;
+           </Card>;
   }
   return <Card>
       <CardContent className="my-[20px]">
