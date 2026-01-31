@@ -110,8 +110,8 @@ export default function UserManagement() {
   
   // Pagination and filter states
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterRole, setFilterRole] = useState<string>("");
-  const [filterSatker, setFilterSatker] = useState<string>("");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterSatker, setFilterSatker] = useState<string>("all");
   const itemsPerPage = 10;
   
   // Check if current user is PPK
@@ -435,10 +435,10 @@ export default function UserManagement() {
     }))
     .filter(group => group.allRows.length > 0) // Remove groups with no visible rows
     .filter(group => {
-      // Apply role filter
-      if (filterRole && group.role !== filterRole) return false;
-      // Apply satker filter
-      if (filterSatker && !group.satkers.includes(filterSatker)) return false;
+      // Apply role filter (only if not "all")
+      if (filterRole && filterRole !== "all" && group.role !== filterRole) return false;
+      // Apply satker filter (only if not "all")
+      if (filterSatker && filterSatker !== "all" && !group.satkers.includes(filterSatker)) return false;
       // Apply search term
       return (
         group.usernames.some(username => 
@@ -659,7 +659,7 @@ export default function UserManagement() {
                   <SelectValue placeholder="Filter Role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Role</SelectItem>
+                  <SelectItem value="all">Semua Role</SelectItem>
                   {uniqueRoles.map((role) => (
                     <SelectItem key={role} value={role}>
                       {role}
@@ -672,7 +672,7 @@ export default function UserManagement() {
                   <SelectValue placeholder="Filter Satker" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Satker</SelectItem>
+                  <SelectItem value="all">Semua Satker</SelectItem>
                   {uniqueSatkers.map((satker) => (
                     <SelectItem key={satker} value={satker}>
                       {satker}
@@ -680,13 +680,13 @@ export default function UserManagement() {
                   ))}
                 </SelectContent>
               </Select>
-              {(filterRole || filterSatker || searchTerm) && (
+              {(filterRole !== "all" || filterSatker !== "all" || searchTerm) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setFilterRole("");
-                    setFilterSatker("");
+                    setFilterRole("all");
+                    setFilterSatker("all");
                     setSearchTerm("");
                     setCurrentPage(1);
                   }}
