@@ -282,7 +282,6 @@ const KuitansiPerjalananDinas = () => {
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
-  const satkerContext = useSatkerConfigContext();
   
   // Get satker-specific organik sheet ID
   const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
