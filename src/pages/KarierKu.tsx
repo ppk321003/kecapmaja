@@ -1215,12 +1215,40 @@ const BiodataCard: React.FC<{
               <p className="font-semibold">{karyawan.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Tempat, Tanggal Lahir</div>
-              <p className="font-semibold">{karyawan.tempatLahir}, {DateParser.formatTanggalIndonesia(karyawan.tanggalLahir)}</p>
+              <div className="font-medium">Pangkat / Golongan</div>
+              <p className="font-semibold">{karyawan.pangkat} ({karyawan.golongan})</p>
             </div>
             <div className="space-y-2">
-              <div className="font-medium">Pangkat</div>
-              <p className="font-semibold">{karyawan.pangkat} ({karyawan.golongan})</p>
+              <div className="font-medium">TMT Pangkat</div>
+              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtPangkat)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">TMT PNS</div>
+              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Jabatan</div>
+              <p className="font-semibold">{karyawan.jabatan}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">TMT Jabatan</div>
+              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tmtJabatan)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Tanggal Penghitungan AK Terakhir</div>
+              <p className="font-semibold">{DateParser.formatTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Pendidikan Terakhir</div>
+              <p className="font-semibold">{karyawan.pendidikan}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Masa Kerja</div>
+              <p className="font-semibold">{karyawan.tmtPangkat}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Angka Kredit Saat Ini</div>
+              <p className="font-semibold">{karyawan.akKumulatif}</p>
             </div>
           </div>
         </CardContent>
@@ -1384,6 +1412,7 @@ const EmployeeTable: React.FC<{
                   </TableHead>
                   <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akTambahan')}>
                     AK Tambahan {getSortIcon('akTambahan')}
+                 
                   </TableHead>
                   <TableHead className="text-right cursor-pointer" onClick={() => handleSort('akRealSaatIni')}>
                     AK Akhir {getSortIcon('akRealSaatIni')}
