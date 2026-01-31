@@ -39,15 +39,14 @@ export default function Home() {
     try {
       // Format NIP: 19781017 199803 1 002
       // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
-      const nipParts = nip.toString().split(' ');
-      if (nipParts.length >= 1) {
-        const tanggalLahirStr = nipParts[0];
-        if (tanggalLahirStr.length === 8) {
-          const tahun = tanggalLahirStr.substring(0, 4);
-          const bulan = tanggalLahirStr.substring(4, 6);
-          const tanggal = tanggalLahirStr.substring(6, 8);
-          return `${tahun}-${bulan}-${tanggal}`;
-        }
+      // Handle NIP with or without spaces
+      const normalizedNIP = nip.replace(/\s+/g, "");
+      const tanggalLahirStr = normalizedNIP.substring(0, 8);
+      if (tanggalLahirStr.length === 8) {
+        const tahun = tanggalLahirStr.substring(0, 4);
+        const bulan = tanggalLahirStr.substring(4, 6);
+        const tanggal = tanggalLahirStr.substring(6, 8);
+        return `${tahun}-${bulan}-${tanggal}`;
       }
       return null;
     } catch (error) {

@@ -1153,15 +1153,11 @@ const BiodataCard: React.FC<{
       tahunMasuk: '',
       jenisKelamin: 'L'
     };
-    const parts = nip.split(' ');
-    if (parts.length < 3) return {
-      tanggalLahir: '',
-      tahunMasuk: '',
-      jenisKelamin: 'L'
-    };
-    const tglLahirStr = parts[0];
-    const tahunMasukStr = parts[1];
-    const jenisKelaminStr = parts[2];
+    // Handle NIP with or without spaces
+    const normalizedNIP = nip.replace(/\s+/g, "");
+    const tglLahirStr = normalizedNIP.substring(0, 8);
+    const tahunMasukStr = normalizedNIP.substring(8, 14);
+    const jenisKelaminStr = normalizedNIP.substring(14, 15);
     let tanggalLahir = '';
     if (tglLahirStr.length === 8) {
       const tahun = tglLahirStr.substring(0, 4);
@@ -2095,15 +2091,11 @@ const KarierKu: React.FC = () => {
             tahunMasuk: '',
             jenisKelamin: 'L'
           };
-          const parts = nip.split(' ');
-          if (parts.length < 3) return {
-            tanggalLahir: '',
-            tahunMasuk: '',
-            jenisKelamin: 'L'
-          };
-          const tglLahirStr = parts[0];
-          const tahunMasukStr = parts[1];
-          const jenisKelaminStr = parts[2];
+          // Handle NIP with or without spaces
+          const normalizedNIP = nip.replace(/\s+/g, "");
+          const tglLahirStr = normalizedNIP.substring(0, 8);
+          const tahunMasukStr = normalizedNIP.substring(8, 14);
+          const jenisKelaminStr = normalizedNIP.substring(14, 15);
           let tanggalLahir = '';
           if (tglLahirStr.length === 8) {
             const tahun = tglLahirStr.substring(0, 4);
