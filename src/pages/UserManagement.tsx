@@ -407,8 +407,16 @@ export default function UserManagement() {
       group.role.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  // Hitung total user dan online count dari data asli
-  const onlineCount = users.filter(u => isUserOnline(u.lastLogin)).length;
+  // Filter users berdasarkan satker (kecuali super admin)
+  const visibleUsers = isSuperAdmin 
+    ? users 
+    : users.filter(u => u.satker === userSatker);
+
+  // Hitung total user dan online count dari visible users
+  const onlineCount = visibleUsers.filter(u => isUserOnline(u.lastLogin)).length;
+
+  // Hitung total role dari visible users
+  const totalRoles = new Set(visibleUsers.map(u => u.role.trim())).size;
 
   if (!isPPK) {
     return (
@@ -532,7 +540,7 @@ export default function UserManagement() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{groupedUsers.length}</div>
+            <div className="text-2xl font-bold">{totalRoles}</div>
             <p className="text-xs text-muted-foreground">Jumlah role berbeda</p>
           </CardContent>
         </Card>
@@ -542,7 +550,7 @@ export default function UserManagement() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{visibleUsers.length}</div>
             <p className="text-xs text-muted-foreground">Akun terdaftar</p>
           </CardContent>
         </Card>
