@@ -187,7 +187,7 @@ const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHE
 };
 
 // Fungsi untuk generate ID kuitansi (kui-yymmxxx)
-const generateKuitansiId = async (): Promise<string> => {
+const generateKuitansiId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -197,7 +197,7 @@ const generateKuitansiId = async (): Promise<string> => {
     // Ambil semua data untuk mencari nomor terakhir di bulan ini
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: "KuitansiPerjalananDinas!B:B"
       }
@@ -499,7 +499,7 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
 
       // Generate nomor urut baru dan ID kuitansi
       const sequenceNumber = await getNextSequenceNumber(targetSheetId);
-      const kuitansiId = await generateKuitansiId();
+      const kuitansiId = await generateKuitansiId(targetSheetId);
       
       // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
       const rowData = [

@@ -510,7 +510,31 @@ const useSheetData = () => {
   return { fetchSheetData };
 };
 
-const useKuitansiSequenceGenerator = () => {
+
+
+// Helper functions
+const formatTanggalIndonesia = (date: Date | null): string => {
+  if (!date) return "";
+  return format(date, "d MMMM yyyy", { locale: idLocale });
+};
+
+const extractDisplayName = (fullText: string) => {
+  const parts = fullText.split(' - ');
+  return parts.length > 1 ? parts[1] : fullText;
+};
+
+// Main Component
+const KuitansiTransportLokal = () => {
+  const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const targetSheetId = satkerContext?.getUserSatkerSheetId('kuitranport') || DEFAULT_TARGET_ID;
+  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
+  const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
+  const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
+  const [duplicateErrors, setDuplicateErrors] = useState<{[key: string]: string}>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Define hooks with access to CONSTANTS
   const { fetchSheetData } = useSheetData();
 
   const getNextSequenceNumber = useCallback(async (): Promise<number> => {
@@ -534,7 +558,7 @@ const useKuitansiSequenceGenerator = () => {
       .filter(num => num > 0);
 
     return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
-  }, [fetchSheetData]);
+  }, [fetchSheetData, CONSTANTS]);
 
   const generateKuitansiId = useCallback(async (): Promise<string> => {
     const now = new Date();
@@ -565,15 +589,9 @@ const useKuitansiSequenceGenerator = () => {
 
     const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
     return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
-  }, [fetchSheetData]);
+  }, [fetchSheetData, CONSTANTS]);
 
-  return { getNextSequenceNumber, generateKuitansiId };
-};
-
-const useDataSubmission = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitData = async (data: any[]) => {
+  const submitData = useCallback(async (data: any[]) => {
     setIsSubmitting(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -593,31 +611,7 @@ const useDataSubmission = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  return { submitData, isSubmitting };
-};
-
-// Helper functions
-const formatTanggalIndonesia = (date: Date | null): string => {
-  if (!date) return "";
-  return format(date, "d MMMM yyyy", { locale: idLocale });
-};
-
-const extractDisplayName = (fullText: string) => {
-  const parts = fullText.split(' - ');
-  return parts.length > 1 ? parts[1] : fullText;
-};
-
-// Main Component
-const KuitansiTransportLokal = () => {
-  const navigate = useNavigate();
-  const satkerContext = useSatkerConfigContext();
-  const targetSheetId = satkerContext?.getUserSatkerSheetId('kuitranport') || DEFAULT_TARGET_ID;
-  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
-  const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
-  const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
-  const [duplicateErrors, setDuplicateErrors] = useState<{[key: string]: string}>({});
+  }, [CONSTANTS]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -637,9 +631,6 @@ const KuitansiTransportLokal = () => {
   const { data: akunList = [] } = useAkun();
   const { data: organikList = [] } = useOrganikBPS();
   const { data: mitraList = [] } = useMitraStatistik();
-
-  const { submitData, isSubmitting } = useDataSubmission();
-  const { getNextSequenceNumber, generateKuitansiId } = useKuitansiSequenceGenerator();
 
   // Convert grouped data to flat structure
   const flattenedTransportDetails = useMemo(() => {

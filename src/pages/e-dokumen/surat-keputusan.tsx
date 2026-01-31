@@ -743,11 +743,11 @@ const useSubmitSKToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_
 };
 
 // FUNGSI YANG DIPERBAIKI: Mendapatkan nomor urut berikutnya dengan benar
-const getNextSequenceNumber = async (): Promise<number> => {
+const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
   try {
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!A:A`
       }
@@ -792,7 +792,7 @@ const getNextSequenceNumber = async (): Promise<number> => {
 };
 
 // FUNGSI YANG DIPERBAIKI: Generate ID surat keputusan yang benar
-const generateSKId = async (): Promise<string> => {
+const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -802,7 +802,7 @@ const generateSKId = async (): Promise<string> => {
     // Ambil semua ID yang sudah ada
     const { data, error } = await supabase.functions.invoke("google-sheets", {
       body: {
-        spreadsheetId: TARGET_SPREADSHEET_ID,
+        spreadsheetId: targetId,
         operation: "read",
         range: `${SHEET_NAME}!B:B` // Kolom B adalah ID
       }
@@ -1040,8 +1040,8 @@ const SuratKeputusan = () => {
   const onSubmit = async (data: SuratKeputusanFormData) => {
     setIsSubmitting(true);
     try {
-      const sequenceNumber = await getNextSequenceNumber();
-      const skId = await generateSKId();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
+      const skId = await generateSKId(targetSheetId);
 
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 

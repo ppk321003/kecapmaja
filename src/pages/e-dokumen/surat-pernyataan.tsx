@@ -102,7 +102,32 @@ const useSheetData = () => {
   return { fetchSheetData };
 };
 
-const useSuratPernyataanSequenceGenerator = () => {
+// Helper functions
+const formatTanggalIndonesia = (date: Date | null): string => {
+  if (!date) return "";
+  return format(date, "d MMMM yyyy", { locale: id });
+};
+
+// Main Component
+const SuratPernyataan = () => {
+  const navigate = useNavigate();
+  const satkerContext = useSatkerConfigContext();
+  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
+  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('super'));
+  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues
+  });
+
+  const { data: organikList = [] } = useOrganikBPS();
+  const { data: mitraList = [] } = useMitraStatistik();
+
+  // Define hooks with access to CONSTANTS
   const { fetchSheetData } = useSheetData();
 
   const getNextSequenceNumber = useCallback(async (): Promise<number> => {
@@ -126,7 +151,7 @@ const useSuratPernyataanSequenceGenerator = () => {
       .filter(num => num > 0);
 
     return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
-  }, [fetchSheetData]);
+  }, [fetchSheetData, CONSTANTS]);
 
   const generateSuratPernyataanId = useCallback(async (): Promise<string> => {
     const now = new Date();
@@ -158,15 +183,9 @@ const useSuratPernyataanSequenceGenerator = () => {
 
     const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
     return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
-  }, [fetchSheetData]);
+  }, [fetchSheetData, CONSTANTS]);
 
-  return { getNextSequenceNumber, generateSuratPernyataanId };
-};
-
-const useDataSubmission = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitData = async (data: any[]) => {
+  const submitData = useCallback(async (data: any[]) => {
     setIsSubmitting(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
@@ -186,37 +205,7 @@ const useDataSubmission = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  return { submitData, isSubmitting };
-};
-
-// Helper functions
-const formatTanggalIndonesia = (date: Date | null): string => {
-  if (!date) return "";
-  return format(date, "d MMMM yyyy", { locale: id });
-};
-
-// Main Component
-const SuratPernyataan = () => {
-  const navigate = useNavigate();
-  const satkerContext = useSatkerConfigContext();
-  const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
-  const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
-
-  const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('super'));
-  const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues
-  });
-
-  const { data: organikList = [] } = useOrganikBPS();
-  const { data: mitraList = [] } = useMitraStatistik();
-
-  const { submitData, isSubmitting } = useDataSubmission();
-  const { getNextSequenceNumber, generateSuratPernyataanId } = useSuratPernyataanSequenceGenerator();
+  }, [CONSTANTS]);
 
   const handleAddOrganik = (organikId: string) => {
     if (organikId && !selectedOrganik.includes(organikId)) {

@@ -159,7 +159,7 @@ const getNextSequenceNumber = async (targetId: string): Promise<number> => {
 };
 
 // Fungsi untuk generate ID lembur (lmbr-yymmxxx)
-const generateLemburId = async (): Promise<string> => {
+const generateLemburId = async (targetId: string): Promise<string> => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -283,8 +283,8 @@ const LemburLaporan = () => {
       setIsSubmitting(true);
 
       // Generate nomor urut baru dan ID lembur
-      const sequenceNumber = await getNextSequenceNumber();
-      const lemburId = await generateLemburId();
+      const sequenceNumber = await getNextSequenceNumber(targetSheetId);
+      const lemburId = await generateLemburId(targetSheetId);
 
       // Format data sesuai dengan header spreadsheet
       const rowData = [

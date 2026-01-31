@@ -107,38 +107,6 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return format(date, "dd MMMM yyyy", { locale: id });
 };
 
-const getNamaFromKode = async (sheetName: string, kode: string, namaColumn: 'C' | 'D'): Promise<string> => {
-  if (!kode) return kode;
-  
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
-        operation: "read",
-        range: sheetName
-      }
-    });
-
-    if (error || !data?.values) {
-      console.error(`Error fetching ${sheetName}:`, error);
-      return kode;
-    }
-
-    const rows = data.values.slice(1);
-    const foundRow = rows.find((row: any[]) => row[1] === kode);
-
-    if (foundRow) {
-      const columnIndex = namaColumn === 'C' ? 2 : 3;
-      return foundRow[columnIndex] || kode;
-    }
-
-    return kode;
-  } catch (error) {
-    console.error(`Error in getNamaFromKode for ${sheetName}:`, error);
-    return kode;
-  }
-};
-
 // Custom Hooks
 const useSheetData = () => {
   const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
@@ -160,94 +128,6 @@ const useSheetData = () => {
   }, []);
 
   return { fetchSheetData };
-};
-
-const useSequenceGenerator = () => {
-  const { fetchSheetData } = useSheetData();
-
-  const getNextSequenceNumber = useCallback(async (): Promise<number> => {
-    const values = await fetchSheetData(
-      CONSTANTS.SPREADSHEET.TARGET_ID,
-      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:A`
-    );
-
-    if (values.length <= 1) return 1;
-
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
-  }, [fetchSheetData]);
-
-  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `dh-${year}${month}`;
-
-    const values = await fetchSheetData(
-      CONSTANTS.SPREADSHEET.TARGET_ID,
-      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!B:B`
-    );
-
-    if (values.length <= 1) return `${prefix}001`;
-
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[0])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const match = id.match(/dh-(\d{2})(\d{2})(\d{3})/);
-        if (match) {
-          const sequence = parseInt(match[3]);
-          return isNaN(sequence) ? 0 : sequence;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
-  }, [fetchSheetData]);
-
-  return { getNextSequenceNumber, generateDaftarHadirId };
-};
-
-const useDataSubmission = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitData = async (data: any[]) => {
-    setIsSubmitting(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
-          operation: "append",
-          range: `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:O`,
-          values: [data]
-        }
-      });
-
-      if (error) throw error;
-      return result;
-    } catch (error) {
-      console.error('Submission error:', error);
-      throw error;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return { submitData, isSubmitting };
 };
 
 // Komponen AkunSelect dengan Search dalam 1 baris
@@ -754,7 +634,7 @@ const DaftarHadir = () => {
   const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
   const daftarHadirSheetId = satkerContext?.getUserSatkerSheetId('daftarhadir') || DEFAULT_TARGET_SPREADSHEET_ID;
   const CONSTANTS = getConstantsWithDynamicTarget(daftarHadirSheetId);
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
@@ -763,9 +643,100 @@ const DaftarHadir = () => {
   const [loadingOrganik, setLoadingOrganik] = useState(false);
   const [loadingMitra, setLoadingMitra] = useState(false);
 
-  const { submitData, isSubmitting: isSubmitLoading } = useDataSubmission();
-  const { getNextSequenceNumber, generateDaftarHadirId } = useSequenceGenerator();
   const { fetchSheetData } = useSheetData();
+
+  // Define sequence generation functions with access to CONSTANTS
+  const getNextSequenceNumber = useCallback(async (): Promise<number> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:A`
+    );
+
+    if (values.length <= 1) return 1;
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+  }, [fetchSheetData, CONSTANTS]);
+
+  const generateDaftarHadirId = useCallback(async (): Promise<string> => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `dh-${year}${month}`;
+
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!B:B`
+    );
+
+    if (values.length <= 1) return `${prefix}001`;
+
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const match = id.match(/dh-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          const sequence = parseInt(match[3]);
+          return isNaN(sequence) ? 0 : sequence;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+  }, [fetchSheetData, CONSTANTS]);
+
+  const submitData = useCallback(async (data: any[]) => {
+    const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+        operation: "append",
+        range: `${CONSTANTS.SHEET_NAMES.DAFTAR_HADIR}!A:O`,
+        values: [data]
+      }
+    });
+
+    if (error) throw error;
+    return result;
+  }, [CONSTANTS]);
+
+  const fetchAkunOptions = useCallback(async (): Promise<Option[]> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.TARGET_ID,
+      `${CONSTANTS.SHEET_NAMES.AKUN}!A2:B1000`
+    );
+
+    return values.map((row: any[]) => ({
+      value: row[0],
+      label: row[1]
+    }));
+  }, [fetchSheetData, CONSTANTS]);
+
+  const getNamaFromKode = useCallback(async (kode: string, sheetName: string): Promise<string> => {
+    const values = await fetchSheetData(
+      CONSTANTS.SPREADSHEET.SOURCE_ID,
+      `${sheetName}!A:B`
+    );
+
+    if (!values.length) return '';
+
+    const found = values.find((row: any[]) => row[0] === kode);
+    return found ? found[1] : '';
+  }, [fetchSheetData, CONSTANTS]);
 
   const {
     control,
