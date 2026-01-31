@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 // Set Indonesian Timezone
 const indonesianOptions = {
@@ -26,12 +27,30 @@ const DownloadDokumen = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const satkerContext = useSatkerConfigContext();
+
+  // Get sheet IDs from satker config
+  const satkerConfig = satkerContext?.getUserSatkerConfig() || {};
+  const sheetIds = {
+    daftarhadir_sheet_id: satkerConfig.daftarhadir_sheet_id || "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
+    dokpengadaan_sheet_id: satkerConfig.dokpengadaan_sheet_id || "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
+    kak_sheet_id: satkerConfig.kak_sheet_id || "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
+    kuiperjadin_sheet_id: satkerConfig.kuiperjadin_sheet_id || "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
+    kuitranport_sheet_id: satkerConfig.kuitranport_sheet_id || "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
+    lembur_sheet_id: satkerConfig.lembur_sheet_id || "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
+    spjhonor_sheet_id: satkerConfig.spjhonor_sheet_id || "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
+    sk_sheet_id: satkerConfig.sk_sheet_id || "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
+    super_sheet_id: satkerConfig.super_sheet_id || "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
+    tandaterima_sheet_id: satkerConfig.tandaterima_sheet_id || "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
+    spjtranslok_sheet_id: satkerConfig.spjtranslok_sheet_id || "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
+    uh_sheet_id: satkerConfig.uh_sheet_id || "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys"
+  };
 
   // Data for each table with sheet IDs - sorted alphabetically
   const documents = [{
     id: "daftar-hadir",
     title: "Daftar Hadir",
-    sheetId: "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
+    sheetId: sheetIds.daftarhadir_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Jenis", "Nama Kegiatan", "Pembuat Daftar"],
     columns: [{
@@ -63,7 +82,7 @@ const DownloadDokumen = () => {
   }, {
     id: "dokumen-pengadaan",
     title: "Dokumen Pengadaan",
-    sheetId: "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
+    sheetId: sheetIds.dokpengadaan_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Nama Paket Pengadaan", "Kode Kegiatan", "Penyedia Barang/Jasa"],
     columns: [{
@@ -95,7 +114,7 @@ const DownloadDokumen = () => {
   }, {
     id: "kerangka-acuan-kerja",
     title: "Kerangka Acuan Kerja",
-    sheetId: "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
+    sheetId: sheetIds.kak_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Jenis Kerangka Acuan Kerja", "Nama Kegiatan-1", "Nama Pembuat Daftar"],
     columns: [{
@@ -127,7 +146,7 @@ const DownloadDokumen = () => {
   }, {
     id: "kuitansi-perjalanan-dinas",
     title: "Kuitansi Perjalanan Dinas",
-    sheetId: "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
+    sheetId: sheetIds.kuiperjadin_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Pelaksana Perjalanan Dinas", "Tujuan Pelaksanaan Perjalanan Dinas", "Jenis Perjalanan Dinas"],
     columns: [{
@@ -162,7 +181,7 @@ const DownloadDokumen = () => {
   }, {
     id: "kuitansi-transport-lokal",
     title: "Kuitansi Transport Lokal",
-    sheetId: "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
+    sheetId: sheetIds.kuitranport_sheet_id,
     sheetName: "KuitansiTransportLokal",
     searchFields: ["Tujuan", "Pembuat daftar"],
     columns: [{
@@ -217,7 +236,7 @@ const DownloadDokumen = () => {
   }, {
     id: "lembur-laporan",
     title: "Lembur & Laporan",
-    sheetId: "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
+    sheetId: sheetIds.lembur_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Kegiatan", "Pembuat daftar"],
     columns: [{
@@ -272,7 +291,7 @@ const DownloadDokumen = () => {
   }, {
     id: "spj-honor",
     title: "SPJ Honor",
-    sheetId: "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
+    sheetId: sheetIds.spjhonor_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Nama Kegiatan", "Jenis", "Detil", "Pembuat Daftar"],
     columns: [{
@@ -307,7 +326,7 @@ const DownloadDokumen = () => {
   }, {
     id: "SuratKeputusan", 
     title: "Surat Keputusan",
-    sheetId: "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
+    sheetId: sheetIds.sk_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["no_sk", "tentang", "Pembuat daftar"],
     columns: [{
@@ -339,7 +358,7 @@ const DownloadDokumen = () => {
   }, {
     id: "surat-pernyataan",
     title: "Surat Pernyataan",
-    sheetId: "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
+    sheetId: sheetIds.super_sheet_id,
     sheetName: "SuratPernyataan",
     searchFields: ["Jenis Surat Pernyataan", "kegiatan", "Organik", "Mitra Statistik", "Pembuat daftar"],
     columns: [{
@@ -377,7 +396,7 @@ const DownloadDokumen = () => {
   }, {
     id: "tanda-terima",
     title: "Tanda Terima",
-    sheetId: "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
+    sheetId: sheetIds.tandaterima_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Nama Kegiatan", "Detail Kegiatan", "Pembuat Daftar"],
     columns: [{
@@ -409,7 +428,7 @@ const DownloadDokumen = () => {
   }, {
     id: "transport-lokal",
     title: "Transport Lokal",
-    sheetId: "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
+    sheetId: sheetIds.spjtranslok_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Nama Kegiatan", "Detil", "Pembuat Daftar"],
     columns: [{
@@ -441,7 +460,7 @@ const DownloadDokumen = () => {
   }, {
     id: "uang-harian-transport",
     title: "Uang Harian dan Transport Lokal",
-    sheetId: "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys",
+    sheetId: sheetIds.uh_sheet_id,
     sheetName: "Sheet1",
     searchFields: ["Nama Kegiatan", "Detil", "Jenis", "Pembuat Daftar"],
     columns: [{
