@@ -269,7 +269,8 @@ export default function UserManagement() {
     setFormUsername("");
     setFormPassword("");
     setFormRole("");
-    setFormSatker("");
+    // For non-super-admin PPK, set satker to their own satker, otherwise empty
+    setFormSatker(!isSuperAdmin ? userSatker : "");
     setShowPassword(false);
     setShowAddPassword(false);
   };
