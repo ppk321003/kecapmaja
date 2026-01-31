@@ -11,42 +11,6 @@ import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileE
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Helper function: Get relevant statuses for a user role
-function getRelevantStatusesForRole(role: UserRole): SubmissionStatus[] {
-  const SUBMITTER_ROLES = ['Fungsi Sosial', 'Fungsi Neraca', 'Fungsi Produksi', 'Fungsi Distribusi', 'Fungsi IPDS'];
-  
-  if (role === 'admin') {
-    return ['draft', 'pending_bendahara', 'pending_ppk', 'pending_ppspm', 'sent_kppn', 'complete_arsip', 
-            'incomplete_sm', 'incomplete_bendahara', 'incomplete_ppk', 'incomplete_ppspm', 'incomplete_kppn'];
-  }
-  
-  if (SUBMITTER_ROLES.includes(role)) {
-    return ['draft', 'incomplete_sm'];
-  }
-  
-  if (role === 'Bendahara') {
-    return ['pending_bendahara', 'incomplete_bendahara'];
-  }
-  
-  if (role === 'Pejabat Pembuat Komitmen') {
-    return ['pending_ppk', 'incomplete_ppk'];
-  }
-  
-  if (role === 'Pejabat Penandatangan Surat Perintah Membayar') {
-    return ['pending_ppspm', 'incomplete_ppspm'];
-  }
-  
-  if (role === 'KPPN') {
-    return ['sent_kppn', 'incomplete_kppn'];
-  }
-  
-  if (role === 'Arsip') {
-    return ['sent_kppn', 'complete_arsip'];
-  }
-  
-  return [];
-}
-
 // Filter configuration untuk Tabs
 const filterConfig = [
   { value: 'all', label: 'Total', icon: FileText, color: 'text-blue-500' },
@@ -153,11 +117,9 @@ export default function UsulanPencairan() {
   }, [sheetSubmissions, selectedSubmission?.id]);
 
   const filteredSubmissions = useMemo(() => {
-    // Get relevant statuses for current user role
-    const relevantStatuses = getRelevantStatusesForRole(userRole);
-    
-    // Start dengan copy dari submissions, filter by relevant statuses first
-    let result = submissions.filter(sub => relevantStatuses.includes(sub.status));
+    // Start dengan copy dari submissions, filtered by current user's satker
+    // (data dari usePencairanData seharusnya sudah filtered by satker, tapi ini sebagai safety check)
+    let result = submissions; // Already filtered by satker from usePencairanData
     
     // Filter berdasarkan activeFilter
     if (activeFilter !== 'all') {
@@ -190,7 +152,7 @@ export default function UsulanPencairan() {
     });
     
     return result;
-  }, [submissions, activeFilter, userRole]);
+  }, [submissions, activeFilter]);
 
   const paginatedSubmissions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -200,15 +162,9 @@ export default function UsulanPencairan() {
   const totalPages = Math.ceil(filteredSubmissions.length / pageSize);
 
   const counts = useMemo(() => {
-    // Get relevant statuses for current user role
-    const relevantStatuses = getRelevantStatusesForRole(userRole);
-    
-    // Filter submissions by relevant statuses first
-    const relevantSubmissions = submissions.filter(sub => relevantStatuses.includes(sub.status));
-    
     // Inisialisasi dengan semua status yang mungkin
     const result: Record<string, number> = {
-      all: relevantSubmissions.length,
+      all: submissions.length,
       draft: 0,
       pending_bendahara: 0,
       pending_ppk: 0,
@@ -222,14 +178,14 @@ export default function UsulanPencairan() {
       incomplete_kppn: 0,
     };
     
-    // Hitung setiap status dari relevant submissions saja
-    relevantSubmissions.forEach(sub => {
+    // Hitung setiap status
+    submissions.forEach(sub => {
       if (sub.status in result) {
         result[sub.status]++;
       }
     });
     return result;
-  }, [submissions, userRole]);
+  }, [submissions]);
 
   const handleUpdateSubmission = (id: string, updates: Partial<Submission>) => {
     setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, ...updates } : sub));
