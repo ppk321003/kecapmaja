@@ -520,18 +520,21 @@ const DownloadDokumen = () => {
             return <span className="text-xs text-muted-foreground">-</span>;
           }
           
-          const rowId = rowData.Id || '';
+          // Clean the row ID by trimming whitespace
+          const rowId = (rowData.Id || '').toString().trim();
           const isExpanded = expandedActionRow === rowId;
           
           return (
-            <div className="flex gap-1 justify-center items-center">
+            <div className="flex gap-1 justify-center items-center" onClick={(e) => e.stopPropagation()}>
               {isExpanded ? (
                 <>
                   <Button
                     variant="ghost"
                     size="sm"
+                    type="button"
                     title="Edit"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditingData(rowData);
                       setEditingDoc(doc);
                       setEditDialogOpen(true);
@@ -544,8 +547,13 @@ const DownloadDokumen = () => {
                   <Button
                     variant="ghost"
                     size="sm"
+                    type="button"
                     title="Duplikat"
-                    onClick={() => handleDuplicateRow(doc, rowData)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateRow(doc, rowData);
+                      setExpandedActionRow(null);
+                    }}
                     className="h-7 w-7 p-0 hover:bg-green-100"
                   >
                     <Plus className="h-3.5 w-3.5 text-green-600" />
@@ -553,8 +561,10 @@ const DownloadDokumen = () => {
                   <Button
                     variant="ghost"
                     size="sm"
+                    type="button"
                     title="Hapus"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setDeletingData(rowData);
                       setDeletingDoc(doc);
                       setDeleteDialogOpen(true);
@@ -567,8 +577,13 @@ const DownloadDokumen = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setExpandedActionRow(null)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedActionRow(null);
+                    }}
                     className="h-7 w-7 p-0"
+                    title="Tutup"
                   >
                     <Eye className="h-3.5 w-3.5 text-gray-400" />
                   </Button>
@@ -577,8 +592,12 @@ const DownloadDokumen = () => {
                 <Button
                   variant="ghost"
                   size="sm"
+                  type="button"
                   title="Lihat aksi"
-                  onClick={() => setExpandedActionRow(rowId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedActionRow(rowId);
+                  }}
                   className="h-7 w-7 p-0 hover:bg-gray-100"
                 >
                   <Eye className="h-3.5 w-3.5 text-gray-600" />
@@ -799,17 +818,36 @@ const DownloadDokumen = () => {
     }
 
     // Sort by ID descending (latest first)
-    // Extract sequence number from formatted IDs (e.g., dh-2501001 -> 001)
+    // Extract YYYYMM and sequence from formatted IDs (e.g., pbj-2601001 -> YYYYMM: 2601, SEQ: 001)
     return filtered.sort((a, b) => {
-      const extractSequence = (id: string) => {
-        if (!id) return 0;
-        // Extract last 3 digits for sequence number
-        const match = id.match(/\d{3}$/);
-        return match ? parseInt(match[0]) : 0;
+      const extractSortKey = (id: string) => {
+        if (!id) return { yyyymm: 0, seq: 0 };
+        
+        // Split by dash and get the numeric part
+        const parts = id.split('-');
+        const numericPart = parts[1] || '';
+        
+        if (!numericPart || numericPart.length < 4) {
+          return { yyyymm: 0, seq: 0 };
+        }
+        
+        // Extract YYYYMM (first 4 digits) and sequence (remaining digits)
+        const yyyymm = parseInt(numericPart.substring(0, 4)) || 0;
+        const seq = parseInt(numericPart.substring(4)) || 0;
+        
+        return { yyyymm, seq };
       };
-      const aSeq = extractSequence(a.Id);
-      const bSeq = extractSequence(b.Id);
-      return bSeq - aSeq;
+      
+      const aKey = extractSortKey(a.Id);
+      const bKey = extractSortKey(b.Id);
+      
+      // Sort by YYYYMM descending first (newer dates first)
+      if (bKey.yyyymm !== aKey.yyyymm) {
+        return bKey.yyyymm - aKey.yyyymm;
+      }
+      
+      // Then sort by sequence descending (higher sequence first)
+      return bKey.seq - aKey.seq;
     });
   }, [data, searchTerm, activeDocument.searchFields]);
 
