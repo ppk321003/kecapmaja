@@ -2099,6 +2099,7 @@ const KarierKu: React.FC = () => {
         };
         
         const nipData = parseNIP(row[2]?.toString() || '');
+        const foto = row[21]?.toString() || ''; // Column V (Foto)
         return {
           nip: row[2]?.toString() || '',
           nama: row[3]?.toString() || '',
@@ -2121,7 +2122,10 @@ const KarierKu: React.FC = () => {
           agama: '',
           email: '',
           telepon: row[8]?.toString() || '',
-          alamat: ''
+          alamat: '',
+          foto: foto.includes('drive.google.com/file/d/')
+            ? `https://lh3.googleusercontent.com/d/${foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
+            : foto,
         };
       });
       
