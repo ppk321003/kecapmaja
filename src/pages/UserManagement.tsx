@@ -635,7 +635,7 @@ export default function UserManagement() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Daftar Pengguna (Dikelompokkan per Role)</CardTitle>
+                <CardTitle>Daftar Pengguna</CardTitle>
                 <CardDescription>Menampilkan {paginatedGroupedUsers.length} dari {filteredGroupedUsers.length} baris (halaman {currentPage} dari {totalPages})</CardDescription>
               </div>
               <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
