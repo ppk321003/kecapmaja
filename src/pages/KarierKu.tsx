@@ -2100,6 +2100,21 @@ const KarierKu: React.FC = () => {
         
         const nipData = parseNIP(row[2]?.toString() || '');
         const foto = row[21]?.toString() || ''; // Column V (Foto)
+        
+        const calculateMasaKerja = (tmtPns: string): string => {
+          const tmtDate = new Date(tmtPns);
+          const now = new Date();
+          const years = now.getFullYear() - tmtDate.getFullYear();
+          const months = now.getMonth() - tmtDate.getMonth();
+          const totalMonths = years * 12 + months;
+          const masaKerjaYears = Math.floor(totalMonths / 12);
+          const masaKerjaMonths = totalMonths % 12;
+          return `${masaKerjaYears} tahun ${masaKerjaMonths} bulan`;
+        };
+
+        const tmtPns = nipData.tahunMasuk ? `${new Date(nipData.tahunMasuk).toLocaleString('id-ID', { month: 'long' })} ${new Date(nipData.tahunMasuk).getFullYear()}` : '';
+        const masaKerja = nipData.tahunMasuk ? calculateMasaKerja(nipData.tahunMasuk) : '';
+
         return {
           nip: row[2]?.toString() || '',
           nama: row[3]?.toString() || '',
@@ -2126,6 +2141,8 @@ const KarierKu: React.FC = () => {
           foto: foto.includes('drive.google.com/file/d/')
             ? `https://lh3.googleusercontent.com/d/${foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
             : foto,
+          tmtPns,
+          masaKerja,
         };
       });
       
