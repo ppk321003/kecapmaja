@@ -41,6 +41,22 @@ const DownloadDokumen = () => {
   const [deletingDoc, setDeletingDoc] = useState<any>(null);
   const satkerContext = useSatkerConfigContext();
 
+  // Mapping of document IDs to form URLs and display names
+  const documentFormMap = {
+    "daftar-hadir": { url: "/e-dokumen/daftar-hadir", name: "Daftar Hadir" },
+    "dokumen-pengadaan": { url: "/e-dokumen/dokumen-pengadaan", name: "Dokumen Pengadaan" },
+    "kerangka-acuan-kerja": { url: "/e-dokumen/kak", name: "Kerangka Acuan Kerja" },
+    "kuitansi-perjalanan-dinas": { url: "/e-dokumen/kuitansi-perjalanan", name: "Kuitansi Perjalanan Dinas" },
+    "kuitansi-transport-lokal": { url: "/e-dokumen/kuitansi-transport", name: "Kuitansi Transport Lokal" },
+    "lembur-laporan": { url: "/e-dokumen/lembur-laporan", name: "Lembur & Laporan" },
+    "spj-honor": { url: "/e-dokumen/spj-honor", name: "SPJ Honor" },
+    "SuratKeputusan": { url: "/e-dokumen/surat-keputusan", name: "Surat Keputusan" },
+    "surat-pernyataan": { url: "/e-dokumen/surat-pernyataan", name: "Surat Pernyataan" },
+    "tanda-terima": { url: "/e-dokumen/tanda-terima", name: "Tanda Terima" },
+    "transport-lokal": { url: "/e-dokumen/transport-lokal", name: "Transport Lokal" },
+    "uang-harian-transport": { url: "/e-dokumen/uang-harian-transport", name: "Uang Harian dan Transport Lokal" }
+  };
+
   // Get sheet IDs from satker config
   const satkerConfig = satkerContext?.getUserSatkerConfig() || {};
   const sheetIds = {
@@ -1037,39 +1053,73 @@ const DownloadDokumen = () => {
         ))}
       </Tabs>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Redirect to form page */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Data - {editingDoc?.title}</DialogTitle>
             <DialogDescription>
-              Ubah data dan klik tombol "Simpan" untuk menyimpan perubahan
+              Silakan gunakan form input di bawah untuk mengubah data. Ubah data yang diperlukan, lalu klik "Simpan" untuk menyimpan perubahan.
             </DialogDescription>
           </DialogHeader>
-          {editingData && (
-            <div className="grid gap-4 py-4">
-              {Object.entries(editingData).map(([key, value]) => (
-                key !== 'Link' && (
-                  <div key={key} className="grid gap-2">
-                    <label className="text-sm font-medium">{key}</label>
-                    <input
-                      type="text"
-                      value={String(value || '')}
-                      onChange={(e) => {
-                        setEditingData({
-                          ...editingData,
-                          [key]: e.target.value
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-900">
+              💡 <strong>Petunjuk:</strong> Form di bawah menampilkan form input dari dokumen "{editingDoc?.title}". 
+              Anda dapat mengedit semua field yang tersedia.
+            </p>
+          </div>
+
+          {editingData && editingDoc && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="bg-gray-50 p-4 rounded border">
+                <h4 className="font-semibold text-sm mb-3">Data yang dipilih untuk diedit:</h4>
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">ID:</span>
+                    <span className="text-sm">{editingData.Id}</span>
                   </div>
-                )
-              ))}
+                  {editingData['Nama Kegiatan'] && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Nama Kegiatan:</span>
+                      <span className="text-sm">{editingData['Nama Kegiatan']}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="font-semibold text-sm mb-3">Edit Data:</h4>
+                <div className="grid gap-3">
+                  {Object.entries(editingData).map(([key, value]) => (
+                    (key !== 'Link' && key !== 'Id') && (
+                      <div key={key} className="grid gap-1">
+                        <label className="text-xs font-medium text-gray-700">{key}</label>
+                        <input
+                          type="text"
+                          value={String(value || '')}
+                          onChange={(e) => {
+                            setEditingData({
+                              ...editingData,
+                              [key]: e.target.value
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+          
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => {
+              setEditDialogOpen(false);
+              setEditingData(null);
+              setEditingDoc(null);
+            }}>
               Batal
             </Button>
             <Button onClick={handleEditSubmit}>
@@ -1084,10 +1134,21 @@ const DownloadDokumen = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Data?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus data ini? Aksi ini tidak dapat diulang.
-              <div className="mt-3 p-3 bg-muted rounded text-sm">
-                <strong>ID:</strong> {deletingData?.Id}
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-4">Apakah Anda yakin ingin menghapus data ini? Aksi ini tidak dapat diulang.</p>
+                <div className="mt-3 p-3 bg-muted rounded text-sm space-y-2">
+                  <div className="flex justify-between items-start">
+                    <strong>ID:</strong>
+                    <span>{deletingData?.Id}</span>
+                  </div>
+                  {(deletingData?.['Nama Kegiatan'] || deletingData?.['kegiatan'] || deletingData?.['Kegiatan']) && (
+                    <div className="flex justify-between items-start">
+                      <strong>Nama Kegiatan:</strong>
+                      <span>{deletingData?.['Nama Kegiatan'] || deletingData?.['kegiatan'] || deletingData?.['Kegiatan']}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
