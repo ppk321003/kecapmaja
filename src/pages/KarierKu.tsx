@@ -742,36 +742,38 @@ const DashboardKarierKu: React.FC<{
           <CardDescription>Daftar pegawai yang telah memenuhi persyaratan angka kredit untuk kenaikan pangkat</CardDescription>
         </CardHeader>
         <CardContent>
-            </div> : <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>No</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>NIP</TableHead>
-                  <TableHead>Pangkat Saat Ini</TableHead>
-                  <TableHead>Pangkat Berikutnya</TableHead>
-                  <TableHead className="text-right">AK Saat Ini</TableHead>
-                  <TableHead className="text-right">Kebutuhan AK</TableHead>
-                  <TableHead className="text-center">Detail</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>No</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>NIP</TableHead>
+                <TableHead>Pangkat Saat Ini</TableHead>
+                <TableHead>Pangkat Berikutnya</TableHead>
+                <TableHead className="text-right">AK Saat Ini</TableHead>
+                <TableHead className="text-right">Kebutuhan AK</TableHead>
+                <TableHead className="text-center">Detail</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sudahMemenuhiPangkat.map((k, idx) => (
+                <TableRow key={k.nip}>
+                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{k.nama}</TableCell>
+                  <TableCell><code className="text-xs">{k.nip}</code></TableCell>
+                  <TableCell><Badge variant="outline">{k.golongan}</Badge></TableCell>
+                  <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
+                  <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
+                  <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
+                  <TableCell className="text-center">
+                    <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
+                      <LogIn className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sudahMemenuhiPangkat.map((k, idx) => <TableRow key={k.nip}>
-                    <TableCell>{idx + 1}</TableCell>
-                    <TableCell className="font-medium">{k.nama}</TableCell>
-                    <TableCell><code className="text-xs">{k.nip}</code></TableCell>
-                    <TableCell><Badge variant="outline">{k.golongan}</Badge></TableCell>
-                    <TableCell><Badge>{k.estimasi.golonganBerikutnya}</Badge></TableCell>
-                    <TableCell className="text-right font-semibold text-green-600">{k.estimasi.akRealSaatIni.toFixed(3)}</TableCell>
-                    <TableCell className="text-right">{k.estimasi.kebutuhanAKPangkat}</TableCell>
-                    <TableCell className="text-center">
-                      <Button size="sm" variant="ghost" onClick={() => onSelectKaryawan(k)}>
-                        <LogIn className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>}
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
