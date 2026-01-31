@@ -1148,100 +1148,85 @@ const BiodataCard: React.FC<{
   akRealSaatIni,
   akTambahan
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const parseNIP = (nip: string) => {
-    if (!nip || nip.length < 15) return {
-      tanggalLahir: '',
-      tahunMasuk: '',
-      jenisKelamin: 'L'
-    };
-    // Handle NIP with or without spaces
-    const normalizedNIP = nip.replace(/\s+/g, "");
-    const tglLahirStr = normalizedNIP.substring(0, 8);
-    const tahunMasukStr = normalizedNIP.substring(8, 14);
-    const jenisKelaminStr = normalizedNIP.substring(14, 15);
-    let tanggalLahir = '';
-    if (tglLahirStr.length === 8) {
-      const tahun = tglLahirStr.substring(0, 4);
-      const bulan = tglLahirStr.substring(4, 6);
-      const tanggal = tglLahirStr.substring(6, 8);
-      tanggalLahir = `${tahun}-${bulan}-${tanggal}`;
-    }
-    let tahunMasuk = '';
-    if (tahunMasukStr.length === 6) {
-      const tahun = tahunMasukStr.substring(0, 4);
-      const bulan = tahunMasukStr.substring(4, 6);
-      tahunMasuk = `${tahun}-${bulan}-01`;
-    }
-    const jenisKelamin = jenisKelaminStr === '1' ? 'L' : 'P';
-    return {
-      tanggalLahir,
-      tahunMasuk,
-      jenisKelamin
-    };
-  };
-  const hitungMasaKerja = (tahunMasuk: string) => {
-    if (!tahunMasuk) return '-';
-    try {
-      const masuk = DateParser.parseTanggalIndonesia(tahunMasuk);
-      const sekarang = new Date();
-      if (isNaN(masuk.getTime())) return '-';
-      const tahun = sekarang.getFullYear() - masuk.getFullYear();
-      const bulan = sekarang.getMonth() - masuk.getMonth();
-      let totalBulan = tahun * 12 + bulan;
-      if (totalBulan < 0) totalBulan = 0;
-      const tahunKerja = Math.floor(totalBulan / 12);
-      const bulanKerja = totalBulan % 12;
-      if (tahunKerja > 0 && bulanKerja > 0) return `${tahunKerja} tahun ${bulanKerja} bulan`;
-      if (tahunKerja > 0) return `${tahunKerja} tahun`;
-      return `${bulanKerja} bulan`;
-    } catch {
-      return '-';
-    }
-  };
-  const nipData = parseNIP(karyawan.nip);
-  return <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Informasi Karyawan
-          </CardTitle>
+  const [showDetail, setShowDetail] = useState(false);
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center gap-2 flex-shrink-0">
+              {karyawan.foto ? (
+                <img
+                  src={karyawan.foto}
+                  alt={karyawan.nama}
+                  className="h-28 w-28 rounded-full object-cover border-2 border-primary/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div
+                  className="flex h-28 w-28 items-center justify-center rounded-full bg-primary/10 text-primary text-4xl font-bold"
+                >
+                  {karyawan.nama.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col justify-center">
+              <CardTitle className="text-2xl">{karyawan.nama}</CardTitle>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant={karyawan.status === 'Aktif' ? 'default' : 'secondary'}>
+                  {karyawan.status}
+                </Badge>
+              </div>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1"
+            onClick={() => setShowDetail(!showDetail)}
+            className="h-8 px-3 flex-shrink-0"
           >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            {isExpanded ? "Collapse" : "Expand"}
+            {showDetail ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-2" />
+                Sembunyikan Detail
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Lihat Detail
+              </>
+            )}
           </Button>
         </div>
       </CardHeader>
-      {isExpanded && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-4">
-            <img
-              src={karyawan.foto || "/default-avatar.png"}
-              alt="Foto Karyawan"
-              className="w-24 h-24 rounded-full object-cover border"
-            />
-            <div>
-              <Label className="text-xs text-muted-foreground">Nama</Label>
-              <p className="font-semibold text-sm">{karyawan.nama}</p>
+
+      {showDetail && (
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="space-y-2">
+              <div className="font-medium">NIP</div>
+              <p className="font-semibold">{karyawan.nip}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Jenis Kelamin</div>
+              <p className="font-semibold">{karyawan.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Tempat, Tanggal Lahir</div>
+              <p className="font-semibold">{karyawan.tempatLahir}, {DateParser.formatTanggalIndonesia(karyawan.tanggalLahir)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Pangkat</div>
+              <p className="font-semibold">{karyawan.pangkat} ({karyawan.golongan})</p>
             </div>
           </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">NIP</Label>
-            <p className="font-medium text-xs">{karyawan.nip}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Jenis Kelamin</Label>
-            <p className="font-medium text-sm">{nipData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
-          </div>
-        </div>
+        </CardContent>
       )}
-    </Card>;
+    </Card>
+  );
 };
 const PredikatKinerjaRadio: React.FC<{
   selectedValue: number;
