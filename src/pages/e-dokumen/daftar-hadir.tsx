@@ -917,7 +917,7 @@ const DaftarHadir = () => {
     setValue('mitra', currentMitra.filter(mitraId => mitraId !== id));
   };
 
-  const isLoading = isSubmitting || isSubmitLoading;
+  const isLoading = isSubmitting;
 
   return (
     <Layout>
