@@ -253,9 +253,9 @@ export default function EntriPengelola() {
       
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: masterSpreadsheetId,
           operation: "read",
-          range: "Sheet1"
+          range: "MASTER.PENGELOLA"
         }
       });
       
