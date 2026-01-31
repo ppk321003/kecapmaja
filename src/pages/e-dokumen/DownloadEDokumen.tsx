@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Pencil, Plus, Trash } from "lucide-react";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Pencil, Plus, Trash, Eye } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -30,6 +32,13 @@ const DownloadDokumen = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expandedActionRow, setExpandedActionRow] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingData, setEditingData] = useState<any>(null);
+  const [editingDoc, setEditingDoc] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingData, setDeletingData] = useState<any>(null);
+  const [deletingDoc, setDeletingDoc] = useState<any>(null);
   const satkerContext = useSatkerConfigContext();
 
   // Get sheet IDs from satker config
@@ -505,37 +514,74 @@ const DownloadDokumen = () => {
       {
         key: "Aksi",
         header: "Aksi",
-        render: (_, rowData) => (
-          <div className="flex gap-1 justify-center items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Edit"
-              onClick={() => handleEditRow(doc, rowData)}
-              className="h-7 w-7 p-0 hover:bg-blue-100"
-            >
-              <Pencil className="h-3.5 w-3.5 text-blue-600" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Duplikat"
-              onClick={() => handleDuplicateRow(doc, rowData)}
-              className="h-7 w-7 p-0 hover:bg-green-100"
-            >
-              <Plus className="h-3.5 w-3.5 text-green-600" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Hapus"
-              onClick={() => handleDeleteRow(doc, rowData)}
-              className="h-7 w-7 p-0 hover:bg-red-100"
-            >
-              <Trash className="h-3.5 w-3.5 text-red-600" />
-            </Button>
-          </div>
-        )
+        render: (_, rowData) => {
+          const rowId = rowData.Id || '';
+          const isExpanded = expandedActionRow === rowId;
+          
+          return (
+            <div className="flex gap-1 justify-center items-center">
+              {isExpanded ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Edit"
+                    onClick={() => {
+                      setEditingData(rowData);
+                      setEditingDoc(doc);
+                      setEditDialogOpen(true);
+                      setExpandedActionRow(null);
+                    }}
+                    className="h-7 w-7 p-0 hover:bg-blue-100"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-blue-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Duplikat"
+                    onClick={() => handleDuplicateRow(doc, rowData)}
+                    className="h-7 w-7 p-0 hover:bg-green-100"
+                  >
+                    <Plus className="h-3.5 w-3.5 text-green-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Hapus"
+                    onClick={() => {
+                      setDeletingData(rowData);
+                      setDeletingDoc(doc);
+                      setDeleteDialogOpen(true);
+                      setExpandedActionRow(null);
+                    }}
+                    className="h-7 w-7 p-0 hover:bg-red-100"
+                  >
+                    <Trash className="h-3.5 w-3.5 text-red-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpandedActionRow(null)}
+                    className="h-7 w-7 p-0"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-gray-400" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Lihat aksi"
+                  onClick={() => setExpandedActionRow(rowId)}
+                  className="h-7 w-7 p-0 hover:bg-gray-100"
+                >
+                  <Eye className="h-3.5 w-3.5 text-gray-600" />
+                </Button>
+              )}
+            </div>
+          );
+        }
       },
       {
         key: "Link",
@@ -570,13 +616,47 @@ const DownloadDokumen = () => {
     }, 500);
   }, []);
 
-  // Handle Edit: Clear and replace entire row
-  const handleEditRow = useCallback(async (doc, rowData) => {
-    toast({
-      title: "Edit Dokumen",
-      description: "Fitur edit sedang dikembangkan. Silakan edit langsung di form pembuatan dokumen.",
-    });
+  // Handle Edit: Show dialog
+  const handleEditRow = useCallback((doc, rowData) => {
+    setEditingData(rowData);
+    setEditingDoc(doc);
+    setEditDialogOpen(true);
   }, []);
+
+  // Handle Edit Submit
+  const handleEditSubmit = useCallback(async () => {
+    try {
+      // Update in Google Sheets
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: editingDoc.sheetId,
+          operation: "update",
+          range: `${editingDoc.sheetName}`,
+          values: [Object.values(editingData)]
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Data telah diperbarui"
+      });
+
+      setEditDialogOpen(false);
+      setEditingData(null);
+      setEditingDoc(null);
+      // Refresh data
+      handleRefresh();
+    } catch (error) {
+      console.error('Edit error:', error);
+      toast({
+        variant: "destructive",
+        title: "Gagal",
+        description: "Terjadi kesalahan saat memperbarui data"
+      });
+    }
+  }, [editingData, editingDoc, handleRefresh]);
 
   // Handle Duplicate: Copy row and generate new ID
   const handleDuplicateRow = useCallback(async (doc, rowData) => {
@@ -638,15 +718,22 @@ const DownloadDokumen = () => {
     }
   }, [handleRefresh]);
 
-  // Handle Delete: Remove row from database
+  // Handle Delete: Show confirmation dialog
   const handleDeleteRow = useCallback(async (doc, rowData) => {
+    setDeletingData(rowData);
+    setDeletingDoc(doc);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Handle Delete Confirm
+  const handleDeleteConfirm = useCallback(async () => {
     try {
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: doc.sheetId,
+          spreadsheetId: deletingDoc.sheetId,
           operation: "delete",
-          range: `${doc.sheetName}`,
-          values: [[rowData.Id]]
+          range: `${deletingDoc.sheetName}`,
+          values: [[deletingData.Id]]
         }
       });
 
@@ -657,6 +744,9 @@ const DownloadDokumen = () => {
         description: "Data telah dihapus dari database"
       });
 
+      setDeleteDialogOpen(false);
+      setDeletingData(null);
+      setDeletingDoc(null);
       // Refresh data
       handleRefresh();
     } catch (error) {
@@ -667,7 +757,7 @@ const DownloadDokumen = () => {
         description: "Terjadi kesalahan saat menghapus data"
       });
     }
-  }, [handleRefresh]);
+  }, [deletingData, deletingDoc, handleRefresh]);
 
   // Fetch data for the active document
   const {
@@ -893,6 +983,69 @@ const DownloadDokumen = () => {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Data - {editingDoc?.title}</DialogTitle>
+            <DialogDescription>
+              Ubah data dan klik tombol "Simpan" untuk menyimpan perubahan
+            </DialogDescription>
+          </DialogHeader>
+          {editingData && (
+            <div className="grid gap-4 py-4">
+              {Object.entries(editingData).map(([key, value]) => (
+                key !== 'Link' && (
+                  <div key={key} className="grid gap-2">
+                    <label className="text-sm font-medium">{key}</label>
+                    <input
+                      type="text"
+                      value={String(value || '')}
+                      onChange={(e) => {
+                        setEditingData({
+                          ...editingData,
+                          [key]: e.target.value
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                )
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleEditSubmit}>
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data ini? Aksi ini tidak dapat diulang.
+              <div className="mt-3 p-3 bg-muted rounded text-sm">
+                <strong>ID:</strong> {deletingData?.Id}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
