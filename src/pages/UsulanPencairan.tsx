@@ -277,6 +277,7 @@ export default function UsulanPencairan() {
                 
                 <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
                   <SubmissionTable 
+                  key={activeFilter}
                   submissions={paginatedSubmissions} 
                   onView={setSelectedSubmission} 
                   onEdit={(sub) => { 
