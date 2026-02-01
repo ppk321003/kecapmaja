@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Pencil, Plus, Trash, Eye } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -32,13 +30,6 @@ const DownloadDokumen = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedActionRow, setExpandedActionRow] = useState<string | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingData, setEditingData] = useState<any>(null);
-  const [editingDoc, setEditingDoc] = useState<any>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingData, setDeletingData] = useState<any>(null);
-  const [deletingDoc, setDeletingDoc] = useState<any>(null);
   const satkerContext = useSatkerConfigContext();
 
   // Mapping of document IDs to form URLs and display names
@@ -522,136 +513,14 @@ const DownloadDokumen = () => {
     }]
   }].sort((a, b) => a.title.localeCompare(b.title));
 
-  // Add action column to all documents
-  const documentsWithActions = documents.map(doc => ({
+  // No action column: use documents as defined (keep Link column from original definitions)
+  const documentsNoActions = documents.map(doc => ({
     ...doc,
-    columns: [
-      ...doc.columns.filter(col => col.key !== "Link"),
-      {
-        key: "Aksi",
-        header: "Aksi",
-        render: (_, rowData) => {
-          // Guard against undefined rowData
-          if (!rowData || typeof rowData !== 'object') {
-            return <span className="text-xs text-muted-foreground">-</span>;
-          }
-          
-          const rowId = (rowData.Id || '').toString().trim();
-          if (!rowId) {
-            return <span className="text-xs text-muted-foreground">-</span>;
-          }
-          
-          const isExpanded = expandedActionRow === rowId;
-          
-          return (
-            <div className="flex gap-1 justify-center items-center" onClick={(e) => e.stopPropagation()}>
-              {isExpanded ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    title="Edit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingData(rowData);
-                      setEditingDoc(doc);
-                      setEditDialogOpen(true);
-                      setExpandedActionRow(null);
-                    }}
-                    className="h-7 w-7 p-0 hover:bg-blue-100"
-                  >
-                    <Pencil className="h-3.5 w-3.5 text-blue-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    title="Duplikat"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDuplicateRow(doc, rowData);
-                      setExpandedActionRow(null);
-                    }}
-                    className="h-7 w-7 p-0 hover:bg-green-100"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-green-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    title="Hapus"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingData(rowData);
-                      setDeletingDoc(doc);
-                      setDeleteDialogOpen(true);
-                      setExpandedActionRow(null);
-                    }}
-                    className="h-7 w-7 p-0 hover:bg-red-100"
-                  >
-                    <Trash className="h-3.5 w-3.5 text-red-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedActionRow(null);
-                    }}
-                    className="h-7 w-7 p-0"
-                    title="Tutup"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-gray-400" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  title="Lihat aksi"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedActionRow(rowId);
-                  }}
-                  className="h-7 w-7 p-0 hover:bg-gray-100"
-                >
-                  <Eye className="h-3.5 w-3.5 text-gray-600" />
-                </Button>
-              )}
-            </div>
-          );
-        }
-      },
-      {
-        key: "Link",
-        header: "Link",
-        render: value => {
-          if (!value || value.trim() === '') {
-            return <span className="text-xs text-muted-foreground">Link belum tersedia</span>;
-          }
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        }
-      }
-    ]
+    columns: doc.columns // keep original columns, without 'Aksi'
   }));
 
   // Get the active document
-  const activeDocument = documentsWithActions.find(doc => doc.id === activeTab) || documentsWithActions[0];
+  const activeDocument = documentsNoActions.find(doc => doc.id === activeTab) || documentsNoActions[0];
 
   // Refresh data
   const handleRefresh = useCallback(async () => {
@@ -666,148 +535,9 @@ const DownloadDokumen = () => {
     }, 500);
   }, []);
 
-  // Handle Edit: Show dialog
-  const handleEditRow = useCallback((doc, rowData) => {
-    setEditingData(rowData);
-    setEditingDoc(doc);
-    setEditDialogOpen(true);
-  }, []);
 
-  // Handle Edit Submit
-  const handleEditSubmit = useCallback(async () => {
-    try {
-      // Update in Google Sheets
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: editingDoc.sheetId,
-          operation: "update",
-          range: `${editingDoc.sheetName}`,
-          values: [Object.values(editingData)]
-        }
-      });
 
-      if (error) throw error;
 
-      toast({
-        title: "Berhasil",
-        description: "Data telah diperbarui"
-      });
-
-      setEditDialogOpen(false);
-      setEditingData(null);
-      setEditingDoc(null);
-      // Refresh data
-      handleRefresh();
-    } catch (error) {
-      console.error('Edit error:', error);
-      toast({
-        variant: "destructive",
-        title: "Gagal",
-        description: "Terjadi kesalahan saat memperbarui data"
-      });
-    }
-  }, [editingData, editingDoc, handleRefresh]);
-
-  // Handle Duplicate: Copy row and generate new ID
-  const handleDuplicateRow = useCallback(async (doc, rowData) => {
-    try {
-      const currentId = rowData.Id || "0";
-      // Parse ID format: prefix-yymmxxx
-      const idParts = currentId.split('-');
-      const prefix = idParts[0] || '';
-      let numericPart = idParts[1] || currentId;
-      
-      // Extract year-month and sequence
-      const dateMatch = numericPart.match(/^(\d{4})(\d{2})(.{3})$/);
-      let newId = currentId;
-      
-      if (dateMatch) {
-        const yymm = dateMatch[1] + dateMatch[2]; // e.g., "202501"
-        const seqStr = dateMatch[3]; // e.g., "001"
-        let seq = parseInt(seqStr) || 0;
-        seq += 1;
-        const newSeqStr = String(seq).padStart(3, '0');
-        newId = `${prefix}-${yymm}${newSeqStr}`;
-      } else {
-        // Fallback: just increment the whole thing
-        const numVal = parseInt(numericPart) || 0;
-        newId = `${prefix}-${String(numVal + 1).padStart(numericPart.length, '0')}`;
-      }
-      
-      const newRow = {
-        ...rowData,
-        Id: newId
-      };
-
-      // Append to Google Sheets
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: doc.sheetId,
-          operation: "append",
-          range: `${doc.sheetName}!A:Z`,
-          values: [Object.values(newRow)]
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Berhasil",
-        description: `Data berhasil diduplikat dengan ID baru: ${newId}`
-      });
-
-      // Refresh data
-      handleRefresh();
-    } catch (error) {
-      console.error('Duplicate error:', error);
-      toast({
-        variant: "destructive",
-        title: "Gagal",
-        description: "Terjadi kesalahan saat menduplikat data"
-      });
-    }
-  }, [handleRefresh]);
-
-  // Handle Delete: Show confirmation dialog
-  const handleDeleteRow = useCallback(async (doc, rowData) => {
-    setDeletingData(rowData);
-    setDeletingDoc(doc);
-    setDeleteDialogOpen(true);
-  }, []);
-
-  // Handle Delete Confirm
-  const handleDeleteConfirm = useCallback(async () => {
-    try {
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: deletingDoc.sheetId,
-          operation: "delete",
-          range: `${deletingDoc.sheetName}`,
-          values: [[deletingData.Id]]
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Berhasil",
-        description: "Data telah dihapus dari database"
-      });
-
-      setDeleteDialogOpen(false);
-      setDeletingData(null);
-      setDeletingDoc(null);
-      // Refresh data
-      handleRefresh();
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast({
-        variant: "destructive",
-        title: "Gagal",
-        description: "Terjadi kesalahan saat menghapus data"
-      });
-    }
-  }, [deletingData, deletingDoc, handleRefresh]);
 
   // Fetch data for the active document
   const {
@@ -928,7 +658,7 @@ const DownloadDokumen = () => {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-muted/80 p-1 rounded-full shadow-inner justify-center">
-          {documentsWithActions.map(doc => (
+          {documentsNoActions.map(doc => (
             <TabsTrigger 
               key={doc.id} 
               value={doc.id} 
@@ -939,7 +669,7 @@ const DownloadDokumen = () => {
           ))}
         </TabsList>
         
-        {documentsWithActions.map(doc => (
+        {documentsNoActions.map(doc => (
           <TabsContent key={doc.id} value={doc.id} className="mt-0 space-y-4">
             {/* Search and Page Size Controls */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
@@ -1053,113 +783,7 @@ const DownloadDokumen = () => {
         ))}
       </Tabs>
 
-      {/* Edit Dialog - Redirect to form page */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Data - {editingDoc?.title}</DialogTitle>
-            <DialogDescription>
-              Silakan gunakan form input di bawah untuk mengubah data. Ubah data yang diperlukan, lalu klik "Simpan" untuk menyimpan perubahan.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <p className="text-sm text-blue-900">
-              💡 <strong>Petunjuk:</strong> Form di bawah menampilkan form input dari dokumen "{editingDoc?.title}". 
-              Anda dapat mengedit semua field yang tersedia.
-            </p>
-          </div>
-
-          {editingData && editingDoc && (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              <div className="bg-gray-50 p-4 rounded border">
-                <h4 className="font-semibold text-sm mb-3">Data yang dipilih untuk diedit:</h4>
-                <div className="grid gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">ID:</span>
-                    <span className="text-sm">{editingData.Id}</span>
-                  </div>
-                  {editingData['Nama Kegiatan'] && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Nama Kegiatan:</span>
-                      <span className="text-sm">{editingData['Nama Kegiatan']}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-semibold text-sm mb-3">Edit Data:</h4>
-                <div className="grid gap-3">
-                  {Object.entries(editingData).map(([key, value]) => (
-                    (key !== 'Link' && key !== 'Id') && (
-                      <div key={key} className="grid gap-1">
-                        <label className="text-xs font-medium text-gray-700">{key}</label>
-                        <input
-                          type="text"
-                          value={String(value || '')}
-                          onChange={(e) => {
-                            setEditingData({
-                              ...editingData,
-                              [key]: e.target.value
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                      </div>
-                    )
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => {
-              setEditDialogOpen(false);
-              setEditingData(null);
-              setEditingDoc(null);
-            }}>
-              Batal
-            </Button>
-            <Button onClick={handleEditSubmit}>
-              Simpan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Data?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-4">Apakah Anda yakin ingin menghapus data ini? Aksi ini tidak dapat diulang.</p>
-                <div className="mt-3 p-3 bg-muted rounded text-sm space-y-2">
-                  <div className="flex justify-between items-start">
-                    <strong>ID:</strong>
-                    <span>{deletingData?.Id}</span>
-                  </div>
-                  {(deletingData?.['Nama Kegiatan'] || deletingData?.['kegiatan'] || deletingData?.['Kegiatan']) && (
-                    <div className="flex justify-between items-start">
-                      <strong>Nama Kegiatan:</strong>
-                      <span>{deletingData?.['Nama Kegiatan'] || deletingData?.['kegiatan'] || deletingData?.['Kegiatan']}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Aksi dialogs removed — editing/duplicate/delete handled via individual document pages */}
     </div>
   );
 };
