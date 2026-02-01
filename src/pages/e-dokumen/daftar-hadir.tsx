@@ -739,7 +739,10 @@ const DaftarHadir = () => {
     };
     
     const sheetName = sheetNameMap[type];
-    if (!sheetName) return '';
+    if (!sheetName) {
+      console.warn(`Unknown type for getNamaFromKode: ${type}`);
+      return '';
+    }
 
     try {
       const values = await fetchSheetData(
@@ -747,9 +750,16 @@ const DaftarHadir = () => {
         `${sheetName}!A:B`
       );
 
-      if (!values.length) return '';
+      console.log(`Fetched ${type} sheet (${sheetName}):`, values);
+      
+      if (!values || !values.length) {
+        console.warn(`No data found for ${type} (${sheetName})`);
+        return '';
+      }
 
-      const found = values.find((row: any[]) => row[0] === kode);
+      const found = values.find((row: any[]) => row && row[0] === kode);
+      console.log(`Looking for kode ${kode} in ${type}: found =`, found);
+      
       return found ? found[1] : '';
     } catch (error) {
       console.error(`Error getting nama from kode for ${type}:`, error);
@@ -861,6 +871,8 @@ const DaftarHadir = () => {
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
+      console.log('Form data on submit:', data);
+      
       const [sequenceNumber, daftarHadirId] = await Promise.all([
         getNextSequenceNumber(),
         generateDaftarHadirId()
@@ -883,6 +895,8 @@ const DaftarHadir = () => {
         getNamaFromKode("akun", data.akun)
       ]);
 
+      console.log('Resolved names:', { programNama, kegiatanNama, kroNama, roNama, komponenNama, akunNama });
+
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       
       const rowData = [
@@ -903,6 +917,8 @@ const DaftarHadir = () => {
         selectedOrganik.map(org => org.name).join(" | "),
         selectedMitra.map(mitra => mitra.name).join(" | ")
       ];
+
+      console.log('Final rowData to submit:', rowData);
 
       await submitData(rowData);
 
