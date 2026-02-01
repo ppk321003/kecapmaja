@@ -741,6 +741,13 @@ export default function Dashboard() {
   // PENTING: Gunakan 'entrikegiatan' untuk Dashboard Honorarium, bukan 'pencairan'
   const userDataSheetId = satkerContext?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
 
+  // Redirect dari tab kinerja jika user bukan satker 3210
+  useEffect(() => {
+    if (mainTab === 'kinerja' && !isSatker3210) {
+      setMainTab('honorarium');
+    }
+  }, [isSatker3210, mainTab]);
+
   // PERBAIKAN KRITIS: Load master data (mitra) dari satker context
   useEffect(() => {
     if (mitraStatistikData && mitraStatistikData.length > 0) {
@@ -1499,7 +1506,7 @@ export default function Dashboard() {
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
-              <TabsTrigger value="kinerja">Kinerja</TabsTrigger>
+              {isSatker3210 && <TabsTrigger value="kinerja">Kinerja</TabsTrigger>}
               <TabsTrigger value="pencairan">Pencairan</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>}
             </TabsList>
@@ -1810,7 +1817,7 @@ export default function Dashboard() {
             viewMode={viewMode}
             filterTahun={filterTahun}
           />
-        ) : mainTab === 'kinerja' ? (
+        ) : isSatker3210 && mainTab === 'kinerja' ? (
           <LKKinerja 
             viewMode={viewMode}
             filterTahun={filterTahun}
