@@ -860,6 +860,42 @@ const KuitansiTransportLokal = () => {
   // Form submission
   const onSubmit = async (data: FormValues) => {
     try {
+      // Check for validation errors
+      const errors = form.formState.errors;
+      if (Object.keys(errors).length > 0) {
+        const errorMessages: string[] = [];
+        
+        // Collect all field errors
+        if (errors.tujuanPelaksanaan) errorMessages.push("• Tujuan pelaksanaan");
+        if (errors.tanggalSuratTugas) errorMessages.push("• Tanggal surat tugas");
+        if (errors.program) errorMessages.push("• Program");
+        if (errors.kegiatan) errorMessages.push("• Kegiatan");
+        if (errors.kro) errorMessages.push("• KRO");
+        if (errors.ro) errorMessages.push("• RO");
+        if (errors.komponen) errorMessages.push("• Komponen");
+        if (errors.akun) errorMessages.push("• Akun");
+        if (errors.tanggalSpj) errorMessages.push("• Tanggal pengajuan");
+        if (errors.pembuatDaftar) errorMessages.push("• Pembuat daftar");
+        if (errors.transportDetails) errorMessages.push("• Detail peserta transport");
+        
+        toast({
+          variant: "destructive",
+          title: "Form belum lengkap",
+          description: (
+            <div className="space-y-2">
+              <p>Mohon lengkapi field berikut:</p>
+              <ul className="text-sm space-y-1">
+                {errorMessages.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          ) as any,
+          duration: 5000
+        });
+        return;
+      }
+
       if (Object.keys(duplicateErrors).length > 0) {
         toast({
           variant: "destructive",
