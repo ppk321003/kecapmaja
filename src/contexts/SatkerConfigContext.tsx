@@ -9,7 +9,7 @@ interface SatkerConfigContextType {
   /**
    * Dapatkan sheet ID untuk user's satker dan specific module
    */
-  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers') => string | null;
+  getUserSatkerSheetId: (module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara') => string | null;
   /**
    * Dapatkan satker config untuk user
    */
@@ -22,7 +22,7 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
   const { data: configs, isLoading, error } = useSatkerConfig();
   const { user } = useAuth();
 
-  const getUserSatkerSheetId = useCallback((module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers'): string | null => {
+  const getUserSatkerSheetId = useCallback((module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara'): string | null => {
     if (!user || !user.satker || !configs) {
       console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] Missing: user=${!!user}, satker=${user?.satker}, configs=${!!configs}`);
       return null;

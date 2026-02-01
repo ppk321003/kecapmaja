@@ -31,11 +31,21 @@ export default function AkiToBendahara() {
     return satkerConfig?.getUserSatkerConfig()?.satker_nama || 'BPS';
   }, [satkerConfig]);
   
+  // Get dynamic sheet ID from satker config
+  const dynamicSheetId = useMemo(() => {
+    return satkerConfig?.getUserSatkerSheetId('kecaptobendahara') || SPREADSHEET_ID;
+  }, [satkerConfig]);
+  
+  // Get current month and year
+  const currentDate = new Date();
+  const currentMonthName = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][currentDate.getMonth()];
+  const currentYear = currentDate.getFullYear().toString();
+  
   const [data, setData] = useState<DataRow[]>([]);
   const [filteredData, setFilteredData] = useState<DataRow[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBulan, setSelectedBulan] = useState("");
-  const [selectedTahun, setSelectedTahun] = useState("");
+  const [selectedBulan, setSelectedBulan] = useState(currentMonthName);
+  const [selectedTahun, setSelectedTahun] = useState(currentYear);
   const [selectedKegiatan, setSelectedKegiatan] = useState<string[]>([]);
   const [availableKegiatan, setAvailableKegiatan] = useState<string[]>([]);
   const [allKegiatan, setAllKegiatan] = useState<string[]>([]);
@@ -81,7 +91,7 @@ export default function AkiToBendahara() {
       });
       return;
     }
-    window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`, '_blank');
+    window.open(`https://docs.google.com/spreadsheets/d/${dynamicSheetId}`, '_blank');
   };
 
   // Fungsi untuk download data yang ditampilkan dalam format Excel
@@ -228,7 +238,7 @@ export default function AkiToBendahara() {
         console.log(`🔍 Mencoba range: ${range}`);
         const result = await supabase.functions.invoke("google-sheets", {
           body: {
-            spreadsheetId: SPREADSHEET_ID,
+            spreadsheetId: dynamicSheetId,
             operation: "read",
             range: range
           }
