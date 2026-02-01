@@ -750,7 +750,7 @@ const DaftarHadir = () => {
       if (!values.length) return '';
 
       const found = values.find((row: any[]) => row[0] === kode);
-      return found ? row[1] : '';
+      return found ? found[1] : '';
     } catch (error) {
       console.error(`Error getting nama from kode for ${type}:`, error);
       return '';
