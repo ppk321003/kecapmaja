@@ -448,7 +448,7 @@ const PersonTransportGroup: React.FC<{
                     }}
                     className="text-right"
                   />
-                  {(!trip.rate || trip.rate.toString().trim() === '0' || trip.rate.toString().trim() === '') && (
+                  {!trip.rate || trip.rate.toString().trim() === '' && (
                     <p className="text-sm font-medium text-red-500 mt-1">Rate transport harus diisi</p>
                   )}
                 </FormItem>
@@ -696,7 +696,7 @@ const KuitansiTransportLokal = () => {
       personId: "",
       personName: "",
       dariKecamatan: "Majalengka",
-      trips: [{ kecamatanTujuan: "", rate: "0", tanggalPelaksanaan: null }]
+      trips: [{ kecamatanTujuan: "", rate: "", tanggalPelaksanaan: null }]
     }]);
   }, []);
 
@@ -705,7 +705,7 @@ const KuitansiTransportLokal = () => {
       personId: "",
       personName: "",
       dariKecamatan: "Majalengka",
-      trips: [{ kecamatanTujuan: "", rate: "0", tanggalPelaksanaan: null }]
+      trips: [{ kecamatanTujuan: "", rate: "", tanggalPelaksanaan: null }]
     }]);
   }, []);
 
@@ -742,7 +742,7 @@ const KuitansiTransportLokal = () => {
   const handleAddOrganikTrip = useCallback((groupIndex: number) => {
     setOrganikGroups(prev => {
       const updated = [...prev];
-      updated[groupIndex].trips.push({ kecamatanTujuan: "", rate: "0", tanggalPelaksanaan: null });
+      updated[groupIndex].trips.push({ kecamatanTujuan: "", rate: "", tanggalPelaksanaan: null });
       return updated;
     });
   }, []);
@@ -792,7 +792,7 @@ const KuitansiTransportLokal = () => {
   const handleAddMitraTrip = useCallback((groupIndex: number) => {
     setMitraGroups(prev => {
       const updated = [...prev];
-      updated[groupIndex].trips.push({ kecamatanTujuan: "", rate: "0", tanggalPelaksanaan: null });
+      updated[groupIndex].trips.push({ kecamatanTujuan: "", rate: "", tanggalPelaksanaan: null });
       return updated;
     });
   }, []);
