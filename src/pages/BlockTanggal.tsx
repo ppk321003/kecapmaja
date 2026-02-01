@@ -60,7 +60,7 @@ interface KegiatanToDelete {
 
 // Default SPREADSHEET_ID (fallback untuk 3210 - tagging_sheet_id)
 const DEFAULT_SPREADSHEET_ID = "14iyeMPMvlBLlM-JKDDnlPgnx6WGS_U8yOZyMTIu-rn0";
-const MASTER_MITRA_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+const DEFAULT_MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const tahunOptions = [2024, 2025, 2026];
@@ -563,9 +563,14 @@ export default function BlockTanggal() {
       const user = JSON.parse(userData);
       setUserRole(user.role || "User");
     }
-    loadMasterMitra();
-    loadMasterOrganik();
-  }, []);
+    
+    // Get satker-specific master sheet IDs
+    const masterOrganiksId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+    const masterMitraId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
+    
+    loadMasterMitra(masterMitraId);
+    loadMasterOrganik(masterOrganiksId);
+  }, [satkerContext]);
 
   useEffect(() => {
     if (mitraList.length > 0 || organikList.length > 0) {
@@ -573,11 +578,11 @@ export default function BlockTanggal() {
     }
   }, [bulan, tahun, mitraList, organikList]);
 
-  const loadMasterMitra = async () => {
+  const loadMasterMitra = async (masterSheetId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_MITRA_SHEET_ID,
+          spreadsheetId: masterSheetId,
           operation: "read",
           range: "MASTER.MITRA"
         }
@@ -602,11 +607,11 @@ export default function BlockTanggal() {
     }
   };
 
-  const loadMasterOrganik = async () => {
+  const loadMasterOrganik = async (masterSheetId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: MASTER_MITRA_SHEET_ID,
+          spreadsheetId: masterSheetId,
           operation: "read",
           range: "MASTER.ORGANIK"
         }
