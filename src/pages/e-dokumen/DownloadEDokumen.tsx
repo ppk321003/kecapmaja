@@ -730,7 +730,14 @@ const DownloadDokumen = () => {
           const err = await res.json().catch(() => ({}));
           throw new Error(err?.error || 'Duplicate failed');
         }
-        const data = await res.json();
+        let data: any;
+        try {
+          data = await res.json();
+        } catch (e) {
+          const text = await res.text().catch(() => '');
+          console.error('Invalid JSON response for duplicate POST', e, text);
+          throw new Error('Respon server tidak valid');
+        }
         toast({ title: 'Berhasil', description: `Data berhasil diduplikat dengan ID baru: ${data.newId}` });
       } else {
         // Fallback to existing behavior

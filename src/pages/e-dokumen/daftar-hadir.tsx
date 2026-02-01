@@ -840,7 +840,14 @@ const DaftarHadir = () => {
           const err = await res.json().catch(() => ({}));
           throw new Error(err?.error || 'Gagal mengambil data');
         }
-        const data = await res.json();
+        let data: any;
+        try {
+          data = await res.json();
+        } catch (e) {
+          const text = await res.text().catch(() => '');
+          console.error('Invalid JSON response for edit GET', e, text);
+          throw new Error('Respon server tidak valid');
+        }
         // Map to form
         setValue('namaKegiatan', data.namaKegiatan || '');
         setValue('detil', data.detil || '');
