@@ -726,16 +726,35 @@ const DaftarHadir = () => {
     }));
   }, [fetchSheetData, CONSTANTS]);
 
-  const getNamaFromKode = useCallback(async (kode: string, sheetName: string): Promise<string> => {
-    const values = await fetchSheetData(
-      CONSTANTS.SPREADSHEET.SOURCE_ID,
-      `${sheetName}!A:B`
-    );
+  const getNamaFromKode = useCallback(async (type: string, kode: string): Promise<string> => {
+    if (!kode) return '';
+    
+    const sheetNameMap: { [key: string]: string } = {
+      program: CONSTANTS.SHEET_NAMES.PROGRAM,
+      kegiatan: CONSTANTS.SHEET_NAMES.KEGIATAN,
+      kro: CONSTANTS.SHEET_NAMES.KRO,
+      ro: CONSTANTS.SHEET_NAMES.RO,
+      komponen: CONSTANTS.SHEET_NAMES.KOMPONEN,
+      akun: CONSTANTS.SHEET_NAMES.AKUN
+    };
+    
+    const sheetName = sheetNameMap[type];
+    if (!sheetName) return '';
 
-    if (!values.length) return '';
+    try {
+      const values = await fetchSheetData(
+        CONSTANTS.SPREADSHEET.SOURCE_ID,
+        `${sheetName}!A:B`
+      );
 
-    const found = values.find((row: any[]) => row[0] === kode);
-    return found ? found[1] : '';
+      if (!values.length) return '';
+
+      const found = values.find((row: any[]) => row[0] === kode);
+      return found ? row[1] : '';
+    } catch (error) {
+      console.error(`Error getting nama from kode for ${type}:`, error);
+      return '';
+    }
   }, [fetchSheetData, CONSTANTS]);
 
   const {
@@ -856,12 +875,12 @@ const DaftarHadir = () => {
         komponenNama,
         akunNama
       ] = await Promise.all([
-        getNamaFromKode("program", data.program, 'C'),
-        getNamaFromKode("kegiatan", data.kegiatan, 'D'),
-        getNamaFromKode("kro", data.kro, 'D'),
-        getNamaFromKode("ro", data.ro, 'D'),
-        getNamaFromKode("komponen", data.komponen, 'C'),
-        getNamaFromKode("akun", data.akun, 'C')
+        getNamaFromKode("program", data.program),
+        getNamaFromKode("kegiatan", data.kegiatan),
+        getNamaFromKode("kro", data.kro),
+        getNamaFromKode("ro", data.ro),
+        getNamaFromKode("komponen", data.komponen),
+        getNamaFromKode("akun", data.akun)
       ]);
 
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
