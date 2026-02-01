@@ -923,10 +923,6 @@ export default function InputPengadaan() {
             )}
           </p>
         </div>
-        <Button variant="outline" onClick={loadPengadaanData} disabled={loading} className="flex items-center gap-2">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
 
       {!showForm ? (

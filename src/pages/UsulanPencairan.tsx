@@ -215,9 +215,7 @@ export default function UsulanPencairan() {
               Buat Pengajuan
             </Button>
           )}
-          <Button variant="outline" onClick={() => refetch()} disabled={isLoading} className="rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          </Button>
+
         </div>
       </div>
 

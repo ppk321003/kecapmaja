@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -56,7 +56,6 @@ const DownloadDokumen = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const satkerContext = useSatkerConfigContext();
 
   // Mapping of document IDs to form URLs and display names
@@ -441,23 +440,6 @@ const DownloadDokumen = () => {
   // Get the active document
   const activeDocument = documentsNoActions.find(doc => doc.id === activeTab) || documentsNoActions[0];
 
-  // Refresh data
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    // Trigger a refetch by resetting data
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast({
-        title: "Selesai",
-        description: "Data telah diperbarui"
-      });
-    }, 500);
-  }, []);
-
-
-
-
-
   // Fetch data for the active document
   const {
     data,
@@ -563,16 +545,6 @@ const DownloadDokumen = () => {
             Waktu server: {new Date().toLocaleString('id-ID', indonesianOptions)}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
