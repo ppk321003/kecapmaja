@@ -945,6 +945,24 @@ const KuitansiTransportLokal = () => {
     "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"
   ];
 
+  // Helper function to check for incomplete transport detail fields
+  const getIncompleteTransportFields = () => {
+    const incomplete: string[] = [];
+    flattenedTransportDetails.forEach((detail, index) => {
+      if (!detail.tanggalPelaksanaan || detail.tanggalPelaksanaan.toString() === 'Invalid Date') {
+        incomplete.push(`Peserta ${index + 1}: Tanggal Pelaksanaan`);
+      }
+      if (!detail.kecamatanTujuan) {
+        incomplete.push(`Peserta ${index + 1}: Kecamatan Tujuan`);
+      }
+      if (!detail.rate || detail.rate.toString().trim() === '') {
+        incomplete.push(`Peserta ${index + 1}: Rate Transport`);
+      }
+    });
+    return incomplete;
+  };
+
+  const incompleteTransportFields = getIncompleteTransportFields();
   const isLoading = isSubmitting;
 
   return (
@@ -1050,6 +1068,21 @@ const KuitansiTransportLokal = () => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Tampilkan incomplete transport fields jika ada */}
+                  {incompleteTransportFields.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-amber-200">
+                      <p className="text-sm font-medium text-amber-900 mb-2">Detail Transport yang belum lengkap:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {incompleteTransportFields.map((field, idx) => (
+                          <div key={idx} className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                            <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-amber-800">{field}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
