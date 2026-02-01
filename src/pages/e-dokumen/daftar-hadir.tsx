@@ -628,14 +628,18 @@ const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
 };
 
 // Main Component
+import { useParams } from 'react-router-dom';
+
 const DaftarHadir = () => {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
   const satkerContext = useSatkerConfigContext();
   const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
   const daftarHadirSheetId = satkerContext?.getUserSatkerSheetId('daftarhadir') || DEFAULT_TARGET_SPREADSHEET_ID;
   const CONSTANTS = getConstantsWithDynamicTarget(daftarHadirSheetId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
   const [organikList, setOrganikList] = useState<Option[]>([]);
@@ -825,6 +829,53 @@ const DaftarHadir = () => {
     fetchInitialData();
   }, [fetchSheetData, masterSpreadsheetId]);
 
+  // If editId present, fetch record and prefill form
+  useEffect(() => {
+    const fetchEdit = async () => {
+      if (!editId) return;
+      try {
+        setIsLoadingEdit(true);
+        const res = await fetch(`/functions/v1/edokumen-daftar-hadir/${encodeURIComponent(editId)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || 'Gagal mengambil data');
+        }
+        const data = await res.json();
+        // Map to form
+        setValue('namaKegiatan', data.namaKegiatan || '');
+        setValue('detil', data.detil || '');
+        setValue('jenis', data.jenis || '');
+        setValue('program', data.program?.code || '');
+        setValue('kegiatan', data.kegiatan?.code || '');
+        setValue('kro', data.kro?.code || '');
+        setValue('ro', data.ro?.code || '');
+        setValue('komponen', data.komponen?.code || '');
+        setValue('akun', data.akun?.code || '');
+        setValue('tanggalMulai', data.tanggalMulai ? new Date(data.tanggalMulai) : undefined);
+        setValue('tanggalSelesai', data.tanggalSelesai ? new Date(data.tanggalSelesai) : undefined);
+        // Attempt to map organik names to ids
+        const organikIds = (data.organik || []).map((o: any) => {
+          const found = organikList.find(item => item.name === o.name);
+          return found ? found.id : o.name;
+        });
+        setValue('organik', organikIds);
+        const mitraIds = (data.mitra || []).map((m: any) => {
+          const found = mitraList.find(item => item.name === m.name);
+          return found ? found.id : m.name;
+        });
+        setValue('mitra', mitraIds);
+        setValue('pembuatDaftar', data.pembuatDaftar?.id || '');
+      } catch (error) {
+        console.error('Error loading edit data:', error);
+        toast({ variant: 'destructive', title: 'Gagal memuat data edit', description: error.message || 'Terjadi kesalahan' });
+      } finally {
+        setIsLoadingEdit(false);
+      }
+    };
+
+    fetchEdit();
+  }, [editId, organikList, mitraList, setValue]);
+
   // Update selected organik and mitra
   useEffect(() => {
     const updatedOrganik = (watchedOrganik || [])
@@ -842,58 +893,92 @@ const DaftarHadir = () => {
   const handleSubmitForm = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      const [sequenceNumber, daftarHadirId] = await Promise.all([
-        getNextSequenceNumber(),
-        generateDaftarHadirId()
-      ]);
+      if (editId) {
+        // Update existing row via function
+        const body = {
+          namaKegiatan: data.namaKegiatan,
+          detil: data.detil,
+          jenis: data.jenis,
+          program: { code: data.program },
+          kegiatan: { code: data.kegiatan },
+          kro: { code: data.kro },
+          ro: { code: data.ro },
+          komponen: { code: data.komponen },
+          akun: { code: data.akun },
+          tanggalMulai: data.tanggalMulai ? new Date(data.tanggalMulai).toISOString().split('T')[0] : null,
+          tanggalSelesai: data.tanggalSelesai ? new Date(data.tanggalSelesai).toISOString().split('T')[0] : null,
+          pembuatDaftar: { id: data.pembuatDaftar },
+          organik: data.organik || [],
+          mitra: data.mitra || []
+        };
 
-      // Dapatkan nama dari kode untuk setiap field
-      const [
-        programNama,
-        kegiatanNama, 
-        kroNama,
-        roNama,
-        komponenNama,
-        akunNama
-      ] = await Promise.all([
-        getNamaFromKode("program", data.program, 'C'),
-        getNamaFromKode("kegiatan", data.kegiatan, 'D'),
-        getNamaFromKode("kro", data.kro, 'D'),
-        getNamaFromKode("ro", data.ro, 'D'),
-        getNamaFromKode("komponen", data.komponen, 'C'),
-        getNamaFromKode("akun", data.akun, 'C')
-      ]);
+        const res = await fetch(`/functions/v1/edokumen-daftar-hadir/${encodeURIComponent(editId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
 
-      const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
-      
-      const rowData = [
-        sequenceNumber,
-        daftarHadirId,
-        data.namaKegiatan,
-        data.detil || "",
-        data.jenis,
-        programNama,
-        kegiatanNama,
-        kroNama,
-        roNama,
-        komponenNama,
-        akunNama,
-        formatTanggalIndonesia(data.tanggalMulai),
-        formatTanggalIndonesia(data.tanggalSelesai),
-        pembuatDaftar?.name || data.pembuatDaftar,
-        selectedOrganik.map(org => org.name).join(" | "),
-        selectedMitra.map(mitra => mitra.name).join(" | ")
-      ];
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || 'Update failed');
+        }
 
-      await submitData(rowData);
+        toast({ title: 'Berhasil', description: `Daftar Hadir berhasil diperbarui (ID: ${editId})` });
+        navigate('/e-dokumen/download');
+      } else {
+        const [sequenceNumber, daftarHadirId] = await Promise.all([
+          getNextSequenceNumber(),
+          generateDaftarHadirId()
+        ]);
 
-      toast({
-        title: "Sukses!",
-        description: `Daftar Hadir berhasil disimpan (ID: ${daftarHadirId})`,
-        variant: "default"
-      });
-      
-      navigate("/e-dokumen/buat");
+        // Dapatkan nama dari kode untuk setiap field
+        const [
+          programNama,
+          kegiatanNama, 
+          kroNama,
+          roNama,
+          komponenNama,
+          akunNama
+        ] = await Promise.all([
+          getNamaFromKode("program", data.program, 'C'),
+          getNamaFromKode("kegiatan", data.kegiatan, 'D'),
+          getNamaFromKode("kro", data.kro, 'D'),
+          getNamaFromKode("ro", data.ro, 'D'),
+          getNamaFromKode("komponen", data.komponen, 'C'),
+          getNamaFromKode("akun", data.akun, 'C')
+        ]);
+
+        const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
+        
+        const rowData = [
+          sequenceNumber,
+          daftarHadirId,
+          data.namaKegiatan,
+          data.detil || "",
+          data.jenis,
+          programNama,
+          kegiatanNama,
+          kroNama,
+          roNama,
+          komponenNama,
+          akunNama,
+          formatTanggalIndonesia(data.tanggalMulai),
+          formatTanggalIndonesia(data.tanggalSelesai),
+          pembuatDaftar?.name || data.pembuatDaftar,
+          selectedOrganik.map(org => org.name).join(" | "),
+          selectedMitra.map(mitra => mitra.name).join(" | ")
+        ];
+
+        await submitData(rowData);
+
+        toast({
+          title: "Sukses!",
+          description: `Daftar Hadir berhasil disimpan (ID: ${daftarHadirId})`,
+          variant: "default"
+        });
+        
+        navigate("/e-dokumen/buat");
+      }
 
     } catch (error: any) {
       console.error("Error submitting form:", error);

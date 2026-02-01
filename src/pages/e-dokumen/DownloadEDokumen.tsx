@@ -554,9 +554,17 @@ const DownloadDokumen = () => {
                     title="Edit"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingData(rowData);
-                      setEditingDoc(doc);
-                      setEditDialogOpen(true);
+                      if (doc.id === 'daftar-hadir') {
+                        // Open full edit page
+                        const id = rowData.Id || rowData.Id || '';
+                        if (id) {
+                          window.location.href = `/e-dokumen/daftar-hadir/edit/${id}`;
+                        }
+                      } else {
+                        setEditingData(rowData);
+                        setEditingDoc(doc);
+                        setEditDialogOpen(true);
+                      }
                       setExpandedActionRow(null);
                     }}
                     className="h-7 w-7 p-0 hover:bg-blue-100"
@@ -711,60 +719,55 @@ const DownloadDokumen = () => {
   // Handle Duplicate: Copy row and generate new ID
   const handleDuplicateRow = useCallback(async (doc, rowData) => {
     try {
-      const currentId = rowData.Id || "0";
-      // Parse ID format: prefix-yymmxxx
-      const idParts = currentId.split('-');
-      const prefix = idParts[0] || '';
-      let numericPart = idParts[1] || currentId;
-      
-      // Extract year-month and sequence
-      const dateMatch = numericPart.match(/^(\d{4})(\d{2})(.{3})$/);
-      let newId = currentId;
-      
-      if (dateMatch) {
-        const yymm = dateMatch[1] + dateMatch[2]; // e.g., "202501"
-        const seqStr = dateMatch[3]; // e.g., "001"
-        let seq = parseInt(seqStr) || 0;
-        seq += 1;
-        const newSeqStr = String(seq).padStart(3, '0');
-        newId = `${prefix}-${yymm}${newSeqStr}`;
-      } else {
-        // Fallback: just increment the whole thing
-        const numVal = parseInt(numericPart) || 0;
-        newId = `${prefix}-${String(numVal + 1).padStart(numericPart.length, '0')}`;
-      }
-      
-      const newRow = {
-        ...rowData,
-        Id: newId
-      };
-
-      // Append to Google Sheets
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: doc.sheetId,
-          operation: "append",
-          range: `${doc.sheetName}!A:Z`,
-          values: [Object.values(newRow)]
+      if (doc.id === 'daftar-hadir') {
+        // Call serverless duplicate endpoint
+        const id = rowData.Id;
+        const res = await fetch(`/functions/v1/edokumen-daftar-hadir/${encodeURIComponent(id)}/duplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || 'Duplicate failed');
         }
-      });
+        const data = await res.json();
+        toast({ title: 'Berhasil', description: `Data berhasil diduplikat dengan ID baru: ${data.newId}` });
+      } else {
+        // Fallback to existing behavior
+        const currentId = rowData.Id || "0";
+        const idParts = currentId.split('-');
+        const prefix = idParts[0] || '';
+        let numericPart = idParts[1] || currentId;
+        const dateMatch = numericPart.match(/^(\d{4})(\d{2})(.{3})$/);
+        let newId = currentId;
+        if (dateMatch) {
+          const yymm = dateMatch[1] + dateMatch[2];
+          const seqStr = dateMatch[3];
+          let seq = parseInt(seqStr) || 0;
+          seq += 1;
+          const newSeqStr = String(seq).padStart(3, '0');
+          newId = `${prefix}-${yymm}${newSeqStr}`;
+        } else {
+          const numVal = parseInt(numericPart) || 0;
+          newId = `${prefix}-${String(numVal + 1).padStart(numericPart.length, '0')}`;
+        }
+        const newRow = { ...rowData, Id: newId };
+        const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: doc.sheetId,
+            operation: "append",
+            range: `${doc.sheetName}!A:Z`,
+            values: [Object.values(newRow)]
+          }
+        });
+        if (error) throw error;
+        toast({ title: 'Berhasil', description: `Data berhasil diduplikat dengan ID baru: ${newId}` });
+      }
 
-      if (error) throw error;
-
-      toast({
-        title: "Berhasil",
-        description: `Data berhasil diduplikat dengan ID baru: ${newId}`
-      });
-
-      // Refresh data
       handleRefresh();
     } catch (error) {
       console.error('Duplicate error:', error);
-      toast({
-        variant: "destructive",
-        title: "Gagal",
-        description: "Terjadi kesalahan saat menduplikat data"
-      });
+      toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan saat menduplikat data' });
     }
   }, [handleRefresh]);
 
@@ -778,16 +781,28 @@ const DownloadDokumen = () => {
   // Handle Delete Confirm
   const handleDeleteConfirm = useCallback(async () => {
     try {
-      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: deletingDoc.sheetId,
-          operation: "delete",
-          range: `${deletingDoc.sheetName}`,
-          values: [[deletingData.Id]]
+      if (deletingDoc.id === 'daftar-hadir') {
+        const id = deletingData?.Id;
+        const res = await fetch(`/functions/v1/edokumen-daftar-hadir/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || 'Delete failed');
         }
-      });
+      } else {
+        const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: deletingDoc.sheetId,
+            operation: "delete",
+            range: `${deletingDoc.sheetName}`,
+            values: [[deletingData.Id]]
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Berhasil",

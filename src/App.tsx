@@ -69,6 +69,7 @@ const App = () => (
             <Route path="/e-dokumen/buat" element={<ProtectedRoute><Layout><BuatEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/download" element={<ProtectedRoute><Layout><DownloadEDokumen /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/daftar-hadir" element={<ProtectedRoute><DaftarHadir /></ProtectedRoute>} />
+            <Route path="/e-dokumen/daftar-hadir/edit/:id" element={<ProtectedRoute><DaftarHadir /></ProtectedRoute>} />
             <Route path="/e-dokumen/dokumen-pengadaan" element={<ProtectedRoute><DokumenPengadaan /></ProtectedRoute>} />
             <Route path="/e-dokumen/kak" element={<ProtectedRoute><KerangkaAcuanKerja /></ProtectedRoute>} />
             <Route path="/e-dokumen/kuitansi-perjalanan" element={<ProtectedRoute><KuitansiPerjalananDinas /></ProtectedRoute>} />
