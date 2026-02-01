@@ -34,8 +34,9 @@ export const useOrganikBPS = () => {
   
   // Get satker-specific master organik sheet ID - memoized to prevent infinite loops
   const masterSpreadsheetId = useMemo(() => {
-    return satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
-  }, [satkerContext]);
+    const sheetId = satkerContext?.getUserSatkerSheetId('masterorganik');
+    return sheetId || DEFAULT_MASTER_SPREADSHEET_ID;
+  }, [satkerContext?.configs, satkerContext?.getUserSatkerSheetId]);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
@@ -63,8 +64,9 @@ export const useMitraStatistik = () => {
   
   // Get satker-specific master organik sheet ID - memoized to prevent infinite loops
   const masterSpreadsheetId = useMemo(() => {
-    return satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
-  }, [satkerContext]);
+    const sheetId = satkerContext?.getUserSatkerSheetId('masterorganik');
+    return sheetId || DEFAULT_MASTER_SPREADSHEET_ID;
+  }, [satkerContext?.configs, satkerContext?.getUserSatkerSheetId]);
   
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: masterSpreadsheetId,
