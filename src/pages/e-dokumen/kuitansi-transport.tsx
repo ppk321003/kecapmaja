@@ -971,6 +971,89 @@ const KuitansiTransportLokal = () => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Validation Summary - Tampilkan semua field yang belum lengkap */}
+            {Object.keys(form.formState.errors).length > 0 && (
+              <Card className="border-amber-200 bg-amber-50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-amber-900 flex items-center gap-2">
+                    <X className="h-5 w-5" />
+                    Field yang Belum Lengkap
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-amber-800 mb-3">Mohon lengkapi field berikut sebelum menyimpan:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {form.formState.errors.tujuanPelaksanaan && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Tujuan Pelaksanaan / Kegiatan</span>
+                      </div>
+                    )}
+                    {form.formState.errors.tanggalSuratTugas && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Tanggal Surat Tugas</span>
+                      </div>
+                    )}
+                    {form.formState.errors.program && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Program</span>
+                      </div>
+                    )}
+                    {form.formState.errors.kegiatan && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Kegiatan</span>
+                      </div>
+                    )}
+                    {form.formState.errors.kro && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">KRO</span>
+                      </div>
+                    )}
+                    {form.formState.errors.ro && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">RO</span>
+                      </div>
+                    )}
+                    {form.formState.errors.komponen && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Komponen</span>
+                      </div>
+                    )}
+                    {form.formState.errors.akun && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Akun</span>
+                      </div>
+                    )}
+                    {form.formState.errors.tanggalSpj && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Tanggal Pengajuan</span>
+                      </div>
+                    )}
+                    {form.formState.errors.pembuatDaftar && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Pembuat Daftar</span>
+                      </div>
+                    )}
+                    {form.formState.errors.transportDetails && (
+                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-amber-800">Detail Peserta Transport</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Informasi Umum */}
             <Card>
               <CardHeader className="pb-4">
