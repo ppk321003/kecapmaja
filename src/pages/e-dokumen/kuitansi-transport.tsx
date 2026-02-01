@@ -424,14 +424,19 @@ const PersonTransportGroup: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <SearchableKecamatanSelect
-                  value={trip.kecamatanTujuan}
-                  onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
-                  placeholder="Pilih kecamatan tujuan"
-                  label="Kecamatan Tujuan *"
-                />
+                <FormItem>
+                  <SearchableKecamatanSelect
+                    value={trip.kecamatanTujuan}
+                    onValueChange={(value) => onUpdateTrip(tripIndex, 'kecamatanTujuan', value)}
+                    placeholder="Pilih kecamatan tujuan"
+                    label="Kecamatan Tujuan *"
+                  />
+                  {!trip.kecamatanTujuan && (
+                    <p className="text-sm font-medium text-red-500 mt-1">Kecamatan tujuan harus dipilih</p>
+                  )}
+                </FormItem>
 
-                <div className="space-y-2">
+                <FormItem>
                   <FormLabel>Rate Transport (Rp) *</FormLabel>
                   <Input
                     type="text"
@@ -443,9 +448,12 @@ const PersonTransportGroup: React.FC<{
                     }}
                     className="text-right"
                   />
-                </div>
+                  {(!trip.rate || trip.rate.toString().trim() === '0' || trip.rate.toString().trim() === '') && (
+                    <p className="text-sm font-medium text-red-500 mt-1">Rate transport harus diisi</p>
+                  )}
+                </FormItem>
 
-                <div className="space-y-2">
+                <FormItem>
                   <FormLabel>Tanggal Pelaksanaan *</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -466,7 +474,10 @@ const PersonTransportGroup: React.FC<{
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
+                  {!trip.tanggalPelaksanaan && (
+                    <p className="text-sm font-medium text-red-500 mt-1">Tanggal pelaksanaan harus dipilih</p>
+                  )}
+                </FormItem>
               </div>
             </div>
           ))}
@@ -945,24 +956,6 @@ const KuitansiTransportLokal = () => {
     "Panyingkiran", "Kadipaten", "Kertajati", "Jatitujuh", "Ligung", "Sumberjaya"
   ];
 
-  // Helper function to check for incomplete transport detail fields
-  const getIncompleteTransportFields = () => {
-    const incomplete: string[] = [];
-    flattenedTransportDetails.forEach((detail, index) => {
-      if (!detail.tanggalPelaksanaan || detail.tanggalPelaksanaan.toString() === 'Invalid Date') {
-        incomplete.push(`Peserta ${index + 1}: Tanggal Pelaksanaan`);
-      }
-      if (!detail.kecamatanTujuan) {
-        incomplete.push(`Peserta ${index + 1}: Kecamatan Tujuan`);
-      }
-      if (!detail.rate || detail.rate.toString().trim() === '') {
-        incomplete.push(`Peserta ${index + 1}: Rate Transport`);
-      }
-    });
-    return incomplete;
-  };
-
-  const incompleteTransportFields = getIncompleteTransportFields();
   const isLoading = isSubmitting;
 
   return (
@@ -989,104 +982,6 @@ const KuitansiTransportLokal = () => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Validation Summary - Tampilkan semua field yang belum lengkap */}
-            {Object.keys(form.formState.errors).length > 0 && (
-              <Card className="border-amber-200 bg-amber-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-amber-900 flex items-center gap-2">
-                    <X className="h-5 w-5" />
-                    Field yang Belum Lengkap
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-amber-800 mb-3">Mohon lengkapi field berikut sebelum menyimpan:</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {form.formState.errors.tujuanPelaksanaan && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Tujuan Pelaksanaan / Kegiatan</span>
-                      </div>
-                    )}
-                    {form.formState.errors.tanggalSuratTugas && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Tanggal Surat Tugas</span>
-                      </div>
-                    )}
-                    {form.formState.errors.program && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Program</span>
-                      </div>
-                    )}
-                    {form.formState.errors.kegiatan && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Kegiatan</span>
-                      </div>
-                    )}
-                    {form.formState.errors.kro && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">KRO</span>
-                      </div>
-                    )}
-                    {form.formState.errors.ro && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">RO</span>
-                      </div>
-                    )}
-                    {form.formState.errors.komponen && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Komponen</span>
-                      </div>
-                    )}
-                    {form.formState.errors.akun && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Akun</span>
-                      </div>
-                    )}
-                    {form.formState.errors.tanggalSpj && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Tanggal Pengajuan</span>
-                      </div>
-                    )}
-                    {form.formState.errors.pembuatDaftar && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Pembuat Daftar</span>
-                      </div>
-                    )}
-                    {form.formState.errors.transportDetails && (
-                      <div className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-amber-800">Detail Peserta Transport</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Tampilkan incomplete transport fields jika ada */}
-                  {incompleteTransportFields.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-amber-200">
-                      <p className="text-sm font-medium text-amber-900 mb-2">Detail Transport yang belum lengkap:</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {incompleteTransportFields.map((field, idx) => (
-                          <div key={idx} className="flex items-start gap-2 p-2 bg-white rounded border-l-2 border-amber-500">
-                            <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-amber-800">{field}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Informasi Umum */}
             <Card>
               <CardHeader className="pb-4">
