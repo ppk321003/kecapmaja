@@ -563,14 +563,28 @@ export default function BlockTanggal() {
       const user = JSON.parse(userData);
       setUserRole(user.role || "User");
     }
+  }, []);
+
+  useEffect(() => {
+    // Skip if satkerContext is still loading
+    if (satkerContext?.isLoading) {
+      console.log('[BlockTanggal] satkerContext is still loading, skipping master data load');
+      return;
+    }
     
     // Get satker-specific master sheet IDs
     const masterOrganiksId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
     const masterMitraId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
     
+    console.log('[BlockTanggal] Loading master data:', {
+      organikId: masterOrganiksId,
+      mitraId: masterMitraId,
+      isDefault: masterOrganiksId === DEFAULT_MASTER_SPREADSHEET_ID
+    });
+    
     loadMasterMitra(masterMitraId);
     loadMasterOrganik(masterOrganiksId);
-  }, [satkerContext]);
+  }, [satkerContext?.isLoading, satkerContext]);
 
   useEffect(() => {
     if (mitraList.length > 0 || organikList.length > 0) {
@@ -580,6 +594,8 @@ export default function BlockTanggal() {
 
   const loadMasterMitra = async (masterSheetId: string) => {
     try {
+      console.log('[loadMasterMitra] Starting with sheet ID:', masterSheetId);
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: masterSheetId,
@@ -591,14 +607,18 @@ export default function BlockTanggal() {
       if (error) throw error;
 
       const rows = data.values || [];
+      console.log('[loadMasterMitra] Fetched rows:', rows.length);
+      
       const mitraData: Mitra[] = rows.slice(1).map((row: any[]) => ({
         nama: row[2] || "",
         nik: row[1] || "",
         kecamatan: row[7] || ""
       }));
 
+      console.log('[loadMasterMitra] Processed mitra data:', mitraData.length, mitraData.slice(0, 3));
       setMitraList(mitraData);
     } catch (error: any) {
+      console.error('[loadMasterMitra] Error:', error);
       toast({
         title: "Error",
         description: "Gagal memuat data master mitra",
@@ -609,6 +629,8 @@ export default function BlockTanggal() {
 
   const loadMasterOrganik = async (masterSheetId: string) => {
     try {
+      console.log('[loadMasterOrganik] Starting with sheet ID:', masterSheetId);
+      
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: masterSheetId,
@@ -620,14 +642,18 @@ export default function BlockTanggal() {
       if (error) throw error;
 
       const rows = data.values || [];
+      console.log('[loadMasterOrganik] Fetched rows:', rows.length);
+      
       const organikData: Organik[] = rows.slice(1).map((row: any[]) => ({
         nama: row[3] || "",
         nip: row[2] || "",
         jabatan: row[4] || ""
       }));
 
+      console.log('[loadMasterOrganik] Processed organik data:', organikData.length, organikData.slice(0, 3));
       setOrganikList(organikData);
     } catch (error: any) {
+      console.error('[loadMasterOrganik] Error:', error);
       toast({
         title: "Error",
         description: "Gagal memuat data master organik",
