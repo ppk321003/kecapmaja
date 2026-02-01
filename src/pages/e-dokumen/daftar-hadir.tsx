@@ -734,57 +734,56 @@ const DaftarHadir = () => {
   const getNamaFromKode = useCallback(async (type: string, kode: string): Promise<string> => {
     if (!kode) return '';
     
-    const sheetNameMap: { [key: string]: string } = {
-      program: CONSTANTS.SHEET_NAMES.PROGRAM,
-      kegiatan: CONSTANTS.SHEET_NAMES.KEGIATAN,
-      kro: CONSTANTS.SHEET_NAMES.KRO,
-      ro: CONSTANTS.SHEET_NAMES.RO,
-      komponen: CONSTANTS.SHEET_NAMES.KOMPONEN,
-      akun: CONSTANTS.SHEET_NAMES.AKUN
+    const sheetMap: { [key: string]: { name: string; namaCol: 'C' | 'D' } } = {
+      program: { name: 'program', namaCol: 'C' },
+      kegiatan: { name: 'kegiatan', namaCol: 'D' },
+      kro: { name: 'kro', namaCol: 'D' },
+      ro: { name: 'ro', namaCol: 'D' },
+      komponen: { name: 'komponen', namaCol: 'C' },
+      akun: { name: 'akun', namaCol: 'C' }
     };
     
-    const sheetName = sheetNameMap[type];
-    if (!sheetName) {
+    const sheetInfo = sheetMap[type];
+    if (!sheetInfo) {
       console.warn(`Unknown type for getNamaFromKode: ${type}`);
-      return kode; // Return kode as fallback if type unknown
+      return kode;
     }
 
     try {
-      // Try fetching full sheet data first to understand structure
-      const values = await fetchSheetData(
-        CONSTANTS.SPREADSHEET.SOURCE_ID,
-        `${sheetName}!A:Z`
-      );
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.SOURCE_ID,
+          operation: "read",
+          range: sheetInfo.name
+        }
+      });
 
-      console.log(`Fetched ${type} sheet (${sheetName}), total rows:`, values.length, 'first 3 rows:', values.slice(0, 3));
-      
-      if (!values || !values.length) {
-        console.warn(`No data found for ${type} (${sheetName}), returning kode as-is`);
+      if (error || !data?.values) {
+        console.error(`Error fetching ${sheetInfo.name}:`, error);
         return kode;
       }
 
-      // Try to find matching kode in any of the first few columns
-      const found = values.find((row: any[]) => {
-        if (!row) return false;
-        // Check if kode matches in column A (index 0) or B (index 1)
-        return row[0] === kode || row[1] === kode;
+      const rows = data.values.slice(1); // Skip header
+      const foundRow = rows.find((row: any[]) => {
+        // Cari berdasarkan kode di kolom B (index 1)
+        return row && row[1] === kode;
       });
-      
-      if (!found) {
-        console.warn(`No matching kode found for ${type}: ${kode}`);
-        return kode; // Return original kode if not found
+
+      if (foundRow) {
+        // Kolom C = index 2, Kolom D = index 3
+        const columnIndex = sheetInfo.namaCol === 'C' ? 2 : 3;
+        const result = foundRow[columnIndex] || kode;
+        console.log(`Found ${type}/${kode} -> ${result}`);
+        return result;
       }
 
-      // Return column B if found in A, or column C if found in B
-      const result = found[0] === kode ? (found[1] || '') : (found[2] || '');
-      console.log(`Found match for ${type}/${kode}:`, result);
-      
-      return result;
+      console.warn(`No matching kode found for ${type}: ${kode}`);
+      return kode;
     } catch (error) {
       console.error(`Error getting nama from kode for ${type}/${kode}:`, error);
-      return kode; // Return original kode as fallback
+      return kode;
     }
-  }, [fetchSheetData, CONSTANTS]);
+  }, [CONSTANTS]);
 
   const {
     control,
