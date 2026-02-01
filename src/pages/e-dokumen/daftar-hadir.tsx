@@ -71,6 +71,11 @@ const getConstantsWithDynamicTarget = (targetSheetId: string | null) => ({
     DAFTAR_HADIR: "DaftarHadir",
     ORGANIK: "MASTER.ORGANIK",
     MITRA: "MASTER.MITRA",
+    PROGRAM: "program",
+    KEGIATAN: "kegiatan",
+    KRO: "kro",
+    RO: "ro",
+    KOMPONEN: "komponen",
     AKUN: "akun"
   }
 } as const);
@@ -741,29 +746,43 @@ const DaftarHadir = () => {
     const sheetName = sheetNameMap[type];
     if (!sheetName) {
       console.warn(`Unknown type for getNamaFromKode: ${type}`);
-      return '';
+      return kode; // Return kode as fallback if type unknown
     }
 
     try {
+      // Try fetching full sheet data first to understand structure
       const values = await fetchSheetData(
         CONSTANTS.SPREADSHEET.SOURCE_ID,
-        `${sheetName}!A:B`
+        `${sheetName}!A:Z`
       );
 
-      console.log(`Fetched ${type} sheet (${sheetName}):`, values);
+      console.log(`Fetched ${type} sheet (${sheetName}), total rows:`, values.length, 'first 3 rows:', values.slice(0, 3));
       
       if (!values || !values.length) {
-        console.warn(`No data found for ${type} (${sheetName})`);
-        return '';
+        console.warn(`No data found for ${type} (${sheetName}), returning kode as-is`);
+        return kode;
       }
 
-      const found = values.find((row: any[]) => row && row[0] === kode);
-      console.log(`Looking for kode ${kode} in ${type}: found =`, found);
+      // Try to find matching kode in any of the first few columns
+      const found = values.find((row: any[]) => {
+        if (!row) return false;
+        // Check if kode matches in column A (index 0) or B (index 1)
+        return row[0] === kode || row[1] === kode;
+      });
       
-      return found ? found[1] : '';
+      if (!found) {
+        console.warn(`No matching kode found for ${type}: ${kode}`);
+        return kode; // Return original kode if not found
+      }
+
+      // Return column B if found in A, or column C if found in B
+      const result = found[0] === kode ? (found[1] || '') : (found[2] || '');
+      console.log(`Found match for ${type}/${kode}:`, result);
+      
+      return result;
     } catch (error) {
-      console.error(`Error getting nama from kode for ${type}:`, error);
-      return '';
+      console.error(`Error getting nama from kode for ${type}/${kode}:`, error);
+      return kode; // Return original kode as fallback
     }
   }, [fetchSheetData, CONSTANTS]);
 
