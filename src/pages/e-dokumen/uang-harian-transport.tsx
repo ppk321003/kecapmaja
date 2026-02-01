@@ -34,7 +34,7 @@ const formSchema = z.object({
   ro: z.string().min(1, "RO harus dipilih"),
   komponen: z.string().min(1, "Komponen harus dipilih"),
   akun: z.string().min(1, "Akun harus dipilih"),
-  trainingCenter: z.string().min(1, "Training center harus dipilih"),
+  trainingCenter: z.string().min(1, "Training center harus diisi"),
   tanggalMulai: z.date({
     required_error: "Tanggal mulai harus dipilih"
   }),
@@ -422,20 +422,9 @@ const UangHarianTransport = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Training Center</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih training center" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {trainingCenterOptions.map(center => (
-                            <SelectItem key={center} value={center}>
-                              {center}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input placeholder="Masukkan nama training center" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
 
