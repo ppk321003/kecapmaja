@@ -24,6 +24,33 @@ const indonesianOptions = {
   second: '2-digit' as const
 };
 
+// Helper function to check if link is valid
+const isValidLink = (value: any): boolean => {
+  if (!value || typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && (trimmed.startsWith('http://') || trimmed.startsWith('https://'));
+};
+
+// Render function for Link column
+const renderLinkColumn = (value: any) => {
+  if (!isValidLink(value)) {
+    return <span className="text-gray-400 text-sm">Link belum tersedia</span>;
+  }
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
+          <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
+        </a>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Buka dokumen</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 const DownloadDokumen = () => {
   const [activeTab, setActiveTab] = useState("daftar-hadir");
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,20 +76,20 @@ const DownloadDokumen = () => {
   };
 
   // Get sheet IDs from satker config
-  const satkerConfig = satkerContext?.getUserSatkerConfig() || {};
+  const satkerConfig = (satkerContext?.getUserSatkerConfig() || {}) as Record<string, any>;
   const sheetIds = {
-    daftarhadir_sheet_id: satkerConfig.daftarhadir_sheet_id || "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
-    dokpengadaan_sheet_id: satkerConfig.dokpengadaan_sheet_id || "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
-    kak_sheet_id: satkerConfig.kak_sheet_id || "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
-    kuiperjadin_sheet_id: satkerConfig.kuiperjadin_sheet_id || "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
-    kuitranport_sheet_id: satkerConfig.kuitranport_sheet_id || "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
-    lembur_sheet_id: satkerConfig.lembur_sheet_id || "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
-    spjhonor_sheet_id: satkerConfig.spjhonor_sheet_id || "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
-    sk_sheet_id: satkerConfig.sk_sheet_id || "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
-    super_sheet_id: satkerConfig.super_sheet_id || "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
-    tandaterima_sheet_id: satkerConfig.tandaterima_sheet_id || "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
-    spjtranslok_sheet_id: satkerConfig.spjtranslok_sheet_id || "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
-    uh_sheet_id: satkerConfig.uh_sheet_id || "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys"
+    daftarhadir_sheet_id: satkerConfig?.daftarhadir_sheet_id || "1STp5KR6OJBGuyvp-ohkrhS_QEoTREaaA59W7AkQ4Nak",
+    dokpengadaan_sheet_id: satkerConfig?.dokpengadaan_sheet_id || "1WMAggLC15LYEXfZRtkr4aEOc7l7pHsj2XH0JVLqaMiE",
+    kak_sheet_id: satkerConfig?.kak_sheet_id || "1FoRGchGACEq4E7Xh0XgvNTNI4VhTR5pIDGb9rwFY6cc",
+    kuiperjadin_sheet_id: satkerConfig?.kuiperjadin_sheet_id || "10Rc_YT8xv_gOnuuRWAQyVEkxfgTOWiTH5lQt3guNAa0",
+    kuitranport_sheet_id: satkerConfig?.kuitranport_sheet_id || "1_FRKSUzW12r5xGRA15fJrTjRRu7ma6omC00jNIgrKXc",
+    lembur_sheet_id: satkerConfig?.lembur_sheet_id || "1baYH5dM7cAaMCRQY63YkzgqLIsb_-67Tyixno2zZEjE",
+    spjhonor_sheet_id: satkerConfig?.spjhonor_sheet_id || "13okXNIK6L-ZaIYWqu7qSZNmTW3ENgt7H3gk4BbqrTPs",
+    sk_sheet_id: satkerConfig?.sk_sheet_id || "1v591kPdTuYOldaz3tbqoQYnS3QYubt-qb1OrotBkhlc",
+    super_sheet_id: satkerConfig?.super_sheet_id || "1hy6xHWIcCcgfSHe-jWhIoDNR991PDI-2DmOFvX1UeIs",
+    tandaterima_sheet_id: satkerConfig?.tandaterima_sheet_id || "1REwVfh5DNiY2UM1g-hjvSMcz-bUglMuHlDFnaEQkbgU",
+    spjtranslok_sheet_id: satkerConfig?.spjtranslok_sheet_id || "1muy4_6suFJy4dt5M79eVxuAn8gJVooZdOkYVO5zTzGY",
+    uh_sheet_id: satkerConfig?.uh_sheet_id || "19lo2kuC9BKccQSXvIp4rjlJiytwPR2lX8xzTl4p_vys"
   };
 
   // Data for each table with sheet IDs - sorted alphabetically
@@ -87,16 +114,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "dokumen-pengadaan",
@@ -119,16 +137,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "kerangka-acuan-kerja",
@@ -151,16 +160,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "kuitansi-perjalanan-dinas",
@@ -186,16 +186,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "kuitansi-transport-lokal",
@@ -241,16 +232,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "lembur-laporan",
@@ -296,16 +278,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "spj-honor",
@@ -331,16 +304,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "SuratKeputusan", 
@@ -363,16 +327,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "surat-pernyataan",
@@ -401,16 +356,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "tanda-terima",
@@ -433,16 +379,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "transport-lokal",
@@ -465,16 +402,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }, {
     id: "uang-harian-transport",
@@ -500,16 +428,7 @@ const DownloadDokumen = () => {
     }, {
       key: "Link",
       header: "Link",
-      render: value => <Tooltip>
-              <TooltipTrigger asChild>
-                <a href={value} target="_blank" rel="noreferrer" className="flex justify-center">
-                  <LinkIcon className="h-5 w-5 text-primary hover:text-primary/80" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Buka dokumen</p>
-              </TooltipContent>
-            </Tooltip>
+      render: renderLinkColumn
     }]
   }].sort((a, b) => a.title.localeCompare(b.title));
 
