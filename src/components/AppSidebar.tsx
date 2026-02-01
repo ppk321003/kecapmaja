@@ -61,12 +61,6 @@ const additionalMenuItems = [
 const eDokumenSubItems = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
   { title: "Download e-Dokumen", url: "/e-dokumen/download", icon: DownloadIcon },
-  {
-    title: "Blanko Visum",
-    url: "https://drive.google.com/drive/u/1/folders/19NqkvrO0UZJj9nm4bZzfHQVraqdZntN2?usp=sharing",
-    icon: FileCheck,
-    external: true,
-  },
 ];
 
 export function AppSidebar() {
