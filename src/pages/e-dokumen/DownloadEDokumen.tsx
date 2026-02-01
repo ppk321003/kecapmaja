@@ -782,8 +782,6 @@ const DownloadDokumen = () => {
           </TabsContent>
         ))}
       </Tabs>
-
-      {/* Aksi dialogs removed — editing/duplicate/delete handled via individual document pages */}
     </div>
   );
 };
