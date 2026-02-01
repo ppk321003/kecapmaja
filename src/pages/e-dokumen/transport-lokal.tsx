@@ -284,7 +284,7 @@ const TransportLokal = () => {
         type: "organik",
         personId: "",
         kecamatan: "",
-        rate: "0",
+        rate: "",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -298,7 +298,7 @@ const TransportLokal = () => {
         type: "mitra",
         personId: "",
         kecamatan: "",
-        rate: "0",
+        rate: "",
         tanggalPelaksanaan: null,
         nama: ""
       }]);
@@ -699,6 +699,9 @@ const TransportLokal = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                        {!transport.kecamatan && (
+                          <p className="text-sm font-medium text-red-500 mt-1">Kecamatan tujuan harus dipilih</p>
+                        )}
                       </div>
                        <div className="space-y-2">
                          <Label>Rate (Rp)</Label>
@@ -712,6 +715,9 @@ const TransportLokal = () => {
                            placeholder="0"
                            className="text-right"
                          />
+                         {!transport.rate || transport.rate.toString().trim() === '' && (
+                           <p className="text-sm font-medium text-red-500 mt-1">Rate transport harus diisi</p>
+                         )}
                        </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
@@ -731,6 +737,9 @@ const TransportLokal = () => {
                             />
                           </PopoverContent>
                         </Popover>
+                        {!transport.tanggalPelaksanaan && (
+                          <p className="text-sm font-medium text-red-500 mt-1">Tanggal pelaksanaan harus dipilih</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -790,6 +799,9 @@ const TransportLokal = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                        {!transport.kecamatan && (
+                          <p className="text-sm font-medium text-red-500 mt-1">Kecamatan tujuan harus dipilih</p>
+                        )}
                       </div>
                        <div className="space-y-2">
                          <Label>Rate (Rp)</Label>
@@ -803,6 +815,9 @@ const TransportLokal = () => {
                            placeholder="0"
                            className="text-right"
                          />
+                         {!transport.rate || transport.rate.toString().trim() === '' && (
+                           <p className="text-sm font-medium text-red-500 mt-1">Rate transport harus diisi</p>
+                         )}
                        </div>
                       <div className="space-y-2">
                         <Label>Tanggal Pelaksanaan</Label>
@@ -822,6 +837,9 @@ const TransportLokal = () => {
                             />
                           </PopoverContent>
                         </Popover>
+                        {!transport.tanggalPelaksanaan && (
+                          <p className="text-sm font-medium text-red-500 mt-1">Tanggal pelaksanaan harus dipilih</p>
+                        )}
                       </div>
                     </div>
                   </div>
