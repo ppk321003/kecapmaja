@@ -30,18 +30,6 @@ interface FormValues {
   detil: string;
   jenis: string;
   program: string;
-  kegiatan: string;
-  kro: string;
-  ro: string;
-  komponen: string;
-  akun: string;
-  trainingCenter: string;
-  tanggalMulai: Date | null;
-  tanggalSelesai: Date | null;
-  tanggalSpj: Date | null;
-  organik: string[];
-  mitra: string[];
-  pembuatDaftar: string;
 }
 
 interface Option {
@@ -80,11 +68,6 @@ const getConstantsWithDynamicTarget = (targetSheetId: string | null) => ({
   }
 } as const);
 
-const TRAINING_CENTER_OPTIONS = [
-  "BPS Kabupaten Majalengka", "RM. Majalengka", "Fitra Hotel", 
-  "Garden Hotel", "Horison Ultima", "Achiera Hotel"
-];
-
 const JENIS_OPTIONS = ["Pelatihan", "Briefing", "Rapat Persiapan", "Rapat Evaluasi"];
 
 const defaultValues: FormValues = {
@@ -97,7 +80,6 @@ const defaultValues: FormValues = {
   ro: "",
   komponen: "",
   akun: "",
-  trainingCenter: "",
   tanggalMulai: null,
   tanggalSelesai: null,
   tanggalSpj: null,
@@ -1040,29 +1022,6 @@ const DaftarHadir = () => {
                   {errors.jenis && <p className="text-sm text-destructive">{errors.jenis.message}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Tempat Kegiatan</Label>
-                  <Controller 
-                    name="trainingCenter" 
-                    control={control} 
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih tempat kegiatan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TRAINING_CENTER_OPTIONS.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )} 
-                  />
-                </div>
-              </div>
-
-              {/* Program dan Kegiatan */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Program Pembebanan <span className="text-red-500">*</span></Label>
                   <Controller 
