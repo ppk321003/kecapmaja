@@ -30,6 +30,17 @@ interface FormValues {
   detil: string;
   jenis: string;
   program: string;
+  kegiatan: string;
+  kro: string;
+  ro: string;
+  komponen: string;
+  akun: string;
+  tanggalMulai: Date | null;
+  tanggalSelesai: Date | null;
+  tanggalSpj: Date | null;
+  organik: string[];
+  mitra: string[];
+  pembuatDaftar: string;
 }
 
 interface Option {

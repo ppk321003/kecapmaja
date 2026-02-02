@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Link as LinkIcon, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pencil, Copy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/DataTable";
 import { useDocumentData } from "@/hooks/use-document-data";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useDocumentEdit } from "@/contexts/DocumentEditContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -52,11 +54,93 @@ const renderLinkColumn = (value: any) => {
 };
 
 const DownloadDokumen = () => {
+  const navigate = useNavigate();
+  const { setEditData } = useDocumentEdit();
   const [activeTab, setActiveTab] = useState("daftar-hadir");
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const satkerContext = useSatkerConfigContext();
+
+  // Handler for edit action
+  const handleEdit = useCallback((documentType: string, rowData: Record<string, any>, rowIndex: number) => {
+    const formUrl = documentFormMap[documentType as keyof typeof documentFormMap]?.url;
+    if (!formUrl) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Form untuk dokumen ini tidak ditemukan"
+      });
+      return;
+    }
+
+    setEditData({
+      mode: 'edit',
+      documentType,
+      rowIndex: rowIndex + 2, // +2 because sheet rows are 1-indexed and row 1 is header
+      documentId: rowData.Id || rowData.id,
+      data: rowData
+    });
+    navigate(formUrl);
+  }, [navigate, setEditData]);
+
+  // Handler for duplicate action
+  const handleDuplicate = useCallback((documentType: string, rowData: Record<string, any>) => {
+    const formUrl = documentFormMap[documentType as keyof typeof documentFormMap]?.url;
+    if (!formUrl) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Form untuk dokumen ini tidak ditemukan"
+      });
+      return;
+    }
+
+    setEditData({
+      mode: 'duplicate',
+      documentType,
+      data: rowData
+    });
+    navigate(formUrl);
+  }, [navigate, setEditData]);
+
+  // Render action column
+  const renderActionsColumn = useCallback((documentType: string) => (value: any, row: Record<string, any>, rowIndex: number) => {
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={() => handleEdit(documentType, row, rowIndex)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Edit dokumen</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={() => handleDuplicate(documentType, row)}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Duplikat dokumen</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  }, [handleEdit, handleDuplicate]);
 
   // Mapping of document IDs to form URLs and display names
   const documentFormMap = {
@@ -431,14 +515,21 @@ const DownloadDokumen = () => {
     }]
   }].sort((a, b) => a.title.localeCompare(b.title));
 
-  // No action column: use documents as defined (keep Link column from original definitions)
-  const documentsNoActions = documents.map(doc => ({
+  // Add action column to documents
+  const documentsWithActions = useMemo(() => documents.map(doc => ({
     ...doc,
-    columns: doc.columns // keep original columns, without 'Aksi'
-  }));
+    columns: [
+      ...doc.columns,
+      {
+        key: "Aksi",
+        header: "Aksi",
+        render: renderActionsColumn(doc.id)
+      }
+    ]
+  })), [documents, renderActionsColumn]);
 
   // Get the active document
-  const activeDocument = documentsNoActions.find(doc => doc.id === activeTab) || documentsNoActions[0];
+  const activeDocument = documentsWithActions.find(doc => doc.id === activeTab) || documentsWithActions[0];
 
   // Fetch data for the active document
   const {
@@ -549,7 +640,7 @@ const DownloadDokumen = () => {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full h-auto flex flex-wrap mb-4 overflow-x-auto bg-muted/80 p-1 rounded-full shadow-inner justify-center">
-          {documentsNoActions.map(doc => (
+          {documentsWithActions.map(doc => (
             <TabsTrigger 
               key={doc.id} 
               value={doc.id} 
@@ -560,7 +651,7 @@ const DownloadDokumen = () => {
           ))}
         </TabsList>
         
-        {documentsNoActions.map(doc => (
+        {documentsWithActions.map(doc => (
           <TabsContent key={doc.id} value={doc.id} className="mt-0 space-y-4">
             {/* Search and Page Size Controls */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
