@@ -90,6 +90,7 @@ export default function Linkers() {
           .filter((row: any[]) => row[0]) // Filter out empty rows
           .map((row: any[], idx: number) => ({
             id: idx.toString(),
+            originalRowIndex: idx + 2, // Store original row index in sheet (1-indexed, +2 for header)
             judul: row[0] || "",
             deskripsi: row[1] || "",
             link: row[2] || "",
@@ -199,21 +200,23 @@ export default function Linkers() {
 
   const handleDeleteConfirm = async () => {
     try {
-      const deleteIndex = linksData.findIndex(l => l.id === deletingData.id);
-      if (deleteIndex >= 0) {
-        const rowIndex = deleteIndex + 2; // +2 because of header row (1-indexed for API)
-        const { error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: linkersSheetId,
-            operation: "delete",
-            rowIndex: rowIndex
-          }
-        });
-
-        if (error) throw error;
-        setLinksData(linksData.filter((_, idx) => idx !== deleteIndex));
-        toast({ title: "Berhasil", description: "Data linker berhasil dihapus" });
+      const itemToDelete = linksData.find(l => l.id === deletingData.id);
+      if (!itemToDelete) {
+        throw new Error("Item not found");
       }
+      
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: linkersSheetId,
+          operation: "delete",
+          rowIndex: itemToDelete.originalRowIndex
+        }
+      });
+
+      if (error) throw error;
+      
+      setLinksData(linksData.filter(l => l.id !== deletingData.id));
+      toast({ title: "Berhasil", description: "Data linker berhasil dihapus" });
     } catch (error) {
       console.error("Error deleting linker:", error);
       toast({
