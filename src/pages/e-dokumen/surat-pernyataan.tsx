@@ -15,12 +15,13 @@ import { toast } from "@/components/ui/use-toast";
 import { CalendarIcon, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useDocumentEdit } from "@/contexts/DocumentEditContext";
 
 // Constants
 const DEFAULT_TARGET_SPREADSHEET_ID = "1rGIK4xt2CiKyfuJaZe0rhyz57j_8iFDlzwRBbXnW4xo";
@@ -112,9 +113,11 @@ const formatTanggalIndonesia = (date: Date | null): string => {
 const SuratPernyataan = () => {
   const navigate = useNavigate();
   const satkerContext = useSatkerConfigContext();
+  const { editData, clearEditData, isEditing, isDuplicating } = useDocumentEdit();
   const [selectedOrganik, setSelectedOrganik] = useState<string[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   const targetSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('super'));
   const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
@@ -129,6 +132,83 @@ const SuratPernyataan = () => {
 
   // Define hooks with access to CONSTANTS
   const { fetchSheetData } = useSheetData();
+
+  // Parse tanggal Indonesia ke Date object
+  const parseTanggalIndonesia = useCallback((dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    try {
+      // Format: "d MMMM yyyy" - e.g., "15 Januari 2025"
+      return parse(dateStr, "d MMMM yyyy", new Date(), { locale: id });
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return null;
+    }
+  }, []);
+
+  // Find organik/mitra IDs by their names
+  const findOrganikIdsByNames = useCallback((namesStr: string): string[] => {
+    if (!namesStr || organikList.length === 0) return [];
+    const names = namesStr.split(' | ').map(n => n.trim()).filter(Boolean);
+    return names
+      .map(name => organikList.find(o => o.name === name)?.id)
+      .filter(Boolean) as string[];
+  }, [organikList]);
+
+  const findMitraIdsByNames = useCallback((namesStr: string): string[] => {
+    if (!namesStr || mitraList.length === 0) return [];
+    const names = namesStr.split(' | ').map(n => n.trim()).filter(Boolean);
+    return names
+      .map(name => mitraList.find(m => m.name === name)?.id)
+      .filter(Boolean) as string[];
+  }, [mitraList]);
+
+  const findPembuatDaftarId = useCallback((name: string): string => {
+    if (!name || organikList.length === 0) return "";
+    const organik = organikList.find(o => o.name === name);
+    return organik?.id || "";
+  }, [organikList]);
+
+  // Load initial data for edit/duplicate mode
+  useEffect(() => {
+    if ((isEditing || isDuplicating) && editData?.data && !initialDataLoaded && organikList.length > 0) {
+      const data = editData.data;
+      
+      // Map sheet column names to form fields
+      form.setValue("jenisSuratPernyataan", data["Jenis Surat Pernyataan"] || "");
+      form.setValue("namaKegiatan", data["kegiatan"] || "");
+      
+      // Parse tanggal
+      const tanggal = parseTanggalIndonesia(data["tanggal"] || "");
+      if (tanggal) {
+        form.setValue("tanggalSuratPernyataan", tanggal);
+      }
+      
+      // Set organik
+      const organikIds = findOrganikIdsByNames(data["Organik"] || "");
+      setSelectedOrganik(organikIds);
+      form.setValue("organikBPS", organikIds);
+      
+      // Set mitra
+      const mitraIds = findMitraIdsByNames(data["Mitra Statistik"] || "");
+      setSelectedMitra(mitraIds);
+      form.setValue("mitraStatistik", mitraIds);
+      
+      // Set pembuat daftar
+      const pembuatId = findPembuatDaftarId(data["Pembuat daftar"] || "");
+      if (pembuatId) {
+        form.setValue("pembuatDaftar", pembuatId);
+      }
+      
+      setInitialDataLoaded(true);
+    }
+  }, [isEditing, isDuplicating, editData, organikList, mitraList, initialDataLoaded, form, parseTanggalIndonesia, findOrganikIdsByNames, findMitraIdsByNames, findPembuatDaftarId]);
+
+  // Clear edit data when component unmounts
+  useEffect(() => {
+    return () => {
+      clearEditData();
+    };
+  }, [clearEditData]);
 
   const getNextSequenceNumber = useCallback(async (): Promise<number> => {
     const values = await fetchSheetData(
@@ -207,6 +287,29 @@ const SuratPernyataan = () => {
     }
   }, [CONSTANTS]);
 
+  // Update existing row for edit mode
+  const updateData = useCallback(async (rowIndex: number, data: any[]) => {
+    setIsSubmitting(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+          operation: "update",
+          range: `${CONSTANTS.SHEET_NAMES.SURAT_PERNYATAAN}!A${rowIndex}:H${rowIndex}`,
+          values: [data]
+        }
+      });
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('Update error:', error);
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [CONSTANTS]);
+
   const handleAddOrganik = (organikId: string) => {
     if (organikId && !selectedOrganik.includes(organikId)) {
       const jenisSurat = form.getValues("jenisSuratPernyataan");
@@ -257,7 +360,7 @@ const SuratPernyataan = () => {
     return mitra?.name || "";
   };
 
-  // Format data untuk spreadsheet
+  // Format data untuk spreadsheet (for new entries)
   const formatDataForSpreadsheet = useCallback(async (data: FormValues): Promise<any[]> => {
     const [sequenceNumber, suratPernyataanId] = await Promise.all([
       getNextSequenceNumber(),
@@ -281,6 +384,28 @@ const SuratPernyataan = () => {
     ];
   }, [selectedOrganik, selectedMitra, getNextSequenceNumber, generateSuratPernyataanId]);
 
+  // Format data untuk update (keep existing No and Id)
+  const formatDataForUpdate = useCallback((data: FormValues): any[] => {
+    const organikNames = selectedOrganik.map(id => getOrganikName(id)).filter(Boolean).join(" | ");
+    const mitraNames = selectedMitra.map(id => getMitraName(id)).filter(Boolean).join(" | ");
+    const pembuatDaftarName = getOrganikName(data.pembuatDaftar);
+
+    // For update, keep the original No and Id from editData
+    const originalNo = editData?.data?.["No"] || "";
+    const originalId = editData?.data?.["Id"] || "";
+
+    return [
+      originalNo, // No (keep original)
+      originalId, // Id (keep original)
+      data.jenisSuratPernyataan, // Jenis Surat Pernyataan
+      organikNames, // Organik
+      mitraNames, // Mitra Statistik
+      data.namaKegiatan, // kegiatan
+      formatTanggalIndonesia(data.tanggalSuratPernyataan), // tanggal
+      pembuatDaftarName // Pembuat daftar
+    ];
+  }, [selectedOrganik, selectedMitra, editData]);
+
   const onSubmit = async (data: FormValues) => {
     try {
       // Validasi tambahan untuk "Fasilitas Kantor Tidak Memenuhi"
@@ -293,26 +418,38 @@ const SuratPernyataan = () => {
         return;
       }
 
-      // Format data untuk spreadsheet
-      const rowData = await formatDataForSpreadsheet(data);
-      
-      console.log("Data yang akan dikirim ke spreadsheet:", rowData);
-      
-      // Submit ke Google Sheets
-      await submitData(rowData);
+      let rowData: any[];
+      let successMessage: string;
+
+      if (isEditing && editData?.rowIndex) {
+        // Edit mode - update existing row
+        rowData = formatDataForUpdate(data);
+        console.log("Data yang akan diupdate:", rowData, "at row:", editData.rowIndex);
+        await updateData(editData.rowIndex, rowData);
+        successMessage = `Surat Pernyataan berhasil diperbarui (ID: ${rowData[1]})`;
+      } else {
+        // Create or Duplicate mode - create new row
+        rowData = await formatDataForSpreadsheet(data);
+        console.log("Data yang akan dikirim ke spreadsheet:", rowData);
+        await submitData(rowData);
+        successMessage = isDuplicating 
+          ? `Surat Pernyataan berhasil diduplikasi (ID: ${rowData[1]})` 
+          : `Surat Pernyataan berhasil disimpan (ID: ${rowData[1]})`;
+      }
 
       toast({ 
         title: "Berhasil!", 
-        description: `Surat Pernyataan berhasil disimpan (ID: ${rowData[1]})` 
+        description: successMessage 
       });
       
-      navigate("/e-dokumen/buat");
+      // Navigate back to download page after edit/duplicate
+      navigate(isEditing || isDuplicating ? "/e-dokumen/download" : "/e-dokumen/buat");
 
     } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({ 
         variant: "destructive", 
-        title: "Gagal menyimpan data", 
+        title: isEditing ? "Gagal memperbarui data" : "Gagal menyimpan data", 
         description: error.message || "Terjadi kesalahan saat menyimpan data" 
       });
     }
@@ -329,12 +466,23 @@ const SuratPernyataan = () => {
     }
   }, [watchedJenisSurat, selectedMitra.length, form]);
 
+  // Determine page title and button text based on mode
+  const pageTitle = isEditing ? "Edit Surat Pernyataan" : isDuplicating ? "Duplikat Surat Pernyataan" : "Surat Pernyataan";
+  const pageDescription = isEditing ? "Perbarui dokumen surat pernyataan" : isDuplicating ? "Buat salinan dokumen surat pernyataan" : "Buat dokumen surat pernyataan";
+  const submitButtonText = isEditing ? "Simpan Perubahan" : isDuplicating ? "Simpan Duplikat" : "Simpan Dokumen";
+  const cancelUrl = isEditing || isDuplicating ? "/e-dokumen/download" : "/e-dokumen/buat";
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-orange-600">Surat Pernyataan</h1>
-          <p className="text-muted-foreground mt-2">Buat dokumen surat pernyataan</p>
+          <h1 className="text-3xl font-bold text-orange-600">{pageTitle}</h1>
+          <p className="text-muted-foreground mt-2">{pageDescription}</p>
+          {(isEditing || isDuplicating) && editData?.documentId && (
+            <p className="text-sm text-muted-foreground mt-1">
+              ID Dokumen: <span className="font-mono">{editData.documentId}</span>
+            </p>
+          )}
         </div>
 
         <Card>
@@ -350,7 +498,7 @@ const SuratPernyataan = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Jenis Surat Pernyataan</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih jenis surat pernyataan" />
@@ -528,7 +676,7 @@ const SuratPernyataan = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pembuat Daftar</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Pilih pembuat daftar" />
@@ -547,11 +695,11 @@ const SuratPernyataan = () => {
                   )} 
                 />
                 <div className="flex justify-end gap-4 pt-6 border-t">
-                  <Button type="button" variant="outline" onClick={() => navigate("/e-dokumen/buat")} disabled={isLoading}>
+                  <Button type="button" variant="outline" onClick={() => navigate(cancelUrl)} disabled={isLoading}>
                     Batal
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? "Menyimpan..." : "Simpan Dokumen"}
+                    {isLoading ? "Menyimpan..." : submitButtonText}
                   </Button>
                 </div>
               </form>
