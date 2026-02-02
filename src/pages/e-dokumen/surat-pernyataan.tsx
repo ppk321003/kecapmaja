@@ -170,8 +170,17 @@ const SuratPernyataan = () => {
 
   // Load initial data for edit/duplicate mode
   useEffect(() => {
+    console.log("Edit/Duplicate effect triggered:", { 
+      isEditing, 
+      isDuplicating, 
+      editData, 
+      initialDataLoaded,
+      organikListLength: organikList.length 
+    });
+    
     if ((isEditing || isDuplicating) && editData?.data && !initialDataLoaded && organikList.length > 0) {
       const data = editData.data;
+      console.log("Loading data into form:", data);
       
       // Map sheet column names to form fields
       form.setValue("jenisSuratPernyataan", data["Jenis Surat Pernyataan"] || "");
@@ -179,22 +188,26 @@ const SuratPernyataan = () => {
       
       // Parse tanggal
       const tanggal = parseTanggalIndonesia(data["tanggal"] || "");
+      console.log("Parsed tanggal:", tanggal, "from:", data["tanggal"]);
       if (tanggal) {
         form.setValue("tanggalSuratPernyataan", tanggal);
       }
       
       // Set organik
       const organikIds = findOrganikIdsByNames(data["Organik"] || "");
+      console.log("Found organik IDs:", organikIds, "from:", data["Organik"]);
       setSelectedOrganik(organikIds);
       form.setValue("organikBPS", organikIds);
       
       // Set mitra
       const mitraIds = findMitraIdsByNames(data["Mitra Statistik"] || "");
+      console.log("Found mitra IDs:", mitraIds, "from:", data["Mitra Statistik"]);
       setSelectedMitra(mitraIds);
       form.setValue("mitraStatistik", mitraIds);
       
       // Set pembuat daftar
       const pembuatId = findPembuatDaftarId(data["Pembuat daftar"] || "");
+      console.log("Found pembuat ID:", pembuatId, "from:", data["Pembuat daftar"]);
       if (pembuatId) {
         form.setValue("pembuatDaftar", pembuatId);
       }

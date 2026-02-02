@@ -63,7 +63,7 @@ const DownloadDokumen = () => {
   const satkerContext = useSatkerConfigContext();
 
   // Handler for edit action
-  const handleEdit = useCallback((documentType: string, rowData: Record<string, any>, rowIndex: number) => {
+  const handleEdit = useCallback((documentType: string, rowData: Record<string, any>) => {
     const formUrl = documentFormMap[documentType as keyof typeof documentFormMap]?.url;
     if (!formUrl) {
       toast({
@@ -74,10 +74,23 @@ const DownloadDokumen = () => {
       return;
     }
 
+    // Use the stored sheet row index from the data
+    const sheetRowIndex = rowData.__sheetRowIndex;
+    console.log("Edit clicked - rowData:", rowData, "sheetRowIndex:", sheetRowIndex);
+
+    if (!sheetRowIndex) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Tidak dapat menemukan posisi baris di sheet"
+      });
+      return;
+    }
+
     setEditData({
       mode: 'edit',
       documentType,
-      rowIndex: rowIndex + 2, // +2 because sheet rows are 1-indexed and row 1 is header
+      rowIndex: sheetRowIndex,
       documentId: rowData.Id || rowData.id,
       data: rowData
     });
@@ -104,8 +117,8 @@ const DownloadDokumen = () => {
     navigate(formUrl);
   }, [navigate, setEditData]);
 
-  // Render action column
-  const renderActionsColumn = useCallback((documentType: string) => (value: any, row: Record<string, any>, rowIndex: number) => {
+  // Render action column - row parameter contains all data including __sheetRowIndex
+  const renderActionsColumn = useCallback((documentType: string) => (_value: any, row: Record<string, any>) => {
     return (
       <div className="flex items-center justify-center gap-1">
         <Tooltip>
@@ -114,7 +127,7 @@ const DownloadDokumen = () => {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-              onClick={() => handleEdit(documentType, row, rowIndex)}
+              onClick={() => handleEdit(documentType, row)}
             >
               <Pencil className="h-4 w-4" />
             </Button>
