@@ -699,7 +699,7 @@ const DownloadDokumen = () => {
               <>
                 <DataTable 
                   title={doc.title} 
-                  columns={(doc.columns || []).filter((c: any) => (c.key !== 'Aksi' && c.header !== 'Aksi'))} 
+                  columns={doc.columns || []} 
                   data={paginatedData || []}
                 />
                 
