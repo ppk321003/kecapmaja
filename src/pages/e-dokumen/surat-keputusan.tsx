@@ -971,11 +971,11 @@ const SuratKeputusan = () => {
   useEffect(() => {
     const updatedOrganik = watchedOrganik
       .map(id => organikList.find(item => item.id === id))
-      .filter(Boolean) as Person[];
+      .filter((item): item is Person => item !== undefined);
     
     const updatedMitra = watchedMitra
       .map(id => mitraList.find(item => item.id === id))
-      .filter(Boolean) as Person[];
+      .filter((item): item is Person => item !== undefined);
     
     setSelectedOrganikDetails(updatedOrganik);
     setSelectedMitraDetails(updatedMitra);

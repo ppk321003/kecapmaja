@@ -458,7 +458,7 @@ export function AppSidebar() {
                         {eDokumenSubItems.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton asChild>
-                              {'external' in subItem && subItem.external ? (
+                              {subItem.external ? (
                                 <a
                                   href={subItem.url}
                                   target="_blank"

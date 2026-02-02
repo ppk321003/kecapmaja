@@ -176,7 +176,7 @@ export function TrackingTimeline({ submission, className }: TrackingTimelineProp
       type = 'complete';
     } else if (submission.statusArsip) {
       statusLabel = `Arsip: ${submission.statusArsip}`;
-      type = arsipStatus.type as TimelineEvent['type'];
+      type = arsipStatus.type;
     } else if (isIncompleteKppn) {
       statusLabel = 'Dikembalikan oleh Arsip';
       type = 'incomplete';

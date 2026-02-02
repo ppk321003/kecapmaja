@@ -88,8 +88,8 @@ export default function UsulanPencairan() {
         // Parse documents - item.documents bisa berupa array Document[] atau string
         const docsInput = Array.isArray(item.documents) 
           ? item.documents 
-          : typeof item.documents === 'string' && item.documents
-            ? (item.documents as string).split('|').map((name: string) => ({
+          : typeof item.documents === 'string' 
+            ? item.documents.split('|').map(name => ({
                 type: name.toLowerCase().replace(/\s+/g, '_'),
                 name: name.trim(),
                 isRequired: true,

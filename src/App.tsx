@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SatkerConfigProvider } from "./contexts/SatkerConfigContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { DocumentEditProvider } from "./contexts/DocumentEditContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
@@ -53,11 +52,10 @@ const App = () => (
     <ThemeProvider>
       <AuthProvider>
         <SatkerConfigProvider>
-          <DocumentEditProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
             <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
@@ -97,7 +95,6 @@ const App = () => (
           </Routes>
         </BrowserRouter>
             </TooltipProvider>
-          </DocumentEditProvider>
         </SatkerConfigProvider>
       </AuthProvider>
     </ThemeProvider>
