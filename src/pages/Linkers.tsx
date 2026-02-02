@@ -201,12 +201,12 @@ export default function Linkers() {
     try {
       const deleteIndex = linksData.findIndex(l => l.id === deletingData.id);
       if (deleteIndex >= 0) {
-        const rowNumber = deleteIndex + 2; // +2 because of header row
+        const rowIndex = deleteIndex + 2; // +2 because of header row (1-indexed for API)
         const { error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: linkersSheetId,
             operation: "delete",
-            range: `${sheetName}!A${rowNumber}:D${rowNumber}`
+            rowIndex: rowIndex
           }
         });
 
