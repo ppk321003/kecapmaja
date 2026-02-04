@@ -739,27 +739,33 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
 
       // Simpan semua data petugas dengan detail kegiatan aktual (merged)
       const allMitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
-        .map(([nama, data]) => ({
-          nama,
-          jumlahPerjadin: data.count,
-          totalDurasi: data.durasi,
-          totalBiaya: data.biaya,
-          jenisPegawai: "MITRA",
-          kegiatanDetails: mergeKegiatanDetails(data.kegiatanDetails),
-          summary: data.summary
-        }))
+        .map(([nama, data]) => {
+          const mergedKegiatan = mergeKegiatanDetails(data.kegiatanDetails);
+          return {
+            nama,
+            jumlahPerjadin: mergedKegiatan.length, // Use merged count
+            totalDurasi: data.durasi,
+            totalBiaya: data.biaya,
+            jenisPegawai: "MITRA",
+            kegiatanDetails: mergedKegiatan,
+            summary: data.summary
+          };
+        })
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
       const allOrganikPetugasData: PetugasData[] = Array.from(organikMap.entries())
-        .map(([nama, data]) => ({
-          nama,
-          jumlahPerjadin: data.count,
-          totalDurasi: data.durasi,
-          totalBiaya: data.biaya,
-          jenisPegawai: "ORGANIK",
-          kegiatanDetails: mergeKegiatanDetails(data.kegiatanDetails),
-          summary: data.summary
-        }))
+        .map(([nama, data]) => {
+          const mergedKegiatan = mergeKegiatanDetails(data.kegiatanDetails);
+          return {
+            nama,
+            jumlahPerjadin: mergedKegiatan.length, // Use merged count
+            totalDurasi: data.durasi,
+            totalBiaya: data.biaya,
+            jenisPegawai: "ORGANIK",
+            kegiatanDetails: mergedKegiatan,
+            summary: data.summary
+          };
+        })
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
 
       setStats({
