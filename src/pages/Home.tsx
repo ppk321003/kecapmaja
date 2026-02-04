@@ -37,9 +37,6 @@ export default function Home() {
   // Fungsi untuk extract tanggal lahir dari NIP
   const extractTanggalLahirFromNIP = (nip: string): string | null => {
     try {
-      // Format NIP: 19781017 199803 1 002
-      // Bagian tanggal lahir: 19781017 (tahun-bulan-tanggal)
-      // Handle NIP with or without spaces
       const normalizedNIP = nip.replace(/\s+/g, "");
       const tanggalLahirStr = normalizedNIP.substring(0, 8);
       if (tanggalLahirStr.length === 8) {
