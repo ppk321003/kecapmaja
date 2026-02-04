@@ -250,19 +250,14 @@ export default function Linkers() {
     <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
       {/* Header */}
       <div className="max-w-[2400px] mx-auto mb-8">
-        <div className="flex items-center justify-between gap-5">
-          <div className="flex items-center gap-5">
-            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5">
-              <Link2 className="h-9 w-9 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
-                Linkers
-              </h1>
-              <p className="mt-1.5 text-lg text-muted-foreground">
-                Kumpulan tautan penting dokumen dan aplikasi {satkerNama}
-              </p>
-            </div>
+        <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Linkers
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Kumpulan tautan penting dokumen dan aplikasi {satkerNama}
+            </p>
           </div>
           {canEdit && (
             <Button onClick={handleAddClick} className="gap-2">
