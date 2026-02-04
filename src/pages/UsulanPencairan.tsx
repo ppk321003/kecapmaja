@@ -89,7 +89,7 @@ export default function UsulanPencairan() {
         const docsInput = Array.isArray(item.documents) 
           ? item.documents 
           : typeof item.documents === 'string' 
-            ? item.documents.split('|').map(name => ({
+            ? (item.documents as string).split('|').map((name: string) => ({
                 type: name.toLowerCase().replace(/\s+/g, '_'),
                 name: name.trim(),
                 isRequired: true,

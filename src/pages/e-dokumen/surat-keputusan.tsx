@@ -109,29 +109,29 @@ const CONTOH_MENIMBANG_KETIGA = "Bahwa untuk memenuhi kebutuhan data yang akurat
 const CONTOH_MENIMBANG_KEEMPAT = "Bahwa segala biaya yang timbul sebagai akibat pelaksanaan Survei Konversi Gabah ke Beras (SKGB) Tahun 2026 dibebankan pada DIPA Badan Pusat Statistik Kabupaten Majalengka Tahun Anggaran 2026;";
 
 // Custom hook untuk mengambil data organik dari satker-specific GOOGLE SHEETS
-const useOrganikList = () => {
+const useOrganikList = (): { data: Person[]; isLoading: boolean; error: any } => {
   const satkerContext = useSatkerConfigContext();
   const { data: organikBPSData, loading, error } = useOrganikBPS();
   
-  const organikList = organikBPSData.map((org: any) => ({
+  const organikList: Person[] = organikBPSData.map((org: any) => ({
     id: org.nip || "",
     name: org.name || "",
     jabatan: org.jabatan || ""
-  })).filter((item: any) => item.id && item.name);
+  })).filter((item: Person) => item.id && item.name);
 
   return { data: organikList, isLoading: loading, error };
 };
 
 // Custom hook untuk mengambil data mitra dari satker-specific GOOGLE SHEETS
-const useMitraList = () => {
+const useMitraList = (): { data: Person[]; isLoading: boolean; error: any } => {
   const satkerContext = useSatkerConfigContext();
   const { data: mitraStatistikData, loading, error } = useMitraStatistik();
   
-  const mitraList = mitraStatistikData.map((mitra: any) => ({
+  const mitraList: Person[] = mitraStatistikData.map((mitra: any) => ({
     id: mitra.nik || "",
     name: mitra.name || "",
     jabatan: mitra.pekerjaan || ""
-  })).filter((item: any) => item.id && item.name);
+  })).filter((item: Person) => item.id && item.name);
 
   return { data: mitraList, isLoading: loading, error };
 };
@@ -971,11 +971,11 @@ const SuratKeputusan = () => {
   useEffect(() => {
     const updatedOrganik = watchedOrganik
       .map(id => organikList.find(item => item.id === id))
-      .filter((item): item is Person => item !== undefined);
+      .filter((item): item is Person => Boolean(item));
     
     const updatedMitra = watchedMitra
       .map(id => mitraList.find(item => item.id === id))
-      .filter((item): item is Person => item !== undefined);
+      .filter((item): item is Person => Boolean(item));
     
     setSelectedOrganikDetails(updatedOrganik);
     setSelectedMitraDetails(updatedMitra);
