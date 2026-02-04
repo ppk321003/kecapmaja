@@ -907,16 +907,15 @@ export default function InputPengadaan() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2 text-red-500">
-            <ClipboardList className="h-8 w-8" />
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Input Data Pengadaan
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground text-sm">
             Sistem rekam data pengadaan barang/jasa {satkerNama}
             {currentUser && (
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md">
+              <span className="ml-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
                 Login sebagai: {currentUser.role}
                 {!canEdit() && " (Read Only)"}
               </span>
