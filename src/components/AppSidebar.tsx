@@ -43,7 +43,7 @@ const baseMenuItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
-  { title: "Usulan Pencairan", url: "/usulan-pencairan", icon: DollarSign },
+  { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },

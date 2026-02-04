@@ -205,8 +205,8 @@ export default function UsulanPencairan() {
       {/* HEADER - Diperbarui dengan shadow dan rounded */}
       <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Usulan Pencairan</h1>
-          <p className="text-muted-foreground text-sm">Sistem Monitoring Pengajuan Administrasi</p>
+          <h1 className="text-2xl font-bold tracking-tight">Sigap SPJ</h1>
+          <p className="text-muted-foreground text-sm">Sinergi Gerak Administrasi Pengajuan SPJ</p>
         </div>
         <div className="flex items-center gap-2">
           {showCreateButton && (
