@@ -713,7 +713,31 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         .sort((a, b) => b.value - a.value)
         .slice(0, 8);
 
-      // Simpan semua data petugas dengan detail kegiatan aktual
+      // Helper function to merge activities with same name
+      const mergeKegiatanDetails = (details: KegiatanDetail[]): KegiatanDetail[] => {
+        const merged = new Map<string, KegiatanDetail>();
+        
+        details.forEach(kegiatan => {
+          const key = kegiatan.nama;
+          const existing = merged.get(key);
+          
+          if (existing) {
+            // Combine durasi and biaya for same activity name
+            merged.set(key, {
+              nama: kegiatan.nama,
+              durasi: existing.durasi + kegiatan.durasi,
+              biaya: existing.biaya + kegiatan.biaya,
+              jenis_perjalanan: existing.jenis_perjalanan // keep first jenis
+            });
+          } else {
+            merged.set(key, { ...kegiatan });
+          }
+        });
+        
+        return Array.from(merged.values());
+      };
+
+      // Simpan semua data petugas dengan detail kegiatan aktual (merged)
       const allMitraPetugasData: PetugasData[] = Array.from(mitraMap.entries())
         .map(([nama, data]) => ({
           nama,
@@ -721,7 +745,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "MITRA",
-          kegiatanDetails: data.kegiatanDetails,
+          kegiatanDetails: mergeKegiatanDetails(data.kegiatanDetails),
           summary: data.summary
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
@@ -733,7 +757,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           totalDurasi: data.durasi,
           totalBiaya: data.biaya,
           jenisPegawai: "ORGANIK",
-          kegiatanDetails: data.kegiatanDetails,
+          kegiatanDetails: mergeKegiatanDetails(data.kegiatanDetails),
           summary: data.summary
         }))
         .sort((a, b) => b.totalBiaya - a.totalBiaya);
