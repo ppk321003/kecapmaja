@@ -1617,15 +1617,17 @@ export default function BlockTanggal() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Block Tanggal Perjalanan Dinas</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Block Tanggal Perjalanan Dinas
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Sistem tagging tanggal perjalanan dinas untuk organik BPS dan Mitra Statistik {satkerNama}
           </p>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-1.5">
             <UserCheck className="h-4 w-4 text-primary" />
-            <span className="text-sm text-muted-foreground">Login sebagai: <strong className="text-primary">{userRole}</strong></span>
+            <span className="text-xs text-muted-foreground">Login sebagai: <strong className="text-primary">{userRole}</strong></span>
             {!canUserTag && (
               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md flex items-center gap-1">
                 <Ban className="h-3 w-3" />
