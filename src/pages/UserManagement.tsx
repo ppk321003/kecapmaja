@@ -494,10 +494,12 @@ export default function UserManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Pengguna</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Pusat Kendali Pengguna
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Kelola akun pengguna dan pantau aktivitas login
           </p>
         </div>
