@@ -73,7 +73,7 @@ const DashboardSikostik28 = ({ filterTahun }: DashboardSikostik28Props) => {
       setRekapPerBulan(rekap);
 
       // Fetch limit data for current year
-      const filteredLimit = await fetchLimitAnggota(maxBulan, selectedTahun);
+      const filteredLimit = await fetchLimitAnggota();
       setLimitData(filteredLimit);
 
       // Calculate komposisi from all period data

@@ -58,7 +58,7 @@ const additionalMenuItems = [
   { title: "Pedoman", url: "/pedoman", icon: BookOpen },
 ];
 
-const eDokumenSubItems = [
+const eDokumenSubItems: { title: string; url: string; icon: typeof FilePlus; external?: boolean }[] = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
   { title: "Download e-Dokumen", url: "/e-dokumen/download", icon: DownloadIcon },
 ];
