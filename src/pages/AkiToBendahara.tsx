@@ -570,10 +570,12 @@ export default function AkiToBendahara() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">Kecap to Bendahara</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Kecap to Bendahara
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Rekap Honor Bulanan Mitra Statistik {satkerNama}
           </p>
         </div>

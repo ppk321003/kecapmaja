@@ -673,14 +673,14 @@ export default function EntriPengelola() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-red-500">{`Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'} | Mitra Kepka`}</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{`Padamel-${satkerContext?.getUserSatkerConfig()?.satker_id || '3210'} | Mitra Kepka`}</h1>
+          <p className="text-muted-foreground text-sm">
             Kelola data pengelola anggaran, organik BPS, dan mitra Kepka
           </p>
           {user && (
-            <p className="text-sm text-blue-600 mt-1">
+            <p className="text-xs text-primary/70 mt-1">
               Role: {user.role} {isPPK && "(PPK - Akses penuh)"} {!isPPK && "(Dapat edit mitra)"}
             </p>
           )}
