@@ -127,18 +127,17 @@ export const useSikostikData = () => {
   // Dapatkan sheet ID berdasarkan satker user (reactive setelah satkerConfig dimuat)
   const userSheetId = useMemo(() => {
     return satkerContext?.getUserSatkerSheetId('tagging') || SIKOSTIK_SPREADSHEET_ID;
-  }, [satkerContext?.isLoading, satkerContext?.configs?.length, satkerContext?.error]);
+  }, [satkerContext?.configs]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSheet = useCallback(async (sheetName: string, spreadsheetId?: string) => {
-    // Fix: spreadsheetId parameter takes precedence, fallback to userSheetId if not provided
-    const idToUse = spreadsheetId || userSheetId;
+    spreadsheetId = spreadsheetId || userSheetId;
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: idToUse,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: sheetName
         }
@@ -245,31 +244,12 @@ export const useSikostikData = () => {
       }
       const period = { bulan: bulan || getCurrentPeriod().bulan, tahun: tahun || getCurrentPeriod().tahun };
       
-      // Filter by period
-      const filteredByPeriod = data.filter((row: any) => {
-        const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
-        const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
-        return rowBulan === period.bulan && rowTahun === period.tahun;
-      });
-
-      // Deduplicate by anggotaId: prioritize entries with NIP
-      const deduplicatedMap = new Map<string, any>();
-      
-      filteredByPeriod.forEach((row: any) => {
-        const anggotaId = row.anggotaId || row.id || '';
-        if (!anggotaId) return;
-        
-        const existing = deduplicatedMap.get(anggotaId);
-        const hasNip = row.nip && String(row.nip).trim() !== '';
-        
-        // Keep the entry with NIP, or if both have/don't have NIP, keep existing (first occurrence)
-        if (!existing || (!existing.nip && hasNip)) {
-          deduplicatedMap.set(anggotaId, row);
-        }
-      });
-
-      // Convert map back to array and map to RekapDashboard objects
-      return Array.from(deduplicatedMap.values())
+      return data
+        .filter((row: any) => {
+          const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
+          const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
+          return rowBulan === period.bulan && rowTahun === period.tahun;
+        })
         .map((row: any, index: number) => ({
           no: index + 1,
           anggotaId: row.anggotaId || row.id || '',
@@ -331,7 +311,6 @@ export const useSikostikData = () => {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
       
       // Group by anggotaId and calculate limit
-      // Deduplicate: prioritize entries with NIP and latest data
       const limitMap = new Map<string, LimitAnggota>();
       
       data.forEach((row: any) => {
@@ -352,7 +331,7 @@ export const useSikostikData = () => {
         // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
         
-        const newEntry: LimitAnggota = {
+        limitMap.set(anggotaId, {
           anggotaId,
           nama: row.nama || '',
           nip: row.nip || '',
@@ -363,13 +342,7 @@ export const useSikostikData = () => {
           sisaLimit,
           // Cicilan Saat Ini dari kolom R (cicilan_pokok)
           cicilanPokok: parseNum(row.cicilanPokok)
-        };
-        
-        const existing = limitMap.get(anggotaId);
-        // Keep the entry with NIP, or if both have NIP/no NIP, keep the one with more data
-        if (!existing || (!existing.nip && newEntry.nip) || (existing.nip === newEntry.nip && newEntry.totalSimpanan > existing.totalSimpanan)) {
-          limitMap.set(anggotaId, newEntry);
-        }
+        });
       });
       
       return Array.from(limitMap.values());

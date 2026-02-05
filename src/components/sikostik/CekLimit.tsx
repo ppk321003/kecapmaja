@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -6,68 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Calculator, AlertTriangle, CheckCircle, Clock, RefreshCw, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
-import { useSikostikData, formatCurrency, parseNIP, formatNIP, getRetirementStatusText, bulanOptions, getTahunOptions, getCurrentPeriod, formatPeriode } from '@/hooks/use-sikostik-data';
+import { useSikostikData, formatCurrency, parseNIP, formatNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { LimitAnggota } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
-export const CekLimit = ({ 
-  onSelectMember,
-  selectedBulan: propSelectedBulan,
-  selectedTahun: propSelectedTahun,
-  onPeriodChange
-}: { 
-  onSelectMember?: (anggotaId: string) => void;
-  selectedBulan?: number;
-  selectedTahun?: number;
-  onPeriodChange?: (bulan: number, tahun: number) => void;
-}) => {
+export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const { loading, error, fetchLimitAnggota } = useSikostikData();
-  const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedBulan, setSelectedBulan] = useState(propSelectedBulan !== undefined ? propSelectedBulan : currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(propSelectedTahun !== undefined ? propSelectedTahun : currentPeriod.tahun);
   const [sortConfig, setSortConfig] = useState<{
     key: 'nama' | 'sisaLimit' | 'remainingWorkMonths';
     direction: 'asc' | 'desc';
   }>({ key: 'nama', direction: 'asc' });
-
-  // Update period from props
-  useEffect(() => {
-    if (propSelectedBulan !== undefined) {
-      setSelectedBulan(propSelectedBulan);
-    }
-  }, [propSelectedBulan]);
-
-  useEffect(() => {
-    if (propSelectedTahun !== undefined) {
-      setSelectedTahun(propSelectedTahun);
-    }
-  }, [propSelectedTahun]);
 
   const loadData = async () => {
     setIsLoading(true);
     const data = await fetchLimitAnggota();
     setLimitData(data);
     setIsLoading(false);
-  };
-
-  // Handle period change
-  const handleBulanChange = (bulan: number) => {
-    setSelectedBulan(bulan);
-    if (onPeriodChange) {
-      onPeriodChange(bulan, selectedTahun);
-    }
-  };
-
-  const handleTahunChange = (tahun: number) => {
-    setSelectedTahun(tahun);
-    if (onPeriodChange) {
-      onPeriodChange(selectedBulan, tahun);
-    }
   };
 
   useEffect(() => {
@@ -227,9 +185,9 @@ export const CekLimit = ({
         </Card>
       </div>
 
-      {/* Search & Period Selection & Refresh */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      {/* Search & Refresh */}
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input 
             placeholder="Cari nama anggota..." 
@@ -238,18 +196,6 @@ export const CekLimit = ({
             className="pl-9" 
           />
         </div>
-        <Select value={selectedBulan.toString()} onValueChange={v => handleBulanChange(parseInt(v))}>
-          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={selectedTahun.toString()} onValueChange={v => handleTahunChange(parseInt(v))}>
-          <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {getTahunOptions().map(t => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>

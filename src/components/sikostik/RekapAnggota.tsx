@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,70 +11,28 @@ import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
-
-export const RekapAnggota = ({ 
-  onSelectMember,
-  selectedBulan: propSelectedBulan,
-  selectedTahun: propSelectedTahun,
-  onPeriodChange
-}: { 
-  onSelectMember?: (anggotaId: string) => void;
-  selectedBulan?: number;
-  selectedTahun?: number;
-  onPeriodChange?: (bulan: number, tahun: number) => void;
-}) => {
+export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const {
     loading,
     error,
-    fetchRekapDashboard
+    fetchRekapDashboard,
+    userSheetId
   } = useSikostikData();
-
   const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBulan, setSelectedBulan] = useState(propSelectedBulan !== undefined ? propSelectedBulan : currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(propSelectedTahun !== undefined ? propSelectedTahun : currentPeriod.tahun);
+  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Update period from props
-  useEffect(() => {
-    if (propSelectedBulan !== undefined) {
-      setSelectedBulan(propSelectedBulan);
-    }
-  }, [propSelectedBulan]);
-
-  useEffect(() => {
-    if (propSelectedTahun !== undefined) {
-      setSelectedTahun(propSelectedTahun);
-    }
-  }, [propSelectedTahun]);
-
-  // Load data function - stable reference
   const loadData = async () => {
     setIsLoading(true);
-    try {
-      const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
-      console.log('RekapAnggota loaded data:', data.length, 'records');
-      // Debug: log sample data to check NIP
-      if (data.length > 0) {
-        console.log('RekapAnggota sample row:', {
-          nama: data[0].nama,
-          nip: data[0].nip,
-          status: data[0].status
-        });
-      }
-      setRekapData(data);
-    } catch (err) {
-      console.error('Failed to load rekap data:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
+    setRekapData(data);
+    setIsLoading(false);
   };
-
-  // Initial load and period change
   useEffect(() => {
     loadData();
-  }, [selectedBulan, selectedTahun]);
+  }, [selectedBulan, selectedTahun, userSheetId]);
 
   // Filter only active members
   const activeMembers = useMemo(() => {
@@ -86,31 +44,7 @@ export const RekapAnggota = ({
     if (!searchQuery.trim()) return activeMembers;
     return activeMembers.filter(member => member.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [activeMembers, searchQuery]);
-
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
-
-  // Handle member click navigation
-  const handleMemberClick = (anggotaId: string) => {
-    console.log('RekapAnggota: clicking member', anggotaId, 'type:', typeof anggotaId);
-    if (onSelectMember) {
-      onSelectMember(anggotaId);
-    }
-  };
-
-  // Handle period change
-  const handleBulanChange = (bulan: number) => {
-    setSelectedBulan(bulan);
-    if (onPeriodChange) {
-      onPeriodChange(bulan, selectedTahun);
-    }
-  };
-
-  const handleTahunChange = (tahun: number) => {
-    setSelectedTahun(tahun);
-    if (onPeriodChange) {
-      onPeriodChange(selectedBulan, tahun);
-    }
-  };
 
   // Loading skeleton
   if (isLoading && rekapData.length === 0) {
@@ -119,7 +53,6 @@ export const RekapAnggota = ({
         <Skeleton className="h-[400px] w-full" />
       </div>;
   }
-
   return <div className="space-y-6">
       {/* Error Alert */}
       {error && <Alert variant="destructive">
@@ -136,19 +69,19 @@ export const RekapAnggota = ({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Cari nama anggota..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
         </div>
-        <Select value={selectedBulan.toString()} onValueChange={v => handleBulanChange(parseInt(v))}>
+        <Select value={selectedBulan.toString()} onValueChange={v => setSelectedBulan(parseInt(v))}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={selectedTahun.toString()} onValueChange={v => handleTahunChange(parseInt(v))}>
+        <Select value={selectedTahun.toString()} onValueChange={v => setSelectedTahun(parseInt(v))}>
           <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {getTahunOptions().map(t => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={() => loadData()} disabled={loading}>
+        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>
@@ -184,18 +117,15 @@ export const RekapAnggota = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((member, index) => (
-                  <TableRow key={member.anggotaId || index} className={cn(index % 2 === 1 && 'bg-muted/30')}>
+                {filteredData.map((member, index) => <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
                       <div 
-                        className="cursor-pointer hover:text-primary transition-colors group"
-                        onClick={() => handleMemberClick(member.anggotaId)}
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => onSelectMember?.(member.anggotaId)}
                       >
-                        <p className="font-medium group-hover:underline">{member.nama || '-'}</p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {member.nip ? formatNIP(member.nip) : '-'}
-                        </p>
+                        <p className="font-medium hover:underline">{member.nama}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{formatNIP(member.nip)}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(member.saldoAkhirbulanPokok)}</TableCell>
@@ -209,8 +139,7 @@ export const RekapAnggota = ({
                         {formatCurrency(member.saldoPiutang)}
                       </span>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
           </div>
